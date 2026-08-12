@@ -1,0 +1,1565 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Enumerate FUN_004DC690's high-switch (the `if (0x13D < uVar2)` branch covering opcodes 0x13E..0x1A8) and catalog every case body. Classify each case as Pattern A (receiver vtable[1] dispatch), Pattern B (actor vftable[9] generic dispatch), Pattern C (bespoke dedicated handler), or Pattern D (sub-dispatcher). Closes the Pattern C gap identified in docs/client-architecture.md, 'S2C dispatch has five architectural patterns' (~14 low-switch cases; high-switch unmapped).",
+  "method": {
+    "step1": "Read existing FUN_004DC690 decomp at %BCS_GHIDRA_PROJECTS%/fun_004dc690_decomp.txt (3364 bytes, BCS-Y-0279). Identified the `if (0x13D < uVar2)` branch and enumerated every case label from 0x13E to 0x1A8 inclusive.",
+    "step2": "Cross-referenced every dedicated handler VA against manifests/symbols.json - NONE of the 47 unique handler VAs (FUN_0057xxxx + FUN_0055CF70 + FUN_00573F70 + FUN_00578C90 family) are currently cataloged.",
+    "step3": "Batch-decompiled all 47 dedicated handlers via 3 Ghidra headless runs (handlers_batch1.txt 0x143..0x156 handlers, batch2.txt 0x16d..0x18b handlers, batch3.txt 0x18d..0x1a3 handlers). Output files at %BCS_GHIDRA_PROJECTS%/handlers_batch[1-3].txt.",
+    "step4": "Classified each handler by structural pattern: thin C-trampolines (8-byte tail call to a worker) and 109-byte exception-wrapped FUN_00cc9320 lookups + worker call patterns are Pattern C; multi-case fallthrough to label switchD_004dc749_caseD_f at decomp line 756-760 uses Pattern B (FUN_004d9910 actor lookup + actor->vftable[9](zone_state)); case 0x193 (FUN_00578c90) is itself a switch dispatcher = Pattern D.",
+    "step5": "Vtable-slot probe NOT applied - the handlers exhibit no `(**(code **)(*piVar + 0x4))(...)` shape that would indicate Pattern A receiver-class dispatch. All 47 dedicated handlers resolve to direct C-style worker calls (sometimes guarded by a FUN_00cc9320 manager lookup)."
+  },
+  "function_metadata": {
+    "va": "0x004DC690",
+    "name": "FUN_004dc690",
+    "existing_bcs_y_id": "BCS-Y-0279",
+    "existing_bcs_y_name": "Option2_central_packet_dispatcher_FUN_004dc690",
+    "body_bytes": 3364,
+    "switch_key_expr": "uVar2 = *(ushort *)(iVar8 + 2) where iVar8 = param_3 (the s2c packet, opcode at +2)",
+    "branch_condition": "if (0x13D < uVar2)",
+    "caller": "FUN_004E20A0 @ 0x004E20A0 (Map tick handler, single caller)",
+    "this_arg_layout": {
+      "param_1": "session/zone state (the dispatcher's this pointer; +0x4d8 alive-flag, +0x4e0 session manager, +0x4bc shutdown flag, +0x17804..+0x17808 actor map, +0x17838 alive-player ptr, +0x1783c packet-state context, +0x174ec channel-ready flag)",
+      "param_2": "actor id from packet (typed as undefined4)",
+      "param_3": "packet pointer (opcode at +2, payload at +0x10..)"
+    },
+    "fallthrough_label": "switchD_004dc749_caseD_f",
+    "fallthrough_code": "piVar12 = (int *)FUN_004d9910(param_2); if (piVar12 != 0) { (**(code **)(*piVar12 + 0x24))(iVar8); }",
+    "fallthrough_semantics": "Generic Pattern B dispatch: actor-id-to-actor-ptr lookup + actor->vftable[9](zone_state). Same label is reached from low-switch's 0x0F+0xCC..0xE5 group AND from high-switch's multi-case fallthrough group; BCS-Y-0527 already catalogs this fallthrough."
+  },
+  "case_table": [
+    {
+      "opcode": "0x13E",
+      "case_body_summary": "default (no case body) - falls into default-skip path",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x13F",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x140",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x141",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x142",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x143",
+      "case_body_summary": "local_9d0 = *(u32*)(param_1+0x1783c); FUN_00576240(&param_2, &local_9d0, iVar8+0x10). Handler is 16-byte thunk forwarding param_3 to FUN_006c5de0.",
+      "pattern": "C",
+      "handler_function": "0x00576240",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0535",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x144",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f - generic actor->vftable[9] dispatch",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough label)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x145",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f - generic actor->vftable[9] dispatch",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough label)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x146",
+      "case_body_summary": "FUN_005764c0(&param_2, iVar8+0x10). 146-byte handler with exception guard; calls FUN_00cc9320(*param_1) manager lookup, FUN_00cc9500(&param_1) helper, FUN_0076bc20(helper, manager, packet) worker.",
+      "pattern": "C",
+      "handler_function": "0x005764C0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0536",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x147",
+      "case_body_summary": "default (no case body) - matches BCS-Y open question 'Pattern E unrouted opcodes' (0x0147 InventorySetEndPacket)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x148",
+      "case_body_summary": "FUN_00576560(&param_2, iVar8+0x10). 109-byte handler: FUN_00cc9320(*param_1) manager + FUN_00580e70(manager, packet) worker.",
+      "pattern": "C",
+      "handler_function": "0x00576560",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0537",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x149",
+      "case_body_summary": "FUN_005765d0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00580ef0 worker.",
+      "pattern": "C",
+      "handler_function": "0x005765D0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0538",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x14A",
+      "case_body_summary": "FUN_00576640(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00580f70 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576640",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0539",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x14B",
+      "case_body_summary": "FUN_005766b0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00580ff0 worker.",
+      "pattern": "C",
+      "handler_function": "0x005766B0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0540",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x14C",
+      "case_body_summary": "FUN_00576720(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00581070 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576720",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0541",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x14D",
+      "case_body_summary": "FUN_00576790(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_005810f0 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576790",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0542",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x14E",
+      "case_body_summary": "FUN_00576800(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00581170 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576800",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0543",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x14F",
+      "case_body_summary": "FUN_00576870(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_005811f0 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576870",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0544",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x150",
+      "case_body_summary": "FUN_005768e0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00581270 worker.",
+      "pattern": "C",
+      "handler_function": "0x005768E0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0545",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x151",
+      "case_body_summary": "FUN_00576950(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_005812f0 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576950",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0546",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x152",
+      "case_body_summary": "FUN_005769c0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00581370 worker.",
+      "pattern": "C",
+      "handler_function": "0x005769C0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0547",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x153",
+      "case_body_summary": "FUN_00576a30(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_005813f0 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576A30",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0548",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x154",
+      "case_body_summary": "FUN_00576aa0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00581470 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576AA0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0549",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x155",
+      "case_body_summary": "FUN_00576b10(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_005814f0 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576B10",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0550",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x156",
+      "case_body_summary": "FUN_00576b80(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_00581570 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576B80",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0551",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x157",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x158",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x159",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x15A",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x15B",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x15C",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x15D",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x15E",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x15F",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x160",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x161",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x162",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x163",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x164",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x165",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x166",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x167",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x168",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x169",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x16A",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x16B",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x16C",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x16D",
+      "case_body_summary": "FUN_005763c0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_0076bad0 worker.",
+      "pattern": "C",
+      "handler_function": "0x005763C0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0552",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x16E",
+      "case_body_summary": "FUN_00576430(&param_2). 141-byte handler: FUN_00cc9320 manager + FUN_00cc9500 helper + FUN_0076bb00 worker (no iVar8+0x10 - this case takes only the dispatcher arg).",
+      "pattern": "C",
+      "handler_function": "0x00576430",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0553",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x16F",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x170",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x171",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x172",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x173",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x174",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x175",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x176",
+      "case_body_summary": "FUN_00576bf0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_0076bd00 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576BF0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0554",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x177",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x178",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x179",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x17A",
+      "case_body_summary": "FUN_005763b0(iVar8+0x10). 8-byte thunk to FUN_006c9910.",
+      "pattern": "C",
+      "handler_function": "0x005763B0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0555",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x17B",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x17C",
+      "case_body_summary": "local_9d4 = *(u32*)(param_1+0x1783c); FUN_00576250(&param_2, &local_9d4, iVar8+0x10). 109-byte handler: manager lookup + FUN_006cc620 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576250",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0556",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x17D",
+      "case_body_summary": "FUN_005762c0(iVar8+0x10). 8-byte thunk to FUN_006c2f30.",
+      "pattern": "C",
+      "handler_function": "0x005762C0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0557",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x17E",
+      "case_body_summary": "FUN_005762d0(iVar8+0x10). 8-byte thunk to FUN_006c4180.",
+      "pattern": "C",
+      "handler_function": "0x005762D0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0558",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x17F",
+      "case_body_summary": "FUN_005762e0(iVar8+0x10). 8-byte thunk to FUN_006c2f70.",
+      "pattern": "C",
+      "handler_function": "0x005762E0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0559",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x180",
+      "case_body_summary": "FUN_005762f0(iVar8+0x10). 8-byte thunk to FUN_006c2fe0.",
+      "pattern": "C",
+      "handler_function": "0x005762F0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0560",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x181",
+      "case_body_summary": "FUN_00576300(iVar8+0x10). 8-byte thunk to FUN_006c3040.",
+      "pattern": "C",
+      "handler_function": "0x00576300",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0561",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x182",
+      "case_body_summary": "FUN_00576310(iVar8+0x10). 8-byte thunk to FUN_006c30a0.",
+      "pattern": "C",
+      "handler_function": "0x00576310",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0562",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x183",
+      "case_body_summary": "FUN_00576320(iVar8+0x10). 8-byte thunk to FUN_006c3100.",
+      "pattern": "C",
+      "handler_function": "0x00576320",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0563",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x184",
+      "case_body_summary": "FUN_00576330(iVar8+0x10). 8-byte thunk to FUN_006c3150.",
+      "pattern": "C",
+      "handler_function": "0x00576330",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0564",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x185",
+      "case_body_summary": "FUN_00576340(iVar8+0x10). 8-byte thunk to FUN_006c31a0.",
+      "pattern": "C",
+      "handler_function": "0x00576340",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0565",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x186",
+      "case_body_summary": "FUN_00576350(iVar8+0x10). 8-byte thunk to FUN_006c31f0.",
+      "pattern": "C",
+      "handler_function": "0x00576350",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0566",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x187",
+      "case_body_summary": "FUN_00576390(iVar8+0x10). 8-byte thunk to FUN_006c8340.",
+      "pattern": "C",
+      "handler_function": "0x00576390",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0567",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x188",
+      "case_body_summary": "FUN_00576360(iVar8+0x10). 8-byte thunk to FUN_006cd790.",
+      "pattern": "C",
+      "handler_function": "0x00576360",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0568",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x189",
+      "case_body_summary": "FUN_00576370(iVar8+0x10). 8-byte thunk to FUN_006cd7b0.",
+      "pattern": "C",
+      "handler_function": "0x00576370",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0569",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x18A",
+      "case_body_summary": "FUN_00576380(iVar8+0x10). 8-byte thunk to FUN_006c82a0.",
+      "pattern": "C",
+      "handler_function": "0x00576380",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0570",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x18B",
+      "case_body_summary": "FUN_005763a0(iVar8+0x10). 8-byte thunk to FUN_006c5df0.",
+      "pattern": "C",
+      "handler_function": "0x005763A0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0571",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x18C",
+      "case_body_summary": "default (no case body)",
+      "pattern": "default-skip",
+      "catalog_status": "uncataloged",
+      "handler_function": null,
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x18D",
+      "case_body_summary": "Guarded composite: if (*(param_1+0x4d8) != 0) { local_9f8 = *(int*)(iVar8+0x18); FUN_00575550(local_990, iVar8+0x10, &local_9f8); FUN_0055cf70(iVar8+0x10, result); FUN_00573f70(); }. Three workers: FUN_00575550 (232B, packs payload into local struct via FUN_006c1570/006bfce0/006bfd00 chain), FUN_0055cf70 (170B, writes 3 dwords to param_1+0x8/c/10 then loops over a u8 count copying 6-dword rows into param_1+0x2c+, also calls FUN_004d7620+FUN_00671400 finisher), FUN_00573f70 (66B exception cleanup wrapper to FUN_00573a50).",
+      "pattern": "C",
+      "handler_function": "0x00575550 + 0x0055CF70 + 0x00573F70",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0572",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x18E",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x18F",
+      "case_body_summary": "FUN_00576c60(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_0076be30 worker. NOTE the Ghidra decomp pretty-prints this case label as 'case 399' (decimal == 0x18F).",
+      "pattern": "C",
+      "handler_function": "0x00576C60",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0573",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x190",
+      "case_body_summary": "FUN_00576cd0(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_0076be60 worker. NOTE the Ghidra decomp pretty-prints this case label as 'case 400' (decimal == 0x190).",
+      "pattern": "C",
+      "handler_function": "0x00576CD0",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0574",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x191",
+      "case_body_summary": "FUN_00576d40(&param_2, iVar8+0x10). 109-byte handler: manager lookup + FUN_0076bf10 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576D40",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0575",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x192",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x193",
+      "case_body_summary": "FUN_00578c90(*(u32*)(iVar8+0x10), *(u32*)(iVar8+0x14), *(u32*)(iVar8+8)). 842-byte handler is itself a SWITCH dispatcher on param_2 (the first payload arg): cases 0x10..0x16 with bespoke per-subop logic (calls FUN_0075d210/0075d230/0075d250 for sub-ops 0x10-0x12, FUN_00445cf0+00454ed0+0044ab90+0075bc90 string builder chain for sub-op 0x13, FUN_0075b300 setup for sub-op 0x14, FUN_00576020 for 0x15, FUN_0075d270 for 0x16; sub-ops < 0x10 fall through to FUN_0075f3e0).",
+      "pattern": "D",
+      "handler_function": "0x00578C90",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0576",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x194",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x195",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x196",
+      "case_body_summary": "FUN_00576050(iVar8+0x10). 237-byte handler: extracts 8 bit-flags from byte at payload+1 plus 8 u16 fields from payload+2..+0x10; writes payload+2 to (zone+0x38); forwards 16 args to FUN_0075d2d0 worker.",
+      "pattern": "C",
+      "handler_function": "0x00576050",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0577",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x197",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x198",
+      "case_body_summary": "FUN_00576150(iVar8+0x10). 115-byte handler: FUN_00447260(payload, DAT_00f67298) - the LGE 'name registrar' chokepoint (compare BCS-Y-0521 family). Then FUN_0076a850(local stack buf). Suggests opcode 0x198 carries a name-string registration packet processed through the LGE machinery.",
+      "pattern": "C",
+      "handler_function": "0x00576150",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0578",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x199",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x19A",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x19B",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x19C",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x19D",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x19E",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x19F",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A0",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A1",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A2",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A3",
+      "case_body_summary": "FUN_00576140(iVar8+0x10). 14-byte thunk to FUN_00767370.",
+      "pattern": "C",
+      "handler_function": "0x00576140",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0579",
+      "receiver_class_if_pattern_a": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A4",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A5",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A6",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A7",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x1A8",
+      "case_body_summary": "Multi-case fallthrough to switchD_004dc749_caseD_f",
+      "pattern": "B",
+      "handler_function": "0x004DC690 (fallthrough)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0527",
+      "receiver_class_if_pattern_a": null,
+      "proposed_bcs_y_id": null
+    }
+  ],
+  "summary": {
+    "total_cases": 107,
+    "case_range": "0x13E..0x1A8 inclusive",
+    "cataloged": 50,
+    "uncataloged": 57,
+    "pattern_a_count": 0,
+    "pattern_b_count": 50,
+    "pattern_c_count": 44,
+    "pattern_d_count": 1,
+    "default_skip_count": 12,
+    "proposed_bcs_y_entry_count": 45,
+    "note_on_pattern_b_count": "All 50 Pattern B cases are 'cataloged' under BCS-Y-0527 (S2cDispatcher_ActorVtable9_GenericFallthrough_FUN_004DC690) which already documents the multi-case fallthrough mechanism. The actor cluster dispatch model pass enumerated only the LOW-switch contributors (0x0F + 0xCC..0xE5 = 8 opcodes); the HIGH-switch contributors enumerated here (0x144, 0x145, 0x157..0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199..0x1A2, 0x1A4..0x1A8 = 50 opcodes) should be added to BCS-Y-0527's opcode-list note.",
+    "note_on_default_skip": "The 12 default-skip opcodes (0x13E..0x142, 0x147, 0x171..0x174, 0x178, 0x18C) have NO case body in the high-switch. Per FUN_004DC690's default-case body they fall to `ExceptionList = local_1c; return;` - the packet is silently dropped. 0x147 is the known Pattern E InventorySetEndPacket open question (docs/client-architecture.md, 'S2C dispatch has five architectural patterns').",
+    "note_on_no_pattern_a": "This found ZERO Pattern A (receiver vtable[1] dispatch) cases in the high switch. This CONTRADICTS the docs/client-architecture.md, 'S2C dispatch has five architectural patterns' row stating 'High | opcodes 0x13E..0x1A8 ... Mostly *Receiver class dispatch (Pattern A)'. The high switch contains Pattern B fallthrough (50) + Pattern C bespoke (44) + Pattern D sub-dispatcher (1, opcode 0x193) + default-skip (12). The dedicated case handlers (0x143, 0x146, 0x148..0x156, 0x16D, 0x16E, 0x176, 0x17A, 0x17C..0x18B, 0x18D, 0x18F..0x191, 0x193, 0x196, 0x198, 0x1A3) call directly into C-style workers (FUN_006xxxxx / FUN_005xxxxx / FUN_0076xxxx / FUN_00cc93xx manager-lookup wrappers), NOT into a *Receiver class apply method.",
+    "note_on_pattern_c_shape": "Pattern C handlers exhibit three distinct shapes: (a) 8-byte thunk: `FUN_xxxxxx(); return;` - used for 16 of the 0x17D..0x18B + 0x17A range opcodes; (b) 109-byte exception-wrapped: `mgr = FUN_00cc9320(*param_1); FUN_005810xx(mgr, packet); FUN_00cc9330(mgr);` - used for 0x146..0x156, 0x16D, 0x176, 0x17C, 0x18F..0x191 range; (c) bespoke composite: cases 0x18D (3-fn cleanup-then-payload-unpack), 0x193 (sub-dispatcher = Pattern D), 0x196 (bit-field unpacking + 16-arg call), 0x198 (LGE name registrar invocation)."
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0535",
+      "name": "S2cDispatcher_HighSwitch_Case143_FUN_00576240",
+      "address": "0x00576240",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x143 dedicated handler. 16-byte tail-call thunk to FUN_006c5de0(packet). Called from FUN_004DC690 high-switch case 0x143."
+    },
+    {
+      "id": "BCS-Y-0536",
+      "name": "S2cDispatcher_HighSwitch_Case146_FUN_005764C0",
+      "address": "0x005764C0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x146 dedicated handler. 146-byte exception-wrapped manager+helper+worker pattern: FUN_00cc9320(*param_1) -> FUN_00cc9500(&param_1) -> FUN_0076bc20(helper, manager, payload)."
+    },
+    {
+      "id": "BCS-Y-0537",
+      "name": "S2cDispatcher_HighSwitch_Case148_FUN_00576560",
+      "address": "0x00576560",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x148 dedicated handler. 109-byte exception-wrapped manager+worker: FUN_00cc9320 -> FUN_00580e70."
+    },
+    {
+      "id": "BCS-Y-0538",
+      "name": "S2cDispatcher_HighSwitch_Case149_FUN_005765D0",
+      "address": "0x005765D0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x149 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00580ef0."
+    },
+    {
+      "id": "BCS-Y-0539",
+      "name": "S2cDispatcher_HighSwitch_Case14A_FUN_00576640",
+      "address": "0x00576640",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x14A dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00580f70."
+    },
+    {
+      "id": "BCS-Y-0540",
+      "name": "S2cDispatcher_HighSwitch_Case14B_FUN_005766B0",
+      "address": "0x005766B0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x14B dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00580ff0."
+    },
+    {
+      "id": "BCS-Y-0541",
+      "name": "S2cDispatcher_HighSwitch_Case14C_FUN_00576720",
+      "address": "0x00576720",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x14C dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00581070."
+    },
+    {
+      "id": "BCS-Y-0542",
+      "name": "S2cDispatcher_HighSwitch_Case14D_FUN_00576790",
+      "address": "0x00576790",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x14D dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_005810f0."
+    },
+    {
+      "id": "BCS-Y-0543",
+      "name": "S2cDispatcher_HighSwitch_Case14E_FUN_00576800",
+      "address": "0x00576800",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x14E dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00581170."
+    },
+    {
+      "id": "BCS-Y-0544",
+      "name": "S2cDispatcher_HighSwitch_Case14F_FUN_00576870",
+      "address": "0x00576870",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x14F dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_005811f0."
+    },
+    {
+      "id": "BCS-Y-0545",
+      "name": "S2cDispatcher_HighSwitch_Case150_FUN_005768E0",
+      "address": "0x005768E0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x150 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00581270."
+    },
+    {
+      "id": "BCS-Y-0546",
+      "name": "S2cDispatcher_HighSwitch_Case151_FUN_00576950",
+      "address": "0x00576950",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x151 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_005812f0."
+    },
+    {
+      "id": "BCS-Y-0547",
+      "name": "S2cDispatcher_HighSwitch_Case152_FUN_005769C0",
+      "address": "0x005769C0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x152 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00581370."
+    },
+    {
+      "id": "BCS-Y-0548",
+      "name": "S2cDispatcher_HighSwitch_Case153_FUN_00576A30",
+      "address": "0x00576A30",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x153 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_005813f0."
+    },
+    {
+      "id": "BCS-Y-0549",
+      "name": "S2cDispatcher_HighSwitch_Case154_FUN_00576AA0",
+      "address": "0x00576AA0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x154 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00581470."
+    },
+    {
+      "id": "BCS-Y-0550",
+      "name": "S2cDispatcher_HighSwitch_Case155_FUN_00576B10",
+      "address": "0x00576B10",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x155 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_005814f0."
+    },
+    {
+      "id": "BCS-Y-0551",
+      "name": "S2cDispatcher_HighSwitch_Case156_FUN_00576B80",
+      "address": "0x00576B80",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x156 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_00581570."
+    },
+    {
+      "id": "BCS-Y-0552",
+      "name": "S2cDispatcher_HighSwitch_Case16D_FUN_005763C0",
+      "address": "0x005763C0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x16D dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_0076bad0."
+    },
+    {
+      "id": "BCS-Y-0553",
+      "name": "S2cDispatcher_HighSwitch_Case16E_FUN_00576430",
+      "address": "0x00576430",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x16E dedicated handler. 141-byte manager+helper+worker: FUN_00cc9320 -> FUN_00cc9500 -> FUN_0076bb00. NOTE this case takes ONLY param_1 (no iVar8+0x10), distinguishing it from the 0x148..0x156 family."
+    },
+    {
+      "id": "BCS-Y-0554",
+      "name": "S2cDispatcher_HighSwitch_Case176_FUN_00576BF0",
+      "address": "0x00576BF0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x176 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_0076bd00."
+    },
+    {
+      "id": "BCS-Y-0555",
+      "name": "S2cDispatcher_HighSwitch_Case17A_FUN_005763B0",
+      "address": "0x005763B0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x17A dedicated handler. 8-byte thunk to FUN_006c9910."
+    },
+    {
+      "id": "BCS-Y-0556",
+      "name": "S2cDispatcher_HighSwitch_Case17C_FUN_00576250",
+      "address": "0x00576250",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x17C dedicated handler. 109-byte three-arg variant: receives the *(param_1+0x1783c) context ptr (same as opcode 0x143). FUN_00cc9320 -> FUN_006cc620(manager, packet)."
+    },
+    {
+      "id": "BCS-Y-0557",
+      "name": "S2cDispatcher_HighSwitch_Case17D_FUN_005762C0",
+      "address": "0x005762C0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x17D dedicated handler. 8-byte thunk to FUN_006c2f30."
+    },
+    {
+      "id": "BCS-Y-0558",
+      "name": "S2cDispatcher_HighSwitch_Case17E_FUN_005762D0",
+      "address": "0x005762D0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x17E dedicated handler. 8-byte thunk to FUN_006c4180."
+    },
+    {
+      "id": "BCS-Y-0559",
+      "name": "S2cDispatcher_HighSwitch_Case17F_FUN_005762E0",
+      "address": "0x005762E0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x17F dedicated handler. 8-byte thunk to FUN_006c2f70."
+    },
+    {
+      "id": "BCS-Y-0560",
+      "name": "S2cDispatcher_HighSwitch_Case180_FUN_005762F0",
+      "address": "0x005762F0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x180 dedicated handler. 8-byte thunk to FUN_006c2fe0."
+    },
+    {
+      "id": "BCS-Y-0561",
+      "name": "S2cDispatcher_HighSwitch_Case181_FUN_00576300",
+      "address": "0x00576300",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x181 dedicated handler. 8-byte thunk to FUN_006c3040."
+    },
+    {
+      "id": "BCS-Y-0562",
+      "name": "S2cDispatcher_HighSwitch_Case182_FUN_00576310",
+      "address": "0x00576310",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x182 dedicated handler. 8-byte thunk to FUN_006c30a0."
+    },
+    {
+      "id": "BCS-Y-0563",
+      "name": "S2cDispatcher_HighSwitch_Case183_FUN_00576320",
+      "address": "0x00576320",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x183 dedicated handler. 8-byte thunk to FUN_006c3100."
+    },
+    {
+      "id": "BCS-Y-0564",
+      "name": "S2cDispatcher_HighSwitch_Case184_FUN_00576330",
+      "address": "0x00576330",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x184 dedicated handler. 8-byte thunk to FUN_006c3150."
+    },
+    {
+      "id": "BCS-Y-0565",
+      "name": "S2cDispatcher_HighSwitch_Case185_FUN_00576340",
+      "address": "0x00576340",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x185 dedicated handler. 8-byte thunk to FUN_006c31a0."
+    },
+    {
+      "id": "BCS-Y-0566",
+      "name": "S2cDispatcher_HighSwitch_Case186_FUN_00576350",
+      "address": "0x00576350",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x186 dedicated handler. 8-byte thunk to FUN_006c31f0."
+    },
+    {
+      "id": "BCS-Y-0567",
+      "name": "S2cDispatcher_HighSwitch_Case187_FUN_00576390",
+      "address": "0x00576390",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x187 dedicated handler. 8-byte thunk to FUN_006c8340."
+    },
+    {
+      "id": "BCS-Y-0568",
+      "name": "S2cDispatcher_HighSwitch_Case188_FUN_00576360",
+      "address": "0x00576360",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x188 dedicated handler. 8-byte thunk to FUN_006cd790."
+    },
+    {
+      "id": "BCS-Y-0569",
+      "name": "S2cDispatcher_HighSwitch_Case189_FUN_00576370",
+      "address": "0x00576370",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x189 dedicated handler. 8-byte thunk to FUN_006cd7b0."
+    },
+    {
+      "id": "BCS-Y-0570",
+      "name": "S2cDispatcher_HighSwitch_Case18A_FUN_00576380",
+      "address": "0x00576380",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x18A dedicated handler. 8-byte thunk to FUN_006c82a0."
+    },
+    {
+      "id": "BCS-Y-0571",
+      "name": "S2cDispatcher_HighSwitch_Case18B_FUN_005763A0",
+      "address": "0x005763A0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x18B dedicated handler. 8-byte thunk to FUN_006c5df0."
+    },
+    {
+      "id": "BCS-Y-0572",
+      "name": "S2cDispatcher_HighSwitch_Case18D_Composite_FUN_00575550_0055CF70_00573F70",
+      "address": "0x00575550",
+      "kind": "function_case",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x18D guarded composite handler. Guard: `*(param_1+0x4d8) != 0`. Calls FUN_00575550 (232B, payload unpack via FUN_006c1570 chain), then FUN_0055cf70 (170B, writes 3 dwords + iterates u8 count of 6-dword rows into param_1+0x2c+; finishes via FUN_004d7620+FUN_00671400), then FUN_00573f70 (66B exception cleanup wrapper to FUN_00573a50). Note FUN_00573f70 has additional callers (FUN_00578540 + 5 unwind labels) suggesting it's a shared cleanup helper, not opcode-specific."
+    },
+    {
+      "id": "BCS-Y-0573",
+      "name": "S2cDispatcher_HighSwitch_Case18F_FUN_00576C60",
+      "address": "0x00576C60",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x18F dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_0076be30. NOTE Ghidra prints the case label as 'case 399' = 0x18F."
+    },
+    {
+      "id": "BCS-Y-0574",
+      "name": "S2cDispatcher_HighSwitch_Case190_FUN_00576CD0",
+      "address": "0x00576CD0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x190 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_0076be60. NOTE Ghidra prints the case label as 'case 400' = 0x190."
+    },
+    {
+      "id": "BCS-Y-0575",
+      "name": "S2cDispatcher_HighSwitch_Case191_FUN_00576D40",
+      "address": "0x00576D40",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x191 dedicated handler. 109-byte manager+worker: FUN_00cc9320 -> FUN_0076bf10."
+    },
+    {
+      "id": "BCS-Y-0576",
+      "name": "S2cDispatcher_HighSwitch_Case193_SubDispatcher_FUN_00578C90",
+      "address": "0x00578C90",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x193 Pattern D sub-dispatcher. 842-byte function. Switches on its first arg `param_2` (= *(packet+0x10), the sub-op code). Sub-ops 0x10..0x16 dispatch to bespoke logic; sub-ops < 0x10 fall through to FUN_0075f3e0(sub_op, iVar1) where iVar1 = param_4 + param_3 from the packet's 0x14/0x8 fields. Sub-op 0x13 is a string-builder path (FUN_00445cf0 + FUN_00454ed0 + FUN_0044ab90 + FUN_0075bc90) with two branches on param_3 == -1; sub-op 0x14 is a UI/state-init guard checking *(param_1+0x3a) and writing 1 there if conditions match; sub-op 0x15 calls FUN_00576020; sub-op 0x16 calls FUN_0075d270. Likely a chat/system-message sub-dispatcher given the literal strings 'k0W0~0W0_0' (sjis-encoded) and DAT_00fa6d5c/6d64/6d8c (string literals embedded in code)."
+    },
+    {
+      "id": "BCS-Y-0577",
+      "name": "S2cDispatcher_HighSwitch_Case196_FUN_00576050",
+      "address": "0x00576050",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x196 dedicated handler. 237-byte bit-field unpacker: reads byte at payload+1 -> extracts 8 1-bit flags (>>0..>>7), reads 8 u16 fields at payload+2..+0x10, writes payload+2 to (zone+0x38), forwards all 16 fields to FUN_0075d2d0 worker. Shape suggests a packed-state-update packet (16 small fields in 17 bytes)."
+    },
+    {
+      "id": "BCS-Y-0578",
+      "name": "S2cDispatcher_HighSwitch_Case198_FUN_00576150",
+      "address": "0x00576150",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x198 dedicated handler. 115-byte handler: calls FUN_00447260(payload, DAT_00f67298) - the LGE name-registrar (compare BCS-Y-0521..0524 family). Then FUN_0076a850(local_60 stack buf). Suggests opcode 0x198 carries a name-string registration packet processed through the LGE machinery (DAT_00f67298 is the shared LGE registry pointer)."
+    },
+    {
+      "id": "BCS-Y-0579",
+      "name": "S2cDispatcher_HighSwitch_Case1A3_FUN_00576140",
+      "address": "0x00576140",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Opcode 0x1A3 dedicated handler. 14-byte thunk to FUN_00767370."
+    }
+  ],
+  "key_findings": [
+    {
+      "title": "Zero Pattern A receivers in the high switch - the s2c dispatch-pattern table needs correction",
+      "detail": "The dispatch-pattern table in docs/client-architecture.md, 'S2C dispatch has five architectural patterns' states 'High | if (0x13D < uVar2) | opcodes 0x13E..0x1A8 with case groups | Mostly *Receiver class dispatch (Pattern A)'. This enumeration finds ZERO Pattern A dispatches in the high switch. The actual distribution is 50 Pattern B (multi-case fallthrough to actor->vftable[9]), 44 Pattern C (bespoke per-opcode workers), 1 Pattern D (case 0x193 = FUN_00578c90 sub-dispatcher), 12 default-skip cases.",
+      "implication": "The 38-receiver receiver discovery pass catalog (Pattern A) must come from elsewhere - likely the low-switch via FUN_004D8860 sub-dispatcher (the pattern d subdispatcher pass has cataloged 27 Pattern A handlers there) and/or other dispatcher entry points the receiver discovery pass methodology walked. The correct characterization is 'Mixed Pattern B + C + D, no Pattern A'.",
+      "confidence": "confirmed"
+    },
+    {
+      "title": "High switch contributes 50 opcodes to Pattern B (actor vftable[9] generic dispatch)",
+      "detail": "BCS-Y-0527 currently lists only the 8 low-switch contributors (0x0F + 0xCC + 0xCD + 0xCE + 0xCF + 0xD0 + 0xD3..0xE5 partial). This enumeration covers 50 high-switch contributors that reach the same switchD_004dc749_caseD_f fallthrough label: 0x144, 0x145, 0x157..0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199..0x1A2, 0x1A4..0x1A8.",
+      "implication": "BCS-Y-0527's note should be expanded to list 58 total contributing opcodes (8 low + 50 high). Given the actor vftable9 investigation pass's finding that the cataloged actor classes' vftable[9] is a no-op, all 58 of these opcodes are effectively dropped at the dispatcher level (open question - see the Pattern B paragraph in docs/client-architecture.md, 'S2C dispatch has five architectural patterns').",
+      "confidence": "confirmed"
+    },
+    {
+      "title": "Pattern C handlers exhibit 3 structural shapes; the 109-byte manager-lookup family points to a shared subsystem",
+      "detail": "Shape (b) - 109-byte exception-wrapped FUN_00cc9320(*param_1) manager lookup + worker call - is shared by 14 high-switch cases (0x146 partial, 0x148..0x156, 0x16D, 0x176, 0x17C, 0x18F..0x191). FUN_00cc9320 reads *param_1 (the dispatcher's this pointer, which is a zone/session state pointer) and presumably returns a sub-manager pointer. FUN_00cc9330 is the symmetric cleanup. The 11 workers FUN_00580e70/ef0/f70/ff0 + FUN_005810xx/11xx/12xx/13xx/14xx/15xx form a strided VA family (0x80 apart, sequential opcodes 0x148..0x156) suggesting they live in a single source file - a 'CharacterState' or 'EntityStat' subsystem operating on a shared sub-manager type.",
+      "implication": "The 14 handlers in shape (b) and their 14 workers are likely a single subsystem (e.g., 'character stat update', 'inventory mutate', etc.). Cataloging the workers (FUN_005810xx etc.) as a unit + identifying FUN_00cc9320's return type would let us name the subsystem. A candidate for the catalog validation report pass.",
+      "confidence": "confirmed"
+    },
+    {
+      "title": "Opcode 0x193 is a Pattern D sub-dispatcher (FUN_00578c90, 842 bytes, 7 sub-cases)",
+      "detail": "Case 0x193 calls FUN_00578c90 which itself switches on the first packet payload arg (param_2 at +0x10). Sub-ops 0x10..0x16 have bespoke logic; sub-ops < 0x10 fall to FUN_0075f3e0. Sub-op 0x13 builds a string from sjis literals 'k0W0~0W0_0' and DAT_00fa6d5c/6d64/6d8c via FUN_00445cf0/0044ab90/0075bc90 chain - characteristic of chat or system-message packet formatting.",
+      "implication": "Opcode 0x193 multiplexes ~7 logical opcodes via its sub-op. The catalog should record the sub-op as a second-level dispatch key. Decompiling FUN_0075f3e0 + FUN_0075d2[1-7]0 would let us name each sub-op.",
+      "confidence": "confirmed"
+    },
+    {
+      "title": "Opcode 0x198 is a LGE name-registrar invocation point",
+      "detail": "FUN_00576150 calls FUN_00447260(payload, DAT_00f67298). FUN_00447260 is the LGE registrar chokepoint (compare BCS-Y-0521..0524 which catalog 8 LGE substrate functions that use the same FUN_00447260 + DAT_00f67298 pattern for _assignForChild and related ops).",
+      "implication": "Opcode 0x198 likely carries a Lua-class-name registration string from server to client (e.g., 'register this Lua class name on this actor'). Could bridge to Lua-class-system docs. A candidate for the catalog validation report pass to identify what string opcode 0x198's payload contains.",
+      "confidence": "confirmed"
+    },
+    {
+      "title": "Opcode 0x147 is observed-in-pcap-but-default-skipped, confirming Pattern E (docs/client-architecture.md, 'S2C dispatch has five architectural patterns')",
+      "detail": "0x0147 InventorySetEndPacket has NO case body in the high switch - it falls into the default-skip path. This validates the earlier open-question status for 0x0147 in docs/client-architecture.md, 'S2C dispatch has five architectural patterns'.",
+      "implication": "Opcode 0x147 is not routed through FUN_004DC690. Its handler must live in a different dispatcher entry point (Lobby/Chat channel? c2s path?) - live capture capture deferred per project direction.",
+      "confidence": "confirmed"
+    }
+  ],
+  "open_questions": [
+    {
+      "question": "What is the subsystem behind the 14-handler 109-byte manager+worker family (FUN_00cc9320 lookup + FUN_005810xx/11xx/12xx/13xx/14xx/15xx + FUN_0076bxxx workers)?",
+      "context": "Opcodes 0x146, 0x148..0x156, 0x16D, 0x176, 0x17C, 0x18F..0x191 all share the same 109-byte shape with FUN_00cc9320 manager lookup. The workers form a strided VA family suggesting a single source file. Identifying the manager class and the per-opcode worker names would let the catalog validation report pass catalog the subsystem as a unit instead of 14 isolated function-case entries.",
+      "candidate_next_steps": [
+        "Decompile FUN_00cc9320 + FUN_00cc9330 to see what type the manager is",
+        "Decompile one of the FUN_005810xx workers to see what state it mutates"
+      ]
+    },
+    {
+      "question": "What 7 logical opcodes does FUN_00578c90 (case 0x193) sub-dispatch?",
+      "context": "Sub-ops 0x10..0x16 have distinct logic; sub-op 0x13 has obvious string-formatting evidence (sjis 'k0W0~0W0_0' literal). The architecture has cataloged FUN_004D8860 (BCS-Y-0280) and FUN_004DC690 (BCS-Y-0279) as sub-dispatchers, but FUN_00578c90 is a third one not currently identified as such.",
+      "candidate_next_steps": [
+        "Decompile FUN_0075f3e0 (sub-ops < 0x10) and FUN_0075d210/0x230/0x250/0x270 (sub-ops 0x10/0x11/0x12/0x16) to characterize each"
+      ]
+    },
+    {
+      "context": "FUN_00576150 calls the same FUN_00447260(payload, DAT_00f67298) chokepoint that 8 LGE substrate helpers use. The payload is the registered name. Likely a Lua-class binding packet.",
+      "candidate_next_steps": [
+        "Cross-reference with lua-opcode-bridge.md",
+        "Could be related to BCS-Y-0510..0514 dynamic class binding"
+      ]
+    },
+    {
+      "question": "Why no Pattern A in the high switch when the s2c dispatch-pattern table predicted mostly Pattern A?",
+      "context": "The 38 Pattern A *Receiver classes the receiver discovery pass cataloged were attributed to opcodes 0x12E..0x1F5 - a range that overlaps with FUN_004DC690's 0x13E..0x1A8 high switch. Where do those Pattern A dispatches actually occur?",
+      "candidate_next_steps": [
+        "The pattern d subdispatcher pass already catalogued 27 Pattern A handlers behind FUN_004D8860 (case-bound to opcodes 0x12E..0x1A8). It is likely the receiver discovery pass's '38 receivers / opcodes 0x12E..0x1F5' attribution came predominantly via FUN_004D8860 not FUN_004DC690",
+        "Verify by reading manifests/pattern_d_subdispatcher.json"
+      ]
+    }
+  ],
+  "evidence_paths": {
+    "primary_decomp": "%BCS_GHIDRA_PROJECTS%/fun_004dc690_decomp.txt",
+    "secondary_decomps": [
+      "%BCS_GHIDRA_PROJECTS%/handlers_batch1.txt",
+      "%BCS_GHIDRA_PROJECTS%/handlers_batch2.txt",
+      "%BCS_GHIDRA_PROJECTS%/handlers_batch3.txt"
+    ],
+    "batch_scripts": [
+      "%BCS_GHIDRA_PROJECTS%/run_high_switch_handlers_batch1.bat",
+      "%BCS_GHIDRA_PROJECTS%/run_high_switch_handlers_batch2.bat",
+      "%BCS_GHIDRA_PROJECTS%/run_high_switch_handlers_batch3.bat"
+    ]
+  },
+  "blockers": []
+}

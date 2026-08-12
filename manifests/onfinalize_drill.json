@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Drill FUN_006F6900 (the shared _onFinalize fire BCS-Y-1530) internals to understand the full Lua-side firing mechanism. KEY FINDING: the framing of FUN_00447260 as 'hash registrar' was WRONG - it is just a std::string ctor (BCS-Y-0311). The fire is a POLYMORPHIC LUA METHOD INVOCATION via FUN_00CC7A90 LuaCallbackDispatcher (BCS-Y-0398). Plus 4 finalize wrapper entry points + 2 LuaControl cluster utilities identified.",
+  "method": {
+    "step1": "Decomp FUN_006F6900 + 4 listed callers (FUN_006FCAA0, FUN_006FA7E0, FUN_006F6D30, FUN_006F6CF0) + 3 key callees (FUN_00CC7A90 Lua dispatcher, FUN_00447260 'registrar', FUN_00CC7280 gate check). Output: c91_onfinalize_internals.txt.",
+    "step2": "Decomp the derived-state getter FUN_00CD7A30 (23 callers across cc7000 cluster). Output: c91_cd7a30_decomp.txt.",
+    "step3": "Cross-reference findings with PRE-EXISTING catalog entries BCS-Y-0311 (std::string ctor) and BCS-Y-0398 (LuaCallbackDispatcher). The framing of FUN_00447260 as 'hash registrar' was inconsistent with the pre-existing catalog evidence.",
+    "step4": "Catalog 5 new BCS-Y entries (1 skipped - FUN_006FA7E0 pre-existing) + 3 amendments to BCS-Y-1530 (corrected framing), BCS-Y-0311 (cross-link), BCS-Y-0398 (cross-link)."
+  },
+  "key_findings": [
+    "**FRAMING CORRECTED**: FUN_00447260 is NOT a 'hash registrar' or 'callback registry epoch reader' - it's a std::string constructor (BCS-Y-0311 documented this). DAT_00f67298 is just the strlen-sentinel argument, NOT a 'callback registry epoch counter' as the lua-engine-callback-registry-findings pass implied.",
+    "**The _onFinalize fire is a POLYMORPHIC LUA METHOD INVOCATION**: FUN_006F6900 builds local std::string('_onFinalize'), then calls FUN_00CC7A90 (LuaCallbackDispatcher BCS-Y-0398). The dispatcher internally routes via FUN_00CD7A30 (derived state getter) to whatever Lua handler the script registered for `_onFinalize` on the runtime class of `this`.",
+    "**Why FUN_006F6900 is literally shared across 11 classes** (finding): the dispatch is polymorphism-aware via FUN_00CD7A30, which reads the LuaControl base's per-derived-class state registration field at this+0x1bc and routes the Lua call to the right per-class handler. No need for per-class fire methods - one method routes correctly via runtime introspection.",
+    "**Gate condition at FUN_006F6900 entry**: calls FUN_00CC7280 (BCS-Y-1580) which reads `*(byte*)(derived_state + 0x80)`. If 0, the function SKIPS the _onFinalize fire entirely. So the byte at derived-state+0x80 is the 'allow finalize' flag.",
+    "**4 finalize wrapper entry points** discovered (in addition to direct slot 5 vtable dispatch):",
+    "  - FUN_006FCAA0 (BCS-Y-1576): deferred-finalize - cleans up pending deferred state at +0xc0/+0x64 before firing",
+    "  - FUN_006FA7E0 (pre-existing BCS-Y skip): post-check finalize - used by FUN_00706a50",
+    "  - FUN_006F6D30 (BCS-Y-1578): synchronous finalize - minimal wrapper",
+    "  - FUN_006F6CF0 (BCS-Y-1579): error-state finalize with status code 0xc0000007 (NT_STATUS-style error)",
+    "**FUN_00CD7A30 is the LuaControl cluster's central state-resolution utility** (BCS-Y-1581): 23 callers across the cc7000 Lua-bridge cluster. The this+0x1bc field is the LuaControl base's per-derived-class state registration slot.",
+    "**The lua-engine-callback-registry-findings pass's Lua callback registry framing - REINTERPRETED**: DAT_00f67298 is NOT a registry epoch. The Lua callback registry concept stands but operates through the LuaCallbackDispatcher's internal name->handler lookup keyed on the runtime class of `this` (via FUN_00CD7A30), not via a DAT_00f67298-rooted hash table. The lua-engine-callback-registry-findings pass's attribution of DAT_00f67298 to 'callback registry epoch' was inferred from miss-reading FUN_00447260's signature."
+  ],
+  "new_bcsy_entries_summary": {
+    "finalize_wrappers": 3,
+    "luacontrol_utilities": 2,
+    "amendments": 3,
+    "total_bcsy_added": 5,
+    "skipped_preexisting": 1,
+    "id_range": "BCS-Y-1576..BCS-Y-1581 (skipped 1577 - FUN_006FA7E0 already cataloged)",
+    "amendment_targets": ["BCS-Y-1530", "BCS-Y-0311", "BCS-Y-0398"]
+  },
+  "deferred_followups": [
+    "Look up FUN_006FA7E0's pre-existing BCS-Y entry - what name was it cataloged under?",
+    "Verify DAT_00f67298 actual value - if 0xFFFFFFFF, confirms the 'strlen sentinel' interpretation; if something else, may be the explicit length passed.",
+    "Decomp FUN_00CF0910 + FUN_00CCF7D0 (the LuaCallbackDispatcher internals BCS-Y-0398 calls) to understand the actual Lua-VM pcall pipeline.",
+    "Survey other Lua callback fire patterns in the binary using the COMBINATION signature FUN_00447260 + FUN_00CC7A90 (per BCS-Y-0311 note about 200+ FUN_00447260 callers; only those that ALSO call FUN_00CC7A90 are Lua fire sites).",
+    "Investigate the LuaControl base's this+0x1bc field (the derived-state registration slot) - find where it's WRITTEN during derived-class construction.",
+    "Cross-reference _onFinalize fire with other lifecycle events (_onInit, _onUpdate, _onFinish etc.) - same pattern probably applies across all LuaControl lifecycle hooks."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1563 -> 1568 (+5 BCS-Y; 1 skipped as pre-existing - FUN_006FA7E0)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1576, 1578-1581), 3 amendments (BCS-Y-1530, 0311, 0398)",
+    "manifests/onfinalize_drill.json (NEW, this file)",
+    "tools/ghidra/logs/c91_onfinalize_internals.txt (NEW)",
+    "tools/ghidra/logs/c91_cd7a30_decomp.txt (NEW)",
+    "tools/extractors/append_onfinalize_drill.py (NEW)"
+  ]
+}

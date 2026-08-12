@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Full Lua fire-site re-survey + scheduled-dispatch architecture characterization. **MAJOR DISCOVERY**: identified `Component::Lua::GameEngine` class (size 0x228, 552 bytes) via demangled symbol `Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil>::vftable` in FUN_00CDC410. **FOUR distinct Lua dispatch surfaces** confirmed with TWO distinct dispatch cores: FUN_00CCF7D0 (primary sync + alt sync + US-scheduled) AND FUN_00CCEAC0 (MS-scheduled). The literal-name synchronous fire inventory is CLOSED at 80 total (79 primary + 1 alt). Scheduled callbacks use computed event IDs from per-object state, NOT literal strings - architecturally DIFFERENT from those fire sites. The '20 callers of FUN_00CCF7D0' claim was CORRECTED: actual count is 3 callers (the 3 dispatcher-external entries).",
+  "method": {
+    "step1": "Ran FindAllReferencesToAddress on FUN_00CCF7D0 (BCS-Y-1681), FUN_00CD25C0 (BCS-Y-1685), FUN_00CF5EC0 (BCS-Y-1686). Result: 3, 1, 1 references respectively. The claim of '20 callers' for FUN_00CCF7D0 is NOT supported by code-ref data - actual count is 3 (the 3 dispatcher-external entries).",
+    "step2": "Decomp'd FUN_00CF63E0 (sole caller of FUN_00CF6080) - 42 bytes, reads epoch (DAT_01377FB0/FB4) and calls FUN_00CF6080 with implicit `this` (scheduler object). Sole caller: FUN_00CDA330.",
+    "step3": "Decomp'd FUN_00CDA330 (sole caller of FUN_00CF63E0) - 715 bytes, scheduler maintenance tick. Calls 3 sub-functions: FUN_00CD85C0, FUN_00CEF510 (ms-scheduled scanner), FUN_00CF63E0 (us-scheduled tick), FUN_00CD6E60. Sole caller: FUN_00CC98A0.",
+    "step4": "Decomp'd FUN_00CC98A0 (sole caller of FUN_00CDA330) - 42 bytes, top-level Lua tick orchestrator. Calls TWO ticks: FUN_00CDA330 (main scheduler maintenance) + FUN_00CF1B50 (623 bytes, secondary Lua subsystem tick). Stores both return values via param_1[0/1]. Sole caller: FUN_00578970 (frame tick).",
+    "step5": "Decomp'd FUN_00CEF510 (called by FUN_00CDA330, 773 bytes) - MS-precision scheduled-callback scanner. Uses `timeGetTime` (ms) and a queue at scheduler+0xC (separate from FUN_00CF6080's us queue at scheduler+0x14). Iterates entries, calls FUN_00CE1840 + FUN_00CEEE70 for dispatch. **CRITICAL**: this path does NOT reach FUN_00CCF7D0.",
+    "step6": "Decomp'd FUN_00CE1840 (sole caller is FUN_00CEF510, 73 bytes) - thin MS-scheduled fire entry. Calls FUN_00CF1060 for ID lookup (uses DAT_01377EE8 as the canonical ms-callback dispatch ID), then calls FUN_00CCEAC0 (the MS dispatch core).",
+    "step7": "Decomp'd FUN_00CCEAC0 (sole caller is FUN_00CE1840, 493 bytes) - **CONFIRMED as the MS-SCHEDULED DISPATCH CORE**, distinct from FUN_00CCF7D0. Uses (*param_4 & 0x7fff) / DAT_00F91C48 for time-conversion. Has 4 routing branches based on FUN_00CF3D80/D60/D90 (callback type checks) -> FUN_00CD3E70/D3990/D4080 (3 different dispatch invokers).",
+    "step8": "Xref'd epoch globals DAT_01377FB0/FB4 - 3 readers: FUN_00CF58E0 (scheduler constructor), FUN_00CF63E0 (us tick), FUN_00D082A0 (time-delta accessor). Identified FUN_00CF58E0 as the scheduler constructor (191 bytes, writes epoch + queue heads).",
+    "step9": "Decomp'd FUN_00CDC410 (sole caller of FUN_00CF58E0, 1306 bytes) - **THE Component::Lua::GameEngine CONSTRUCTOR**. Contains demangled symbol reference `Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil>::vftable` (CONFIRMED class identity). Allocates 0x40-byte scheduler at +0x184 via FUN_00CF58E0. **Registers 3 well-known event names** at construction time: `_onInit`, `_onFinalize`, `_onTimer` (via FUN_00447260 calls).",
+    "step10": "Decomp'd FUN_00CC9540 (sole caller of FUN_00CDC410, 104 bytes) - GameEngine factory: allocates 0x228 bytes (552 bytes = GameEngine class size), calls ctor. Sole caller: FUN_0057A3C0.",
+    "step11": "Decomp'd FUN_00578970 (sole caller of FUN_00CC98A0, 306 bytes) - frame tick. Calls FUN_00CC98A0 (Lua) + ~15 other game subsystem ticks (FUN_00766F00, FUN_0076F6F0, FUN_00583440, etc.). Sole caller: FUN_004DA680 (game loop level).",
+    "step12": "Catalog 13 new BCS-Y entries (10 functions + 3 event names) + 5 amendments documenting the corrected dispatch-core caller counts and complete call chain."
+  },
+  "key_findings": [
+    "**Component::Lua::GameEngine class IDENTIFIED** via demangled symbol `Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil>::vftable` in FUN_00CDC410 (BCS-Y-1691 NEW, 1306 bytes). Class size 0x228 (552 bytes). Owns the Lua scheduler at +0x184 (allocated 0x40 bytes via FUN_00CF58E0 BCS-Y-1693). Confirms `Component::Lua::GameEngine` namespace + class name from runtime structure.",
+    "**3 well-known event names registered at GameEngine construction**: `_onInit`, `_onFinalize`, `_onTimer` (BCS-Y-1702/1703/1704 NEW). These are pre-loaded via FUN_00447260 calls in the ctor (NOT runtime fire sites in the inventory sense - they are well-known callback names that get fired LATER via the various dispatch paths). With the inventoried 79 plus `_onCommand`, total known Lua event-name pool is now 83.",
+    "**FOUR Lua dispatch surfaces** with TWO distinct dispatch cores (final taxonomy): (1) PRIMARY sync via FUN_00CC7A90 -> FUN_00CCF7D0 (79 inventoried sites); (2) ALT sync via FUN_00CD25C0 -> FUN_00CCF7D0 (1 site `_onCommand`); (3) US-SCHEDULED via FUN_00CF63E0 -> FUN_00CF6080 -> FUN_00CF5EC0 -> FUN_00CCF7D0 (queue-driven, QueryPerformanceCounter-based); (4) **MS-SCHEDULED via FUN_00CDA330 -> FUN_00CEF510 -> FUN_00CE1840 -> FUN_00CCEAC0** (BCS-Y-1697 NEW, queue-driven, timeGetTime-based, **SEPARATE DISPATCH CORE distinct from FUN_00CCF7D0**).",
+    "**FUN_00CCEAC0 is the MS-SCHEDULED DISPATCH CORE** (BCS-Y-1697 NEW, 493 bytes, sole caller FUN_00CE1840). Has 4 routing branches based on callback-type checks (FUN_00CF3D80/D60/D90) leading to 3 dispatch invokers (FUN_00CD3E70/D3990/D4080). Uses time conversion (*param_4 & 0x7fff) / DAT_00F91C48 for the time parameter. ARCHITECTURALLY DISTINCT from FUN_00CCF7D0.",
+    "**FUN_00CCF7D0 has EXACTLY 3 callers** (corrected from the earlier '20 callers' claim). FindAllReferencesToAddress on 0x00CCF7D0 returned only 3 UNCONDITIONAL_CALL references: FUN_00CC7A90 (primary sync), FUN_00CD25C0 (alt sync), FUN_00CF5EC0 (us-scheduled). The '20 callers' claim in the BCS-Y-0399 amendment was incorrect - it likely counted internal helpers from a different metric (Ghidra function-graph view or callee transitive closure, not actual callers).",
+    "**Complete Lua tick architecture mapped**: FUN_004DA680 (game loop) -> [[LuaFrameTick_FUN_00578970]] (BCS-Y-1701 NEW, 306 bytes) -> [[LuaTickOrchestrator_FUN_00CC98A0]] (BCS-Y-1694 NEW, 42 bytes) -> [[LuaSchedulerMaintenance_FUN_00CDA330]] (BCS-Y-1695 NEW, 715 bytes) -> [[LuaSchedulerTickMs_FUN_00CEF510]] (BCS-Y-1696 NEW, 773 bytes) + [[LuaSchedulerTickUs_FUN_00CF63E0]] (BCS-Y-1699 NEW). Parallel branch: orchestrator -> [[LuaSecondaryTick_FUN_00CF1B50]] (BCS-Y-1700 NEW, 623 bytes, secondary Lua subsystem with its own ms-resolution dispatch).",
+    "**Scheduled callbacks are NOT literal-name fire sites**: they use COMPUTED event IDs from per-object state (e.g., `*param_1 + 0x128` in FUN_00CF5EC0's invocation of FUN_00CCF7D0), NOT literal string event names via FUN_00447260. Therefore the inventory of LITERAL-NAME fires is COMPLETE at 80 sites (79 inventoried + 1 `_onCommand`). The scheduled-dispatch surface is a SEPARATE mechanism with different identity semantics, not enumerable as additional fire sites in that sense.",
+    "**FUN_00CC9540 is the GameEngine factory** (BCS-Y-1692 NEW, 104 bytes). Allocates `Component::Lua::GameEngine` instances at 0x228 (552 bytes) via FUN_009D1B35, then dispatches to FUN_00CDC410 ctor. Sole caller FUN_0057A3C0 (probably the LuaEngine getter / singleton creator).",
+    "**Lua scheduler constructor identified**: [[LuaScheduler_constructor_FUN_00CF58E0]] (BCS-Y-1693 NEW, 191 bytes, sole caller FUN_00CDC410). Initializes scheduler object with: +0x08/+0x0C = epoch from DAT_01377FB0/FB4, +0x14 = us-queue head (FUN_00CF51A0), +0x24 = ms-list head (FUN_00D0A870), +0x28-+0x38 = zero-initialized fields. Object size = 0x40 (64 bytes).",
+    "**FUN_00CF5EC0 + FUN_00CD25C0 each have exactly 1 caller** (per FindAllReferencesToAddress). No additional alt-sync fire sites exist beyond `_onCommand` from FUN_00708FC0; no additional us-scheduled entry points exist beyond FUN_00CF6080. Closes the 'caller-enumeration completeness' question for both alt dispatchers."
+  ],
+  "new_bcsy_entries_summary": {
+    "game_engine_class_total": 2,
+    "scheduler_chain_total": 5,
+    "ms_scheduled_dispatch_total": 3,
+    "us_scheduled_tick_total": 1,
+    "frame_tick_total": 1,
+    "secondary_tick_total": 1,
+    "event_names_total": 3,
+    "amendments": 5,
+    "total_bcsy_added": 14,
+    "id_range": "BCS-Y-1691..BCS-Y-1704",
+    "amendment_targets": [
+      "BCS-Y-0399 (FUN_00CC7A90 primary dispatcher) - corrected dispatch-core caller count (3, not 20); confirmed the 79 literal-name fires is COMPLETE for the primary path; cross-link to new dispatch cores",
+      "BCS-Y-1681 (FUN_00CCF7D0 shared dispatch core) - corrected caller count via FindAllReferencesToAddress (3 callers); document complete caller identity",
+      "BCS-Y-1685 (FUN_00CD25C0 alt sync) - confirmed only 1 caller (FUN_00708FC0)",
+      "BCS-Y-1686 (FUN_00CF5EC0 us scheduled entry) - confirmed only 1 caller (FUN_00CF6080)",
+      "BCS-Y-1687 (FUN_00CF6080 us queue iterator) - documented full tick chain UP: FUN_00CF63E0 -> FUN_00CDA330 -> FUN_00CC98A0 -> FUN_00578970 -> FUN_004DA680"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp FUN_00CDC410 in full depth - identify all sub-component constructors (FUN_00CEF9E0 at +0x60, FUN_00CD72F0 at +0x62, FUN_00D13A30 at +0x72, FUN_00CEB690 at +0x85, etc.) to characterize the complete GameEngine field layout.",
+    "Identify the schedule(callback, delay) entry point - i.e., the function that ADDS entries to the scheduler's queues. Candidate FUN_00D082A0 reads the epoch but has 0 direct callers (likely accessed via vftable). FindAllReferencesToAddress on FUN_00D082A0's address may reveal vftable slots.",
+    "Decomp FUN_00CF1B50 (secondary Lua subsystem tick) to identify what subsystem it manages. Uses timeGetTime + a different field layout - may be a Lua VM instance separate from the GameEngine, or a related-but-distinct callback runner.",
+    "Decomp FUN_0057A3C0 (caller of GameEngine factory FUN_00CC9540) to identify the LuaEngine singleton/accessor.",
+    "Decomp FUN_004DA680 (caller of frame tick FUN_00578970) to confirm it's the game-loop top level.",
+    "Verify event name `_onTimer` actually fires via the scheduled-callback mechanism (test hypothesis: ms-scheduled callbacks dispatch with the canonical ID DAT_01377EE8 which would resolve to `_onTimer`).",
+    "Run FindAllReferencesToAddress on FUN_00CCEAC0 (BCS-Y-1697) to enumerate ms-scheduled dispatcher's full caller set (sole known: FUN_00CE1840).",
+    "Cross-reference the new event names (`_onInit`, `_onFinalize`, `_onTimer`) against the LuaControl-derived classes (StatusBase + 9 siblings) to identify which classes implement which lifecycle hooks."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1677 -> 1691 (+14 BCS-Y; BCS-Y-1691..1704)",
+  "files_changed": [
+    "manifests/symbols.json: +14 entries, 5 amendments",
+    "manifests/lua_dispatch_architecture.json (NEW, this file)",
+    "tools/ghidra/logs/c99_alt_dispatcher_callers.txt (NEW - FUN_00CD25C0/F5EC0/CCF7D0 ref enumeration)",
+    "tools/ghidra/logs/c99_scheduler_decomp.txt (NEW - FUN_00CF63E0 + FUN_00CF5EC0)",
+    "tools/ghidra/logs/c99_scheduler_chain.txt (NEW - FUN_00CDA330 + FUN_00CD8160 + FUN_004CFA50)",
+    "tools/ghidra/logs/c99_scheduler_owner.txt (NEW - FUN_00CEF510 + FUN_00CC98A0 + FUN_00D0A370)",
+    "tools/ghidra/logs/c99_epoch_xref.txt (NEW - DAT_01377FB0/FB4 xref)",
+    "tools/ghidra/logs/c99_schedule_fn.txt (NEW - FUN_00CF58E0 + FUN_00D082A0 + FUN_00CF1B50 + FUN_00CEEE70 + FUN_00CEFFF0)",
+    "tools/ghidra/logs/c99_deeper.txt (NEW - FUN_00CDC410 GameEngine ctor + FUN_00CC7030 + FUN_00578970 + FUN_00CE1840)",
+    "tools/ghidra/logs/c99_ms_dispatcher.txt (NEW - FUN_00CCEAC0 + FUN_00CC9540 + FUN_00CC9500)",
+    "tools/extractors/append_lua_dispatch_architecture.py (NEW)",
+    "tools/extractors/fix_c99_xrefs.py (NEW - post-append xref correction for 14-vs-13 off-by-one)"
+  ]
+}

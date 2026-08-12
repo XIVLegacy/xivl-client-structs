@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "StatusBase ctor analysis - explains the duplicated LGE chain at offsets +4 and +100. Discovers/confirms 3 new full-namespace class identities: `Component::Lua::GameEngine::LuaControl`, `Component::Lua::GameEngine::LuaGlobalTentativeControl`, `Application::Lua::Script::Client::DisplayNameResolver::GetNameListenerInterface`. The duplicated LGE chain reflects TWO independent allocator-state subobjects (one inherited via ActorBase, one via LGTC), NOT a single subobject duplicated for RTTI. LGE classes themselves are non-polymorphic (no sub-vftable written by ctors) - they hold data-only allocator state.",
+  "method": {
+    "step1": "Decomp StatusBase ctor FUN_00776200 (BCS-Y-1395, 109 bytes). Body: 2 vftable writes at +0 and +0x60 (=+96), preceded by delegation to FUN_006DBB70 (parent ctor) and FUN_00CCCBF0 (LGTC sub-ctor). Most-derived class overrides parent vftables in standard MSVC pattern.",
+    "step2": "Decomp FUN_006DBB70 (sole caller of FUN_00CCCB70 from the cb chain, ActorBase ctor, 107 bytes). Body: delegates to FUN_00CCCB70 (LuaControl vftable writer), then writes ActorBase::vftable at +0, then std::string init via FUN_00445CF0, then zero-init bytes at +0x5C and +0x5D. **Only 1 vftable written (at +0); NO vftable written at +4** - confirms LGE-derived classes are non-polymorphic.",
+    "step3": "Decomp FUN_00CCCBF0 (LGTC vftable writer, 9 bytes). Body: single write `*param_1 = Component::Lua::GameEngine::LuaGlobalTentativeControl::vftable;`. **Confirms full namespace `Component::Lua::GameEngine::LuaGlobalTentativeControl`** (previously only known as LGTC abbreviation).",
+    "step4": "Decomp FUN_00CCCB70 (LuaControl vftable writer, 16 bytes). Body: `*param_1 = Component::Lua::GameEngine::LuaControl::vftable; param_1[1] = 0;`. **Confirms full namespace `Component::Lua::GameEngine::LuaControl`**.",
+    "step5": "Decomp FUN_00776270 (StatusBase dtor body, 102 bytes). Symmetric to ctor: writes both vftables, then calls FUN_00CCCC00 + FUN_006DBBE0 (LGTC + ActorBase destructors).",
+    "step6": "Decomp FUN_00776460 (158 bytes, called by FUN_00776540 the 'mi_subobject_vftable_a slot0 dtor'). Reveals NEW class via destructor pattern: writes `Application::Lua::Script::Client::ActorInitializeParameter::DisplayNameResolverListener::vftable`, performs cleanup at param_1[1], then writes the BASE class vftable `Application::Lua::Script::Client::DisplayNameResolver::GetNameListenerInterface::vftable`. **Confirms inheritance**: DisplayNameResolverListener (BCS-Y-1585) INHERITS FROM DisplayNameResolver::GetNameListenerInterface.",
+    "step7": "Decomp FUN_00445CF0 (std::string default ctor, 39 bytes). MSVC std::string SSO pattern with 0x40 (64) byte inline buffer: writes data ptr to internal buffer at +0x12, capacity 0x40, size 1, sso-mode flags. **300+ callers** confirms this is the canonical std::string initializer.",
+    "step8": "Catalog 6 new BCS-Y entries (4 ctor helpers + 1 dtor + 1 base-class TD) + 3 amendments (BCS-Y-1395 ctor architecture, BCS-Y-1497 LGE-chain explanation, BCS-Y-1585 GetNameListenerInterface base)."
+  },
+  "key_findings": [
+    "**Component::Lua::GameEngine::LuaControl** full namespace CONFIRMED via FUN_00CCCB70 vftable writer (BCS-Y-1705 NEW). Previously the catalog had LuaControl as 'LuaControl' without namespace - now confirmed as `Component::Lua::GameEngine::LuaControl`. Sibling to GameEngine itself (BCS-Y-1691) within the same namespace.",
+    "**Component::Lua::GameEngine::LuaGlobalTentativeControl** full namespace CONFIRMED via FUN_00CCCBF0 vftable writer (BCS-Y-1706 NEW). LGTC abbreviation was used throughout the catalog; the full namespace is `Component::Lua::GameEngine::LuaGlobalTentativeControl`. Sibling to LuaControl + GameEngine in the same namespace.",
+    "**Application::Lua::Script::Client::DisplayNameResolver::GetNameListenerInterface** identified (BCS-Y-1707 NEW). Base class of `Application::Lua::Script::Client::ActorInitializeParameter::DisplayNameResolverListener` (BCS-Y-1585). Discovered via the destructor pattern in FUN_00776460 (BCS-Y-1708 NEW): writes derived's vftable, cleans up, then writes base's vftable - classic MSVC dtor delegation. This adds 1 more class to the StatusBase RTTI surface.",
+    "**StatusBase ctor architecture EXPLAINED**: FUN_00776200 (BCS-Y-1395, 109 bytes) writes ONLY 2 vftables (at +0 and +0x60), NOT 4 as would be expected if each subobject needed its own vftable. The 2 vftables correspond to the 2 polymorphic subobjects (primary chain at +0, LGTC at +0x60). The remaining 2 BCDs at offsets +4 and +100 (from the BCA) correspond to **non-polymorphic LGE allocator state**: LGE base classes have data members but no virtual methods, so no vftable is written for them by the ctors.",
+    "**the 'duplicated LGE chain' EXPLAINED**: ActorBase inherits from `LgeBase + LgeCommonMemoryAllocator + LgeBasicMemoryAllocator` (non-virtual MI, adds these as embedded subobject at +4). LGTC ALSO inherits from the same `LgeBasicMemoryAllocator` chain (non-virtual MI, adds at +4 of LGTC subobject = +100 of StatusBase). StatusBase inherits from BOTH ActorBase and LGTC, so BOTH copies of the LGE chain coexist in its memory layout. The BCD attribute 0x42 (HASPCHD | AMBIGUOUS) correctly reflects this ambiguous multi-inheritance. Each LGE-state instance is INDEPENDENT - distinct memory-pool state for the actor-side (via ActorBase) and Lua-side (via LGTC).",
+    "**LGE base classes are non-polymorphic** (data-only allocator state): ActorBase ctor (FUN_006DBB70) does NOT write a vftable at +4 (where the LGE chain begins); LGTC vftable writer (FUN_00CCCBF0) does NOT write a vftable at +0x64 (=+100, LGTC's LGE chain). Confirms that `LgeBase`, `LgeCommonMemoryAllocator`, `LgeBasicMemoryAllocator` are non-virtual MI base classes with no virtual methods - they appear in BCAs for RTTI navigation but contribute only data members (allocator pointers, pool state).",
+    "**StatusBase has DUAL allocator scopes by design**: Per client-architecture 'The LGE class system is a 5-userdata-type model' (3-scope memory pool model), the LGE class system supports multiple memory scopes. StatusBase's TWO independent LGE subobjects directly support this: actor-side allocator state (via ActorBase, at +4) and Lua-side allocator state (via LGTC, at +100). This is the structural manifestation of an actor with both C++ and Lua memory ownership.",
+    "**std::string default ctor identified** at FUN_00445CF0 (BCS-Y-1709 NEW, 39 bytes, 300+ callers). MSVC SSO pattern: 0x40 (64) byte inline buffer at +0x12, size=1, capacity=0x40, SSO-mode flags at +0x10/+0x11. Catalog entry provides canonical reference for the std::string init pattern that appears throughout the binary.",
+    "**ActorBase ctor cataloged** at FUN_006DBB70 (BCS-Y-1710 NEW, 107 bytes). Body: delegates to LuaControl vftable writer (FUN_00CCCB70 BCS-Y-1705 NEW), writes ActorBase::vftable at +0, initializes a std::string member via FUN_00445CF0, zero-inits bytes at +0x5C/+0x5D. Sole caller of FUN_00CCCB70 among the StatusBase chain (FUN_00CCCB70 has 4 total callers - other 3 are LuaControl-derived class ctors).",
+    "**StatusBase ctor pattern confirmed standard MSVC MI**: most-derived class (StatusBase) overrides ALL its parents' vftables at the relevant offsets. Pattern: (1) call parent ctor (writes parent's vftable + does parent init), (2) call MI sub-base ctors (each writes their own vftable at their offset), (3) most-derived ctor overrides ALL inherited vftable slots with most-derived's vftable. This is consistent across the 10 LTC/LGTC family classes per (deferred for later verification)."
+  ],
+  "new_bcsy_entries_summary": {
+    "vftable_writers_total": 2,
+    "class_identities_total": 1,
+    "dtor_helpers_total": 1,
+    "std_string_total": 1,
+    "ctor_total": 1,
+    "amendments": 3,
+    "total_bcsy_added": 6,
+    "id_range": "BCS-Y-1705..BCS-Y-1710",
+    "amendment_targets": [
+      "BCS-Y-1395 (StatusBase ctor FUN_00776200) - documents the 4-subobject ctor pattern: 2 vftable writes + 2 sub-ctor delegations",
+      "BCS-Y-1497 (StatusBase TD) - explains the duplicated LGE chain as TWO independent allocator-state subobjects (ActorBase-side + LGTC-side), non-polymorphic LGE bases",
+      "BCS-Y-1585 (DisplayNameResolverListener) - its base class is DisplayNameResolver::GetNameListenerInterface (BCS-Y-1707 NEW)"
+    ]
+  },
+  "deferred_followups": [
+    "follow-up: cross-class verify ctor pattern on 9 other LTC/LGTC classes (GroupBase, ItemBase, WidgetHandle, Math, CommandBase, JudgeBase, QuestBase, String, Table). Each should have a similar ctor that writes 2 vftables + delegates to ActorBase/LGTC ctors.",
+    "Decomp FUN_00CCCC00 (LGTC dtor body, called by FUN_00776270 StatusBase dtor) to confirm the dtor symmetry.",
+    "Decomp FUN_006DBBE0 (ActorBase dtor body, called by FUN_00776270 StatusBase dtor) to characterize the destruction chain.",
+    "Locate LuaControl ctor (parent of ActorBase) - probably FUN_00CCCB70 IS the ctor (16 bytes, just writes vftable + zeros), confirming LuaControl has no real init logic.",
+    "Verify GetNameListenerInterface (BCS-Y-1707 NEW) is one of the 4 'standalone vftable' classes at 0x00FDF968..0x00FDF98C - it may match the DAT_00FDF968 'DisplayNameResolverListener' vftable but the BASE class TD may not yet be cataloged."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1691 -> 1697 (+6 BCS-Y; BCS-Y-1705..1710)",
+  "files_changed": [
+    "manifests/symbols.json: +6 entries, 3 amendments",
+    "manifests/statusbase_ctor_architecture.json (NEW, this file)",
+    "tools/ghidra/logs/c100_statusbase_ctor.txt (NEW - StatusBase ctor + dtor + sub-vftable slots)",
+    "tools/ghidra/logs/c100_parent_ctors.txt (NEW - ActorBase ctor + LGTC vftable writer + DisplayNameResolver dtor)",
+    "tools/ghidra/logs/c100_helpers.txt (NEW - LuaControl vftable writer + std::string ctor + 006BF420)",
+    "tools/extractors/append_statusbase_ctor_architecture.py (NEW)"
+  ]
+}

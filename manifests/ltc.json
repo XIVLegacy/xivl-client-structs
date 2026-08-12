@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Catalog LuaTentativeControl class artifacts (vftable + 3 ctor/dtor variants + 6-method dispatcher cluster) and verify its RTTI composition. Closes the +0x60 hypothesis FALSE-POSITIVE TRIAD (GroupBase / ItemBase / WidgetHandle) - these 3 classes have LuaTentativeControl at +0x60, not LuaGlobalTentativeControl as the claimed.",
+  "method": {
+    "step1": "DumpMemRange of LuaTentativeControl RTTI block 0x0115D60C..0x0115D668 (88 bytes covering BCD-96 + CHD + BCA + BCD-0). CHD says numBaseClasses=4; BCA lists self + 3 BCDs at 0x0115C030/0x0115C0F4/0x0115C110 - SAME BCDs as LuaGlobalTentativeControl + LuaControl reuse.",
+    "step2": "FindAllReferencesToAddress on vftable VA 0x0110E360 + COL 0x0119E198 + TD 0x012C0828. 3 vftable writers (FUN_00cccbd0 + FUN_00cccbe0 + FUN_00cccc60) + 10 TD readers (RTTI dispatcher BCS-Y-1513 + 6-method cluster at FUN_00ce18XX..0xce1bXX + 3 BCD/COL anchors).",
+    "step3": "Bulk decomp of 3 ctors + 6 sample TD readers. The 3 ctors mirror LuaGlobalTentativeControl exactly (9-byte primary + 7-byte subobject/dtor + 28-byte vector dtor). The 6 TD readers form a coherent method-dispatcher cluster: each does __RTDynamicCast(this, LuaControl, LuaTentativeControl) + SEH-wrap + calls a sibling impl stub at FUN_00cccaf0..0xcccb40 + SEH-unwrap.",
+    "step4": "Cross-reference the 3 primary-ctor callers against existing BCS-Y catalog. **EXACT MATCH for the false-positive triad**: FUN_006DD450 = ItemBase (BCS-Y-1462), FUN_006DEEE0 = WidgetHandle (BCS-Y-1467), FUN_006DCFF0 = GroupBase (BCS-Y-1458).",
+    "step5": "Catalog 5 new BCS-Y entries (vftable + 3 ctor/dtor variants + 6-method cluster) + amend 6 existing entries (LTC TD, 3 derived classes, RTTI dispatcher, LGTC TD)."
+  },
+  "key_findings": [
+    "**LuaTentativeControl RTTI composition VERIFIED**: BCA at 0x0115D638 has 4 entries (self + Lge memory-allocator chain at offset 4). REUSES the same BCDs (0x0115C030/0x0115C0F4/0x0115C110) that LuaControl and LuaGlobalTentativeControl reference for the Lge chain. **Structural CLONE of LuaGlobalTentativeControl** at the RTTI level.",
+    "**+0x60 false-positive triad RESOLVED**: GroupBase (BCS-Y-1458), ItemBase (BCS-Y-1462), WidgetHandle (BCS-Y-1467) have LuaTentativeControl::vftable at +0x60 - NOT LuaGlobalTentativeControl::vftable as the claimed. The 3 callers of LuaTentativeControl::primary_ctor (FUN_00cccbd0) exactly match the 3 false positives.",
+    "**11 MI ActorBase derivatives now fully attributed at +0x60**: 8 have LuaGlobalTentativeControl (Global, CommandBase, JudgeBase, StatusBase, String, Math, QuestBase, Table -), 3 have LuaTentativeControl (GroupBase, ItemBase, WidgetHandle -). Total: 11 classes covering the entire predicted set plus Global.",
+    "**3-class tentative-control hierarchy CLOSED**: LuaControl (base) + LuaTentativeControl (singleton transient state) + LuaGlobalTentativeControl (per-class transient state) + LuaManyTentativeControlCreator (factory, BCS-Y-1407). The 3 sibling product classes all share IDENTICAL RTTI composition (self + Lge memory-allocator chain via the same reused BCDs). The class-level semantic split (which classes pick which sibling) is the only architectural difference.",
+    "**LuaTentativeControl PUBLIC METHOD API discovered**: 6-method dispatcher cluster at FUN_00ce18XX..0xce1bXX with co-located impl stubs at FUN_00cccaf0..0xcccb40. Each dispatcher follows the standard MSVC validated-this pattern (__RTDynamicCast + SEH-wrap + impl call + SEH-unwrap). One method semantically identified: FUN_00ce19c0 is the engine-side `isAlive` impl reached by the Lua `_isAlive()` N-API impl (BCS-Y-0503). The other 5 methods have known impl-stub VAs but un-named semantics.",
+    "**3 LuaTentativeControl methods discovered participate in LuaThread coroutine helpers**: FUN_00ce1890 and FUN_00ce1920 both have a single caller FUN_00cd8210 (LuaThread coroutine helper). Suggests LuaTentativeControl objects are used as state carriers in coroutine-based Lua flow.",
+    "**3 LuaTentativeControl methods participate in LGE engine context plumbing**: FUN_00ce1a50 (caller FUN_00d2b6c0), FUN_00ce1ae0 (callers FUN_00d2b810 + FUN_00ce58b0), FUN_00ce1bb0 (12 callers, init-once with object+0x7e flag). The init-once method is reached from 12 LGE-cluster callers - a class-instance lazy-init hot path."
+  ],
+  "new_bcsy_entries_summary": {
+    "vftable_anchor": 1,
+    "ctor_dtor_variants": 3,
+    "method_api_cluster_bundle": 1,
+    "amendments": 6,
+    "total_bcsy_added": 5,
+    "id_range": "BCS-Y-1515..BCS-Y-1519"
+  },
+  "ltc_bca_entries": [
+    "LuaTentativeControl self BCD @ 0x0115D64C (offset 0)",
+    "LgeBase BCD @ 0x0115C030 (offset 4, BCS-Y-1477 reused, also reused by LuaGlobalTentativeControl)",
+    "LgeCommonMemoryAllocator BCD @ 0x0115C0F4 (offset 4, BCS-Y-1478 reused)",
+    "LgeBasicMemoryAllocator BCD @ 0x0115C110 (offset 4, BCS-Y-1479 reused)"
+  ],
+  "derived_classes_with_ltc_at_offset_60": [
+    "BCS-Y-1458 GroupBase",
+    "BCS-Y-1462 ItemBase",
+    "BCS-Y-1467 WidgetHandle"
+  ],
+  "ltc_method_dispatchers": [
+    "FUN_00ce1890 -> impl FUN_00cccaf0 (method A; caller FUN_00cd8210 LuaThread)",
+    "FUN_00ce1920 -> impl FUN_00cccb00 (method B; caller FUN_00cd8210 LuaThread)",
+    "FUN_00ce19c0 -> impl FUN_00cccb20 (isAlive; caller FUN_00d11010 = _isAlive Lua N-API impl)",
+    "FUN_00ce1a50 -> impl FUN_00cccb30 (3-param method; caller FUN_00d2b6c0 LGE engine helper)",
+    "FUN_00ce1ae0 -> impl FUN_00cccb40 (returns iVar1+FUN_00cd7a30; callers FUN_00d2b810 + FUN_00ce58b0)",
+    "FUN_00ce1bb0 -> impl FUN_00cccb10 (init-once with object+0x7e flag; 12 callers)"
+  ],
+  "complete_plus_0x60_attribution": {
+    "lua_global_tentative_control (8 classes)": [
+      "StatusBase (BCS-Y-1395)", "Global (BCS-Y-1460)", "JudgeBase (BCS-Y-1454)", "CommandBase (BCS-Y-1469)",
+      "String (BCS-Y-1470)", "Math (BCS-Y-1472)", "QuestBase (BCS-Y-1464)", "Table (BCS-Y-1465)"
+    ],
+    "lua_tentative_control (3 classes)": [
+      "GroupBase (BCS-Y-1458)", "ItemBase (BCS-Y-1462)", "WidgetHandle (BCS-Y-1467)"
+    ],
+    "total_classes_with_plus_0x60_secondary_vftable": 11
+  },
+  "deferred_followups": [
+    "Decomp the 3 LuaTentativeControl uncataloged subobject/dtor pairs (FUN_006DD070 = ItemBase, FUN_006DEF60 = WidgetHandle, FUN_006DD4D0 = GroupBase) to confirm the pair pattern.",
+    "Investigate the SEMANTIC reason why GroupBase / ItemBase / WidgetHandle pick LuaTentativeControl while the other 8 classes pick LuaGlobalTentativeControl - presumably 'singleton transient' vs 'per-class transient' framing but needs decomp confirmation.",
+    "Decomp the 6 LTC impl stubs at FUN_00cccaf0..0xcccb40 - what are the actual method bodies? Currently they're known by VA but not by behavior. Likely thin vftable-slot trampolines.",
+    "Examine the LuaTentativeControl impl stub FUN_00cccb40 (the 'returns iVar1+FUN_00cd7a30' method) - this method has 2 callers (FUN_00d2b810 + FUN_00ce58b0) and looks like a getter that returns a derived pointer through a transformer FUN_00cd7a30.",
+    "Decomp FUN_00cd5ca0 (the LuaTentativeControl branch of the RTTI dispatcher BCS-Y-1513) - now that we know LuaTentativeControl has 3 derived classes vs LuaGlobalTentativeControl's 8, the dispatcher's per-class handler can be drilled to understand the registration semantics.",
+    "Decomp FUN_00cd8210 (caller of 2 LuaTentativeControl methods) - this is in the LuaThread coroutine helper range and may surface a new LuaThread-vs-TentativeControl integration point.",
+    "Decomp FUN_00ce58b0 (one of the FUN_00ce1ae0 callers) - unidentified function in the LGE context-helper range; check if it's a new LGE substrate helper."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1504 -> 1509 (+5 BCS-Y: vftable + 3 ctor/dtor variants + 6-method cluster bundle)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1515..1519), 6 amendments",
+    "manifests/ltc.json (NEW, this file)",
+    "tools/ghidra/logs/ltc_rtti.txt (NEW)",
+    "tools/ghidra/logs/ltc_all_refs.txt (NEW)",
+    "tools/ghidra/logs/ltc_ctors_decomp.txt (NEW)"
+  ]
+}

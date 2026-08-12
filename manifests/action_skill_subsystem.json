@@ -1,0 +1,405 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Characterize the action/skill opcode family; enumerate Ghidra RTTI for action classes; verify catalog coverage of c2s 0x012D emitter; cross-reference dispatch through FUN_004DC690 / FUN_004D8860; sketch the receive-side action animation chain from packet to actor playback.",
+  "method": {
+    "step2_rtti_catalog": "No new Ghidra invocation required: the Action/Skill/Battle RTTI surface is already fully captured in manifests/symbols.json from BCS-Y-0052..0058 and BCS-Y-0059..0063 (Rapture*Clip family). Re-confirmed by grep on the symbol catalog.",
+    "step3_c2s_012d_status": "Cross-referenced docs/client-architecture.md, '1.x combat is asymmetric' + the combat-action-c2s-findings manifest (combat_action_c2s_findings.json) against the symbol catalog. The c2s 0x012D EventStart emitter is fully cataloged across BCS-Y-0426..0434 + BCS-S-0034 MapEventStartPayload. No new investigation needed.",
+    "step4_dispatch_table": "Cross-referenced FUN_004DC690 (BCS-Y-0279 central s2c dispatcher) + FUN_004D8860 (BCS-Y-0280 event-family sub-dispatcher) + FUN_0058CCA0 (BCS-Y-0404 third router for battle-result cases 0x0139..0x013C) from existing manifests (actor_cluster_dispatch_model.json, pattern_d_subdispatcher.json, low_switch_remaining_cases.json, combat_damage_findings.json).",
+    "step5_animation_chain": "Reconstructed the receive-side animation chain from existing BCS-Y entries (CharaActionController BCS-Y-0055 + CharaActionMotionController BCS-Y-0056 + CharaActionPreLoadQue BCS-Y-0054 + CharaActionVisual BCS-Y-0057/0058) + docs/actor_action.md. Mapped the BattleResultQueueEntry (BCS-S-0031) into CharaActionController's tick slot (BCS-Y-0434 FUN_00845430).",
+    "step6_pcap_freq_xref": "Cross-referenced xivl-captures/data/observations.json for pcap counts of the 7 combat-related opcodes."
+  },
+  "action_opcodes": [
+    {
+      "opcodeHex": "0x012d",
+      "opcode": 301,
+      "direction": "c2s",
+      "name": "EventStartPacket",
+      "packetSize": "0xD8 (216 bytes)",
+      "role": "Generic event/command frame; carries combat intent via eventName + luaParams. Per client-architecture '1.x combat is asymmetric', this is the universal c2s combat-action carrier in 1.x: a player attack/cast/ability becomes an EventStart with the command identifier encoded in the event name/params, not via a dedicated opcode-per-action.",
+      "pcapCount": 126,
+      "innerSizeBytes": 20,
+      "catalogStatus": "fully_cataloged",
+      "primaryBcsy": "BCS-Y-0426 MapEventStartPacketBuilder_FUN_00776760",
+      "supportingBcsy": [
+        "BCS-Y-0427",
+        "BCS-Y-0428",
+        "BCS-Y-0429",
+        "BCS-Y-0430",
+        "BCS-Y-0431",
+        "BCS-Y-0432",
+        "BCS-Y-0433"
+      ],
+      "payloadStruct": "BCS-S-0034 MapEventStartPayload"
+    },
+    {
+      "opcodeHex": "0x00da",
+      "opcode": 218,
+      "direction": "s2c",
+      "name": "PlayAnimationOnActorPacket",
+      "packetSize": "0x28 (40 bytes)",
+      "role": "Trigger an animation on a specific actor by animation ID. Payload is a single u64 (animationID).",
+      "pcapCount": 31,
+      "innerSizeBytes": 20,
+      "catalogStatus": "no_dedicated_receiver_pattern_b_or_d",
+      "dispatchClassification": "Pattern B (Actor cluster vftable[9]) per client-architecture 'S2C dispatch has five architectural patterns'. Opcode 0xDA falls inside 0xD3..0xE5 range. The actor-vftable9-investigation pass empirically proved all 95 RTTI-named actor classes route slot 9 to either AddReferenceResourceListener (BCS-Y-0529, the 19-class plurality), a no-op stub (BCS-Y-0528 / BCS-Y-0537), a Cut::Scheduler bool getter (BCS-Y-0536), or __purecall. NONE process opcode dispatch. The s2c PlayAnimationOnActor packet is therefore EITHER (a) processed via a parallel client-prediction system that reads the actor map at zone+0x17804 asynchronously, or (b) is processed by FUN_004D8860 sub-dispatch cases not yet enumerated for 0xDA.",
+      "openQuestion": "Whether 0xDA reaches CharaActionController via Pattern D sub-dispatchers. The pattern-d-subdispatcher pass enumerated FUN_004D8860 cases but the 0xDA opcode is not in its case table (0xCC/0xCD/0x12E..); FUN_0058CCA0 (the third router) handles 0xCC..0xE5 directly per its decomp note but the per-opcode disposition for 0xDA is not yet documented. live capture (deferred) or per-case enumeration of FUN_0058CCA0 would resolve."
+    },
+    {
+      "opcodeHex": "0x0137",
+      "opcode": 311,
+      "direction": "s2c",
+      "name": "SetActorPropertyPacket",
+      "role": "Per-actor work-field property stream (Murmur2-hashed property ids). Combat-adjacent: carries state mutations including stats touched by combat (HP/MP/TP via property-id stream). Per combat_damage_findings.json: 'SetActorProperty 0x0137 remains the main actor-state mutation path' while CommandResult/BattleAction carries visual/numeric feedback.",
+      "pcapCount": 1992,
+      "innerSizeBytes": 20,
+      "catalogStatus": "fully_cataloged",
+      "receiverClass": "Application::Lua::Script::Client::Command::Network::SyncMemoryReceiver",
+      "luaActorImplSlot": 60,
+      "dispatchPattern": "A (LuaActorImpl::vftable[60])"
+    },
+    {
+      "opcodeHex": "0x0139",
+      "opcode": 313,
+      "direction": "s2c",
+      "name": "CommandResultX01Packet",
+      "packetSize": "0x58 (88 bytes)",
+      "role": "Single-target battle-result row. Wire payload: sourceActorId, animationId, commandId, magic 0x810, then one row with targetId + amount + worldMasterTextId + effectId + param + hitNum.",
+      "pcapCount": 438,
+      "innerSizeBytes": 20,
+      "catalogStatus": "fully_cataloged",
+      "wrapperBcsy": "BCS-Y-0406 CommandResultX01QueueWrapper_FUN_0058C880",
+      "stagerBcsy": "BCS-Y-0409 BattleResultSingleTargetStager_FUN_00587370",
+      "dispatchPattern": "C (bespoke router FUN_0058CCA0 / BCS-Y-0404 third-router)",
+      "downstreamStruct": "BCS-S-0031 BattleResultQueueEntry (0x1A0 bytes)"
+    },
+    {
+      "opcodeHex": "0x013a",
+      "opcode": 314,
+      "direction": "s2c",
+      "name": "CommandResultX10Packet / BattleActionX10Packet",
+      "packetSize": "0xD8 (216 bytes)",
+      "role": "Up-to-10-target battle-result rows. Sparse SoA layout: targets@0x28, amounts@0x50, textIds@0x64, effectIds@0x78, params@0xA0, hitNums@0xAA.",
+      "pcapCount": 66,
+      "innerSizeBytes": 20,
+      "catalogStatus": "fully_cataloged",
+      "wrapperBcsy": "BCS-Y-0407 CommandResultX10QueueWrapper_FUN_0058C930",
+      "stagerBcsy": "BCS-Y-0410 BattleResultTenTargetStager_FUN_005873E0",
+      "dispatchPattern": "C (bespoke router FUN_0058CCA0 / BCS-Y-0404)",
+      "downstreamStruct": "BCS-S-0031 BattleResultQueueEntry"
+    },
+    {
+      "opcodeHex": "0x013b",
+      "opcode": 315,
+      "direction": "s2c",
+      "name": "CommandResultX18Packet / BattleActionX18Packet",
+      "packetSize": "0x148 (328 bytes)",
+      "role": "Up-to-18-target battle-result rows (largest container variant). targets@0x28, amounts@0x70, textIds@0x94, effectIds@0xB8, params@0x100, hitNums@0x112.",
+      "pcapCount": 0,
+      "innerSizeBytes": 20,
+      "catalogStatus": "fully_cataloged",
+      "wrapperBcsy": "BCS-Y-0416 CommandResultX18QueueWrapper_FUN_0058C990",
+      "stagerBcsy": "BCS-Y-0415 BattleResultEighteenTargetStager_FUN_005874B0",
+      "dispatchPattern": "C (bespoke router FUN_0058CCA0 / BCS-Y-0404)",
+      "downstreamStruct": "BCS-S-0031 BattleResultQueueEntry",
+      "note": "No pcap evidence in the 54-capture corpus; reached the 18-target shape only in large-group raid scenarios not captured. Static decomp coverage is complete."
+    },
+    {
+      "opcodeHex": "0x013c",
+      "opcode": 316,
+      "direction": "s2c",
+      "name": "CommandResultX00Packet",
+      "packetSize": "0x48 (72 bytes)",
+      "role": "Zero-target battle-result (animation-only; no per-target damage rows). Used for casts that produce no numeric output (e.g. Disengage 12002, certain buffs).",
+      "pcapCount": 27,
+      "innerSizeBytes": 20,
+      "catalogStatus": "fully_cataloged",
+      "wrapperBcsy": "BCS-Y-0405 CommandResultX00QueueWrapper_FUN_0058C7D0",
+      "stagerBcsy": "BCS-Y-0408 BattleResultQueueEntryBaseStager_FUN_00587210",
+      "dispatchPattern": "C (bespoke router FUN_0058CCA0 / BCS-Y-0404)",
+      "downstreamStruct": "BCS-S-0031 BattleResultQueueEntry"
+    }
+  ],
+  "action_rtti_classes": [
+    {
+      "bcsy": "BCS-Y-0052",
+      "name": "App::Scene::Actor::Chara::CharaActionQueBase",
+      "vtableRva": "0x0083E37C",
+      "slots": 14,
+      "role": "Abstract action queue base"
+    },
+    {
+      "bcsy": "BCS-Y-0053",
+      "name": "App::Scene::Actor::Chara::CharaActionQue",
+      "vtableRva": "0x0083E428",
+      "slots": "14x2=26 (multi-inheritance)",
+      "role": "Concrete action queue (enqueue, dequeue, peek, clear, validate, serialize)"
+    },
+    {
+      "bcsy": "BCS-Y-0054",
+      "name": "App::Scene::Actor::Chara::CharaActionPreLoadQue",
+      "vtableRva": "0x0083E3B8",
+      "slots": 14,
+      "role": "Pre-load queue (caches animation pack, VFX, sound bank for upcoming actions; matches FFXIV 'pre-cast resource download' pattern)"
+    },
+    {
+      "bcsy": "BCS-Y-0055",
+      "name": "App::Scene::Actor::Chara::CharaActionController",
+      "vtableRva": "0x0083E468",
+      "slots": 5,
+      "role": "Orchestrator (drives action state machine). Slot 0 dtor FUN_008462F0, slot 1 reset/clear FUN_008450B0, slot 3 update/tick FUN_00845430 (BCS-Y-0434, walks 26 queue buckets at this+0x10 and dispatches local action/visual work)."
+    },
+    {
+      "bcsy": "BCS-Y-0056",
+      "name": "App::Scene::Actor::Chara::Status::CharaActionMotionController",
+      "vtableRva": "0x007E7FB4",
+      "slots": 4,
+      "role": "Motion playback driver (skeletal animation). Slot 0 dtor FUN_007A0BD0, slot 1 FUN_007AC9C0, slot 3 FUN_007C5940."
+    },
+    {
+      "bcsy": "BCS-Y-0057",
+      "name": "App::Scene::Actor::Chara::CharaActionVisualBase",
+      "vtableRva": "0x007E4434",
+      "slots": 32,
+      "role": "Abstract action visual base (mesh/material/effects during action)"
+    },
+    {
+      "bcsy": "BCS-Y-0058",
+      "name": "App::Scene::Actor::Chara::CharaActionVisual",
+      "vtableRva": "0x007E4544",
+      "slots": 32,
+      "role": "Concrete action visual"
+    },
+    {
+      "bcsy": "BCS-Y-0059",
+      "name": "App::Scene::Cut::Clip::RaptureActionDamageCallClip",
+      "vtableRva": "0x007F7AAC",
+      "slots": 42,
+      "role": "Damage popup orchestrator (CDev cut/scheduler clip). Multi-inheritance secondary vtable at 0x00BF7AA0. Ctor FUN_00811690; thin call wrapper FUN_00638700. The terminal class in the receive-side damage display chain."
+    },
+    {
+      "bcsy": "BCS-Y-0061",
+      "name": "App::Scene::Cut::Clip::RaptureActionSelectClip",
+      "vtableRva": "(per symbols.json BCS-Y-0061)",
+      "slots": 42,
+      "role": "Action-target / select indicator clip"
+    },
+    {
+      "bcsy": "BCS-Y-0062",
+      "name": "App::Scene::Cut::Clip::RaptureActionSelectAttackClip",
+      "slots": 42,
+      "role": "Attack-roll indicator clip (hit/miss/parry/etc)"
+    },
+    {
+      "bcsy": "BCS-Y-0063",
+      "name": "App::Scene::Cut::Clip::RaptureActionSelectDamageMccClip",
+      "slots": 42,
+      "role": "Multi-character cutscene damage variant clip"
+    }
+  ],
+  "opcode_dispatch_table": [
+    {
+      "opcodeHex": "0x0139",
+      "dispatchPath": "FUN_004DC690 (BCS-Y-0279 central s2c dispatcher, high-switch branch) -> FUN_0058CCA0 (BCS-Y-0404 third-router) case 0x139 -> FUN_0058C880 (BCS-Y-0406 wrapper) -> FUN_00587370 (BCS-Y-0409 single-target stager) -> FUN_005901D0 (BCS-Y-0412 queue push) -> BCS-S-0031 BattleResultQueueEntry",
+      "pattern": "C (bespoke handler)",
+      "downstreamConsumer": "BCS-Y-0417 VfxRaptureParameterCtor_FUN_007C7F80 -> BCS-Y-0420 VfxRaptureClipProcessor_FUN_00812B50 -> per-selector Rapture*Clip"
+    },
+    {
+      "opcodeHex": "0x013a",
+      "dispatchPath": "FUN_004DC690 -> FUN_0058CCA0 case 0x13A -> FUN_0058C930 (BCS-Y-0407 wrapper) -> FUN_005873E0 (BCS-Y-0410 ten-target stager) -> FUN_005901D0 -> BCS-S-0031",
+      "pattern": "C"
+    },
+    {
+      "opcodeHex": "0x013b",
+      "dispatchPath": "FUN_004DC690 -> FUN_0058CCA0 case 0x13B -> FUN_0058C990 (BCS-Y-0416 wrapper) -> FUN_005874B0 (BCS-Y-0415 eighteen-target stager) -> FUN_005901D0 -> BCS-S-0031",
+      "pattern": "C"
+    },
+    {
+      "opcodeHex": "0x013c",
+      "dispatchPath": "FUN_004DC690 -> FUN_0058CCA0 case 0x13C -> FUN_0058C7D0 (BCS-Y-0405 wrapper) -> FUN_00587210 (BCS-Y-0408 base stager, no per-target rows) -> FUN_005901D0 -> BCS-S-0031",
+      "pattern": "C"
+    },
+    {
+      "opcodeHex": "0x0137",
+      "dispatchPath": "FUN_004DC690 (low-switch branch, opcodes 0x02..0x12D) NOT cataloged with this specific opcode case; reaches SyncMemoryReceiver (LuaActorImpl::vftable[60]) per client_receivers.json. Receive method FUN_0089FBF0 iterates a typed property stream per-record with type-tag dispatch.",
+      "pattern": "A (Pattern A LuaActorImpl receiver class)",
+      "receiver": "Application::Lua::Script::Client::Command::Network::SyncMemoryReceiver"
+    },
+    {
+      "opcodeHex": "0x00da",
+      "dispatchPath": "Falls in Actor cluster range 0xD3..0xE5 (Pattern B per client-architecture 'S2C dispatch has five architectural patterns'). Per the actor-vftable9-investigation pass's empirical scan: dispatched to actor->vftable[9] which is empirically a no-op (FUN_00621430 / FUN_005C5C80 / FUN_00B98D00) across all 95 RTTI-named actor classes. The s2c animation trigger therefore does NOT reach CharaActionController via the documented FUN_004DC690 path.",
+      "pattern": "B (Actor cluster vftable[9]) - empirically a no-op",
+      "openQuestion": "Where DOES PlayAnimationOnActor actually trigger animation? Three hypotheses: (a) the central dispatcher has an earlier 0xDA-specific case not yet enumerated; (b) it routes via the FUN_0058CCA0 third-router's case list which includes 0xCE/0xCF/0xD0/0xD3..0xE5 - one of those cases may handle 0xDA's payload via a different action-related path; (c) the packet is recorded passively into the actor map at zone+0x17804 and a parallel animation system polls it. Resolving requires either (i) re-decomp of FUN_0058CCA0 with focus on case 0xDA, or (ii) live capture (deferred). PCAP count (31) confirms the opcode is observed on the wire."
+    },
+    {
+      "opcodeHex": "0x012d",
+      "direction": "c2s",
+      "dispatchPath": "Lua _onCommandEvent (PlayerBaseClass) -> _callServerOnCommand_cpp -> FUN_006EE680 (BCS-Y-0433 ActorDirectorEventStartBridge) -> FUN_0075E3A0 (BCS-Y-0429 EventStartRouteWrapper) -> FUN_00776760 (BCS-Y-0426 builder, writes opcode + 200-byte payload record) -> FUN_004D6D30 (zone gate, BCS-Y-0323) -> FUN_004E0240 (Tier-C forwarder) -> FUN_00DAE010 (terminal/wire send)",
+      "pattern": "Bidirectional event/command frame (out-of-dispatcher; builder is reached via Lua state machine FUN_00897310/00895A30 BCS-Y-0432)"
+    }
+  ],
+  "c2s_0x012D_emitter": {
+    "status": "fully_cataloged_no_new_work_needed",
+    "primaryBuilderVa": "0x00776760",
+    "primaryBuilderBcsy": "BCS-Y-0426",
+    "primaryBuilderName": "MapEventStartPacketBuilder_FUN_00776760",
+    "wrapperLayers": [
+      {
+        "va": "0x0075E230",
+        "bcsy": "BCS-Y-0427",
+        "role": "high-level server-call wrapper",
+        "callers": [
+          "FUN_00894630",
+          "FUN_00894800"
+        ]
+      },
+      {
+        "va": "0x0075E1C0;0x0089E0D0",
+        "bcsy": "BCS-Y-0428",
+        "role": "raw record wrapper pair",
+        "callers": [
+          "FUN_006E2FB0",
+          "FUN_00893B50",
+          "FUN_006E2E40"
+        ]
+      },
+      {
+        "va": "0x0075E3A0",
+        "bcsy": "BCS-Y-0429",
+        "role": "route/tag wrapper",
+        "callers": [
+          "FUN_00897310",
+          "FUN_006EE680",
+          "FUN_00895A30"
+        ]
+      },
+      {
+        "va": "0x0075E510",
+        "bcsy": "BCS-Y-0430",
+        "role": "follow-up/continuation wrapper",
+        "callers": [
+          "FUN_00897310",
+          "FUN_00895A30"
+        ]
+      },
+      {
+        "va": "0x0076E270",
+        "bcsy": "BCS-Y-0431",
+        "role": "diagnostic Lua-error emitter (same opcode, not combat path)"
+      }
+    ],
+    "luaBridge": "BCS-Y-0433 ActorDirectorEventStartBridge_FUN_006EE680. Lua PlayerBaseClass._onCommandEvent -> _callServerOnCommand inline-bound to _callServerOnCommand_cpp. The C++ bridge does RTTI checks for ActorBase/DirectorBase, branches on event tag constants, then routes through FUN_0075E3A0.",
+    "stateMachine": "BCS-Y-0432 EventStartStateMachine_FUN_00897310_00895A30. Allocates or advances 0x2C-byte event records.",
+    "payloadStruct": "BCS-S-0034 MapEventStartPayload (216 bytes total; 16-byte gameMessage header + 200-byte record). Fields: triggerActorId, ownerActorId, serverCodes/actionOrAbilityId, secondaryArgument, eventType, eventNamePrefix (32 bytes), luaParamBlob (128 bytes).",
+    "pcapCorrelation": {
+      "totalCount": 126,
+      "observedCombatCaptures": [
+        "combat_autoattack.pcapng",
+        "combat_skills.pcapng",
+        "party_battle_leve.pcapng"
+      ],
+      "mapActionUseSamples": 126
+    },
+    "architecturalNote": "Per docs/client-architecture.md, '1.x combat is asymmetric'. The c2s intent side rides this generic EventStart 0x012D frame with combat semantics carried by eventName + luaParams. The s2c display side uses dedicated CommandResult* opcodes (0x0139..0x013C). CharaActionController is NOT the c2s sender (BCS-Y-0434 verified no xrefs to FUN_00776760 or any sibling builder); it is receive-side playback infrastructure."
+  },
+  "action_animation_chain_summary": {
+    "overview": "The receive-side animation chain has TWO complementary paths in 1.23b: (1) the BATTLE-RESULT path that carries numeric/visual feedback (damage popups, hit/miss text) via CommandResult opcodes 0x0139..0x013C, fully cataloged; (2) the ACTOR-ANIMATION path that triggers skeletal animations on actors via PlayAnimationOnActor 0x00DA + the App::Scene::Actor::Chara::CharaAction* class family, partially cataloged via RTTI but with the s2c packet -> CharaActionController wiring not yet demonstrated.",
+    "battleResultPath_cataloged": {
+      "wire": "0x0139/0x013A/0x013B/0x013C arrives at zone packet stream",
+      "step1_routerHigh": "FUN_004DC690 (BCS-Y-0279 central s2c dispatcher) high-switch routes to FUN_0058CCA0",
+      "step2_thirdRouter": "FUN_0058CCA0 (BCS-Y-0404) cases 0x0139..0x013C -> shape-specific wrapper",
+      "step3_wrapper": "Shape-specific wrapper (BCS-Y-0405/0406/0407/0416) allocates 0x1A0-byte staging entry, calls effect-visual-class selector, calls stager",
+      "step4_selector": "FUN_00585800 (BCS-Y-0411 BattleResultEffectVisualClassSelector) classifies effect/animation id into selectors 0x06..0x11 (mapped to AttackMode/CastReady/Kao/Emt/Lin/Lif/Lil/Atk effect families)",
+      "step5_stager": "Stager copies header + 0/1/10/18 target rows into BCS-S-0031 BattleResultQueueEntry",
+      "step6_push": "FUN_005901D0 (BCS-Y-0412) pushes the queue entry to the ring buffer at the battle-result subsystem",
+      "step7_consume": "FUN_007C7F80 (BCS-Y-0417 VfxRaptureParameterCtor) reads the queue entry into a VfxRaptureParameter struct",
+      "step8_dispatch": "FUN_00812B50 (BCS-Y-0420 VfxRaptureClipProcessor) consumes the parameter and dispatches via +0x12F0 vtable indirection to a concrete RaptureActionDamageCallClip / RaptureActionSelectClip / sibling clip (per-selector Rapture*Clip class identification deferred behind that vtable - low expected value)",
+      "step9_visual": "Rapture*Clip schedules the CDev cut/scheduler animation; clip Begin creates DamagePlate UI element on the actor; clip Update feeds animation curves; clip End destroys the popup"
+    },
+    "actorAnimationPath_partial": {
+      "wire": "0x00DA PlayAnimationOnActor arrives at zone packet stream (31 pcap hits)",
+      "step1_dispatcher": "FUN_004DC690 - opcode 0xDA in 0xD3..0xE5 Actor cluster range",
+      "step2_dispatch_attempt": "Pattern B per client-architecture 'S2C dispatch has five architectural patterns': dispatcher does actor = FUN_004d9910(packet_actor_id); actor->vftable[9](zone_state)",
+      "step3_result": "EMPIRICALLY a no-op for every actor class. 19-class plurality routes to FUN_00621430 (AddReferenceResourceListener - logs and returns); 3 VFX actors to FUN_00B98D00 no-op; ProxyActor/RaptureProxyActor have explicit null at +0x24.",
+      "step4_open": "The actual animation trigger path from PlayAnimationOnActor packet -> CharaActionController is not yet demonstrated. The CharaAction* RTTI classes exist and are cataloged (BCS-Y-0052..0058) and their pipeline is documented in docs/actor_action.md (PreLoadQue->ActionQue->ActionController->MotionController/ActionVisual), but no Ghidra trace exists yet that connects the inbound 0x00DA packet to CharaActionController.update slot (BCS-Y-0434 FUN_00845430). The CharaActionController storage offset inside CharaActor is also TBD per docs/actor_action.md (CharaActor stores POINTERS to these subsystems, not inline objects)."
+    },
+    "actorVtableMethods_connection": "The 'actor vtable method' that handles incoming action animations is CharaActionController slot 3 (FUN_00845430, BCS-Y-0434). This is a TICK method (the combat-action-c2s-findings pass established it iterates the 26 queue buckets at this+0x10 and invokes queued-object virtual slots at +0x08/+0x0C/+0x10/+0x14/+0x2C/+0x30, mutating per-item state 0/1/2/3). So CharaActionController.update DRIVES the queued actions every tick - but the QUEUE POPULATION mechanism (i.e. who calls CharaActionQue::enqueue from a packet handler) is what's missing from the catalog. The most likely hypothesis is that the BattleResult queue subsystem (BCS-Y-0412 ring buffer at FUN_005901D0) feeds the CharaActionController queue indirectly via the Vfx parameter path (BCS-Y-0417/0420), but this hop is not directly traced.",
+    "predictedHypothesis": "The full animation chain in 1.23b is likely: (s2c CommandResult 0x0139/0x013A/0x013B/0x013C arrives) -> staged into BattleResultQueueEntry ring buffer -> VfxRaptureParameter built -> RaptureActionDamageCallClip enqueued in CDev cut/scheduler -> clip Begin calls into CharaActor's CharaActionController.enqueue (via a pointer stored at some CharaActor field) -> CharaActionController.update tick (FUN_00845430) dispatches enqueued actions through CharaActionMotionController for skeletal animation and CharaActionVisual for VFX. The PlayAnimationOnActor 0x00DA opcode is likely a SEPARATE path for non-combat animations (emotes already have ActorDoEmote 0x00E1; 0x00DA may be for stage/event-driven animations triggered without a CommandResult preceeding). Confirmation requires either (i) decomp of FUN_0058CCA0 case 0xDA, or (ii) reverse-tracing from CharaActionController.enqueue (the vtable slot in CharaActionQue not yet identified) to find its callers."
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0539",
+      "name": "action_skill_subsystem_synthesis",
+      "kind": "finding",
+      "confidence": "synthesis",
+      "summary": "The action/skill opcode family in FFXIV 1.23b is bifurcated: (a) c2s combat intent rides EventStart 0x012D (BCS-Y-0426 + client-architecture '1.x combat is asymmetric'); (b) s2c numeric/visual feedback uses CommandResult/BattleAction opcodes 0x0139/0x013A/0x013B/0x013C dispatched via FUN_0058CCA0 (BCS-Y-0404) into the BattleResultQueueEntry (BCS-S-0031) -> VfxRaptureParameter -> Rapture*Clip chain (fully cataloged BCS-Y-0405..0420); (c) the s2c actor animation trigger PlayAnimationOnActor 0x00DA falls in Pattern B Actor cluster range but the actor-vftable9-investigation pass proved no actor class processes opcodes via vftable[9] - the actual dispatch path is undocumented. The CharaAction* RTTI family (BCS-Y-0052..0058) is the receive-side action playback infrastructure (CharaActionController orchestrates; CharaActionMotionController plays skeletal motion; CharaActionVisual renders mesh/VFX) but the wire-packet to CharaActionController.enqueue link is not yet directly traced. The c2s 0x012D EventStart builder + wrappers are fully cataloged across BCS-Y-0426..0434.",
+      "rationale": "This manifest is pure synthesis - all material referenced is already in symbols.json. No new Ghidra runs were performed. Cataloging this as a finding (not a structural Y entry) so the action/skill subsystem can be cited from a single index entry rather than reconstructing from 13 scattered BCS-Y references plus client-architecture '1.x combat is asymmetric' + client-architecture 'S2C dispatch has five architectural patterns'."
+    },
+    {
+      "id": "BCS-Y-0540",
+      "name": "PlayAnimationOnActor_0x00DA_dispatch_path_open_question",
+      "kind": "open_question",
+      "confidence": "open",
+      "summary": "Opcode 0x00DA (PlayAnimationOnActor, 31 pcap hits) is in the Pattern B Actor cluster range (0xD3..0xE5). The actor-vftable9-investigation pass empirically proved actor->vftable[9] is a no-op for every actor class - so the documented Pattern B dispatch cannot be doing the animation work. Three hypotheses remain: (a) the central dispatcher FUN_004DC690 has an earlier 0xDA case not yet enumerated (the low-switch-remaining-cases pass covered cases 0x03..0x0E + 0xCA/0xCB but not 0xDA); (b) the third-router FUN_0058CCA0 (per BCS-Y-0404 'cases handled directly: ... 0xCC..0xE5') may have a 0xDA-specific case routing to an animation-trigger function not yet linked to CharaActionController; (c) the packet is recorded into the actor map at zone+0x17804 and a parallel polling system applies it. Resolving requires either re-decomp of FUN_0058CCA0 (focus case 0xDA) or live capture (deferred indefinitely).",
+      "rationale": "Documents a specific gap: the empirical vtable[9] no-op finding explains why following that dispatch returns no opcode behavior. Pattern B should not be reconsidered without new evidence."
+    },
+    {
+      "id": "BCS-Y-0541",
+      "name": "CharaActionController_enqueue_caller_chain_open_question",
+      "kind": "open_question",
+      "confidence": "open",
+      "summary": "The CharaAction* RTTI family (BCS-Y-0052..0058) is fully cataloged as RTTI. The pipeline is documented in docs/actor_action.md: PreLoadQue -> ActionQue.enqueue -> ActionController.update tick (BCS-Y-0434 slot 3) -> MotionController + ActionVisual. But the SPECIFIC vtable slot in CharaActionQue/CharaActionQueBase that implements ENQUEUE, and its callers, are not yet identified. Without this, the wire-packet -> CharaActionController link is missing. Most-likely candidates: (a) one of the 14 base or 26 multi-inheritance slots on CharaActionQue is the enqueue entrypoint; (b) it is called from the VfxRaptureClipProcessor (BCS-Y-0420) clip-Begin slot as part of the battle-result-to-animation hop; (c) it is called from a Pattern D sub-dispatcher case body. Resolution: enumerate xrefs to each CharaActionQue vtable slot via Ghidra, look for callers in the FUN_004DC690 / FUN_0058CCA0 / FUN_007C7F80 / FUN_00812B50 cluster.",
+      "rationale": "Frames the next-natural follow-up if action subsystem completeness becomes a priority. Doesn't propose any specific Ghidra work right now (per the no-symbols-edit phase constraint) - just records the gap with a concrete resolution path."
+    }
+  ],
+  "key_findings": [
+    {
+      "title": "Action/skill subsystem is already extensively cataloged",
+      "detail": "The action-skill-subsystem pass is dominantly a synthesis phase. Of the 7 combat-related opcodes (0x012D c2s, 0x0137/0x0139/0x013A/0x013B/0x013C/0x00DA s2c), 6 are fully cataloged across BCS-Y-0279/0404..0416/0426..0434 + BCS-S-0031/0034 + the actor-vftable9-investigation pass's vftable[9] empirical scan. The one not fully cataloged is the dispatch path of s2c 0x00DA PlayAnimationOnActor, which is documented as 'falls in Pattern B Actor cluster range but Pattern B is empirically a no-op' - an OPEN QUESTION with a clear next-step rather than a coverage gap.",
+      "implication": "The action-skill-subsystem pass produces 0 new BCS-Y catalog entries proper. The 3 proposed entries (0539 synthesis, 0540/0541 open questions) are all knowledge-organization entries rather than new code attributions."
+    },
+    {
+      "title": "c2s 0x012D EventStart is the universal combat-intent carrier (client-architecture '1.x combat is asymmetric' confirmed and re-validated)",
+      "detail": "All combat actions (auto-attack, weaponskill, ability cast, item use) ride the same c2s 0x012D EventStart frame with intent encoded in eventName + luaParams. The builder FUN_00776760 (BCS-Y-0426) is reached via 5 distinct wrappers (BCS-Y-0427..0431), each serving a different upstream Lua call site - the most common path for combat is PlayerBaseClass._onCommandEvent -> _callServerOnCommand_cpp -> FUN_006EE680 (BCS-Y-0433) -> FUN_0075E3A0 -> FUN_00776760. PCAP corpus (126 hits) confirms the opcode dominates combat captures.",
+      "implication": "The action-skill-subsystem pass re-validates client-architecture '1.x combat is asymmetric' with no contradiction. Future server-side combat implementation must parse eventName/luaParams to extract command semantics, NOT expect opcode-per-action."
+    },
+    {
+      "title": "s2c CommandResult/BattleAction family has 4 size variants for 0/1/10/18 target rows",
+      "detail": "The four opcodes 0x0139/0x013A/0x013B/0x013C are not different combat semantics but different SIZE BUCKETS for the same battle-result wire shape: X00 (0x013C, 0x48 bytes, 0 targets - animation only), X01 (0x0139, 0x58 bytes, 1 target), X10 (0x013A, 0xD8 bytes, up to 10 targets), X18 (0x013B, 0x148 bytes, up to 18 targets). All four route through the same FUN_0058CCA0 third-router, share the same BCS-S-0031 BattleResultQueueEntry (0x1A0 bytes), and the same downstream consumer FUN_007C7F80 (BCS-Y-0417). The server picks the smallest bucket that fits the action's target count - 0x013B (18-target) shows 0 pcap hits in the 54-capture corpus because no captured scenario had >10 targets in a single command result.",
+      "implication": "Server implementation can pick variants based on hit count without changing semantics. The X18 variant is correctly cataloged from decomp even without pcap evidence."
+    },
+    {
+      "title": "Animation playback path: s2c packet -> CharaActionController is NOT yet directly traced",
+      "detail": "The CharaAction* RTTI class family is cataloged (BCS-Y-0052..0058) and its internal pipeline is well-documented (docs/actor_action.md). The CharaActionController slot 3 tick function (BCS-Y-0434 FUN_00845430) drives the action queue every tick. BUT the wire-packet to CharaActionController.enqueue link is the missing hop. Best-current-hypothesis (un-traced): BattleResult queue subsystem -> Vfx parameter -> RaptureActionDamageCallClip -> clip-Begin invokes CharaActionController via a vtable indirect call. Confirming this requires Ghidra xref enumeration of CharaActionQue's enqueue slot, which a work-pool item deferred under 'CharaActor stores pointers, not inline objects - the storage offset is TBD'.",
+      "implication": "Animation playback rendering is the LAST architectural gap in the combat receive path. Resolution is a focused 2-step Ghidra task (enumerate CharaActionQue vtable slot 'enqueue' xrefs; correlate with the BattleResult consumer chain) deferrable but not blocking server-side combat work."
+    },
+    {
+      "title": "PlayAnimationOnActor 0x00DA is the only combat-adjacent opcode without a documented dispatch path",
+      "detail": "Per opcode dispatch table: 0x00DA falls in the Actor cluster 0xD3..0xE5 range; BCS-Y-0681 establishes that Pattern B dispatch (actor->vftable[9]) is a no-op. BCS-Y-0404 states that the third router FUN_0058CCA0 directly handles 0xCC..0xE5, but the disposition of case 0xDA is not enumerated. PCAP evidence contains 31 observations.",
+      "implication": "The remaining evidence requires a focused decompilation of FUN_0058CCA0 case 0xDA or a live capture that resolves the dispatch path."
+    }
+  ],
+  "blockers": [
+    "None preventing the action-skill-subsystem pass's closure. The phase is synthesis - no Ghidra invocation was needed (per memory and existing manifest coverage) and no live capture was attempted (live capture, deferred indefinitely per project direction)."
+  ],
+  "open_questions_added": [
+    "BCS-Y-0540 (proposed): PlayAnimationOnActor 0x00DA dispatch path within FUN_0058CCA0",
+    "BCS-Y-0541 (proposed): CharaActionQue.enqueue vtable slot identification and caller chain"
+  ],
+  "evidence_paths": [
+    "xivl-opcodes:data/opcodes.json",
+    "xivl-opcodes:data/observations.json (pcap counts: 0x012d=126, 0x0137=1992, 0x0139=438, 0x013a=66, 0x013b=0, 0x013c=27, 0x00da=31)",
+    "xivl-opcodes:data/bahamut_opcodes.json",
+    "manifests\\symbols.json (BCS-Y-0052..0063 RTTI; BCS-Y-0279 dispatcher; BCS-Y-0404..0420 receive path; BCS-Y-0426..0434 c2s emitter)",
+    "manifests\\structs.json (BCS-S-0031 BattleResultQueueEntry; BCS-S-0034 MapEventStartPayload)",
+    "manifests\\combat_damage_findings.json",
+    "manifests\\combat_action_c2s_findings.json",
+    "manifests\\actor_cluster_dispatch_model.json",
+    "manifests\\actor_vtable9_bulk.json",
+    "manifests\\pattern_d_subdispatcher.json",
+    "manifests\\low_switch_remaining_cases.json",
+    "docs\\client-architecture.md (1.x combat is asymmetric; S2C dispatch has five architectural patterns)",
+    "xivl-client-data:lua/scripts/chara/player/playerbaseclass.lua (lines 1836,1881,1899: _callServerOnCommand / _onCommandEvent / _doServerOnCommand)"
+  ]
+}

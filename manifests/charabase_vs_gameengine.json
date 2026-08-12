@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "CharaBase ctor decomp + +0x1bc/+0x220 writer hunt. The hunt FALSIFIED the earlier attribution chain for +0x1bc/+0x220 to LuaControl-family and then CharaBase-family - both wrong. The actual owner is `Component::Lua::GameEngine` (0x228 bytes, BCS-Y-1691). A definitive disambiguation was produced via three independent paths: (1) CharaBase vftable has only 2 DATA refs both in 158-byte primary ctor + 170-byte dtor, neither writes +0x1bc/+0x220; (2) the CharaBase factory FUN_00721220 allocates only 0xE8 = 232 bytes, too small to hold +0x1bc let alone +0x220; (3) GameEngine ctor FUN_00CDC410 EXPLICITLY writes param_1[0x6f]=0 (=+0x1BC) at line 146 and param_1[0x88]=Holder<Nil>* (=+0x220) at line 212. **BONUS**: identified PlayerBase + NpcBase ctors (previously only vftables were cataloged) + the 7481-byte mass class-registry init that registers ~30 Control namespace classes + a fourth new top-level namespace `Sqex::Misc::AnyType::*` (HolderInterface + 2 template instantiations).",
+  "method": {
+    "step_a": "FindAllReferencesToAddress on CharaBase vftable VA 0x00FD5CAC. Result: ONLY 2 references, both DATA ANALYSIS, in FUN_006ECD80 (primary ctor) and FUN_006ECE20 (dtor). Output: c109_charabase_vftable_refs.txt.",
+    "step_b": "FindOffsetWriters with IMPLEMENTATION_OFFSET_QUERY=0x1BC,0x220. Result: 237 hits in 128 functions, but ~95% are stack-local references (`[ESP+0x1bc]` for large stack frames) - script does not filter ESP-base. None of the 4 CharaBase-related functions (CharaBase ctor + dtor + 3 known derived ctors) appear in the offset writers list - meaning none of them directly MOV [reg+0x1bc] or [reg+0x220]. Output: c109_offset_writers.txt.",
+    "step_c": "DumpFunctionDecomp on FUN_006ECD80 (CharaBase ctor) + FUN_006ECE20 (dtor). KEY FINDINGS: (1) ctor calls FUN_006DBB70 (ActorBase ctor) + writes `*param_1 = CharaBase::vftable` + clears fields up to param_1[0x38] (offset +0xE0) + sets 2 byte flags at +0xE0/+0xE1. Total field range +0x00..+0xE1 (~226 bytes). (2) ctor allocates 2 sub-objects of 0x38 bytes via `_eh_vector_constructor_iterator_` at +0x68 (so +0x68..+0xD7 holds 2 inline objects). (3) NO writes to +0x1bc or +0x220 - those fields don't exist on CharaBase. Output: c109_charabase_ctor_decomp.txt.",
+    "step_d": "DumpFunctionDecomp on the 4 CharaBase ctor callers: FUN_00721220 (the FACTORY: `new(0xE8) + CharaBase()`), FUN_006ED720 (PlayerBase ctor, derived from CharaBase, writes PlayerBase::vftable + clears up to +0xF1), FUN_006F3650 (NpcBase ctor, derived from CharaBase, writes NpcBase::vftable + clears up to +0x15A), FUN_0075F9B0 (HUGE 7481-byte mass class-registry init that calls `new + ctor` for ~30 Control namespace classes via `FUN_009d1b35(size) + iVar != 0 ? Ctor() : 0` pattern). KEY FINDINGS: alloc size 0xE8 confirms CharaBase is 232 bytes. PlayerBase reaches +0xF1, NpcBase reaches +0x15A - neither reaches +0x1bc, NEITHER writes +0x1bc/+0x220. Output: c109_charabase_derived_ctors.txt.",
+    "step_e": "DumpFunctionDecomp on the supposed +0x220 getter FUN_00CC7510 (per the earlier attribution = LuaControl_secondary_class_identity_getter_trampoline BCS-Y-1676) + the finalizer FUN_006F6900 (StatusBase slot 5 onFinalize, BCS-Y-1530). KEY FINDINGS: FUN_00CC7510 is a 7-byte `jmp FUN_00CD7910` trampoline with **428 callers** (not 290+ as previously stated) - far too many for a CharaBase method. FUN_006F6900 is a 383-byte polymorphic dispatcher with `__thiscall(int, undefined4, undefined4*)` signature that registers `_onFinalize` string + calls FUN_00CC7A90 (LuaCallbackDispatcher). Output: c109_getter_finalizer_decomp.txt.",
+    "step_f": "DumpFunctionDecomp on FUN_00CDC410 (Component::Lua::GameEngine ctor, BCS-Y-1691). EXPLICIT EVIDENCE: line 146 `param_1[0x6f] = 0;` writes offset +0x1BC (0x6F * 4). Line 212 `param_1[0x88] = puVar5;` writes offset +0x220 (0x88 * 4), where puVar5 = freshly-allocated 0xC-byte `Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil>` instance (vftable at 0x0110EA30). Total ctor field range reaches +0x227, consistent with the 0x228-byte alloc per BCS-Y-1691. **DEFINITIVE: GameEngine owns +0x1BC and +0x220 fields**. Output: c109_gameengine_ctor_decomp.txt.",
+    "step_g": "FindSymbolByName for 'AnyType' to enumerate Holder<T> RTTI quartets. Result: HolderInterface RTTI quartet (vftable 0x00FDF820, TD 0x012C3134, COL 0x0115F71C, CHD 0x0115F730, BCA 0x0115F740) + Holder<GameEngine::Nil> RTTI quartet (vftable 0x0110EA30, TD 0x0130CFB0, COL 0x0119E348, CHD 0x0119E35C, BCA 0x0119E36C) + Holder<CoreWork*> RTTI quartet (vftable 0x00FDFFD0, TD 0x012C36D8, COL 0x0115FEE8, CHD 0x0115FEFC, BCA 0x0115FF0C). **First cataloged classes in `Sqex::Misc::AnyType::*` namespace** - a fourth new top-level hierarchy uncovered this batch. Output: c109_anytype_symbols.txt."
+  },
+  "key_findings": [
+    "**FALSIFICATION**: the earlier attribution of `this+0x1bc` and `this+0x220` to LuaControl-family then CharaBase-family was WRONG. CharaBase is only **0xE8 (232) bytes** per the factory allocation in FUN_00721220, far too small to hold offsets 0x1BC/0x220. The actual owner is `Component::Lua::GameEngine` (0x228 = 552 bytes), already partially documented in BCS-Y-1691 but the +0x1BC/+0x220 field-owner correction was not previously made.",
+    "**DEFINITIVE WRITER SITES**: GameEngine ctor FUN_00CDC410 writes the two fields explicitly: (1) `param_1[0x6f] = 0` at offset +0x1BC (line 146 of decomp) - initializes a null pointer slot that gets set post-construction by a class-registry binder; (2) `param_1[0x88] = puVar5` at offset +0x220 (line 212 of decomp) where puVar5 = freshly-allocated `Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil>` instance (12 bytes, vftable 0x0110EA30). The +0x220 field is a stable pointer to a heap `Holder<Nil>` 'null result placeholder' used by Lua-side return-value handling.",
+    "**CharaBase architecture solidified**: CharaBase primary ctor FUN_006ECD80 is 158 bytes. Inheritance chain: CharaBase -> ActorBase (FUN_006DBB70 BCS-Y-1467) -> [continued]. Field layout: +0x00..+0x5D from ActorBase + +0x60 cleared + +0x68..+0xD7 holds 2 inline 0x38-byte sub-objects (constructed via _eh_vector_constructor_iterator_(FUN_00712dd0, FUN_00712e90)) + +0xD8/+0xDC = pointer fields cleared at construction + +0xE0/+0xE1 = byte flags set to 1. **Class instance size = 0xE8 (232 bytes)**.",
+    "**PlayerBase ctor identified**: FUN_006ED720 (126 bytes, NEW), derived from CharaBase. Calls CharaBase ctor (FUN_006ECD80) at entry, then writes `*param_1 = PlayerBase::vftable` (BCS-Y-0185 at 0x00FD5E04). Field writes touch up to **+0xF1** (clears +0xE8, +0xEC, +0xED..+0xF1 byte flags). PlayerBase instance is larger than CharaBase (additional ~16 bytes for PlayerBase-specific state).",
+    "**NpcBase ctor identified**: FUN_006F3650 (329 bytes, NEW), derived from CharaBase. Calls CharaBase ctor (FUN_006ECD80) at entry, then writes `*param_1 = NpcBase::vftable` (BCS-Y-0186 at 0x00FD647C). Field writes touch up to **+0x15A**. Calls FUN_00CC9320 with 0 argument inside body (some Lua-side init helper). NpcBase has ~118 bytes of NpcBase-specific state on top of CharaBase (vs PlayerBase's ~16 bytes).",
+    "**CharaBase factory wrapper identified**: FUN_00721220 (97 bytes, NEW). Pattern: `int local_10 = FUN_009d1b35(0xe8, ...); if (local_10 == 0) return 0; else return FUN_006ECD80();`. Confirms CharaBase class size = 0xE8 = 232 bytes via the operator-new allocation argument. The factory is the canonical 'new CharaBase' construction site - 4 unique callers chain through it.",
+    "**Mass class-registry init function identified**: FUN_0075F9B0 (7481 bytes, NEW). The single caller is FUN_007634B0 (already cataloged as the LuaClassRegistry registry init). Body pattern: a repeated 35-instance block of `[register class name string via FUN_00447260] + [alloc + new MyClass] + [register Lua-callable via FUN_00CC9700/FUN_00CC9760]`. Calls 35 different ctors including CharaBase, PlayerBase, NpcBase, FUN_006F15A0 (Global), and 30 more Control-namespace classes. **This is the actual function that populates the Control::* Lua-bridge class registry at engine init**.",
+    "**FOURTH NEW NAMESPACE opened: `Sqex::Misc::AnyType::*`**. HolderInterface abstract base + 2 concrete template instantiations: Holder<Component::Lua::GameEngine::Nil> (the 12-byte heap object stored at GameEngine+0x220) + Holder<Application::Lua::Script::Client::CoreWork*> (another instantiation, probably used elsewhere). Full RTTI quartets present for all 3 classes. **Architectural significance**: AnyType::Holder<T> is a templated boxed-value mechanism used in the Lua-bridge to wrap C++ values for Lua-side consumption. The 4 namespaces opened this batch: `Application::Scene::*` (follow-ups), `Sqex::Thread::*` (follow-ups), `Sqex::Misc::AnyType::*` (this batch).",
+    "**AMENDMENT TARGETS for the earlier attribution chain**: BCS-Y-1580 (FUN_00CC7280), BCS-Y-1581 (FUN_00CD7A30), BCS-Y-1675 (FUN_00CD7910), BCS-Y-1676 (FUN_00CC7510), BCS-Y-1722 (CharaBase CHD). Each needs owner-class correction from CharaBase-family/LuaControl-family to **GameEngine**. The 428 callers of FUN_00CC7510 (corrected count from 290+) are all consumers of the SINGLETON GameEngine - they fetch the engine pointer then call this trampoline to access the Holder<Nil> instance at +0x220 for Lua null-return handling.",
+    "**Reasoning correction documented**: the prior chain was misled because (i) the FindOffsetWriters tool reports stack-local ESP-relative displacements as hits, producing noise; (ii) the earlier mapping of LuaControl as 'grandparent of LTC/LGTC' got tangled with the +0x1bc consumer's `this` parameter - in fact the consumer's `this` is a GameEngine* not a LuaControl* (the function naming should have been `GameEngine_xxx` not `LuaControl_xxx`); (iii) the CharaBase attribution missed the size constraint (CharaBase 0xE8 << 0x224 lower bound). This closes the loop with three independent confirmations of GameEngine ownership."
+  ],
+  "new_bcsy_entries_summary": {
+    "function_ctors": 3,
+    "factory_wrappers": 1,
+    "registry_functions": 1,
+    "rtti_quartet_anchors": 4,
+    "total_bcsy_added": 9,
+    "id_range": "BCS-Y-1735..BCS-Y-1743",
+    "amendments": 6,
+    "amendment_targets": [
+      "BCS-Y-1580 (FUN_00CC7280): owner correction LuaControl/CharaBase-family -> GameEngine",
+      "BCS-Y-1581 (FUN_00CD7A30): owner correction LuaControl/CharaBase-family -> GameEngine",
+      "BCS-Y-1675 (FUN_00CD7910): owner correction LuaControl/CharaBase-family -> GameEngine",
+      "BCS-Y-1676 (FUN_00CC7510): owner correction LuaControl/CharaBase-family -> GameEngine + true caller count 428",
+      "BCS-Y-1466 (CharaBase ctor): explicit size constraint (0xE8) + 4-caller breakdown + NEGATIVE finding that ctor does NOT write +0x1bc/+0x220",
+      "BCS-Y-1691 (GameEngine ctor): explicit identification of +0x1BC writer (param_1[0x6f]=0 line 146) + +0x220 writer (param_1[0x88]=Holder<Nil>* line 212)",
+      "BCS-Y-1722 (CharaBase CHD): note that the +0x1bc/+0x220 attribution to CharaBase was FALSIFIED"
+    ]
+  },
+  "deferred_followups": [
+    "Identify the FUN_00CD7580 function called at the head of GameEngine ctor (line 68: `uVar3 = FUN_00CD7580(param_1, param_2, ...); *param_1 = uVar3;`). This returns the GameEngine primary vftable pointer - so FUN_00CD7580 is likely the GameEngine BASE-class ctor or vftable-dispatch helper. Decomp + xref scan to characterize.",
+    "Identify the WRITER of GameEngine+0x1BC field (post-construction). The earlier finding showed FUN_00CD7A30 reads `*(this+0x1bc)` for class-table lookup, so something must set it after ctor. Candidates: a binder function that registers each newly-created Lua object with the GameEngine's class table. Search for functions that write GameEngine instances (callers of FUN_00CC9540 = GameEngine factory BCS-Y-1692).",
+    "Enumerate the third Holder<T> instantiation slot - there should be a holder for return-value types beyond Nil and CoreWork*. The 21 AnyType symbol hits include 'HolderInterface' as the abstract base and 2 concrete instantiations - check whether any other Holder<T> classes exist (probably yes for primitive types like Holder<int>, Holder<float>, Holder<std::string>).",
+    "PlayerBase / NpcBase don't catalog their full ctor body structure beyond max-field-offset. Each has CharaBase-derived state. Worth a full decomp of each for the public field map (likely yields more BCS-Y entries for derived-class state fields like Job ID, NPC quest state, etc.).",
+    "Investigate the structure stored at GameEngine+0x1BC after the post-construction binder runs - it's the entry pointer into the Lua class table FUN_00CD8870 (BCS-Y-1670). Documenting this completes the +0x1BC dispatch chain."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1721 -> 1730 (+9 BCS-Y; BCS-Y-1735..1743)",
+  "files_changed": [
+    "manifests/symbols.json: +9 entries (BCS-Y-1735..1743), 7 amendments",
+    "manifests/charabase_vs_gameengine.json (NEW, this file)",
+    "tools/ghidra/logs/c109_charabase_vftable_refs.txt (NEW)",
+    "tools/ghidra/logs/c109_offset_writers.txt (NEW)",
+    "tools/ghidra/logs/c109_charabase_ctor_decomp.txt (NEW)",
+    "tools/ghidra/logs/c109_charabase_derived_ctors.txt (NEW)",
+    "tools/ghidra/logs/c109_getter_finalizer_decomp.txt (NEW)",
+    "tools/ghidra/logs/c109_gameengine_ctor_decomp.txt (NEW)",
+    "tools/ghidra/logs/c109_anytype_symbols.txt (NEW)",
+    "tools/extractors/append_c109.py (NEW)"
+  ]
+}

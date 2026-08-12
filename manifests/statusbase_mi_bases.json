@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "StatusBase true MI bases enumeration (deferred closure). Dumped all 9 non-self non-LGTC BCDs in StatusBase BCA 0x0115F858 and decoded their TD name strings. Result: StatusBase actually inherits from 7 base classes (including self): 3 in primary chain (ActorBase, LuaControl, LuaObject); 3 in LGE memory-allocator chain (LgeBase, LgeCommonMemoryAllocator, LgeBasicMemoryAllocator) which appear TWICE in the BCA at DIFFERENT physical offsets (+4 AND +100) with BCD attributes 0x42 (HASPCHD | AMBIGUOUS). Plus LGTC at offset +96. The 3+3+1+self=8 expected, BCA has 11 BCDs total = 4 (offset 0 primary chain) + 3 (offset +4 first LGE-derived subobject) + 1 (offset +96 LGTC) + 3 (offset +100 second LGE-derived subobject).",
+  "method": {
+    "step1": "Retrieved StatusBase BCA contents from the logs (c92_resolve.txt lines 96-110): 11 BCDs at addresses 0x0115F858..0x0115F880 with subobject-offset distribution 4/3/1/3 across positions 0/+4/+96/+100.",
+    "step2": "Identified 9 non-self non-LGTC BCDs to decode (excluding 0x0115F888=StatusBase self and 0x0115D8CC=LGTC already known).",
+    "step3": "DumpMemRange of 9 BCDs * 28 bytes each (c97_statusbase_bcds.txt). Extracted unique TD pointers: 6 distinct (3 primary chain + 3 LGE chain appearing twice).",
+    "step4": "DumpMemRange of 6 unique TDs starting at TD+8 (100 bytes each) (c97_statusbase_tds.txt). Python decoded names via struct.pack('<I', ...) + null-termination split.",
+    "step5": "Cross-checked symbols.json: 5 of 6 unique TDs already cataloged (BCS-Y-1496/1476/1477/1478/1479). Only LuaControl TD at 0x01270B4C was missing.",
+    "step6": "Catalog 1 NEW BCS-Y entry (LuaControl_TypeDescriptor) + 7 amendments (BCS-Y-1497 StatusBase TD comprehensive finding; BCS-Y-1496/1476/1477/1478/1479 cross-links from related TDs; BCS-Y-1394 LuaControl vftable cross-link to new TD entry)."
+  },
+  "key_findings": [
+    "**StatusBase ACTUAL inheritance enumerated**: 6 distinct base classes plus self, distributed across 4 subobject positions. Primary chain (offset 0, 4 BCDs incl self): `StatusBase` -> `Application::Lua::Script::Client::Control::ActorBase` (TD 0x01270964 BCS-Y-1496) -> `Component::Lua::GameEngine::LuaControl` (TD 0x01270B4C NEW BCS-Y) -> `Component::Lua::GameEngine::LuaObject` (TD 0x012BFCC8 BCS-Y-1476).",
+    "**LGE memory-allocator chain inherited AMBIGUOUSLY (twice)**: `Component::Lua::GameEngine::LgeBase` (TD 0x012BF458 BCS-Y-1477), `LgeCommonMemoryAllocator` (TD 0x012BF488 BCS-Y-1478), `LgeBasicMemoryAllocator` (TD 0x012BF4C8 BCS-Y-1479). These 3 classes appear in StatusBase's BCA TWICE: once at offset +4 (BCDs 0x0115C6F8/C714/C730) and once at offset +100 (BCDs 0x0115D668/D684/D6A0). Same TDs, different BCDs, different physical offsets.",
+    "**Inheritance is AMBIGUOUS-MULTIPLE, NOT virtual**: BCD attributes for both +4 and +100 LGE chains are 0x42 = HASPCHD (0x40) | AMBIGUOUS (0x02). The VIRTUAL bit (0x10) is NOT set. This means StatusBase contains TWO DISTINCT LGE-derived subobjects (one at +4, one at +100), each carrying its own copy of LgeBase/LgeCommonMemoryAllocator/LgeBasicMemoryAllocator data. NOT virtual inheritance.",
+    "**Architectural interpretation**: StatusBase has two embedded fields whose types inherit from the LGE chain. The two subobjects might be: (a) two distinct allocator pools (e.g., one for permanent allocations, one for scratch); (b) two different LGE-derived members (e.g., callback storage + observer list); (c) a callback-list + status-list pair. Field semantics require slot-level decomp to disambiguate.",
+    "**LuaControl TD newly cataloged at BCS-Y-1677**: TD 0x01270B4C. Demangled: `Component::Lua::GameEngine::LuaControl`. Previously only LuaControl's VFTABLE was cataloged (BCS-Y-1394 at 0x0110E30C). Fills gap in the StatusBase primary inheritance chain catalog.",
+    "**Cross-class confirmation**:, all 10 of 11 LTC/LGTC classes share BYTE-IDENTICAL BCA composition with these same 11 BCDs (only the +96 BCD varies). This means EVERY LTC/LGTC class (StatusBase, GroupBase, ItemBase, WidgetHandle, Math, CommandBase, JudgeBase, QuestBase, String, Table) has the SAME 6+self=7 base classes (primary chain: ActorBase + LuaControl + LuaObject; LGE chain twice: LgeBase + LgeCommonMemoryAllocator + LgeBasicMemoryAllocator). Global is the outlier with LTELI added.",
+    "**framing reconfirmed**: the 4 standalone vftables at 0x00FDF968..0x00FDF98C are NOT in StatusBase's BCA. the correction of the stands: those vftables belong to 4 standalone classes (DisplayNameResolverListener, SSLDDListener, Command::CommandInterface, LuaActorImplInterface), not StatusBase MI subobjects."
+  ],
+  "new_bcsy_entries_summary": {
+    "type_descriptors_new": 1,
+    "amendments": 7,
+    "total_bcsy_added": 1,
+    "id_range": "BCS-Y-1677",
+    "amendment_targets": [
+      "BCS-Y-1497 (StatusBase TypeDescriptor) - comprehensive MI base enumeration",
+      "BCS-Y-1496 (ActorBase TD) - cross-link as StatusBase primary parent",
+      "BCS-Y-1476 (LuaObject TD) - cross-link as StatusBase grandparent",
+      "BCS-Y-1477 (LgeBase TD) - cross-link as ambiguously-inherited MI base",
+      "BCS-Y-1478 (LgeCommonMemoryAllocator TD) - cross-link as ambiguously-inherited MI base",
+      "BCS-Y-1479 (LgeBasicMemoryAllocator TD) - cross-link as ambiguously-inherited MI base",
+      "BCS-Y-1394 (LuaControl vftable) - cross-link to new LuaControl TD entry"
+    ]
+  },
+  "deferred_followups": [
+    "Identify what fields StatusBase has at offsets +4 and +100 that explain the duplicated LGE-chain inheritance. Likely two distinct allocator-pool members or two LGE-derived data structures embedded.",
+    "Decomp StatusBase ctor (the function that initializes the object) to see how the two LGE-derived subobjects at +4 and +100 are constructed.",
+    "Cross-class verify: same exercise on GroupBase, ItemBase, WidgetHandle (per the byte-identical BCA finding) to confirm they also have the same TWO LGE-derived subobjects at +4 and +100.",
+    "Investigate Global's outlier 15-BCD BCA composition: it has LTELI (LuaThreadEndListenerInterface, BCS-Y-1480) as additional MI base at offset +0x68. Map Global's full inheritance for comparison.",
+    "Test the VBTABLE hypothesis for the this+0x1bc field (per deferred): if StatusBase has two LGE-derived subobjects at +4 and +100, the vbptr-style mechanism would need to handle BOTH subobjects' identity pointers. the negative writer-hunt suggests this is set by template-init, not runtime ctor."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "evidenceFiles": [
+    "tools/ghidra/logs/c97_statusbase_bcds.txt",
+    "tools/ghidra/logs/c97_statusbase_tds.txt"
+  ],
+  "symbol_count_delta": "1663 -> 1664 (+1 BCS-Y; BCS-Y-1677)"
+}

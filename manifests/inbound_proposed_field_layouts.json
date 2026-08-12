@@ -1,0 +1,263 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-18",
+  "pass": "layouts",
+  "source": "manifests/inbound_payload_schemas.json + manifests/receiver_opcode_map_inbound.json",
+  "method": "Hand-curated semantic field layouts grounded in (a) per-byte entropy buckets from inbound_payload_schemas.json, (b) receiver class names from receiver_opcode_map_inbound.json, (c) the standard 1.x receiver convention (actor delta arrives via GameMessage header src/tgt fields, body holds receiver-specific data and zero padding). Field sizes sum exactly to the innerLen of each opcode.",
+  "opcodeLayouts": [
+    {
+      "opcodeHex": "0x0137",
+      "receiverName": "SyncMemoryReceiver",
+      "innerLen": 136,
+      "sampleCount": 79,
+      "blurb": "Bulk actor state sync. 94 bytes of varying state followed by 42 bytes of zero padding.",
+      "scenarios": {
+        "party_battle_leve": 72,
+        "gridania_to_coerthas": 5,
+        "combat_skills": 1,
+        "moving_around_gridania": 1
+      },
+      "layoutTotal": 136,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 2,
+          "type": "uint16_t",
+          "role": "syncBlockTag",
+          "value": "offsets 0..1: medium+low entropy (21 / 3 unique values across 79 samples); likely a block-id + sub-id tag pair"
+        },
+        {
+          "off": 2,
+          "size": 4,
+          "type": "uint32_t",
+          "role": "syncSequenceOrActorRef",
+          "value": "offsets 2..5: medium entropy (12-13 unique values), 4 of which dominate the corpus (~42% each); pair of u16 IDs or one u32 actor handle"
+        },
+        {
+          "off": 6,
+          "size": 2,
+          "type": "uint16_t",
+          "role": "syncSelectorHigh",
+          "value": "offset 6: high entropy (48 unique values); the highest-variance byte in the body - candidate for an actor or session ID component"
+        },
+        {
+          "off": 8,
+          "size": 86,
+          "type": "uint8_t[86]",
+          "role": "syncStateBlock",
+          "value": "offsets 8..93: medium-to-low entropy data block; layout is opaque without receiver-decomp byte-by-byte cross-correlation"
+        },
+        {
+          "off": 94,
+          "size": 42,
+          "type": "uint8_t[42]",
+          "role": "reservedPad",
+          "value": "offsets 94..135: invariant zero across all 79 samples; reserved padding"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x0136",
+      "receiverName": "SetEventStatusReceiver",
+      "innerLen": 40,
+      "sampleCount": 43,
+      "blurb": "Sets event status on an actor. 1 status byte + 3 pad + ~15 bytes of event metadata + 18 pad + 3 bytes of trailing varying data.",
+      "scenarios": {
+        "party_battle_leve": 35,
+        "gridania_to_coerthas": 5,
+        "moving_around_gridania": 3
+      },
+      "layoutTotal": 40,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 1,
+          "type": "uint8_t",
+          "role": "eventStatusKind",
+          "value": "offset 0: low entropy (few discrete status kind values)"
+        },
+        {
+          "off": 1,
+          "size": 3,
+          "type": "uint8_t[3]",
+          "role": "pad1",
+          "value": "offsets 1..3: invariant zero across all 43 samples"
+        },
+        {
+          "off": 4,
+          "size": 15,
+          "type": "uint8_t[15]",
+          "role": "eventMetadataBlock",
+          "value": "offsets 4..18: low entropy data block carrying per-event metadata (event ID, scene ID, conditions)"
+        },
+        {
+          "off": 19,
+          "size": 18,
+          "type": "uint8_t[18]",
+          "role": "pad2",
+          "value": "offsets 19..36: invariant zero across all 43 samples"
+        },
+        {
+          "off": 37,
+          "size": 1,
+          "type": "uint8_t",
+          "role": "trailingSelector",
+          "value": "offset 37: high entropy (48 unique values) - candidate for a trailing selector / index"
+        },
+        {
+          "off": 38,
+          "size": 2,
+          "type": "uint8_t[2]",
+          "role": "trailingMetadata",
+          "value": "offsets 38..39: medium entropy; paired with offset 37"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x0144",
+      "receiverName": "ChangeActorSubStatModeBorderReceiver",
+      "innerLen": 8,
+      "sampleCount": 36,
+      "blurb": "Sub-stat mode + border change. 8-byte compact body: 1 pad + 3 mode bytes + 2 pad + 2 border bytes.",
+      "scenarios": {
+        "party_battle_leve": 30,
+        "gridania_to_coerthas": 5,
+        "moving_around_gridania": 1
+      },
+      "layoutTotal": 8,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 1,
+          "type": "uint8_t",
+          "role": "pad1",
+          "value": "offset 0: invariant zero across all 36 samples"
+        },
+        {
+          "off": 1,
+          "size": 3,
+          "type": "uint8_t[3]",
+          "role": "modeBlock",
+          "value": "offsets 1..3: low entropy mode bytes (sub-stat mode set)"
+        },
+        {
+          "off": 4,
+          "size": 2,
+          "type": "uint8_t[2]",
+          "role": "pad2",
+          "value": "offsets 4..5: invariant zero across all 36 samples"
+        },
+        {
+          "off": 6,
+          "size": 2,
+          "type": "uint8_t[2]",
+          "role": "borderBlock",
+          "value": "offsets 6..7: low entropy border values"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x0145",
+      "receiverName": "ChangeActorExtraStatReceiver",
+      "innerLen": 8,
+      "sampleCount": 30,
+      "blurb": "Extra-stat delta. 8-byte body: 1 stat-type byte + 7 zero pad. Actor ID arrives via GameMessage header src field.",
+      "scenarios": {
+        "party_battle_leve": 24,
+        "gridania_to_coerthas": 5,
+        "moving_around_gridania": 1
+      },
+      "layoutTotal": 8,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 1,
+          "type": "uint8_t",
+          "role": "extraStatKind",
+          "value": "offset 0: low entropy (small set of stat-kind values)"
+        },
+        {
+          "off": 1,
+          "size": 7,
+          "type": "uint8_t[7]",
+          "role": "reservedPad",
+          "value": "offsets 1..7: invariant zero across all 30 samples"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x0179",
+      "receiverName": "ChangeActorSubStatStatusReceiver",
+      "innerLen": 40,
+      "sampleCount": 30,
+      "blurb": "Sub-stat status change. 40-byte body is ENTIRELY invariant zero across all 30 samples - the actor delta is conveyed via the GameMessage header (opcode = which sub-stat, src = which actor); the body is reserved padding.",
+      "scenarios": {
+        "party_battle_leve": 24,
+        "gridania_to_coerthas": 5,
+        "moving_around_gridania": 1
+      },
+      "layoutTotal": 40,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 40,
+          "type": "uint8_t[40]",
+          "role": "reservedPad",
+          "value": "all 40 bytes invariant zero across all 30 samples; receiver's meaningful state is in the GameMessage header, not the body"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x017b",
+      "receiverName": "ChangeShadowActorFlagReceiver",
+      "innerLen": 8,
+      "sampleCount": 30,
+      "blurb": "Shadow actor flag change. 8-byte body is ENTIRELY invariant zero across all 30 samples - same header-only delta pattern as 0x0179.",
+      "scenarios": {
+        "party_battle_leve": 24,
+        "gridania_to_coerthas": 5,
+        "moving_around_gridania": 1
+      },
+      "layoutTotal": 8,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 8,
+          "type": "uint8_t[8]",
+          "role": "reservedPad",
+          "value": "all 8 bytes invariant zero across all 30 samples; receiver's meaningful state is in the GameMessage header, not the body"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x013d",
+      "receiverName": "SetDisplayNameReceiver",
+      "innerLen": 40,
+      "sampleCount": 30,
+      "blurb": "Set display name. 3 bytes of varying header + 37 bytes of zero padding. The actual name is likely resolved server-side by ID and the body just carries a name-table index or kind selector.",
+      "scenarios": {
+        "party_battle_leve": 24,
+        "gridania_to_coerthas": 5,
+        "moving_around_gridania": 1
+      },
+      "layoutTotal": 40,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 3,
+          "type": "uint8_t[3]",
+          "role": "displayNameSelector",
+          "value": "offsets 0..2: medium entropy (likely a 2-3 byte name-table index / kind)"
+        },
+        {
+          "off": 3,
+          "size": 37,
+          "type": "uint8_t[37]",
+          "role": "reservedPad",
+          "value": "offsets 3..39: invariant zero across all 30 samples"
+        }
+      ]
+    }
+  ]
+}

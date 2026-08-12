@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_deferred",
+  "scope": "Investigate the LuaControl + StatusBase RTTI types surfaced by BCS-Y-1368 (ChangeActorSubStatStatus apply). Catalog LuaControl + StatusBase ctors + vftables. Establish the 2-tier Lua-bridge architecture for status state. Client-architecture 'The LuaControl hierarchy is the runtime surface' promotion DEFERRED - needs more evidence.",
+  "method": {
+    "step1": "FindSymbolByName for Component::Lua::GameEngine::LuaControl + Application::Lua::Script::Client::Control::StatusBase via run_c71_lua_classes.bat passes 1-2. Logs: c71_luacontrol_symbols.txt, c71_statusbase_symbols.txt.",
+    "step2": "Decomp FUN_00CC70E0 (the fmt helper referenced in BCS-Y-1368) via pass 3. Log: c71_fmt_helper_decomp.txt. Result: 34-byte THUNK to FUN_00CD8050 which is itself a 38-byte thunk to FUN_00D03A50. 3-level thunk chain - likely CRT-emitted formatter.",
+    "step3": "DumpMemRange on LuaControl + StatusBase RTTI Class Hierarchy Descriptors + Base Class Arrays. Log: c71_luaclasses_rtti_dump.txt.",
+    "step4": "FindReferencesToAddresses on the 3 vftable VAs (LuaControl + 2 StatusBase vftables) to identify ctors. Log: c71_vftable_writers.txt. Result: 3 ctor candidates - FUN_00CCCB70 + FUN_00776200 + FUN_00776270.",
+    "step5": "Decomp the 3 ctor candidates via run_c71_ctors.bat. Log: c71_lua_ctors_decomp.txt. Confirmed: FUN_00CCCB70 = LuaControl::ctor; FUN_00776200 = StatusBase::ctor; FUN_00776270 = StatusBase::dtor.",
+    "step6": "Catalog 6 BCS-Y entries (BCS-Y-1393..1398). Amend BCS-Y-1368 with the findings."
+  },
+  "key_findings": [
+    "**Component::Lua::GameEngine::LuaControl** is the ENGINE-SIDE Lua control class. Single-inheritance per RTTI (CHD attributes=0, numBaseClasses=5). Ctor at FUN_00CCCB70 is just 16 bytes (vftable write + 1 field zero-init) - LuaControl is a barebones abstract base. 4 derived classes via ctor callers.",
+    "**Application::Lua::Script::Client::Control::StatusBase** is the SCRIPT-SIDE Lua status base. Multi-inheritance per RTTI (CHD attributes=1, numBaseClasses=11). Ctor + dtor pair at FUN_00776200 + FUN_00776270 (109 + 102 bytes). 2 vftables: PRIMARY @ 0x00FDF8D4 (object+0x00), SECONDARY @ 0x00FDF8DC (object+0x60).",
+    "**StatusBase INHERITS FROM LuaControl**: BCD pointer 0x0115CAB8 (LuaControl's own Base Class Descriptor) appears at array entry 2 of StatusBase's Base Class Array (0x0115F858). The 11 base classes of StatusBase include LuaControl as one of them, at offset 0 in the layout.",
+    "**The 2-tier Lua-bridge architecture for status state**: engine-side LuaControl (Component::Lua::GameEngine namespace, 5 base classes) + script-side StatusBase (Application::Lua::Script::Client::Control namespace, 11 base classes - inherits from LuaControl + 10 others). Concrete status classes (e.g. ActorSubStatStatus) derive from StatusBase, gaining both engine-side Lua-controllability AND script-side status semantics.",
+    "**FUN_00CC70E0 is a trivial 34-byte thunk** to FUN_00CD8050 (38 bytes) to FUN_00D03A50 (not decomped here). The +200000 offset reference from BCS-Y-1368's note was about a VALUE passed to the function, not the function body. This 3-level thunk chain is likely a CRT-emitted formatter or status-id transformer.",
+    "**LuaControl's 4 derived classes** are: FUN_0070A8A0, FUN_006DBB70, FUN_00CD8990, FUN_00712A90 (ctors of derived classes that call LuaControl::ctor). Note FUN_006DBB70 also appears as a callee from StatusBase::ctor's SEH frame setup - context-dependent role.",
+    "**StatusBase secondary vftable at +0x60 (=96)** corresponds to one of the 4 base classes in the RTTI Base Class Array at offsets 96/100 (BCDs at array entries 7-10). Could be a property-bag or change-notification interface - confirms multi-inheritance is REAL (not just template instantiation).",
+    "**Client-architecture 'The LuaControl hierarchy is the runtime surface' candidate** ('Bahamut status objects use a 2-tier Lua-bridge') is DEFERRED. Needs more evidence across the 7 other callers of FUN_00CC70E0 to confirm the pattern is universal across Receiver apply helpers."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1393", "name": "Component_Lua_GameEngine_LuaControl_ctor_FUN_00cccb70", "addr": "0x00CCCB70", "size_bytes": 16, "role": "Component::Lua::GameEngine::LuaControl::ctor"},
+    {"id": "BCS-Y-1394", "name": "Component_Lua_GameEngine_LuaControl_vftable_DAT_0110e30c", "addr": "0x0110E30C", "role": "LuaControl vftable global"},
+    {"id": "BCS-Y-1395", "name": "Application_Lua_Script_Client_Control_StatusBase_ctor_FUN_00776200", "addr": "0x00776200", "size_bytes": 109, "role": "Application::Lua::Script::Client::Control::StatusBase::ctor"},
+    {"id": "BCS-Y-1396", "name": "Application_Lua_Script_Client_Control_StatusBase_dtor_FUN_00776270", "addr": "0x00776270", "size_bytes": 102, "role": "StatusBase destructor"},
+    {"id": "BCS-Y-1397", "name": "Application_Lua_Script_Client_Control_StatusBase_vftable_PRIMARY_DAT_00fdf8d4", "addr": "0x00FDF8D4", "role": "StatusBase primary vftable (object+0x00)"},
+    {"id": "BCS-Y-1398", "name": "Application_Lua_Script_Client_Control_StatusBase_vftable_SECONDARY_DAT_00fdf8dc", "addr": "0x00FDF8DC", "role": "StatusBase secondary vftable (object+0x60); multi-inheritance"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1368", "addition": "LuaControl + StatusBase RTTI types fully cataloged; 2-tier Lua-bridge architectural pattern identified; client-architecture 'The LuaControl hierarchy is the runtime surface' candidate noted as deferred."}
+  ],
+  "deferred_followups": [
+    "Client-architecture 'The LuaControl hierarchy is the runtime surface' promotion: confirm the 2-tier Lua-bridge pattern across the 7 other callers of FUN_00CC70E0 (FUN_006E2000, FUN_008A3350, FUN_00792C40, FUN_006FF3E0, FUN_0078CC30, FUN_0078CE10, FUN_006DDA90). If most are also Receiver apply helpers using __RTDynamicCast to LuaControl/StatusBase, the architectural finding is solid.",
+    "Decomp FUN_00D03A50 (the deepest layer of the fmt thunk chain) to understand what FUN_00CC70E0 actually does.",
+    "Decomp FUN_00CCCBF0 (the base ctor called by StatusBase::ctor) to identify one of StatusBase's 11 parent ctors.",
+    "Enumerate the 11 base classes of StatusBase by following the BCDs in the Base Class Array at 0x0115F858. Each BCD's typeDescriptor pointer leads to the base class's name.",
+    "Decomp the 4 LuaControl-derived class ctors (FUN_0070A8A0, FUN_006DBB70, FUN_00CD8990, FUN_00712A90) to enumerate them.",
+    "Investigate the +200000 offset that the BCS-Y-1368 note described - it was a VALUE arg to FUN_00CC70E0, not the function body. Likely a status-id offset or namespace key."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1382 -> 1388 (+6 BCS-Y: 3 functions, 3 data vftables)",
+  "files_changed": [
+    "manifests/symbols.json: +6 entries (BCS-Y-1393..1398), 1 amendment (BCS-Y-1368)",
+    "manifests/luacontrol_statusbase.json (NEW, this file)",
+    "tools/ghidra/logs/c71_luacontrol_symbols.txt (NEW)",
+    "tools/ghidra/logs/c71_statusbase_symbols.txt (NEW)",
+    "tools/ghidra/logs/c71_fmt_helper_decomp.txt (NEW)",
+    "tools/ghidra/logs/c71_fmt_impl_decomp.txt (NEW)",
+    "tools/ghidra/logs/c71_luaclasses_rtti_dump.txt (NEW)",
+    "tools/ghidra/logs/c71_vftable_writers.txt (NEW)",
+    "tools/ghidra/logs/c71_lua_ctors_decomp.txt (NEW)"
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_struct_definition",
+  "scope": "Decomp FUN_00767730 (the ctor called by BCS-Y-1337 ReceiverStateCache_LazyGet on lazy-init) to reveal the 0xCC-byte cache struct layout. Closes the manifest deferred_followups[1]. RESULT: 1 new BCS-Y entry (BCS-Y-1354 ReceiverStateCache_ctor) + 1 new BCS-S entry (BCS-S-0050 ReceiverStateCache with 31 fields) + amendment to BCS-Y-1337.",
+  "method": {
+    "step1": "Ghidra DumpFunctionDecomp on FUN_00767730 via run_c62_cache_init.bat. Log: tools/ghidra/logs/c62_cache_init_decomp.txt.",
+    "step2": "Identify function shape: 305-byte SEH-wrapped ctor. __thiscall(undefined4 *param_1=this, undefined4 *param_2=source). Copies *param_2 to cache[0x00] (owner_ref), zero-initializes ~23 specific dword/byte fields, calls 2 helpers (FUN_00CC9310, FUN_006BF420). Returns param_1.",
+    "step3": "Verify helper signatures. FUN_00CC9310 takes only uVar1 (stack-cookie XOR), NOT param_1. FUN_006BF420 takes no args. Therefore both are global-state initializers, NOT cache-field writers. Initial draft incorrectly claimed they initialized embedded sub-objects; corrected after re-reading the decomp.",
+    "step4": "Cross-reference per-field zero-init offsets against the per-factory fast-path write offsets. Map 14 of 18 zero-init fields to known Receiver state slots (6 with known Receiver class, 8 with TBD class). Identify 5 contiguous gaps (0x04/0x14/0x24/0x34/0x4C) + 92-byte mid-buffer (0x54-0xAF) that are NOT initialized by the ctor.",
+    "step5": "Catalog BCS-Y-1354 (cache ctor) + BCS-S-0050 (ReceiverStateCache struct with 31 fields) via c62_add_entries.py. Amend BCS-Y-1337 with cross-reference to the new ctor + struct entries. Edit struct fields to correct the initial misreading about helper-initialized sub-objects."
+  },
+  "key_findings": [
+    "**The 0xCC=204-byte ReceiverStateCache struct is now formalized as BCS-S-0050** with 31 named fields covering the full 0xCC byte span. 14 of 31 fields are mapped to identified Receiver state slots (AchievementPoint, AchievementTitle, JobChange, VehicleGrade, ChangeActorExtraStat, ChangeActorSubStatModeBorder + 8 TBD-class slots from the hybrid factories). 17 fields are gaps/padding/zero-init-only without identified writers earlier.",
+    "**The cache ctor's 2 helper calls (FUN_00CC9310, FUN_006BF420) are global-state initializers, NOT cache-field writers**. Neither receives param_1 as an argument - FUN_00CC9310 takes the stack-cookie XOR only, FUN_006BF420 takes no args. This was initially misread as 'helper-initialized sub-objects'; corrected in the catalog. Significance: the 92-byte mid-buffer at offset 0x54-0xAF holds whatever the heap allocator FUN_009D1B35 returned, not helper-initialized state.",
+    "**5 contiguous-gap dwords (0x04, 0x14, 0x24, 0x34, 0x4C) and a 92-byte mid-buffer (0x54-0xAF) are NOT zero-initialized by the ctor**. These 108 bytes total hold heap-allocator-default state or Receiver state slots whose writers were not surfaced earlier. The pattern (4-byte gaps at regular ~16-byte spacing in the early region + a large mid-buffer) suggests one of two interpretations: (a) the cache type evolved over the 1.x patch cycle with new fields added at gap offsets while leaving older zero-init slots alone, or (b) the gaps are intentionally non-zero by design for receivers that need 'last-state' persistence across re-instantiation.",
+    "**14 of 18 expected Receiver state slots are now mapped to identified factories.** The 4 unmapped slots are likely: (a) NullActorImpl slot 49's state (BCS-Y-1118 uses a different path - it shares the cache helper but writes elsewhere), (b)-(c) two of the 5 gap dwords, (d) one of the early zero-init dwords without a factory writer. Later work with broader Receiver write-site analysis could close these gaps.",
+    "**The cache layout supports client-architecture 'Real implementations with no static caller are structurally legitimate' (real-impl-no-caller) at a NEW architectural level**: the cache + ctor + lazy-init triad is the static-time skeleton that holds the runtime-time Receiver state mirrors. The 15 hybrid factories (canonical + variants) populate these mirrors via fast-path writes; the slow-path Receivers populate them via Receiver instances that themselves write to the cache on their apply() methods. The cache is essentially an inline materialization of N Receivers' state without the per-Receiver overhead.",
+    "**Cross-validation against cataloged evidence: 14 fields written by 16 factories**. Match validation: VehicleGrade@0xB8 (BCS-Y-1145), AchievementPoint@0x44 (BCS-Y-1342), AchievementTitle@0x48 (BCS-Y-1343), JobChange@0xC6 (BCS-Y-1344), ChangeActorExtraStat@0x50 (BCS-Y-1346), ChangeActorSubStatModeBorder@0xB5 (BCS-Y-1347). Plus 8 TBD-class slots at offsets 0xB7/0xB9/0xBC/0xC0/0xC1/0xC2-0xC5/0xC7-0xC8/0xC9. Cache size 0xCC and all field placements verified to fit without overlap."
+  ],
+  "new_bcsy_entries": [
+    {
+      "id": "BCS-Y-1354",
+      "name": "ReceiverStateCache_ctor_FUN_00767730",
+      "addr": "0x00767730",
+      "size_bytes": 305,
+      "role": "Cache ctor; zero-inits 23 fields + 2 global-helper calls; leaves 5 gaps + 92-byte mid-buffer uninit"
+    }
+  ],
+  "new_bcss_entries": [
+    {
+      "id": "BCS-S-0050",
+      "name": "ReceiverStateCache",
+      "namespace": "Application::Lua::Script::Client::Command",
+      "size": "0xCC",
+      "field_count": 31,
+      "named_receiver_slots": 6,
+      "tbd_class_slots": 8,
+      "gap_fields": 5,
+      "padding_fields": 3
+    }
+  ],
+  "amendments": [
+    {
+      "id": "BCS-Y-1337",
+      "addition": "Backlinks to BCS-Y-1354 (cache ctor) and BCS-S-0050 (cache struct); confirms cache layout closes the deferred_followups[1]"
+    }
+  ],
+  "deferred_followups": [
+    "Decomp FUN_00CC9310 + FUN_006BF420 (the 2 helper calls inside the cache ctor) to identify what global state they initialize. Both are uncataloged. Decomping them would surface ~2 BCS-Y entries + may add a BCS-S entry if they manage a registry or similar shared structure. ~15-30min, +2-3 BCS-Y.",
+    "Map the 4 unmapped Receiver state slots in BCS-S-0050. Likely candidates: (a) NullActorImpl slot 49 writes (BCS-Y-1118 - check if it uses cache or a different path), (b) gap dwords 0x14/0x24/0x34/0x4C/0x04 - search for direct cache[+X] writes in the binary, (c) the 92-byte mid-buffer field semantics. ~30min, +0-4 BCS-Y or refined field annotations.",
+    "Verify the cache field layout against the vftable_A/vftable_B Receiver dispatch tables. If the 15 hybrid factories are registered in those vftables, cross-check that the vftable slot index for each factory correlates with its cache write offset. Could surface an architectural pattern about how slot indices map to cache offsets. ~15min.",
+    "Investigate the gap-dword purpose hypothesis. Either: (a) cache type evolution (5 gap dwords are post-zero-init add-ins from a later patch), (b) intentional non-zero for last-state persistence. Compare ~15-20min, may surface architectural finding about patch evolution.",
+    "Catalog the 10 uncataloged ctor VAs from the deferred_followups[0]. These would tell us which Receiver class each TBD-slot belongs to and let us name the 8 TBD-class cache fields (currently named _byte_b7_TBD etc.) with semantic names. ~30min, +10 BCS-Y."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - clean (new BCS-Y-1354 + BCS-S-0050 wiki-links resolve)"
+  },
+  "symbol_count_delta": "1343 -> 1344 (+1 BCS-Y)",
+  "struct_count_delta": "49 -> 50 (+1 BCS-S)",
+  "files_changed": [
+    "manifests/symbols.json: +1 entry (BCS-Y-1354), 1 amendment (BCS-Y-1337)",
+    "manifests/structs.json: +1 entry (BCS-S-0050 with 31 fields), structCount 49 -> 50",
+    "manifests/receiver_state_cache_struct.json (NEW, this file)",
+    "tools/ghidra/logs/c62_cache_init_decomp.txt (NEW)"
+  ]
+}

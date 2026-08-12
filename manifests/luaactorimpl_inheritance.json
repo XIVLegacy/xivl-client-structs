@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "LuaActorImpl actual inheritance + 4 sub-vftables identification. CORRECTS pre-compaction memory: LuaActorImpl is NOT a sibling of LuaActorImplInterface - it inherits FROM LuaActorImplInterface. The 4 'mid-range vftables' between LuaActorImplInterface (ending 0x00FDFAF0) and LuaActorImpl (starting 0x00FDFB2C) at 0x00FDFAF8/B00/B0C/B18 are NOT LuaActorImpl MI sub-vftables - they are 4 STANDALONE Command::System receiver classes (ExecutePushOnEnter/LeaveTriggerBoxReceiver, AttributeTypeEventEnter/LeaveReceiver) which are ALL already cataloged (BCS-Y-0164/0165/0253/0255/0257/0941 + ctors). Adds 7 missing TD entries.",
+  "method": {
+    "step1": "Dumped LuaActorImpl CHD (0x0115FB40) + BCA (0x0115FB50) range. CHD numBaseClasses=3. BCA has 3 BCDs: self (TD 0x01270B10) + BCD 0x0115F9D0 (which IS LuaActorImplInterface's self-BCD at offset 0) + BCD 0x011447C0 (LuaAppBase BCS-Y-1582 at offset +4).",
+    "step2": "Confirmed LuaActorImplInterface's BCA at 0x0115F9C4 has only 2 BCDs: self (TD 0x01270A90) + BCD 0x011447C0 (LuaAppBase). LuaActorImplInterface inherits only from LuaAppBase.",
+    "step3": "Therefore inheritance: LuaActorImpl extends BOTH LuaActorImplInterface AND LuaAppBase. LuaActorImplInterface is the primary parent (offset 0 BCD). LuaAppBase is the MI base at offset +4.",
+    "step4": "Examined the 4 mid-range COL blocks (0x0115F9EC/FA3C/FA8C/FADC) - each is a STANDALONE COL with its own pTypeDescriptor + pClassDescriptor. The 4 TDs decoded: 0x012c3350 = ExecutePushOnEnterTriggerBoxReceiver, 0x012c33B0 = ExecutePushOnLeaveTriggerBoxReceiver, 0x012c3410 = AttributeTypeEventEnterReceiver, 0x012c3470 = AttributeTypeEventLeaveReceiver. All in Application::Lua::Script::Client::Command::System namespace. Each is a 2-slot vftable.",
+    "step5": "Each of the 4 receiver classes has the SAME BCA composition: 3 BCDs = self + BCD 0x0115F984 (TD 0x012c3308 = CommandInterface) at offset 0 + BCD 0x011447C0 (LuaAppBase) at offset +4. So all 4 receivers inherit from CommandInterface + LuaAppBase.",
+    "step6": "Cross-check existing catalog: all 4 receiver vftable entries already exist (BCS-Y-0164/0165/0941 + class entries BCS-Y-0253/0255/0257). LuaActorImpl + LuaActorImplInterface vftable entries also exist (BCS-Y-1048/1049). But TD entries for ALL these classes are MISSING - 7 TDs to add: LuaActorImpl, LuaActorImplInterface, CommandInterface, plus the 4 receivers.",
+    "step7": "Catalog 7 new BCS-Y TD entries + 4 amendments (BCS-Y-1048 LuaActorImpl inheritance correction; BCS-Y-1049 LuaActorImplInterface parent-of-LuaActorImpl finding; BCS-Y-1582 LuaAppBase as MI base of LuaActorImpl; BCS-Y-0399 LuaCallbackDispatcher's caller class clarification)."
+  },
+  "key_findings": [
+    "**LuaActorImpl is NOT a sibling of LuaActorImplInterface - it INHERITS FROM LuaActorImplInterface plus LuaAppBase via MI**. LuaActorImpl's BCA at 0x0115FB50 has 3 BCDs: self (TD 0x01270B10) at offset 0; LuaActorImplInterface (TD 0x01270A90 via BCD 0x0115F9D0) at offset 0; LuaAppBase (TD 0x0126CFAC BCS-Y-1582 via BCD 0x011447C0) at offset +4. This CORRECTS the pre-compaction summary that claimed they were siblings.",
+    "**The 'xref-on-TD-found-zero-implementor-BCAs' result was a methodology artifact**: BCAs reference BCDs (not TDs directly), so an xref scan for TD 0x01270A90 would only find BCD 0x0115F9D0 itself, NOT the LuaActorImpl BCA at 0x0115FB54 (which points to BCD 0x0115F9D0, not TD 0x01270A90). The inheritance link IS present in the RTTI structures but was missed by the scan methodology.",
+    "**The 4 mid-range vftables between LuaActorImplInterface and LuaActorImpl are NOT MI sub-vftables of LuaActorImpl**. They are 4 standalone receiver classes in `Application::Lua::Script::Client::Command::System::*`: ExecutePushOnEnterTriggerBoxReceiver (0x00FDFAF8, TD 0x012c3350), ExecutePushOnLeaveTriggerBoxReceiver (0x00FDFB00, TD 0x012c33B0), AttributeTypeEventEnterReceiver (0x00FDFB0C, TD 0x012c3410), AttributeTypeEventLeaveReceiver (0x00FDFB18, TD 0x012c3470). Each is a 2-slot vftable. ALL ALREADY CATALOGED at BCS-Y-0164/0165/0253/0255/0257/0941.",
+    "**All 4 receiver classes share inheritance**: CommandInterface (TD 0x012c3308) at offset 0 + LuaAppBase (TD 0x0126CFAC) at offset +4. So the 4 receivers are concrete Command::System implementations that inherit from the abstract CommandInterface (which was identified earlier as one of the 4 standalone classes at 0x00FDF968..0x00FDF98C).",
+    "**LuaActorImpl has 90 slots, LuaActorImplInterface has 90 slots - these are POSITION-MATCHED, NOT independent**. Per the inheritance relationship, LuaActorImpl's 90 concrete vftable slots OVERRIDE the corresponding 90 __purecall slots in LuaActorImplInterface. The previous interpretation (siblings with independent slot semantics) was wrong - they share the same virtual contract with LuaActorImpl as the concrete implementor.",
+    "**7 TD entries newly cataloged**: LuaActorImpl_TD (0x01270B10), LuaActorImplInterface_TD (0x01270A90), CommandInterface_TD (0x012c3308), ExecutePushOnEnterTriggerBoxReceiver_TD (0x012c3350), ExecutePushOnLeaveTriggerBoxReceiver_TD (0x012c33B0), AttributeTypeEventEnterReceiver_TD (0x012c3410), AttributeTypeEventLeaveReceiver_TD (0x012c3470). Vftable entries for all 7 classes already existed; only TD entries were missing.",
+    "**deferred follow-up about FUN_005745F0 cluster typeid/dynamic_cast usage on LuaActorImplInterface still open**: the 7 code DATA refs to TD 0x01270A90 from FUN_005745F0 area are likely typeid/dynamic_cast operations rather than inheritance references (which would be via BCDs, not direct TD refs). Defer for later investigation."
+  ],
+  "new_bcsy_entries_summary": {
+    "type_descriptors_new": 7,
+    "amendments": 4,
+    "total_bcsy_added": 7,
+    "id_range": "BCS-Y-1678..BCS-Y-1684",
+    "amendment_targets": [
+      "BCS-Y-1048 (LuaActorImpl vftable) - inheritance correction (inherits LuaActorImplInterface + LuaAppBase)",
+      "BCS-Y-1049 (LuaActorImplInterface vftable) - child-class enumeration (LuaActorImpl)",
+      "BCS-Y-1582 (LuaAppBase TD) - cross-link as MI base of LuaActorImpl",
+      "BCS-Y-0399 (LuaCallbackDispatcher) - cross-link to LuaActorImpl primary caller class"
+    ]
+  },
+  "deferred_followups": [
+    "Compare LuaActorImpl's 90 concrete slots against LuaActorImplInterface's 89 __purecall + 1 dtor positions to verify position-matched override semantics. Bulk-decomp the slots if not already done.",
+    "Identify ExecutePushOnEnter/LeaveTriggerBoxReceiver, AttributeTypeEventEnter/LeaveReceiver slot semantics. Each has 2 slots; the function names are FUN_007769B0/A30/B00/C20 (slot 1) and FUN_008A4270/4340/3DE0/3E20 (slot 2). Slot 1 may be a virtual Receive method, slot 2 a destructor or factory.",
+    "Investigate FUN_005745F0 cluster (the 7 code DATA refs to LuaActorImplInterface TD found earlier) - confirm if these are typeid/dynamic_cast operations rather than inheritance references. Likely later scope.",
+    "Cross-class check: do the 4 receiver classes' inheritance pattern (CommandInterface + LuaAppBase) apply to OTHER receiver classes in the Command::System namespace? Per the discovery of CommandInterface as one of the 4 standalone vftables at 0x00FDF968..0x00FDF98C, the namespace likely has many more receivers with this same pattern.",
+    "Map LuaActorImpl's primary vftable slots (90 concrete) to corresponding LuaActorImplInterface __purecall positions to build the complete override matrix."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1664 -> 1671 (+7 BCS-Y; BCS-Y-1678..1684)",
+  "files_changed": [
+    "manifests/symbols.json: +7 entries, 4 amendments",
+    "manifests/luaactorimpl_inheritance.json (NEW, this file)",
+    "tools/ghidra/logs/c94_luaactor_rtti.txt (NEW - LuaActorImpl RTTI block dump)",
+    "tools/ghidra/logs/c94_subvftable_cols.txt (NEW - 4 sub-vftable COL blocks)",
+    "tools/ghidra/logs/c94_decode_tds.txt (NEW - 6 TDs decoded)",
+    "tools/ghidra/logs/c94_intermediate_td.txt (NEW - CommandInterface TD)",
+    "tools/extractors/append_luaactorimpl_inheritance.py (NEW)"
+  ]
+}

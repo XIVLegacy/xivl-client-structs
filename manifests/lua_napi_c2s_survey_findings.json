@@ -1,0 +1,259 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "Lua N-API c2s survey",
+  "generated": "2026-05-20",
+  "title": "Lua N-API setter c2s survey findings",
+  "scope": "Classify selected Lua setter surfaces as client-local or client-to-server emitting, building on the _setActorExtraStat clean-negative trace and the EventStart 0x012D combat-action finding.",
+  "selection": {
+    "requestedOrder": [
+      "_setVisible",
+      "_setName / _setNamePrefix",
+      "_setSubStatStatus",
+      "_setGroundOn",
+      "_setActorExtraInfo or inventory/equip Lua API"
+    ],
+    "surveyedSetters": [
+      "_setVisible",
+      "_setGroundOn",
+      "_setSubStatStatus"
+    ],
+    "notSurveyed": [
+      {
+        "name": "_setName / _setNamePrefix",
+        "reason": "Exact names are absent from the current lua_api_index, control_class_napi_map, control_class_napi_field_access, and shipped Lua tree. The cataloged display-name setter is _setDisplayName."
+      },
+      {
+        "name": "_setActorExtraInfo",
+        "reason": "Exact name was not found in the current Lua/API manifests or shipped Lua tree."
+      }
+    ],
+    "haltRule": "Stopped after three surveyed setter surfaces returned clean negatives."
+  },
+  "sourceRefs": [
+    "manifests\\lua_napi_c2s_trace_findings.json",
+    "manifests\\combat_action_c2s_findings.json",
+    "manifests\\sibling_choke_points.json",
+    "manifests\\record_id_emitter_trace.json",
+    "manifests\\direct_emission.json",
+    "manifests\\control_class_napi_map.json",
+    "manifests\\control_class_napi_field_access_recursive.json",
+    "manifests\\lua_to_opcode.json",
+    "%BCS_GHIDRA_PROJECTS%\\step2_all_reg.txt",
+    "%BCS_GHIDRA_PROJECTS%\\step2_auto_created_impl.txt",
+    "%BCS_GHIDRA_PROJECTS%\\102_callees.txt",
+    "%BCS_GHIDRA_PROJECTS%\\d7980_callers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\ec080_callers_decomp.txt",
+    "build/lua"
+  ],
+  "result": {
+    "status": "three_clean_negatives_halt",
+    "summary": "No surveyed setter emitted a c2s opcode or reached the EventStart 0x012D builder/send surface. _setVisible and _setGroundOn are native CharaBase setters, but both route into local scene-state update helpers already classified as non-emitting. _setSubStatStatus is only an empty Lua method stub in the shipped script tree"
+  },
+  "survey": [
+    {
+      "setter": "_setVisible",
+      "classification": "client_local_scene_state",
+      "nativeTrace": {
+        "registration": {
+          "nativeFunction": "FUN_0072EDD0",
+          "registeredName": "_setVisible",
+          "impl": "FUN_006E41E0",
+          "evidence": "FUN_0072EDD0 registers LAB_006e41e0 through FUN_00726460, then registers the literal `_setVisible` through FUN_00447260 + FUN_00CCCAD0."
+        },
+        "implementation": {
+          "nativeFunction": "FUN_006E41E0",
+          "fieldAccess": [
+            "CharaBase+0xE0 visibility flag",
+            "CharaBase+0x10 nested actor pointer read"
+          ],
+          "callees": [
+            "FUN_0071BA00",
+            "FUN_00CC7510",
+            "FUN_0075C3C0",
+            "FUN_009D22B4"
+          ],
+          "summary": "Reads one Lua boolean argument through FUN_0071BA00, forwards the actor/context pair to FUN_0075C3C0, and touches the local CharaBase+0xE0 visibility flag. No send helper or EventStart wrapper appears in the implementation."
+        },
+        "downstreamScenePath": {
+          "path": [
+            "FUN_006E41E0",
+            "FUN_0075C3C0",
+            "FUN_004D7890"
+          ],
+          "scenePacketIds": [
+            "0x10",
+            "0x11"
+          ],
+          "summary": "FUN_0075C3C0 calls FUN_004D9970 and FUN_004D7890. FUN_004D7890 writes a local state byte at +0x90 and constructs Application::Scene::ScenePacket ids 0x10/0x11 through FUN_004EC080."
+        }
+      },
+      "eventStartCrossCheck": {
+        "eventStartBuilder": "FUN_00776760",
+        "sendGate": "FUN_004D6D30",
+        "knownEventStartWrappers": [
+          "FUN_0075E230",
+          "FUN_0075E3A0",
+          "FUN_0075E510",
+          "FUN_0089E0D0"
+        ],
+        "summary": "_setVisible reaches neither the EventStart 0x012D builder nor its known wrappers. Its scene-packet ids 0x10/0x11 were previously checked in the sibling-choke-points pass; the known map dispatcher handles those ids without an outbound send helper."
+      },
+      "scriptAndServerCrossCheck": {
+        "luaScriptCallsites": {
+          "exactMatches": 1,
+          "examples": [
+            "build/lua/729s9/wu7/31xx17z/us549755o5wq.lua:14"
+          ],
+          "basis": "Exact rg search for `_setVisible\\b` in the shipped Lua tree."
+        }
+      },
+      "conclusion": {
+        "interpretation": "_setVisible is cataloged as a client-local visibility/scene-state update. No c2s opcode is assigned.",
+        "opcode": null,
+        "builder": null
+      }
+    },
+    {
+      "setter": "_setGroundOn",
+      "classification": "client_local_scene_state",
+      "nativeTrace": {
+        "registration": {
+          "nativeFunction": "FUN_0072EF20",
+          "registeredName": "_setGroundOn",
+          "impl": "FUN_006E4260",
+          "evidence": "FUN_0072EF20 registers LAB_006e4260 through FUN_00726460, then registers the literal `_setGroundOn` through FUN_00447260 + FUN_00CCCAD0."
+        },
+        "implementation": {
+          "nativeFunction": "FUN_006E4260",
+          "fieldAccess": [
+            "CharaBase+0xE1 ground-on flag",
+            "CharaBase+0x10 nested actor pointer read"
+          ],
+          "callees": [
+            "FUN_0071BA00",
+            "FUN_00CC7510",
+            "FUN_0075C3E0",
+            "FUN_009D22B4"
+          ],
+          "summary": "Reads one Lua boolean argument through FUN_0071BA00, forwards the actor/context pair to FUN_0075C3E0, and touches the local CharaBase+0xE1 ground-on flag. No send helper or EventStart wrapper appears in the implementation."
+        },
+        "downstreamScenePath": {
+          "path": [
+            "FUN_006E4260",
+            "FUN_0075C3E0",
+            "FUN_00586750",
+            "FUN_004D7980"
+          ],
+          "recordIds": [
+            "0x12"
+          ],
+          "scenePacketIds": [
+            "0x27"
+          ],
+          "summary": "FUN_0075C3E0 calls FUN_004D9970 and FUN_00586750. FUN_00586750 posts scene record id 0x12 via FUN_004D7980; the record-id-emitter-trace pass transforms that to scene packet id 0x27 and classifies it as no_known_emitter_route."
+        }
+      },
+      "eventStartCrossCheck": {
+        "eventStartBuilder": "FUN_00776760",
+        "sendGate": "FUN_004D6D30",
+        "knownEventStartWrappers": [
+          "FUN_0075E230",
+          "FUN_0075E3A0",
+          "FUN_0075E510",
+          "FUN_0089E0D0"
+        ],
+        "summary": "_setGroundOn reaches neither the EventStart 0x012D builder nor its known wrappers. Its scene-record path was previously checked against FUN_004DC690, FUN_00589030, and FUN_0058E0C0; no known 0x00CA emitter handles scene packet id 0x27."
+      },
+      "scriptAndServerCrossCheck": {
+        "luaScriptCallsites": {
+          "exactMatches": 105,
+          "examples": [
+            "build/lua/729s9/wu7/31xx17z/us549755o5wq.lua:18",
+            "build/lua/7vxx9w6658p335s/7vxx9w6658p335s3x.lua:1445"
+          ],
+          "basis": "Exact rg search for `_setGroundOn\\b` in the shipped Lua tree."
+        }
+      },
+      "conclusion": {
+        "interpretation": "_setGroundOn is cataloged as a client-local collision/grounding scene-state update. No c2s opcode is assigned.",
+        "opcode": null,
+        "builder": null
+      }
+    },
+    {
+      "setter": "_setSubStatStatus",
+      "classification": "lua_stub_no_native_c2s",
+      "nativeTrace": {
+        "registration": {
+          "registeredName": "_setSubStatStatus",
+          "evidence": "No exact `_setSubStatStatus` entry exists in lua_api_index.json, control_class_napi_map.json, control_class_napi_field_access.json, control_class_napi_field_access_recursive.json, or lua_to_opcode.json.",
+          "nativeFunction": null,
+          "impl": null
+        },
+        "implementation": {
+          "scriptDefinition": "build/lua/729s9/729s989r57y9rr_p.lua:338-342",
+          "summary": "The shipped Lua class file assigns CharaBaseClass._setSubStatStatus to an empty function body. The adjacent inline binding is `_getSubStatStatus_inl`, which returns `_getSubStatStatus_cpp`; there is no `_setSubStatStatus_cpp` binding in the observed script or Control-class N-API manifests."
+        },
+        "serverVisibleCounterpart": {
+          "clientInbound": "0x0179 ChangeActorSubStatStatusReceiver",
+          "reader": "_getSubStatStatus (FUN_006FA150)",
+          "summary": "The cataloged status-array path is server-driven: receiver 0x0179 writes the CharaBase+0xDC dynamic status array and fires _onChangeSubStatStatus. The Lua-side setter stub does not write the status array or call the c2s send surface."
+        }
+      },
+      "eventStartCrossCheck": {
+        "eventStartBuilder": "FUN_00776760",
+        "sendGate": "FUN_004D6D30",
+        "knownEventStartWrappers": [
+          "FUN_0075E230",
+          "FUN_0075E3A0",
+          "FUN_0075E510",
+          "FUN_0089E0D0"
+        ],
+        "summary": "No native implementation exists to reach the EventStart builder/send surface. The only exact shipped Lua match is the no-op method declaration."
+      },
+      "scriptAndServerCrossCheck": {
+        "luaScriptCallsites": {
+          "exactMatches": 1,
+          "callsiteMatchesExcludingDefinition": 0,
+          "examples": [
+            "build/lua/729s9/729s989r57y9rr_p.lua:342"
+          ],
+          "basis": "Exact rg search for `_setSubStatStatus\\b` in the shipped Lua tree."
+        }
+      },
+      "conclusion": {
+        "interpretation": "_setSubStatStatus is not a native c2s-emitting setter in this corpus; it is an empty Lua stub with zero shipped callsites beyond the declaration.",
+        "opcode": null,
+        "builder": null
+      }
+    }
+  ],
+  "eventStartCrossCheck": {
+    "builder": "FUN_00776760",
+    "sendGate": "FUN_004D6D30",
+    "knownEventStartWrappers": [
+      "FUN_0075E230",
+      "FUN_0075E3A0",
+      "FUN_0075E510",
+      "FUN_0089E0D0"
+    ],
+    "summary": "The three surveyed setter surfaces do not extend the combat-action-c2s-findings pass's EventStart 0x012D combat-action model. EventStart remains tied to Lua-driven commands/events, not these CharaBase property setters."
+  },
+  "scriptAndServerCrossCheck": {
+    "luaSearches": {
+      "_setVisible": 1,
+      "_setGroundOn": 105,
+      "_setSubStatStatus": 1,
+      "_setName": 0,
+      "_setNamePrefix": 0,
+      "_setActorExtraInfo": 0
+    }
+  },
+  "conclusion": {
+    "cleanNegativeCount": 3,
+    "model": "Lua N-API setters are predominantly client-local in this sample; Lua-driven commands/events, not property setters, are the observed path to c2s EventStart 0x012D.",
+    "opcodeBindingsAdded": [],
+    "symbolsAdded": []
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "version": "1",
+  "generated": "2026-05-23",
+  "scope": "Sweep of the 7 alt-binding-recon templates not addressed by the d2fXXX-cluster pass or the LGE-bootstrap pass. Used DumpAddrOperandsInFunc.java in a single Ghidra batch covering 12 functions (7 templates + 5 key callers). Outcome: 1 new singleton N-API binding, 1 new global table, 3 new userdata metatables (12+4+4 metamethods), 1 shared read-only-blocker utility identified, 2 engine-internal helpers categorized as not catalog-worthy.",
+  "summary": {
+    "templatesAttributed": 7,
+    "newNamedNapiBindings": 1,
+    "newGlobalTableRegistrations": 1,
+    "newMetatables": 3,
+    "newMetamethodImplsTotal": 21,
+    "sharedUtilityIdentified": "FUN_00ab7340 (read-only __newindex blocker - used by FUN_00cfa400 and FUN_00d15ef0)",
+    "implWithMultipleRoles": "FUN_00d110b0 is BOTH a singleton (the alt-binding-recon pass) AND the __index metamethod of FUN_00d11400's metatable - it dispatches the `_isAlive` field as a cclosure wrapping FUN_00d11010"
+  },
+  "templates": [
+    {
+      "regVa": "0x00CD7920",
+      "size_bytes": 64,
+      "category": "named_napi_singleton",
+      "registration": {
+        "name": "_progFunc",
+        "impl": "0x00d09cd0",
+        "namePtrVa": "0x0130d520",
+        "status": "already_cataloged_now_with_impl"
+      },
+      "callers": [
+        {"va": "0x00CC9B00", "size_bytes": 7, "notes": "thin JMP thunk to FUN_00cd7920"}
+      ],
+      "notes": "Singleton registration of `_progFunc` global N-API. Caller FUN_00cc9b00 is a 7-byte JMP thunk - confirms the singleton hypothesis."
+    },
+    {
+      "regVa": "0x00D15EF0",
+      "size_bytes": 93,
+      "category": "global_table_with_readonly_metamethod",
+      "registration": {
+        "name": "_lge_runlevels",
+        "tableKind": "lua_global_table",
+        "namePtrVa": "0x0130d600",
+        "metamethods": {"__newindex": "0x00ab7340"},
+        "status": "new"
+      },
+      "notes": "Creates `_lge_runlevels` as a Lua global TABLE with a read-only __newindex blocker (FUN_00ab7340). Pattern: create empty table -> set metatable {__newindex = block-write} -> setglobal. This is a 'constants table' Lua idiom for read-only enum-like globals."
+    },
+    {
+      "regVa": "0x00CFA400",
+      "size_bytes": 561,
+      "category": "userdata_metatable_4mm",
+      "metamethods": {
+        "__index":    "0x00cfc8d0",
+        "__newindex": "0x00ab7340",
+        "__len":      "0x00cfc950",
+        "__gc":       "0x00cfc9e0"
+      },
+      "callers": [],
+      "notes": "Standalone 4-metamethod userdata metatable. Reached via vtable/fnptr (no static callers). Same metamethod-name table as the d2fXXX-cluster pass (.rdata 0x0110ea7c..0x0110eabc). The __newindex slot uses the shared read-only blocker FUN_00ab7340 - this userdata is read-only too. Prologue references std::bad_cast - the metamethods do RTTI checks on the userdata pointer before dispatching."
+    },
+    {
+      "regVa": "0x00D11400",
+      "size_bytes": 779,
+      "category": "userdata_metatable_12mm_arithmetic_overload",
+      "metamethods": {
+        "__gc":       "0x00d112b0",
+        "__add":      "0x00d10ef0",
+        "__sub":      "0x00d10ef0",
+        "__mul":      "0x00d10ef0",
+        "__div":      "0x00d10ef0",
+        "__mod":      "0x00d10ef0",
+        "__pow":      "0x00d10ef0",
+        "__unm":      "0x00d10ef0",
+        "__concat":   "0x00d10ef0",
+        "__len":      "0x00d10ef0",
+        "__eq":       "0x00d10f60",
+        "__index":    "0x00d110b0",
+        "__newindex": "0x00d10ef0"
+      },
+      "callers": ["FUN_00d098d0", "FUN_00d2b810"],
+      "notes": "12-metamethod userdata metatable. Single dispatcher FUN_00d10ef0 handles 10 of the 13 slots (all 8 arithmetic ops + __len + __newindex). Distinct impls: __gc (FUN_00d112b0), __eq (FUN_00d10f60), __index (FUN_00d110b0). Arithmetic-overload pattern + __concat + _isAlive method (via __index) is consistent with an ENTITY/INDIVIDUAL REFERENCE userdata - probably the type returned by `__lge_getIndividualIndex` (BCS-Y-0501 LGE bootstrap's caller FUN_00d098d0). FUN_00d2b810 is another caller; both probably create+return the userdata. Arithmetic-name strings live in a different .rdata block: __add at 0x0110f1c0, __sub at 0x0110f1c8, __mul/div/mod/pow/unm/concat at 0x0110f1d0..0x0110f1f8 - this is a SECOND metamethod-name table beyond the d2fXXX-cluster pass's at 0x0110ea7c."
+    },
+    {
+      "regVa": "0x00D110B0",
+      "size_bytes": 179,
+      "category": "metatable_index_method_dispatcher",
+      "dispatchedMethod": {
+        "name": "_isAlive",
+        "wrappedImpl": "0x00d11010",
+        "namePtrVa": "0x0110f204",
+        "status": "already_cataloged_now_with_impl"
+      },
+      "notes": "The alt-binding-recon pass categorized this as 'singleton'. This clarifies: it is the __index metamethod of FUN_00d11400's 12-metamethod metatable. Behavior: when Lua does `userdata.<key>`, this checks if <key> == '_isAlive' (via FUN_00cf3600 string compare), and if so pushes FUN_00d11010 as a cclosure for the script to call. So userdata.`_isAlive` is a METHOD ACCESSOR returning the alive-check cclosure. Impl VA for `_isAlive` is FUN_00d11010."
+    },
+    {
+      "regVa": "0x00D07BB0",
+      "size_bytes": 606,
+      "category": "parametric_class_registration_helper",
+      "implCount": 2,
+      "implsConditional": ["0x00d07f90", "0x00d07f20"],
+      "callers": ["FUN_00d07eb0"],
+      "notes": "Parametric helper called from FUN_00d07eb0 (which is BCS-Y-0501's _onLoop __newindex impl, FUN_00d07eb0). Body builds a runtime-concatenated string (FUN_00447260 with DAT_00f67298 - the same literal-string pattern the high-signal-napi-attribution-findings pass used for engine N-API names). Conditional cclosure push at 0x00d07d8e/0x00d07d95: either FUN_00d07f90 OR FUN_00d07f20 depending on a check at FUN_00d07890. Not a stand-alone named N-API binding - this is the inner class-registration helper for _onLoop instances; it dynamically constructs the per-class registration name and picks one of two impls. The 2 impl VAs are __index-method dispatchers for the per-class-property accessor, similar to how FUN_00d110b0 dispatches _isAlive."
+    },
+    {
+      "regVa": "0x00CF1060",
+      "size_bytes": 1415,
+      "category": "engine_internal_gc_helper",
+      "metamethodImpl": "0x00d08100",
+      "callers": ["FUN_00ce1840", "FUN_00cc7ad0", "FUN_00cdde20", "FUN_00cf1060"],
+      "notes": "Engine-internal helper. The single cclosure push (FUN_00d08100 as __gc) installs a finalizer on a dynamically-allocated Lua wrapper. Function is 1415 bytes with self-recursion at 0x00cf1314 (probably walks an inheritance chain). Called from BCS-Y-0498 (scheduler resume helper FUN_00ce1840) and other engine-internal sites - not a public N-API binding. The __gc impl FUN_00d08100 is the destructor for the wrapper type."
+    }
+  ],
+  "sharedUtilities": {
+    "FUN_00ab7340": {
+      "role": "read-only_metatable_newindex_blocker",
+      "usedBy": ["FUN_00cfa400", "FUN_00d15ef0"],
+      "notes": "Bound as the __newindex of two read-only Lua surfaces. Likely raises a Lua error like 'attempt to modify read-only table' or just no-ops."
+    }
+  },
+  "metamethodStringRdataExpansion": {
+    "block1_at_0x0110ea7c": ["__newindex", "__index", "__len", "__gc", "__eq", "__pow"],
+    "block2_at_0x0110f1c0": ["__add", "__sub", "__mul", "__div", "__mod", "__pow", "__unm", "__concat"],
+    "notes": "The d2fXXX-cluster pass documented block 1; this adds block 2 (arithmetic operators) discovered via FUN_00d11400. The two blocks have overlapping __pow but otherwise complement each other."
+  },
+  "evidencePath": "%BCS_GHIDRA_PROJECTS%/remaining_templates_operands.txt"
+}

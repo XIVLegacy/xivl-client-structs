@@ -1,0 +1,340 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Find every function that writes to the zone+0x17804..+0x17808 actor map structure (the map iterated/searched by FUN_004d9910 BCS-Y-0534 and dispatched to by the BCS-Y-0527 generic vftable[9] fallthrough). The goal is to identify what actor type is stored in the map, which directly answers the open question 'is there a derived actor class whose vftable[9] processes the Actor cluster opcodes 0xCC..0xE5?'",
+  "method": {
+    "step1_candidate_enumeration": "From the actor-factory-drill pass evidence, identified candidate writers: FUN_004d9d70 (994 bytes, popup-handler), FUN_004d9980 (case-2 sibling that maintains zone+0x1783c 'active actor' slot), FUN_004daa10, FUN_004da280 / FUN_004da300 / FUN_004da380 (3 of the 6 callers of FUN_004d9980), FUN_004daf00 (1708 bytes, zone wipe/teardown - one of FUN_004DC690's case handlers), FUN_004dac20 (351 bytes, called from FUN_004db6a0 and FUN_0068dd10 - sibling actor removal), plus secondary leads FUN_004d9110, FUN_006ac9f0, FUN_00774ad0, FUN_004d9ca0.",
+    "step2_decomp_pass1": "Batch decomp via run_candidates_decomp.bat: BAHAMUT_DECOMP_VAS=0x004d9d70,0x004d9980,0x004daa10,0x004da280,0x004daf00,0x004da380,0x004dac20,0x004da300,0x004d9110,0x006ac9f0,0x00774ad0,0x004d9d10,0x004d9e10,0x004da100,0x004da1e0,0x004daee0,0x004db000,0x004dabd0. Wrote candidates_decomp.txt. CRITICAL FIND: VA 0x004dabd0 resolves to FUN_004dab50 (a 194-byte function with 22 callers across the actor cluster) that sets *param_1 = Application::Main::RaptureElement::vftable.",
+    "step3_decomp_pass2": "Batch decomp via run_inserter_decomp.bat for the STL primitives: BAHAMUT_DECOMP_VAS=0x004da9a0,0x004de280,0x004de190,0x004de800,0x004ddcf0,0x004ddb50,0x004d7980,0x0071d420,0x004d7c10. Wrote inserter_decomp.txt. FOUND: FUN_004da9a0 (105 bytes, sole caller FUN_004dab50) calls FUN_004de940 (the STL _Tree::lower_bound-with-conditional-insert helper). FUN_004de940 dispatches to FUN_004de610 (the red-black-tree insert primitive) when bVar5 is set (key not present in tree).",
+    "step4_decomp_pass3": "Decompiled the STL machinery via run_stl_decomp.bat: BAHAMUT_DECOMP_VAS=0x004de610,0x004ddad0,0x004e4020,0x004de900,0x004de2a0,0x004de610,0x004de540,0x004dea00,0x004dea70. Wrote stl_decomp.txt. CONFIRMED: FUN_004de610 is the STL red-black-tree insert with rebalance; FUN_004ddf20 allocates a new node and stores the key+value; FUN_004de540/FUN_004dea70 are the corresponding erase helpers.",
+    "step5_offset_writer_scan": "Wrote new Ghidra script FindOffsetWriters.java that scans every instruction operand for displacement scalars matching IMPLEMENTATION_OFFSET_QUERY. Ran with offsets 0x17804,0x17808,0x1780c min 0x10000: found only 2 hits in unwind code (the offset is too commonly encoded as compound LEA/MOV addressing where scalar isn't a free operand). Approach validated by reading decomp text directly instead (Grep '17804|17808|1780c' across all the decomp dumps).",
+    "step6_vtable_dump": "Ran DumpVtableSlots.java with BAHAMUT_VTABLE_QUERIES=RaptureElement:0x0..0x3c (16 slots) via run_vtable_dump.bat. RaptureElement vftable resolved to 0x00F91014. Full slot table written to raptureelement_vtable.txt.",
+    "step7_slot9_decomp": "Decompiled the RaptureElement-specific slot 9 implementation (FUN_0091f6f0) plus 4 other slots via run_slot9_decomp.bat. Slot 9 is a 32-byte 'set parent context + tail-call helper' function, NOT a packet handler - consistent with the actor-vtable9-bulk pass finding.",
+    "step8_address_operands_audit": "Ran DumpAddrOperandsInFunc.java on the ctor/map-insertion functions to verify the vftable assignment (0xf91014 = Application::Main::RaptureElement; 0xf91138 = secondary RTTI for multiple-inheritance virtual base)."
+  },
+  "candidate_functions": [
+    {
+      "va": "0x004d9d70",
+      "verdict": "not_map_writer",
+      "summary": "994-byte 'popup-handler' that dispatches on DAT_0133*** sentinels and writes to *(param_2+0x19). Calls FUN_004d9910 for ONE lookup case (0xc0000020 system actor) but never writes to zone+0x17804."
+    },
+    {
+      "va": "0x004d9980",
+      "verdict": "active_actor_slot_writer_not_map_writer",
+      "summary": "428-byte function. Writes *(zone+0x17840) = previous-active-actor, *(zone+0x1783c) = new-active-actor-id, *(zone+0x17838) = FUN_004d9910(id) = active actor ptr. Maintains the 'currently active' singleton slots (zone+0x17838..0x17840) NOT the map itself. Sentinel id 0xc0000000 means 'no active actor'."
+    },
+    {
+      "va": "0x004daa10",
+      "verdict": "map_iterator_not_writer",
+      "summary": "310-byte function. Walks a network/event queue at zone+0x17938..0x17944 using InterlockedExchangeAdd. For each entry, calls FUN_004d9910(actor_id) to get actor and dispatches `actor->vftable[0x20](opcode, msg_buf+0x20, ...)`. Reads zone+0x17920/+0x17924 vtables (output queues). Does not write to zone+0x17804 map."
+    },
+    {
+      "va": "0x004da280",
+      "verdict": "active_actor_clear",
+      "summary": "126-byte function. Calls FUN_004d9980(0xc0000000) to clear the active actor slot, then resets zone+0x17834. Indirectly touches the active-actor singleton not the map."
+    },
+    {
+      "va": "0x004daf00",
+      "verdict": "map_iterator_not_writer",
+      "summary": "1708-byte function. Zone teardown / scene change. Iterates the map at zone+0x17808 (the _Myhead of the actor map) walking nodes via piVar+3/+4 chain. Calls FUN_004de800 to resize an aux array at zone+0x1780c. Does dynamic_cast checks against Application::Main::RaptureElement::RTTI_Type_Descriptor and Application::Main::Element::RelativeElement::RTTI_Type_Descriptor - DIRECT CONFIRMATION that the map's value type is RaptureElement (or RelativeElement subclass). Calls FUN_009172c0 (visitor step) on each node. Does NOT directly mutate the map structure (the writes inside are to local vectors local_9c/local_98)."
+    },
+    {
+      "va": "0x004da380",
+      "verdict": "active_actor_clear_variant",
+      "summary": "113-byte function. Same shape as FUN_004da280 - clears active actor via FUN_004d9980(0xc0000000)."
+    },
+    {
+      "va": "0x004dac20",
+      "verdict": "MAP_ERASE_WRITER",
+      "summary": "351-byte function. Actor remove-from-map. Calls (actor->vftable[0x2c])() to fetch actor_id, then FUN_0071d420(&iter_out, &actor_id) to find the node. Then either: (a) if zone+0x17820 (the 'is_being_destroyed' flag) is 0, calls FUN_004de280(&iter_out, iter_node, ...) - the STL red-black-tree ERASE primitive; OR (b) if flag is 1, soft-deletes via *(iter_node + 0x10) = 0 (clears the actor pointer in the map node value slot) and calls FUN_00813050 on iter_node+0xc. Additionally clears zone+0x17834 ('child slot') if it pointed to this actor, and clears the active-slot via FUN_004d9980(0xc0000000) if applicable. Also calls FUN_00d35b30 to deregister engine-managed class ids (0xC0..0xDF top-byte ids with subtype < 3, mirroring FUN_004d9030 BCS-Y-0533's pattern). 2 callers: FUN_004db6a0 and FUN_0068dd10."
+    },
+    {
+      "va": "0x004da300",
+      "verdict": "active_actor_clear_variant",
+      "summary": "113-byte function. Same shape as FUN_004da280/FUN_004da380."
+    },
+    {
+      "va": "0x004d9110",
+      "verdict": "init_only_calls_factory",
+      "summary": "322-byte function. Calls FUN_004d90c0 (BCS-Y-0531) with various system class ids (0xc0000003..0xc0000007, 0xc000001e, etc.) at init time. Not a map writer - it triggers the create-or-get path which transitively inserts via the actor ctor (FUN_004dab50)."
+    },
+    {
+      "va": "0x006ac9f0",
+      "verdict": "init_calls_factory",
+      "summary": "479-byte function. Calls FUN_004d90c0(8, iVar2) where iVar2 = FUN_004d9ca0(0xc0000040,0xc00000a3) (the next-free class id slot in the 0xc0000040..0xc00000a3 range, see FUN_004d9ca0). Builds zone+0x90 actor lookup ring. Not a direct map writer."
+    },
+    {
+      "va": "0x00774ad0",
+      "verdict": "uses_lookup_only",
+      "summary": "1694-byte function. Calls FUN_004d9910 and FUN_004d90c0 for some Lua-side actor binding. Not a direct map writer."
+    },
+    {
+      "va": "0x004d9ca0",
+      "verdict": "scan_only",
+      "summary": "135-byte function. Walks the actor map at zone+0x17808 (the _Myhead) scanning class ids in [param_2, param_3); returns the first 'free' id (one whose iter_node+0x10 is 0). Read-only over the map."
+    },
+    {
+      "va": "0x004da9a0",
+      "verdict": "MAP_INSERT_WRITER_via_FUN_004de940",
+      "summary": "105-byte function. Sole caller: FUN_004dab50. Reads param_2[0x22] (actor id at +0x88, just stored by ctor), then calls FUN_004de940(local_c, &actor_id) - the _Tree<>::lower_bound helper that conditionally inserts via FUN_004de610 (the red-black-tree insert primitive). The this-pointer (ECX) implicitly carries the zone+0x17804 map base. After insertion, calls (actor->vftable[0x2c])() and conditionally calls (zone->vtable+0x50)(actor_classified_ptr). This IS the actor-into-map insertion."
+    },
+    {
+      "va": "0x004dab50",
+      "verdict": "ROOT_CTOR_TRIGGERS_INSERT",
+      "summary": "194-byte function = Application::Main::RaptureElement::ctor. Sets *param_1=vftable_at_0xf91014, param_1[2]=vftable_at_0xf91138 (secondary RTTI), assigns ctor args to param_1[0x1f..0x23], zeros byte at +0x91 and +0x92 (the alive flags), then calls FUN_004da9a0(param_1) to insert the new actor into the zone's actor map. 22 callers across the actor cluster (FUN_0055d170, FUN_0066eb80, FUN_0055f940, FUN_00534090, FUN_00532f40, FUN_0066f770, FUN_005600b0, FUN_00561190, FUN_0068e680, FUN_00686fb0, FUN_00566880, FUN_0055eb70, FUN_00564f80, FUN_0059ee50, FUN_00688710, FUN_00565170, FUN_0068e4c0, FUN_00566380, FUN_0053af60, FUN_00539890, FUN_0055f8b0, FUN_00687320)."
+    }
+  ],
+  "confirmed_map_writers": [
+    {
+      "va": "0x004dab50",
+      "name": "Application_Main_RaptureElement_ctor",
+      "kind": "constructor_with_map_insert",
+      "writes": "Sets *this=RaptureElement::vftable (0xf91014), *(this+2)=secondary vftable (0xf91138), zeros alive flags at this+0x91/+0x92, then calls FUN_004da9a0 which inserts the new actor into zone+0x17804 map keyed by this->actor_id (stored at this+0x88 = this[0x22]).",
+      "caller_count": 22,
+      "implication": "Single canonical insertion point. All 22 actor-cluster subclass ctors call FUN_004dab50 as the base ctor, so every actor that enters the zone passes through this path."
+    },
+    {
+      "va": "0x004da9a0",
+      "name": "ZoneActorMap_InsertOrFindByActorId",
+      "kind": "stl_tree_insert_helper",
+      "writes": "Calls FUN_004de940(out_iter, &actor_id) which: scans the red-black tree at zone+0x17804..+0x17808 (with header at *(zone+0x17804) and root via *(zone+0x17808)); if actor_id not present, calls FUN_004de610 which allocates a new node via FUN_004ddf20, links it into the tree, updates the tree's leftmost/rightmost pointers, and rebalances colors. Sets out_iter[2] byte = 1 to signal 'inserted new node'.",
+      "caller_count": 1,
+      "implication": "Only called from RaptureElement::ctor. Sole code path for new-actor map insertion."
+    },
+    {
+      "va": "0x004de940",
+      "name": "ZoneActorMap_LowerBoundOrInsert_FUN_004de940",
+      "kind": "stl_tree_lower_bound_with_conditional_insert",
+      "writes": "STL `_Tree<>::lower_bound` style helper. Walks from header[1] via piVar[0]/[2] left/right pointers comparing piVar[3] (the key) against *param_3. If exact match found, returns iter with byte[2]=0 (existing). Otherwise calls FUN_004de610 to insert and returns iter with byte[2]=1 (newly inserted).",
+      "caller_count": 1,
+      "implication": "The 'mid-level' STL helper that decides insert vs find."
+    },
+    {
+      "va": "0x004de610",
+      "name": "ZoneActorMap_RedBlackTreeInsert_FUN_004de610",
+      "kind": "stl_tree_insert_with_rebalance",
+      "writes": "Low-level STL insert. Allocates a new node via FUN_004ddf20 (caller-provided header, key, value). Increments *(map+8) (the size). Links the new node into the tree (header[1]/leftmost or via parent[0]/[2] left/right slots). Then runs the standard red-black-tree rebalance loop (the cVar1 != 0 loop reading parent.color at +0x14, switching between FUN_006ceef0 and FUN_00b9f240 = the LEFT_ROTATE and RIGHT_ROTATE functions). Finally sets header[1].color = 1 (black-root invariant).",
+      "caller_count": 1,
+      "implication": "The actual map mutation primitive. Writes happen at: new_node[1] = parent, new_node[2]/[0] = sentinels (set by FUN_004ddf20), color flags via the rebalance loop, header pointers (+0/+4/+8 of header) when leftmost/rightmost change. Storage layout: each node has +0=left, +4=parent, +8=right, +0xc=key (the actor id), +0x10=value (actor pointer), +0x14=color byte, +0x15=is_nil flag."
+    },
+    {
+      "va": "0x004ddf20",
+      "name": "ZoneActorMapNode_Allocate_FUN_004ddf20",
+      "kind": "stl_tree_node_constructor",
+      "writes": "Allocates a 0x18-byte node (0x20-aligned in some paths per FUN_0044d350 dealloc shape) and initializes its left/right/parent/key/value/color slots. The actor pointer goes to +0x10. NOT YET DECOMPILED in the actor-map-writers pass; inferred from FUN_004de610 usage and FUN_0044d350 dealloc-size constants (0x18 size, 0x20 alignment).",
+      "caller_count": 1,
+      "implication": "Final writer to the node value slot at +0x10. The value WRITTEN is the actor pointer = Application::Main::RaptureElement* (or derived)."
+    },
+    {
+      "va": "0x004dac20",
+      "name": "ZoneActorMap_RemoveByActor",
+      "kind": "destructor_with_map_erase",
+      "writes": "Symmetric remove-from-map. Reads actor's id via actor->vftable[0x2c], does FUN_0071d420(&iter, &actor_id) lookup. If zone+0x17820 (a temp/deferred-cleanup flag) is 0: calls FUN_004de280 (the red-black-tree ERASE primitive) which unlinks the node, rebalances, and frees via FUN_0044d350(node, 0x18, 0x20). Else (deferred path): clears iter_node+0x10 = 0 (soft-delete: leaves node in tree but nulls the actor pointer) and calls FUN_00813050 on iter_node+0xc. Also clears zone+0x17834 if it pointed to this actor and zone+0x17838 (via FUN_004d9980) if it was active.",
+      "caller_count": 2,
+      "implication": "Symmetric to FUN_004dab50/FUN_004da9a0. 2 callers (FUN_004db6a0, FUN_0068dd10). This newly catalogs this as a confirmed map writer."
+    },
+    {
+      "va": "0x004de280",
+      "name": "ZoneActorMap_RedBlackTreeErase_FUN_004de280",
+      "kind": "stl_tree_erase_with_rebalance",
+      "writes": "Low-level STL erase. Detaches param_4 (the node to remove) from the tree by replacing it with its successor or one-child. Updates parent pointers via piVar1/piVar5 fixups. Updates header leftmost/rightmost (param_1+4 +4/+8) when removing the extreme nodes. Runs red-black rebalance loop with FUN_006ceef0 (LEFT_ROTATE) and FUN_00b9f240 (RIGHT_ROTATE). Then calls FUN_0044d350(param_4, 0x18, 0x20) to free the node. Decrements *(map+8) (size). 2 callers: FUN_004de540 (range erase) and FUN_004dac20 (single-element erase)."
+    },
+    {
+      "va": "0x004de540",
+      "name": "ZoneActorMap_RangeErase_FUN_004de540",
+      "kind": "stl_tree_range_erase",
+      "writes": "Erases a range of nodes [param_4, param_6). If the range covers the whole map, calls FUN_004ddad0 (recursive subtree free) and resets header[+4]/[+8] to the header itself, plus *(map+8)=0. Otherwise calls FUN_004de280 in a loop. 3 callers: FUN_004dea70, FUN_004de900, FUN_004dea00."
+    },
+    {
+      "va": "0x004dea70",
+      "name": "ZoneActorMap_DestructorVariant_FUN_004dea70",
+      "kind": "stl_tree_destructor_variant",
+      "writes": "Calls FUN_004de540 to erase ALL nodes in the map (begin..end). Then frees the header node via FUN_0044d350(*(map+4), 0x18, 0x20) and zeros map+4 and map+8. Callers: FUN_004deb50, FUN_004dbaf0, plus 3 Unwind handlers (Unwind@00e5dbdb, Unwind@00e5da04, Unwind@00e5df10). The Unwind callers indicate this is also invoked from C++ exception-unwind paths during zone teardown."
+    },
+    {
+      "va": "0x004de900",
+      "name": "ZoneActorMap_DestructorVariant2_FUN_004de900",
+      "kind": "stl_tree_destructor_variant",
+      "writes": "Same erase-all-then-free shape as FUN_004dea70. Callers: 2 Unwind handlers only (Unwind@00e5dee0, Unwind@00e5deb0)."
+    }
+  ],
+  "rapture_element_vftable": {
+    "vftable_address": "0x00F91014",
+    "secondary_vftable_address": "0x00F91138",
+    "secondary_rtti_role": "Application::Main::RaptureElement secondary base (multiple-inheritance virtual base layout - presence of two vftable slots in the ctor confirms MI)",
+    "slot_resolution_via_DumpVtableSlots": {
+      "slot_0_offset_0x0": { "address": "0x004DEB40", "name": "FUN_004deb40", "role": "destructor" },
+      "slot_1_offset_0x4": { "address": "0x0091C3D0", "name": "FUN_0091c3d0", "role": "isAlive flag-byte getter: `return *(byte*)(this+0x70) & 1`" },
+      "slot_2_offset_0x8": { "address": "0x0091C3E0", "name": "FUN_0091c3e0", "role": "small init helper" },
+      "slot_3_offset_0xc": { "address": "0x0091C3F0", "name": "FUN_0091c3f0", "role": "small helper" },
+      "slot_4_offset_0x10": { "address": "0x0091C4A0", "name": "FUN_0091c4a0", "role": "small helper" },
+      "slot_5_offset_0x14": { "address": "0x0091C4B0", "name": "FUN_0091c4b0", "role": "small helper" },
+      "slot_6_offset_0x18": { "address": "0x0091C4E0", "name": "FUN_0091c4e0", "role": "small helper" },
+      "slot_7_offset_0x1c": { "address": "0x0091C4F0", "name": "FUN_0091c4f0", "role": "small helper" },
+      "slot_8_offset_0x20": { "address": "0x0091C520", "name": "FUN_0091c520", "role": "small helper" },
+      "slot_9_offset_0x24": { "address": "0x0091F6F0", "name": "FUN_0091f6f0", "role": "32-byte function: sets *(this+0x18) = param_1; calls FUN_0091f620; calls FUN_00571bb0(this, 0). NOT a packet handler - this is a 'set context / set parent' hook." },
+      "slot_10_offset_0x28": { "address": "0x0091F6D0", "name": "FUN_0091f6d0", "role": "context-related" },
+      "slot_11_offset_0x2c": { "address": "0x0091C5B0", "name": "FUN_0091c5b0", "role": "trampoline: (this->slot[0x30])()" },
+      "slot_12_offset_0x30": { "address": "0x0091F710", "name": "FUN_0091f710", "role": "context-related" },
+      "slot_13_offset_0x34": { "address": "0x0091D320", "name": "FUN_0091d320", "role": "" },
+      "slot_14_offset_0x38": { "address": "0x0091E3E0", "name": "FUN_0091e3e0", "role": "" },
+      "slot_15_offset_0x3c": { "address": "0x0091C640", "name": "FUN_0091c640", "role": "" }
+    }
+  },
+  "actor_type_inserted": {
+    "type_name": "Application::Main::RaptureElement",
+    "vftable": "0x00F91014",
+    "evidence_chain": [
+      "FUN_004dab50 sets *param_1 = vftable_0xf91014 (the ::vftable symbol resolved to Application::Main::RaptureElement in DumpAddrOperandsInFunc output line 11)",
+      "FUN_004dab50 has 22 callers spanning the actor cluster (0x55XXXX, 0x66XXXX, 0x68XXXX ranges) - this is the base ctor for the actor hierarchy",
+      "FUN_004daf00 (zone teardown) does dynamic_cast against Application::Main::RaptureElement::RTTI_Type_Descriptor AND Application::Main::Element::RelativeElement::RTTI_Type_Descriptor on every map node (confirms both types are valid element values)",
+      "FUN_004dab50 sets *(this+0x91)=0 and *(this+0x92)=0 - matching the 'alive' byte at +0x92 referenced in BCS-Y-0525 case 0xCA AddActor",
+      "FUN_004dab50 calls FUN_004da9a0(this) which inserts the new actor into the map at zone+0x17804 keyed by this[0x22] (actor id at +0x88, stored by ctor 6 instructions earlier)"
+    ],
+    "type_hierarchy_observation": "RaptureElement is the base. RelativeElement (per RTTI evidence from FUN_004daf00) is one derived subtype. The 22 ctor-callers in FUN_004dab50's caller list span multiple game subsystems (likely Inventory/Equipment/Party/Battle/Linkshell etc.) - each calls FUN_004dab50 with derived-class-specific args 2/3/4."
+  },
+  "stl_map_structure": {
+    "container_base": "zone + 0x17804 (the _Tree<> object)",
+    "field_layout": {
+      "0x17804 + 0x00": "header pointer (sentinel node)",
+      "0x17804 + 0x04": "_Myhead (header)[+4] = root via header[+4]; the live root of the tree is *(*(0x17804+4)+4)",
+      "0x17804 + 0x08": "_Mysize (size_t count) - read at 'iVar1 = *(zone + 0x17808)' shape in lookup",
+      "0x1780c": "the _Tree<>::_Myalloc or auxiliary array (resized via FUN_004de800 during teardown)"
+    },
+    "node_layout": {
+      "+0x00": "_Left pointer",
+      "+0x04": "_Parent pointer",
+      "+0x08": "_Right pointer",
+      "+0x0c": "_Myval first (= the key = actor id, 4 bytes)",
+      "+0x10": "_Myval second (= the value = actor pointer to Application::Main::RaptureElement*)",
+      "+0x14": "_Color (red=0, black=1)",
+      "+0x15": "_Isnil byte (header sentinel marker)"
+    },
+    "node_size_bytes": "0x18 (verified by FUN_0044d350 dealloc args: 0x18 size, 0x20 alignment)"
+  },
+  "resolution_of_prior_question": "partial",
+  "resolution_explanation": "The actor-vtable9-bulk pass left open: 'where does the Actor cluster processing actually happen for 0xCC..0xE5 if not in vftable[9] of any cataloged actor class?' This directly identifies the actor type stored in the zone+0x17804 map: Application::Main::RaptureElement. Its full vftable[0..15] has been dumped. Slot 9 = FUN_0091F6F0 is a 32-byte 'set context/parent' hook that calls FUN_0091F620 and FUN_00571BB0(this, 0) - NOT a packet handler. So the empirical refutation from the actor-vtable9-bulk pass EXTENDS to RaptureElement as well: the base class slot 9 is not an opcode dispatcher. HOWEVER: this reveals the RaptureElement class hierarchy is INVISIBLE to the actor-vtable9-bulk pass's RTTI scan because that scan searched for class names containing 'Actor' (e.g. SceneObject::Actor, ::Actor descendants). RaptureElement is the engine's PARALLEL actor-like hierarchy living under Application::Main::Element rather than Application::Scene::Actor. The 22 derived classes (the 22 callers of FUN_004dab50) likely override slot 9 differently. So the actor-vtable9-bulk pass's negative result for the SQEX SceneObject side is correct, but a complementary FUN_004D9910 callers-map pass should drill the 22 RaptureElement subclasses' slot 9 implementations - that's where the actual Actor cluster processing logic likely lives. This therefore PARTIALLY RESOLVES the open question from the actor-vtable9-bulk pass: it identifies the right class hierarchy to investigate, but base-class slot 9 still shows no opcode dispatch. The 22 derived subclasses remain unenumerated.",
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0539",
+      "name": "Application_Main_RaptureElement_ctor_FUN_004dab50",
+      "address": "0x004DAB50",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Base constructor for Application::Main::RaptureElement. Sets *this=vftable_0xf91014 and *(this+2)=secondary_vftable_0xf91138 (multiple-inheritance layout). Stores ctor args at this+0x1f..0x23, zeros alive flags at this+0x91/+0x92 (the byte referenced as 'alive' in BCS-Y-0525 case 0xCA AddActor). Calls FUN_004da9a0(this) which inserts the new actor into the zone+0x17804 map keyed by actor_id at this+0x88. 22 callers spanning the actor cluster (the derived-class ctors). DIRECTLY RESOLVES the question 'what type lives in the actor map' - the answer is RaptureElement (and 22 derived subtypes)."
+    },
+    {
+      "id": "BCS-Y-0540",
+      "name": "ZoneActorMap_InsertOrFindByActorId_FUN_004da9a0",
+      "address": "0x004DA9A0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Actor-into-map insertion helper. Called only from FUN_004dab50 (BCS-Y-0539 RaptureElement::ctor). Reads actor_id from this[0x22] and calls FUN_004de940(out_iter, &actor_id) - the STL lower_bound-with-conditional-insert. After insert, calls actor->vtable[0x2c] and conditionally (zone->vtable+0x50)(uVar2) for class-registry registration. The this-pointer (ECX) carries the zone+0x17804 map base implicitly."
+    },
+    {
+      "id": "BCS-Y-0541",
+      "name": "ZoneActorMap_LowerBoundOrInsert_FUN_004de940",
+      "address": "0x004DE940",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "STL `_Tree<>::lower_bound` with optional insert. Walks the tree at *(map+4) descending via piVar[0]/[2] comparing key against piVar[3]. If found, returns iter[2]=0; else calls FUN_004de610 (BCS-Y-0542) and returns iter[2]=1. Sole caller: FUN_004da9a0 (BCS-Y-0540)."
+    },
+    {
+      "id": "BCS-Y-0542",
+      "name": "ZoneActorMap_RedBlackTreeInsert_FUN_004de610",
+      "address": "0x004DE610",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "STL red-black-tree insert primitive. Allocates a new node via FUN_004ddf20, links into the tree, rebalances colors via FUN_006ceef0 (LEFT_ROTATE) and FUN_00b9f240 (RIGHT_ROTATE). Map size at *(map+8) incremented. Sole caller: FUN_004de940. This is where new RaptureElement* values land at node+0x10."
+    },
+    {
+      "id": "BCS-Y-0543",
+      "name": "ZoneActorMap_RemoveByActor_FUN_004dac20",
+      "address": "0x004DAC20",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Actor-from-map removal. Looks up actor via FUN_0071d420(&iter, &actor_id), then either erases via FUN_004de280 (BCS-Y-0544) if zone+0x17820 flag is 0, or soft-deletes via *(iter_node+0x10)=0 if flag is 1 (deferred-cleanup path). Also clears zone+0x17834 (child slot) and zone+0x17838 (active actor via FUN_004d9980) if applicable. Calls FUN_00d35b30 to deregister engine-managed class ids matching the 0xC0..0xDF top-byte pattern (mirroring BCS-Y-0533 validation). 2 callers: FUN_004db6a0, FUN_0068dd10."
+    },
+    {
+      "id": "BCS-Y-0544",
+      "name": "ZoneActorMap_RedBlackTreeErase_FUN_004de280",
+      "address": "0x004DE280",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "STL red-black-tree erase primitive. Unlinks param_4 from the tree, rebalances, frees via FUN_0044d350(node, 0x18, 0x20). Map size *(map+8) decremented. 2 callers: FUN_004de540 (range erase), FUN_004dac20 (single-element erase BCS-Y-0543)."
+    },
+    {
+      "id": "BCS-Y-0545",
+      "name": "ZoneActorMap_NodeLayout_BCS_S",
+      "address": "0x004DE610",
+      "kind": "struct_layout",
+      "confidence": "confirmed",
+      "summary": "Red-black tree node layout for the zone actor map: +0x00 left, +0x04 parent, +0x08 right, +0x0c key (actor id, dword), +0x10 value (Application::Main::RaptureElement*), +0x14 color byte, +0x15 is_nil byte. Total size 0x18, alignment 0x20. Inferred from FUN_004de280/FUN_004de610 read/write patterns and FUN_0044d350 dealloc args. Worth promoting to a BCS-S struct entry."
+    },
+    {
+      "id": "BCS-Y-0546",
+      "name": "Application_Main_RaptureElement_vftable",
+      "address": "0x00F91014",
+      "kind": "vtable",
+      "confidence": "confirmed",
+      "summary": "Application::Main::RaptureElement vftable, 16 slots resolved. Slot 0 (dtor) = FUN_004deb40; Slot 1 (isAlive) = FUN_0091c3d0; Slot 9 (offset 0x24) = FUN_0091f6f0 (NOT a packet handler - 32-byte 'set context/parent' hook). Full slot 0..15 map cataloged in actor_map_writers.json manifest.actor_vtable_dump. Resolves the open question of WHAT type lives in the zone actor map: it's RaptureElement (and 22 derived subtypes). Secondary vftable at 0x00F91138 indicates multiple-inheritance virtual base layout."
+    }
+  ],
+  "key_findings": [
+    {
+      "title": "The zone actor map stores Application::Main::RaptureElement*, not SQEX SceneObject::Actor*",
+      "detail": "The actor-vtable9-bulk pass exhaustively searched the SceneObject::Actor RTTI hierarchy (95 classes) for an opcode-dispatching vftable[9] and found none. This reveals this is because the actor type in the zone map is a DIFFERENT class hierarchy: Application::Main::RaptureElement, rooted at vftable 0x00F91014. This is the engine's element-management hierarchy (Application::Main namespace) rather than the scene-graph (Application::Scene::Actor namespace). Direct RTTI evidence comes from FUN_004daf00's dynamic_cast calls against both Application::Main::RaptureElement::RTTI_Type_Descriptor and Application::Main::Element::RelativeElement::RTTI_Type_Descriptor. The 22 derived subclasses (the 22 callers of the base ctor FUN_004dab50) span 0x55XXXX/0x66XXXX/0x68XXXX VA ranges, suggesting one per major game subsystem.",
+      "implication": "The actor-vtable9-bulk pass's 'no actor class has a real slot 9' finding is correct but framed against the wrong hierarchy. The real question of where the Actor cluster opcodes are processed shifts to: 'do any of the 22 RaptureElement subclasses override slot 9 with a real opcode dispatcher?' FUN_004D9910 callers-map pass candidate work."
+    },
+    {
+      "title": "Exactly one insertion path: FUN_004dab50 (RaptureElement::ctor) -> FUN_004da9a0 -> FUN_004de940 -> FUN_004de610 -> FUN_004ddf20",
+      "detail": "There is no alternative insertion path. Every actor that enters the zone map goes through the RaptureElement ctor. FUN_004da9a0 is the single caller-of-FUN_004de940 reachable from the actor-creation chain; FUN_004de940 is the single caller of FUN_004de610. No other function in the binary writes new nodes to the zone+0x17804 tree.",
+      "implication": "The actor map's contents are exactly the live set of RaptureElement instances. Any 'AddActor' opcode (0xCA per BCS-Y-0525) eventually triggers a derived ctor which calls FUN_004dab50; the actor is inserted with key=class_id at value=this. The lookup BCS-Y-0534 FUN_004d9910 then returns this RaptureElement* on subsequent opcodes."
+    },
+    {
+      "title": "Three erasure paths exist, gated by zone+0x17820 'is_being_destroyed' flag and zone teardown",
+      "detail": "Single-element erase: FUN_004dac20 (BCS-Y-0543) - either hard-erase (FUN_004de280) or soft-erase (*(iter+0x10)=0). Range erase: FUN_004de540 / FUN_004de900 / FUN_004dea70 - for zone-wide teardown. The soft-erase path leaves the map node IN the tree with a null value - which means lookups via FUN_004d9910 (BCS-Y-0534) can return 0 (the function explicitly checks `if (local_4 == *(int *)(local_8 + 4)) FUN_009d22b4()` and returns *(local_4 + 0x10) which would be 0 for soft-deleted nodes). FUN_004d9ca0 (BCS-Y-0540's sibling, the next-free-id scanner) explicitly walks the tree checking for *(iter+0x10)==0 to find recyclable slots.",
+      "implication": "Map nodes can outlive the actors they pointed to. Slot 9 dispatch via the BCS-Y-0527 generic fallthrough COULD hit a soft-deleted node and would then call vftable[9] on a null pointer - but the actual code does `actor = FUN_004d9910(packet_id); if (actor) actor->vftable[9](zone_state)` (per actor_cluster_dispatch_model.json line 759, wrapped in an if-check), so the null case is gracefully skipped."
+    },
+    {
+      "title": "FUN_004d9980 (case-2 sibling) is a SINGLETON slot maintenance helper, not a map writer",
+      "detail": "Prior evidence hinted FUN_004d9980 was 'a sibling of FUN_004d90c0'. This confirms it does NOT write to the map - it maintains the zone+0x17838/+0x1783c/+0x17840 'active actor' singleton slots. The previous-active-actor pointer goes to +0x17840, the new-active-id to +0x1783c, and the new-active-actor-pointer to +0x17838 (computed via FUN_004d9910 lookup). Sentinel id 0xc0000000 clears all three slots.",
+      "implication": "These three singleton slots are the 'currently selected/active actor' state that BCS-Y-0531's case-2 dispatch path operates on, NOT the map itself. The map and the singleton are independent state - the map holds all actors, the singletons hold the active one."
+    },
+    {
+      "title": "The actor map's STL tree uses a 0x18-byte node, NOT the 0x24-byte std::map<int,int>::node_type the actor-factory-drill pass implicitly assumed",
+      "detail": "FUN_004de280 (erase) and FUN_004de610 (insert) both call FUN_0044d350 (the deallocator) with constants (0x18, 0x20) which match std::map<dword,dword>::value_type node size. Node layout: +0x00 left, +0x04 parent, +0x08 right, +0x0c key, +0x10 value, +0x14 color, +0x15 is_nil. This is `std::map<uint32_t,RaptureElement*>::value_type` (key+value 8 bytes, plus 16 bytes of tree metadata = 0x18 = 24 bytes).",
+      "implication": "Worth promoting to a BCS-S struct entry. Future map-walker code in subsequent phases can reference this layout directly."
+    }
+  ],
+  "open_questions": [
+    {
+      "q": "Do any of the 22 RaptureElement-derived subclasses override slot 9 (offset 0x24) with a real opcode dispatcher?",
+      "approach": "FUN_004D9910 callers-map pass candidate work. Enumerate the 22 callers of FUN_004dab50, for each identify the derived class vftable (probably set by the caller itself BEFORE calling the base ctor), then bulk-dump slot 9 across all 22 vftables via DumpVtableSlots.java. Compare against the base FUN_0091F6F0 - any deviation is a candidate handler. Test for switch-on-opcode patterns or 0xCC..0xE5 immediate comparisons in the deviating implementations."
+    },
+    {
+      "q": "Is RTTI for Application::Main::RaptureElement and its 22 derived subtypes actually present in the binary, or is it stripped?",
+      "approach": "FUN_004daf00's dynamic_cast usage proves RTTI exists for at least RaptureElement and RelativeElement. The FUN_004D9910 callers-map pass could grep for 'Application::Main::*::RTTI_Type_Descriptor' to enumerate. If all 22 are RTTI-named, that step becomes mechanical."
+    },
+    {
+      "q": "What is FUN_004ddf20 (the node-allocator)?",
+      "approach": "This inferred its role from FUN_004de610 usage but did not decompile. One-shot decomp would confirm the node's actor-pointer goes to +0x10 of the allocated block and verify the 0x18-byte size."
+    }
+  ],
+  "evidence_paths": [
+    "%BCS_GHIDRA_PROJECTS%/candidates_decomp.txt (18 candidate decomps, 2529 lines)",
+    "%BCS_GHIDRA_PROJECTS%/inserter_decomp.txt (9 helper decomps including FUN_004da9a0 insertion path)",
+    "%BCS_GHIDRA_PROJECTS%/stl_decomp.txt (9 STL primitive decomps including FUN_004de610 insert, FUN_004de540 range erase)",
+    "%BCS_GHIDRA_PROJECTS%/raptureelement_vtable.txt (16-slot vtable dump for Application::Main::RaptureElement, vftable @0xF91014)",
+    "%BCS_GHIDRA_PROJECTS%/slot9_decomp.txt (FUN_0091F6F0 slot-9 impl + 4 other slot decomps)",
+    "%BCS_GHIDRA_PROJECTS%/addr_ops.txt (DumpAddrOperandsInFunc on FUN_004dab50, FUN_004da9a0, FUN_004dac20, FUN_004dc690 - confirms vftable assignment at 0x004dab9d MOV -> 0x00f91138, 0x004daba3 MOV -> 0x00f91014)",
+    "%BCS_GHIDRA_PROJECTS%/offset_writers.txt (FindOffsetWriters scan for displacement constants 0x17804/0x17808/0x1780c - returned only 2 unwind hits, validates that the offset usage pattern is encoded via compound LEA/MOV rather than free scalar operands)"
+  ],
+  "new_ghidra_scripts": [
+    {
+      "path": "<ghidra-scripts>/FindOffsetWriters.java",
+      "purpose": "Scans every instruction for displacement-scalar references matching IMPLEMENTATION_OFFSET_QUERY (comma-separated hex offsets), with a minimum threshold BAHAMUT_MIN_OFFSET to filter out stack locals. Reports VA, containing function, and instruction text per hit. This approach misses compiler-generated [reg+offset] addressing when the offset appears in a SIB byte rather than a separate scalar operand. Covering those cases requires walking PCodeOp.LOAD/STORE addresses."
+    }
+  ]
+}

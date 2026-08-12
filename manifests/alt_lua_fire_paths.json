@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Alternate Lua fire mechanisms survey. Closes the 'is the inventory complete?' question. **Result: the fire-site inventory is incomplete**. At minimum 1 fire site (FUN_00708FC0 `_onCommand`) exists outside the FUN_00CC7A90 (BCS-Y-0399) caller set, using ALTERNATE dispatcher FUN_00CD25C0. Plus a separate SCHEDULED DISPATCH path via FUN_00CF6080 (queue iterator) -> FUN_00CF5EC0 (scheduled entry) -> FUN_00CCF7D0 (shared dispatch core). Lua C API symbols (lua_pcall, lua_call, lua_resume) are stripped from the binary (statically linked, inlined).",
+  "method": {
+    "step1": "Searched symbol table for Lua C API names (lua_pcall, lua_call, lua_resume, lua_cpcall). ZERO matches - binary is stripped. Lua library statically linked + inlined.",
+    "step2": "Identified all callers of FUN_00CCF7D0 (the shared dispatch core used by FUN_00CC7A90). 20 callers total; 3 are DISPATCHER-EXTERNAL (FUN_00CC7A90 + FUN_00CD25C0 + FUN_00CF5EC0), the rest are internal helpers/recursion within the dispatch chain.",
+    "step3": "Decompiled FUN_00CD25C0 (39 bytes): same pattern as FUN_00CC7A90 but SKIPS the initial FUN_00CF0910 call - calls FUN_00CD7A30(param_1) then FUN_00CCF7D0(uVar1, param_2, param_3). Sole caller FUN_00708FC0.",
+    "step4": "Decompiled FUN_00708FC0 (1259 bytes): CONFIRMED Lua fire site - fires `_onCommand` via the alternate dispatcher at line 213-215 of decomp. Complex command-handling logic with 4 routing branches (FUN_0078B910/9B0/BA50/BAF0 for different command builders), terminates in FUN_00447260(\"_onCommand\") + FUN_00CD25C0.",
+    "step5": "Decompiled FUN_00CF5EC0 (433 bytes): complex Lua dispatch with extensive setup (string ctor + class-flag checks at +0x7d/+0x7f). Calls FUN_00CCF7D0 with a static event-id (*param_1 + 0x128) rather than a string-literal event name. NOT a synchronous fire site pattern.",
+    "step6": "Decompiled FUN_00CF6080 (856 bytes, sole caller of FUN_00CF5EC0): timer/event-loop pattern. Uses __aulldiv for microsecond-to-millisecond time conversion, iterates a queue structure, calls FUN_00CF5EC0 on each entry. This is a SCHEDULED CALLBACK DISPATCHER - delayed/timed Lua callbacks fired from a queue.",
+    "step7": "Verified FUN_00CC7A00/A20 (called by FUN_00708FC0 in 4 branches) are NOT dispatchers - they're CLASS-TABLE LOOKUPS via [[LuaClassTable_find_or_create_FUN_00CD8870]] (BCS-Y-1670): FUN_00CC7A00 calls with create-flag=1, FUN_00CC7A20 with create-flag=0, both return `*entry_ptr` (first field of class entry).",
+    "step8": "Catalog 6 new BCS-Y entries (4 dispatch/fire-related + 2 class-table lookup wrappers) + 3 amendments to BCS-Y-0399 (incomplete inventory + alternate dispatchers), BCS-Y-1581 (alt dispatcher cross-link), BCS-Y-1670 (lookup-wrapper cross-link)."
+  },
+  "key_findings": [
+    "**Lua C API symbols stripped**: ZERO matches for `lua_pcall`, `lua_call`, `lua_resume`, `lua_cpcall` in the symbol table. Lua library statically linked + inlined; cannot trace Lua calls via symbol names.",
+    "**INVENTORY IS INCOMPLETE**: at minimum 1 additional Lua fire site exists outside the FUN_00CC7A90 caller set. [[LuaFireSite_onCommand_via_alt_dispatcher_FUN_00708FC0]] (BCS-Y-1688 NEW, 1259 body bytes) fires `_onCommand` via [[LuaCallbackDispatcher_alternate_synchronous_FUN_00CD25C0]] (BCS-Y-1685 NEW, 39 body bytes) - NOT cataloged in the 79-site inventory because it used FUN_00CC7A90's caller set as the enumeration source.",
+    "**TWO alternate dispatchers found** at the FUN_00CCF7D0 entry: (1) [[LuaCallbackDispatcher_alternate_synchronous_FUN_00CD25C0]] - 39 bytes, simpler synchronous variant of BCS-Y-0399 (skips FUN_00CF0910 setup); (2) [[LuaScheduledDispatch_entry_FUN_00CF5EC0]] - 433 bytes, complex SCHEDULED dispatch (called from queue iterator FUN_00CF6080, not synchronously from fire sites).",
+    "**SCHEDULED CALLBACK DISPATCH PATH**: [[LuaScheduledDispatch_scheduler_FUN_00CF6080]] (BCS-Y-1687 NEW, 856 bytes, sole caller FUN_00CF63E0) is a timer-driven scheduler. Uses __aulldiv to convert microsecond timestamps to milliseconds. Iterates a queue (via std::map-like tree traversal with red-black-tree node lookup pattern), calls FUN_00CF5EC0 on each entry that matches the time threshold. Represents an entire SEPARATE Lua dispatch surface (delayed/timed callbacks) distinct from the synchronous fire mechanism.",
+    "**FUN_00CC7A00/A20 are NOT dispatchers**: they are CLASS-TABLE LOOKUP WRAPPERS around [[LuaClassTable_find_or_create_FUN_00CD8870]] (BCS-Y-1670). FUN_00CC7A00 (26 bytes) calls with create-flag=1 ([[LuaClassTableLookup_with_create_FUN_00CC7A00]] BCS-Y-1689 NEW); FUN_00CC7A20 (26 bytes) calls with create-flag=0 ([[LuaClassTableLookup_find_only_FUN_00CC7A20]] BCS-Y-1690 NEW). Both return `*puVar1` (the first field of the class-table entry). Used by various fire-site functions for class-name -> class-entry resolution.",
+    "**THREE DISTINCT Lua dispatch surfaces identified** in the binary: (1) PRIMARY synchronous fires via FUN_00CC7A90 (BCS-Y-0399, 79 fire sites per inventory); (2) ALTERNATE synchronous fires via FUN_00CD25C0 (BCS-Y-1685, at least 1 fire site `_onCommand` via FUN_00708FC0, possibly more); (3) SCHEDULED dispatches via FUN_00CF6080 -> FUN_00CF5EC0 (queue-driven delayed callbacks). All three share the dispatch core FUN_00CCF7D0.",
+    "**FUN_00CCCD80 is INTERNAL to dispatch, not a fire site**: 528 bytes, called only by FUN_00CCF7D0 (dispatch core) + FUN_00CCF9B0. Contains a FUN_00447260 call but with `&DAT_0110e388` (a data reference, not a string literal), so it does NOT match the fire-site signature (literal event name + dispatcher pattern). Likely an internal error/exception path within the dispatch chain.",
+    "**should be updated to reflect alternate dispatchers**: BCS-Y-0399 amended to note (a) it is the PRIMARY but not ONLY dispatcher; (b) FUN_00CD25C0 + FUN_00CF5EC0 are siblings; (c) the 79-site inventory undercounts the true fire-site total by at least 1 (FUN_00708FC0). Full re-survey to enumerate ALL fire sites would require a broader scan beyond FUN_00CC7A90's caller set."
+  ],
+  "new_bcsy_entries_summary": {
+    "alternate_dispatchers_new": 2,
+    "scheduled_dispatch_new": 2,
+    "alternate_fire_site_new": 1,
+    "class_table_lookup_wrappers_new": 2,
+    "amendments": 3,
+    "total_bcsy_added": 6,
+    "id_range": "BCS-Y-1685..BCS-Y-1690",
+    "amendment_targets": [
+      "BCS-Y-0399 (LuaCallbackDispatcher FUN_00CC7A90) - alternate dispatcher discovery + inventory completeness correction",
+      "BCS-Y-1581 (FUN_00CD7A30) - alternate dispatcher cross-link (FUN_00CD25C0 uses same +0x1bc lookup)",
+      "BCS-Y-1670 (FUN_00CD8870 class table) - lookup wrapper cross-link (FUN_00CC7A00/A20)"
+    ]
+  },
+  "deferred_followups": [
+    "Full re-survey of ALL Lua fire sites: enumerate callers of FUN_00CD25C0 (currently only FUN_00708FC0 known) AND FUN_00CF5EC0 (via FUN_00CF6080 queue) to find any additional fire sites missed earlier.",
+    "Decomp FUN_00CF63E0 (the sole caller of scheduler FUN_00CF6080) to identify what triggers the scheduled-dispatch tick. Likely a per-frame or per-tick callback from the game loop.",
+    "Decomp FUN_00708FC0 fully to identify the command-routing branches (FUN_0078B910/9B0/BA50/BAF0 + FUN_0078FAB0 etc.) - each branch may correspond to a different command type that gets routed differently before the final `_onCommand` fire.",
+    "Cross-check the 30+ classes registered in the bootstrap (BCS-Y-0398) against the class-table lookup wrappers FUN_00CC7A00/A20 to confirm the registry is populated correctly.",
+    "Investigate FUN_00CCCD80 + FUN_00CCF9B0 - both touch the dispatch chain but are not external fire sites. May reveal internal Lua error-handling/exception paths.",
+    "Map the scheduled-dispatch queue structure: FUN_00CF6080's queue iteration uses tree-node navigation (offsets +0x29 'leaf' flag, +0x4 'left', +0x7 'right', +0x8 'count' patterns). Likely a std::map<timestamp, callback>. Decomp the queue-add function to understand what callbacks get scheduled."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1671 -> 1677 (+6 BCS-Y; BCS-Y-1685..1690)",
+  "files_changed": [
+    "manifests/symbols.json: +6 entries, 3 amendments",
+    "manifests/alt_lua_fire_paths.json (NEW, this file)",
+    "tools/ghidra/logs/c98_lua_pcall.txt + c98_lua_call.txt + c98_lua_resume.txt + c98_lua_cpcall.txt (NEW - Lua API symbol search, 0 matches)",
+    "tools/ghidra/logs/c98_alt_dispatchers.txt (NEW - dispatcher candidates decomp)",
+    "tools/ghidra/logs/c98_alt_caller_check.txt (NEW - alt-dispatcher callers)",
+    "tools/ghidra/logs/c98_more_dispatchers.txt (NEW - lookup wrappers + scheduler caller)",
+    "tools/extractors/append_alt_lua_fire_paths.py (NEW)"
+  ]
+}

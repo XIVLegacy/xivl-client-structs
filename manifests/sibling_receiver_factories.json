@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_pattern_variants",
+  "scope": "Decomp the 16 sibling Receiver factory functions that call FUN_0076A3F0 (BCS-Y-1337 ReceiverStateCache_LazyGet) to identify each Receiver class + fast-path cache offset. Closes the manifest deferred_followups[0]. RESULT: 16 new BCS-Y entries cataloged with 6 known Receiver classes (AchievementPoint, AchievementTitle, JobChange, ChangeActorExtraStat, ChangeActorSubStatModeBorder, ChangeActorSubStatStatus) + 10 TBD-class entries. 6 distinct hybrid-factory pattern variants surfaced.",
+  "method": {
+    "step1": "Ghidra DumpFunctionDecomp on all 16 VAs via run_c61_factories.bat (single batch). Log: tools/ghidra/logs/c61_sibling_factories_decomp.txt (1165 lines).",
+    "step2": "Categorize each factory by pattern: (a) canonical hybrid (8 entries), (b) inverted hybrid with param_2!=0 outer guard (2 entries), (c) +0x52-gated variant (2 entries), (d) cache-only direct-write (1 entry), (e) cache-ensure-then-forward stub (2 entries), (f) complex EventFamily-dispatch wrapper (1 entry).",
+    "step3": "Identify slow-path ctor VAs via the slow-path call target. Cross-reference against existing BCS-Y catalog: 6 of 16 ctor VAs match known Receiver classes (BCS-Y-0082/0085/0098/0118/0121/0124); 10 ctors are uncataloged.",
+    "step4": "Catalog 16 new BCS-Y entries (BCS-Y-1338..1353) via c61_add_entries.py. Amend BCS-Y-1337 with backlinks to all 16. Amend BCS-Y-1145 (VehicleGrade canonical hybrid) with sibling-cluster cross-reference. Amend the 6 known Receiver ctors with forward-links to their hybrid factories."
+  },
+  "key_findings": [
+    "**The Receiver hybrid factory pattern resolves into 6 architectural variants**, not just the single canonical shape BCS-Y-1145 demonstrated. Variants observed: (a) canonical hybrid (8/16 - gated on container+0x50, fast-path direct cache write at +offset, slow-path alloc+ctor with cleanup); (b) inverted hybrid (2/16 - outer param_2!=0 guard added); (c) +0x52-gated variant (2/16 - uses a second flag at +0x52 layered atop +0x50, with queue-aware slow-path allocation); (d) cache-only direct-write (1/16 - no slow-path, no flag check, always fast-path); (e) cache-ensure-then-forward stub (2/16 - ensures cache exists, then forwards to a secondary on the container itself, not cache); (f) complex EventFamily-dispatch wrapper (1/16 - 1694B, wraps a canonical hybrid in RTTI checks + name-buffer marshaling, fans out from EventFamily case 0xCC).",
+    "**6 of 16 hybrid factories now resolve to known Receiver classes**: AchievementPoint (BCS-Y-1342 -> BCS-Y-0085), AchievementTitle (BCS-Y-1343 -> BCS-Y-0082), JobChange (BCS-Y-1344 -> BCS-Y-0098), ChangeActorExtraStat (BCS-Y-1346 -> BCS-Y-0118), ChangeActorSubStatModeBorder (BCS-Y-1347 -> BCS-Y-0121), ChangeActorSubStatStatus (BCS-Y-1348 -> BCS-Y-0124). Each Receiver class now has a 2-layer factory surface: (a) heap-factory simple shape if applicable (e.g. BCS-Y-1144 AchievementId), (b) hybrid factory with fast-path optimization via the shared state cache (the 16-entry cluster).",
+    "**Cache field layout emerging**: 0xCC=204-byte ReceiverStateCache holds inline state mirrors at observed offsets: +0x44 (AchievementPoint dword), +0x48 (AchievementTitle dword), +0x50 (ChangeActorExtraStat dword), +0xB5 (ChangeActorSubStatModeBorder char), +0xB7 (TBD byte), +0xB8 (VehicleGrade byte per BCS-Y-1145), +0xB9 (TBD byte), +0xBC (TBD dword), +0xC0..0xC9 (10 bytes for ~7-8 different Receivers), +0xC1 (TBD byte), +0xC2..0xC5 (4 bytes TBD), +0xC6 (JobChange byte), +0xC7..0xC8 (TBD 2 bytes), +0xC9 (TBD byte). Closes ~14 of 18 expected cache fields - the remaining 4 are NullActorImpl slot 49 (BCS-Y-1118) which is at a non-cached path + the 2 cache-ensure stubs (which don't write to cache directly) + the complex variant.",
+    "**The +0x52 secondary gate flag is a NEW architectural finding**. Two factories (BCS-Y-1348 ChangeActorSubStatStatus + BCS-Y-1349 NamesArray) use container[+0x52] as an outer no-op guard layered atop the +0x50 fast/slow-path gate. Combined with BCS-Y-1346/1347's outer param_2!=0 guard, this reveals the container struct has at least 2 mode-flag bytes (+0x50 immediate-vs-queued, +0x52 enabled-vs-disabled) plus per-receiver-specific input gates. Later work (Z option) could decomp the container ctor to map all the +0x4X..0x5X mode-flag fields.",
+    "**The 2 cache-ensure stubs (BCS-Y-1351 + BCS-Y-1352) reveal a different use of the lazy-init helper**. Their bodies discard the cache return value and forward to FUN_007846F0 / FUN_00784760 with the container itself (not cache). The cache-init call is a side-effect to guarantee cache exists when the secondary touches related state. This is a third architectural mode (alongside direct cache write + receiver alloc) where the cache is initialized lazily for other code-paths that depend on its presence.",
+    "**The EventFamily case 0xCC factory (BCS-Y-1353) is the only factory with a direct instruction-level caller** (BCS-Y-0588 EventFamilyDispatcher_Case0xCC). The other 15 are reached via function-pointer table dispatch (vftable_A/vftable_B per evidence). BCS-Y-1353 wraps a BCS-Y-1349-shape body in RTTI-gated dispatch context - it's the only factory whose architecture includes an outer-level RTTI verification step. Suggests this is the actor-near-broadcast variant (e.g. 'change-class' or 'change-name' broadcasts to nearby actors), where the dispatcher must verify the target actor type before applying."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1338", "name": "ReceiverHybridFactory_3byteCacheWrite_FUN_0076CB40", "addr": "0x0076CB40", "variant": "canonical_hybrid", "fast_write": "3 bytes at cache +0xB9/+0xBC/+0xC0", "ctor": "FUN_008A2E70 (uncataloged)"},
+    {"id": "BCS-Y-1339", "name": "ReceiverHybridFactory_byte0xB7_FUN_0076CC30", "addr": "0x0076CC30", "variant": "canonical_hybrid", "fast_write": "1 byte at cache+0xB7", "ctor": "FUN_008A2F70 (uncataloged)"},
+    {"id": "BCS-Y-1340", "name": "ReceiverHybridFactory_byte0xC1_FUN_0076CD00", "addr": "0x0076CD00", "variant": "canonical_hybrid", "fast_write": "1 byte at cache+0xC1", "ctor": "FUN_008A3050 (uncataloged)"},
+    {"id": "BCS-Y-1341", "name": "ReceiverHybridFactory_4byteCacheWrite_FUN_0076CEA0", "addr": "0x0076CEA0", "variant": "canonical_hybrid", "fast_write": "4 bytes at cache +0xC2..0xC5", "ctor": "FUN_0089CC90 (uncataloged)"},
+    {"id": "BCS-Y-1342", "name": "AchievementPointReceiver_HybridFactory_FUN_0076D010", "addr": "0x0076D010", "variant": "canonical_hybrid", "fast_write": "dword at cache+0x44", "ctor": "BCS-Y-0085 AchievementPointReceiver::ctor"},
+    {"id": "BCS-Y-1343", "name": "AchievementTitleReceiver_HybridFactory_FUN_0076D0E0", "addr": "0x0076D0E0", "variant": "canonical_hybrid", "fast_write": "dword at cache+0x48", "ctor": "BCS-Y-0082 AchievementTitleReceiver::ctor"},
+    {"id": "BCS-Y-1344", "name": "JobChangeReceiver_HybridFactory_FUN_0076D1B0", "addr": "0x0076D1B0", "variant": "canonical_hybrid", "fast_write": "byte at cache+0xC6", "ctor": "BCS-Y-0098 JobChangeReceiver::ctor"},
+    {"id": "BCS-Y-1345", "name": "ReceiverHybridFactory_byte0xC9_FUN_0076D540", "addr": "0x0076D540", "variant": "canonical_hybrid", "fast_write": "byte at cache+0xC9", "ctor": "FUN_0089CBC0 (uncataloged)"},
+    {"id": "BCS-Y-1346", "name": "ChangeActorExtraStatReceiver_HybridFactory_FUN_0076D2B0", "addr": "0x0076D2B0", "variant": "inverted_hybrid", "fast_write": "dword at cache+0x50", "ctor": "BCS-Y-0118 ChangeActorExtraStatReceiver::ctor"},
+    {"id": "BCS-Y-1347", "name": "ChangeActorSubStatModeBorderReceiver_HybridFactory_FUN_0076D380", "addr": "0x0076D380", "variant": "inverted_hybrid", "fast_write": "char at cache+0xB5", "ctor": "BCS-Y-0121 ChangeActorSubStatModeBorderReceiver::ctor"},
+    {"id": "BCS-Y-1348", "name": "ChangeActorSubStatStatusReceiver_HybridFactory_FUN_0076D450", "addr": "0x0076D450", "variant": "plus_0x52_gate_with_queue", "fast_write": "calls FUN_00767870 secondary", "ctor": "BCS-Y-0124 ChangeActorSubStatStatusReceiver::apply"},
+    {"id": "BCS-Y-1349", "name": "ReceiverHybridFactory_NamesArray_FUN_00771980", "addr": "0x00771980", "variant": "plus_0x52_gate_with_name_buffer", "fast_write": "calls FUN_00771230 secondary", "ctor": "FUN_0089D530 (uncataloged - takes id + 32-byte name)"},
+    {"id": "BCS-Y-1350", "name": "ReceiverCacheDirectWrite_2byte_FUN_0076D280", "addr": "0x0076D280", "variant": "cache_only_direct_write", "fast_write": "2 bytes at cache +0xC7/+0xC8", "ctor": "none (no slow-path)"},
+    {"id": "BCS-Y-1351", "name": "ReceiverCacheEnsureThenForward_FUN_0076CFC0", "addr": "0x0076CFC0", "variant": "cache_ensure_stub", "fast_write": "discards cache return, forwards to FUN_007846F0(container+0x80)", "ctor": "none (no slow-path)"},
+    {"id": "BCS-Y-1352", "name": "ReceiverCacheEnsureThenForward_FUN_0076CFF0", "addr": "0x0076CFF0", "variant": "cache_ensure_stub", "fast_write": "discards cache return, forwards to FUN_00784760(container+0x20)", "ctor": "none (no slow-path)"},
+    {"id": "BCS-Y-1353", "name": "ReceiverHybridFactory_EventFamily0xCC_FUN_00774AD0", "addr": "0x00774AD0", "variant": "complex_eventfamily_wrapper", "fast_write": "wraps BCS-Y-1349 shape in RTTI-gated dispatch from BCS-Y-0588", "ctor": "FUN_0089D530 same as BCS-Y-1349"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1337", "addition": "16 backlinks to BCS-Y-1338..1353; pattern variants summary; ctor identification status"},
+    {"id": "BCS-Y-1145", "addition": "Sibling cluster cross-reference - the canonical hybrid pattern now has 8+ verified examples"},
+    {"id": "BCS-Y-0082", "addition": "Forward-link to BCS-Y-1343 AchievementTitleReceiver_HybridFactory"},
+    {"id": "BCS-Y-0085", "addition": "Forward-link to BCS-Y-1342 AchievementPointReceiver_HybridFactory"},
+    {"id": "BCS-Y-0098", "addition": "Forward-link to BCS-Y-1344 JobChangeReceiver_HybridFactory"},
+    {"id": "BCS-Y-0118", "addition": "Forward-link to BCS-Y-1346 ChangeActorExtraStatReceiver_HybridFactory"},
+    {"id": "BCS-Y-0121", "addition": "Forward-link to BCS-Y-1347 ChangeActorSubStatModeBorderReceiver_HybridFactory"},
+    {"id": "BCS-Y-0124", "addition": "Forward-link to BCS-Y-1348 ChangeActorSubStatStatusReceiver_HybridFactory"}
+  ],
+  "cache_field_offset_map_observed": {
+    "0x44": "AchievementPoint dword (BCS-Y-1342)",
+    "0x48": "AchievementTitle dword (BCS-Y-1343)",
+    "0x50": "ChangeActorExtraStat dword (BCS-Y-1346)",
+    "0xB5": "ChangeActorSubStatModeBorder char (BCS-Y-1347 fast-path direct? - actually inverted, +0xB5 in inverted-fast)",
+    "0xB7": "TBD byte (BCS-Y-1339)",
+    "0xB8": "VehicleGrade byte (BCS-Y-1145)",
+    "0xB9": "TBD byte part of 3-tuple (BCS-Y-1338)",
+    "0xBC": "TBD dword part of 3-tuple (BCS-Y-1338)",
+    "0xC0": "TBD byte part of 3-tuple (BCS-Y-1338)",
+    "0xC1": "TBD byte (BCS-Y-1340)",
+    "0xC2-0xC5": "TBD 4 bytes (BCS-Y-1341)",
+    "0xC6": "JobChange byte (BCS-Y-1344)",
+    "0xC7-0xC8": "TBD 2 bytes direct-write only (BCS-Y-1350)",
+    "0xC9": "TBD byte (BCS-Y-1345)"
+  },
+  "deferred_followups": [
+    "Catalog the 10 uncataloged ctor VAs: FUN_008A2E70, FUN_008A2F70, FUN_008A3050, FUN_0089CC90, FUN_0089CBC0, FUN_0089D530 (Receiver ctors) plus FUN_007846F0, FUN_00784760, FUN_00767870, FUN_00771230 (secondary functions called by hybrid factories). Decomp each to identify the Receiver class name and verify the +offset cache-field semantics. ~30min, +10 BCS-Y entries.",
+    "Decomp FUN_00767730 (the cache init function called by FUN_0076A3F0) to map the 0xCC-byte cache struct layout to Receiver state field types. The cache_field_offset_map_observed shows 14 of ~18 expected fields; FUN_00767730 should confirm the remaining 4 fields + provide formal struct definition for BCS-S catalog. Next tier (/ option S) target.",
+    "Investigate the container+0x50 vs container+0x52 flag semantics. Earlier work surfaced +0x52 as a second mode-flag layered atop +0x50. Decomp the container class ctor + the flag-set sites to determine the meaning of each (likely +0x50=immediate-vs-queued, +0x52=enabled-vs-disabled, but verification required). Speculative, may surface client-architecture 'The Sqwt event-source registry is per-channel' about Receiver scheduling priorities (option Z).",
+    "Verify the 15 hybrid factories' vftable membership per evidence. vftable_A (0x00fdfb2c) and vftable_B (0x00fe02ac) were later cataloged as Receiver dispatch tables. The 15 factories' VAs should all appear in one of these tables. A future D-tier could grep the vftable_A/vftable_B dumps for the 15 VAs to confirm.",
+    "live capture for the 6 newly-mapped Receivers (AchievementPoint, AchievementTitle, JobChange, ChangeActorExtraStat, ChangeActorSubStatModeBorder, ChangeActorSubStatStatus). Trigger candidates: achievement unlock (Point/Title), job/class change (JobChange), buff/debuff apply (ExtraStat/SubStat). Each pcap could verify the hybrid factory firing pattern under both fast-path and slow-path conditions."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - clean (all 16 new wiki-links + 8 amended-entry backlinks resolve)"
+  },
+  "symbol_count_delta": "1327 -> 1343 (+16)",
+  "files_changed": [
+    "manifests/symbols.json: +16 entries (BCS-Y-1338..1353), 8 amendments (BCS-Y-0082/0085/0098/0118/0121/0124/1145/1337)",
+    "manifests/sibling_receiver_factories.json (NEW, this file)",
+    "tools/ghidra/logs/c61_sibling_factories_decomp.txt (NEW)"
+  ]
+}

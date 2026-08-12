@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_pattern_generalization",
+  "scope": "Decomp FUN_0076A3F0 (the VehicleGrade hybrid factory's fast-path target). Closes the manifest deferred_followups[1]. SURPRISE: FUN_0076A3F0 is NOT VehicleGrade-specific - it's a SHARED helper called by 18 different factory functions across the Receiver factory layer.",
+  "method": {
+    "step1": "Ghidra DumpFunctionDecomp on FUN_0076A3F0 via run_c59_fastpath.bat. Log: tools/ghidra/logs/c59_vehiclegrade_fastpath_decomp.txt.",
+    "step2": "Identify the function shape: 147-byte SEH-wrapped lazy-init getter. Returns a 0xCC-byte sub-object cached at param_1+0x48. If cache is null, alloc + initialize via FUN_00767730(param_1+4); store at param_1+0x48; return.",
+    "step3": "Enumerate the 18 callers from Ghidra's xref data. Key callers: BCS-Y-1145 VehicleGradeReceiver::HybridFactory, BCS-Y-1118 NullActorImpl::Slot49Factory, plus 16 sibling Receiver factories mostly in 0x0076Cxxx-0x0076Dxxx range.",
+    "step4": "Catalog 1 new BCS-Y entry (BCS-Y-1337). Amend BCS-Y-1145 (fast-path target now resolved) and BCS-Y-1118 (caller of same shared helper) with backlinks."
+  },
+  "key_findings": [
+    "**FUN_0076A3F0 is a SHARED Receiver state-cache lazy-init helper used by 18 different factories.** Not VehicleGrade-specific. The 0xCC=204-byte cached object at container+0x48 holds inline state mirrors for ~18 Receiver state fields (one per caller).",
+    "**The hybrid factory pattern generalizes from VehicleGrade to a broader Receiver factory layer.** VehicleGradeReceiver::HybridFactory (BCS-Y-1145) has a fast-path/slow-path branch on container[+0x50] flag. With 18 callers of FUN_0076A3F0, the same fast-path/slow-path optimization likely applies to all 18 Receiver types - meaning ~17 more Receiver classes have hybrid factories with the same shape.",
+    "**Architectural implication**: the Receiver instantiation surface has TWO layers - (a) the slow-path simple factories that allocate a Receiver instance, and (b) the fast-path direct-write to a cached state mirror. The choice between them is gated by a container flag, likely set based on whether the receiver is needed for queued processing (e.g. command-stream playback) vs immediate apply (e.g. state-changed broadcast).",
+    "**The 0xCC-byte cache layout** holds inline byte/dword fields for the 18 caller Receivers' state. VehicleGrade has its inline byte at cache+0xB8. The other 17 fields would map to different cache offsets per caller. Later work could decomp FUN_00767730 (the cache init function) and the 18 callers to produce a full cache field-layout map.",
+    "**Builds on client-architecture 'Real implementations with no static caller are structurally legitimate'** (real-impl-no-caller pattern). The hybrid factories (BCS-Y-1145 and similar) ARE the canonical real-impl-no-caller shape - zero direct instruction-level callers, reached via function-pointer table dispatch. The state-cache layer underneath is the IMPLEMENTATION side that explains how factories can be 'dead' from a static-caller perspective yet load-bearing at runtime: the cached state mirror is read via different code paths (e.g. Lua getters, UI render loops) that don't statically reference the factories.",
+    "**Builds on client-architecture 'Sqwt UI elements follow a uniform heap-factory'** (Sqwt UI subscription pattern). The Receiver factory layer's cache mirror pattern is a Receiver-side analog of the Element-side subscription pattern: both are mechanisms by which the C++ runtime maintains state-and-callback collections without each component needing to know the full picture of every other component."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1337", "name": "ReceiverStateCache_LazyGet_FUN_0076A3F0", "addr": "0x0076A3F0", "size": 147, "role": "Shared lazy-init helper for 0xCC-byte Receiver state cache; 18 callers"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1145", "addition": "backlink to BCS-Y-1337; clarifies fast-path target structure (0xCC cache + offset +0xB8 for grade byte)"},
+    {"id": "BCS-Y-1118", "addition": "backlink to BCS-Y-1337; confirms NullActorImpl slot 49 shares the Receiver state-cache layer"}
+  ],
+  "callers_of_FUN_0076A3F0_enumerated_for_future_tiers": {
+    "cataloged_in_catalog": [
+      "0x0076CA90 BCS-Y-1118 NullActorImpl_Slot49 in-place factory",
+      "0x0076CDD0 BCS-Y-1145 VehicleGradeReceiver::HybridFactory"
+    ],
+    "uncataloged_factory_callers_16_total": [
+      "0x0076CB40", "0x0076CC30", "0x0076CD00", "0x0076CEA0",
+      "0x0076CFC0", "0x0076CFF0", "0x0076D010", "0x0076D0E0",
+      "0x0076D1B0", "0x0076D280", "0x0076D2B0", "0x0076D380",
+      "0x0076D450", "0x0076D540", "0x00771980", "0x00774AD0"
+    ],
+    "future_tier_potential": "Each of the 16 uncataloged callers likely follows the BCS-Y-1145 hybrid factory pattern - hybrid alloc-or-fast-path. Bulk-cataloging them via DumpFunctionDecomp would convert the 18-caller cluster into a complete coverage map of the Receiver state-cache surface, and likely surface 16 more Receiver hybrid factories with their respective cache offsets. ~30-45min, +16 BCS-Y entries projected."
+  },
+  "deferred_followups": [
+    "Decomp the 16 uncataloged FUN_0076A3F0 callers to identify which Receiver class each represents and what cache field offset it writes. Would produce a full coverage map of the Receiver state-cache layer and likely catalog ~16 more hybrid factories.",
+    "Decomp FUN_00767730 (the cache init function called by FUN_0076A3F0 on lazy-init). The cache field layout (which offsets hold which Receiver state) is encoded in this function. Worth doing if later work wants full cache structural understanding.",
+    "Investigate the container+0x50 flag that gates fast-path vs slow-path in BCS-Y-1145. Likely related to command-queue state or actor animation-lock. Could surface architectural pattern about Receiver scheduling priorities.",
+    "Verify whether the 16 sibling factories all reside in vftable_A (0x00fdfb2c) and vftable_B (0x00fe02ac) per evidence. If yes, the Receiver factory dispatch table is more comprehensively mapped than previously thought.",
+    "Cross-check whether AchievementIdReceiver_HeapFactory (BCS-Y-1144 at FUN_007627A0) has a missing hybrid variant. It was found as simple-factory; if there's a separate hybrid version (analogous to BCS-Y-1145) it would be in the FUN_0076xxxx range too."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - unchanged (new wiki-links resolve)"
+  },
+  "symbol_count_delta": "1326 -> 1327 (+1)",
+  "files_changed": [
+    "manifests/symbols.json: +1 entry (BCS-Y-1337), 2 amendments (BCS-Y-1145 + BCS-Y-1118)",
+    "manifests/actor_state_cache_lazyget.json (NEW, this file)",
+    "tools/ghidra/logs/c59_vehiclegrade_fastpath_decomp.txt (NEW)"
+  ]
+}

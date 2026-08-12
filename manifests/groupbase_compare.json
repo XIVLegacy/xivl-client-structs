@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Sample GroupBase (LTC-derived) secondary vftable to compare with StatusBase (LGTC-derived) and validate whether LTC and LGTC share the same slot semantic contract. Result: LTC vs LGTC contracts are MOSTLY identical (21 of 25 core slots are shared engine stubs/handlers); only slots 0, 1, 2, 6 diverge - slot 0/1 are uniform class-specific templates (finding), slots 2 and 6 are LTC-leaning overrides where some derived classes substitute non-trivial implementations. GroupBase vftable extends to 34 slots vs StatusBase's documented 25 (9 extra extension slots, deferred characterization).",
+  "method": {
+    "step1": "Reuse the c88_vftable_slots.txt GroupBase dump (0x00fd53cc..0x00fd540c, 16 slots).",
+    "step2": "Extend dump from 0x00fd540c to 0x00fd5460 to find GroupBase vftable boundary - boundary found at 0x00fd5450 (next bytes are .rdata string '_group%l...').",
+    "step3": "Decomp the 2 distinctive slot impls: slot 2 (FUN_00757B70, 358 bytes) + slot 6 (FUN_006DD1F0, 51 bytes). Plus decomp GroupBase subobject dtor (FUN_006dd070) + ctor (FUN_006dcff0) for full slot 0/1 verification.",
+    "step4": "Catalog 2 new BCS-Y entries (slot 2 + slot 6 unique overrides) + 5 amendments to BCS-Y-1535 (slot 0 verified), BCS-Y-1536 (slot 1 verified), BCS-Y-1398 (full slot-by-slot LTC vs LGTC comparison), BCS-Y-1532/1533 (cross-class usage notes)."
+  },
+  "key_findings": [
+    "**LTC vs LGTC contracts share MOST of the 25-slot core**: 21 of 25 slots dump to identical functions between GroupBase (LTC) and StatusBase (LGTC). Only slots 0, 1, 2, 6 vary. The interface is highly uniform.",
+    "**Slots 2 + 6 are LTC-leaning class-specific overrides**: Slot 2 - GroupBase=FUN_00757B70 (358-byte member iteration) vs StatusBase=FUN_00776340 (no-op). Slot 6 - GroupBase=FUN_006DD1F0 (51-byte 3-slot name dispatch) vs StatusBase=FUN_006DBE80 (no-op).",
+    "**GroupBase slot 2 = member iteration over 16 inlined helpers**: 358-byte body iterates FUN_0074cad0/cc20/cd70/cec0/d010/d160/56b70/56cc0/d2b0/d400/d550/d6a0/d7f0/d940/0073ef30/00756cc0 with an early-exit gate flag at param_2+0xe. Interpretation: GroupBase manages a group of actors; slot 2 dispatch is the per-member operation walk.",
+    "**GroupBase slot 6 = 3-virtual-call name dispatch**: 51-byte body makes 3 virtual calls through param_2's vftable at slots 13-15 with string anchors DAT_0134c030/050/070. Pattern is likely registering 3 known Lua callback names (group lifecycle hooks).",
+    "**GroupBase vftable boundary at 0x00fd5450** (34 slots total: 0-33). Next .rdata bytes are string '_group%l...' (likely '_group%lXl[d]' or similar formatter). 9 EXTRA slots beyond StatusBase's documented 25-slot extent: slots 25-33 contain FUN_005C5C80, FUN_006DBE90, FUN_0060CFC0, FUN_00A72A20, FUN_006DBEA0, FUN_006E01D0, FUN_00712B40 (slot 31 no-op), FUN_006E02C0, FUN_006DD160. Either GroupBase has class-specific extension slots that LGTC classes lack OR StatusBase also extends further and earlier work didn't dump enough (will resolve).",
+    "**GroupBase subobject dtor + ctor verified**: FUN_006dd070 (119 bytes) writes GroupBase::vftable at +0x00 AND +0x60, calls FUN_006bfd00 (class-specific cleanup), FUN_00cccbe0 (LTC subobject dtor BCS-Y-1517), FUN_006dbbe0 (ActorBase dtor companion). FUN_006dcff0 (117 bytes) follows standard MI ctor pattern: ActorBase ctor companion + LTC primary ctor (BCS-Y-1516) + class-specific init helper FUN_006bfcd0 + 2x GroupBase::vftable writes.",
+    "**Cross-class slot 2 survey** (from c88_vftable_slots.txt dump data): GroupBase=FUN_00757B70 (LTC), ItemBase=FUN_00753DD0 (LTC), WidgetHandle=FUN_00776340 (LTC, no-op), Math=FUN_00740EC0 (LGTC), Global=FUN_007582E0 (LGTC tertiary), CommandBase/JudgeBase/QuestBase/String/Table/StatusBase=FUN_00776340 (LGTC, no-op). **4 classes have unique slot 2; 7 use the no-op.**",
+    "**Cross-class slot 6 survey**: GroupBase=FUN_006DD1F0 (LTC), ItemBase=FUN_006DD540 (LTC), WidgetHandle=FUN_006DBE80 (LTC, no-op), all 8 LGTC classes=FUN_006DBE80 (no-op). **Only 2 LTC classes override slot 6; 9 use the no-op.**"
+  ],
+  "new_bcsy_entries_summary": {
+    "ltc_specific_slot_overrides": 2,
+    "amendments": 5,
+    "total_bcsy_added": 2,
+    "id_range": "BCS-Y-1554..BCS-Y-1555",
+    "amendment_targets": ["BCS-Y-1535", "BCS-Y-1536", "BCS-Y-1398", "BCS-Y-1532", "BCS-Y-1533"]
+  },
+  "deferred_followups": [
+    "Decomp the 4 other unique slot 2 implementations (ItemBase FUN_00753DD0, Math FUN_00740EC0, Global FUN_007582E0) and ItemBase's unique slot 6 (FUN_006DD540) to complete the cross-class slot 2/6 characterization.",
+    "Decomp GroupBase's 9 extension slots (25-33): FUN_006DBE90, FUN_0060CFC0, FUN_00A72A20, FUN_006DBEA0, FUN_006E01D0, FUN_006E02C0, FUN_006DD160. These are class-specific extension slots beyond the 25-slot LTC/LGTC core.",
+    "Extend StatusBase vftable dump past 0x00FDF940 to find boundary - settles whether StatusBase has 25 slots, 34 slots, or some other count. scope.",
+    "Identify the 3 string constants DAT_0134c030/050/070 referenced by GroupBase slot 6 - their string content reveals the 3 callback names (likely group lifecycle Lua hooks).",
+    "Characterize the 16 group-member helpers (FUN_0074cad0..0074d940 + FUN_007306c0 + FUN_0073ef30 + FUN_00756b70 + FUN_00756cc0) called by GroupBase slot 2's iteration."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1543 -> 1545 (+2 BCS-Y: 2 GroupBase LTC-specific slot 2/6 overrides)",
+  "files_changed": [
+    "manifests/symbols.json: +2 entries (BCS-Y-1554..1555), 5 amendments (BCS-Y-1535, 1536, 1398, 1532, 1533)",
+    "manifests/groupbase_compare.json (NEW, this file)",
+    "tools/ghidra/logs/c89_groupbase_vftable_extension.txt (NEW)",
+    "tools/ghidra/logs/c89_groupbase_slots_decomp.txt (NEW)",
+    "tools/extractors/append_groupbase_compare.py (NEW)"
+  ]
+}

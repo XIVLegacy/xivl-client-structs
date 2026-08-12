@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "CharaBase BCA enumeration - 7-class linear inheritance chain decoded via 2-phase BCD dump. Closes the deferred follow-up 'enumeration is DEFERRED to follow-up (would require dumping the 7 BCDs at 28 bytes each then decoding each TD name)'. All 7 ancestor TDs are ALREADY CATALOGED - no new TD/vftable entries needed. The hypothesis from BCS-Y-1723 ('Likely chain: CharaBase < ActorBase < LuaControl < LuaObject < LgeBase < LgeCommonMemoryAllocator < LgeBasicMemoryAllocator') is now CONFIRMED. **Architectural insight**: the chain has a mdisp=4 split-point at LgeBase - LuaObject inherits LgeBase as a SECONDARY subobject at offset +4 (not primary inheritance), pulling in the Lge memory-allocator chain as a small embedded base subobject.",
+  "method": {
+    "step_a": "DumpMemRange on CharaBase BCA at 0x0115EC9C..0x0115ED8C (244 bytes) to capture the 7 BCD pointers + the first BCD body. Output: c111_charabase_bca_dump.txt. Step 1 of the two-step BCD-dump workflow.",
+    "step_b": "DumpMemRange on the 6 remote BCD bodies (28 bytes each) at 0x0115CD24, 0x0115CAB8, 0x0115CAFC, 0x0115C030, 0x0115C0F4, 0x0115C110. Extract each BCD's first dword (TD ptr), numContainedBases field, mdisp/pdisp/vdisp, attributes. Output: c111_charabase_bcds_dump.txt. Of the workflow.",
+    "step_c": "Cross-reference the 7 TD VAs against symbols.json - all 7 are ALREADY CATALOGED. Maps to: CharaBase (BCS-Y-1721) -> ActorBase (BCS-Y-1496) -> LuaControl (BCS-Y-1677) -> LuaObject (BCS-Y-1476) -> LgeBase (BCS-Y-1477) -> LgeCommonMemoryAllocator (BCS-Y-1478) -> LgeBasicMemoryAllocator (BCS-Y-1479). Confirms the hypothesis.",
+    "step_d": "Catalog 1 new architectural-finding entry (CharaBase BCA inheritance chain) + 2 amendments to BCS-Y-1723 (CharaBase BCA, mark CLOSED + add full chain table) and BCS-Y-1721 (CharaBase TD, add chain summary)."
+  },
+  "key_findings": [
+    "**7-class linear inheritance chain CONFIRMED**: CharaBase < ActorBase < LuaControl < LuaObject < LgeBase < LgeCommonMemoryAllocator < LgeBasicMemoryAllocator. All TDs already cataloged (BCS-Y-1721/1496/1677/1476/1477/1478/1479). The hypothesis from BCS-Y-1723 is now PROVEN via direct BCD enumeration.",
+    "**Architectural insight - mdisp=4 split-point at LgeBase**: BCDs for CharaBase (depth 0) through LuaObject (depth 3) have mdisp=0 (primary single inheritance, all sharing offset +0). BCDs for LgeBase (depth 4) through LgeBasicMemoryAllocator (depth 6) have mdisp=4 - they form a SECONDARY subobject at offset +4 within the most-derived (CharaBase) class. Interpretation: LuaObject has its own vftable at +0 with 4 bytes of own state before its base subobject; LgeBase is placed at +4 as the secondary base (NON-PRIMARY single inheritance). The CHD attributes=0x00 (no MI flag) is consistent because each class has only ONE direct base - the offset displacement comes from the layout decision at LuaObject, not from MI at the CharaBase or any other level.",
+    "**The Lge memory-allocator chain is CharaBase-inherited**: the prior memory.md note about 'Lge memory-allocator chain' is now confirmed to be a transitive base hierarchy inherited by CharaBase (via LuaObject). The 3 Lge classes (LgeBase, LgeCommonMemoryAllocator, LgeBasicMemoryAllocator) provide CharaBase with its memory-allocation interface. This same chain is inherited by ALL classes that derive from LuaObject - which includes the full Application::Lua::Script::Client::Control::* tree (CharaBase + PlayerBase + NpcBase + MyPlayer + 11 LTC/LGTC classes + 30+ more from FUN_0075F9B0 mass registry).",
+    "**BCA depth-first walk structure verified**: each BCD's numContainedBases field correctly enumerates the descendants in the chain: CharaBase says '6 contained' (the 6 below), ActorBase says '5 contained', LuaControl says '4 contained', LuaObject says '3 contained', LgeBase says '2 contained', LgeCommonMemoryAllocator says '1 contained', LgeBasicMemoryAllocator says '0 contained' (leaf). Standard MSVC BCA depth-first traversal.",
+    "**BCD attributes=0x40 for all 7 BCDs**: bit 0x40 = HASPCHD (the BCD has an associated CHD pointer at offset +0x18). Standard MSVC convention for BCDs whose subordinate class has its own RTTI structures. No AMBIGUOUS (0x02) or VIRTUAL (0x10) bits set - confirms non-virtual non-ambiguous inheritance throughout the chain."
+  ],
+  "new_bcsy_entries_summary": {
+    "architectural_finding_entries": 1,
+    "total_bcsy_added": 1,
+    "id_range": "BCS-Y-1757",
+    "amendments": 2,
+    "amendment_targets": [
+      "BCS-Y-1723 (CharaBase BCA): close the deferred follow-up + add full 7-class chain table",
+      "BCS-Y-1721 (CharaBase TD): add inheritance chain summary"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp LuaObject ctor to confirm the mdisp=4 layout - identify what 4-byte field sits between LuaObject's own vftable at +0 and the LgeBase subobject at +4.",
+    "Enumerate the full Lge memory-allocator chain as a standalone hierarchy (independent of CharaBase) - it's used by many Application::Lua::Script::Client::Control::* classes. Verify the BCA of LgeBase (already cataloged at BCS-Y-1477) for completeness.",
+    "Map the 11 LTC/LGTC family classes - do they inherit from the same chain (ActorBase < LuaControl < LuaObject < Lge*) or from a different path? They have CHD attributes 0x01 (MI) and 0x05 (MI+AMBIGUOUS) per BCS-Y-1722 notes, suggesting they use MI rather than CharaBase's single-inheritance pattern."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1743 -> 1744 (+1 BCS-Y; BCS-Y-1757)",
+  "files_changed": [
+    "manifests/symbols.json: +1 entry (BCS-Y-1757), 2 amendments",
+    "manifests/charabase_bca_decoded.json (NEW, this file)",
+    "tools/ghidra/logs/c111_charabase_bca_dump.txt (NEW)",
+    "tools/ghidra/logs/c111_charabase_bcds_dump.txt (NEW)",
+    "tools/extractors/append_c111.py (NEW)"
+  ]
+}

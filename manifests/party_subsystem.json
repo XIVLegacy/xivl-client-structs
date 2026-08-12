@@ -1,0 +1,994 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "scope": "Characterize the party/group opcode cluster for FFXIV 1.23b. Catalog every dispatcher case body in FUN_004DC690 and FUN_004D8860 that touches Party, Group, or Linkshell wire opcodes; map each opcode to its compact dispatcher-side handler and to the underlying Group::PacketProcessor / SharedWork callee; cross-reference existing BCS-Y entries / receiver_opcode_map_inbound.json / unmapped_payload_decoding.json payload schemas / Group system decomp.",
+  "conventions": {
+    "ascii_only": true,
+    "no_emojis": true,
+    "topic": "party-group-subsystem"
+  },
+  "method": {
+    "decomp_dispatcher_input": "%BCS_GHIDRA_PROJECTS%/fun_004dc690_decomp.txt (existing actor-cluster-dispatch-model pass dump; re-parsed, not re-decompiled)",
+    "decomp_handler_input": "%BCS_GHIDRA_PROJECTS%/party_handlers.txt (new party-subsystem pass batch dump of 19 compact handler functions)",
+    "ghidra_invocation_bat": "%BCS_GHIDRA_PROJECTS%/run_party_handlers.bat",
+    "ghidra_rtti_bat": "%BCS_GHIDRA_PROJECTS%/run_party_rtti.bat",
+    "ghidra_rtti_output": "%BCS_GHIDRA_PROJECTS%/party_rtti.txt",
+    "ghidra_scripts": [
+      "DumpFunctionDecomp.java",
+      "FindSymbolByName.java (BAHAMUT_SYMBOL_QUERY=Party)"
+    ],
+    "handler_addresses_decompiled": [
+      "0x005763B0",
+      "0x00576250",
+      "0x005762C0",
+      "0x005762D0",
+      "0x005762E0",
+      "0x005762F0",
+      "0x00576300",
+      "0x00576310",
+      "0x00576320",
+      "0x00576330",
+      "0x00576340",
+      "0x00576350",
+      "0x00576360",
+      "0x00576370",
+      "0x00576380",
+      "0x00576390",
+      "0x005763A0",
+      "0x00575550",
+      "0x00576240"
+    ],
+    "source_inputs": [
+      "xivl-opcodes/opcodes.json 0x00C9 PartyChatMessagePacket (c2s)",
+      "xivl-opcodes/opcodes.json 0x00C9 PartyChatMessagePacket (s2c)",
+      "xivl-opcodes/opcodes.json 0x017C GroupHeaderPacket",
+      "xivl-opcodes/opcodes.json 0x0187 SetOccupancyGroup",
+      "xivl-opcodes/opcodes.json 0x018B SetGroupLayoutID",
+      "xivl-opcodes/opcodes.json 0x018D PartyMapMarkerUpdate",
+      "xivl-opcodes:data/bahamut_opcodes.json",
+      "xivl-opcodes:data/external_opcodes.json",
+      "xivl-opcodes:data/bahamut_gaps.json"
+    ],
+    "manifest_links": [
+      "manifests/operation_opcode_map_outbound.json",
+      "manifests/receiver_opcode_map_inbound.json",
+      "manifests/receiver_discovery.json",
+      "manifests/unmapped_payload_decoding.json",
+      "manifests/actor_cluster_dispatch_model.json",
+      "manifests/low_switch_remaining_cases.json",
+      "manifests/symbols.json (read-only)"
+    ]
+  },
+  "architecture_summary": {
+    "dual_path_model": "FFXIV 1.x routes 'party/group' state-change packets through two dispatchers and three layers. (1) Dispatcher layer: FUN_004DC690 mid-table covers opcodes 0x17A and 0x17C..0x18D; FUN_004D8860 covers 0x0133 GenericData (s2c LuaParam variadic). (2) Compact handler layer (this manifest's primary catalog): each FUN_004DC690 case body is an 8- to 16-byte trampoline at 0x005762x0..0x005763Ax that tail-calls into the Group system at 0x006Cxxxx, except for the special 0x18D PartyMapMarker case which is inlined and the 0x17C GroupHeader case which adds an SEH-protected wrapper around FUN_006CC620. (3) Group system layer: 0x006Cxxxx callees populate the Group::PacketProcessor / SharedWork pipelines documented in docs/group_system_decomp.md. The PacketProcessor uses two parallel subdecoders (sub1 at +0x40, sub2 at +0x94) and fires a combined callback when both complete; SharedWork has 3 parallel 16-byte-stride member arrays (MemberInfo, Property, WorkSync) read via slots 19/20/21 and written via slots 16/17/18.",
+    "wire_runtime_stride_note": "Wire format uses 0x30-byte (48) per-member slots that include 32-byte ASCII name + flags + ids; engine post-parse runtime storage uses 16-byte stride. These are intentional - the wire carries human-readable names for the UI; the runtime keeps id-keyed lookup tables. Group decomp confirms no conflict between the two strides.",
+    "chat_path": "The party/linkshell chat opcode 0x00C9 (PartyChat - c2s WorldServerbound; s2c WorldClientbound) is structurally separate from the Group::PacketProcessor pipeline. C2s emission is cataloged as BCS-Y-0309 (ChatOutbound_PartyChat_emitter_FUN_004DF6D0 - 536-byte body via Chat generic forwarder BCS-Y-0306). S2c receive lives in the Chat channel callback, not in the Zone dispatcher.",
+    "c2s_party_command_path": "The actor-facing party commands (PartyInvite, PartyLeave, PartyModify/Kick/ChangeLeader, PartyResign, PartyBreakup) are not direct client-side opcode emitters. They are issued as Lua console commands (Data/scripts/commands/Party*Command.lua) that go through the GenericDataPacket opcode 0x0133 LuaParam pipeline server-side, then mapped on the map server to internal 0x10XX Map<->World bus opcodes. These are NOT actual ZoneProtoChannel wire opcodes; the 1.23b client never sends or receives them directly. Confirmed by xivl-opcodes:data/bahamut_gaps.json.",
+    "0x0133_directionality": "0x0133 carries TWO distinct semantics by direction. C2s (MapServerbound, named GroupCreated, BCS-Y-bound to OP_RX_GROUP_CREATED) - client tells server 'I created group X via /_init'. S2c (UserData via FUN_004D8860 case 0x133) - server pushes a LuaParam-encoded variadic RPC to a Lua handler keyed by class-name (e.g. 'attention' -> attentionMessage Lua callback). The s2c 0x0133 is fundamentally different from the s2c 0x017A SynchGroupWorkValues path despite both touching 'group' state."
+  },
+  "opcode_table": [
+    {
+      "opcodeHex": "0x00C9",
+      "opcode": 201,
+      "name": "PartyChatMessagePacket",
+      "direction_c2s": true,
+      "direction_s2c": true,
+      "channel": "Chat (WorldServerbound c2s; WorldClientbound s2c)",
+      "bucket": "WorldServerbound (c2s) / WorldClientbound (s2c)",
+      "dispatcher": "Chat channel (NOT FUN_004DC690 / FUN_004D8860)",
+      "primary_handler": "0x004DF6D0 (c2s emitter)",
+      "pattern": "C",
+      "wire_evidence": {
+        "c2s": "xivl-opcodes/opcodes.json 0x00C9 PartyChatMessagePacket (c2s)",
+        "s2c": "xivl-opcodes/opcodes.json 0x00C9 PartyChatMessagePacket (s2c)"
+      },
+      "field_layout_c2s": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "name": "chatGroup"
+        },
+        {
+          "offset": 4,
+          "size": 512,
+          "type": "char[512]",
+          "name": "message"
+        }
+      ],
+      "field_layout_s2c": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "name": "chatGroup"
+        },
+        {
+          "offset": 4,
+          "size": 32,
+          "type": "char[32]",
+          "name": "senderName"
+        },
+        {
+          "offset": 36,
+          "size": 512,
+          "type": "char[512]",
+          "name": "message"
+        }
+      ],
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0309 (c2s emitter)",
+      "proposed_bcs_y_id": null,
+      "notes": "Pre-existing emitter catalog. C2s size literal MOV [ESP+0x7C], 0x218 (536 = 0x218 = 4 chatGroup + 512 msg + 20 SubPacket+GameMessage overhead) confirmed at VA 0x004DF7B8. Chat channel dispatch is structurally separate from Zone FUN_004DC690. Inbound s2c handler not characterized in this manifest (chat channel callbacks are a separate cluster from the Zone PacketProcessor).",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    },
+    {
+      "opcodeHex": "0x0133",
+      "opcode": 307,
+      "name_c2s": "GroupCreatedPacket",
+      "name_s2c": "GenericDataPacket (UserData)",
+      "direction_c2s": true,
+      "direction_s2c": true,
+      "channel": "Zone (MapServerbound c2s; MapClientbound s2c)",
+      "bucket_c2s": "MapServerbound",
+      "bucket_s2c": "MapClientbound",
+      "dispatcher_s2c": "FUN_004D8860 (event-family dispatcher, BCS-Y-0280)",
+      "primary_handler_s2c": "0x00575060 (FUN_004D8860 case 0x133 -> UserData / GenericData handler per BCS-Y-0280 notes)",
+      "pattern_s2c": "B (named case in event-family dispatcher)",
+      "wire_format_s2c": "LuaParam-encoded variadic args: 0xE0 (224) total subpacket bytes, 0xC0 (192) body bytes. First arg is the class name string (e.g. 'attention'), subsequent args dispatched as variadic to a Lua handler.",
+      "catalog_status": "partially_cataloged",
+      "existing_bcs_y_id": "BCS-Y-0280 (s2c dispatcher)",
+      "proposed_bcs_y_id": "BCS-Y-0700-DRAFT (UserData / GenericData handler FUN_00575060, currently called out only in BCS-Y-0280 notes - not a standalone symbol entry)",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+      "notes": "S2c name DIVERGENCE: xivl-opcodes calls 0x0133 GroupCreated (c2s sense) but the s2c semantic carried by FUN_004D8860 is GenericDataPacket. The group_system_decomp.md Retail wire format section explicitly calls this out: 'opcode 0x0133 OUT is NOT the SynchGroupWorkValues path; that is 0x017A. 0x0133 OUT is GenericDataPacket - player:SendDataPacket(class, target, name, ...) from Lua.' Direction disambiguates the two semantic uses."
+    },
+    {
+      "opcodeHex": "0x017A",
+      "opcode": 378,
+      "name": "SynchGroupWorkValuesPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode (server-emitted)",
+      "dispatcher": "FUN_004DC690 mid-table case 0x17A",
+      "primary_handler": "0x005763B0",
+      "ultimate_callee": "0x006C9910 (-> 0x006C96B0 SharedWork property-stream apply path)",
+      "pattern": "C (compact 8-byte trampoline)",
+      "wire_evidence": [
+        "manifests/unmapped_payload_decoding.json batch 2 s2c_0x017a"
+      ],
+      "total_size": 160,
+      "payload_size": 144,
+      "field_layout": [
+        {
+          "offset": 0,
+          "size": 8,
+          "type": "u64",
+          "name": "groupId",
+          "note": "0x2680XXXX_XXXXXXXX for monster groups; 0x80000000_XXXXXXXX for player-work groups"
+        },
+        {
+          "offset": 8,
+          "size": 1,
+          "type": "u8",
+          "name": "runningByteTotal",
+          "note": "Total bytes of property entries + target trailer (written last)"
+        },
+        {
+          "offset": 9,
+          "size": 135,
+          "type": "PropertyEntry[] + target_trailer",
+          "name": "propertyStream",
+          "note": "Variable: each entry = (u8 type, u32 LE id, type-dependent value). type=1 byte, type=2 short, type=4 int, type=8 long, type=N>=5 buffer of size N. Target trailer = (u8 0x82+len, ASCII bytes). 0x62 base = isMore (multi-packet)."
+        }
+      ],
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0701-DRAFT",
+      "notes": "The unmapped-payload-decoding pass batch 2 already decoded the wire layout. The compact 8-byte trampoline at FUN_005763B0 tail-calls FUN_006C9910 which forwards into the SharedWork property-stream apply path (FUN_006C96B0 / nearby SharedWork slot 22 family at 0x006C9930 CopyMemberByLookup). Property ids are MurmurHash2(dotted property path, 0); see docs/murmur2-verification.md."
+    },
+    {
+      "opcodeHex": "0x017C",
+      "opcode": 380,
+      "name": "GroupHeaderPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x17C",
+      "primary_handler": "0x00576250",
+      "ultimate_callee": "0x006CC620 (Group::PacketProcessor gate + SharedWork init, sets local +0x24 flag)",
+      "pattern": "C (109-byte SEH-protected wrapper - NOT a trivial trampoline)",
+      "handler_special_shape": "SEH-protected. Sequence: alloc/lock via FUN_00CC9320(*param_1), call FUN_006CC620(handle, packet+0x10), release via FUN_00CC9330. Reads *param_1 as a session/zone arg pointer; param_3 = packet+0x10 = body start.",
+      "wire_evidence": [
+        "xivl-opcodes/opcodes.json 0x017C GroupHeaderPacket",
+        "manifests/unmapped_payload_decoding.json batch 1 s2c_0x017c"
+      ],
+      "total_size": 136,
+      "payload_size": 120,
+      "field_layout": [
+        {
+          "offset": 0,
+          "size": 8,
+          "type": "u64",
+          "name": "locationCode",
+          "note": "place id (zone or area) the group is in"
+        },
+        {
+          "offset": 8,
+          "size": 8,
+          "type": "u64",
+          "name": "sequenceId",
+          "note": "Must be unique across the group session; matched by subsequent Begin/Members/End packets"
+        },
+        {
+          "offset": 16,
+          "size": 8,
+          "type": "u64",
+          "name": "unk1"
+        },
+        {
+          "offset": 24,
+          "size": 8,
+          "type": "u64",
+          "name": "groupIndex1",
+          "note": "Group ID, usually matches groupIndex2"
+        },
+        {
+          "offset": 32,
+          "size": 8,
+          "type": "u64",
+          "name": "unk2"
+        },
+        {
+          "offset": 40,
+          "size": 8,
+          "type": "u64",
+          "name": "groupIndex2",
+          "note": "Group ID"
+        },
+        {
+          "offset": 48,
+          "size": 4,
+          "type": "u32",
+          "name": "groupTypeId",
+          "note": "Group type identifier; exact retail values require acceptance by the retail 1.23b client in a live session."
+        },
+        {
+          "offset": 64,
+          "size": 4,
+          "type": "u32",
+          "name": "localizedNameId",
+          "note": "-1 if customName used"
+        },
+        {
+          "offset": 68,
+          "size": 32,
+          "type": "char[32]",
+          "name": "customName"
+        },
+        {
+          "offset": 100,
+          "size": 4,
+          "type": "u32",
+          "name": "chatChannelRelated1"
+        },
+        {
+          "offset": 104,
+          "size": 4,
+          "type": "u32",
+          "name": "chatChannelRelated2"
+        },
+        {
+          "offset": 108,
+          "size": 4,
+          "type": "u32",
+          "name": "chatChannelRelated3"
+        },
+        {
+          "offset": 112,
+          "size": 4,
+          "type": "u32",
+          "name": "chatChannelRelated4"
+        },
+        {
+          "offset": 116,
+          "size": 4,
+          "type": "u32",
+          "name": "numMembers"
+        }
+      ],
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0702-DRAFT (handler FUN_00576250) + BCS-Y-0703-DRAFT (ultimate callee FUN_006CC620 = Group::PacketProcessor::OnHeader)",
+      "classification": "group_sharedwork_non_receiver (confirmed_negative in receiver_discovery.json priority 8)",
+      "notes": "Establishes the per-group header that subsequent GroupMembersBegin / GroupMembersX08-X64 / GroupMembersEnd packets in the SAME sequenceId are joined onto. The SEH wrapper at 0x00576250 acquires a shared lock (FUN_00CC9320 / FUN_00CC9330 - Windows Critical Section enter/leave pair around the Group::PacketProcessor mutation). Group::PacketProcessor dispatch pattern docs the dual-subdecoder logic; FUN_006CC620 corresponds to the slot-1 OnPacket / OnHeader entry."
+    },
+    {
+      "opcodeHex": "0x017D",
+      "opcode": 381,
+      "name": "GroupMembersBeginPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x17D",
+      "primary_handler": "0x005762C0",
+      "ultimate_callee": "0x006C2F30 (Group::PacketProcessor subdecoder begin / SharedWork member-array reset)",
+      "pattern": "C (8-byte trampoline)",
+      "wire_evidence": [
+        "manifests/unmapped_payload_decoding.json batch 1 s2c_0x017d"
+      ],
+      "field_layout": "The unmapped-payload-decoding pass records a payload but did not break out individual fields (group_sharedwork dispatch pattern). Per group_system_decomp, this is sub1.TryParse / sub2.TryParse entry that signals 'about to feed member data'.",
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0704-DRAFT",
+      "classification": "group_sharedwork_non_receiver (confirmed_negative priority 9)",
+      "notes": "Pair with 0x17E GroupMembersEnd. Begin/X08|X16|X32|X64/End forms the trio described by the Group::PacketProcessor dual-subdecoder path."
+    },
+    {
+      "opcodeHex": "0x017E",
+      "opcode": 382,
+      "name": "GroupMembersEndPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x17E",
+      "primary_handler": "0x005762D0",
+      "ultimate_callee": "0x006C4180 (Group::PacketProcessor subdecoder end / triggers OnBothComplete combined callback when both sub1/sub2 flags set)",
+      "pattern": "C (8-byte trampoline)",
+      "wire_evidence": [
+        "manifests/unmapped_payload_decoding.json batch 1 s2c_0x017e"
+      ],
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0705-DRAFT",
+      "classification": "group_sharedwork_non_receiver (confirmed_negative priority 7)",
+      "notes": "Trigger for Group::PacketProcessor.OnBothComplete (FUN_006CDA80 per group_system_decomp). Sets sub*_complete flag; when both are 1, fires the combined-callback target stored at +0x3C, then clears +0xEA both_callback_pending."
+    },
+    {
+      "opcodeHex": "0x017F",
+      "opcode": 383,
+      "name": "GroupMembersX08Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x17F",
+      "primary_handler": "0x005762E0",
+      "ultimate_callee": "0x006C2F70 (SharedWork member-array append, 8-member variant)",
+      "pattern": "C (8-byte trampoline)",
+      "wire_evidence": [
+        "manifests/unmapped_payload_decoding.json batch 3 s2c_0x017f"
+      ],
+      "total_size": 424,
+      "payload_size": 408,
+      "member_record_size": 48,
+      "member_count": 8,
+      "field_layout_per_member": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "name": "actorId"
+        },
+        {
+          "offset": 4,
+          "size": 4,
+          "type": "s32",
+          "name": "localizedNameId"
+        },
+        {
+          "offset": 8,
+          "size": 4,
+          "type": "u32",
+          "name": "unknown2"
+        },
+        {
+          "offset": 12,
+          "size": 1,
+          "type": "u8",
+          "name": "flag1"
+        },
+        {
+          "offset": 13,
+          "size": 1,
+          "type": "u8",
+          "name": "isOnline"
+        },
+        {
+          "offset": 14,
+          "size": 32,
+          "type": "char[32]",
+          "name": "name"
+        },
+        {
+          "offset": 46,
+          "size": 2,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0706-DRAFT",
+      "notes": "Wire 0x30 (48) bytes per member with full 32-byte ASCII name. SharedWork post-parse storage condenses to 16 bytes per member (wire-vs-runtime stride note)."
+    },
+    {
+      "opcodeHex": "0x0180",
+      "opcode": 384,
+      "name": "GroupMembersX16Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x180",
+      "primary_handler": "0x005762F0",
+      "ultimate_callee": "0x006C2FE0 (SharedWork member-array append, 16-member variant)",
+      "pattern": "C (8-byte trampoline)",
+      "member_record_size": 48,
+      "member_count": 16,
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0707-DRAFT",
+      "notes": "Same per-member layout as 0x17F. Sized at 16 members so total payload = 16 * 0x30 + header = ~792 bytes."
+    },
+    {
+      "opcodeHex": "0x0181",
+      "opcode": 385,
+      "name": "GroupMembersX32Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x181",
+      "primary_handler": "0x00576300",
+      "ultimate_callee": "0x006C3040 (SharedWork member-array append, 32-member variant)",
+      "pattern": "C (8-byte trampoline)",
+      "member_record_size": 48,
+      "member_count": 32,
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0708-DRAFT",
+      "notes": "Sized at 32 members."
+    },
+    {
+      "opcodeHex": "0x0182",
+      "opcode": 386,
+      "name": "GroupMembersX64Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x182",
+      "primary_handler": "0x00576310",
+      "ultimate_callee": "0x006C30A0 (SharedWork member-array append, 64-member variant)",
+      "pattern": "C (8-byte trampoline)",
+      "member_record_size": 48,
+      "member_count": 64,
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0709-DRAFT",
+      "notes": "Sized at 64 members."
+    },
+    {
+      "opcodeHex": "0x0183",
+      "opcode": 387,
+      "name": "ContentMembersX08Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x183",
+      "primary_handler": "0x00576320",
+      "ultimate_callee": "0x006C3100 (Content variant of GroupMembers, separate SharedWork pipeline)",
+      "pattern": "C (8-byte trampoline)",
+      "wire_evidence": [
+        "manifests/unmapped_payload_decoding.json batch 1 s2c_0x0183"
+      ],
+      "member_count": 8,
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0710-DRAFT",
+      "classification": "group_sharedwork_non_receiver (confirmed_negative priority 6)",
+      "notes": "ContentMembers* (0x183..0x186) is the parallel family to GroupMembers* (0x17F..0x182) for content-director groups (raid/dungeon/instance content). Same wire shape, different SharedWork pipeline. The unmapped-payload-decoding pass notes: the decomp and PCAP body length agree on the 0x78-byte application-payload region."
+    },
+    {
+      "opcodeHex": "0x0184",
+      "opcode": 388,
+      "name": "ContentMembersX16Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x184",
+      "primary_handler": "0x00576330",
+      "ultimate_callee": "0x006C3150",
+      "pattern": "C (8-byte trampoline)",
+      "member_count": 16,
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0711-DRAFT",
+      "notes": "Content variant, 16-member sizing."
+    },
+    {
+      "opcodeHex": "0x0185",
+      "opcode": 389,
+      "name": "ContentMembersX32Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x185",
+      "primary_handler": "0x00576340",
+      "ultimate_callee": "0x006C31A0",
+      "pattern": "C (8-byte trampoline)",
+      "member_count": 32,
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0712-DRAFT"
+    },
+    {
+      "opcodeHex": "0x0186",
+      "opcode": 390,
+      "name": "ContentMembersX64Packet",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x186",
+      "primary_handler": "0x00576350",
+      "ultimate_callee": "0x006C31F0",
+      "pattern": "C (8-byte trampoline)",
+      "member_count": 64,
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0713-DRAFT"
+    },
+    {
+      "opcodeHex": "0x0187",
+      "opcode": 391,
+      "name": "SetOccupancyGroupPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x187",
+      "primary_handler": "0x00576390",
+      "ultimate_callee": "0x006C8340 (-> 0x006C6B20 / 0x006C5460 - Group PropertyUpdater path)",
+      "pattern": "C (8-byte trampoline)",
+      "wire_evidence": [
+        "xivl-opcodes/opcodes.json 0x0187 SetOccupancyGroup",
+        "manifests/unmapped_payload_decoding.json batch 3 s2c_0x0187"
+      ],
+      "total_size": 80,
+      "payload_size": 64,
+      "field_layout": [
+        {
+          "offset": 0,
+          "size": 8,
+          "type": "u64",
+          "name": "monsterGroup",
+          "note": "The monster group to be assigned to a playerGroup"
+        },
+        {
+          "offset": 8,
+          "size": 4,
+          "type": "u32",
+          "name": "groupType",
+          "note": "MonsterPartyGroup (10002) typical; Ifrit uses SimpleContentGroup (30012)"
+        },
+        {
+          "offset": 16,
+          "size": 8,
+          "type": "u64",
+          "name": "playerGroup",
+          "note": "The player group to be given claim of the monster group. Zero-fill unsets claim."
+        },
+        {
+          "offset": 24,
+          "size": 4,
+          "type": "u32",
+          "name": "unknown"
+        },
+        {
+          "offset": 28,
+          "size": 36,
+          "type": "char[36]",
+          "name": "occupancyName"
+        }
+      ],
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0714-DRAFT",
+      "notes": "Establishes the claim/ownership link between a monster group and a player group (party/alliance). Drives hateType workvalue routing - monsters become 'claimed by' the player group, affecting name plate colours. Retail empirical count: 44x in combat/quest captures (bahamut external_opcodes.json)."
+    },
+    {
+      "opcodeHex": "0x0188",
+      "opcode": 392,
+      "name": "CreateNamedGroupPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x188",
+      "primary_handler": "0x00576360",
+      "ultimate_callee": "0x006CD790",
+      "pattern": "C (8-byte trampoline)",
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0715-DRAFT",
+      "notes": "Server-driven creation of a named group instance (likely npc party or content-director-spawned mob cluster). Not yet decoded for payload fields; the FUN_006CD790 callee is in a different cluster than the SharedWork append path (006C2Fxx-006C31xx), suggesting this is the group registry/creation rather than member append."
+    },
+    {
+      "opcodeHex": "0x0189",
+      "opcode": 393,
+      "name": "CreateNamedGroupMultiplePacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x189",
+      "primary_handler": "0x00576370",
+      "ultimate_callee": "0x006CD7B0",
+      "pattern": "C (8-byte trampoline)",
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0716-DRAFT",
+      "notes": "Bulk variant of 0x188. Callee FUN_006CD7B0 is adjacent to FUN_006CD790 (single variant), suggesting they share a base registration helper."
+    },
+    {
+      "opcodeHex": "0x018A",
+      "opcode": 394,
+      "name": "SetActiveLinkshellPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x18A",
+      "primary_handler": "0x00576380",
+      "ultimate_callee": "0x006C82A0",
+      "pattern": "C (8-byte trampoline)",
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0717-DRAFT",
+      "notes": "Sets which linkshell is currently active (for chat default targeting). FUN_006C82A0 is in the OnlineStatusUpdater / linkshell pipeline cluster - distinct from party/content member arrays. EntryLinkShellBuilder (BCS-Y-0073) is the corresponding outbound builder."
+    },
+    {
+      "opcodeHex": "0x018B",
+      "opcode": 395,
+      "name": "SetGroupLayoutIdPacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x18B",
+      "primary_handler": "0x005763A0",
+      "ultimate_callee": "0x006C5DF0 (-> 0x006C5240)",
+      "pattern": "C (8-byte trampoline)",
+      "wire_evidence": [
+        "xivl-opcodes/opcodes.json 0x018B SetGroupLayoutID",
+        "manifests/unmapped_payload_decoding.json batch 2 s2c_0x018b"
+      ],
+      "total_size": 72,
+      "payload_size": 56,
+      "field_layout": [
+        {
+          "offset": 0,
+          "size": 8,
+          "type": "u64",
+          "name": "groupId"
+        },
+        {
+          "offset": 8,
+          "size": 4,
+          "type": "u32",
+          "name": "actorIdOrHandle",
+          "note": "the unmapped-payload-decoding pass names this groupHandle"
+        },
+        {
+          "offset": 12,
+          "size": 4,
+          "type": "u32",
+          "name": "localizedNameId",
+          "note": "0xFFFFFFFF for players/custom names"
+        },
+        {
+          "offset": 16,
+          "size": 4,
+          "type": "s32",
+          "name": "layoutId",
+          "note": "Map layout the actorId is in; -1 suppresses update"
+        },
+        {
+          "offset": 20,
+          "size": 1,
+          "type": "u8",
+          "name": "layoutKind",
+          "note": "the unmapped-payload-decoding pass term"
+        },
+        {
+          "offset": 21,
+          "size": 1,
+          "type": "u8",
+          "name": "unknown2"
+        },
+        {
+          "offset": 22,
+          "size": 34,
+          "type": "char[34]",
+          "name": "actorName",
+          "note": "Client assigns this to the actor in the party list if actor not in rendering range"
+        }
+      ],
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0718-DRAFT",
+      "notes": "Updates per-member layout/zone tracking - lets the party UI know which zone/instance each member is in even when they are out of rendering range. Retail empirical count: 287x across combat captures (bahamut external_opcodes.json - 'the most-emitted of the newly-ported set' after PartyMapMarkerUpdate).",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    },
+    {
+      "opcodeHex": "0x018D",
+      "opcode": 397,
+      "name": "PartyMapMarkerUpdatePacket",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x18D (special inline body, NOT a compact trampoline)",
+      "primary_handler": "0x00575550 (inline 232-byte handler)",
+      "ultimate_callee": "0x0055CF70 (apply path - writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json )",
+      "pattern": "C (inline, special)",
+      "handler_special_shape": "Guard: requires `*(int*)(zone+0x4d8) != 0` (map widget active gate). Pulls a 4-byte marker count from packet+0x18 into local_9f8, then runs FUN_00575550 with (local_990, packet+0x10, &local_9f8). FUN_00575550 itself: SEH-protected; if *param_1 != 0 calls FUN_00575400 sentinel check; on hit forwards via FUN_006C1570(param_2, param_3, param_4) to the apply path; otherwise sets up (FUN_006bfce0(0,param_3)/FUN_00cc77d0/FUN_00573f10/FUN_00cc77f0/FUN_006bfd00) sequence around FUN_00573f10 to fire the marker update.",
+      "wire_evidence": [
+        "xivl-opcodes/opcodes.json 0x018D PartyMapMarkerUpdate",
+        "manifests/unmapped_payload_decoding.json batch 1 s2c_0x018d",
+        "manifests/receiver_discovery.json priority 4"
+      ],
+      "total_size": 680,
+      "payload_size": 664,
+      "field_layout": [
+        {
+          "offset": 0,
+          "size": 8,
+          "type": "u64",
+          "name": "playerGroupId",
+          "note": "The party group"
+        },
+        {
+          "offset": 8,
+          "size": 4,
+          "type": "u32",
+          "name": "groupType",
+          "note": "Retail always PlayerPartyGroup (10001)"
+        },
+        {
+          "offset": 16,
+          "size": 640,
+          "type": "PartyMapMarkerEntry[16]",
+          "name": "markerEntries",
+          "note": "16 x 0x28-byte entries; client loops with stride 0x28 reading entry dwords at +0, +8, +12, +20, +24, +28"
+        },
+        {
+          "offset": 656,
+          "size": 1,
+          "type": "u8",
+          "name": "markerCount",
+          "note": "receiver_discovery.json decomp confirms only byte-level read at payload+0x290"
+        },
+        {
+          "offset": 657,
+          "size": 7,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "markerEntryLayout": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "name": "playerId"
+        },
+        {
+          "offset": 8,
+          "size": 4,
+          "type": "u32",
+          "name": "unknown",
+          "note": "Each player has a different value"
+        },
+        {
+          "offset": 20,
+          "size": 4,
+          "type": "f32",
+          "name": "playerX"
+        },
+        {
+          "offset": 24,
+          "size": 4,
+          "type": "f32",
+          "name": "playerY"
+        },
+        {
+          "offset": 28,
+          "size": 4,
+          "type": "f32",
+          "name": "playerZ"
+        },
+        {
+          "offset": 32,
+          "size": 4,
+          "type": "f32",
+          "name": "playerO",
+          "note": "Orientation"
+        }
+      ],
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0719-DRAFT (handler FUN_00575550) + BCS-Y-0720-DRAFT (case body in FUN_004DC690)",
+      "classification": "direct_non_receiver_handler (confirmed_negative priority 4)",
+      "notes": "Retail empirical count: 592x across 38 captures (bahamut external_opcodes.json - 'the most-emitted of the newly-ported set'). The case body is the ONLY 0x17A..0x18D handler with an inline non-trampoline shape; all others are compact 8-byte trampolines into the Group system. This is because PartyMapMarker updates a UI/rendering structure (zone+0x4d8 widget) rather than the Group::SharedWork pipeline."
+    },
+    {
+      "opcodeHex": "0x0143",
+      "opcode": 323,
+      "name": "_0x0143Handler (PartyMember-related, exact name unconfirmed)",
+      "direction_c2s": false,
+      "direction_s2c": true,
+      "channel": "Zone (MapClientbound)",
+      "bucket": "MapServerOpcode",
+      "dispatcher": "FUN_004DC690 mid-table case 0x143",
+      "primary_handler": "0x00576240 (16-byte wrapper) -> FUN_006C5DE0",
+      "pattern": "C (16-byte wrapper - reads zone+0x1783c into local_9d0, then forwards (zone_ctx, &zone_id, packet+0x10) to FUN_00576240)",
+      "case_body_pattern": "Same shape as 0x17C: passes zone+0x1783c (zone id or session ref) alongside packet body to the Group system. Distinct from 0x17C: 0x17C captures the SEH gate and lock, 0x143 simply passes the zone-id arg.",
+      "catalog_status": "uncataloged",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": "BCS-Y-0721-DRAFT",
+      "notes": "Included in this manifest because the case body's shape (zone-id arg + packet body to FUN_006C5xxx Group cluster) matches the party/group family even though bahamut_opcodes has no name binding. The wrapper FUN_00576240 calls FUN_006C5DE0 - adjacent to FUN_006C5DF0 (the 0x18B SetGroupLayoutId callee). Both targets are in the Group::PropertyUpdater pipeline cluster. Speculative: 0x143 may be a PropertyUpdater-driven member field update separate from the Linkshell/Layout opcodes."
+    }
+  ],
+  "rtti_findings": {
+    "ghidra_query": "BAHAMUT_SYMBOL_QUERY=Party",
+    "total_matches": 53,
+    "rtti_classes": [
+      {
+        "name": "Application::Main::Element::Window::Widget::PartyManagerSubWidget",
+        "vftable_va": "0x00F9F104",
+        "rtti_meta_ptr_va": "0x00F9F100",
+        "rtti_descriptor_va": "0x0126C830",
+        "role": "UI sub-widget (party list display)"
+      },
+      {
+        "name": "Application::Main::Element::Window::Widget::PartyManagerWidget",
+        "vftable_va": "0x00F9F1AC",
+        "rtti_meta_ptr_va": "0x00F9F1A8",
+        "rtti_descriptor_va": "0x0126B978",
+        "role": "UI main party-manager widget"
+      },
+      {
+        "name": "Application::Main::Element::Window::Widget::PartyRootWidget",
+        "vftable_va": "0x00F9F254",
+        "rtti_meta_ptr_va": "0x00F9F250",
+        "rtti_descriptor_va": "0x0126B840",
+        "role": "UI root container for party UI"
+      }
+    ],
+    "labels_of_note": [
+      "0x00F9AE14 ListBox_PartyList - the party member list UI widget",
+      "0x00F9AEE8 Button_PartyManager",
+      "0x00F9AE40 Button_PartyManager pointer slot",
+      "0x00FC1B10 Window_PartyParameterWidget - per-member parameter sub-widget",
+      "0x00FC2968 MapMarkerParty - confirms 0x18D PartyMapMarkerUpdate ties to a 'MapMarkerParty' resource",
+      "0x00FC7F3C visualopacity_iconcontrol_party - icon control config",
+      "0x00FA84A4 RaptureCommands.HidePartyTarget / DisplayPartyTarget* - Lua console commands for party-target widget",
+      "0x00F8D14C name_plate_party_name / 0x00F8D164 name_plate_party_hp - nameplate template strings"
+    ],
+    "notes": "All 3 RTTI Party classes are UI widgets (Application::Main::Element::Window::Widget::Party*). There is no Application::Lua::Script::Client::Party class - because the back-end is the more general Application::Lua::Script::Client::Group::* hierarchy already cataloged in group_system_decomp.md (18 vtables) and partly in symbols.json (BCS-Y-0072 EntryBuilder, BCS-Y-0073 EntryLinkShellBuilder). The Lua-script-bindable surface is Application::Lua::Script::Client::Control::GroupBase (34 slots at RVA 0xBD53CC, listed in cpp_bindings_index.md as 'groupbaseclass' with 15 client-side methods). A Party is just a Group subtype identified by groupTypeId 0x2711."
+  },
+  "existing_bcs_y_links": {
+    "directly_relevant": [
+      {
+        "id": "BCS-Y-0072",
+        "name": "Application::Lua::Script::Client::Group::EntryBuilder",
+        "address": "0x007D442C",
+        "relevance": "Outbound packet builder for party/content group entry events. Single-use, self-destructing via Detach (slot 14)."
+      },
+      {
+        "id": "BCS-Y-0073",
+        "name": "Application::Lua::Script::Client::Group::EntryLinkShellBuilder",
+        "address": "0x007D447C",
+        "relevance": "Linkshell-specific variant of EntryBuilder. Same 19-slot shape."
+      },
+      {
+        "id": "BCS-Y-0279",
+        "name": "Option2_central_packet_dispatcher_FUN_004dc690",
+        "address": "0x004DC690",
+        "relevance": "The dispatcher that routes 0x17A and 0x17C..0x18D. The party-subsystem pass catalogs ITS mid-table case bodies."
+      },
+      {
+        "id": "BCS-Y-0280",
+        "name": "Option2_event_family_dispatcher_FUN_004d8860",
+        "address": "0x004D8860",
+        "relevance": "Dispatcher that routes 0x0133 s2c GenericData/UserData to FUN_00575060."
+      },
+      {
+        "id": "BCS-Y-0306",
+        "name": "ChatProtoChannel generic packet forwarder",
+        "address": "(see notes)",
+        "relevance": "Tier-B forwarder that the c2s 0x00C9 emitter feeds into."
+      },
+      {
+        "id": "BCS-Y-0309",
+        "name": "ChatOutbound_PartyChat_emitter_FUN_004DF6D0",
+        "address": "0x004DF6D0",
+        "relevance": "C2s 0x00C9 PartyChatMessagePacket emitter (Tier-C). 536-byte body via Chat generic forwarder."
+      }
+    ],
+    "indirectly_relevant_decomp_only": [
+      {
+        "name": "Application::Lua::Script::Client::Group::PacketProcessor",
+        "vftable_va": "0xBD42F4",
+        "rtti_slot_count": 3,
+        "relevance": "The Receive-side dispatch. OnPacket entry at FUN_006CDE30 (slot 1). The 006Cxxxx callees of the 0x17A..0x18D handlers feed THIS class's two parallel subdecoders (sub1 at +0x40, sub2 at +0x94).",
+        "bcs_y_proposal": "BCS-Y-0722-DRAFT (RTTI class + OnPacket function)"
+      },
+      {
+        "name": "Application::Lua::Script::Client::Group::SharedWork",
+        "vftable_va": "0xBD4334",
+        "rtti_slot_count": 28,
+        "relevance": "The work-table that gets populated by the 0x17F..0x186 GroupMembers/ContentMembers append handlers and read by the 0x18B SetGroupLayoutId / 0x187 SetOccupancyGroup property updates. 3 parallel 16-byte-stride member arrays (MemberInfo/Property/WorkSync pipelines).",
+        "bcs_y_proposal": "BCS-Y-0723-DRAFT (RTTI class)"
+      },
+      {
+        "name": "Application::Lua::Script::Client::Group::PacketRequestBase",
+        "vftable_va": "0xBD4120",
+        "rtti_slot_count": 13,
+        "relevance": "Abstract base of every send-side Group packet emitter. EntryBuilderBase, MemberInfoUpdater, PropertyUpdater, WorkSyncUpdater, BreakupBuilder all derive from it.",
+        "bcs_y_proposal": "BCS-Y-0724-DRAFT (RTTI class)"
+      },
+      {
+        "name": "Application::Lua::Script::Client::Control::GroupBase",
+        "vftable_va": "0xBD53CC",
+        "rtti_slot_count": 34,
+        "relevance": "Lua-script-bindable group base; 15 client-side methods exposed via _x_cpp / _x_inl. Is the Lua-facing API for Party / Linkshell / Retainer / Relation groups.",
+        "bcs_y_proposal": "BCS-Y-0725-DRAFT (RTTI class)"
+      }
+    ]
+  },
+  "key_findings": [
+    "All 11 s2c Group/Content member opcodes (0x17C-0x186) plus 0x17A SynchGroupWorkValues, 0x187 SetOccupancyGroup, 0x188-0x189 CreateNamedGroup, 0x18A SetActiveLinkshell, and 0x18B SetGroupLayoutId share the SAME dispatcher case-body shape in FUN_004DC690 mid-table (0x13D < uVar2 branch). 16 of them are 8-byte trampolines into the Group::PacketProcessor / SharedWork helpers at 0x006C2Fxx-0x006CDxxx. Only 0x17C (109-byte SEH wrapper) and 0x18D (232-byte inline handler with map-widget guard) break the trampoline pattern.",
+    "0x18D PartyMapMarkerUpdate is the ARCHITECTURAL ODD ONE OUT in this cluster: it does NOT touch the Group::PacketProcessor / SharedWork pipeline. Its inline handler at FUN_00575550 gates on `*(int*)(zone+0x4d8) != 0` (the map widget pointer), reads the marker count from a non-standard offset (packet+0x18 instead of part of the payload header), and forwards through FUN_006C1570 / FUN_00573F10 to a UI/rendering update path. receiver_discovery.json correctly classifies this as direct_non_receiver_handler, distinct from the other group_sharedwork_non_receiver classifications.",
+    "0x0133 has DUAL semantics by direction. C2s = GroupCreated (client tells server it acknowledged a group). S2c = GenericDataPacket / UserData (server pushes Lua-VM variadic RPC). The c2s side is the ONLY c2s opcode in this cluster that the client emits (PartyInvite/PartyLeave/PartyModify are Lua-console-driven, going through the GenericData LuaParam path on the c2s side as well). 0x017A SynchGroupWorkValues is the s2c response payload associated with the 0x0133 c2s GroupCreated confirm.",
+    "0x00C9 PartyChat goes through the Chat channel, NOT the Zone channel. C2s emitter is BCS-Y-0309 (already cataloged). S2c receive handler is in the Chat channel callback (out of scope for this manifest's FUN_004DC690/FUN_004D8860 focus).",
+    "No client-side equivalent of PartyInvite/PartyLeave/PartyModify exists as a direct wire opcode. The Lua commands Data/scripts/commands/Party*Command.lua (PartyInviteCommand, PartyKickCommand, PartyLeaderCommand, PartyResignCommand, PartyDisbandCommand, PartyBreakupCommand, PartyTargetCommand, addtoparty.lua) all go through the Lua-VM bindings (Application::Lua::Script::Client::Control::GroupBase 15 client-side methods) and are relayed by the server. The internal Map<->World bus values are NOT actual ZoneProtoChannel wire opcodes (confirmed by bahamut_gaps.json).",
+    "The survey identified 20 function candidates and four Group::* RTTI class candidates. Canonical promotion status and identifiers are determined by symbols.json.",
+    "Group::PacketProcessor dual-subdecoder architecture (finding) explains why GroupHeader (0x17C) + GroupMembersBegin (0x17D) + GroupMembersX08-X64 (0x17F-0x182) + GroupMembersEnd (0x17E) are emitted as a TRIO/QUARTET in a single sequenceId burst. The PacketProcessor's sub*_complete flags + +0xEA both_callback_pending guards mean the combined callback only fires when BOTH subdecoders complete.",
+    "group_system_decomp.md 'open question' about runtime registration of ZoneProtoDownCallbackInterface is RESOLVED in network_dispatch_dual_paths.md: there IS no runtime registration. The dispatcher uses DummyCallback whose per-opcode slots are 3-byte `ret 0xc` stubs. Group-family opcodes (0x017A / 0x0133 IN / 0x017C-F / 0x0183) are consumed by Group::PacketProcessor's queue-walk + dual subdecoder, NOT by per-opcode vtable callbacks. This is why FUN_004DC690 dispatches them DIRECTLY (bypassing the ZoneProtoChannel dispatch table) - the FUN_005763xx trampolines are the client's actual handlers."
+  ],
+  "open_questions": [
+    "0x0143 unnamed handler: case body in FUN_004DC690 has the same shape as 0x17C (zone+0x1783c reference + packet body forwarded to FUN_006C5xxx Group cluster) but bahamut_opcodes.json has no name. Speculative: a Group::PropertyUpdater member-field update separate from 0x18A (Linkshell) and 0x18B (LayoutId). Needs PCAP correlation + payload decomp.",
+    "FUN_006CD790 (0x188 CreateNamedGroup callee) and FUN_006CD7B0 (0x189 CreateNamedGroupMultiple callee) are in a different cluster from the SharedWork append callees (0x006C2Fxx-0x006C31xx). What is the group-registry data structure these write into? Likely the per-zone groups list in zone+0x???? (separate from the per-group SharedWork instances). Needs reverse search of writes to whatever array FUN_006CD790 touches.",
+    "0x017A property-stream MurmurHash2 ids - the property path -> id mapping in gam-property-registry.md should be cross-validated against the s2c property writes observed in pcap.",
+    "0x18B SetGroupLayoutId - the exact semantics of the fields at offsets +20 and +21 remain unresolved; the current names are layoutKind and unknown2. Resolution needs expanded pcap correlation across more captures.",
+    "What is at zone+0x4d8 (the gate for 0x18D PartyMapMarkerUpdate)? It is the active-map-widget pointer; finding writes to it would tell us when/how the client opens the map (a client-side state change that the 0x18D handler depends on). Useful for understanding why retail emits 0x18D so heavily (592x across 38 captures).",
+    "Is there a c2s opcode that the client sends when it OPENS the party UI / map UI? Searching FUN_004DF6D0's neighbors (Chat outbound emitters) or the Zone outbound Tier-C list may surface it."
+  ],
+  "summary": {
+    "opcodes_characterized": 19,
+    "opcodes_inline_handler": 1,
+    "opcodes_seh_wrapper_handler": 1,
+    "opcodes_compact_trampoline_handler": 16,
+    "opcodes_external_dispatcher": 1,
+    "rtti_party_classes_found": 3,
+    "rtti_party_classes_in_symbols_json": 0,
+    "rtti_group_classes_documented": 18,
+    "rtti_group_classes_in_symbols_json": 2,
+    "proposed_bcs_y_entries": 26,
+    "proposed_bcs_y_id_range": "BCS-Y-0700-DRAFT through BCS-Y-0725-DRAFT (final IDs subject to collision avoidance at write time)",
+    "scope_completed": "party-group-subsystem (s2c receive path); c2s emission path remains out of scope (no direct wire opcodes - all via Lua-VM 0x0133 GenericData)"
+  }
+}

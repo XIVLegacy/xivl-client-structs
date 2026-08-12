@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "generated": "2026-05-28",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Chases the KickClientOrderEventReceiver slot-2 actor[+0x5C] readiness gate flagged as the follow-up. Result: +0x5C is a standardized 'LuaActorImpl installed / Lua-bound' flag on LuaControl-derived objects. Writer = FUN_00766F00 (BCS-Y-0135) during the per-frame Lua tick, gated on the actor-list owner's state 0x16C==10; zero-init by ActorBase ctor (BCS-Y-1710); consumed as a readiness gate by the Kick receiver, the preWarp/postWarp gates, the event-start bridge, and chat-render. Client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline' added. Live decomp via the port-8081 GhidraMCP bridge.",
+  "method": {
+    "step_a": "Found the slot-2 Receive (BCS-Y-0724 FUN_0089E450) via the catalog + the ctor FUN_0089F2B0 (installs KickClientOrderEventReceiver::vftable; handle at receiver+0xC). Decompiled it: the +0x5C gate appears twice - the receiver resolves the target via FUN_00CC7A50 and short-circuits if actor+0x5C==0.",
+    "step_b": "Decompiled the resolver FUN_00CC7A50 (generic Lua-bound-object handle resolver, the same one the warp gates use) - confirms the +0x5C-gated object is LuaControl-derived.",
+    "step_c": "Catalog search surfaced the writer: FUN_00766F00 (BCS-Y-0135 actorListInstaller) sets *(actor+0x5C)=1 + installs the LuaActorImpl (FUN_00574830 BCS-Y-0134) per actor; ActorBase ctor (BCS-Y-1710) zero-inits +0x5C. Decompiled FUN_00766F00 to confirm: the pass is gated on owner state 0x16C==10.",
+    "step_d": "get_xrefs_to chained the trigger: FUN_00766F00 <- FUN_00578970 (BCS-Y-1701 LuaFrameTick) <- FUN_004DA680 (BCS-Y-1711 Application_FrameTick). So +0x5C flips during the per-frame tick once the actor-list reaches the zone-loaded state - not via a spawn-burst packet handler.",
+    "step_e": "Promoted the 2 uncataloged helpers in the gate machinery (FUN_00CC7A50 resolver, FUN_006E11D0 secondary gate); archived to tools/ghidra/logs/actor_5c_readiness_gate.txt; wrote client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline'."
+  },
+  "key_findings": [
+    "**+0x5C = 'LuaActorImpl installed / Lua-bound' flag** on LuaControl-derived objects (actors AND UI widgets). Zero-init by ActorBase ctor; set to 1 by the actor-list install pass FUN_00766F00 (BCS-Y-0135) which also installs the LuaActorImpl. Standardized across the 11 LTC/LGTC-derived classes (slot-12 getter BCS-Y-1557).",
+    "**Set during the per-frame Lua tick, gated on actor-list owner state 0x16C==10** ('zone-loaded/spawn-ready'). Trigger chain FUN_004DA680 (BCS-Y-1711) -> FUN_00578970 (BCS-Y-1701) -> FUN_00766F00 (BCS-Y-0135). NOT a direct spawn-burst packet write.",
+    "**Consumed as a readiness gate** by the Kick receiver (BCS-Y-0724; short-circuits if actor+0x5C==0), the preWarp engine gate (BCS-Y-1789; DesktopWidget+0x5C), ActorDirectorEventStartBridge (BCS-Y-0433), ChatRender (BCS-Y-1100), and the LuaControl finalize wrapper (BCS-Y-1576). Same field the warp/dismiss gates check.",
+    "**Blocker lead (second, affirmative readiness layer)**: unlike SharedWork (client-architecture 's2c state-push receivers do not gate on Group::SharedWork', not a gate), +0x5C IS a real gate on the Lua-callback surface that produces the loading-screen dismiss (_onPreWarp/_onPostWarp -> _fadeOut). It only flips when the install pass sees the owning actor-list at state 0x16C==10. So the productive next lead is: what advances the actor-list owner's +0x16C state to 10? That state machine is the join point between the spawn-burst (client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline') and the Lua dismiss cascade."
+  ],
+  "new_bcsy_entries_summary": {
+    "gate_machinery_helpers": 2,
+    "total_bcsy_added": 2,
+    "id_range": "BCS-Y-1797..BCS-Y-1798",
+    "kinds": "2 function",
+    "already_cataloged_cited": [
+      "BCS-Y-0724 KickClientOrderEventReceiver_Receive_slot2 (the +0x5C-gating receiver)",
+      "BCS-Y-0135 LuaActorImpl::actorListInstaller (the +0x5C writer)",
+      "BCS-Y-0134 LuaActorImpl::installer",
+      "BCS-Y-1701 LuaFrameTick / BCS-Y-1711 Application_FrameTick (the trigger chain)",
+      "BCS-Y-1710 ActorBase ctor (+0x5C zero-init); BCS-Y-1557 slot-12 +0x5C getter",
+      "BCS-Y-1789 preWarp gate (DesktopWidget+0x5C); BCS-Y-0433 / BCS-Y-1100 / BCS-Y-1576 (+0x5C consumers)"
+    ]
+  },
+  "deferred_followups": [
+    "PRIMARY next lead: what advances the actor-list owner's +0x16C state to 10 ('zone-loaded')? That state machine is the join point between the spawn-burst and the Lua dismiss cascade - the most promising remaining client-side blocker lead.",
+    "Part (a): bahamut-side spawn-burst structural check (still open)."
+  ],
+  "validators_post": {
+    "validate_json": "to_run"
+  },
+  "symbol_count_delta": "1783 -> 1785 (+2 BCS-Y; BCS-Y-1797..1798)",
+  "files_changed": [
+    "manifests/symbols.json: +2 entries (BCS-Y-1797..1798)",
+    "manifests/actor_5c_readiness_gate.json (NEW)",
+    "tools/ghidra/logs/actor_5c_readiness_gate.txt (NEW)"
+  ]
+}

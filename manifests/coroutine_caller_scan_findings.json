@@ -1,0 +1,145 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "Coroutine caller scan",
+  "generated": "2026-05-20",
+  "title": "Lua coroutine consumer subsystem findings",
+  "scope": "Identify which client subsystem(s) actually use the BCS-Y-0477/0478 Lua coroutine wrappers (lua_resume / lua_yield). Follow-on to the 6A/6C verification pass that proved the coroutine API surface exists in the binary.",
+  "sourceRefs": [
+    "manifests\\negatives_verification_findings.json",
+    "manifests\\lua_state_lifecycle_findings.json",
+    "manifests\\deferred_scheduler_findings.json",
+    "%BCS_GHIDRA_PROJECTS%\\verify_coroutine_callers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\coroutine_callers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\coroutine_callers_l2_decomp.txt",
+    "manifests\\coroutine_caller_scan_l2_findings.json"
+  ],
+  "callerInventory": {
+    "lua_resume_wrapper": {
+      "symbolId": "BCS-Y-0477",
+      "wrapper": "FUN_00CF4230",
+      "callers": [
+        "FUN_00D0C070",
+        "FUN_00CCEAC0",
+        "FUN_00CCF290",
+        "FUN_00CCFFE0"
+      ]
+    },
+    "lua_yield_wrapper": {
+      "symbolId": "BCS-Y-0478",
+      "wrapper": "FUN_00CF38D0",
+      "callers": [
+        "FUN_00D04DA0",
+        "FUN_00D08A10"
+      ]
+    }
+  },
+  "namedCallers": [
+    {
+      "symbolId": "BCS-Y-0479",
+      "nativeFunction": "FUN_00CCF290",
+      "name": "Component::Lua::GameEngine::LuaThreadImpl::Resume",
+      "evidence": "Body calls FUN_00447260(\"Component::Lua::GameEngine::LuaThreadImpl::Resume\", DAT_00f67298) as a diagnostic string before the lua_resume callsite.",
+      "behavior": "Iterates an argument vector at param_1+0x100..+0x104 pushing each entry to the Lua stack via FUN_00cf9630, then invokes FUN_00CF4230(argCount, &errSlot). Public Resume entry of the Component::Lua::GameEngine::LuaThreadImpl C++ class.",
+      "callers": [
+        "FUN_00CF1B50"
+      ],
+      "confidence": "confirmed"
+    },
+    {
+      "symbolId": "BCS-Y-0480",
+      "nativeFunction": "FUN_00D08A10",
+      "name": "LuaNApi__luaGameEngineRequire_FUN_00D08A10",
+      "evidence": "Body contains two literal strings registered by FUN_00447260: `_luaGameEngineRequire` (the N-API name) at the request-side path and `_luaGameEngineRequireYield` (the yield marker) at the yield-branch path. Body calls FUN_00D0CFB0 to drive the require pipeline, branches on its return value, and yields via FUN_00CF38D0 when the result indicates async wait.",
+      "behavior": "Lua N-API implementation of `_luaGameEngineRequire`. When the require loader (FUN_00D0CFB0) reports the script is not yet loaded, the calling Lua thread is yielded with marker `_luaGameEngineRequireYield`; the thread is later resumed by the async completion path. Returns 0/1/2 depending on completion state.",
+      "callers": [],
+      "callersBasis": "No static callers were recovered. This is consistent with Lua N-API bindings being invoked through a function table (LuaState user functions are registered via FUN_00CCCAD0 and called by the Lua VM rather than by static C calls).",
+      "confidence": "confirmed"
+    },
+    {
+      "symbolId": "BCS-Y-0481",
+      "nativeFunction": "FUN_00D0C070",
+      "name": "LuaRequireAsyncCompletionResume_FUN_00D0C070",
+      "evidence": "Body calls FUN_00cf3360(\"require\") to push the Lua-side `require` function name, then calls FUN_00CF4230(3, &errSlot) to resume the suspended Lua thread with three arguments. Adjacent to FUN_00D0DEB0 which references the LPB loader path; calls FUN_00D0DF60 and FUN_00D0FF10 to coordinate with the loader resource event surface.",
+      "behavior": "Resume path for an async require completion: after the .prog resource finishes loading, the loader event dispatches into this function which prepares the require closure, pushes module/path/result arguments, and resumes the suspended Lua thread. Pairs with BCS-Y-0480 _luaGameEngineRequire yield path.",
+      "callers": [
+        "FUN_00D0C3B0",
+        "FUN_00D0C440",
+        "FUN_00D0C4D0"
+      ],
+      "confidence": "probable"
+    }
+  ],
+  "additionalCallsites": [
+    {
+      "nativeFunction": "FUN_00CCEAC0",
+      "directionalRole": "resume",
+      "argCount": 2,
+      "behavior": "Per-frame or per-event Lua thread resume with two arguments. Pushes a normalized 15-bit value ((*param_4 & 0x7fff) / DAT_00f91c48) and a name-binding setup via FUN_00CD7A50. Uses FUN_00CF08F0 (LuaThreadInvocationContextGuard, BCS-Y-0464), so this is engine-side dispatch.",
+      "identification": "unresolved_after_l2_halt",
+      "l2Trace": "FUN_00CE1840 is the only l2 caller recovered. It lazily initializes param_1+0x10 via FUN_00CF1060(param_1, &DAT_01377ee8, 0), then calls FUN_00CCEAC0(param_1, param_3, param_4). No diagnostic literal, N-API name, or class/method string was present.",
+      "callers": [
+        "FUN_00CE1840"
+      ],
+      "nextCallerNotChased": "FUN_00CEF510",
+      "candidatesRetained": [
+        "Animation or tween update step (normalized fractional arg)",
+        "Audio playback progress callback",
+        "Generic per-frame Lua thread tick"
+      ],
+      "noSymbolReason": "No source-backed name strong enough for BCS-Y promotion after the mandated one l2 round."
+    },
+    {
+      "nativeFunction": "FUN_00CCFFE0",
+      "symbolId": "BCS-Y-0482",
+      "name": "LuaThreadImpl_CallOrResumeHelper_FUN_00CCFFE0",
+      "directionalRole": "resume_or_pcall",
+      "argCount": "variable (local_10 + 1)",
+      "behavior": "Shared LuaThreadImpl invoke helper. param_5 == 0 dispatches to FUN_00CF4230 (BCS-Y-0477 lua_resume wrapper); param_5 != 0 dispatches to FUN_00CF4010 (probable protected-call wrapper). The helper reports a continuation/result slot through param_6 and funnels errors through the same FUN_00CF3D80/FUN_00CF3D60/FUN_00CF3D90 diagnostic branches as the resume callers.",
+      "identification": "identified_engine_internal_helper",
+      "confidence": "probable",
+      "callers": [
+        "FUN_00CCEE30",
+        "FUN_00CCECB0"
+      ],
+      "l2Trace": "Both l2 callers compute the param_5 toggle from whether the this+0xdc..0xe0 vector has any 0x3c-stride continuation entries and pass param_1+0x11c as the result slot. No Component::Lua::GameEngine::LuaThreadImpl::Call diagnostic string was recovered."
+    },
+    {
+      "nativeFunction": "FUN_00D04DA0",
+      "directionalRole": "yield",
+      "behavior": "Conditional yield gated by FUN_00CE1720, FUN_00D04FE0, and FUN_00D19B70. Yield is reached only when FUN_00D04FE0 returns nonzero and the lookup at *(iVar7+0x13c/0x13d) is unset.",
+      "identification": "unresolved_after_l2_halt",
+      "l2Trace": "FUN_00D08000 is the only l2 caller recovered. It is a 109-byte Lua-frame wrapper with no static callers and no embedded strings: FUN_00CF3180(param_1), FUN_00D04DA0(local_14, cookie), FUN_00CF31C0().",
+      "candidatesRetained": [
+        "Generic wait/sleep/yield N-API path",
+        "Widget or event-mode async wait",
+        "Director or quest async wait"
+      ],
+      "noSymbolReason": "No source-backed native binding name strong enough for BCS-Y promotion after the mandated one l2 round."
+    }
+  ],
+  "model": {
+    "primaryUseCase": "Async script require",
+    "summary": "The principal client use of Lua coroutines in 1.23b is asynchronous module loading. When a Lua script calls `_luaGameEngineRequire(path)`, the native impl (BCS-Y-0480 FUN_00D08A10) drives the LPB loader (BCS-Y-0466 LuaLpbLoaderResourceEvent_FUN_00D0FD70 pipeline). If the requested resource is not yet loaded, the Lua thread yields with the diagnostic marker `_luaGameEngineRequireYield`. When the loader's resource event later completes, the async completion path (BCS-Y-0481 FUN_00D0C070) prepares the require result on the stack and calls lua_resume to continue the suspended script. This pairs cleanly with the finding that `.prog` chunks load through an asynchronous LPB resource event.",
+    "secondaryUses": "The l2 pass identifies FUN_00CCFFE0 as BCS-Y-0482, a generic LuaThreadImpl call-or-resume helper rather than a subsystem-specific coroutine consumer. FUN_00CCEAC0 and FUN_00D04DA0 remain unpromoted after the mandated one-round halt: their l2 callers are thin wrappers with no diagnostic or N-API binding strings.",
+    "confirmedNegativeRetained": "This remains correct: the deferred event-condition execution path (FUN_00897310, FUN_008955C0) does NOT use Lua coroutines. The coroutine surface and the deferred event surface are independent."
+  },
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0479",
+      "name": "Component_Lua_GameEngine_LuaThreadImpl_Resume_FUN_00CCF290"
+    },
+    {
+      "id": "BCS-Y-0480",
+      "name": "LuaNApi__luaGameEngineRequire_FUN_00D08A10"
+    },
+    {
+      "id": "BCS-Y-0481",
+      "name": "LuaRequireAsyncCompletionResume_FUN_00D0C070"
+    },
+    {
+      "id": "BCS-Y-0482",
+      "name": "LuaThreadImpl_CallOrResumeHelper_FUN_00CCFFE0"
+    }
+  ]
+}

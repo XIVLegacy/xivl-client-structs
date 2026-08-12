@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_inheritance_chain_refinement",
+  "scope": "Decomp the Sqwt event-source class chain to identify the +0xB4 interface vtable writer. Closes part of the manifest deferred_followups[2]. RESULT: parent ctor in the Sqwt chain is Sqwt::InputElement (FUN_0091E090). +0xB4 is NOT initialized by InputElement/RaptureElement/XamlElement ctors - suggests it's set by a concrete derived class or via lazy/late-init. 3 fresh Sqwt RTTI types surfaced.",
+  "method": {
+    "step1": "Decomp RaptureElement::ctor (FUN_004DAB50 BCS-Y-0539) + XamlElement::ctor (FUN_00539890 BCS-Y-1334) via run_c66_framework_element.bat. Log: tools/ghidra/logs/c66_rapture_xaml_ctors_decomp.txt.",
+    "step2": "Identify that XamlElement::ctor passes param_2 (not param_1) to RaptureElement::ctor - COMPOSITION pattern, not inheritance. The 'inheritance chain' described earlier is actually a mix of inheritance (RaptureElement -> InputElement) and composition (XamlElement has-a RaptureElement).",
+    "step3": "Identify FUN_0091E090 as the FIRST function called by RaptureElement::ctor with param_1 as the only arg - candidate Sqwt parent ctor. Decomp via run_c66_framework_parent.bat. Log: tools/ghidra/logs/c66_framework_parent_decomp.txt.",
+    "step4": "FUN_0091E090 confirmed as Sqwt::InputElement::ctor via vftable write 'Sqwt::InputElement::vftable' to *param_1. Body reveals 3 Sqwt RTTI types: Sqwt::InputElement (primary), Sqwt::Input::CommandBindingCollection (embedded at +0x04), Sqwt::Input::InputBindingCollection (embedded at +0x28).",
+    "step5": "Verify that +0xB4 is NOT initialized by InputElement, RaptureElement, or XamlElement ctors. Conclusion: the +0xB4 interface vtable referenced in client-architecture 'The Sqwt event-source registry is per-channel' must be set by a concrete derived class (e.g. Sqwt::Window or Sqwt::Controls::ListBox) or via a lazy/late-init step (e.g. during the first subscribe call).",
+    "step6": "Catalog BCS-Y-1375 (Sqwt::InputElement::ctor) + BCS-Y-1376 (XamlElement_StateInit helper at FUN_00542C80). Amend BCS-Y-0539 + BCS-Y-1334 with the backlinks. The 3 fresh Sqwt RTTI types (InputElement, CommandBindingCollection, InputBindingCollection) are documented in BCS-Y-1375's notes but NOT cataloged as separate BCS-Y entries (their VAs need future resolution via Ghidra Symbol Tree)."
+  },
+  "key_findings": [
+    "**Sqwt UI inheritance chain refined**: Sqwt::InputElement <- (more intermediate Sqwt classes?) <- Application::Main::RaptureElement <- (composition) Application::Main::Element::XamlElement <- concrete Elements. The description of a simple 'RaptureElement <- XamlElement' chain is not quite right: XamlElement HAS-A RaptureElement (composition), not inherits from it.",
+    "**3 fresh Sqwt RTTI types surfaced**: Sqwt::InputElement, Sqwt::Input::CommandBindingCollection, Sqwt::Input::InputBindingCollection. The latter two are EMBEDDED sub-collections at fixed offsets (+0x04 and +0x28) of every InputElement-derived class. They're not cataloged as separate BCS-Y entries (their vftable global VAs need future Ghidra Symbol Tree resolution).",
+    "**+0xB4 interface vtable writer is NOT in the cataloged ctor chain**. None of InputElement::ctor, RaptureElement::ctor, or XamlElement::ctor writes to this+0xB4. Possibilities: (a) a concrete derived class ctor (Sqwt::Window, Sqwt::Controls::ListBox, etc.) writes it; (b) it's set by lazy/late-init during the first subscribe call; (c) the +0xB4 access is on a DIFFERENT class than InputElement-derived (the registry lookup result is type-coerced to Sqwt::Window/ListBox so could be from those concrete classes).",
+    "**The XamlElement state-init helper (FUN_00542C80) creates a std::list sentinel** at xaml_element+4. The 3-pointer self-cycle (sub_state[0/4/8] = sub_state) is the standard MSVC empty-std::list head-node init. This is likely the children-list or subscriber-list for XamlElement.",
+    "**InputElement has TWO embedded sub-collections** at fixed offsets: CommandBindingCollection at +0x04 (likely for input-command bindings like keyboard shortcuts -> commands) and InputBindingCollection at +0x28 (likely for raw input event bindings like key/mouse down/up handlers). These are the 'input handling' machinery of Sqwt UI elements.",
+    "**Inheritance vs composition distinction**: the 'RaptureElement <- XamlElement <- concrete' chain is partially composition. XamlElement::ctor calls RaptureElement::ctor with param_2 (not param_1) - a different `this` for the parent. This means XamlElement contains a RaptureElement field at some offset, accessed via param_2. The full architectural pattern is: Sqwt::InputElement is the deep-base (inheritance); RaptureElement is its derived class (inheritance); XamlElement HAS-A RaptureElement (composition + own vftable writes to param_1)."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1375", "name": "Sqwt_InputElement_ctor_FUN_0091E090", "addr": "0x0091E090", "size_bytes": 226, "role": "Sqwt::InputElement base ctor; called as FIRST step of RaptureElement::ctor"},
+    {"id": "BCS-Y-1376", "name": "XamlElement_StateInit_FUN_00542C80", "addr": "0x00542C80", "size_bytes": 103, "role": "XamlElement state-init helper; allocates std::list sentinel at xaml_element+4"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-0539", "addition": "Parent ctor in Sqwt UI class chain IDENTIFIED: FUN_0091E090 -> Sqwt::InputElement::ctor (BCS-Y-1375). Refines client-architecture 'Sqwt UI elements follow a uniform heap-factory' inheritance chain description."},
+    {"id": "BCS-Y-1334", "addition": "State-init helper IDENTIFIED: FUN_00542C80 -> XamlElement_StateInit (BCS-Y-1376). Creates std::list sentinel at xaml_element+4."}
+  ],
+  "vftable_globals_documented_but_not_cataloged": [
+    {"name": "Sqwt::InputElement::vftable", "write_site": "InputElement+0x00 (param_1[0])", "future_action": "Resolve VA via Ghidra Symbol Tree + add as BCS-Y data entry in later work"},
+    {"name": "Sqwt::Input::CommandBindingCollection::vftable", "write_site": "InputElement+0x04 (param_1[1])", "future_action": "Same as above"},
+    {"name": "Sqwt::Input::InputBindingCollection::vftable", "write_site": "InputElement+0x28 (param_1[10])", "future_action": "Same as above"}
+  ],
+  "deferred_followups": [
+    "Identify the +0xB4 interface vtable writer. Methodology: (a) decomp Sqwt::Window's ctor and Sqwt::Controls::ListBox's ctor - any of them might write this+0xB4; (b) Find writers of `[reg + 0xB4]` patterns in the binary via Ghidra FindOffsetWriters; (c) check if the +0xB4 is lazy-initialized in one of the subscribe-call paths. ~30min-1hr.",
+    "Resolve the 3 Sqwt vftable global addresses for InputElement, CommandBindingCollection, InputBindingCollection. Via Ghidra Symbol Tree lookup or via DumpMemRange on each vftable address. +3 BCS-Y entries pending. ~10min.",
+    "Decomp FUN_0091FF40 (the sub-collection default ctor called inside Sqwt::InputElement::ctor between the CommandBindingCollection and InputBindingCollection vftable writes). Reveals the default state for those collections. ~15min, +1-2 BCS-Y.",
+    "Decomp FUN_0093C750 (the OTHER caller of FUN_0091E090, alongside FUN_004DAB50). It's a separate Sqwt UI class that also uses InputElement as a base. ~15min.",
+    "Investigate whether the +0xB4 mechanism actually involves InputBindingCollection at +0x28 - the +0x28 is suspiciously close to the slot[+0x28] subscribe-slot offset. They might be related (e.g. the embedded InputBindingCollection's vftable slot 10 IS the subscribe method, accessed via this+0x28 directly without an intermediate +0xB4 indirection). This would simplify the architecture: the subscribe call wouldn't need +0xB4 at all - just call InputElement+0x28's vftable slot 10. Compare against client-architecture 'The Sqwt event-source registry is per-channel' evidence."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged (3 ERRORs on placeholder 'medium' confidence in initial draft were resolved by removing 3 placeholder vftable entries)",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - clean (BCS-Y-1375 + 1376 wiki-links resolve; 2 amendment wiki-links resolve)"
+  },
+  "symbol_count_delta": "1364 -> 1366 (+2 BCS-Y; 3 placeholder vftable-global entries initially added then removed pending future VA resolution)",
+  "files_changed": [
+    "manifests/symbols.json: +2 entries (BCS-Y-1375 + 1376), 2 amendments (BCS-Y-0539 + 1334)",
+    "manifests/input_element_ctor.json (NEW, this file)",
+    "tools/ghidra/logs/c66_rapture_xaml_ctors_decomp.txt (NEW)",
+    "tools/ghidra/logs/c66_framework_parent_decomp.txt (NEW)"
+  ]
+}

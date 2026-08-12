@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "RTTI characterization of the 3 NEW interfaces from the (SpreadSheetLoadedDataDisappearListenerInterface, Command::CommandInterface, LuaActorImplInterface). KEY DISCOVERY: the 4 vftables at 0x00FDF968..0x00FDF98C are NOT StatusBase MI sub-vftables as the claimed - they are 4 STANDALONE class primary vftables, all sharing Application::Lua::LuaAppBase as their common abstract base. Evidence: COL pClassDescriptor analysis + StatusBase BCA contents.",
+  "method": {
+    "step1": "FindSymbolByName for each of the 3 interfaces - all 3 RTTI structure addresses located (vftable, COL, CHD, BCA, BCD, TD). Output: c92_spread_symbols.txt, c92_command_symbols.txt, c92_luaactor_symbols.txt.",
+    "step2": "DumpMemRange for 3 TDs (name decode) + BCA cluster + full LuaActorImplInterface vftable extension (0x00FDF98C..0x00FDFB28 = ~103 dwords). Confirmed LuaActorImplInterface has 90 slots, NOT 13 as the claimed - the count was a dump-truncation artifact at exactly 0x00FDF98C + 13*4 = 0x00FDF9C0. Output: c92_rtti_dumps.txt.",
+    "step3": "FindAllReferencesToAddress on 3 TDs to enumerate implementors. **Discovery**: zero implementors. Each interface TD has only own COL + own BCD references (plus 7 code DATA refs from FUN_005745F0 cluster for LuaActorImplInterface, likely typeid/dynamic_cast uses). No class's BCA points to any of these 3 TDs. Output: c92_td_xrefs.txt.",
+    "step4": "DumpMemRange of shared external BCD 0x011447C0 (all 3 interfaces' BCA[1] points here) - revealed TD 0x0126CFAC = Application::Lua::LuaAppBase. Plus dumped StatusBase BCA at 0x0115F858 to verify - StatusBase has 11 BCDs at offsets 0/+4/+96/+100, NONE pointing to the 3 interface TDs. Plus vftable A's COL at 0x0115F8B8 has pClassDescriptor = 0x0115F8CC (own CHD with numBaseClasses=3, NOT StatusBase's CHD). Output: c92_shared_bcd.txt, c92_resolve.txt.",
+    "step5": "DumpMemRange of vftable A class TD (0x012C3238) - decoded to Application::Lua::Script::Client::ActorInitializeParameter::DisplayNameResolverListener. Plus FindAllReferencesToAddress on LuaAppBase TD (0x0126CFAC) - found 5 BCDs at offsets 0/4/8/12 with various attributes indicating LuaAppBase has multiple MI positions across the binary. Output: c92_vftable_a_class.txt, c92_luaappbase_xrefs.txt, c92_luaappbase_symbols.txt.",
+    "step6": "Catalog 6 new RTTI entries (BCS-Y-1582..1587) + 8 amendments (BCS-Y-1395, 1397, 1571, 1572, 1573, 1574, 1575, 1049) correcting the misinterpretation."
+  },
+  "key_findings": [
+    "**INTERPRETATION CORRECTED**: the 4 vftables at 0x00FDF968..0x00FDF98C are NOT StatusBase's additional MI sub-vftables. Each vftable has its OWN COL pointing to its OWN CHD with its OWN numBaseClasses count (2 or 3), NOT StatusBase's CHD (numBaseClasses=11). These are 4 STANDALONE classes living adjacent in .data after StatusBase's secondary vftable boundary at 0x00FDF964.",
+    "**StatusBase's actual MI structure**: per BCA at 0x0115F858, 11 BCDs distributed across 4 subobject positions (offsets 0/+4/+96/+100). 4 vftable positions, NOT 6 as the claimed. None of StatusBase's 11 BCDs reference the 3 interface TDs (0x012C32A0/0x012C3308/0x01270A90) or the vftable A TD (0x012C3238). StatusBase does NOT inherit from any of these 4 classes.",
+    "**MAJOR NEW DISCOVERY - Application::Lua::LuaAppBase** (TD 0x0126CFAC, CHD 0x011447DC): the ROOT ABSTRACT BASE of the Lua-bridge interface hierarchy. No own vftable - pure interface class with no runtime polymorphic dispatch table. 5 BCDs across the binary reference LuaAppBase TD at distinct MI positions (offsets 0/4/8/12), indicating LuaAppBase has many derivatives in different inheritance configurations.",
+    "**4 LuaAppBase-derived standalone classes** identified in the 0x00FDF968..0x00FDF98C region (all leaf abstract interfaces with no further derivatives per xref scan): (1) DisplayNameResolverListener (BCS-Y-1585) at vftable 0x00FDF968 - listener for actor display-name resolution events; (2) SpreadSheetLoadedDataDisappearListenerInterface (BCS-Y-1583) at vftable 0x00FDF974 - spreadsheet data lifecycle listener; (3) Command::CommandInterface (BCS-Y-1584) at vftable 0x00FDF980 - command-namespace abstract interface (DISTINCT from the CommandInterface referenced by AchievementXxx receivers); (4) LuaActorImplInterface at vftable 0x00FDF98C - already cataloged at BCS-Y-1049, 90-slot abstract contract with 89 pure-virtuals.",
+    "**LuaActorImplInterface has 90 slots, NOT 13** (dump-truncation artifact corrected). Slot 0 = FUN_00776930 (dtor/vftable writer), slots 1-89 = __purecall. Concrete derivatives (LuaActorImpl BCS-Y-1048 at 0x00FDFB2C, NullActorImpl at 0x00FE02AC) must implement 89 methods.",
+    "**2 incidental InterfaceToSqwt classes** decoded while resolving LuaAppBase: Application::Lua::InterfaceToSqwt::SendStoryboardCommandProcessorInterface (BCS-Y-1586) at TD 0x0126CFD8 and Application::Lua::InterfaceToSqwt::SetPropertyProcessorInterface (BCS-Y-1587) at TD 0x0126CF60. Both inherit from LuaAppBase. Together they form the Lua->Sqwt UI command dispatch surface (bridging the discovered Sqwt::UIElement cluster).",
+    "**4 additional 2-slot vftables** at 0x00FDFAF8/0x00FDFB04/0x00FDFB10/0x00FDFB1C (between LuaActorImplInterface primary at 0x00FDF98C and LuaActorImpl primary at 0x00FDFB2C) - these are likely LuaActorImpl's MI sub-vftables (LuaActorImpl is the concrete derivative; its MI bases may include adjacent listener interfaces). Deferred for full enumeration.",
+    "**MSVC RTTI COL pClassDescriptor as ownership disambiguator**: for a vftable whose Ghidra label is 'BaseClass::vftable', the COL's pClassDescriptor field disambiguates ownership: if it points to BaseClass's own CHD, the vftable is BaseClass's primary; if it points to a Derived class's CHD, it's Derived class's MI sub-vftable for BaseClass. This disambiguator to overturn the interpretation."
+  ],
+  "new_bcsy_entries_summary": {
+    "luaappbase_root": 1,
+    "standalone_classes": 3,
+    "incidental_interface_to_sqwt": 2,
+    "amendments": 8,
+    "total_bcsy_added": 6,
+    "id_range": "BCS-Y-1582..BCS-Y-1587",
+    "amendment_targets": [
+      "BCS-Y-1395 (StatusBase ctor - corrected 6-MI-base awareness claim)",
+      "BCS-Y-1397 (StatusBase secondary vftable - corrected 5 MI vftables claim)",
+      "BCS-Y-1571 (vftable A slot 0 dtor - reframed as DisplayNameResolverListener)",
+      "BCS-Y-1572 (vftable A slot 1 cleanup - reframed as DisplayNameResolverListener)",
+      "BCS-Y-1573 (SSLDDListener vftable writer - corrected StatusBase MI base framing)",
+      "BCS-Y-1574 (CommandInterface vftable writer - corrected StatusBase MI base framing)",
+      "BCS-Y-1575 (LuaActorImplInterface vftable writer - corrected 13-slot + StatusBase MI base framing)",
+      "BCS-Y-1049 (LuaActorImplInterface RTTI - confirmed 90-slot count + added LuaAppBase base + noted 4 likely-LuaActorImpl-MI sub-vftables)"
+    ]
+  },
+  "deferred_followups": [
+    "Identify StatusBase's TRUE MI bases via the 7 non-self BCDs in BCA 0x0115F858 (BCDs at 0x0115CD24/CAB8/CAFC at offset 0; 0x0115C6F8/C714/C730 at offset +4; 0x0115D8CC at offset +96; 0x0115D668/D684/D6A0 at offset +100). Need to dump these BCDs and decode their TD names.",
+    "Decomp StatusBase::ctor (BCS-Y-1395 at FUN_00776200) with correct 4-vftable-position awareness - enumerate actual MI vftable writes.",
+    "Enumerate the 4 additional 2-slot vftables at 0x00FDFAF8/0x00FDFB04/0x00FDFB10/0x00FDFB1C - likely LuaActorImpl's MI sub-vftables. Dump their COL pClassDescriptors to confirm.",
+    "Identify TD 0x012BF5E0 (DisplayNameResolverListener's non-LuaAppBase base via BCD 0x0115C258) - probably a separate listener base class.",
+    "Locate LuaAppBase's own vftable address (if any) - symbol search found no vftable symbol; LuaAppBase may be a pure interface with no runtime polymorphic dispatch.",
+    "Enumerate the other 3 LuaAppBase derivatives suggested by the (8,-1,0,64) / (4,-1,0,66) / (12,-1,0,66) BCDs at 0x0115C3FC / 0x011733E4 / 0x0117341C - these are derived classes at different MI positions.",
+    "Decomp FUN_005745F0/4680/4780/4830/4970 cluster (the 7 code DATA refs to LuaActorImplInterface TD) to confirm typeid/dynamic_cast usage vs other purposes.",
+    "Complete the InterfaceToSqwt cluster: locate vftables + decomp slots for SendStoryboardCommandProcessorInterface + SetPropertyProcessorInterface (cross-reference with the Sqwt UI work)."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1568 -> 1574 (+6 BCS-Y; BCS-Y-1582..1587)",
+  "files_changed": [
+    "manifests/symbols.json: +6 entries (BCS-Y-1582..1587), 8 amendments (BCS-Y-1049, 1395, 1397, 1571, 1572, 1573, 1574, 1575)",
+    "manifests/luaappbase_family.json (NEW, this file)",
+    "tools/ghidra/logs/c92_spread_symbols.txt (NEW)",
+    "tools/ghidra/logs/c92_command_symbols.txt (NEW)",
+    "tools/ghidra/logs/c92_luaactor_symbols.txt (NEW)",
+    "tools/ghidra/logs/c92_rtti_dumps.txt (NEW)",
+    "tools/ghidra/logs/c92_td_xrefs.txt (NEW)",
+    "tools/ghidra/logs/c92_shared_bcd.txt (NEW)",
+    "tools/ghidra/logs/c92_vftable_a_sym.txt (NEW)",
+    "tools/ghidra/logs/c92_statusbase_bca_sym.txt (NEW)",
+    "tools/ghidra/logs/c92_resolve.txt (NEW)",
+    "tools/ghidra/logs/c92_vftable_a_class.txt (NEW)",
+    "tools/ghidra/logs/c92_luaappbase_xrefs.txt (NEW)",
+    "tools/ghidra/logs/c92_luaappbase_symbols.txt (NEW)",
+    "tools/extractors/append_luaappbase_family.py (NEW)"
+  ]
+}

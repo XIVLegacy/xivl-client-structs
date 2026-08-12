@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "CommandDebugger catalog work - intended to catalog 3 user-mode variant concrete classes (GM/DEV/TEST per GAP). FindSymbolByName for 'CommandDebugger' returned 31 hits but only ONE C++ class: `Application::Lua::Script::Client::Control::CommandDebuggerBase` (vftable 0x00FD510C, TD 0x012C0160, full RTTI quartet). The 'GM', 'DEV', 'TEST' variants are PURE LUA-DEFINED CLASSES that wrap CommandDebuggerBase - they have no C++ TD, no C++ vftable, just registry-string entries. **The hypothesis that the 3 variants 'likely DO have C++ implementations' is FALSIFIED**. This is a positive architectural finding: the 3 user-mode variants are RUNTIME DIFFERENTIATION via Lua scripts (likely permission-level wrappers around the shared CommandDebuggerBase C++ implementation), not compile-time C++ class hierarchies. Also catalogs the previously-missing CommandDebuggerBase vftable + TD entries (the ctor BCS-Y-1471 was already cataloged but the class identity was not).",
+  "method": {
+    "step_a": "FindSymbolByName with query 'CommandDebugger' - 31 hits: 1 CommandDebuggerBase vftable + 1 CommandDebuggerBase RTTI quartet + 29 string literals (s_CommandDebuggerGM/DEV/TEST/BaseClass/FUNCBaseClass at various .rdata locations + /CommandDebugger/CommandDebugger file path strings). Output: c112_cmddebugger_symbols.txt.",
+    "step_b": "Verify CommandDebuggerBase against catalog. Only BCS-Y-1471 (the ctor FUN_006DC3E0) was previously cataloged. The class IDENTITY entries (vftable + TD + RTTI quartet) were missing.",
+    "step_c": "Catalog 3 new BCS-Y entries (CommandDebuggerBase vftable + TD + architectural finding documenting the GAP resolution) + 2 amendments (BCS-Y-1471 ctor cross-link to vftable; BCS-Y-0398 LuaClassRegistry GAP analysis update for the 3 variants)."
+  },
+  "key_findings": [
+    "**Only ONE C++ CommandDebugger class exists**: `Application::Lua::Script::Client::Control::CommandDebuggerBase` (vftable 0x00FD510C, TD 0x012C0160). Full RTTI quartet present: vftable 0x00FD510C, COL 0x0115CF30, CHD 0x0115CF44, BCA 0x0115CF54, BCD-self 0x0115CF74, TD 0x012C0160.",
+    "**The GM/DEV/TEST variants are PURE LUA-DEFINED classes** - no C++ TD/vftable/CHD/BCA exist for them. They appear in the binary only as STRING LITERAL labels (s_CommandDebuggerGM_*, s_CommandDebuggerDEV_*, s_CommandDebuggerTEST_*) registered into the Lua class table by FUN_0078E3A0 (LuaClassRegistry BCS-Y-0398). Their implementations are Lua scripts that call into CommandDebuggerBase's C++ methods via the Lua-bridge.",
+    "**The GAP for the 3 user-mode variants is RESOLVED** - not a catalog completeness issue but a positive architectural finding. The pattern is: 1 C++ class (CommandDebuggerBase) + 3 Lua-defined wrappers (GM/DEV/TEST) that share the C++ implementation but differ in their Lua-side permission/feature scope. This is the same 'abstract Lua-bridge base' pattern identified for the 13 GAP class names (CommandDebuggerBaseClass, CommandDebuggerFUNCBaseClass, etc.) - extends that analysis to the 3 concrete user-mode variants which were misclassified as catalog candidates earlier.",
+    "**Architecture insight**: CommandDebuggerBase provides the debugger COMMAND IMPLEMENTATION; the 3 user-mode variants (GM = Game Master / DEV = Developer / TEST = Tester) are Lua-side PERMISSION-LEVEL WRAPPERS that gate which debug commands are accessible to which user roles. Each variant is a Lua class derived from CommandDebuggerBase via the `_defineClass` mechanism (per the findings on the Lua-bridge class system).",
+    "**CommandDebuggerBase ctor BCS-Y-1471 was cataloged earlier** but lacked vftable/TD cross-links - completes the class identity by adding the vftable + TD entries and amending the ctor with cross-references.",
+    "**The full Lua-bridge class registry has at least 36 classes** (per FUN_0078E3A0 enumeration) of which: 23 have C++ TDs (concrete C++ classes), 13 are abstract Lua-bridge bases (no C++ counterpart). The 3 GM/DEV/TEST 'concrete' variants are actually in the Lua-only bucket - bringing the GAP count to: 23 C++ concrete + 13 abstract Lua-bridge bases + 3 user-mode Lua wrappers = at least 39 classes (since FUN_0078E3A0 also registers some classes that may be Lua-only too)."
+  ],
+  "new_bcsy_entries_summary": {
+    "vftable_entries": 1,
+    "td_entries": 1,
+    "architectural_finding_entries": 1,
+    "total_bcsy_added": 3,
+    "id_range": "BCS-Y-1758..BCS-Y-1760",
+    "amendments": 2,
+    "amendment_targets": [
+      "BCS-Y-1471 (CommandDebuggerBase ctor): cross-link to NEW vftable + TD entries",
+      "BCS-Y-0398 (LuaClassRegistry): note that the 3 GM/DEV/TEST variants are Lua-only (no C++ class - the hypothesis falsified)"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp CommandDebuggerBase ctor FUN_006DC3E0 (BCS-Y-1471) to confirm the class size + inheritance pattern (should be in the Application::Lua::Script::Client::Control::* tree, sibling of CharaBase per chain).",
+    "Enumerate CommandDebuggerBase's BCA to confirm it inherits from LuaControl < LuaObject < Lge* chain (same as CharaBase).",
+    "Locate the Lua scripts that define the GM/DEV/TEST wrapper classes - probably in the game's Lua script archives (Sqex packed format). Not catalog work but useful architectural reference.",
+    "Confirm whether other 'concrete-looking' GAP names from the are also Lua-only (e.g., the GAP list included CommandDebuggerGM/DEV/TEST plus other names that may be similarly mis-classified)."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1744 -> 1747 (+3 BCS-Y; BCS-Y-1758..1760)",
+  "files_changed": [
+    "manifests/symbols.json: +3 entries (BCS-Y-1758..1760), 2 amendments",
+    "manifests/commanddebugger_gap_resolved.json (NEW, this file)",
+    "tools/ghidra/logs/c112_cmddebugger_symbols.txt (NEW)",
+    "tools/extractors/append_c112.py (NEW)"
+  ]
+}

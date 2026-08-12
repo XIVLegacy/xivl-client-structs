@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Broader EventHandler<T> typed-delegate vftable sweep. Closes the manifest deferred_followups[0] broader-sweep. Catalogs 167 new BCS-Y entries (BCS-Y-1163..1329) covering 52 unique parent classes across the Sqwt UI surface. Excludes the 6 LuaDebugLog/LuaDebugSelect delegates already cataloged earlier (BCS-Y-1138..1143) and their lifecycle earlier (BCS-Y-1146..1162).",
+  "method": {
+    "step1": "Read manifests/rtti_extraction_OUR.txt (Ghidra RTTI dump). Filter to 174 lines matching delegate-template patterns (EventHandler / KeyEventHandler / MouseEventHandler / MouseButtonEventHandler / PadEventHandler / RoutedEventHandler / SelectionChangedEventHandler / ClickEventHandler / ScrollEventHandler / AsyncCompletedEventHandler / ExecutedRoutedEventHandler / CanExecuteRoutedEventHandler / DragDeltaEventHandler).",
+    "step2": "Exclude 6 already-cataloged vftables (0x00FA9B14, 0x00FA9B24, 0x00FC654C, 0x00FC655C, 0x00FC66CC, 0x00FC66DC). 168 candidates remain.",
+    "step3": "Parse each demangled FQDN to extract delegate_type / owner_class / event_args_type. Handle templated owners (SliderTemplate<float> / SliderTemplate<int>) by detecting nested template parameters during arg-splitting.",
+    "step4": "Generate canonical entry name: <OwnerShortName>_<DelegateType>[_<EventArgsShortName>]_vftable. For SliderTemplate<float> / SliderTemplate<int> use 'SliderTemplate_float_' / 'SliderTemplate_int_' prefix to avoid unbalanced angle brackets in entry names.",
+    "step5": "Bulk-write 167 BCS-Y entries (BCS-Y-1163..1329) via single Python invocation re-reading symbols.json last id INSIDE the same invocation. kind=data, confidence=confirmed, sourceRefs=[rtti_extraction_OUR.txt, this manifest].",
+    "step6": "Fixup pass: rev1 normalized 12 SliderTemplate names (replace '<float'/'<int' with '_float_'/'_int_'). Rev2 fixed 2 DragDeltaEventHandler entries (BCS-Y-1323 + BCS-Y-1326) which were mis-classified by the initial regex because 'EventHandler' is a substring of 'DragDeltaEventHandler'."
+  },
+  "key_findings": [
+    "**52 unique parent classes spanning the Sqwt UI surface get typed-delegate vftables**. Top contributors: SliderTemplate (12 across <float>+<int> + multiple event types), NumberInputBox (10), DebugControl (9), XamlElement / Esrb / ShandaLogoMenu / PhaseBase (8 each). Long tail of 27 classes with 2-6 delegates each. Confirms Sqwt's WPF-style 'event-handler per (owner, event-type) pair' pattern generalizes across the entire UI framework.",
+    "**Delegate type distribution (estimated)**: ~75% are generic EventHandler<Owner, EventArgs> bases; ~25% are derived event-specific delegates (KeyEventHandler / MouseEventHandler / MouseButtonEventHandler / PadEventHandler / RoutedEventHandler / SelectionChangedEventHandler / ClickEventHandler / DragDeltaEventHandler / AsyncCompletedEventHandler / ExecutedRoutedEventHandler / CanExecuteRoutedEventHandler / ScrollEventHandler). Each derived form has its corresponding generic base. The pattern confirmed by the lifecycle decomp (derived ctor calls parent ctor then overwrites vftable) almost certainly generalizes across the entire 167 entry set.",
+    "**Templated owner classes** (SliderTemplate<float> and SliderTemplate<int>) require special handling. SliderTemplate is the only nested-template owner observed in the EventHandler sweep. Each specialization has its own complete delegate set (12 vftables each for <float> and <int>). Suggests the Sqwt UI also supports value-typed slider controls separately rather than via type erasure.",
+    "**DragDeltaEventHandler is the 13th delegate type** beyond the 12 originally listed in the plan. Specific to slider drag interactions. Only 2 instantiations observed (SliderTemplate<float/int>) - the entire slider drag-gesture mechanism is the sole use site.",
+    "**Lifecycle functions NOT cataloged for this 167-entry set** - only vftables. The evidence (5 lifecycle functions per LuaDebugLog delegate, 12 per LuaDebugSelect) implies the same lifecycle pattern repeats across all 167 vftables here. Later work could catalog these (~500-800 additional lifecycle entries projected). Deferred as low-EV unless a specific opcode/dispatch question requires the lifecycle attribution."
+  ],
+  "parent_class_distribution_top_25": [
+    {"class": "SliderTemplate", "count": 12, "note": "across float + int specializations"},
+    {"class": "NumberInputBox", "count": 10},
+    {"class": "DebugControl", "count": 9},
+    {"class": "XamlElement", "count": 8},
+    {"class": "Esrb", "count": 8, "note": "Menu::Common"},
+    {"class": "ShandaLogoMenu", "count": 8, "note": "Menu::Common"},
+    {"class": "PhaseBase", "count": 8},
+    {"class": "StartMenu", "count": 6},
+    {"class": "CommandBinding", "count": 4},
+    {"class": "RetainerNameChangeInputLoader", "count": 4},
+    {"class": "NameChangeInputLoader", "count": 4},
+    {"class": "ItemsControl", "count": 4},
+    {"class": "ScrollBar", "count": 4},
+    {"class": "FormElement", "count": 3},
+    {"class": "XamlMenuBase", "count": 3},
+    {"class": "CloseWindowListener", "count": 2},
+    {"class": "RaptureCandidateList", "count": 2},
+    {"class": "CameraElement", "count": 2, "note": "Element::System"},
+    {"class": "TargetElement", "count": 2, "note": "Element::System"},
+    {"class": "SqexLogoMenu", "count": 2, "note": "Menu::Common"},
+    {"class": "ErrorDialogBase", "count": 2},
+    {"class": "LogControl", "count": 2},
+    {"class": "MessageDialog", "count": 2},
+    {"class": "WidgetEventHandler", "count": 2},
+    {"class": "NumberLabel", "count": 2},
+    {"class": "...", "count": "27 more parent classes with 2 entries each"}
+  ],
+  "deferred_followups": [
+    "Catalog lifecycle functions (ctor / dtor / deleting_dtor variants) for the 167 new vftables. Projected ~500-800 additional entries following the pattern (5 lifecycle per base delegate + 1 ctor per derived delegate). Worth doing IF a specific opcode/dispatch question requires the attribution depth; otherwise low-EV mechanical work.",
+    "Identify the binder functions for each parent class (analogous to FUN_00599CB0 for LuaDebugLog and FUN_0068DDF0 for LuaDebugSelect). Single-binder-per-owner-class pattern from the may generalize across all 52 parent classes - if confirmed, this would surface as client-architecture 'Sqwt UI elements follow a uniform heap-factory' ('Sqwt centralized event-binder per owner-class').",
+    "Verify whether the embedded-EventHandler-at-offset-X pattern (found in LuaDebugSelect at +0x34) generalizes to other parent classes. Each class's ctor + dtor would need to be decomp'd to look for inline-EventHandler vftable writes. If common, this would also support client-architecture 'Sqwt UI elements follow a uniform heap-factory'.",
+    "deferred_followups[1] (slot-layout decomp on the 6 delegate vftables) is still open; ctor/dtor were covered/deleting_dtor but not slot 1 (Invoke), slot 2 (Equals?), etc. Slot decomp on a representative delegate (e.g. BCS-Y-1138) could surface the universal delegate-invocation pattern.",
+    "Some parent classes appear in the catalog as 'Element' (e.g. FormElement, XamlElement, CameraElement, TargetElement) and others as 'Menu' (Esrb, ShandaLogoMenu, SqexLogoMenu, StartMenu) - the parent class hierarchy structure (which inherits from XamlElement / which from Element) is not yet fully cataloged. A separate hierarchy-mapping tier could clarify the Sqwt class organization."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - unchanged"
+  },
+  "symbol_count_delta": "1152 -> 1319 (+167)",
+  "files_changed": [
+    "manifests/symbols.json: +167 entries (BCS-Y-1163..1329)",
+    "manifests/eventhandler_sweep.json (NEW, this file)"
+  ]
+}

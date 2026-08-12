@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_receiver_class_identification",
+  "scope": "Catalog 10 uncataloged Receiver ctor + secondary VAs that the hybrid factory cluster references. Closes the manifest deferred_followups[0]. RESULT: 10 new BCS-Y entries (6 Receiver ctors + 4 apply/collection helpers) + 8 factory entries amended with newly-identified Receiver classes + BCS-S-0050 ReceiverStateCache updated with 7 semantic field renames + 5 newly-discovered fields. Closes 8 of 17 previously-unmapped struct slots.",
+  "method": {
+    "step1": "Ghidra DumpFunctionDecomp on all 10 VAs via run_c64_uncataloged_ctors.bat. Log: tools/ghidra/logs/c64_uncataloged_ctors_decomp.txt.",
+    "step2": "Identify Receiver classes from vftable assignments. Each ctor explicitly writes the typed vftable global to *this immediately after the CommandInterface base vftable, revealing the namespace-qualified class name: ChocoboReceiver (System), ChocoboGradeReceiver (System), GoobbueReceiver (System), GrandCompanyReceiver (Network), ChangeShadowActorFlagReceiver (Network), SetDisplayNameReceiver (Network).",
+    "step3": "Decomp the 4 secondaries: 2 collection helpers (FUN_007846F0 + FUN_00784760 with vector-insert/push semantics), 1 ChangeActorSubStatStatus Lua-control apply (FUN_00767870, 710B with RTTI dynamic_cast to LuaControl + StatusBase), 1 SetDisplayName apply (FUN_00771230, 286B with 5 cache field writes).",
+    "step4": "Catalog 10 new BCS-Y entries (BCS-Y-1360..1369). Amend the 6 factory entries (BCS-Y-1338..1349) with Receiver class identification + backlinks to their newly-cataloged ctors.",
+    "step5": "Update BCS-S-0050 ReceiverStateCache: rename 7 TBD-class fields with semantic names (chocobo_grade, chocobo_state_byte_b9/dword_bc/byte_c0, goobbue_state, grand_company_state, shadow_actor_flag) AND add 5 NEW fields from FUN_00771230 decomp (display_name_id at 0x54, display_name_set_byte at 0xAC, display_name_is_unnamed at 0xAD, display_name_alloc_ptr at 0xB0, display_name_set_flag at 0xB4). Split _mid_buffer_unzeroed into named segments."
+  },
+  "key_findings": [
+    "**6 Receiver classes IDENTIFIED via vftable RTTI**: ChocoboReceiver, ChocoboGradeReceiver, GoobbueReceiver, GrandCompanyReceiver, ChangeShadowActorFlagReceiver, SetDisplayNameReceiver. All 6 are in the System or Network namespaces under Application::Lua::Script::Client::Command. These were previously TBD-class slots in the 16-factory cluster.",
+    "**BCS-S-0050 ReceiverStateCache now has 13 of 18 expected Receiver state slots mapped to identified factories AND class names** (up from 6 earlier and 8 earlier). The 5 remaining unmapped slots are likely: (a) one of the 4 zero-init gap dwords (0x14/0x24/0x34/0x4C), (b) parts of the 84-byte _mid_buffer_remainder, (c) the 2 cache-ensure stubs' targets (BCS-Y-1351/1352 don't write to cache directly; they forward to vector collection helpers on the container itself).",
+    "**5 NEW cache fields discovered via FUN_00771230 (SetDisplayName apply)**: display_name_id at 0x54, display_name_set_byte at 0xAC, display_name_is_unnamed at 0xAD, display_name_alloc_ptr at 0xB0 (was _zero_init_b0 earlier), display_name_set_flag at 0xB4 (was _byte_b4_TBD earlier). The 0x60=96-byte name-block heap allocation pattern at 0xB0 + the -1 sentinel id pattern at 0x54 reveal the SetDisplayName receiver's runtime state structure.",
+    "**FUN_00767870 ChangeActorSubStatStatus apply uses RTTI dynamic_cast to LuaControl + StatusBase** (line 158 of c64 decomp): Component::Lua::GameEngine::LuaControl + Application::Lua::Script::Client::Control::StatusBase. Reveals two new RTTI types in the Lua control framework. The +200000 offset in FUN_00CC70E0 is interesting - likely a status-id-to-namespace-key conversion. Could surface a new architectural finding about status receiver coupling to the Lua control framework.",
+    "**The Goobbue receiver attribution clarifies the 0x01A1 'SetHasGoobbuePacket' weak-attribution concern from sibling-repo receiver-cross-reference**. GoobbueReceiver is a DISTINCT class from VehicleGradeReceiver (different vftable, different namespace prefix). The 0x01A1 attribution (which is VehicleGradeReceiver per sibling-repo) and any Goobbue-related opcodes are separate dispatch paths. This resolves a long-standing weak-attribution flag in the sibling-repo work.",
+    "**Sibling-repo receiver-cross-reference.md is now stale**: The 6 newly-identified Receivers (Chocobo, ChocoboGrade, Goobbue, GrandCompany, ChangeShadowActorFlag, SetDisplayName) should be added to its strong-promotion table. Deferred to a future D-tier sibling-sync."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1360", "name": "ChocoboReceiver_ctor_FUN_008A2E70", "addr": "0x008A2E70", "size_bytes": 106, "namespace": "System", "role": "Receiver ctor (Chocobo state, 3 args)"},
+    {"id": "BCS-Y-1361", "name": "ChocoboGradeReceiver_ctor_FUN_008A2F70", "addr": "0x008A2F70", "size_bytes": 92, "namespace": "System", "role": "Receiver ctor (Chocobo grade, 1 byte)"},
+    {"id": "BCS-Y-1362", "name": "GoobbueReceiver_ctor_FUN_008A3050", "addr": "0x008A3050", "size_bytes": 92, "namespace": "System", "role": "Receiver ctor (Goobbue state, 1 byte)"},
+    {"id": "BCS-Y-1363", "name": "GrandCompanyReceiver_ctor_FUN_0089CC90", "addr": "0x0089CC90", "size_bytes": 113, "namespace": "Network", "role": "Receiver ctor (GrandCompany affiliation, 4 bytes)"},
+    {"id": "BCS-Y-1364", "name": "ChangeShadowActorFlagReceiver_ctor_FUN_0089CBC0", "addr": "0x0089CBC0", "size_bytes": 92, "namespace": "Network", "role": "Receiver ctor (ShadowActor flag, 1 byte)"},
+    {"id": "BCS-Y-1365", "name": "SetDisplayNameReceiver_ctor_FUN_0089D530", "addr": "0x0089D530", "size_bytes": 128, "namespace": "Network", "role": "Receiver ctor (DisplayName id+block+flag, SEH-wrapped)"},
+    {"id": "BCS-Y-1366", "name": "ContainerVectorInsertAt_FUN_007846F0", "addr": "0x007846F0", "size_bytes": 107, "role": "std::vector::insert-at-end helper (used by BCS-Y-1351)"},
+    {"id": "BCS-Y-1367", "name": "ContainerVectorPushBack_FUN_00784760", "addr": "0x00784760", "size_bytes": 96, "role": "std::vector::push_back helper (used by BCS-Y-1352)"},
+    {"id": "BCS-Y-1368", "name": "ChangeActorSubStatStatus_ApplyToLuaControl_FUN_00767870", "addr": "0x00767870", "size_bytes": 710, "role": "710B Lua-control status-update helper (RTTI-coerces to LuaControl/StatusBase)"},
+    {"id": "BCS-Y-1369", "name": "SetDisplayName_ApplyToCache_FUN_00771230", "addr": "0x00771230", "size_bytes": 286, "role": "286B apply method writing 5 cache fields for SetDisplayName"}
+  ],
+  "bcss_struct_updates": {
+    "id": "BCS-S-0050",
+    "renamed_fields": [
+      {"offset": "0xB7", "from": "_byte_b7_TBD", "to": "chocobo_grade"},
+      {"offset": "0xB9", "from": "_byte_b9_TBD", "to": "chocobo_state_byte_b9"},
+      {"offset": "0xBC", "from": "_dword_bc_TBD", "to": "chocobo_state_dword_bc"},
+      {"offset": "0xC0", "from": "_byte_c0_TBD", "to": "chocobo_state_byte_c0"},
+      {"offset": "0xC1", "from": "_byte_c1_TBD", "to": "goobbue_state"},
+      {"offset": "0xC2", "from": "_quad_c2_TBD", "to": "grand_company_state"},
+      {"offset": "0xC9", "from": "_byte_c9_TBD", "to": "shadow_actor_flag"}
+    ],
+    "new_fields": [
+      {"offset": "0x54", "name": "display_name_id", "type": "int32_t"},
+      {"offset": "0xAC", "name": "display_name_set_byte", "type": "uint8_t"},
+      {"offset": "0xAD", "name": "display_name_is_unnamed", "type": "bool"}
+    ],
+    "renamed_with_semantics": [
+      {"offset": "0xB0", "from": "_zero_init_b0", "to": "display_name_alloc_ptr (void *)"},
+      {"offset": "0xB4", "from": "_byte_b4_TBD", "to": "display_name_set_flag (uint8_t)"}
+    ],
+    "field_count_before": 31,
+    "field_count_after": 35,
+    "delta": "+4 (mid_buffer split: 1 -> 5 named segments)",
+    "mapped_fields_before": 6,
+    "mapped_fields_after": 13
+  },
+  "amendments": [
+    {"id": "BCS-Y-1338", "addition": "Receiver class IDENTIFIED as ChocoboReceiver via [[ChocoboReceiver_ctor_FUN_008A2E70]] (BCS-Y-1360)"},
+    {"id": "BCS-Y-1339", "addition": "Receiver class IDENTIFIED as ChocoboGradeReceiver via [[ChocoboGradeReceiver_ctor_FUN_008A2F70]] (BCS-Y-1361)"},
+    {"id": "BCS-Y-1340", "addition": "Receiver class IDENTIFIED as GoobbueReceiver via [[GoobbueReceiver_ctor_FUN_008A3050]] (BCS-Y-1362)"},
+    {"id": "BCS-Y-1341", "addition": "Receiver class IDENTIFIED as GrandCompanyReceiver via [[GrandCompanyReceiver_ctor_FUN_0089CC90]] (BCS-Y-1363)"},
+    {"id": "BCS-Y-1345", "addition": "Receiver class IDENTIFIED as ChangeShadowActorFlagReceiver via [[ChangeShadowActorFlagReceiver_ctor_FUN_0089CBC0]] (BCS-Y-1364)"},
+    {"id": "BCS-Y-1349", "addition": "Receiver class IDENTIFIED as SetDisplayNameReceiver via [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365); apply helper at [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369)"}
+  ],
+  "deferred_followups": [
+    "Sibling-repo receiver-cross-reference.md sync: add the 6 newly-identified Receivers (Chocobo, ChocoboGrade, Goobbue, GrandCompany, ChangeShadowActorFlag, SetDisplayName) to the strong-promotion table with their hybrid factory + cache offset attributions.",
+    "Map the remaining 5 unmapped Receiver state slots. Candidates: (a) the 4 zero-init gap dwords (0x14/0x24/0x34/0x4C), (b) sections of the 84-byte _mid_buffer_remainder (0x58..0xAB), (c) any cache-ensure stub side-effects we missed.",
+    "Decomp FUN_00CC9310 + FUN_006BF420 cache-ctor helpers (deferred_followups[0]) to clarify what global state they initialize. The same FUN_00CC9310/FUN_00CC9330 helpers appear in BCS-Y-1368 (ChangeActorSubStatStatus apply) for list-mutation guarding - they may be RAII guard ctors/dtors for some kind of critical-section or refcounted state.",
+    "Investigate the new RTTI types surfaced by BCS-Y-1368: Component::Lua::GameEngine::LuaControl + Application::Lua::Script::Client::Control::StatusBase. Could surface a new architectural finding about how status receivers couple to the Lua control framework. The +200000 offset value in the FUN_00CC70E0 call is interesting - likely a status-id-to-namespace-key conversion.",
+    "Cross-class GoobbueReceiver vs VehicleGradeReceiver clarification: update sibling-repo receiver-cross-reference.md to note that GoobbueReceiver is DISTINCT from VehicleGradeReceiver. The 0x01A1 'SetHasGoobbuePacket' weak-attribution concern in receiver-cross-reference.md line 100 is now resolvable (the receiver per sibling attribution is VehicleGrade, not Goobbue)."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - clean (BCS-Y-1360..1369 wiki-links resolve; 6 amendment wiki-links resolve)"
+  },
+  "symbol_count_delta": "1349 -> 1359 (+10 BCS-Y)",
+  "struct_field_count_delta": "BCS-S-0050: 31 -> 35 fields (+4 from mid_buffer split)",
+  "files_changed": [
+    "manifests/symbols.json: +10 entries (BCS-Y-1360..1369), 6 amendments (BCS-Y-1338/1339/1340/1341/1345/1349)",
+    "manifests/structs.json: BCS-S-0050 7 field renames + 5 new fields + 2 semantic renames + addendum",
+    "manifests/uncataloged_ctors_apply_helpers.json (NEW, this file)",
+    "tools/ghidra/logs/c64_uncataloged_ctors_decomp.txt (NEW)"
+  ]
+}

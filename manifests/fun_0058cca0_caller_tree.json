@@ -1,0 +1,456 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "draft",
+  "scope": "Walk callers of FUN_0058CCA0 (Pattern D sub-dispatcher per the pattern-d-subdispatcher pass and the FUN_0058CCA0-walk pass) 1-2 tiers up to identify the top-of-tree dispatcher feeding the FUN_004D8860 / FUN_0058CCA0 / FUN_0059CED0 cluster",
+  "method": {
+    "step1": "Reused fun_0058cca0_decomp.txt (2563-byte body, 0 instruction-level callers per Ghidra ref analysis - confirms vtable dispatch)",
+    "step2": "Ran FindAllReferences.java (instruction+data) on FUN_0058CCA0 / FUN_004D8860 / FUN_0059CED0 simultaneously - this is the diff from the FUN_0058CCA0-walk pass which only ran instruction-only scan",
+    "step3": "Resolved every vtable owner symbol via DumpSymbolsAtAddress.java for the 28 vftable home addresses identified",
+    "step4": "Verified CharaElement vtable structure around 0x00FA7C50 by dumping adjacent slots",
+    "step5": "Decomped 3 sibling functions FUN_004D8830/FUN_004D87F0/FUN_004DAF00 (per the pattern-d-subdispatcher pass open question) to determine if a 4-sibling dispatcher cluster exists",
+    "step6": "Batch-decomped all 56 unique callees of FUN_0058CCA0 (the per-case handlers) in 3 Ghidra invocations to classify dispatcher_like_yes_no",
+    "step7": "Cross-referenced every caller/callee VA against symbols.json (max id = BCS-Y-0534) to mark cataloged/uncataloged",
+    "step8": "The proposed BCS-Y range starts at 0563 to avoid the 0535..0562 range already present in pattern_d_subdispatcher.json."
+  },
+  "function_metadata": {
+    "va": "0x0058CCA0",
+    "name": "FUN_0058cca0",
+    "body_bytes": 2563,
+    "decompiled_lines_estimated": 2300,
+    "existing_bcs_y_id": "BCS-Y-0404",
+    "existing_bcs_y_name": "CombatBattleResultThirdRouter_FUN_0058CCA0",
+    "existing_bcs_y_address_format": "image_offset (0x0018CCA0 = VA 0x0058CCA0 minus image base 0x00400000)",
+    "existing_bcs_y_confidence": "probable",
+    "switch_key_expr": "*(ushort *)(param_2 + 2) (packet opcode at +2)",
+    "entry_guard": "if (FUN_004d8830(param_1) == 0) { /* uses opcode-pre-screen helper */ switch... } else { switchD_0058cd10_caseD_f } - then secondary switch on opcode value",
+    "this_arg_layout": {
+      "param_1": "CharaElement instance (per RTTI - this is CharaElement::vftable[9] = apply method)",
+      "param_2": "packet pointer (game-message header at +0, opcode at +2, payload at +0x10)",
+      "param_1+0x26d": "flag byte cleared by 0xCE/0xCF cases",
+      "param_1+0x7c": "actor-related state pointer",
+      "param_1+0x80": "primary actor/state pointer",
+      "param_1+0x92": "alive flag byte (per the actor-cluster-dispatch-model and pattern-d-subdispatcher conventions)",
+      "param_1+0x174f4..+0x174f8": "world/actor map ptr",
+      "param_1+0x17808": "STL map iterator slot (per BCS-Y-0534 = ZoneActorMap_FindById)"
+    },
+    "instruction_level_caller_count": 0,
+    "instruction_level_callers": [],
+    "data_ref_count": 1,
+    "data_refs": [
+      {
+        "ref_va": "0x00FA7C74",
+        "ref_type": "DATA",
+        "vtable_owner": "Application::Main::Element::Chara::CharaElement",
+        "vtable_address": "0x00FA7C50",
+        "slot_index": 9,
+        "slot_offset": "0x24",
+        "interpretation": "FUN_0058CCA0 = CharaElement::vftable[9] - the polymorphic 's2c packet apply' method for the CharaElement subclass"
+      }
+    ],
+    "tier0_attribution": "CharaElement::vftable[9] apply method - the per-actor-class polymorphic packet handler",
+    "tier1_invocation_pattern": "(**(code **)(*element + 0x24))(packet) - matches BCS-Y-0527 (FUN_004DC690 generic fallthrough) pattern actor->vftable[9](packet)",
+    "tier2_dispatcher": {
+      "va": "0x004DC690",
+      "name": "FUN_004dc690",
+      "existing_bcs_y_id": "BCS-Y-0279",
+      "existing_bcs_y_name": "Option2_central_packet_dispatcher_FUN_004dc690",
+      "role": "Central s2c packet dispatcher with two-branch switch. The generic fallthrough case (BCS-Y-0527) at switchD_004dc749_caseD_f covers 24 opcodes via actor->vftable[9](packet) - when the actor returned by FUN_004D9910 is a CharaElement, this dispatch lands in FUN_0058CCA0"
+    },
+    "tier3_dispatcher": {
+      "va": "0x004E20A0",
+      "name": "FUN_004e20a0",
+      "existing_bcs_y_id": "BCS-Y-0314",
+      "existing_bcs_y_name": "ZoneOutbound_TickHandler_FUN_004E20A0",
+      "role": "Map channel main tick / state-machine handler that drives the dispatch loop calling FUN_004DC690. Sole caller of FUN_004DC690 per BCS-Y-0279"
+    }
+  },
+  "caller_table_note": "FUN_0058CCA0 has ZERO instruction-level callers per Ghidra ref analysis (re-verified by the FUN_0058CCA0 caller-tree pass). The function is stored at CharaElement::vftable[9] (offset +0x24 of vtable 0x00FA7C50). Therefore the 'caller table' below is the dispatcher chain that invokes it via vtable dispatch, not direct CALL sites",
+  "caller_chain": [
+    {
+      "tier": 1,
+      "invocation_site": "indirect via element->vftable[9](packet)",
+      "caller_va": "0x004DC690 (FUN_004dc690, lines ~759 per BCS-Y-0279/0527)",
+      "instruction_pattern": "(**(code **)(*piVar12 + 0x24))(iVar8); where piVar12 = FUN_004d9910(param_2) = actor lookup, iVar8 = zone state (per refinement to BCS-Y-0527)",
+      "body_summary": "Central dispatcher generic fallthrough handling 24 opcodes (0x0F + 0xCC + 0xCD + 0xCE + 0xCF + 0xD0 + 0xD3..0xE5) - the cases NOT handled by dedicated case bodies fall through here and dispatch via actor->vftable[9]. When the actor IS a CharaElement, the call lands in FUN_0058CCA0 (this manifest's subject)",
+      "dispatcher_like_yes_no": "yes (this IS the central s2c dispatcher)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0279 (the function) + BCS-Y-0525 (case 0xCA AddActor) + BCS-Y-0526 (case 0xCB RemoveActor) + BCS-Y-0527 (generic fallthrough)",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "tier": 2,
+      "invocation_site": "direct CALL",
+      "caller_va": "0x004E20A0",
+      "instruction_pattern": "FUN_004dc690(zone, packet) per BCS-Y-0314",
+      "body_summary": "Map channel main tick. 1442-byte body that runs the dispatch loop, also emits MapServerbound 0x0001/0x0004/0x0006 outbound packets. Sole caller of FUN_004DC690",
+      "dispatcher_like_yes_no": "no (this is a TICK driver, not a switch dispatcher)",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0314",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "tier": 3,
+      "invocation_site": "direct CALL",
+      "caller_va": "0x004E30A0",
+      "instruction_pattern": "per BCS-Y-0314 note 'Sole caller: FUN_004E30A0'",
+      "body_summary": "Top-of-tree caller of FUN_004E20A0 - the engine tick / scheduler driver",
+      "dispatcher_like_yes_no": "no (assumed scheduler integration point - not enumerated in this manifest)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "unallocated; top-of-tree scheduler attribution remains unresolved",
+      "existing_bcs_y_id": null
+    }
+  ],
+  "siblings_in_pattern_d_cluster": [
+    {
+      "va": "0x004D8860",
+      "name": "FUN_004d8860",
+      "existing_bcs_y_id": "BCS-Y-0280",
+      "existing_bcs_y_name": "Option2_event_family_dispatcher_FUN_004d8860",
+      "role": "Tier-3 sub-dispatcher reached via DEFAULT branches of FUN_0058CCA0 and FUN_0059CED0. Per the pattern-d-subdispatcher pass analysis (manifest pattern_d_subdispatcher.json) handles 24 distinct opcodes, 23 via LuaActorImpl vtable trampolines and 1 (0xCC) via bespoke logic",
+      "find_all_refs": "27 references: 2 instruction-level CALLs (from FUN_0058CCA0 and FUN_0059CED0) + 25 distinct DATA refs to vftable+0x24 slots of 25 Element subclasses + 1 forwarding-style DATA ref at MapLayoutElement+0x24 (Ghidra ref-tracker artifact from FUN_0059CED0's default branch tail-calling FUN_004D8860). The 25 Element subclasses: RaptureElement, DaemonElement, RelativeElement, XamlElement, FormElement, ClientWorkElement, CustomControlElement, BootupElement, CameraElement, CommonResourceElement, GameManagerElement, ScreenshotManagerElement, CutManagerElement, MainElement, TargetElement, LuaDebugLog, SqwtElement, WidgetElement, EffectElement, EffectDebugElement, DebugWindow, LuaDebugOut, LuaDebugSelect, LightElement, DebugInfoElement",
+      "shape": "switch dispatcher (event-family - opcodes 0x12E..0x1A8 range)",
+      "body_bytes": 863
+    },
+    {
+      "va": "0x0058CCA0",
+      "name": "FUN_0058cca0",
+      "existing_bcs_y_id": "BCS-Y-0404 (partial - framed as CombatBattleResultThird, but BCS-Y-0404's scope is incomplete - only documents 4 battle-result cases 0x0139..0x013C inside this 2300-line dispatcher)",
+      "role": "CharaElement::vftable[9] apply method (per the FUN_0058CCA0 caller-tree pass data ref). Handles 30+ opcodes directly including 0xF, 0xCC, 0xCE, 0xCF, 0xD0, 0xD3..0xE5, 0x134, 0x135, 0x137, 0x144, 0x145, 0x177, 0x179, 0x194, 0x197, 0x199-0x1A2 with bespoke case bodies (not vtable trampolines like FUN_004D8860). Default branch falls through to FUN_004D8860 for unmatched opcodes",
+      "find_all_refs": "1 reference: 0 instruction-level + 1 DATA at 0x00FA7C74 = CharaElement::vftable +0x24",
+      "shape": "switch dispatcher (CharaElement-specific - opcodes 0xCC..0x1A2 range)",
+      "body_bytes": 2563
+    },
+    {
+      "va": "0x0059CED0",
+      "name": "FUN_0059ced0",
+      "proposed_bcs_y_id": "BCS-Y-0563 (this manifest)",
+      "role": "MapLayoutElement::vftable[9] apply method (per the FUN_0059CED0-walk pass and the FUN_0058CCA0 caller-tree pass data ref). Smaller dispatcher handling 5 cases (0x05, 0x0D, 0x10, 0xD8, 0xD9) directly, default falls through to FUN_004D8860",
+      "find_all_refs": "1 reference: 0 instruction-level + 1 DATA at 0x00FAADAC = MapLayoutElement::vftable +0x24",
+      "shape": "switch dispatcher (MapLayoutElement-specific - small case set)",
+      "body_bytes": 272,
+      "existing_bcs_y_id": null
+    }
+  ],
+  "callee_table_summary": {
+    "note": "FUN_0058CCA0 calls 57 unique sub-functions across its 30+ case bodies. These are the 'per-case handlers' inside FUN_0058CCA0's switch. They are NOT callers of FUN_0058CCA0; they are callees. Classification below per the FUN_0058CCA0 caller-tree pass batch decomp (callees_batch1/2/3.txt)",
+    "thin_vtable_trampolines_count": 17,
+    "thin_vtable_trampolines_va_range": "0x005751XX (FUN_00575150 through FUN_00575230)",
+    "thin_vtable_trampolines_note": "12-19 byte bodies, same shape as BCS-Y-0537..0551 trampolines on FUN_004D8860's callees. Sole caller FUN_0058CCA0 for most",
+    "direct_case_handlers_count": 36,
+    "direct_case_handlers_size_range": "27-303 bytes",
+    "shared_utilities_count": 4,
+    "shared_utilities": [
+      {
+        "va": "0x00813050",
+        "callers": "100+ across the binary - generic utility, NOT case-specific to FUN_0058CCA0"
+      },
+      {
+        "va": "0x00586F40",
+        "callers": "3 (FUN_0058cca0, FUN_0059ced0, FUN_0058a090) - shared between dispatchers and a sibling function"
+      },
+      {
+        "va": "0x007C7870",
+        "callers": "5 across various functions"
+      },
+      {
+        "va": "0x004DD8B0",
+        "callers": "5 across various functions"
+      }
+    ],
+    "sub_dispatcher_callees_count": 1,
+    "sub_dispatcher_callees": [
+      {
+        "va": "0x0058B2A0",
+        "body_bytes": 442,
+        "switch_key": "param_5",
+        "sole_caller": "FUN_0058cca0",
+        "interpretation": "Internal sub-dispatch within FUN_0058CCA0 case 0xCE - NOT a separate dispatcher tier. Belongs to FUN_0058CCA0's case body, not a parallel handler",
+        "dispatcher_like_yes_no": "yes (sub-dispatch, but scope = single case)",
+        "tier_3_candidate": false
+      }
+    ]
+  },
+  "tier_3_dispatcher_candidates": [
+    {
+      "va": "0x004E30A0",
+      "name": "FUN_004e30a0",
+      "context": "sole caller of FUN_004E20A0 (BCS-Y-0314 Map tick). Above FUN_004DC690 -> FUN_0058CCA0 chain. Not enumerated in this manifest",
+      "deferred_reason": "Out of scope for the FUN_0058CCA0 caller-tree pass (1-2 tiers up was the explicit task scope; this would be tier 4)"
+    },
+    {
+      "va": "0x0058B2A0",
+      "name": "FUN_0058b2a0",
+      "context": "Internal sub-dispatcher within FUN_0058CCA0 case 0xCE (switch on param_5). 442 bytes. Sole caller FUN_0058CCA0",
+      "deferred_reason": "Inside FUN_0058CCA0's case body - belongs to the pattern-d-subdispatcher pass / future per-case enumeration phase, not the caller-tier walk"
+    }
+  ],
+  "key_findings": [
+    {
+      "id": "FUN0058CCA0C-F1",
+      "title": "FUN_0058CCA0 is CharaElement::vftable[9] - solving the actor-vftable9-investigation pass open question",
+      "summary": "BCS-Y-0528/0529 established that neither the Lua-side Control::Chara/Player/Npc hierarchy nor the engine-side SQEX::CDev::Engine::Fw::SceneObject::Actor::CharaActor hierarchy has a real packet handler at vftable[9] - both have no-ops or scene-graph lifecycle methods at slot 9. The open question 'where ARE the 24 Actor cluster opcodes actually processed?' is now answered: the actor classes whose vftable[9] holds real packet apply methods are the THIRD class hierarchy - Application::Main::Element::* (i.e. RaptureElement and its 27+ subclasses). FUN_0058CCA0 = CharaElement::vftable[9]. FUN_0059CED0 = MapLayoutElement::vftable[9]. FUN_004D8860 = the SHARED slot 9 implementation across 25 OTHER Element subclasses (it appears at vftable+0x24 of RaptureElement, DaemonElement, RelativeElement, XamlElement, FormElement, ClientWorkElement, CustomControlElement, BootupElement, CameraElement, CommonResourceElement, GameManagerElement, ScreenshotManagerElement, CutManagerElement, MainElement, TargetElement, LuaDebugLog, SqwtElement, WidgetElement, EffectElement, EffectDebugElement, DebugWindow, LuaDebugOut, LuaDebugSelect, LightElement, DebugInfoElement). This means the FFXIV 1.x s2c dispatch is partitioned across THREE actor hierarchies: (1) Application::Lua::Script::Client::Control (Lua-side, slot 9 = no-op stub per BCS-Y-0528), (2) Application::Scene::Actor (engine scene-graph, slot 9 = AddReferenceResourceListener per BCS-Y-0529), and (3) Application::Main::Element (the REAL packet-apply hierarchy with 27 distinct slot-9-holding classes routed across 3 implementations including FUN_0058CCA0/FUN_0059CED0/shared FUN_004D8860)",
+      "invalidates": "BCS-Y-0528 'this contradicts the obvious fact that these packets DO have effects' - resolves the contradiction by identifying the third hierarchy",
+      "implication": "Architectural-findings.md client-architecture 'S2C dispatch has five architectural patterns' Pattern B needs extension: actor->vftable[9] dispatch routes to Application::Main::Element implementations, NOT to Control:: or SceneActor"
+    },
+    {
+      "id": "FUN0058CCA0C-F2",
+      "title": "FUN_004D8860 is a SHARED Element::vftable[9] implementation across 25 classes",
+      "summary": "FindAllReferences on FUN_004D8860 reveals 25 distinct data refs to vftable +0x24 slots (in addition to 2 instruction-level CALLs from FUN_0058CCA0 and FUN_0059CED0 as default branches; the 26th data ref at 0x00FAADAC is a Ghidra ref-tracker artifact tracking the FUN_0059CED0 default-branch tail-call). This means FUN_004D8860 is the DEFAULT slot-9 packet handler for 25 different Application::Main::Element subclasses that do NOT have their own override. Per BCS-Y-0280, FUN_004D8860 handles 24 opcode cases via LuaActorImpl vtable trampolines - so these 25 element classes all share the same opcode coverage. CharaElement and MapLayoutElement are the EXCEPTIONS that override slot 9 with class-specific dispatchers (FUN_0058CCA0 and FUN_0059CED0 respectively). The override pattern: their bodies handle class-specific opcodes (Chara-related for CharaElement, Map-related for MapLayoutElement) directly, then fall through to the shared FUN_004D8860 for the common opcode set",
+      "implication": "BCS-Y-0280 should be re-framed as 'Default slot-9 packet apply for the Element hierarchy (25 classes share this implementation)' rather than 'event-family dispatcher'. The 'event family' framing is structurally correct but obscures the polymorphism story"
+    },
+    {
+      "id": "FUN0058CCA0C-F3",
+      "title": "FUN_0058CCA0 has ZERO instruction-level callers - vtable dispatch confirmed",
+      "summary": "The FUN_0058CCA0-walk pass ran FindReferencesToAddress (instruction-only) and reported refs=1 uniqueCallers=0. The FUN_0058CCA0 caller-tree pass ran FindAllReferences (instruction + data) and confirmed: 0 instruction refs, 1 data ref to CharaElement::vftable +0x24. This validates the Pattern D + Receiver Apply hypothesis: FUN_0058CCA0 is reached ONLY via vtable dispatch. The 'caller list' in the task spec is therefore vacuous in the traditional sense - the caller chain must be reconstructed from the data-ref vtable owner and its dispatcher pattern (which the FUN_0058CCA0 caller-tree pass has done)",
+      "implication": "Later work-up walks on vtable-resident handlers must use FindAllReferences.java, NOT FindReferencesToAddress.java. The latter misses ALL vtable-stored function pointers"
+    },
+    {
+      "id": "FUN0058CCA0C-F4",
+      "title": "BCS-Y-0404 is structurally incomplete and should be extended",
+      "summary": "BCS-Y-0404 names FUN_0058CCA0 as 'CombatBattleResultThirdRouter' based on analysis of 4 battle-result opcodes (0x0139..0x013C routing to FUN_0058C880/C930/C990/C7D0). The FUN_0058CCA0 caller-tree pass confirms those 4 cases exist in FUN_0058CCA0's switch, but the function ALSO handles 30+ other opcodes (0xCC actor lifecycle, 0xCE/0xCF position, 0xD0..0xE5 actor state, 0x134/0x135 multi-actor, 0x144/0x145 chara state, 0x177/0x179/0x194/0x197/0x199-0x1A2). The 'battle result' framing covers ~4 of ~30+ cases. This reframes: FUN_0058CCA0 is the CharaElement::vftable[9] slot-9 implementation - a multi-purpose packet apply method handling all CharaElement-relevant s2c opcodes. The battle-result cases are one PORTION of its scope",
+      "implication": "BCS-Y-0404 should either be (a) extended with the full case map and renamed to CharaElement_Vftable9_Apply_FUN_0058CCA0, or (b) supplemented with a sibling entry that covers the broader role. Address format also needs normalization (currently image_offset 0x0018CCA0 vs. canonical VA 0x0058CCA0)"
+    },
+    {
+      "id": "FUN0058CCA0C-F5",
+      "title": "Sibling cluster from the pattern-d-subdispatcher pass OQ#3 partially resolved: 1 of 3 is a dispatcher",
+      "summary": "The pattern-d-subdispatcher pass open question hypothesized a 4-sibling event-family dispatcher cluster based on the shared FUN_00574AA0 entry-guard helper (FUN_004D8830, FUN_004D87F0, FUN_004D8860, FUN_004DAF00). The FUN_0058CCA0 caller-tree pass decomped the 3 siblings: FUN_004D8830 (34 bytes, sole caller FUN_0058CCA0, returns char) and FUN_004D87F0 (18 bytes, sole caller FUN_004DC690, returns char) are BOTH tiny entry-guard predicates NOT dispatchers - they call FUN_00574AA0 with slightly different gates and return a 0/1 byte that other code switches on. FUN_004DAF00 (1708 bytes, 2 callers FUN_004DC690 and FUN_004DB5B0) IS a real dispatcher - but it's an ELEMENT-TREE TEARDOWN/CLEANUP function (iterates param_1+0x17808 STL map, references RaptureElement and RelativeElement RTTI, calls FUN_00813050 / FUN_009DA6CC dyn_cast / FUN_004B7340 / FUN_00547340 / etc.). Not a packet dispatcher. So the 'cluster' framing was wrong: there is ONE event-family dispatcher (FUN_004D8860) and one element-tree teardown (FUN_004DAF00), both sharing FUN_00574AA0 as a per-element predicate",
+      "implication": "The pattern-d-subdispatcher pass OQ#3 is closed: no 4-sibling dispatcher cluster exists. The siblings are different functions sharing a common predicate helper"
+    },
+    {
+      "id": "FUN0058CCA0C-F6",
+      "title": "FUN_0058CCA0's 57 callees classified - 1 internal sub-dispatcher, 36 direct handlers, 17 trampolines, 4 shared utilities",
+      "summary": "Batch decomp of all 57 unique callees from FUN_0058CCA0's body reveals: (a) 17 thin vtable trampolines in the 0x005751XX range (12-19 bytes each), same shape as the BCS-Y-0537..0551 cluster for FUN_004D8860 callees - these forward to LuaActorImpl vftable slots; (b) 36 direct case-body handlers ranging 27-303 bytes (case logic varies from byte field writes through multi-arg engine helper calls); (c) 1 internal sub-dispatcher FUN_0058B2A0 (442 bytes, switch on param_5, sole caller FUN_0058CCA0) belonging to case 0xCE only; (d) 4 heavily-shared utilities: FUN_00813050 (100+ callers across binary - generic), FUN_00586F40 / FUN_007C7870 / FUN_004DD8B0 (each with 3-5 callers spanning multiple dispatchers). No tier-3 dispatcher candidates discovered among the callees; the only sub-dispatcher (FUN_0058B2A0) is scoped to a single case body",
+      "implication": "FUN_0058CCA0's dispatch geometry is FLAT in the depth dimension - it doesn't nest another opcode switch inside its handlers. The case bodies are direct or trampoline; sub-dispatch happens only for case 0xCE via FUN_0058B2A0 (and that's on param_5, not opcode). Pattern D recursion DOES NOT extend below FUN_0058CCA0"
+    },
+    {
+      "id": "FUN0058CCA0C-F7",
+      "title": "Top-of-tree dispatcher chain established: FUN_004E20A0 (tick) -> FUN_004DC690 (central) -> element->vftable[9] -> FUN_0058CCA0/FUN_0059CED0/FUN_004D8860",
+      "summary": "Tier-2/3 caller walk: FUN_004DC690 (BCS-Y-0279) is the tier-2 dispatcher (calls element->vftable[9] for all 24 fallthrough cases per BCS-Y-0527). FUN_004E20A0 (BCS-Y-0314) is the tier-3 driver (Map tick handler, sole caller of FUN_004DC690). Above FUN_004E20A0 is FUN_004E30A0 (sole caller per BCS-Y-0314 note, not enumerated in this manifest). This establishes the FULL dispatch chain from engine tick down to the per-Element-class packet apply method - covering all 4 tiers of the s2c dispatch hierarchy",
+      "implication": "Architectural-findings.md client-architecture 'S2C dispatch has five architectural patterns' can now be diagrammed end-to-end: Engine tick (FUN_004E30A0, uncataloged) -> Map tick FUN_004E20A0 (BCS-Y-0314) -> Central dispatcher FUN_004DC690 (BCS-Y-0279) -> per-opcode case (BCS-Y-0525/0526) or generic fallthrough (BCS-Y-0527) -> actor->vftable[9] -> CharaElement::vftable[9]=FUN_0058CCA0 OR MapLayoutElement::vftable[9]=FUN_0059CED0 OR shared Element::vftable[9]=FUN_004D8860 -> per-case body (handler or trampoline) -> Receiver class apply"
+    }
+  ],
+  "vtable_owner_table_for_004D8860": [
+    {
+      "vtable_va": "0x00F91138",
+      "class": "Application::Main::RaptureElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA0B30",
+      "class": "Application::Main::Element::DaemonElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA0D28",
+      "class": "Application::Main::Element::RelativeElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA1010",
+      "class": "Application::Main::Element::XamlElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA1200",
+      "class": "Application::Main::Element::FormElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA42B0",
+      "class": "Application::Main::Element::System::ClientWorkElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA4410",
+      "class": "Application::Main::Element::System::CustomControlElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA4640",
+      "class": "Application::Main::Element::System::BootupElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA47A0",
+      "class": "Application::Main::Element::System::CameraElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA4910",
+      "class": "Application::Main::Element::System::CommonResourceElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA4AA8",
+      "class": "Application::Main::Element::System::GameManagerElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA4C08",
+      "class": "Application::Main::Element::System::ScreenshotManagerElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA4DB8",
+      "class": "Application::Main::Element::System::CutManagerElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA4F18",
+      "class": "Application::Main::Element::System::MainElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA50C4",
+      "class": "Application::Main::Element::System::TargetElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FA9AD8",
+      "class": "Application::Main::Element::Window::LuaDebug::LuaDebugLog",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC2008",
+      "class": "Application::Main::Element::Window::SqwtElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC21C8",
+      "class": "Application::Main::Element::Window::WidgetElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC43D0",
+      "class": "Application::Main::Element::Effect::EffectElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC4538",
+      "class": "Application::Main::Element::Effect::EffectDebugElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC5A68",
+      "class": "Application::Main::Element::Window::Debug::DebugWindow",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC60E0",
+      "class": "Application::Main::Element::Window::LuaDebug::LuaDebugOut",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC6690",
+      "class": "Application::Main::Element::Window::LuaDebug::LuaDebugSelect",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC6BC0",
+      "class": "Application::Main::Element::Light::LightElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    },
+    {
+      "vtable_va": "0x00FC70D0",
+      "class": "Application::Main::Element::Debug::DebugInfoElement",
+      "slot_at_+0x24": "FUN_004D8860"
+    }
+  ],
+  "vtable_owner_for_0058CCA0": {
+    "vtable_va": "0x00FA7C50",
+    "class": "Application::Main::Element::Chara::CharaElement",
+    "slot_at_+0x24": "FUN_0058CCA0",
+    "neighbor_vtable_va": "0x00FA7C88",
+    "neighbor_class": "Application::Main::Element::Chara::MapObjectForChara (secondary vtable / multi-inheritance)"
+  },
+  "vtable_owner_for_0059CED0": {
+    "vtable_va": "0x00FAAD88",
+    "class": "Application::Main::Element::Map::MapLayoutElement",
+    "slot_at_+0x24": "FUN_0059CED0"
+  },
+  "summary_counts": {
+    "tier0_function": 1,
+    "tier0_instruction_callers": 0,
+    "tier0_data_refs": 1,
+    "tier1_caller_dispatcher": 1,
+    "tier1_caller_dispatcher_cataloged": 1,
+    "tier2_caller_driver": 1,
+    "tier2_caller_driver_cataloged": 1,
+    "tier3_candidate_unenumerated": 1,
+    "sibling_dispatchers_in_cluster": 2,
+    "sibling_dispatchers_cataloged": 1,
+    "sibling_dispatchers_uncataloged": 1,
+    "callees_of_tier0_total": 57,
+    "callees_thin_trampolines": 17,
+    "callees_direct_handlers": 36,
+    "callees_internal_sub_dispatcher": 1,
+    "callees_shared_utilities": 4,
+    "vtable_owners_for_FUN_004D8860": 25,
+    "vtable_owner_for_FUN_0058CCA0": 1,
+    "vtable_owner_for_FUN_0059CED0": 1,
+    "total_application_main_element_subclasses_using_pattern_d": 27
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0563",
+      "name": "MapLayoutElement_Vftable9_Apply_FUN_0059CED0",
+      "kind": "function",
+      "address": "0x0059CED0",
+      "confidence": "confirmed",
+      "notes": "Application::Main::Element::Map::MapLayoutElement::vftable[9] (slot 9 at offset +0x24 of MapLayoutElement::vftable at 0x00FAAD88, ref site 0x00FAADAC). 272-byte switch dispatcher handling 5 opcodes (0x05/0x0D/0x10/0xD8/0xD9) directly, default branch falls through to FUN_004D8860 (BCS-Y-0280). Reached via vtable dispatch through FUN_004DC690 (BCS-Y-0279) generic fallthrough (BCS-Y-0527) when the actor returned by FUN_004D9910 is a MapLayoutElement instance. Case 0x05: zone init via FUN_004D7340/FUN_00560FC0, sets state at param_1+0x98/0xAC/0xB9/0xBA. Case 0x0D: sets state at +0xB0/+0xB4/+0xBB. Case 0x10: sets state at +0xF0. Cases 0xD8/0xD9: no-op (goto common return). Default: tail-call FUN_004D8860 with packet only. Pattern D sub-dispatcher tier 2"
+    },
+    {
+      "id": "BCS-Y-0564",
+      "name": "CharaElement_Vftable9_Apply_FUN_0058CCA0",
+      "kind": "function",
+      "address": "0x0058CCA0",
+      "confidence": "confirmed",
+      "notes": "Application::Main::Element::Chara::CharaElement::vftable[9] (slot 9 at offset +0x24 of CharaElement::vftable at 0x00FA7C50, ref site 0x00FA7C74). 2563-byte large switch dispatcher handling 30+ opcodes directly: 0xF, 0xCC, 0xCE-0xE5, 0x134, 0x135, 0x137, 0x144, 0x145, 0x177, 0x179, 0x194, 0x197, 0x199-0x1A2. Default branch falls through to FUN_004D8860 (BCS-Y-0280). Entry guard via FUN_004D8830 helper. Reached via vtable dispatch through FUN_004DC690 (BCS-Y-0279) generic fallthrough (BCS-Y-0527) when the actor returned by FUN_004D9910 is a CharaElement instance. **Supersedes BCS-Y-0404** which scoped this function narrowly as 'CombatBattleResultThirdRouter' covering only 4 battle-result opcodes (0x0139..0x013C) - actual scope is the full CharaElement packet-apply surface. Calls 57 distinct sub-functions: 17 thin vtable trampolines (FUN_005751XX) + 36 direct case handlers + 1 internal sub-dispatcher FUN_0058B2A0 (case 0xCE specific) + 4 shared utilities. Pattern D sub-dispatcher tier 2"
+    },
+    {
+      "id": "BCS-Y-0565",
+      "name": "PatternD_ElementVftable9_DispatchHierarchy",
+      "kind": "global",
+      "address": "0x00FA7C50",
+      "confidence": "confirmed",
+      "notes": "Architectural finding: the 's2c packet apply via actor->vftable[9]' mechanism documented in BCS-Y-0527 routes to Application::Main::Element::* class implementations - the third actor hierarchy NOT previously identified in client-architecture 'S2C dispatch has five architectural patterns' Pattern B. BCS-Y-0528 and BCS-Y-0529 excluded the Lua-side Control:: and engine-side Scene::Actor hierarchies as candidates - the FUN_0058CCA0 caller-tree pass identifies the Element hierarchy as the actual implementation home. 27 distinct Element subclasses participate: 25 share the default implementation FUN_004D8860 (BCS-Y-0280), 1 (CharaElement) overrides with FUN_0058CCA0 (BCS-Y-0564), 1 (MapLayoutElement) overrides with FUN_0059CED0 (BCS-Y-0563). The vtable owners: RaptureElement (0x00F91138), DaemonElement (0x00FA0B30), RelativeElement (0x00FA0D28), XamlElement (0x00FA1010), FormElement (0x00FA1200), ClientWorkElement (0x00FA42B0), CustomControlElement (0x00FA4410), BootupElement (0x00FA4640), CameraElement (0x00FA47A0), CommonResourceElement (0x00FA4910), GameManagerElement (0x00FA4AA8), ScreenshotManagerElement (0x00FA4C08), CutManagerElement (0x00FA4DB8), MainElement (0x00FA4F18), TargetElement (0x00FA50C4), CharaElement (0x00FA7C50 - OVERRIDES), LuaDebugLog (0x00FA9AD8), MapLayoutElement (0x00FAAD88 - OVERRIDES), SqwtElement (0x00FC2008), WidgetElement (0x00FC21C8), EffectElement (0x00FC43D0), EffectDebugElement (0x00FC4538), DebugWindow (0x00FC5A68), LuaDebugOut (0x00FC60E0), LuaDebugSelect (0x00FC6690), LightElement (0x00FC6BC0), DebugInfoElement (0x00FC70D0)"
+    }
+  ],
+  "open_questions": [
+    "What enumerates above FUN_004E20A0? BCS-Y-0314 identifies sole caller FUN_004E30A0, but that function is uncataloged and the engine main-loop or scheduler integration point remains unresolved.",
+    "Does the Element hierarchy contain additional vftable[9] overrides? Twenty-six of 28 entries share FUN_004D8860, but the Map and Chara overrides leave deeper RaptureElement subclass dispatch unresolved.",
+    "How does FUN_004D9910 (ZoneActorMap_FindById, BCS-Y-0534) actually populate its map with Element instances? The s2c dispatcher does actor lookup by packet's actor id; that id is matched against entries inserted via Element creation - the creation path is unattributed",
+    "What is the SOURCE of the multiple inheritance pattern in CharaElement? CharaElement has TWO vftables at 0x00FA7C50 (where slot 9 = FUN_0058CCA0) and 0x00FA7C88 (Application::Main::Element::Chara::MapObjectForChara). The packet-apply path uses the FIRST vtable; the MapObjectForChara secondary may host scene-graph integration",
+    "BCS-Y-0404 should be either extended in-place or supplemented - its 'CombatBattleResultThird' framing covers ~4 of ~30+ cases in FUN_0058CCA0. The proposed BCS-Y-0564 supersedes it; symbols.json reconciliation needed when both the pattern-d-subdispatcher pass and the FUN_0058CCA0 caller-tree pass manifests apply"
+  ],
+  "ghidraEvidence": [
+    "%BCS_GHIDRA_PROJECTS%\\fun_0058cca0_decomp.txt (reused, 2563-byte body decomp)",
+    "%BCS_GHIDRA_PROJECTS%\\fun_0058cca0_callers.txt (reused, 0 callers confirmed)",
+    "%BCS_GHIDRA_PROJECTS%\\fun_0058cca0_refs.txt (reused, instruction-only confirms 0)",
+    "%BCS_GHIDRA_PROJECTS%\\all_refs.txt (reused, FUN_0059CED0 data ref to MapLayoutElement+0x24)",
+    "%BCS_GHIDRA_PROJECTS%\\fun_0059ced0_decomp.txt (reused, 272-byte 5-case dispatcher)",
+    "%BCS_GHIDRA_PROJECTS%\\maplayoutelement_vtable.txt (reused)",
+    "%BCS_GHIDRA_PROJECTS%\\vtable_symbols.txt (reused, MapLayoutElement vftable label confirmed)",
+    "%BCS_GHIDRA_PROJECTS%\\callees_batch.txt (reused, FUN_0059CED0 callees)",
+    "%BCS_GHIDRA_PROJECTS%\\all_refs.txt (NEW, all refs for FUN_004D8860 + FUN_0058CCA0 + FUN_0059CED0 - shows 26 data refs to FUN_004D8860 vftable+0x24 slots)",
+    "%BCS_GHIDRA_PROJECTS%\\vtable_symbols.txt (NEW, all 28 vftable owners resolved to Application::Main::Element::* class names)",
+    "%BCS_GHIDRA_PROJECTS%\\charaelement_vtable.txt (NEW, CharaElement first vtable slot dump - distinct from packet-apply secondary vtable at 0x00FA7C50)",
+    "%BCS_GHIDRA_PROJECTS%\\chara_packet_vtable.txt (NEW, neighbor symbols around 0x00FA7C50 - confirms CharaElement vftable structure)",
+    "%BCS_GHIDRA_PROJECTS%\\sibling_decomp.txt (NEW, 3 pattern-d-subdispatcher pass OQ#3 candidates FUN_004D8830/FUN_004D87F0/FUN_004DAF00 decomp)",
+    "%BCS_GHIDRA_PROJECTS%\\callees_batch1.txt (NEW, 17 thin trampolines)",
+    "%BCS_GHIDRA_PROJECTS%\\callees_batch2.txt (NEW, 19 direct handlers)",
+    "%BCS_GHIDRA_PROJECTS%\\callees_batch3.txt (NEW, 22 direct handlers + sub-dispatcher + utilities)"
+  ],
+  "cross_phase_references": {
+    "pattern_d_subdispatcher_manifest": "manifests/pattern_d_subdispatcher.json (proposes BCS-Y-0535..0562 for FUN_004D8860 handlers and the 2 parent sub-dispatchers; not yet applied)",
+    "proposed_bcs_y_for_fun_0058cca0": "BCS-Y-0561 (parent role only - superseded by BCS-Y-0564 carrying the full CharaElement attribution)",
+    "proposed_bcs_y_for_fun_0059ced0": "BCS-Y-0562 (parent role only - superseded by BCS-Y-0563 carrying the full MapLayoutElement attribution)",
+    "id_coordination": "This manifest uses BCS-Y-0563+ to avoid collision with the pattern-d-subdispatcher pass draft range (0535..0562). When both manifests apply: BCS-Y-0561/0562 should be REPLACED by BCS-Y-0563/0564 (with the Element hierarchy attribution) OR de-duplicated by the appender; BCS-Y-0535..0560 remain valid (covers FUN_004D8860 case handlers)",
+    "open_question_resolved": "BCS-Y-0528/0529 'where ARE the 24 Actor cluster opcodes processed' - answered: Application::Main::Element::* hierarchy slot 9 implementations (28 classes total)",
+    "pattern_b_extended": "BCS-Y-0527 generic fallthrough actor->vftable[9] - now known to land in Element hierarchy implementations, not Control:: or Scene::Actor",
+    "battle_result": "BCS-Y-0404 CombatBattleResultThirdRouter_FUN_0058CCA0 - reframed as a narrower subset (4 of 30+ cases) of the full CharaElement vftable[9] dispatcher"
+  },
+  "blockers": []
+}

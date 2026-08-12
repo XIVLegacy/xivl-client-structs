@@ -1,0 +1,225 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-18",
+  "pass": "static_caller_dig",
+  "source": "Ghidra FindXRefs + DumpFunctionDecomp on the 22 cluster emitter VAs",
+  "scope": "the 19 0x01C3..0x01DF cluster opcodes UNOBSERVED in the pcap-opcode-evidence pass's pcap corpus",
+  "summary": "The cluster is 1.x's social/recruitment subsystem, NOT an action-system cluster (which the pcap-opcode-evidence pass already proved by showing combat c2s is 0x012D). Caller UI control strings disambiguate each opcode into one of 5 subsystems: PcMatching/Recruitment (0x01C3-0x01C8), Mail/Letter (0x01C9/0x01CA/0x01CC), Topic/Forum (0x01D0/0x01D4), Call/Voice (0x01D1/0x01D6), Mail/Compose (0x01D2/0x01D5). 4 vtable-dispatched opcodes (0x01CD, 0x01D9, 0x01DA, 0x01DE) and 3 internal handlers (0x01D7, 0x01D8, 0x01DF) remain unmapped; they are likely the leaf cases of the same social/PcMatching/Mail subsystems.",
+  "subsystemSummary": {
+    "PcMatching/Recruitment": [
+      451,
+      452,
+      453,
+      454,
+      455,
+      456
+    ],
+    "Mail/Letter": [
+      457,
+      458,
+      460,
+      461
+    ],
+    "Topic/Forum": [
+      464,
+      468
+    ],
+    "Call/Voice": [
+      465,
+      470
+    ],
+    "Mail/Compose": [
+      466,
+      469
+    ],
+    "VTableDispatchedUnknown": [
+      473,
+      474,
+      478
+    ],
+    "SmallInternalHandlersUnknown": [
+      471,
+      472,
+      479
+    ]
+  },
+  "refinements": [
+    {
+      "opcode": 451,
+      "opcodeHex": "0x01c3",
+      "callerVa": "0x004BBEA0",
+      "subsystem": "PcMatching/Recruitment",
+      "refinedRole": "C2S - post new PC-Matching (party recruitment) listing. Caller FUN_004BBEA0 reads UI fields Button_Operate, ComboBox_Purpose, ComboBox_GLName, ComboBox_Place, TextBox_Comment, and 4x {ComboBox_Skill_N, CustomControl_RankFrom_N, CustomControl_RankTo_N, CustomControl_NumberOfPeople_N} - a full recruitment posting with 4 skill slots, rank ranges, and headcounts.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 452,
+      "opcodeHex": "0x01c4",
+      "callerVa": "0x004C8390",
+      "subsystem": "PcMatching/Recruitment",
+      "refinedRole": "C2S - PC-Matching listing view-mode action (apply / view / browse). Caller FUN_004C8390 reads TextBlock_GLName, TextBlock_PersonName, TextBlock_RemainTime + 4x TextBlock_Skill/RankFrom/RankTo/NumberOfPeople - the read-only view side of the listing UI.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 453,
+      "opcodeHex": "0x01c5",
+      "callerVa": "0x004C8390 + 0x004C80C0",
+      "subsystem": "PcMatching/Recruitment",
+      "refinedRole": "C2S - PC-Matching edit-mode toggle. Caller FUN_004C80C0 reads Button_PcMatching_Edit (smoking-gun control name); also invoked from FUN_004C8390 listing-view handler. Transitions between view and edit modes.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 454,
+      "opcodeHex": "0x01c6",
+      "callerVa": "0x004BF4F0",
+      "subsystem": "PcMatching/Recruitment",
+      "refinedRole": "C2S - PC-Matching detail view request (another player's posting). Caller FUN_004BF4F0 mirrors FUN_004C8390 layout with TextBlock_ prefix UI controls. Sister of 0x01C4.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 455,
+      "opcodeHex": "0x01c7",
+      "callerVa": "0x004BD170",
+      "subsystem": "PcMatching/Recruitment",
+      "refinedRole": "C2S - PC-Matching SetAttr/Update on listing fields. Caller FUN_004BD170 uses Action/AttributeName/SetAttr/Update/Index + ValueType pattern + Result_Maker. Sends individual field changes to listing.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 456,
+      "opcodeHex": "0x01c8",
+      "callerVa": "0x004C8390 + 0x004BF4F0",
+      "subsystem": "PcMatching/Recruitment",
+      "refinedRole": "C2S - PC-Matching cancel/leave/withdraw. Caller pair spanning both edit (0x004C8390) and view (0x004BF4F0) handlers - common exit/abort path.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 457,
+      "opcodeHex": "0x01c9",
+      "callerVa": "0x004CB0D0 + 0x004CDB60",
+      "subsystem": "Mail/Letter",
+      "refinedRole": "C2S - Mail/Letter compose request. Caller FUN_004CB0D0 uses Address_Maker + TextBlock_Total + Button_Add UI - the letter address-list assembly UI. Sister of 0x01CA.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 458,
+      "opcodeHex": "0x01ca",
+      "callerVa": "0x004CB0D0",
+      "subsystem": "Mail/Letter",
+      "refinedRole": "C2S - Mail/Letter attribute set (recipient / subject field update). Caller FUN_004CB0D0 same letter-address handler as 0x01C9; uses Action/AttributeName/SetAttr/Update pattern.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 460,
+      "opcodeHex": "0x01cc",
+      "callerVa": "0x004CA410",
+      "subsystem": "Mail/Letter",
+      "refinedRole": "C2S - Letter system small wrapper opcode. Caller FUN_004CA410 is a 2400-char decomp with no distinguishing strings - likely a passthrough or ack within the mail flow.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 461,
+      "opcodeHex": "0x01cd",
+      "callerVa": "(no static references; possibly vtable-dispatched or dead code)",
+      "subsystem": "Mail/Letter (cluster-adjacent)",
+      "refinedRole": "C2S - emitter FUN_004B7E30 has ZERO static references in the binary. Either dead code from earlier dev iterations or called indirectly via a vtable / function pointer table that Ghidra's static xref-search did not resolve. Adjacent in address space to the Mail cluster (0x01C9..0x01CC).",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 464,
+      "opcodeHex": "0x01d0",
+      "callerVa": "0x004C0AF0",
+      "subsystem": "Topic/Forum",
+      "refinedRole": "C2S - Topic/Bulletin board list request. Caller FUN_004C0AF0 uses TextBlock_TopicTitle + Call_Maker + Info_Maker UI control pattern - the topic-list / discussion board UI. Sister of 0x01D4.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 465,
+      "opcodeHex": "0x01d1",
+      "callerVa": "0x004C2170",
+      "subsystem": "Call/Voice (or Call-Help feature)",
+      "refinedRole": "C2S - Call/Help request. Caller FUN_004C2170 uses Button_Call + TextBlock_Content + Visibility/Visible/Collapsed control pattern - voice-call or help-call request UI. Sister of 0x01D6.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 466,
+      "opcodeHex": "0x01d2",
+      "callerVa": "0x004C2A20",
+      "subsystem": "Mail/Compose",
+      "refinedRole": "C2S - Mail compose send. Caller FUN_004C2A20 uses Button_Send + ComboBox_Kind + TextBox_Content + TextBox_Header + Kind_Maker + kindtext UI - the actual mail-message-compose / send UI. Sister of 0x01D5.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 468,
+      "opcodeHex": "0x01d4",
+      "callerVa": "0x004C0AF0",
+      "subsystem": "Topic/Forum",
+      "refinedRole": "C2S - Topic/Bulletin board submit/update. Same caller as 0x01D0 (FUN_004C0AF0); paired emit covering the topic-board submit half.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 469,
+      "opcodeHex": "0x01d5",
+      "callerVa": "0x004C2A20",
+      "subsystem": "Mail/Compose",
+      "refinedRole": "C2S - Mail compose field update. Same caller as 0x01D2 (FUN_004C2A20); paired emit for sending individual compose-field updates.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 470,
+      "opcodeHex": "0x01d6",
+      "callerVa": "0x004C2170",
+      "subsystem": "Call/Voice",
+      "refinedRole": "C2S - Call ack/status. Same caller as 0x01D1 (FUN_004C2170); paired emit for call lifecycle state changes.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 471,
+      "opcodeHex": "0x01d7",
+      "callerVa": "0x00519440 (thunked from 0x0051A480/0x0051A490) + 0x0051A4A0",
+      "subsystem": "(unidentified; small wrapper)",
+      "refinedRole": "C2S - small wrapper. Emitter FUN_00519440 is thunked twice and called once from FUN_0051A4A0 (a 300-char decomp with no distinguishing UI strings). Likely a generic-flag set/clear opcode invoked from multiple subsystems.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 472,
+      "opcodeHex": "0x01d8",
+      "callerVa": "0x00525E50",
+      "subsystem": "(unidentified; small handler)",
+      "refinedRole": "C2S - small handler. Caller FUN_00525E50 (900 chars) also emits 0x01DF. No UI control strings to disambiguate further. May be an internal subsystem-handshake pair.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 473,
+      "opcodeHex": "0x01d9",
+      "callerVa": "(DATA xref only at 0x00F9E730 - vtable slot)",
+      "subsystem": "(vtable-dispatched; subsystem unidentified)",
+      "refinedRole": "C2S - emitter FUN_004FA750 is referenced only via a vtable slot at 0x00F9E730 (.data section). Called via virtual dispatch from some class's vtable; static xref scan didn't resolve the class. Follow-up: DumpVtableSlots-style script could identify the class.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 474,
+      "opcodeHex": "0x01da",
+      "callerVa": "(DATA xref only at 0x00FA0320 - vtable slot)",
+      "subsystem": "(vtable-dispatched; subsystem unidentified)",
+      "refinedRole": "C2S - emitter FUN_00532A40 is referenced only via a vtable slot at 0x00FA0320 (.data section). Same caveat as 0x01D9.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 478,
+      "opcodeHex": "0x01de",
+      "callerVa": "(DATA xref only at 0x01049F08 - vtable slot)",
+      "subsystem": "(vtable-dispatched; subsystem unidentified)",
+      "refinedRole": "C2S - emitter FUN_0085E1B0 is referenced only via a vtable slot at 0x01049F08 (.data section). Same caveat as 0x01D9.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    },
+    {
+      "opcode": 479,
+      "opcodeHex": "0x01df",
+      "callerVa": "0x00525E50",
+      "subsystem": "(unidentified; small handler)",
+      "refinedRole": "C2S - small handler pair. Same caller as 0x01D8 (FUN_00525E50). Internal subsystem-handshake pair.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt"
+    }
+  ]
+}

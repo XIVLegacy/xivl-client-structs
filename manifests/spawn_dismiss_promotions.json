@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "generated": "2026-05-28",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Catalog the spawn-ACK and warp-dismiss function clusters referenced by docs/client-architecture.md, 'Zone-in actor bind and Lua-class-readiness pipeline'. A deduplication check found six of 20 candidates already cataloged, so 14 entries were added as BCS-Y-1778..1791 and the six existing entries were corroborated. All 18 functions and two data symbols were re-decompiled and re-xref'd.",
+  "method": {
+    "step_a": "Verified decompile_function_by_address at 0x0075E860 returned the 0x130/0x20 emitter body.",
+    "step_b": "Re-decompiled + get_xrefs_to the 6 section-17 spawn-ACK functions (FUN_0075E860, FUN_006CD8E0, FUN_006C8CF0, FUN_006DB9A0, FUN_006DAE90, FUN_006DACD0). All single-caller except FUN_0075E860 (3 callers), confirming section 17's linear ring-drain -> dispose-chain -> router model (NOT a parallel T0..T5 pipeline). Archived to c116_spawn_ack_promotions.txt.",
+    "step_c": "Re-decompiled + get_xrefs_to the 12 warp/dismiss functions (FUN_006DE760/770/7B0, FUN_0071E3F0, FUN_006FEDE0, FUN_006FEF10, FUN_008A44D0, FUN_008A4410, FUN_00759C20, FUN_00759BB0, FUN_006F6D60, FUN_00703F60). The 4 fade impls have zero call xrefs (DATA-only from their registrars) = pure Lua-dispatch trampolines. Archived to c116_warp_dismiss_promotions.txt.",
+    "step_d": "Verified the 2 data symbols: list_strings confirmed 0x0126FAB8 = '.?AVNowLoading@Common@Menu@Main@Application@@' (RTTI TD name) and 0x00FA543A = 'zD\\system\\common\\NowLoading.form' (form path); get_xrefs_to returned zero for both (the Lua-orchestrated dismiss 'finding by absence').",
+    "step_e": "Checked symbols.json by address before promotion. Six of 20 candidates were already cataloged; 14 new entries were appended under the catalog's serialized allocation and duplicate-address checks."
+  },
+  "key_findings": [
+    "**Six candidates were already cataloged**: BCS-Y-0158 (LuaActorImpl slot 41 _onPreWarp), BCS-Y-0159 (slot 42 _onPostWarp), BCS-Y-1600 (_onInit), BCS-Y-1624 (_onPreWarp firer), BCS-Y-1625 (_onPostWarp firer), and BCS-Y-1639 (_onChocoboRentalRide/_onChocoboWarpRide). All six were corroborated without duplicate entries.",
+    "**Real gap filled = the two engine-side gate trampolines**: BCS-Y-0158/0159 already named the chain slot41->FUN_008A4410->FUN_006FEDE0 and slot42->FUN_008A44D0->FUN_006FEF10, but the trampolines FUN_008A4410 (preWarp gate, BCS-Y-1789) and FUN_008A44D0 (postWarp gate, BCS-Y-1788) themselves were never cataloged. Both gate on a DesktopWidget lookup by SID 0xC0000024 + dynamic-cast to LuaControl/DesktopWidget; preWarp additionally requires DesktopWidget+0x5C != 0.",
+    "**_fadeIn vtable-slot discrepancy**: an earlier note placed _fadeIn (FUN_006DE760) at slot +0xE8; the live decomp dispatches +0xEC. The other three fade implementations use +0xF0/+0x100/+0x108. BCS-Y-1784 records +0xEC as authoritative.",
+    "**_onInit ties directly into the spawn-ACK chain**: get_xrefs_to FUN_006F6D60 (_onInit firer, BCS-Y-1600) returns a single caller, FUN_006C8CF0 (the spawn-ADD handler, BCS-Y-1780). The ring-drain ADD path that emits c2s 0x133 also fires _onInit per actor.",
+    "**FUN_0075E860 sibling-emitter confirmed**: 3 callers (the two teardown emit sites + FUN_006E42E0). Same opcode (0x130) and gating-thunk (FUN_004D6D30 BCS-Y-0983) as BCS-Y-0329 FUN_0075E8D0. The 2x-0x130 spawn-ADD ACK count of section 17 is the two teardown sites firing this emitter.",
+    "**Data symbols confirm the blocker finding-by-absence**: both NowLoading data symbols have zero xrefs - the overlay is shown/hidden by Lua (_fadeInNowLoadingForNoticeEventJustInArea / _fadeOut), not by any hard-coded C++ reference. The loading-screen dismiss is therefore gated on the Lua callback cascade (_onInit + _onPostWarp), which is gated in turn on the spawn-burst driving the engine state-diff - not on a single dismiss opcode."
+  ],
+  "new_bcsy_entries_summary": {
+    "spawn_ack_cluster": 6,
+    "warp_dismiss_functions": 6,
+    "data_symbols": 2,
+    "total_bcsy_added": 14,
+    "id_range": "BCS-Y-1778..BCS-Y-1791",
+    "kinds": "12 function, 1 rtti, 1 global",
+    "amendments": 0
+  },
+  "already_cataloged": [
+    "BCS-Y-0158 LuaActorImpl::vftable_slot41_onPreWarp_FUN_00759BB0 (0x00759BB0) - corroborated; already notes the FUN_0075AE30 NullActorImpl parallel slot-41 peer",
+    "BCS-Y-0159 LuaActorImpl::vftable_slot42_onPostWarp_FUN_00759C20 (0x00759C20) - corroborated",
+    "BCS-Y-1600 LuaFireSite__onInit_FUN_006f6d60 (0x006F6D60) - corroborated; single caller = FUN_006C8CF0 (new BCS-Y-1780)",
+    "BCS-Y-1624 LuaFireSite__onPreWarp_FUN_006fede0 (0x006FEDE0) - corroborated; sets actor+0x7b paired-fire flag",
+    "BCS-Y-1625 LuaFireSite__onPostWarp_FUN_006fef10 (0x006FEF10) - corroborated; fires only if actor+0x7b set, then clears it",
+    "BCS-Y-1639 LuaFireSite__onChocoboRentalRide_FUN_00703f60 (0x00703F60) - corroborated; reached from the postWarp gate FUN_008A44D0"
+  ],
+  "deferred_followups": [
+    "FUN_006CDD20 decomp (the 2nd caller of the ring drain FUN_006CDA80) - small loose end carried over from the section 17 verification.",
+    "Light enrichment of BCS-Y-0158/0159 with the DesktopWidget SID-0xC0000024 gate + +0x5C/+0x7B/+0x166 flag semantics (deferred to a deliberate cross-linking pass; the new gate entries BCS-Y-1788/1789 carry that detail and back-link).",
+    "The unresolved boundary is the spawn-burst opcode that carries SetActorIsZoning(false) for MyPlayer and permits the engine state change to fire _onPostWarp."
+  ],
+  "evidenceFiles": [
+    "tools/ghidra/logs/c116_spawn_ack_promotions.txt",
+    "tools/ghidra/logs/c116_warp_dismiss_promotions.txt"
+  ],
+  "symbol_count_delta": "1764 -> 1778 (+14 BCS-Y; BCS-Y-1778..1791)"
+}

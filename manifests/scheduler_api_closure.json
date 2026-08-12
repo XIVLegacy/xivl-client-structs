@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Scheduler API closure - traceback the enqueue API to upstream wrappers + attempt Lua name resolution for FUN_00D082A0 time getter. Closes 3 of the 7 deferred follow-ups: (a) decomp FUN_00CE27F0 (sole caller of MS-enqueue-if-not-pending API), (b) decomp FUN_00CEFA70 (sole caller of MS-batch-schedule API), (c) decomp FUN_00CEFFF0 (ms-tick's list-batch-move helper). Lua name resolution for FUN_00D082A0 is PARTIALLY closed: LGE bootstrap FUN_00CD8990 (1978-byte body) registers cclosures via a loop-driven function pointer dispatch table - Ghidra's decomp obscures the direct `FUN_00D082A0` reference inside the loop body; exact Lua name string is not extractable from the decomp without deeper analysis. The remaining 4 deferred follow-ups (us-scheduler enqueue path producer; 4 non-scheduler callers of ms-tree allocator; full us-scheduler enqueue chain; alternative time-getter naming traces) are pushed to future work.",
+  "method": {
+    "step_a": "DumpFunctionDecomp on 3 functions: FUN_00CE27F0 (sole caller of [[LuaSchedulerMs_enqueue_schedule_if_not_pending_FUN_00CEF0F0]] BCS-Y-1726), FUN_00CEFA70 (sole caller of [[LuaSchedulerMs_enqueue_batch_FUN_00CEF900]] BCS-Y-1727), FUN_00CEFFF0 (sole caller=ms-tick BCS-Y-1696, the deferred list-batch-move helper). Output: c113_scheduler_traceback.txt.",
+    "step_b": "DumpFunctionDecomp on FUN_00CD8990 (LGE bootstrap BCS-Y-0501) - 1978-byte body. Searched for FUN_00D082A0 / d082a0 references in decomp output. **NOT DIRECTLY VISIBLE** - the cclosure registrations use a function-pointer dispatch table populated via loop iteration; the direct `FUN_00D082A0` immediate is hidden behind a `(*FUN_xxx)(...)` callsite. Exact Lua name string for FUN_00D082A0 not extractable from this single-function decomp. Output: c113_lge_bootstrap_decomp.txt.",
+    "step_c": "Catalog 3 new BCS-Y entries (FUN_00CE27F0 + FUN_00CEFA70 + FUN_00CEFFF0) + 4 amendments closing the now-resolved the deferred follow-ups, plus documenting the LGE-bootstrap obfuscation limitation."
+  },
+  "key_findings": [
+    "**FUN_00CE27F0 = specific-event schedule wrapper** (143 bytes). Takes `int param_1` (presumably scheduler-state-bearing struct). Body: reads a `short*` vector at param_1+0x24..+0x28 (start/end), iterates searching for the SPECIFIC event ID equal to constant DAT_0130cf04, and if found calls FUN_00CE3430 (probably extracts the matched element from the vector) then [[LuaSchedulerMs_enqueue_schedule_if_not_pending_FUN_00CEF0F0]] (BCS-Y-1726) to schedule it. **Architectural role**: this is a 'schedule-specific-event-by-id' API - probably exposed to Lua scripts as something like `lge_schedulePending(specific_event_id)`. The constant DAT_0130cf04 is the hardcoded event-id literal being searched - decoding it would reveal the exact event name.",
+    "**FUN_00CEFA70 = conditional batch-schedule wrapper** (33 bytes, tiny). Body: `cVar1 = FUN_00CEEB90(param_1); if (cVar1 == 0) FUN_00CEF900(param_1, 0);`. FUN_00CEEB90 is a predicate (returns char); if it returns false (0), calls [[LuaSchedulerMs_enqueue_batch_FUN_00CEF900]] (BCS-Y-1727) with payload=0. **Pattern**: 'schedule a batch unless the predicate says already-scheduled / already-pending'. Sole caller: FUN_00CD85C0 - probably a further-up dispatch function. Likely Lua-exposed as a `lge_scheduleBatchIfNeeded(state)` API.",
+    "**FUN_00CEFFF0 = ms-tick list-batch-move helper** (82 bytes, 7 parameters). Body: for loop iterates from param_3 to param_5 via `*param_3` (linked-list traversal), for each entry: reads int at param_7+4 (insertion target), calls FUN_008F75C0 (linked-list insertion helper), calls FUN_00D4AC50(1) (lock/sync step), updates linked-list pointer chains. Finally writes param_1[1] = param_7 and *param_1 = param_6 (output the merge result). **Architectural role**: extracts ready entries from a source linked list and inserts them into a target list with proper synchronization. This is the 'extract-ready-entries-batch' helper called by the MS-tick to batch-move all ready timer callbacks for invocation. Closes the deferred follow-up about this function.",
+    "**Lua name resolution for FUN_00D082A0 - PARTIALLY ATTEMPTED, exact name not extracted**. The LGE bootstrap FUN_00CD8990 (1978 bytes) is the registration site (2 DATA refs to FUN_00D082A0 per xref) but Ghidra's decomp obscures the direct reference. The function uses a function-pointer dispatch table (DAT_0130d4f8..d508 cluster + loop iteration via FUN_00CF32C0/FUN_00CF3270/FUN_00CF3AD0 calls) rather than explicit `FUN_xxx` immediates. **Approach for full resolution (deferred)**: dump the static .rdata table at DAT_0130d4f8 (cluster of cclosure-name + cclosure-fn-ptr pairs) directly via DumpMemRange to see the name strings adjacent to the FUN_00D082A0 function-pointer. Alternative: dump the byte-level instruction stream at 0x00CD9017 and 0x00CD9037 (the exact DATA-ref instructions) to see the immediately-preceding string/name push instruction.",
+    "**Aggregate progress on the deferred follow-ups (7 total)**: 3 of 7 CLOSED earlier (FUN_00CE27F0 + FUN_00CEFA70 + FUN_00CEFFF0 decomps). Remaining 4 still deferred: (i) us-scheduler enqueue path producer for the us-tree (separate from ms-enqueue chain), (ii) characterize the 4 non-scheduler callers of FUN_00D0A870 ms-tree allocator (which create OTHER R-B trees in the engine), (iii) trace upstream past FUN_00CE27F0 and FUN_00CEFA70 to find the LUA-CALLABLE schedule API entry (will require following FUN_00CD85C0 + FUN_00CE3430 upstream), (iv) full Lua name resolution for FUN_00D082A0 (requires DumpMemRange on the cclosure-name table at DAT_0130d4f8)."
+  ],
+  "new_bcsy_entries_summary": {
+    "scheduler_wrapper_entries": 2,
+    "list_helper_entries": 1,
+    "total_bcsy_added": 3,
+    "id_range": "BCS-Y-1761..BCS-Y-1763",
+    "amendments": 4,
+    "amendment_targets": [
+      "BCS-Y-1726 (LuaSchedulerMs_enqueue_schedule_if_not_pending_FUN_00CEF0F0): cross-link to NEW upstream caller FUN_00CE27F0",
+      "BCS-Y-1727 (LuaSchedulerMs_enqueue_batch_FUN_00CEF900): cross-link to NEW upstream caller FUN_00CEFA70",
+      "BCS-Y-1696 (LuaSchedulerTickMs_FUN_00CEF510): cross-link to NEW list-batch-move helper FUN_00CEFFF0",
+      "BCS-Y-1731 (FUN_00D082A0 time getter): note that LGE bootstrap obscures the cclosure-name registration; exact Lua name string requires DAT_0130d4f8 table dump (deferred)"
+    ]
+  },
+  "deferred_followups": [
+    "Full Lua name resolution for FUN_00D082A0: DumpMemRange on the static .rdata cclosure-table at DAT_0130d4f8..d520 to see the name strings paired with function pointers. The 5-element cluster (local_84..local_74 in the decomp body) is loaded from DAT_0130d4f8..d508 = 5 dwords - probably 5 function pointers including FUN_00D082A0.",
+    "Trace upstream past FUN_00CE27F0 and FUN_00CEFA70's callers to identify the actual Lua-callable schedule API entry. FUN_00CE27F0 has 0 listed callers in this decomp (likely table-dispatched); FUN_00CEFA70's sole caller is FUN_00CD85C0 (probably also a registration target).",
+    "us-scheduler enqueue path: find the function analogous to FUN_00CEEE70 (ms-enqueue) but for the us-tree at scheduler+0x14. Earlier work only identified the us-tick consumers; the producer is unidentified.",
+    "Characterize the 4 non-scheduler callers of FUN_00D0A870 (ms-tree allocator): FUN_00CE63B0, FUN_00CE64A0, FUN_00CE65B0, FUN_00D0A6F0. These create OTHER R-B trees in the Lua-bridge codebase (probably for object-tracking maps, listener lists, etc).",
+    "Decode the constant DAT_0130cf04 used by FUN_00CE27F0 as the specific-event-id literal - reveals which specific event this wrapper schedules."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1747 -> 1750 (+3 BCS-Y; BCS-Y-1761..1763)",
+  "files_changed": [
+    "manifests/symbols.json: +3 entries (BCS-Y-1761..1763), 4 amendments",
+    "manifests/scheduler_api_closure.json (NEW, this file)",
+    "tools/ghidra/logs/c113_scheduler_traceback.txt (NEW)",
+    "tools/ghidra/logs/c113_lge_bootstrap_decomp.txt (NEW)",
+    "tools/extractors/append_c113.py (NEW)"
+  ]
+}

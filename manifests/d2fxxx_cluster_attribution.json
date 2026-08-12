@@ -1,0 +1,103 @@
+{
+  "version": "1",
+  "generated": "2026-05-23",
+  "scope": "Drill of the 5-sibling FUN_00cf32e0 caller cluster surfaced by the alt-binding-recon pass (manifests/alt_binding_recon.json). Decompiled all 5 templates + 21 impls (Ghidra DumpFunctionDecomp.java batch). Recovered metamethod-name strings via .rdata dword dump at 0x0110ea80..0x0110eb00.",
+  "summary": {
+    "templatesAttributed": 5,
+    "implsTotal": 21,
+    "implsAsFunctionBoundaries": 16,
+    "implsAsLabBoundaries": 5,
+    "luaApiIndexGrowthExpected": 0,
+    "namedMetamethodSlots": [
+      "__newindex",
+      "__index",
+      "__len",
+      "__gc",
+      "__pow"
+    ],
+    "outcome": "negative_for_lua_api_index_positive_for_binding_mechanism",
+    "outcomeNote": "The 21 impls are metamethod handlers for 5 userdata metatables, not named Lua N-APIs. The cluster is fully accounted for as part of the engine's userdata-metatable binding surface, distinct from the FUN_00cccad0 method-N-API surface that the high-signal-napi-attribution pass family closed."
+  },
+  "metamethodStringRdata": {
+    "__newindex": {"strAddr": "0x0110ea7c", "ptrAddr": "0x0110ea88"},
+    "__index":    {"strAddr": "0x0110ea8c", "ptrAddr": "0x0110ea94"},
+    "__len":      {"strAddr": "0x0110ea98", "ptrAddr": "0x0110eaa0"},
+    "__gc":       {"strAddr": "0x0110eaa4", "ptrAddr": "0x0110eaac"},
+    "__eq":       {"strAddr": "0x0110eab0", "ptrAddr": "0x0110eab8"},
+    "__pow":      {"strAddr": "0x0110eabc", "ptrAddr": "0x0110eac4"}
+  },
+  "templates": [
+    {
+      "regVa": "0x00D20540",
+      "metamethodCount": 5,
+      "metamethods": {
+        "__newindex": "0x00d2f1a0",
+        "__index":    "0x00d2f220",
+        "__len":      "0x00d2f2a0",
+        "__gc":       "0x00d2f330",
+        "__pow":      "0x00d2f340"
+      },
+      "callers": ["FUN_00d20980", "FUN_00d20cb0"],
+      "notes": "Full 5-metamethod metatable. __gc impl 0x00d2f330 is LAB_ (tail-call thunk, no function boundary recognized)."
+    },
+    {
+      "regVa": "0x00D20670",
+      "metamethodCount": 5,
+      "metamethods": {
+        "__newindex": "0x00d2f3d0",
+        "__index":    "0x00d2f450",
+        "__len":      "0x00d2f4d0",
+        "__gc":       "0x00d2f560",
+        "__pow":      "0x00d2f570"
+      },
+      "callers": ["FUN_00d20d70", "FUN_00d20e40", "FUN_00d209e0"],
+      "notes": "Full 5-metamethod metatable. __gc impl 0x00d2f560 is LAB_."
+    },
+    {
+      "regVa": "0x00D207A0",
+      "metamethodCount": 4,
+      "metamethods": {
+        "__newindex": "0x00d2f600",
+        "__index":    "0x00d2f680",
+        "__gc":       "0x00d2f700",
+        "__pow":      "0x00d2f710"
+      },
+      "callers": ["FUN_00d20a40", "FUN_00d20fd0", "FUN_00d20f10"],
+      "notes": "4-metamethod metatable (no __len). __gc impl 0x00d2f700 is LAB_."
+    },
+    {
+      "regVa": "0x00D208A0",
+      "metamethodCount": 3,
+      "metamethods": {
+        "__newindex": "0x00d2f7a0",
+        "__index":    "0x00d2f820",
+        "__gc":       "0x00d2f8a0"
+      },
+      "callers": ["FUN_00d21090", "FUN_00d20aa0"],
+      "notes": "3-metamethod metatable (no __len, no __pow). __gc impl 0x00d2f8a0 is LAB_."
+    },
+    {
+      "regVa": "0x00D20B00",
+      "metamethodCount": 4,
+      "metamethods": {
+        "slot1_unnamed_FUN_00d2f000": "0x00d2f000",
+        "slot2_unnamed_FUN_00d2f080": "0x00d2f080",
+        "slot3_unnamed_LAB_00d2f100": "0x00d2f100",
+        "slot4_unnamed_FUN_00d2f110": "0x00d2f110"
+      },
+      "callers": ["FUN_00d1ce10"],
+      "notes": "Hybrid constructor+metatable template. Caller FUN_00d1ce10 (1943 bytes) pushes the string \"BaseClass\" twice (at 0x00d1d07d and 0x00d1d1df) - this is a class-registry registration for a Lua-side BaseClass userdata. The 4 FUN_00cf3360 (pushstring) arg addresses inside FUN_00D20B00 are decompiler-stripped and were not recoverable via direct operand inspection. Likely loaded from struct fields or via register-relative addressing the static dump path doesn't follow. Names would need PCode-level analysis or runtime hook (live capture) to recover."
+    }
+  ],
+  "labOnlyImpls": [
+    "0x00d2f100",
+    "0x00d2f330",
+    "0x00d2f560",
+    "0x00d2f700",
+    "0x00d2f8a0"
+  ],
+  "labOnlyImplsNote": "All 5 LAB_ impls occupy the __gc slot of their respective metatable (or slot3 of D20B00). They are tail-call thunks - no Ghidra function boundary - that almost certainly JMP into the userdata destructor / free path. The dat-prefix-attribution pass documented the &LAB_ / &DAT_ prefix-mode issue in the widened-attribution pass's regex; this confirms the LAB_ pattern surfaces in a third domain (metatable __gc thunks) beyond the FUN_00cccad0 method-N-API surface where the dat-prefix-attribution pass first saw it.",
+  "decompEvidencePath": "%BCS_GHIDRA_PROJECTS%/d2fxxx_cluster_decomp.txt",
+  "rdataEvidencePath": "%BCS_GHIDRA_PROJECTS%/metamethod_rdata.txt",
+  "d20b00StringScanPath": "%BCS_GHIDRA_PROJECTS%/d20b00_strings.txt"
+}

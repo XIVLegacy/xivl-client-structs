@@ -1,0 +1,575 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "manifest_complete",
+  "scope": "Normalize four manifests whose schemas used non-standard field names (primary_handler / ultimate_callee / vftable_va / scaffolding_classes). This manifest records each promotable address in a flat proposed_bcs_y_entries list using the standard {name, kind, address} shape. The action-skill subsystem contributes 0 entries because its proposals have no concrete address. The party subsystem contributes 43 dispatcher, Group, and RTTI entries; the quest subsystem contributes 17; and the retainer-bazaar subsystem contributes 18. Existing addresses are deduplicated, for 78 entries gross.",
+  "source_manifests": [
+    "manifests/action_skill_subsystem.json (0 promotable - all proposals are kind=finding/open_question with no concrete VA)",
+    "manifests/party_subsystem.json (43 promotable - dispatcher handlers + Group system callees + RTTI classes)",
+    "manifests/quest_subsystem.json (17 promotable - QuestBase + JobQuestCompleteTripleReceiver chain + dispatch machinery)",
+    "manifests/retainer_bazaar_subsystem.json (18 promotable - widget vftables + lifecycle methods)"
+  ],
+  "method": {
+    "step1": "Read each source manifest in full to map its schema.",
+    "step2": "For each manifest, enumerate every nested field containing a concrete VA. party_subsystem.json uses opcode_table[*].primary_handler/ultimate_callee + existing_bcs_y_links.indirectly_relevant_decomp_only[*].vftable_va. quest_subsystem.json uses scaffolding_classes[*].proposed_bcs_y_ids_if_promoted + dedicated_quest_receiver.proposed_bcs_y_ids_if_promoted + uncataloged_supporting_machinery[*]. retainer_bazaar_subsystem.json uses newRttiClassesDiscovered[*].vftableVa/scalarDeletingDtorVa/slot4InitVa/tickSlotVa.",
+    "step3": "Hand-extract each entry with a clear name + kind + address + provenance summary. Avoid scraping the JSON because the source names are field-name fragments (primary_handler, ultimate_callee) that need translation into the BCS-Y naming convention (subsystem_role_FUN_addr).",
+    "step4": "The quest-subsystem pass has a known schema quirk: many JobQuestCompleteTripleReceiver addresses are stated as file_va (file offsets without image base). Image base is 0x00400000 for 1.23b - file 0x49d270 -> VA 0x0089d270 etc. Conversions noted per-entry. The quest_subsystem.json vtable_slot_inventory makes this explicit.",
+    "step5": "BCS-Y-0539/0540/0541 in that manifest yield zero entries: they are kind=finding / kind=open_question with no address. Documentation-only artifacts that belong in the architectural findings or the open-questions record, not in symbols.json.",
+    "step6": "Existing symbols.json addresses are matched case-insensitively before promotion."
+  },
+  "key_findings": [
+    "The party-subsystem pass is the single largest unreleased catalog tranche in the project. 43 entries promotable - 19 of 20 mid-table dispatcher cases in FUN_004DC690 (0x017A + 0x17C..0x18D) get full coverage, alongside their respective Group::PacketProcessor / SharedWork callees and the four foundational RTTI vftables (PacketProcessor, SharedWork, PacketRequestBase, Control::GroupBase). After the schema-rescue pass the party/group subsystem moves from 'documented only' to 'cataloged'.",
+    "The quest-subsystem pass closes the quest catalog gap. JobQuestCompleteTripleReceiver (0x01A2 - the single dedicated Quest opcode) gains a class vtable + ctor + slot1 + slot5 + LuaActorImpl wrapper + 2-step gated Pattern C dispatcher + JobQuestObject swapper. QuestBase scaffolding (vtable + secondary RTTI marker + ctor + factory slot1 + secondary dtor thunk + slot28 getQuestData) becomes cataloged.",
+    "The retainer-bazaar-subsystem pass closes the retainer/bazaar widget catalog gap. 12 widget vftables (6 single-base + 6 multi-base entries) plus 6 lifecycle methods (Init/dtor/tick). The 5 RetainerItemSearchMarketplace c2s emitters cataloged under BCS-Y-0324 / BCS-Y-0347 remain in place; the retainer-bazaar-subsystem pass confirms the WIDGET side that hosts those emitters.",
+    "The action-skill-subsystem pass promotes nothing. Its 3 proposed entries are pure knowledge-organization (kind=finding for the action subsystem synthesis, kind=open_question for two unresolved dispatch mysteries). Those belong in docs, not in symbols.json - they would corrupt the catalog if forced in with kind=note + placeholder addresses. Recorded here as a non-promotion for traceability."
+  ],
+  "proposed_bcs_y_entries": [
+    {
+      "name": "GenericDataPacket_S2cHandler_FUN_00575060",
+      "kind": "function",
+      "address": "0x00575060",
+      "confidence": "confirmed",
+      "summary": "S2c GenericData/UserData handler reached via FUN_004D8860 (BCS-Y-0280) case 0x0133. Variadic LuaParam delivery to a Lua-VM handler keyed by class-name string (e.g. 'attention'). party_subsystem.json opcode_table 0x0133 primary_handler_s2c. Direction-disambiguates from c2s GroupCreated 0x0133."
+    },
+    {
+      "name": "SynchGroupWorkValues_HandlerTrampoline_FUN_005763B0",
+      "kind": "function",
+      "address": "0x005763B0",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x017A SynchGroupWorkValues case in FUN_004DC690 mid-table. Tail-calls FUN_006C9910 (Group SharedWork property-stream apply path). party_subsystem.json opcode_table 0x017A."
+    },
+    {
+      "name": "GroupHeader_SehWrappedHandler_FUN_00576250",
+      "kind": "function",
+      "address": "0x00576250",
+      "confidence": "confirmed",
+      "summary": "109-byte SEH-protected wrapper for s2c 0x017C GroupHeader case in FUN_004DC690 mid-table. NOT a trivial trampoline. Acquires shared lock via FUN_00CC9320(*param_1), invokes FUN_006CC620(handle, packet+0x10), releases via FUN_00CC9330. party_subsystem.json opcode_table 0x017C handler_special_shape."
+    },
+    {
+      "name": "GroupMembersBegin_HandlerTrampoline_FUN_005762C0",
+      "kind": "function",
+      "address": "0x005762C0",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x017D GroupMembersBegin case in FUN_004DC690 mid-table. Tail-calls FUN_006C2F30 (Group::PacketProcessor subdecoder begin / SharedWork member-array reset). party_subsystem.json opcode_table 0x017D."
+    },
+    {
+      "name": "GroupMembersEnd_HandlerTrampoline_FUN_005762D0",
+      "kind": "function",
+      "address": "0x005762D0",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x017E GroupMembersEnd case in FUN_004DC690 mid-table. Tail-calls FUN_006C4180 (Group::PacketProcessor subdecoder end / triggers OnBothComplete when both sub1/sub2 flags set). party_subsystem.json opcode_table 0x017E."
+    },
+    {
+      "name": "GroupMembersX08_HandlerTrampoline_FUN_005762E0",
+      "kind": "function",
+      "address": "0x005762E0",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x017F GroupMembersX08 case in FUN_004DC690 mid-table. Tail-calls FUN_006C2F70 (SharedWork member-array append, 8-member variant). party_subsystem.json opcode_table 0x017F."
+    },
+    {
+      "name": "GroupMembersX16_HandlerTrampoline_FUN_005762F0",
+      "kind": "function",
+      "address": "0x005762F0",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0180 GroupMembersX16 case in FUN_004DC690 mid-table. Tail-calls FUN_006C2FE0 (SharedWork append, 16-member variant). party_subsystem.json opcode_table 0x0180."
+    },
+    {
+      "name": "GroupMembersX32_HandlerTrampoline_FUN_00576300",
+      "kind": "function",
+      "address": "0x00576300",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0181 GroupMembersX32 case in FUN_004DC690 mid-table. Tail-calls FUN_006C3040 (SharedWork append, 32-member variant). party_subsystem.json opcode_table 0x0181."
+    },
+    {
+      "name": "GroupMembersX64_HandlerTrampoline_FUN_00576310",
+      "kind": "function",
+      "address": "0x00576310",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0182 GroupMembersX64 case in FUN_004DC690 mid-table. Tail-calls FUN_006C30A0 (SharedWork append, 64-member variant). party_subsystem.json opcode_table 0x0182."
+    },
+    {
+      "name": "ContentMembersX08_HandlerTrampoline_FUN_00576320",
+      "kind": "function",
+      "address": "0x00576320",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0183 ContentMembersX08 case in FUN_004DC690 mid-table. Tail-calls FUN_006C3100 (Content variant of GroupMembers - separate SharedWork pipeline for content-director groups). party_subsystem.json opcode_table 0x0183."
+    },
+    {
+      "name": "ContentMembersX16_HandlerTrampoline_FUN_00576330",
+      "kind": "function",
+      "address": "0x00576330",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0184 ContentMembersX16 case in FUN_004DC690 mid-table. Tail-calls FUN_006C3150. party_subsystem.json opcode_table 0x0184."
+    },
+    {
+      "name": "ContentMembersX32_HandlerTrampoline_FUN_00576340",
+      "kind": "function",
+      "address": "0x00576340",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0185 ContentMembersX32 case in FUN_004DC690 mid-table. Tail-calls FUN_006C31A0. party_subsystem.json opcode_table 0x0185."
+    },
+    {
+      "name": "ContentMembersX64_HandlerTrampoline_FUN_00576350",
+      "kind": "function",
+      "address": "0x00576350",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0186 ContentMembersX64 case in FUN_004DC690 mid-table. Tail-calls FUN_006C31F0. party_subsystem.json opcode_table 0x0186."
+    },
+    {
+      "name": "CreateNamedGroup_HandlerTrampoline_FUN_00576360",
+      "kind": "function",
+      "address": "0x00576360",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0188 CreateNamedGroup case in FUN_004DC690 mid-table. Tail-calls FUN_006CD790 (group registry creation - npc party / content-director-spawned mob cluster). party_subsystem.json opcode_table 0x0188."
+    },
+    {
+      "name": "CreateNamedGroupMultiple_HandlerTrampoline_FUN_00576370",
+      "kind": "function",
+      "address": "0x00576370",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0189 CreateNamedGroupMultiple case in FUN_004DC690 mid-table. Bulk variant of 0x0188; tail-calls FUN_006CD7B0 (adjacent to FUN_006CD790, shared base registration helper). party_subsystem.json opcode_table 0x0189."
+    },
+    {
+      "name": "SetActiveLinkshell_HandlerTrampoline_FUN_00576380",
+      "kind": "function",
+      "address": "0x00576380",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x018A SetActiveLinkshell case in FUN_004DC690 mid-table. Tail-calls FUN_006C82A0 (OnlineStatusUpdater / linkshell pipeline cluster - distinct from party/content member arrays). party_subsystem.json opcode_table 0x018A."
+    },
+    {
+      "name": "SetOccupancyGroup_HandlerTrampoline_FUN_00576390",
+      "kind": "function",
+      "address": "0x00576390",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x0187 SetOccupancyGroup case in FUN_004DC690 mid-table. Tail-calls FUN_006C8340 (-> FUN_006C6B20 / FUN_006C5460 Group PropertyUpdater path). Drives hateType workvalue routing and monster-claim ownership. Retail empirical 44x. party_subsystem.json opcode_table 0x0187."
+    },
+    {
+      "name": "SetGroupLayoutId_HandlerTrampoline_FUN_005763A0",
+      "kind": "function",
+      "address": "0x005763A0",
+      "confidence": "confirmed",
+      "summary": "8-byte compact trampoline for s2c 0x018B SetGroupLayoutId case in FUN_004DC690 mid-table. Tail-calls FUN_006C5DF0 (-> FUN_006C5240). Updates per-member layout/zone tracking. Retail empirical 287x. party_subsystem.json opcode_table 0x018B."
+    },
+    {
+      "name": "PartyMapMarkerUpdate_InlineHandler_FUN_00575550",
+      "kind": "function",
+      "address": "0x00575550",
+      "confidence": "confirmed",
+      "summary": "232-byte inline handler for s2c 0x018D PartyMapMarkerUpdate case in FUN_004DC690 mid-table. NOT a trampoline. Gated on *(int*)(zone+0x4d8) != 0 (map widget active). SEH-protected. If *param_1 != 0 calls FUN_00575400 sentinel then FUN_006C1570 (apply to zone+0x4d8 marker widget). Retail empirical 592x. party_subsystem.json opcode_table 0x018D handler_special_shape."
+    },
+    {
+      "name": "UnnamedOp0143_HandlerWrapper_FUN_00576240",
+      "kind": "function",
+      "address": "0x00576240",
+      "confidence": "probable",
+      "summary": "16-byte wrapper for s2c 0x0143 case in FUN_004DC690 mid-table. Reads zone+0x1783c into local_9d0, forwards (zone_ctx, &zone_id, packet+0x10) to FUN_006C5DE0 (adjacent to the 0x018B SetGroupLayoutId callee FUN_006C5DF0 - both in Group::PropertyUpdater cluster). Speculative: a PropertyUpdater-driven member field update separate from Linkshell/Layout. party_subsystem.json opcode_table 0x0143 - bahamut_opcodes has no name binding yet."
+    },
+    {
+      "name": "GroupPacketProcessor_OnSynchGroupWorkValues_FUN_006C9910",
+      "kind": "function",
+      "address": "0x006C9910",
+      "confidence": "confirmed",
+      "summary": "Group system callee for s2c 0x017A. Forwards into SharedWork property-stream apply path (FUN_006C96B0 / SharedWork slot 22 family at 0x006C9930 CopyMemberByLookup). Property ids are MurmurHash2(dotted property path, 0)."
+    },
+    {
+      "name": "GroupPacketProcessor_OnHeader_FUN_006CC620",
+      "kind": "function",
+      "address": "0x006CC620",
+      "confidence": "confirmed",
+      "summary": "Group::PacketProcessor slot-1 OnPacket/OnHeader entry for s2c 0x017C. Establishes per-group header that subsequent GroupMembersBegin/X08-X64/End packets in same sequenceId are joined onto. Per group_system_decomp.md dual-subdecoder pattern."
+    },
+    {
+      "name": "GroupPacketProcessor_OnMembersBegin_FUN_006C2F30",
+      "kind": "function",
+      "address": "0x006C2F30",
+      "confidence": "confirmed",
+      "summary": "Group::PacketProcessor subdecoder begin entry for s2c 0x017D. sub1.TryParse / sub2.TryParse entry that signals 'about to feed member data'. Pairs with FUN_006C4180 (End)."
+    },
+    {
+      "name": "GroupPacketProcessor_OnMembersEnd_FUN_006C4180",
+      "kind": "function",
+      "address": "0x006C4180",
+      "confidence": "confirmed",
+      "summary": "Group::PacketProcessor subdecoder end entry for s2c 0x017E. Trigger for OnBothComplete - sets sub*_complete flag; when both are 1, fires combined-callback target stored at +0x3C, then clears +0xEA both_callback_pending."
+    },
+    {
+      "name": "GroupSharedWork_AppendMembersX08_FUN_006C2F70",
+      "kind": "function",
+      "address": "0x006C2F70",
+      "confidence": "confirmed",
+      "summary": "Group SharedWork member-array append, 8-member variant. Consumes s2c 0x017F GroupMembersX08 payload (8 * 0x30-byte wire records into 16-byte runtime stride). party_subsystem.json opcode_table 0x017F ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_AppendMembersX16_FUN_006C2FE0",
+      "kind": "function",
+      "address": "0x006C2FE0",
+      "confidence": "confirmed",
+      "summary": "Group SharedWork member-array append, 16-member variant. Consumes s2c 0x0180 GroupMembersX16. party_subsystem.json opcode_table 0x0180 ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_AppendMembersX32_FUN_006C3040",
+      "kind": "function",
+      "address": "0x006C3040",
+      "confidence": "confirmed",
+      "summary": "Group SharedWork member-array append, 32-member variant. Consumes s2c 0x0181 GroupMembersX32. party_subsystem.json opcode_table 0x0181 ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_AppendMembersX64_FUN_006C30A0",
+      "kind": "function",
+      "address": "0x006C30A0",
+      "confidence": "confirmed",
+      "summary": "Group SharedWork member-array append, 64-member variant. Consumes s2c 0x0182 GroupMembersX64. party_subsystem.json opcode_table 0x0182 ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_AppendContentMembersX08_FUN_006C3100",
+      "kind": "function",
+      "address": "0x006C3100",
+      "confidence": "confirmed",
+      "summary": "Content variant of SharedWork member-array append (content-director groups - raid/dungeon/instance content). 8-member variant. Same wire shape as GroupMembersX08 but separate SharedWork pipeline. Consumes s2c 0x0183. party_subsystem.json opcode_table 0x0183 ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_AppendContentMembersX16_FUN_006C3150",
+      "kind": "function",
+      "address": "0x006C3150",
+      "confidence": "confirmed",
+      "summary": "Content variant SharedWork append, 16-member. Consumes s2c 0x0184. party_subsystem.json opcode_table 0x0184 ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_AppendContentMembersX32_FUN_006C31A0",
+      "kind": "function",
+      "address": "0x006C31A0",
+      "confidence": "confirmed",
+      "summary": "Content variant SharedWork append, 32-member. Consumes s2c 0x0185. party_subsystem.json opcode_table 0x0185 ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_AppendContentMembersX64_FUN_006C31F0",
+      "kind": "function",
+      "address": "0x006C31F0",
+      "confidence": "confirmed",
+      "summary": "Content variant SharedWork append, 64-member. Consumes s2c 0x0186. party_subsystem.json opcode_table 0x0186 ultimate_callee."
+    },
+    {
+      "name": "GroupSharedWork_SetOccupancy_FUN_006C8340",
+      "kind": "function",
+      "address": "0x006C8340",
+      "confidence": "confirmed",
+      "summary": "Group PropertyUpdater path for s2c 0x0187 SetOccupancyGroup. -> FUN_006C6B20 / FUN_006C5460. Establishes monster-group <-> player-group claim ownership. party_subsystem.json opcode_table 0x0187 ultimate_callee."
+    },
+    {
+      "name": "GroupRegistry_CreateNamedGroup_FUN_006CD790",
+      "kind": "function",
+      "address": "0x006CD790",
+      "confidence": "confirmed",
+      "summary": "Group registry creation for s2c 0x0188 CreateNamedGroup. Adjacent to FUN_006CD7B0 (Multiple variant) - shared base registration helper. Different cluster from SharedWork append (006C2Fxx-006C31xx), suggesting group registry/creation rather than member append. party_subsystem.json opcode_table 0x0188 ultimate_callee."
+    },
+    {
+      "name": "GroupRegistry_CreateNamedGroupMultiple_FUN_006CD7B0",
+      "kind": "function",
+      "address": "0x006CD7B0",
+      "confidence": "confirmed",
+      "summary": "Bulk variant of 0x0188 CreateNamedGroup. Consumes s2c 0x0189. Adjacent to FUN_006CD790 - shared base. party_subsystem.json opcode_table 0x0189 ultimate_callee."
+    },
+    {
+      "name": "LinkshellManager_SetActive_FUN_006C82A0",
+      "kind": "function",
+      "address": "0x006C82A0",
+      "confidence": "confirmed",
+      "summary": "Sets active linkshell (chat default targeting) for s2c 0x018A SetActiveLinkshell. In the OnlineStatusUpdater / linkshell pipeline cluster - distinct from party/content member arrays. Pairs with BCS-Y-0073 EntryLinkShellBuilder (outbound). party_subsystem.json opcode_table 0x018A ultimate_callee."
+    },
+    {
+      "name": "GroupPropertyUpdater_SetLayoutId_FUN_006C5DF0",
+      "kind": "function",
+      "address": "0x006C5DF0",
+      "confidence": "confirmed",
+      "summary": "Group PropertyUpdater for s2c 0x018B SetGroupLayoutId. -> FUN_006C5240. Updates per-member layout/zone tracking for party UI 'out-of-rendering-range' members. party_subsystem.json opcode_table 0x018B ultimate_callee."
+    },
+    {
+      "name": "PartyMapMarker_ApplyToWidget_FUN_0055CF70",
+      "kind": "function",
+      "address": "0x0055CF70",
+      "confidence": "confirmed",
+      "summary": "Apply path for s2c 0x018D PartyMapMarkerUpdate. Writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json. Updates 16 marker entries (stride 0x28) at zone+0x4d8 active-map-widget. party_subsystem.json opcode_table 0x018D ultimate_callee."
+    },
+    {
+      "name": "GroupPropertyUpdater_UnnamedOp0143_FUN_006C5DE0",
+      "kind": "function",
+      "address": "0x006C5DE0",
+      "confidence": "probable",
+      "summary": "Group PropertyUpdater callee for s2c 0x0143 (name unknown - bahamut_opcodes has no binding). Adjacent to FUN_006C5DF0 (0x018B SetGroupLayoutId callee). Both in Group::PropertyUpdater cluster. Speculative member-field update. party_subsystem.json opcode_table 0x0143 ultimate_callee."
+    },
+    {
+      "name": "ApplicationLuaScriptClientGroupPacketProcessor_vftable",
+      "kind": "data",
+      "address": "0x00BD42F4",
+      "confidence": "confirmed",
+      "summary": "RTTI vftable for Application::Lua::Script::Client::Group::PacketProcessor (group_system_decomp.md). 3 RTTI slots. OnPacket entry at FUN_006CDE30 (slot 1). The receive-side group packet dispatch class - 006Cxxxx callees of 0x17A/0x17C-0x18D feed this class's two parallel subdecoders (sub1 at +0x40, sub2 at +0x94). party_subsystem.json existing_bcs_y_links."
+    },
+    {
+      "name": "ApplicationLuaScriptClientGroupSharedWork_vftable",
+      "kind": "data",
+      "address": "0x00BD4334",
+      "confidence": "confirmed",
+      "summary": "RTTI vftable for Application::Lua::Script::Client::Group::SharedWork. 28 RTTI slots. Work-table populated by 0x017F..0x186 GroupMembers/ContentMembers append handlers and read by 0x018B SetGroupLayoutId / 0x0187 SetOccupancyGroup property updates. 3 parallel 16-byte-stride member arrays (MemberInfo/Property/WorkSync pipelines). party_subsystem.json existing_bcs_y_links."
+    },
+    {
+      "name": "ApplicationLuaScriptClientGroupPacketRequestBase_vftable",
+      "kind": "data",
+      "address": "0x00BD4120",
+      "confidence": "confirmed",
+      "summary": "RTTI vftable for Application::Lua::Script::Client::Group::PacketRequestBase. 13 RTTI slots. Abstract base of every send-side Group packet emitter - EntryBuilderBase, MemberInfoUpdater, PropertyUpdater, WorkSyncUpdater, BreakupBuilder all derive from it. party_subsystem.json existing_bcs_y_links."
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlGroupBase_vftable",
+      "kind": "data",
+      "address": "0x00BD53CC",
+      "confidence": "confirmed",
+      "summary": "RTTI vftable for Application::Lua::Script::Client::Control::GroupBase. 34 RTTI slots. Lua-script-bindable group base; 15 client-side methods exposed via _x_cpp / _x_inl - the Lua-facing API for Party / Linkshell / Retainer / Relation groups. A Party is just a Group subtype identified by groupTypeId 0x2711. party_subsystem.json existing_bcs_y_links."
+    },
+    {
+      "name": "QuestBase_primary_vftable",
+      "kind": "data",
+      "address": "0x00FDFDDC",
+      "confidence": "confirmed",
+      "summary": "Primary vftable for Application::Lua::Script::Client::Control::QuestBase (RVA 0xbdfddc; image base 0x00400000). 34 slots. Multi-inheritance two-vtable shape (secondary at +0x60). sizeof(QuestBase)=0x64."
+    },
+    {
+      "name": "QuestBase_secondary_vftable_marker",
+      "kind": "data",
+      "address": "0x00FDFDD0",
+      "confidence": "confirmed",
+      "summary": "Secondary RTTI marker vtable for QuestBase (RVA 0xbdfdd0). 1 slot at object +0x60. The MI second base just carries RTTI for dynamic_cast resolution. quest_subsystem.json scaffolding_classes."
+    },
+    {
+      "name": "QuestBase_ctor_FUN_00776F50",
+      "kind": "function",
+      "address": "0x00776F50",
+      "confidence": "confirmed",
+      "summary": "Application::Lua::Script::Client::Control::QuestBase constructor. quest_subsystem.json scaffolding_classes."
+    },
+    {
+      "name": "QuestBase_factory_slot1_FUN_00777030",
+      "kind": "function",
+      "address": "0x00777030",
+      "confidence": "confirmed",
+      "summary": "QuestBase factory (vtable slot 1) - the universal Lua New() factory invoked by master Lua-class dispatcher FUN_0075F9B0 when server emits 'instantiate QuestBaseClass'. quest_subsystem.json scaffolding_classes."
+    },
+    {
+      "name": "QuestBase_secondary_dtor_thunk_FUN_00777D70",
+      "kind": "function",
+      "address": "0x00777D70",
+      "confidence": "confirmed",
+      "summary": "QuestBase secondary destructor thunk (called via MI second base). quest_subsystem.json scaffolding_classes."
+    },
+    {
+      "name": "QuestBase_slot28_getQuestData_FUN_006DCFD0",
+      "kind": "function",
+      "address": "0x006DCFD0",
+      "confidence": "probable",
+      "summary": "QuestBase vtable slot 28 - hypothesized getQuestData (canonical 1.x Lua-side quest data accessor per archived community-chat context). Inline JMP target FUN_00cc7170 is a thin virtual-dispatch trampoline. quest_subsystem.json scaffolding_classes."
+    },
+    {
+      "name": "DirectorBase_vftable",
+      "kind": "data",
+      "address": "0x00FD5D6C",
+      "confidence": "confirmed",
+      "summary": "Application::Lua::Script::Client::Control::DirectorBase vftable (RVA 0xbd5d6c). 34 slots. Shared C++ base for ALL Lua-side OpeningDirector / ZoneDirector / WeatherDirector / AfterQuestWarpDirector / GuildleveDirector / HarvestDirector / CraftDirector subclasses (those subclasses exist only as Lua scripts). quest_subsystem.json scaffolding_classes."
+    },
+    {
+      "name": "JobQuestCompleteTripleReceiver_vftable",
+      "kind": "data",
+      "address": "0x00C57360",
+      "confidence": "confirmed",
+      "summary": "Application::Lua::Script::Client::Command::Network::JobQuestCompleteTripleReceiver vftable (RVA 0xc57360). 6 slots. The ONLY dedicated quest receiver - handles s2c 0x01A2 JobQuestCompleteTriple (fires the 'completion celebration' UI for class-quest completions that don't involve NPC interaction). 6-slot Pattern C receiver. quest_subsystem.json dedicated_quest_receiver."
+    },
+    {
+      "name": "JobQuestCompleteTripleReceiver_ctor_FUN_0089D270",
+      "kind": "function",
+      "address": "0x0089D270",
+      "confidence": "confirmed",
+      "summary": "JobQuestCompleteTripleReceiver constructor (file offset 0x49d270 + image base 0x00400000 = VA 0x0089d270). quest_subsystem.json dedicated_quest_receiver."
+    },
+    {
+      "name": "JobQuestCompleteTripleReceiver_stack_temp_dtor_FUN_0089D2F0",
+      "kind": "function",
+      "address": "0x0089D2F0",
+      "confidence": "confirmed",
+      "summary": "JobQuestCompleteTripleReceiver stack-temp destructor (file 0x49d2f0 + image base). quest_subsystem.json dedicated_quest_receiver."
+    },
+    {
+      "name": "JobQuestCompleteTripleReceiver_slot1_factory_FUN_0089D350",
+      "kind": "function",
+      "address": "0x0089D350",
+      "confidence": "confirmed",
+      "summary": "JobQuestCompleteTripleReceiver vtable slot 1 = New() factory: operator new(0x20) -> ctor. 112-byte body (file 0x49d350 + image base). quest_subsystem.json dedicated_quest_receiver vtable_slot_inventory."
+    },
+    {
+      "name": "JobQuestCompleteTripleReceiver_slot5_real_handler_FUN_0089E520",
+      "kind": "function",
+      "address": "0x0089E520",
+      "confidence": "confirmed",
+      "summary": "JobQuestCompleteTripleReceiver vtable slot 5 - REAL handler. 48-byte body navigates LuaEngine context root, hands off to FUN_006F9520 JobQuestObject swapper. (file 0x49e520 + image base = 0x0089e520; reconciles with BCS-Y-0278 reference). quest_subsystem.json dedicated_quest_receiver vtable_slot_inventory."
+    },
+    {
+      "name": "LuaActorImpl_slot78_JobQuestCompleteTripleWrapper_FUN_0076C690",
+      "kind": "function",
+      "address": "0x0076C690",
+      "confidence": "confirmed",
+      "summary": "LuaActorImpl vftable slot 78 wrapper - dispatches s2c 0x01A2 JobQuestCompleteTriple via Pattern C 2-step gated dispatcher FUN_00785BF0 (NOT through standard receiver slot-1 path - sidesteps receiver_opcode_map_inbound.json). quest_subsystem.json dedicated_quest_receiver."
+    },
+    {
+      "name": "PatternC_TwoStepGatedDispatcher_FUN_00785BF0",
+      "kind": "function",
+      "address": "0x00785BF0",
+      "confidence": "confirmed",
+      "summary": "Generic 2-step success-gated dispatcher used by Pattern C receivers (JobQuestCompleteTriple confirmed; UserDataReceiver pending). 238 bytes. Gate 1 = DAT_012C41AF (kick-result byte from KickReceiver). Gate 2 = DAT_012C3120 (new, undocumented elsewhere). Real work runs only when both gates pass. quest_subsystem.json uncataloged_supporting_machinery."
+    },
+    {
+      "name": "JobQuestObject_Swapper_FUN_006F9520",
+      "kind": "function",
+      "address": "0x006F9520",
+      "confidence": "confirmed",
+      "summary": "Allocates 0x24-byte JobQuestObject (3 x 12-byte entries: jobId u32 + questId u32 + completionFlags u32 - the 'last 3 completed job quests' UI cache) and swaps it into MyPlayer+0x110. Per-update lifecycle: alloc 36B -> swap into MyPlayer+0x110 -> free old. quest_subsystem.json dedicated_quest_receiver."
+    },
+    {
+      "name": "LuaClassRuntimeDispatcher_FUN_0075F9B0",
+      "kind": "function",
+      "address": "0x0075F9B0",
+      "confidence": "confirmed",
+      "summary": "Master Lua-class instantiation entry point. 7,481 bytes. 79 PUSH-immediate string references covering ALL known Lua class names (ActorBaseClass, CharaBaseClass, PlayerBaseClass, NpcBaseClass, WidgetBaseClass, DirectorBaseClass, AreaBaseClass, PrivateAreaBaseClass, QuestBaseClass, DebugBaseClass, +49 more). When server emits 'instantiate this class', walks the inheritance chain and dispatches to slot 1 (factory) of the matched vtable. Runtime companion to BCS-Y-0398 LuaClassRegistry_FUN_0078E3A0 (registration time). quest_subsystem.json uncataloged_supporting_machinery."
+    },
+    {
+      "name": "PatternC_Gate2_Byte_DAT_012C3120",
+      "kind": "data",
+      "address": "0x012C3120",
+      "confidence": "confirmed",
+      "summary": "Second success-gate sentinel byte for Pattern C receivers (used by FUN_00785BF0 alongside DAT_012C41AF). Not yet correlated to any other receiver, lifecycle, or write site. quest_subsystem.json uncataloged_supporting_machinery."
+    },
+    {
+      "name": "RetainerListWidget_vftable",
+      "kind": "data",
+      "address": "0x00F9F66C",
+      "confidence": "confirmed",
+      "summary": "Application::Main::Element::Window::Widget::RetainerListWidget vftable. 41 slots. RTTI Type Descriptor at 0x0126C9B0. Lists retainer entries (player-side roster of owned NPCs). Subsystem: RetainerOwnerRoster. Wire binding: lobby_only - data arrives via lobby RetainerList 0x0017 (existing BCS-Y-0019). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "RetainerListWidget_ScalarDeletingDtor_FUN_00532020",
+      "kind": "function",
+      "address": "0x00532020",
+      "confidence": "confirmed",
+      "summary": "RetainerListWidget scalar deleting destructor. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "RetainerListWidget_Slot4Init_FUN_005107D0",
+      "kind": "function",
+      "address": "0x005107D0",
+      "confidence": "confirmed",
+      "summary": "RetainerListWidget::Init (vftable slot 4). Wires PTR_s_XmlData_0126b07c -> this+0x230, PTR_s_ListBox_Retainer_0126b080 -> this+0x234, PTR_s_TextBlock_Message_0126b084 -> this+0x238. No vtable slot emits a c2s opcode directly. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "BazaarEditWidget_vftable",
+      "kind": "data",
+      "address": "0x00F9DA74",
+      "confidence": "confirmed",
+      "summary": "Application::Main::Element::Window::Widget::BazaarEditWidget vftable. 41 slots. RTTI Type Descriptor at 0x0126BE80. Bazaar UI parent widget. Wire binding: lua_only (Bazaar trade flow dispatched through Lua event commands - BazaarCheckCommand / BazaarTradeCommand / BazaarDealCommand / BazaarUndealCommand - using generic event-system opcodes 0x012E..0x01F5, NOT a dedicated Bazaar opcode). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "BazaarEditWidget_ScalarDeletingDtor_FUN_005314E0",
+      "kind": "function",
+      "address": "0x005314E0",
+      "confidence": "confirmed",
+      "summary": "BazaarEditWidget scalar deleting destructor. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "BazaarEditWidget_Slot4Init_FUN_004F5F80",
+      "kind": "function",
+      "address": "0x004F5F80",
+      "confidence": "confirmed",
+      "summary": "BazaarEditWidget::Init (vftable slot 4). Generic 20-byte stub returning 1 (calls FUN_009243d0(1,0,1)). Bazaar UI controls (Button_BazaarRepair / Button_BazaarBuy / Button_BazaarSell / Button_BazaarAbort at 0x00f99e9c..0x00f99ed8) referenced exclusively by static-data-section initializer - widget has no runtime button-click handler in this vtable that emits a c2s opcode. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "RetainerMenuPhase_vftable_base1",
+      "kind": "data",
+      "address": "0x01055254",
+      "confidence": "confirmed",
+      "summary": "Application::Main::Menu::Bootup::Retainer::RetainerMenuPhase vftable, first MI base (the bootup menu phase base). RTTI Type Descriptor at 0x012D6DA8. Wires retainer creation/rename through lobby CharaMakeOperation path (BCS-Y-0018, dispatcher case 0x17 -> RetainerListParser FUN_00DA4D80). c2s side reuses CharacterModify with cmd=6 (RENAME_RETAINER). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "RetainerMenuPhase_vftable_base2",
+      "kind": "data",
+      "address": "0x01055264",
+      "confidence": "confirmed",
+      "summary": "RetainerMenuPhase vftable, second MI base (EventHandler base). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "RetainerNameChangeInputLoader_vftable_base1",
+      "kind": "data",
+      "address": "0x010552C0",
+      "confidence": "confirmed",
+      "summary": "Application::Main::Menu::Bootup::Retainer::RetainerNameChangeInputLoader vftable, first MI base. RTTI Type Descriptor at 0x012D6DF0. Sqwt::Controls::TextChangedEventHandler base + retainer-rename input. Pairs with RetainerMenuPhase. Resulting rename packed by CharaMakeParamTmpl<UpdateRetainerSlotParam_,1> and sent via LobbyClient CharaMakeOperation path. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "RetainerNameChangeInputLoader_vftable_base2",
+      "kind": "data",
+      "address": "0x010552CC",
+      "confidence": "confirmed",
+      "summary": "RetainerNameChangeInputLoader vftable, second MI base. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchListWidget_vftable_base1",
+      "kind": "data",
+      "address": "0x00F9E650",
+      "confidence": "confirmed",
+      "summary": "Application::Main::Element::Window::Widget::ItemSearchListWidget vftable, first MI base. RTTI Type Descriptor at 0x0126C3B8. Subsystem: ItemSearchListContainer. Hosts the 1.x Retainer Marketplace c2s emitters via tick handler state machine (FUN_00525E50). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchListWidget_vftable_base2",
+      "kind": "data",
+      "address": "0x00F9E65C",
+      "confidence": "confirmed",
+      "summary": "ItemSearchListWidget vftable, second MI base. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchListWidget_vftable_base3",
+      "kind": "data",
+      "address": "0x00F9E66C",
+      "confidence": "confirmed",
+      "summary": "ItemSearchListWidget vftable, third MI base (3-way multiple inheritance). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchListWidget_Slot4Init_FUN_00513660",
+      "kind": "function",
+      "address": "0x00513660",
+      "confidence": "confirmed",
+      "summary": "ItemSearchListWidget::Init (vftable slot 4). 830-byte body wires 6 child controls via FUN_00910980 calls, uses format string sprintf_s @%d 0x2975 (same resource string ID that BCS-Y-0347 attributed to ItemSearchPriceViewWidget's slot-4 init - confirms parent-child UI relationship). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchListWidget_TickStateMachine_FUN_00525E50",
+      "kind": "function",
+      "address": "0x00525E50",
+      "confidence": "confirmed",
+      "summary": "ItemSearchListWidget tick handler - 10-case state machine on this+0x1214 dispatching to slot-emit methods including 0x01D8 (case 6 = FUN_0051AAC0), 0x01DF (case 10 = FUN_0051A970), and 0x01D7 via sibling caller FUN_0051A4A0 (case 5 chain). Closes the cluster_refinements_unobserved.json open question on the 3 unidentified emitters. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchListHelpWidget_vftable_base1",
+      "kind": "data",
+      "address": "0x0104977C",
+      "confidence": "confirmed",
+      "summary": "Application::Main::Element::Window::Widget::ItemSearchListHelpWidget vftable, first MI base. RTTI Type Descriptor at 0x012D1660. Help-overlay widget - no c2s emit (parallel to ItemSearchHelpWidget). retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchListHelpWidget_vftable_base2",
+      "kind": "data",
+      "address": "0x01049790",
+      "confidence": "confirmed",
+      "summary": "ItemSearchListHelpWidget vftable, second MI base. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    },
+    {
+      "name": "ItemSearchWidgetResumeChecker_vftable",
+      "kind": "data",
+      "address": "0x00FD537C",
+      "confidence": "confirmed",
+      "summary": "Application::Lua::Script::Client::Control::_anon_FD906835::s_ItemSearchWidgetResumeChecker vftable. RTTI Type Descriptor at 0x012C06D0. Anonymous Lua-side checker class waiting on s__waitForItemSearchWidget_00fd7184 - polls widget state during scripted retainer-search interactions. retainer_bazaar_subsystem.json newRttiClassesDiscovered."
+    }
+  ]
+}

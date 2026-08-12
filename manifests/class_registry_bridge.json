@@ -1,0 +1,159 @@
+{
+  "version": "1",
+  "generated": "2026-05-23",
+  "scope": "Decompiled FUN_0078E3A0 (BCS-Y-0398) plus _defineClass impl FUN_006DCC30 (BCS-Y-0484), _defineBaseClass impl FUN_006DCCA0 (BCS-Y-0487), parametric class-registration helper FUN_00d07bb0, _onLoop __newindex impl FUN_00d07eb0, and the supporting registration helpers + dynamic-method closures + LGE context lookup.",
+  "outcome": "Static C++ class registration (engine init) and dynamic Lua-side class registration go through the SAME helpers: FUN_00CC71E0 for BaseClass, FUN_00CC71F0 for utility classes. FUN_0078E3A0 statically registers 36 classes at init (12 utility via FUN_00CC71F0, 24 BaseClass via FUN_00CC71E0); the Lua N-APIs `_defineClass` and `_defineBaseClass` (impl bodies FUN_0078C2A0 / FUN_0078C330) call those same shims. `_onLoop.__newindex` (FUN_00d07eb0 thin wrapper around FUN_00d07bb0) implements the script-side `_onLoop.MethodName = function()...end` pattern: it allocates an 8-byte upvalue holding the class context pointer + the method's slot value, then pushes one of two cclosure variants (FUN_00d07f20 or FUN_00d07f90, selected by FUN_00cf49a0 condition) as a 2-upvalue cclosure into the global table. The test-if-already-registered helper FUN_00d07890 distinguishes 'self'-prefixed and '_inl'-suffixed method names (special-cased dispatch patterns). FUN_00cd77d0 is the cross-LGE engine-context lookup helper (21 callers).",
+  "registeredClasses": {
+    "count": 36,
+    "utilityCount": 12,
+    "baseClassCount": 24,
+    "utilityNames": [
+      "Global",
+      "Debug",
+      "Math",
+      "String",
+      "Table",
+      "WorldMaster",
+      "OtherArea",
+      "SpreadSheet",
+      "CutScene",
+      "CommandDebuggerGM",
+      "CommandDebuggerDEV",
+      "CommandDebuggerTEST"
+    ],
+    "baseClassNames": [
+      "SystemBaseClass",
+      "ProgDebugBaseClass",
+      "ActorBaseClass",
+      "CharaBaseClass",
+      "PlayerBaseClass",
+      "NpcBaseClass",
+      "WorldBaseClass",
+      "AreaBaseClass",
+      "PrivateAreaBaseClass",
+      "ZoneBaseClass",
+      "DebugBaseClass",
+      "JudgeBaseClass",
+      "CommandBaseClass",
+      "StatusBaseClass",
+      "QuestBaseClass",
+      "DirectorBaseClass",
+      "CommandDebuggerBaseClass",
+      "CommandDebuggerFUNCBaseClass",
+      "ItemBaseClass",
+      "ImportantItemBaseClass",
+      "MoneyItemBaseClass",
+      "NormalItemBaseClass",
+      "GameDataBaseClass",
+      "GroupBaseClass"
+    ]
+  },
+  "registrationPathways": {
+    "staticInit": {
+      "entrypoint": "FUN_0078E3A0 (BCS-Y-0398, 1986 bytes, called from FUN_0078FC90 = engine startup)",
+      "mechanism": "FUN_00447260 pushes the class name string, FUN_00CC71F0 (utility) or FUN_00CC71E0 (baseclass) is called per registration, FUN_00446F50 cleans up the temp string. 36 registrations in a single function body. FUN_00CC77F0 finalizes the registry.",
+      "perEntryHelper": {
+        "FUN_00CC71F0": "Utility class shim (7 bytes) -> FUN_00CD9C10 (real impl); 4 total callers (FUN_0078E3A0 12x, FUN_00772C80, FUN_007634B0, FUN_0078C2A0 = _defineClass impl)",
+        "FUN_00CC71E0": "BaseClass shim (7 bytes) -> FUN_00CD9BC0 (real impl); 3 total callers (FUN_0078E3A0 24x, FUN_0078C330 = _defineBaseClass impl, FUN_007634B0)"
+      }
+    },
+    "scriptDefineClass": {
+      "entrypoint": "FUN_006DCC30 (_defineClass, BCS-Y-0484, 99 bytes)",
+      "innerImpl": "FUN_0078C2A0 (134 bytes)",
+      "mechanism": "Reads param-vector at *(state+0x10)+4 (Lua arg array, 16-byte stride). Pulls arg[0] (child) and arg[1] (parent) via FUN_0071CE70(vec, index, &state). Calls FUN_00CC7050(child, parent) to link them. Calls FUN_00CC71F0(child) to do the utility-class registration. So _defineClass(C, P) and the static registry's utility-class path register a Lua name the IDENTICAL way."
+    },
+    "scriptDefineBaseClass": {
+      "entrypoint": "FUN_006DCCA0 (_defineBaseClass, BCS-Y-0487, 99 bytes)",
+      "innerImpl": "FUN_0078C330 (134 bytes - byte-identical structure to FUN_0078C2A0 modulo the final helper)",
+      "mechanism": "Same arg-vector + FUN_00CC7050 link as _defineClass, but calls FUN_00CC71E0 (BaseClass helper) for the registration. Used by 139 scripts per the high signal napi attribution findings pass's corpus survey."
+    },
+    "dynamicMethodRegistration": {
+      "entrypoint": "FUN_00d07eb0 (_onLoop.__newindex, 106 bytes, thin Lua-N-API wrapper around FUN_00d07bb0)",
+      "implFunction": "FUN_00d07bb0 (606 bytes - the parametric helper the remaining templates attribution pass categorized as not-catalog-worthy; this manifest characterizes it fully)",
+      "mechanism": "Triggered when script does `_onLoop.SomeName = function ... end`. Steps: (1) FUN_00cd77d0 resolves the engine context from the Lua state (BCS-Y-0522). (2) FUN_00cd77d0(param_1, 1) lookup returns iVar4 = class registration record. (3) FUN_00447260 pushes ':' separator string (DAT_0110f044). (4) FUN_00d07890 tests if a registration already exists for this name (793-byte helper that handles 'self'-prefix and '_inl'-suffix special cases). (5) If new: allocates 8 bytes via FUN_00cf32a0(8) holding *(iVar4+0x54) at +0x00 (class context pointer) and the method slot at +0x04. (6) Selects FUN_00d07f20 or FUN_00d07f90 closure based on FUN_00cf49a0 condition (probably 'is method' vs 'is callback'). (7) FUN_00cf32e0(closure, 2) pushes the closure as a 2-upvalue cclosure. (8) FUN_00cf3400(1) sets it into the global/class table.",
+      "closureVariants": {
+        "FUN_00d07f20": "Variant A: dispatches via FUN_00d04bf0",
+        "FUN_00d07f90": "Variant B: dispatches via FUN_00d04be0 (sibling impl; differs by one callee VA)"
+      },
+      "selectorHelper": "FUN_00cf49a0 - returns char (0 or non-zero) that selects between the two closure variants; semantics not fully pinned but likely 'instance method' vs 'class-level callback'"
+    }
+  },
+  "specialStringDispatch": {
+    "found": [
+      {
+        "va": "0x0110f02c",
+        "string": "(adjacent to DAT_0110f034 \"self\" - likely the unprefixed-method marker; not byte-dumped in this manifest)"
+      },
+      {
+        "va": "0x0110f034",
+        "string": "self",
+        "usage": "FUN_00d07890 dispatch for self-prefixed method names; calls FUN_00cd7a50 (class-method-dispatch helper) on non-match"
+      },
+      {
+        "va": "0x0110f03c",
+        "string": "_inl",
+        "usage": "FUN_00d07890 special-case for _inl-suffixed names; binds via FUN_00d077b0 with vtable PTR_DAT_01266b10"
+      },
+      {
+        "va": "0x0110f044",
+        "string": ":",
+        "usage": "FUN_00d07bb0 method-name separator (fully-qualified Class:method format)"
+      }
+    ]
+  },
+  "phaseConnections": {
+    "lge_bootstrap_attribution.json ": "BCS-Y-0501 LGE bootstrap installs _onLoop as a userdata global. Its __newindex is now confirmed as FUN_00d07eb0. The 4 metamethods on _onLoop (per the lge bootstrap attribution pass) include __index = FUN_00d085b0 (reached from FUN_00d1ce10 'BaseClass' caller in the d2fxxx userdata attribution pass).",
+    "d2fxxx_userdata_attribution.json ": "FUN_00D20B00 instance metatable (BCS-Y-0505) is what FUN_00d1ce10 installs on every new class instance. The instance has 3 memory pools at +0x60/+0x64/+0x68 wrapped as FUN_00D208A0 userdata (BCS-Y-0506).",
+    "high_signal_napi_attribution_findings.json ": "BCS-Y-0484 (_defineClass) and BCS-Y-0487 (_defineBaseClass) name the Lua-side primitives - this manifest adds their inner impl bodies + the registration pathway."
+  },
+  "script_tree_layout": {
+    "source": "xivl-decomp:docs/script/lua-class-registry.md",
+    "rdataStringStart": "0xbe05a8",
+    "utilityPaths": {
+      "Global": "/Global.prog",
+      "Debug": "/System/Debug.prog",
+      "Math": "/System/Math.prog",
+      "String": "/System/String.prog",
+      "Table": "/System/Table.prog",
+      "WorldMaster": "/World/WorldMaster.prog",
+      "OtherArea": "/World/OtherArea.prog",
+      "SpreadSheet": "/GameData/SpreadSheet.prog",
+      "CutScene": "/GameData/CutScene",
+      "CommandDebuggerGM": "/CommandDebugger/CommandDebuggerGM",
+      "CommandDebuggerDEV": "/CommandDebugger/CommandDebuggerDEV",
+      "CommandDebuggerTEST": "/CommandDebugger/CommandDebuggerTEST"
+    },
+    "baseClassPaths": {
+      "SystemBaseClass": "/System/SystemBaseClass",
+      "ProgDebugBaseClass": "/prog/ProgDebugBaseClass",
+      "ActorBaseClass": "/ActorBaseClass.prog",
+      "CharaBaseClass": "/Chara/CharaBaseClass.prog",
+      "PlayerBaseClass": "/Chara/Player/PlayerBaseClass.prog",
+      "NpcBaseClass": "/Chara/Npc/NpcBaseClass.prog",
+      "WorldBaseClass": "/World/WorldBaseClass.prog",
+      "AreaBaseClass": "/Area/AreaBaseClass.prog",
+      "PrivateAreaBaseClass": "/Area/PrivateArea/PrivateAreaBaseClass.prog",
+      "ZoneBaseClass": "/Area/Zone/ZoneBaseClass.prog",
+      "DebugBaseClass": "/Debug/DebugBaseClass.prog",
+      "JudgeBaseClass": "/Judge/JudgeBaseClass",
+      "CommandBaseClass": "/Command/CommandBaseClass",
+      "StatusBaseClass": "/Status/StatusBaseClass",
+      "QuestBaseClass": "/Quest/QuestBaseClass",
+      "DirectorBaseClass": "/Director/DirectorBaseClass.prog",
+      "CommandDebuggerBaseClass": "/CommandDebugger/CommandDebuggerBaseClass",
+      "CommandDebuggerFUNCBaseClass": "/CommandDebugger/CommandDebuggerFUNC/CommandDebuggerFUNCBaseClass",
+      "ItemBaseClass": "/Item/ItemBaseClass.prog",
+      "ImportantItemBaseClass": "/Item/Important/ImportantItemBaseClass",
+      "MoneyItemBaseClass": "/Item/Money/MoneyItemBaseClass",
+      "NormalItemBaseClass": "/Item/Normal/NormalItemBaseClass.prog",
+      "GameDataBaseClass": "/GameData/GameDataBaseClass",
+      "GroupBaseClass": "/Group/GroupBaseClass.prog"
+    }
+  },
+  "fullPipeline": "Engine startup -> FUN_0078E3A0 registers 36 named classes statically via FUN_00CC71F0/E0 shims -> at runtime, Lua scripts call `_defineClass(child, parent)` (FUN_006DCC30 -> FUN_0078C2A0 -> FUN_00CC71F0) or `_defineBaseClass(child, parent)` (FUN_006DCCA0 -> FUN_0078C330 -> FUN_00CC71E0) to declare new classes -> scripts then set methods/callbacks via `_onLoop.MethodName = function()...end` which fires FUN_00d07eb0 -> FUN_00d07bb0 to bind the method as a cclosure with the class context as upvalue -> when an instance is later created, FUN_00d1ce10 ('BaseClass' caller from d2fxxx_userdata_attribution.json) walks the class declaration and installs FUN_00D20B00 metatable, allocating 3 pools at +0x60/+0x64/+0x68 -> instance is usable from Lua with __index dispatching through member descriptors (FUN_00D207A0 userdata).",
+  "evidencePaths": {
+    "registry": "%BCS_GHIDRA_PROJECTS%/class_registry_decomp.txt",
+    "helpers": "%BCS_GHIDRA_PROJECTS%/helpers_decomp.txt",
+    "dat_0110f044": "%BCS_GHIDRA_PROJECTS%/dat_0110f044_bytes.txt"
+  }
+}

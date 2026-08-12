@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Catalog the lifecycle functions (ctor / dtor / deleting_dtor variants) for the 6 Sqwt EventHandler<T> typed-delegate vftables cataloged earlier (BCS-Y-1138..1143). Closes the manifest deferred_followups slot for binder/registration site enumeration (partially - the lifecycle is fully cataloged; the binder caller functions FUN_00599CB0 and FUN_0068DDF0 are deferred).",
+  "method": {
+    "step1": "Ghidra FindAllReferences via run_c56_delegate_xrefs.bat on the 6 EventHandler vftable VAs (0x00FA9B14, 0x00FA9B24, 0x00FC654C, 0x00FC655C, 0x00FC66CC, 0x00FC66DC). Output: tools/ghidra/logs/c56_delegate_xrefs.txt. Counts: 4 / 1 / 6 / 4 / 1 / 1 = 17 unique callsites.",
+    "step2": "Ghidra DumpFunctionDecomp via run_c56_delegate_decomp.bat on all 17 callsite functions (FUN_00599FF0, FUN_0059A040, FUN_0059A380, FUN_0059A3F0, FUN_0059A460 + FUN_0068DD50, FUN_0068E040, FUN_0068E090, FUN_0068E0E0, FUN_0068E140, FUN_0068E1A0, FUN_0068E220, FUN_0068E290, FUN_0068E300, FUN_0068E370, FUN_0068E3E0, FUN_0068E450). Output: tools/ghidra/logs/c56_delegate_callsites_decomp.txt (751 lines).",
+    "step3": "Classify each function by body shape: ctor (109B/105B, security cookie + vftable write + field captures), dtor (72B-75B, SEH-wrapped vftable write + cleanup), deleting_dtor variant A (93B, dtor body + conditional _free), deleting_dtor variant B (96B, typically derived class restoring base vftable).",
+    "step4": "Identify the parent class FUN_0068DD50 as LuaDebugSelect's destructor (156B, restores LuaDebugSelect primary+secondary vftables AND writes EventHandler<RoutedEventArgs> vftable to this[+0x34]). This reveals the embedded-EventHandler architectural pattern.",
+    "step5": "Bulk-add 17 BCS-Y entries (BCS-Y-1146..1162) via single Python invocation re-reading symbols.json last id INSIDE the same invocation (BCS-Y collision rule).",
+    "step6": "Defer the binder/registration-site decomp investigation. Two binder functions identified by ctor Callers: FUN_00599CB0 (binds LuaDebugLog's KeyEventHandler) + FUN_0068DDF0 (binds BOTH LuaDebugSelect's RoutedEventHandler AND SelectionChangedEventHandler). Single binder per owner class pattern - worth full decomp in later work (potentially as client-architecture 'Sqwt UI elements follow a uniform heap-factory')."
+  },
+  "key_findings": [
+    "**WPF-style 2-tier delegate inheritance structurally confirmed.** Derived ctors (KeyEventHandler<LuaDebugLog>::ctor at FUN_0059A3F0 + RoutedEventHandler<LuaDebugSelect>::ctor at FUN_0068E300 + SelectionChangedEventHandler<LuaDebugSelect>::ctor at FUN_0068E3E0) all follow the classic MSVC derived-ctor pattern: call parent ctor (which sets base vftable + captures target/method/extra fields), then overwrite vftable with derived. All 3 derived ctors are 105B bodies, all 3 generic-EventHandler bases are 109B - identical size confirms identical code generation pattern across the 3 owner classes / 3 event types.",
+    "**EventHandler<LuaDebugSelect,RoutedEventArgs> is EMBEDDED INLINE in LuaDebugSelect at offset +0x34.** Per FUN_0068DD50 LuaDebugSelect::dtor: restores LuaDebugSelect::vftable to *this and *(this+2) (primary + MI secondary), destroys an owned heap object at this[+0x32] via virtual slot 0 call, then writes EventHandler<RoutedEventArgs>::vftable to this[+0x34] (restoring the inline sub-object's vftable on the way down). This is NOT the standard WPF heap-delegate model - the owner class includes the delegate as a direct member field. May be an optimization for delegates that are bound 1:1 with the owner's lifetime. Whether the SelectionChanged delegate is also inline (at a different offset) is not yet confirmed but seems likely.",
+    "**Standard MSVC delegate capture-layout** confirmed at this[+0x20]/[+0x28]/[+0x2C] (param_1[8]/[10]/[11] in Ghidra's int-indexed notation). 3 captured fields: target object pointer, member function pointer, and a third 'extra' arg (possibly the secondary base class adjustment for MI cases, or the bound argument for 1-arg delegates). All 3 EventHandler<T,EventArgs> base ctors set these same fields; the derived delegates (KeyEventHandler / RoutedEventHandler / SelectionChangedEventHandler) inherit them without adding new fields - they only override the vftable for type discrimination.",
+    "**Single binder per owner class pattern.** FUN_00599CB0 is the sole caller of KeyEventHandler<LuaDebugLog>::ctor. FUN_0068DDF0 is the sole caller of BOTH RoutedEventHandler<LuaDebugSelect>::ctor AND SelectionChangedEventHandler<LuaDebugSelect>::ctor (so it constructs both delegates needed by LuaDebugSelect). Suggests a centralized 'register all my event handlers' method per owner class - possibly invoked from the owner's ctor or in a deferred-init pass. Full decomp deferred (potential client-architecture 'Sqwt UI elements follow a uniform heap-factory' promotion candidate)."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1146", "name": "EventHandler_LuaDebugLog_KeyEventArgs_ctor_FUN_0059A380", "role": "ctor (base)", "size": 109},
+    {"id": "BCS-Y-1147", "name": "EventHandler_LuaDebugLog_KeyEventArgs_dtor_FUN_00599FF0", "role": "dtor", "size": 72},
+    {"id": "BCS-Y-1148", "name": "EventHandler_LuaDebugLog_KeyEventArgs_deleting_dtor_FUN_0059A040", "role": "deleting_dtor variant A", "size": 93},
+    {"id": "BCS-Y-1149", "name": "KeyEventHandler_LuaDebugLog_ctor_FUN_0059A3F0", "role": "ctor (derived)", "size": 105},
+    {"id": "BCS-Y-1150", "name": "KeyEventHandler_LuaDebugLog_deleting_dtor_FUN_0059A460", "role": "deleting_dtor variant B (derived)", "size": 96},
+    {"id": "BCS-Y-1151", "name": "LuaDebugSelect_dtor_FUN_0068DD50", "role": "parent class dtor", "size": 156, "note": "Reveals EventHandler<RoutedEventArgs> inline at +0x34"},
+    {"id": "BCS-Y-1152", "name": "EventHandler_LuaDebugSelect_RoutedEventArgs_ctor_FUN_0068E220", "role": "ctor (base)", "size": 109},
+    {"id": "BCS-Y-1153", "name": "EventHandler_LuaDebugSelect_RoutedEventArgs_dtor_FUN_0068E040", "role": "dtor", "size": 72},
+    {"id": "BCS-Y-1154", "name": "EventHandler_LuaDebugSelect_RoutedEventArgs_dtor_variant_FUN_0068E1A0", "role": "dtor variant (distinct unwind label)", "size": 75},
+    {"id": "BCS-Y-1155", "name": "EventHandler_LuaDebugSelect_RoutedEventArgs_deleting_dtor_FUN_0068E0E0", "role": "deleting_dtor variant A", "size": 93},
+    {"id": "BCS-Y-1156", "name": "EventHandler_LuaDebugSelect_RoutedEventArgs_deleting_dtor_variant_FUN_0068E370", "role": "deleting_dtor variant B (derived)", "size": 96},
+    {"id": "BCS-Y-1157", "name": "RoutedEventHandler_LuaDebugSelect_ctor_FUN_0068E300", "role": "ctor (derived)", "size": 105},
+    {"id": "BCS-Y-1158", "name": "EventHandler_LuaDebugSelect_SelectionChangedEventArgs_ctor_FUN_0068E290", "role": "ctor (base)", "size": 109},
+    {"id": "BCS-Y-1159", "name": "EventHandler_LuaDebugSelect_SelectionChangedEventArgs_dtor_FUN_0068E090", "role": "dtor", "size": 72},
+    {"id": "BCS-Y-1160", "name": "EventHandler_LuaDebugSelect_SelectionChangedEventArgs_deleting_dtor_FUN_0068E140", "role": "deleting_dtor variant A", "size": 93},
+    {"id": "BCS-Y-1161", "name": "EventHandler_LuaDebugSelect_SelectionChangedEventArgs_deleting_dtor_variant_FUN_0068E450", "role": "deleting_dtor variant B (derived)", "size": 96},
+    {"id": "BCS-Y-1162", "name": "SelectionChangedEventHandler_LuaDebugSelect_ctor_FUN_0068E3E0", "role": "ctor (derived)", "size": 105}
+  ],
+  "deferred_followups": [
+    "Decomp FUN_00599CB0 (LuaDebugLog binder) and FUN_0068DDF0 (LuaDebugSelect binder). Each constructs the delegate(s) for its owner and likely registers them with the source object's Event<T>. Identifying the actual Sqwt event-subscription mechanism (subscribe() / addHandler() / etc.) could surface as client-architecture 'Sqwt UI elements follow a uniform heap-factory' ('Sqwt event-binding pattern') if a consistent pattern emerges. Single-binder-per-owner-class is itself suggestive.",
+    "Verify whether LuaDebugSelect's SelectionChangedEventArgs EventHandler is also inline (likely at a different offset) or heap-allocated. The +0x34 finding only covered RoutedEventArgs.",
+    "Investigate the +0x32 owned-heap-object accessed via virtual slot 0 in LuaDebugSelect::dtor. Probably the SelectionChangedEventArgs delegate handle, but could be another component. Decomp the virtual call target.",
+    "Verify the 'extra arg' (param_4) captured at this[+0x2C] in the generic EventHandler base ctor. Could be: secondary base offset for MI delegate targets, bound 1st arg for currying, or pointer-to-method secondary half for thunk-based dispatch.",
+    "Consider whether the manifest finding (broader EventHandler<T> sweep covering FormElement / XamlElement / etc.) should now be re-prioritized given that each parent class adds ~5 lifecycle entries on top of the typed-delegate vftable entries. The 50+ vftable scope could expand to 250+ entries with lifecycle attribution."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged; new addresses are simple scalars",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - unchanged"
+  },
+  "symbol_count_delta": "1135 -> 1152 (+17)",
+  "files_changed": [
+    "manifests/symbols.json: +17 entries (BCS-Y-1146..1162)",
+    "manifests/delegate_lifecycle.json (NEW, this file)",
+    "tools/ghidra/logs/c56_delegate_xrefs.txt (NEW)",
+    "tools/ghidra/logs/c56_delegate_callsites_decomp.txt (NEW, 751 lines)"
+  ]
+}

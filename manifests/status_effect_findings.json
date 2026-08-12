@@ -1,0 +1,205 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "status effect lifecycle",
+  "generated": "2026-05-20",
+  "title": "CharaBase+0xDC SubStat storage shape and facet readers",
+  "scope": "Map the CharaBase+0xDC sub-struct layout (CharaSubStatStorage) and the six SubStat facet reader N-APIs (Waste, Guard, Chant, Object, Breakage, MotionPack). Cross-confirm the existing write paths (0x0144/0x0145/0x0179) by decomping the SubStat sub-struct initializer.",
+  "sourceRefs": [
+    "%BCS_GHIDRA_PROJECTS%\\sub3c_substat_readers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3c_substat_helpers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3c_substat_writers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\lua_napi_c2s_trace_refs.txt",
+    "%BCS_GHIDRA_PROJECTS%\\lua_napi_c2s_trace_decomp.txt",
+    "build/lua",
+    "manifests\\lua_napi_c2s_trace_findings.json",
+    "manifests\\data_dependency_catalog.json (evidence)",
+    "BCS-Y-0349",
+    "BCS-Y-0353",
+    "BCS-Y-0354"
+  ],
+  "summary": {
+    "subStructAccessor": "FUN_006EEC00 (BCS-Y-0354): lazily allocates 0x1C bytes at CharaBase+0xDC and returns the pointer. Initializes via FUN_006EEA80.",
+    "subStructInitializer": "FUN_006EEA80 (BCS-Y-0435): zeros the 0x1C struct then reserves capacity 0x14 (20 slots) for the status u32 array.",
+    "totalSize": "0x1C bytes",
+    "facetReaders": "Six CharaBase N-API impls (_getSubStatWaste/Guard/Chant/Object/Breakage/MotionPack) extract bit-field facets from a status u32 slot. _getSubStatStatus (BCS-Y-0353 context) reads the slot itself by sub_stat_enum index.",
+    "facetBitLayout": "Status u32 slot encodes Breakage (bits 0..7, one per sub-kind 1..8), Chant (bits 8..15, nibble per sub-kind 1..2), Guard (bits 16..17, single bits per sub-kind 1..2), unused (bits 18..23), Waste (bits 24..31, 2-bit field per sub-kind 0/1/5/6).",
+    "extraStatU32": "SUBSTRUCT+0x10 u32 encodes ExtraStat (bits 0..7), NetStatUser (bits 8..15, one bit per sub-kind 1..8), NetStatSystem (bits 16..18, one bit per sub-kind 1..3). Reader: _getActorExtraStat reads the low byte; writer: FUN_006FA980 (BCS-Y-0349) is the canonical merge-write+per-bit Lua-fire helper.",
+    "modeBorder": "SUBSTRUCT+0x18 u8 ModeBorder. Reader: _getSubStatMode (FUN_00707FB0, already documented). Writer thunk: FUN_006EECB0 (BCS-Y-0443) called from receiver apply FUN_008A32C0 for 0x0144 ChangeActorSubStatModeBorder. Mode-change Lua fire: FUN_007084E0 (BCS-Y-0444) fires _onChangeSubStatMode with old/new diff sets.",
+    "luaSetter": "_setActorExtraStat (FUN_007080F0, BCS-Y-0442) is the Lua-side write path; uses the same FUN_006FA980 helper as the server-driven 0x0145 receiver, merging only the low byte of SUBSTRUCT+0x10. Follow-up c2s tracing found no EventStartPacket builder/send call; no shipped Lua script callsite by name"
+  },
+  "openQuestions": [
+    "The 8 sub_stat_enum values that index into the SUBSTRUCT+0x04 status array (Status / Mode / Waste / Guard / Chant / Object / Breakage / MotionPack as N-APIs suggest) are not yet mapped to concrete enum constants. Likely defined in a Lua-side table."
+  ],
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0435",
+      "name": "CharaSubStatStorageInitializer_FUN_006EEA80",
+      "address": "0x006EEA80",
+      "role": "Initializer for the CharaBase+0xDC sub-struct (BCS-S-0035 CharaSubStatStorage). Called by FUN_006EEC00 (BCS-Y-0354) on first access. Zeros the 0x1C struct (clears begin/end/capacity ptrs at +0x04/+0x08/+0x0c, the two u32 packed-flag fields at +0x10/+0x14, and the ModeBorder byte at +0x18), then calls FUN_007222D0(0x14) and FUN_00722DA0(0x14, 0) to reserve capacity 20 and zero-fill the status u32 array."
+    },
+    {
+      "id": "BCS-Y-0436",
+      "name": "SubStat_getWasteImpl_FUN_006F9D60",
+      "address": "0x006F9D60",
+      "role": "CharaBase N-API _getSubStatWaste impl. Takes (sub_kind_tag, status_u32) from the Lua call frame; selects a 2-bit field from bits 24..31 of the status u32 based on sub_kind_tag (case 0 -> bits 30..31, case 1 -> bits 28..29, case 5 -> bits 26..27, case 6 -> bits 24..25). Returns the 2-bit value (or 0 for fall-through cases). Cross-references BCS-S-0035 CharaSubStatStorage status u32 facet layout."
+    },
+    {
+      "id": "BCS-Y-0437",
+      "name": "SubStat_getGuardImpl_FUN_006F9E20",
+      "address": "0x006F9E20",
+      "role": "CharaBase N-API _getSubStatGuard impl. Takes (sub_kind_tag, status_u32); selects one bit at bits 16..17 of the status u32 (case 1 -> bit 17, case 2 -> bit 16). Returns boolean. Cross-references BCS-S-0035."
+    },
+    {
+      "id": "BCS-Y-0438",
+      "name": "SubStat_getChantImpl_FUN_006F9EC0",
+      "address": "0x006F9EC0",
+      "role": "CharaBase N-API _getSubStatChant impl. Takes (sub_kind_tag, status_u32); selects a nibble from bits 8..15 of the status u32 (case 1 -> bits 12..15, case 2 -> bits 8..11). Returns the 4-bit value. Cross-references BCS-S-0035."
+    },
+    {
+      "id": "BCS-Y-0439",
+      "name": "SubStat_getObjectImpl_FUN_006F9F70",
+      "address": "0x006F9F70",
+      "role": "CharaBase N-API _getSubStatObject impl. Takes one Lua-passed status_u32; returns a triple (bits 8..11 nibble, bits 14..15 2-bit, bits 12..13 2-bit) as multiple Lua return values. Reads the same status u32 facet space as Chant + adjacent fields. Cross-references BCS-S-0035."
+    },
+    {
+      "id": "BCS-Y-0440",
+      "name": "SubStat_getBreakageImpl_FUN_006FA020",
+      "address": "0x006FA020",
+      "role": "CharaBase N-API _getSubStatBreakage impl. Takes (sub_kind_tag, status_u32); selects a single bit from bits 0..7 of the status u32 (case 1 -> bit 7, case 2 -> bit 6, ..., case 7 -> bit 1, case 8 -> bit 0). Returns boolean. Cross-references BCS-S-0035."
+    },
+    {
+      "id": "BCS-Y-0441",
+      "name": "SubStat_getMotionPackImpl_FUN_006FA100",
+      "address": "0x006FA100",
+      "role": "CharaBase N-API _getSubStatMotionPack impl. Simplest reader (68 bytes); takes one Lua-passed status_u32; returns the low byte directly (status_u32 & 0xff). Does not bit-shift further - the MotionPack byte is interpreted by the Lua caller. Cross-references BCS-S-0035."
+    },
+    {
+      "id": "BCS-Y-0442",
+      "name": "SubStat_setActorExtraStatImpl_FUN_007080F0",
+      "address": "0x007080F0",
+      "role": "CharaBase N-API _setActorExtraStat impl. Takes (new_extra_stat_byte) from the Lua frame; reads SUBSTRUCT+0x10 u32; calls FUN_006FA980 (BCS-Y-0349 canonical writer) with `(current ^ new) & 0xff ^ current` to atomically replace only the low byte while preserving the NetStatUser/NetStatSystem upper bits. Same writer fires _onChangeNetStatUser/_onChangeNetStatSystem per changed bit as the 0x0145 server-driven path."
+    },
+    {
+      "id": "BCS-Y-0443",
+      "name": "SubStat_ModeBorderWriteHelper_FUN_006EECB0",
+      "address": "0x006EECB0",
+      "role": "26-byte ModeBorder writer thunk. Calls FUN_006EEC00 twice (double-access pattern observed; first call ensures the sub-struct exists, second returns the live pointer), then writes `*(byte *)(SUBSTRUCT + 0x18) = new_value`. Single caller FUN_008A32C0 = ChangeActorSubStatModeBorderReceiver::apply for 0x0144 (BCS-Y-0349). The corresponding _onChangeSubStatMode Lua fire happens via the sibling FUN_007084E0 (BCS-Y-0444) on a separate path."
+    },
+    {
+      "id": "BCS-Y-0444",
+      "name": "SubStat_ModeChangeLuaFire_FUN_007084E0",
+      "address": "0x007084E0",
+      "role": "689-byte Mode-change Lua-fire path. Reads SUBSTRUCT+0x18 ModeBorder, computes the diff between old and new values via FUN_006F1100 (a bit-packed list builder), and fires `_onChangeSubStatMode` via FUN_00447260 + FUN_00CC7A90 (the canonical Lua dispatch pair) with both old-set and new-set bit lists. Single caller FUN_008A3310 is the sibling apply path for 0x0144 ChangeActorSubStatModeBorder."
+    }
+  ],
+  "structsAdded": [
+    {
+      "id": "BCS-S-0035",
+      "name": "CharaSubStatStorage"
+    }
+  ],
+  "facetBitLayoutMap": {
+    "statusU32SlotEncoding": {
+      "description": "Each u32 slot in the SUBSTRUCT+0x04 dynamic array is a packed bit-field. Slots are indexed by sub_stat_enum-1 (per BCS-Y-0353's _getSubStatStatus impl).",
+      "bitRanges": [
+        {
+          "bits": "0..7",
+          "facet": "Breakage",
+          "readerBcsY": "BCS-Y-0440",
+          "encoding": "8 single-bit booleans; sub_kind_tag selects the bit (kind 1 -> bit 7, kind 8 -> bit 0)"
+        },
+        {
+          "bits": "8..15",
+          "facet": "Chant",
+          "readerBcsY": "BCS-Y-0438",
+          "encoding": "2 nibbles; sub_kind_tag selects (kind 1 -> bits 12..15, kind 2 -> bits 8..11)"
+        },
+        {
+          "bits": "16..17",
+          "facet": "Guard",
+          "readerBcsY": "BCS-Y-0437",
+          "encoding": "2 single bits; sub_kind_tag selects (kind 1 -> bit 17, kind 2 -> bit 16)"
+        },
+        {
+          "bits": "18..23",
+          "facet": "(unused/reserved)",
+          "encoding": "no reader hits this range in the catalogued N-APIs",
+          "readerBcsY": null
+        },
+        {
+          "bits": "24..31",
+          "facet": "Waste",
+          "readerBcsY": "BCS-Y-0436",
+          "encoding": "4 two-bit fields; sub_kind_tag selects (kind 0 -> bits 30..31, kind 1 -> bits 28..29, kind 5 -> bits 26..27, kind 6 -> bits 24..25)"
+        }
+      ]
+    },
+    "extraStatU32Encoding": {
+      "description": "SUBSTRUCT+0x10 u32 holds three independent packed facets. The canonical writer FUN_006FA980 (BCS-Y-0349) merges only changed bits and fires the corresponding Lua callback per changed bit.",
+      "bitRanges": [
+        {
+          "bits": "0..7",
+          "facet": "ExtraStat",
+          "readerBcsY": "BCS-Y-0349-context-_getActorExtraStat",
+          "encoding": "u8 byte; readers treat it as one value not bit-by-bit"
+        },
+        {
+          "bits": "8..15",
+          "facet": "NetStatUser",
+          "readerBcsY": "BCS-Y-0349-context-_getNetStatUser",
+          "encoding": "8 single bits; Lua callback _onChangeNetStatUser fires per changed bit with index = (bit_position - 7)"
+        },
+        {
+          "bits": "16..18",
+          "facet": "NetStatSystem",
+          "readerBcsY": "BCS-Y-0349-context-_getNetStatSystem",
+          "encoding": "3 single bits; Lua callback _onChangeNetStatSystem fires per changed bit with index = (bit_position - 15)"
+        }
+      ]
+    }
+  },
+  "applyChainCrossRef": {
+    "0x0179_ChangeActorSubStatStatus": {
+      "receiverApply": "FUN_008A3350 (BCS-Y-0050 receiver, src-18b apply chain)",
+      "depth3Thunk": "FUN_007084B0",
+      "depth4Writer": "FUN_00707D60 (BCS-Y-0353)",
+      "writeTarget": "SUBSTRUCT+0x04 dyn_array[sub_stat_enum-1] u32",
+      "luaFire": "_onChangeSubStatStatus when slot value changes"
+    },
+    "0x0145_ChangeActorExtraStat": {
+      "receiverApply": "FUN_0089C990",
+      "writer": "FUN_006FA980 (BCS-Y-0349)",
+      "writeTarget": "SUBSTRUCT+0x10 u32",
+      "luaFire": "_onChangeNetStatUser per changed bit in bits 8..15; _onChangeNetStatSystem per changed bit in bits 16..18"
+    },
+    "0x0144_ChangeActorSubStatModeBorder": {
+      "receiverApply": "FUN_008A32C0",
+      "writeHelper": "FUN_006EECB0 (BCS-Y-0443)",
+      "writeTarget": "SUBSTRUCT+0x18 u8 ModeBorder",
+      "luaFireSibling": "FUN_007084E0 (BCS-Y-0444) fires _onChangeSubStatMode with old/new diff sets"
+    }
+  },
+  "closedQuestions": [
+    {
+      "question": "What does FUN_006EED90 walk, and is it the status-effect tick/expiration driver?",
+      "status": "closed",
+      "answer": "FUN_006EED90 walks a Lua ExecuteParameters state vector used by the Control::CutScene `_play` and `_replay` signature adapters. It is not a status-effect tick, not per-frame, and not connected to CharaBase+0xDC CharaSubStatStorage.",
+      "evidence": [
+        "%BCS_GHIDRA_PROJECTS%\\agent_a_followups_decomp.txt: FUN_006EED90 callers are FUN_006FB830 and FUN_006F11B0.",
+        "%BCS_GHIDRA_PROJECTS%\\turn14_cutscene_helpers_decomp.txt: FUN_0074F810 passes FUN_006FB830 to FUN_00726880 for `_play`; FUN_00736150 passes FUN_006F11B0 for `_replay`.",
+        "FUN_006EED90's entry processors FUN_0071BA00 and FUN_0071CE70 are generic state/value accessors keyed by the entry+0x0C state byte, not status-slot readers."
+      ]
+    },
+    {
+      "question": "Does _setActorExtraStat (FUN_007080F0) emit a c2s packet or ride the generic 0x012D EventStart path?",
+      "status": "closed",
+      "answer": "No c2s emission was found. _setActorExtraStat is registered through FUN_00754FE0 and reached by the N-API dispatcher, but its implementation only reads the Lua argument, updates CharaSubStatStorage+0x10 through FUN_006FA980, and fires local Lua callbacks for changed upper NetStat bits. It does not call FUN_00776760, FUN_004D6D30, or the known EventStart wrappers.",
+      "evidence": [
+        "%BCS_GHIDRA_PROJECTS%\\lua_napi_c2s_trace_refs.txt: FUN_007080F0 references only registration data refs from FUN_00754FE0; FUN_006FA980 has callers FUN_007080F0 and FUN_0089C990.",
+        "%BCS_GHIDRA_PROJECTS%\\lua_napi_c2s_trace_decomp.txt: FUN_007080F0 callee set has no EventStart builder/send functions.",
+        "build/lua: no `_setActorExtraStat` callsites by name."
+      ]
+    }
+  ]
+}

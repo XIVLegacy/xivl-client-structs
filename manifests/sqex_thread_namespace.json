@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Sqex::Thread::Queue<T> template enumeration + Scene driver identification. Discovered the full Sqex::Thread namespace contains 70 symbols across 4 primitive classes (Mutex, Thread, ThreadManager, ReadWriteLock) + 6 Queue<T> template instantiations (AsyncWorkTaskInterface*, MainPacket, ScenePacket, Resource*, InstallWriter::WriteEntry*, Http::Event*). Each Queue<T> is EMBEDDED in a holder class - decomp identified the 3 holder classes for the 3 main Queue<T> instantiations (ScenePacket, MainPacket, AsyncWorkTask*): Application::Scene::SceneThreadImpl (THE SCENE DRIVER, Queue<ScenePacket> at +0x370), Application::Main::MainModule (THE MAIN MODULE / MAIN THREAD DRIVER, Queue<MainPacket> at +0x17928), and an Application::Misc::* class (Queue<AsyncWorkTask*> at +0x74). **First catalog entries in `Sqex::Thread::*` (4 primitives + 5 new Queue<T>), `Application::Main::*` (MainModule + MainPacket), and Application::Scene::SceneThreadImpl namespace - the Scene driver question now RESOLVED**.",
+  "method": {
+    "step_a": "FindSymbolByName with query 'Sqex::Thread' - 70 symbols total. 4 primitive classes (Mutex, Thread, ThreadManager, ReadWriteLock), 6 Queue<T> template instantiations. Full RTTI quartet present for all 10 classes. Output: c110_sqex_thread_symbols.txt.",
+    "step_b": "FindAllReferencesToAddress on all 10 Sqex::Thread::* vftables. Result: each Queue<T> vftable has 4 writers (consistent MSVC convention: primary ctor + ctor-no-EH + complete dtor + vector deleting dtor). Each primitive class has 2-3 writers. Output: c110_thread_vftable_xrefs.txt.",
+    "step_c": "DumpFunctionDecomp on the FIRST writer of 3 Queue<T> vftables (ScenePacket, MainPacket, AsyncWorkTask*). **CRITICAL REVELATION**: these are NOT Queue<T> ctors themselves - they are DTORS of HOLDER CLASSES that EMBED a Queue<T>. The pattern: function writes the HOLDER's vftable FIRST (e.g., `*param_1 = Application::Scene::SceneThreadImpl::vftable`), destroys nested objects, then OVERWRITES the embedded Queue<T> vftable in the MSVC reverse-destruction sequence. Output: c110_queue_ctors_decomp.txt.",
+    "step_d": "FindSymbolByName on 'SceneThreadImpl' - 8 symbols including full RTTI quartet (vftable 0x00F931D4, TD 0x0126A84C). Output: c110_scenethread_symbols.txt.",
+    "step_e": "FindSymbolByName on 'Application::Main' - 4112 symbols. The MainModule vftable at 0x00F9142C and MainPacket vftable at 0x00F90EF8 are confirmed. The Application::Main::* namespace is enormous - contains essentially the entire 1.x UI widget tree (RaptureElement, RaptureElementContainer, ~300+ Window::Widget::* classes). Cataloging the full Application::Main::* tree is deferred. Output: c110_appmain_symbols.txt.",
+    "step_f": "Catalog 13 new BCS-Y entries (4 Sqex::Thread primitives + 5 new Queue<T> + SceneThreadImpl + MainModule + MainPacket) + 2 amendments (BCS-Y-1733 Queue<ScenePacket> vftable: identify parent SceneThreadImpl + +0x370 embedding offset; BCS-Y-1734 Queue<ScenePacket> TD: cross-link to SceneThreadImpl)."
+  },
+  "key_findings": [
+    "**SCENE DRIVER IDENTIFIED**: `Application::Scene::SceneThreadImpl` (vftable 0x00F931D4, TD 0x0126A84C) is the holder class for `Sqex::Thread::Queue<ScenePacket>`. The Queue<ScenePacket> is embedded at SceneThreadImpl+0x370 (offset confirmed from dtor decomp: `param_1[0xdc] = Queue<ScenePacket>::vftable` where 0xdc*4 = 0x370). The drain loop that calls each ScenePacket's slot 3 (Scene tick FUN_004B3C50 BCS-Y-1713) is a method on SceneThreadImpl. This RESOLVES the followups deferred follow-up 'Decomp the Sqex::Thread::Queue<ScenePacket> implementation - find the drain loop that iterates packets and calls slot 3'.",
+    "**MAIN MODULE IDENTIFIED**: `Application::Main::MainModule` (vftable 0x00F9142C) is the holder class for `Sqex::Thread::Queue<MainPacket>`. The Queue<MainPacket> is embedded at MainModule+0x17928 (`param_1[0x5e4a] = Queue<MainPacket>::vftable`, 0x5e4a*4 = 0x17928 = 96552 bytes from MainModule start). The colossal MainModule instance size suggests it owns ALL UI state (the Application::Main::* namespace has 4112 symbols including the entire Rapture UI widget tree). MainModule is the top-level application driver.",
+    "**Sqex::Thread namespace fully mapped (10 classes)**: 4 primitives (Mutex, Thread, ThreadManager, ReadWriteLock) + 6 Queue<T> template instantiations. The 6 Queue<T> instantiations are: Queue<Application::Misc::AsyncWorkTaskInterface*> (vftable 0x00F90A20, TD 0x01269750) - async work item queue; Queue<Application::Main::MainPacket> (vftable 0x00F90FDC, TD 0x01269BC0) - main thread message queue; Queue<Application::Scene::ScenePacket> (vftable 0x00F931C0, TD 0x0126A7E0 BCS-Y-1733/1734) - scene tick queue; Queue<Component::Resource::Resource*> (vftable 0x0110893C, TD 0x0130B4E0) - resource loader queue; Queue<Component::Install::InstallWriter::WriteEntry*> (vftable 0x0110D508, TD 0x0130C3A0) - install writer queue; Queue<Sqex::Http::Event*> (vftable 0x01113054, TD 0x0130ECD0) - HTTP event queue.",
+    "**Application::Main::MainPacket identified**: vftable 0x00F90EF8 - the message type that flows through Queue<MainPacket> to the MainModule for main-thread processing. Sibling architectural role to ScenePacket (BCS-Y-1715) for scene-thread processing. Each *Packet class's vftable slot 3 is presumably the 'process this message on the main/scene thread' handler.",
+    "**Architecture pattern: Holder<EmbeddedQueue<T>>**: All 3 decomped Queue<T> instantiations follow the same pattern - a HOLDER class embeds the Queue<T> at a specific offset. The dtor signature is consistent: `*this = Holder::vftable; destroy subobjects; this[offset] = Queue<T>::vftable; _free trailing memory`. This embeds the Queue<T> as a subobject (not by inheritance and not by pointer), giving the holder direct control over the queue lifetime.",
+    "**Application::Misc::* (third namespace partially mapped)**: the FUN_004C3830 dtor (84 bytes) writes a `Application::Misc::AsyncWorkTaskInterface*` queue vftable at parent+0x74. The parent class name is not yet identified (function signature is `__fastcall(int param_1)` not `(undefined4*)` so the decomp lost the structural context). Probably an Application::Misc::AsyncWorkManager or similar. Deferred to Application::Misc::* namespace enumeration.",
+    "**Sqex::Thread::Thread/ThreadManager are the OS-level thread wrappers**: ThreadManager (vftable 0x01110678) has only 2 vftable writers - consistent with a singleton (ctor + dtor). Thread (vftable 0x01110688) has 3 writers (ctor + 2 dtor variants). These are presumably the C++ wrappers around Windows CreateThread/WaitForSingleObject. The SceneThreadImpl and MainModule probably hold Thread instances internally.",
+    "**Cross-link to followups**: BCS-Y-1733 (Queue<ScenePacket> vftable) and BCS-Y-1734 (Queue<ScenePacket> TD) had a deferred follow-up: 'Enumerate other Sqex::Thread::Queue<T> template instantiations'. This closes this with the full enumeration (5 new instantiations cataloged). The followups statement that Queue<ScenePacket> 'is the Scene MANAGER' was slightly imprecise - the queue is the message channel, but the MANAGER (the class that runs the drain loop) is `SceneThreadImpl` which EMBEDS the queue. Amendment to BCS-Y-1733 documents this distinction.",
+    "**Embedding offsets**: SceneThreadImpl owns Queue<ScenePacket> at +0x370 (~880 bytes from start); MainModule owns Queue<MainPacket> at +0x17928 (~96552 bytes from start). MainModule's huge size suggests it's the singleton root for the entire Application::Main::* tree. The Application::Main::* namespace has 4112 symbols - the largest tree in the binary by far.",
+    "**4112 Application::Main::* symbols**: this is the entire 1.x UI widget tree (Rapture* + Window::Widget::* classes). Cataloging the full tree is a multi-tier follow-up - the Window::Widget::* alone shows ~300+ concrete widget classes (ActionEquipWidget, BazaarEditWidget, ConfigCameraWidget, etc.). Deferred."
+  ],
+  "new_bcsy_entries_summary": {
+    "sqex_thread_primitive_vftables": 4,
+    "sqex_thread_queue_template_vftables": 5,
+    "application_main_vftables": 2,
+    "application_scene_holder_vftables": 1,
+    "scene_driver_td": 1,
+    "total_bcsy_added": 13,
+    "id_range": "BCS-Y-1744..BCS-Y-1756",
+    "amendments": 2,
+    "amendment_targets": [
+      "BCS-Y-1733 (Queue<ScenePacket> vftable): cross-link to parent holder SceneThreadImpl + +0x370 embedding offset",
+      "BCS-Y-1734 (Queue<ScenePacket> TD): cross-link to SceneThreadImpl + close followups deferred follow-up"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp SceneThreadImpl ctor (one of the 4 vftable writers besides FUN_004E93A0 dtor) and the drain loop method to identify the actual thread-create / message-loop entry point.",
+    "Decomp MainModule ctor (one of the 4 vftable writers besides FUN_004DBE10 dtor) - this is the top-level application init.",
+    "Identify the parent class for FUN_004C3830 (the third Queue<T> holder - in Application::Misc::* namespace, holds Queue<AsyncWorkTaskInterface*>).",
+    "Enumerate full RTTI quartets for Sqex::Thread primitives (Mutex/Thread/ThreadManager/ReadWriteLock) - currently only vftables are cataloged.",
+    "Enumerate full RTTI quartets for Queue<T> instantiations beyond ScenePacket - currently only vftables are cataloged for the new 5 (AsyncWorkTask*/MainPacket/Resource*/WriteEntry*/Http::Event*).",
+    "Catalog Application::Main::* widget tree (4112 symbols) - this is a multi-tier follow-up given the tree's size.",
+    "Identify the 4 vftable slots of MainPacket (probably analogous to ScenePacket: 0=dtor, 1=?, 2=?, 3=tick on main thread).",
+    "Enumerate Application::Scene::* namespace beyond SceneThreadImpl (ScenePacket already cataloged; probably more Scene-related classes exist).",
+    "Map the SceneThreadImpl <-> MainModule relationship: does MainModule own a SceneThreadImpl pointer? Inter-thread communication pattern is via Queue<MainPacket> -> Queue<ScenePacket> message passing?"
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1730 -> 1743 (+13 BCS-Y; BCS-Y-1744..1756)",
+  "files_changed": [
+    "manifests/symbols.json: +13 entries (BCS-Y-1744..1756), 2 amendments",
+    "manifests/sqex_thread_namespace.json (NEW, this file)",
+    "tools/ghidra/logs/c110_sqex_thread_symbols.txt (NEW)",
+    "tools/ghidra/logs/c110_thread_vftable_xrefs.txt (NEW)",
+    "tools/ghidra/logs/c110_queue_ctors_decomp.txt (NEW)",
+    "tools/ghidra/logs/c110_scenethread_symbols.txt (NEW)",
+    "tools/ghidra/logs/c110_appmain_symbols.txt (NEW)",
+    "tools/extractors/append_c110.py (NEW)"
+  ]
+}

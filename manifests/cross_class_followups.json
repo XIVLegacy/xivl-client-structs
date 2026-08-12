@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Resolves all 4 deferred items from the follow-ups (final cleanup tier): (1) ScenePacket vftable VA (was 'deferred' per BCS-Y-1715), (2) GetNameListenerInterface TD VA (was 'deferred' per BCS-Y-1707), (3) Scene manager identification (FUN_004B3C50 had 0 listed callers), (4) _onTimer-to-MS-scheduled link verification per hypothesis. **BONUS DISCOVERY**: `Sqex::Thread::Queue<Application::Scene::ScenePacket>` class identified (vftable at 0x00F931C0, TD at 0x0126A7E0) - this is the SCENE MANAGER (the thread-safe queue that drives the Scene tick via ScenePacket vftable slot 3).",
+  "method": {
+    "step1": "FindSymbolByName.java with query 'ScenePacket' - 14 matches including vftable at 0x00F8CC14 + TD at 0x01269594 + full RTTI quartet for ScenePacket + a BONUS class Sqex::Thread::Queue<ScenePacket> with vftable at 0x00F931C0 + TD at 0x0126A7E0. Output: c57_scenepacket_symbols.txt.",
+    "step2": "FindSymbolByName.java with query 'GetNameListenerInterface' - 7 matches including vftable at 0x00FD40E4 + TD at 0x012BF5E0 + full RTTI quartet. Output: c57_getname_symbols.txt.",
+    "step3": "FindAllReferencesToAddress.java on 3 targets: FUN_004B3C50 (Scene tick - said 0 listed callers), 0x00CDC510 (_onTimer string literal BCS-Y-1704), 0x01377EE8 (MS-callback dispatch ID per BCS-Y-1698). Output: c57_misc_xrefs.txt. **CRITICAL RESULTS**: FUN_004B3C50 has exactly 1 DATA ref at 0x00F8CC20 = ScenePacket vftable slot 3 (0x00F8CC14 + 0x0C = 0x00F8CC20). DAT_01377EE8 has 1 READ in FUN_00CE1840 (BCS-Y-1698, MS-scheduled fire entry) + 1 WRITE init at 0x00F2D051. _onTimer literal has 0 absolute-load refs (likely LEA-relative addressing - the string is registered via the GameEngine ctor's FUN_00447260 call but not read by absolute address afterwards).",
+    "step4": "Catalog 3 new BCS-Y entries (ScenePacket TD + Queue<ScenePacket> vftable + Queue<ScenePacket> TD) + 4 amendments (BCS-Y-1707 TD address resolution, BCS-Y-1715 vftable address resolution, BCS-Y-1713 Scene manager cross-link, BCS-Y-1704 _onTimer/MS-scheduled link)."
+  },
+  "key_findings": [
+    "**BOTH DEFERRED VAs RESOLVED**: BCS-Y-1707 GetNameListenerInterface TD: address 'deferred' -> **0x012BF5E0**. BCS-Y-1715 ScenePacket vftable: address 'deferred' -> **0x00F8CC14**. Full RTTI quartet now identified for both classes.",
+    "**SCENE MANAGER IDENTIFIED**: the function that vftable-invokes [[Application_Scene_Scene_tick_FUN_004B3C50]] (BCS-Y-1713) is whoever calls **ScenePacket vftable slot 3** (offset +0x0C from 0x00F8CC14 = 0x00F8CC20, where FUN_004B3C50 is stored). The Scene tick is therefore a ScenePacket METHOD, called via the [[Sqex_Thread_Queue_ScenePacket_vftable]] (BCS-Y-1733 NEW) at 0x00F931C0 - which is a THREAD-SAFE QUEUE of ScenePackets. The Scene system architecture: ScenePackets are enqueued into the Queue<ScenePacket>; the queue-drain loop calls each ScenePacket's slot 3 (the tick method). This is the missing piece - the 'Scene manager' is not a SceneManager class but rather a Sqex::Thread::Queue<ScenePacket> instance.",
+    "**Sqex::Thread::Queue<ScenePacket> class identity** (BONUS DISCOVERY): vftable [[Sqex_Thread_Queue_ScenePacket_vftable]] (BCS-Y-1733 NEW) at 0x00F931C0, TD [[Sqex_Thread_Queue_ScenePacket_TypeDescriptor]] (BCS-Y-1734 NEW) at 0x0126A7E0. **First cataloged class in the `Sqex::Thread::*` namespace** - a new top-level hierarchy that exposes thread-safe primitives. The class is a TEMPLATE instantiation `Queue<T>` with T = Application::Scene::ScenePacket. Suggests the engine has other Queue<T> instantiations for other packet/message types (worth a follow-up scan).",
+    "**ScenePacket TD now cataloged** (BCS-Y-1732 NEW) at 0x01269594. Full RTTI quartet: TD 0x01269594, COL 0x01140AD4, CHD 0x01140AE8, BCA 0x01140AF8, vftable 0x00F8CC14. Pairs with [[Application_Scene_ScenePacket_class_vftable]] (BCS-Y-1715, address now resolved). ScenePacket is a single-class hierarchy (numBaseClasses=1, just self - per the single RTTI_Base_Class_Descriptor_at_(0,-1,0,64) entry).",
+    "**_onTimer-to-MS-scheduled link CONFIRMED via DAT_01377EE8 routing**. DAT_01377EE8 (canonical MS-callback dispatch ID per BCS-Y-1698 notes) has exactly 1 READ in [[LuaMsScheduledFireEntry_FUN_00CE1840]] (BCS-Y-1698) + 1 WRITE init at 0x00F2D051. The write site stores the canonical ID into DAT_01377EE8 at engine initialization (likely from a global static init function that registers the canonical _onTimer ID). The MS-scheduled tick reads DAT_01377EE8 and invokes the MS dispatch core FUN_00CCEAC0 (BCS-Y-1697) with that ID - which fires `_onTimer` callbacks. the hypothesis 'event name _onTimer fires via the scheduled-callback mechanism via DAT_01377EE8' is therefore STRONGLY SUPPORTED by the xref structure. Full verification would require decomping the write site at 0x00F2D051 to see the value being written (whether it's a hash of '_onTimer' or a registry-derived ID).",
+    "**Scene tick architecture refined**: Scene tick FUN_004B3C50 is at ScenePacket vftable slot 3 (offset +0x0C). MSVC vftable slots 0-2 by convention are: 0=dtor, 1=clone or other, 2=base-method-1. Slot 3 = base-method-2. So the Scene tick is the SECOND virtual method on ScenePacket. The first virtual method (slot 2 at offset +0x08) is presumably the 'initialize/setup' or 'serialize' method. The Queue<ScenePacket> drain loop probably calls slot 3 (tick) for processing then slot 0 (dtor) for cleanup."
+  ],
+  "new_bcsy_entries_summary": {
+    "rtti_quartet_completions": 0,
+    "new_class_identities": 3,
+    "amendments": 4,
+    "total_bcsy_added": 3,
+    "id_range": "BCS-Y-1732..BCS-Y-1734",
+    "amendment_targets": [
+      "BCS-Y-1707 (GetNameListenerInterface): TD address resolved from 'deferred' to 0x012BF5E0",
+      "BCS-Y-1715 (ScenePacket vftable): vftable address resolved from 'deferred' to 0x00F8CC14",
+      "BCS-Y-1713 (Scene tick FUN_004B3C50): Scene manager identified - FUN_004B3C50 is ScenePacket vftable slot 3, invoked via Queue<ScenePacket> drain",
+      "BCS-Y-1704 (_onTimer string literal): MS-scheduled dispatch link confirmed via DAT_01377EE8 -> FUN_00CE1840 routing"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp the write site at 0x00F2D051 (probably inside a global static init function) to see the exact value being written to DAT_01377EE8 - confirms whether it's a hash of '_onTimer' string or a registry-derived class-ID.",
+    "Decomp the 4 slots of ScenePacket vftable (0x00F8CC14): slot 0 = vector deleting dtor (TBD), slot 1 (TBD), slot 2 (TBD), slot 3 = FUN_004B3C50 Scene tick. Identifies the full ScenePacket interface contract.",
+    "Decomp the Sqex::Thread::Queue<ScenePacket> implementation - find the drain loop that iterates packets and calls slot 3. Likely a method on the Queue class itself. This identifies the actual SCENE-TICK INVOKER (whatever instantiates the Queue<ScenePacket> singleton and runs its drain loop).",
+    "Search for other Sqex::Thread::Queue<T> template instantiations in the symbol table. Likely candidates: Queue<NetworkPacket>, Queue<InputEvent>, etc. Each represents a thread-safe message-passing primitive in the engine.",
+    "Decomp DisplayNameResolverListener_dtor_FUN_00776460 (BCS-Y-1708) to see how it interacts with the now-resolved GetNameListenerInterface TD 0x012BF5E0."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1718 -> 1721 (+3 BCS-Y; BCS-Y-1732..1734)",
+  "files_changed": [
+    "manifests/symbols.json: +3 entries (BCS-Y-1732..1734), 4 amendments",
+    "manifests/cross_class_followups.json (NEW, this file)",
+    "tools/ghidra/logs/c57_scenepacket_symbols.txt (NEW - ScenePacket symbol search)",
+    "tools/ghidra/logs/c57_getname_symbols.txt (NEW - GetNameListenerInterface symbol search)",
+    "tools/ghidra/logs/c57_misc_xrefs.txt (NEW - 3 xref scans)",
+    "tools/extractors/append_cross_class_followups.py (NEW)"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_architectural_finding_promotion",
+  "scope": "Decomp the 2 'binder' functions identified earlier (FUN_00599CB0 + FUN_0068DDF0) plus the parent ctor they chain through (FUN_00539890). Closes the manifest deferred_followups[0] binder investigation. Surfaces client-architecture 'Sqwt UI elements follow a uniform heap-factory': 'Sqwt Element classes follow a uniform heap-factory + ctor-integrated event-subscription pattern'. Architectural findings count 13 -> 14.",
+  "method": {
+    "step1": "Ghidra DumpFunctionDecomp on the 2 'binder' candidates from the (FUN_00599CB0 + FUN_0068DDF0). Output: tools/ghidra/logs/c57_known_binders_decomp.txt. Key revelation: these are NOT separate binder methods - they are the OWNER CLASS CONSTRUCTORS (LuaDebugLog::ctor + LuaDebugSelect::ctor) with integrated event-handler allocation + subscription.",
+    "step2": "Decomp the parent ctor (FUN_00539890) and the 2 callers identified as Callers of the LuaDebug* ctors (FUN_00533840 + FUN_00533940). Output: c57_higher_decomp.txt. Revealed: FUN_00539890 is XamlElement::ctor (parent of both LuaDebug* classes); FUN_00533840 + FUN_00533940 are HEAP FACTORIES mirroring the Receiver heap-factory pattern (BCS-Y-1023 / 1144 / 1145).",
+    "step3": "FindAllReferences on 4 delegate vftables from 4 OTHER parent classes (FormElement / FormElement-derived / XamlElement / CameraElement) to identify their lifecycle functions. Output: c57_other_class_xrefs.txt. Cross-class confirmation for the pattern.",
+    "step4": "DumpFunctionDecomp on 5 cross-class delegate ctor candidates (FUN_00543AD0 + 4 CameraElement). Output: c57_concrete_check_decomp.txt. Identified: FUN_00543AD0 is FormElement::RoutedEventHandler::ctor (derived, 105B); FUN_00569620 is CameraElement::EventHandler<MouseEventArgs>::ctor (base, 109B). Both match the LuaDebug delegate-ctor template exactly - inferring pattern generality.",
+    "step5": "Catalog 5 new BCS-Y entries (BCS-Y-1330..1334): 2 heap factories + 2 owner ctors + 1 parent ctor (XamlElement). Each entry documents the role within client-architecture 'Sqwt UI elements follow a uniform heap-factory' section's 3-layer pattern.",
+    "step6": "Append client-architecture 'Sqwt UI elements follow a uniform heap-factory' to the architectural findings with full pattern documentation, subscription mechanism specification (vtable[+0xB4]->slot[+0x28]), inheritance chain, and cross-class evidence."
+  },
+  "binder_summary": {
+    "title": "Sqwt Element classes follow a uniform heap-factory + ctor-integrated event-subscription pattern",
+    "layers": [
+      {"layer": "HeapFactory", "shape": "simple-factory: alloc N bytes + class ctor + return", "exemplars": ["BCS-Y-1330 LuaDebugLog (0xF0)", "BCS-Y-1332 LuaDebugSelect (0x100)"], "parallel_to": "Receiver heap-factory BCS-Y-1023 / 1144 / 1145"},
+      {"layer": "Owner ctor", "shape": "parent ctor chain + vftable writes + field init + form load + delegate alloc + subscribe", "exemplars": ["BCS-Y-1331 LuaDebugLog::ctor (575B)", "BCS-Y-1333 LuaDebugSelect::ctor (586B)"]},
+      {"layer": "Subscription mechanism", "shape": "target->vtable[+0xB4]->slot[+0x28](event_id_global, handler)", "evidence_va": ["FUN_00599CB0 lines for 2 KeyEventHandler subscribes", "FUN_0068DDF0 lines for inline RoutedEventHandler + heap SelectionChangedEventHandler subscribes"]}
+    ],
+    "inheritance_chain": "RaptureElement (BCS-Y-0539) <- XamlElement (BCS-Y-1334) <- LuaDebugLog/LuaDebugSelect/etc concrete Element classes",
+    "subscription_vtable_offset": "+0xB4 (interface secondary vtable pointer field)",
+    "subscription_slot_offset": "+0x28 (decimal 10; subscribe method)",
+    "globals_observed": ["DAT_0133c9f8 (event source registry key)", "DAT_0133ca50 (event source registry key)", "DAT_0133caa8 (event source registry key)", "DAT_01359614 (event channel ID, shared across both LuaDebugLog handlers)"],
+    "promotion_confidence": "confirmed",
+    "evidence_count": "2 direct decomp instances (LuaDebugLog + LuaDebugSelect) + 2 cross-class delegate-ctor evidence (FormElement + CameraElement) + 173 RTTI-cataloged delegate vftables"
+  },
+  "key_findings": [
+    "**The named 'binders' are actually OWNER CLASS CTORS** (LuaDebugLog::ctor + LuaDebugSelect::ctor), not separate binder methods. The 'binder' framing was a misread - the owner ctor itself constructs all handler objects + subscribes them inline. Single-binder-per-owner-class from the is technically true (each owner has one ctor) but it's better framed as ctor-integrated subscription rather than a separate binder pattern.",
+    "**The HEAP FACTORY PATTERN generalizes from Receivers to Elements**. Previously known for Receiver classes (BCS-Y-1023 SendLogReceiver, BCS-Y-1144 AchievementIdReceiver, BCS-Y-1145 VehicleGradeReceiver). The same shape holds for Element classes (BCS-Y-1330 LuaDebugLog, BCS-Y-1332 LuaDebugSelect). 117-byte body, simple alloc-and-ctor pattern, zero direct instruction-level callers. Suggests this is a GENERAL architectural pattern across all Sqwt heap-allocated classes - both UI Elements and Receivers.",
+    "**Inheritance chain RaptureElement <- XamlElement <- LuaDebugLog/Select**. XamlElement::ctor (BCS-Y-1334 FUN_00539890) chains to RaptureElement::ctor (BCS-Y-0539). XamlElement is the parent of both LuaDebug* classes AND likely of FormElement / CameraElement / TargetElement / Esrb / etc. - the 52 parent classes from the broader sweep are mostly under this XamlElement umbrella. Confirms a hierarchical Sqwt UI class tree with RaptureElement at the root.",
+    "**Subscription mechanism is target->vtable[+0xB4]->slot[+0x28](event_id, handler)**. The +0xB4 field offset and +0x28 slot offset (decimal 10) are STRUCTURAL CONSTANTS of the Sqwt event-source class layout. Every event source class has a secondary interface vtable embedded at +0xB4; that interface's slot[10] is the subscribe method. This is the Sqwt analog of WPF's INotifyPropertyChanged / event-handler pattern - a structural contract baked into class layout.",
+    "**Multi-handler-per-channel registration is supported**. LuaDebugLog::ctor registers TWO distinct KeyEventHandlers both subscribed to event channel DAT_01359614 but with different callback methods (FUN_00599880 and LAB_00599800). Event source supports broadcast to multiple subscribers - canonical multicast event pattern.",
+    "**LuaDebugSelect demonstrates the embedded-EventHandler optimization** (originally observed earlier). RoutedEventHandler is INLINE-CONSTRUCTED at +0xD0 (no heap alloc); SelectionChangedEventHandler is heap-allocated at +0xC8. Both subscribe via the same +0xB4/+0x28 mechanism. The choice between inline and heap likely reflects 1:1-with-owner-lifetime (inline) vs N:1 or dynamic (heap)."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1330", "name": "LuaDebugLog_HeapFactory_FUN_00533840", "addr": "0x00533840", "size": 117, "role": "Element heap factory"},
+    {"id": "BCS-Y-1331", "name": "LuaDebugLog_ctor_FUN_00599CB0", "addr": "0x00599CB0", "size": 575, "role": "owner ctor with integrated subscription"},
+    {"id": "BCS-Y-1332", "name": "LuaDebugSelect_HeapFactory_FUN_00533940", "addr": "0x00533940", "size": 117, "role": "Element heap factory"},
+    {"id": "BCS-Y-1333", "name": "LuaDebugSelect_ctor_FUN_0068DDF0", "addr": "0x0068DDF0", "size": 586, "role": "owner ctor with integrated subscription + inline EventHandler"},
+    {"id": "BCS-Y-1334", "name": "XamlElement_ctor_FUN_00539890", "addr": "0x00539890", "size": 169, "role": "parent class ctor (XamlElement), chains to RaptureElement"}
+  ],
+  "deferred_followups": [
+    "Decomp FormElement::ctor and CameraElement::ctor by xref-ing the delegate ctors found earlier (FUN_00543AD0 + FUN_00569620). FormElement::ctor would be caller of FUN_0053AF60 (which calls FUN_00543AD0); CameraElement::ctor would be the eventual caller of FUN_005698C0 (which calls FUN_00569620). Direct decomp of those owner ctors would strengthen client-architecture 'Sqwt UI elements follow a uniform heap-factory' from 'high inference' to 'verified across 4+ concrete classes'.",
+    "Decomp the event-source side of the subscription mechanism. The lookup function FUN_0053E580 + FUN_0053E480 + the +0xB4/+0x28 interface vtable structure could be cataloged as a 'Sqwt event-source registry + subscribe interface' subsystem. Would reveal: (a) where event_id globals are written (broadcaster side); (b) the structural definition of the event-source interface vtable; (c) the list of all 30-40+ event channels active in the Sqwt UI.",
+    "Catalog more HeapFactory entries for the 52 parent classes. Each likely has an FUN_00xxxxxx wrapper analogous to BCS-Y-1330 / 1332. Bulk-catalog would generate ~50 BCS-Y entries; useful for completeness but each individually low-EV unless a specific dispatch question references it.",
+    "Investigate whether the heap-factory pattern also applies to non-UI / non-Receiver classes (e.g. Network::, Lua::Script:: classes). If yes, the heap-factory pattern is the universal Sqwt heap-instantiation convention.",
+    "manifest had a 'binder' framing that this manifest corrects. Consider whether to amend the manifest's notes with a forward-link. Currently the BCS-Y-1149 + BCS-Y-1157 notes refer to FUN_00599CB0 / FUN_0068DDF0 as 'binders' - those notes could be amended with BCS-Y-1331 / BCS-Y-1333 wiki-links and the corrected 'owner ctor' framing."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - unchanged"
+  },
+  "symbol_count_delta": "1319 -> 1324 (+5)",
+  "architectural_findings_delta": "13 -> 14",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1330..1334)",
+    "manifests/binder_promotion.json (NEW, this file)",
+    "tools/ghidra/logs/c57_known_binders_decomp.txt (NEW)",
+    "tools/ghidra/logs/c57_higher_decomp.txt (NEW)",
+    "tools/ghidra/logs/c57_other_class_xrefs.txt (NEW)",
+    "tools/ghidra/logs/c57_concrete_check_decomp.txt (NEW)"
+  ]
+}

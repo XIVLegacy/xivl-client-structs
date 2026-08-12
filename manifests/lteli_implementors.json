@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Enumerate all implementors of Component::Lua::GameEngine::LuaThreadEndListenerInterface (LTELI) via FindAllReferencesToAddress on its vftable VA 0x00FD4F48. Closes the deferred follow-up [2]. Result: 14 vftable-writer ctors, 6 distinct implementor classes (2 already known, 4 NEW), plus the interface's own bare ctor/dtor pair.",
+  "method": {
+    "step1": "FindSymbolByName for 'LuaThreadEndListenerInterface' to locate vftable VA + COL + RTTI layout. Log: c80_lteli_symbols.txt. Vftable: 0x00FD4F48; COL: 0x0115CB3C; CHD: 0x0115CB50; BCA: 0x0115CB60 (3 BCDs at offsets 0/96/104); TD: 0x012BFD00.",
+    "step2": "NEW SCRIPT: FindAllReferencesToAddress.java (uses Ghidra's ReferenceManager to capture both code AND data refs, unlike instruction-only FindReferencesToAddresses.java). Find all refs to vftable + COL + TD VAs. Log: c80_lteli_all_refs.txt.",
+    "step3": "Bulk decomp the 12 NEW vftable-writer ctors (excluding known Global at 0x006f15a0 and CutScene at 0x006df3f0). Log: c80_implementors_decomp.txt. Identify class names via vftable writes in each ctor body.",
+    "step4": "Catalog 12 BCS-Y ctor entries (BCS-Y-1484..1495) + amend BCS-Y-1480 (LTELI TD) with implementor enumeration + amend BCS-Y-1460 (Global) and BCS-Y-1473 (CutScene) with secondary ctor variants."
+  },
+  "key_findings": [
+    "**14 ctors WRITE LuaThreadEndListenerInterface::vftable** (FindAllReferencesToAddress evidence):",
+    "  - 2 are the interface's own base ctor + deleting dtor (FUN_0070A9B0, FUN_0070A9C0)",
+    "  - 12 are implementor class ctors (5 distinct CLASSES once we collapse ctor variants)",
+    "**6 distinct implementor CLASSES** (collapsing primary + secondary ctor variants):",
+    "  - (1) Application::Lua::Script::Client::Control::Global (ActorBase-derived) - primary ctor BCS-Y-1460 + secondary BCS-Y-1484",
+    "  - (2) Application::Lua::Script::Client::Control::CutScene (ActorBase-derived) - primary ctor BCS-Y-1473 + secondary BCS-Y-1485",
+    "  - (3) Application::Lua::Script::Client::Control::_anon_FD906835::s_CutScenePreviewThreadEndListner (NEW, anonymous TU class) - ctor BCS-Y-1488 + dtor BCS-Y-1489",
+    "  - (4) Application::Lua::Script::Client::ClientItemSpreadSheetBinderContainer (NEW, no ::Control:: sub-namespace) - ctor BCS-Y-1490 + secondary BCS-Y-1491",
+    "  - (5) Application::Lua::Script::Client::Event::FormManager (NEW, first Event:: sub-namespace class cataloged) - ctor BCS-Y-1492 + secondary BCS-Y-1493",
+    "  - (6) Application::Lua::Script::Client::Event::PlayerManager (NEW, second Event:: sub-namespace class) - ctor BCS-Y-1494 + secondary BCS-Y-1495",
+    "**Sub-namespace distribution**:",
+    "  - 2 Control:: classes (Global, CutScene)",
+    "  - 1 anon_FD906835:: class (s_CutScenePreviewThreadEndListner)",
+    "  - 1 <root> class (ClientItemSpreadSheetBinderContainer)",
+    "  - 2 Event:: classes (FormManager, PlayerManager)",
+    "**LTELI is GENUINELY cross-cutting**: 6 implementor classes span 4 sub-namespaces (Control, anon_FD906835, root, Event). The 'thread end listener' interface is implemented by classes that need notification when a Lua coroutine ends - this is a real lifecycle event hook used across Lua-bridge subsystems."
+  ],
+  "new_bcsy_entries_summary": {
+    "interface_base_pair": 2,
+    "implementor_ctors_new": 8,
+    "secondary_ctors_existing_classes": 2,
+    "total_bcsy_added": 12,
+    "id_range": "BCS-Y-1484..BCS-Y-1495"
+  },
+  "implementor_classes": [
+    "Application::Lua::Script::Client::Control::Global (BCS-Y-1460 + BCS-Y-1485)",
+    "Application::Lua::Script::Client::Control::CutScene (BCS-Y-1473 + BCS-Y-1484)",
+    "Application::Lua::Script::Client::Control::_anon_FD906835::s_CutScenePreviewThreadEndListner (NEW, BCS-Y-1488/1489)",
+    "Application::Lua::Script::Client::ClientItemSpreadSheetBinderContainer (NEW, BCS-Y-1490/1491)",
+    "Application::Lua::Script::Client::Event::FormManager (NEW, BCS-Y-1492/1493)",
+    "Application::Lua::Script::Client::Event::PlayerManager (NEW, BCS-Y-1494/1495)"
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1480", "addition": "14 vftable-writer ctors enumerated; 6 distinct implementor classes across 4 sub-namespaces"},
+    {"id": "BCS-Y-1460", "addition": "Secondary ctor variant identified at BCS-Y-1485"},
+    {"id": "BCS-Y-1473", "addition": "Secondary ctor variant identified at BCS-Y-1484"}
+  ],
+  "deferred_followups": [
+    "Decomp the 6 NEW implementor classes' apply methods (likely vftable slot 0 or 1). Each class has 'thread end' semantics worth understanding.",
+    "Catalog vftable VAs for the 6 implementor classes' own vftables (currently catalogued only via ctor body references).",
+    "Decomp FUN_006FD790 (single non-unwind caller of s_CutScenePreviewThreadEndListner ctor) - the instantiation/registration site.",
+    "Investigate the 3 LTELI BCDs at offsets 0/96/104 - they suggest LTELI is itself a 3-base MI class. Dump LTELI's own RTTI Class Hierarchy Descriptor + Base Class Array (at 0x0115CB60).",
+    "Cross-reference the Event::FormManager + Event::PlayerManager classes against the 31 Network Receivers from the - they might be Receivers' state-management peers.",
+    "Catalog FUN_006FD790 (caller of s_CutScenePreviewThreadEndListner ctor) - likely the cutscene preview event-handler registration function."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1473 -> 1485 (+12 BCS-Y: 2 interface base ctor/dtor + 10 implementor ctor variants)",
+  "files_changed": [
+    "manifests/symbols.json: +12 entries (BCS-Y-1484..1495), 3 amendments (BCS-Y-1480, BCS-Y-1460, BCS-Y-1473)",
+    "manifests/lteli_implementors.json (NEW, this file)",
+    "tools/ghidra/logs/c80_lteli_symbols.txt (NEW)",
+    "tools/ghidra/logs/c80_lteli_all_refs.txt (NEW)",
+    "tools/ghidra/logs/c80_implementors_decomp.txt (NEW)",
+    "tools/ghidra/logs/c80_lteli_td_refs.txt (NEW - empty, instruction-only scan)"
+  ]
+}

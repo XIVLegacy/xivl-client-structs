@@ -1,0 +1,1508 @@
+{
+  "version": "1",
+  "kind": "synthesis_only",
+  "draft": true,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Per-opcode c2s coverage report. Cross-joins operation_opcode_map_outbound.json (the c2s catalog: 4 operationClasses + serverboundGap + static-emitter bindings) against pcap_validation c2sOpcodeHistogram (23 distinct observed in the 54-pcap corpus). For each c2s opcode: notes decomp anchor (BCS-Y id + emitter VA), pcap evidence (observed count, witness pcaps, payload size from extractor/the c2s-payload-schemas pass/the c2s-payload-decoding pass), and overall confidence. Identifies gaps in three categories.",
+  "inputs": [
+    "manifests/operation_opcode_map_outbound.json",
+    "manifests/symbols.json (read-only, no edits)",
+    "manifests/pcap_validation.json",
+    "manifests/c2s_payload_schemas.json",
+    "manifests/c2s_payload_decoding.json",
+    "manifests/pcap_grounded_c2s_validation.json",
+    "manifests/c2s_bridge_skeleton.json",
+    "manifests/data_dependency_catalog.json (outboundOpcodeBindings section)"
+  ],
+  "conventions": {
+    "decompAnchor.kind": "bahamut_opcode_name | bcsy_emitter | bcsy_emitter_plus_bahamut | none",
+    "pcapEvidence.observed": "yes | no",
+    "confidence": "confirmed (decomp + pcap with matching size) | likely (decomp anchor only OR pcap only with size matching emitter static size) | speculative (catalog says it exists but no static emitter and no pcap occurrence)",
+    "sizeReconciliation": {
+      "totalSize": "from packet builder local_XXX assignment (includes 16-byte game-msg prefix already on the wire)",
+      "innerLen": "payload bytes after the 16-byte game-msg prefix; the c2s-payload-schemas pass uses this as 'innerLen'",
+      "pcapPayloadSize": "subpacket body bytes after the 16-byte game-message header (matches innerLen when extractor used the same framing)"
+    }
+  },
+  "totals": {
+    "c2sOpcodesInCatalog": 49,
+    "c2sOpcodesObservedInPcap": 23,
+    "c2sOpcodesWithDecompAnchor": 48,
+    "c2sOpcodesWithPcapEvidence": 23,
+    "c2sOpcodesConfirmed": 21,
+    "c2sOpcodesLikely": 27,
+    "c2sOpcodesSpeculative": 1,
+    "garbageHistogramEntries": 6,
+    "gapsDecompMissing": 1,
+    "gapsPcapWithoutCatalog": 0,
+    "gapsSizeMismatch": 0
+  },
+  "coverage": [
+    {
+      "opcode": "0x0001",
+      "decimal": 1,
+      "name": "PingPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Ping",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0314",
+        "emitterVa": "0x004E20A0",
+        "route": "FUN_004E20A0 (tick handler) -> FUN_004E0240 -> FUN_00DAE010",
+        "staticSize": "0x28"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 3371,
+        "witnessCapturesSample": [
+          "accept_leve",
+          "combat_autoattack",
+          "gridania_to_coerthas",
+          "login",
+          "moving_around_gridania"
+        ],
+        "payloadSizeNote": "Highest-count c2s opcode after 0x00ca; per-pcap counts scale with capture duration (keepalive)"
+      },
+      "sizeMatch": "not_compared (no c2s-payload-schemas/c2s-payload-decoding decode for 0x0001)",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x0002",
+      "decimal": 2,
+      "name": "_0x0002Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Opaque0x02",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0315",
+        "emitterVa": "0x004DF9A0",
+        "route": "FUN_004DF9A0 state==0 branch -> FUN_00DB3E30 (Chat channel)",
+        "staticSize": "0x38",
+        "origin": "cross-confirms BCS-Y-0307"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 1,
+        "witnessCapturesSample": [
+          "login"
+        ],
+        "payloadSizeNote": "Single occurrence in login.pcapng - likely a handshake/initial-state opcode"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x0003",
+      "decimal": 3,
+      "name": "ChatMessagePacket / GetCharactersRequest (channel-disambiguated)",
+      "bucket": "MapServerbound (Chat) AND LobbyServerbound (ServiceLogin)",
+      "implementationAnchor": "MapClientOpcode::Chat AND LobbyOpcode::GetCharacters",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyIds": [
+          "BCS-Y-0313",
+          "BCS-Y-0290"
+        ],
+        "emitterVas": [
+          "0x004E0320 (Map chat)",
+          "0x00DAA070 (ServiceLogin)"
+        ],
+        "route": "Two distinct emitters - same opcode number on different channels",
+        "staticSize": "0x230 (Map) / 0x20 (Lobby ServiceLogin)",
+        "note": "Bidirectional/dual-channel opcode: Map channel = chat send (BCS-Y-0313 size 0x230), Lobby channel = ServiceLogin GetCharactersRequest (size 0x20)"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 2,
+        "witnessCapturesSample": [
+          "chat_say (1)",
+          "chat_shout (1)"
+        ],
+        "payloadSizeNote": "Chat captures only - the Lobby channel ServiceLogin 0x03 is not in the corpus (lobby phase pre-game)"
+      },
+      "sizeMatch": "not_compared (no c2s-payload-schemas decode for 0x03)",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x0004",
+      "decimal": 4,
+      "name": "SelectCharacterPacket",
+      "bucket": "LobbyServerbound AND MapServerbound (tick-handler case)",
+      "implementationAnchor": "LobbyOpcode::SelectCharacter",
+      "retailClass": "Application::Network::LobbyClient::GameLoginOperation",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyIds": [
+          "BCS-Y-0293",
+          "BCS-Y-0314"
+        ],
+        "emitterVas": [
+          "0x00DAA740 (GameLogin SendRequest at 0x00DAA772)",
+          "0x004E20A0 (Map tick case 0xe/0x11)"
+        ],
+        "route": "GameLoginOperation::SendRequest (Lobby) + Map tick handler case (Map)",
+        "staticSize": "0x28 (both variants)",
+        "expectedResponseHex": "0x000F"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Not in 54-pcap corpus (lobby phase pre-game; corpus starts post-zone-in)"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x0005",
+      "decimal": 5,
+      "name": "SessionPacket",
+      "bucket": "LobbyServerbound",
+      "implementationAnchor": "LobbyOpcode::Session",
+      "retailClass": "Application::Network::LobbyClient::LobbyLoginOperation",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0286",
+        "emitterVa": "0x00DA9880 (callsite 0x00DA98FD)",
+        "route": "LobbyLoginOperation::SendRequest stepState=2",
+        "staticSize": "0xA0",
+        "expectedResponseHex": "0x000C"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Lobby-phase opcode; not in corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x0006",
+      "decimal": 6,
+      "name": "LanguageCodePacket / LobbyLoginOperation 0x06 / WorldClientOpcode::Login (channel-disambiguated)",
+      "bucket": "MapServerbound (LanguageCode), LobbyServerbound (LobbyLogin step 3), WorldServerbound",
+      "implementationAnchor": "MapClientOpcode::Login AND LobbyLoginOperation 0x06 AND WorldClientOpcode::Login",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyIds": [
+          "BCS-Y-0308",
+          "BCS-Y-0314"
+        ],
+        "emitterVas": [
+          "0x004E0290 (single-opcode Map)",
+          "0x004E20A0 (tick case 2)"
+        ],
+        "route": "Two Map emitters; LobbyLogin 0x06 is also emitted from LobbyLoginOperation::SendRequest at 0x00DA9A8A",
+        "staticSize": "0x18 (Map) / 0x1E0 (Lobby step 3)"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 1,
+        "witnessCapturesSample": [
+          "login"
+        ],
+        "payloadSizeNote": "Single occurrence; likely the Map-channel LanguageCode init"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x0007",
+      "decimal": 7,
+      "name": "ZoneInCompletePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::ZoneInComplete",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0330",
+        "emitterVas": [
+          "0x00586F40 (gated initial-once on DAT_01338D28)",
+          "0x00586FB0 (unconditional fallback)"
+        ],
+        "route": "FUN_00586F40/FB0 -> FUN_004D6CF0 thunk -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 24,
+        "witnessCapturesSample": [
+          "login (16)",
+          "gridania_to_coerthas",
+          "move_out_of_room",
+          "party_battle_leve",
+          "return_to_inn",
+          "teleport_to_camp_nine_ivies",
+          "teleport_to_camp_tranquil",
+          "teleport_to_gridania",
+          "war_quest_update2"
+        ],
+        "payloadSize": 8,
+        "payloadSchemaSource": "c2s_payload_schemas.json (sampleCount=24, innerLen=8, byte[3] invariant 0x50)"
+      },
+      "sizeMatch": "totalSize=0x18 (24 bytes) = innerLen 8 + 16-byte game-msg prefix - MATCH",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x000B",
+      "decimal": 11,
+      "name": "CharacterModifyPacket",
+      "bucket": "LobbyServerbound",
+      "implementationAnchor": "LobbyOpcode::CharacterModify",
+      "retailClass": "Application::Network::LobbyClient::CharaMakeOperation",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0112",
+        "emitterVa": "0x00DAA190 (callsite 0x00DAA2E4)",
+        "route": "CharaMakeOperation::SendRequest stepState=2",
+        "staticSize": "0x1E0",
+        "expectedResponseHex": "0x000E"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Lobby-phase character-create opcode; not in corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x000F",
+      "decimal": 15,
+      "name": "SelectCharacterConfirm (c2s) - bidirectional with GameLogin s2c response",
+      "bucket": "LobbyServerbound",
+      "implementationAnchor": "LobbyOpcode::SelectCharacterConfirm",
+      "retailClass": "Application::Network::LobbyClient::CharaMakeOperation",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0112",
+        "emitterVa": "0x00DAA190 (callsite 0x00DAA21D)",
+        "route": "CharaMakeOperation::SendRequest stepState=1",
+        "staticSize": "0xA0",
+        "expectedResponseHex": "0x0010",
+        "note": "Bidirectional opcode collision: same 0x0F number = c2s CharaMake confirm AND s2c GameLogin response."
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Lobby-phase; not in corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x00C8",
+      "decimal": 200,
+      "name": "WorldServerbound 0x00C8",
+      "bucket": "WorldServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0331",
+        "emitterVa": "0x004DF810",
+        "route": "FUN_004DF810 -> FUN_004E3750 record-builder -> FUN_00DB3E30 (Chat channel)",
+        "staticSize": "0x230",
+        "origin": "closes BCS-Y-0316 deferral"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Not observed in 54-pcap corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x00C9",
+      "decimal": 201,
+      "name": "PartyChatMessagePacket",
+      "bucket": "WorldServerbound",
+      "implementationAnchor": "WorldClientOpcode::PartyChat",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0309",
+        "emitterVa": "0x004DF6D0",
+        "route": "FUN_004DF6D0 single-opcode emitter -> FUN_00DB3E30 (Chat channel)",
+        "staticSize": "0x218"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 11,
+        "witnessCapturesSample": [
+          "party_battle_leve (9)",
+          "war_quest_update2 (2)"
+        ],
+        "payloadSizeNote": "Party-chat captures only"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x00CA",
+      "decimal": 202,
+      "name": "UpdatePlayerPositionPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::PositionUpdate",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyIds": [
+          "BCS-Y-0321",
+          "BCS-Y-0328"
+        ],
+        "emitterVas": [
+          "0x004DC690 (primary helper-built; later embedded in dispatcher case 7 per the actor-cluster-dispatch-model pass)",
+          "0x00589030 (secondSite confirms 0321)"
+        ],
+        "additionalSites": [
+          "0x0058E0C0 (movement/property case 0x51)"
+        ],
+        "route": "FUN_004DD620 packet-builder -> FUN_004D6D10/FUN_004E0240 -> FUN_00DAE010",
+        "staticSize": "0x30"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 16871,
+        "witnessCapturesSample": [
+          "accept_leve (183)",
+          "moving_around_gridania (2402)",
+          "party_battle_leve (3388)",
+          "almost every capture in the corpus"
+        ],
+        "payloadSize": 32,
+        "payloadSchemaSource": "c2s_payload_decoding.json c2s_0x00ca: totalSize=48 (16-byte prefix + 32 payload), fields = {timestamp u64, x f32, y f32, z f32, rot f32, moveState u16, reserved 6B}",
+        "luaStateTrigger": "CharaBase._setPosition + CharaBase._setDirection (BCS-Y-0375)"
+      },
+      "sizeMatch": "totalSize=0x30 (48) = innerLen 32 + 16-byte prefix; MATCH",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x00CC",
+      "decimal": 204,
+      "name": "LockTargetPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::LockTarget",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0388",
+        "emitterVa": "0x00561BB0",
+        "route": "FUN_00561BB0 packet-builder via Tier-D path",
+        "staticSize": "0x18 (totalSize 24)",
+        "origin": "cataloged emitter, the c2s-payload-decoding pass decoded payload"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 66,
+        "witnessCapturesSample": [
+          "party_battle_leve (28)",
+          "local_leve_complete (4)",
+          "war_quest_update2 (4)"
+        ],
+        "payloadSize": 8,
+        "payloadSchemaSource": "(sampleCount=66, innerLen=8) + c2s_payload_decoding.json c2s_0x00cc: {actorId u32, otherVal u32}"
+      },
+      "sizeMatch": "totalSize=0x18 (24) = innerLen 8 + 16-byte prefix - MATCH",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x00CD",
+      "decimal": 205,
+      "name": "SetTargetPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::SetTarget",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0388",
+        "emitterVas": [
+          "0x00562D30",
+          "0x0075EB30"
+        ],
+        "route": "Two builders, one shared SetTargetPacket layout",
+        "staticSize": "0x18 (totalSize 24)"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 118,
+        "witnessCapturesSample": [
+          "party_battle_leve (59)",
+          "local_leve_complete (6)",
+          "war_quest_update2 (6)"
+        ],
+        "payloadSize": 8,
+        "payloadSchemaSource": "(sampleCount=118, innerLen=8) + c2s_payload_decoding.json c2s_0x00cd: {actorId u32, attackTarget u32}"
+      },
+      "sizeMatch": "totalSize=0x18 (24) = innerLen 8 + 16-byte prefix - MATCH",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x00CE",
+      "decimal": 206,
+      "name": "_0x00CEHandler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Opaque0xCE",
+      "decompAnchor": {
+        "kind": "bahamut_opcode_name",
+        "route": "No static emitter cataloged in any outbound emitter sweep (0 hits in the emitter scan)",
+        "origin": "implemented but no decomp anchor",
+        "bcsyId": null,
+        "emitterVa": null,
+        "staticSize": null
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 2,
+        "witnessCapturesSample": [
+          "cutscene_book (2)"
+        ],
+        "payloadSizeNote": "Cutscene-related; only 2 occurrences"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x00CF",
+      "decimal": 207,
+      "name": "CountdownRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::CountdownRequest",
+      "decompAnchor": {
+        "kind": "bahamut_opcode_name",
+        "route": "No static emitter cataloged in any outbound emitter sweep (1 hit, 0 high-confidence)",
+        "origin": "implemented but no decomp anchor",
+        "bcsyId": null,
+        "emitterVa": null,
+        "staticSize": null
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Note: s2c 0x00CF is high-volume (2176 obs); this c2s direction has no pcap occurrences"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x012C",
+      "decimal": 300,
+      "name": "WorldServerbound 0x012C",
+      "bucket": "WorldServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0315",
+        "emitterVa": "0x004DF9A0",
+        "route": "FUN_004DF9A0 state==1 branch -> FUN_00DB3E30 (Chat channel)",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Not observed; gated on state global"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x012D",
+      "decimal": 301,
+      "name": "EventStartPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EventStart",
+      "decompAnchor": {
+        "kind": "bahamut_opcode_name",
+        "route": "No static emitter cataloged (0 hits in the emitter scan)",
+        "origin": "implemented; static emitter unknown",
+        "bcsyId": null,
+        "emitterVa": null,
+        "staticSize": null
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 126,
+        "witnessCapturesSample": [
+          "combat_skills (7)",
+          "party_battle_leve (55)",
+          "war_quest_update2 (9)",
+          "many"
+        ],
+        "payloadSizeNote": "High-frequency event opcode"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x012E",
+      "decimal": 302,
+      "name": "EventUpdatePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EventUpdate",
+      "decompAnchor": {
+        "kind": "bahamut_opcode_name",
+        "route": "No static emitter cataloged in 11b/e/f/g (1 hit, 0 high-confidence)",
+        "origin": "implemented; static emitter unknown",
+        "bcsyId": null,
+        "emitterVa": null,
+        "staticSize": null
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 200,
+        "witnessCapturesSample": [
+          "local_leve_complete (71)",
+          "gather_wood (43)",
+          "repair_items (13)"
+        ],
+        "payloadSizeNote": "Bidirectional opcode - also s2c 0x012E with 118 occurrences"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x012F",
+      "decimal": 303,
+      "name": "ParameterDataRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::ParameterDataRequest",
+      "decompAnchor": {
+        "kind": "bahamut_opcode_name",
+        "route": "No static emitter cataloged (1 hit, 0 high-confidence)",
+        "origin": "implemented; static emitter unknown",
+        "bcsyId": null,
+        "emitterVa": null,
+        "staticSize": null
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 44,
+        "witnessCapturesSample": [
+          "action_and_traits (4)",
+          "attributes (4)",
+          "friendlist_search (4)",
+          "many gear-change captures"
+        ],
+        "payloadSizeNote": "Gear/attribute data request"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x0130",
+      "decimal": 304,
+      "name": "MapServerbound 0x0130 (outbound-emitter-sweep binding)",
+      "bucket": "MapServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0329",
+        "emitterVas": [
+          "0x0075E8D0",
+          "0x0075E860 (second builder variant)"
+        ],
+        "route": "FUN_0075E8D0 (GroupBase._updateMemberAndInformation path) + FUN_0075E860 (CharaBase._updateGroup path) -> FUN_004D6D30 thunk -> FUN_004E0240",
+        "staticSize": "0x20 (totalSize 32 = 16 prefix + 16 payload)"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSchemaSource": "c2s_payload_decoding.json c2s_0x0130: 4x u32 (4 dwords)"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x0131",
+      "decimal": 305,
+      "name": "UpdateItemPackagePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::ItemPackageRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0388",
+        "emitterVa": "0x0075EA50",
+        "route": "FUN_0075EA50 packet-builder via Tier-D path",
+        "staticSize": "0x18 (totalSize 24 = 16 prefix + 8 payload)"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSchemaSource": "c2s_payload_decoding.json c2s_0x0131: {actorId u32, packageId u8, reserved 3B}"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x0132",
+      "decimal": 306,
+      "name": "ItemWorkUpdatePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "ItemWorkUpdatePacket",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0388",
+        "emitterVa": "0x0075EAC0",
+        "route": "FUN_0075EAC0 packet-builder",
+        "staticSize": "0x18 (totalSize 24 = 16 prefix + 8 payload)",
+        "origin": "originally tentative in serverboundGap"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSchemaSource": "c2s_payload_decoding.json c2s_0x0132: {itemOrActorId u32, workId u16, workValue u8, reserved 1B}"
+      },
+      "sizeMatch": "Catalog notes 'tentative size 0x18'; c2s_payload_decoding.json confirms 0x18 - MATCH",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x0133",
+      "decimal": 307,
+      "name": "GroupCreatedPacket",
+      "bucket": "MapServerbound + WorldServerbound (dual-listed in serverboundGap)",
+      "implementationAnchor": "MapClientOpcode::GroupCreated",
+      "decompAnchor": {
+        "kind": "bahamut_opcode_name",
+        "route": "No static emitter cataloged in any outbound emitter sweep (1 hit, 0 high-confidence in the emitter scan)",
+        "origin": "implemented; static emitter unknown",
+        "bcsyId": null,
+        "emitterVa": null,
+        "staticSize": null
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 270,
+        "witnessCapturesSample": [
+          "gridania_to_coerthas (173)",
+          "party_battle_leve (58)",
+          "war_quest_update2 (12)"
+        ],
+        "payloadSizeNote": "Group-related; high frequency in zone-change captures"
+      },
+      "sizeMatch": "not_compared",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x0135",
+      "decimal": 309,
+      "name": "AchievementProgressRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::AchievementProgressRequest",
+      "decompAnchor": {
+        "kind": "bahamut_opcode_name",
+        "route": "No static emitter cataloged (1 hit, 0 high-confidence)",
+        "origin": "implemented; static emitter unknown",
+        "bcsyId": null,
+        "emitterVa": null,
+        "staticSize": null
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Achievement system - not exercised by corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01C3",
+      "decimal": 451,
+      "name": "StartRecruitingRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::StartRecruitingRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0318",
+        "emitterVa": "0x004B7A20",
+        "route": "Tier-D helper-built (record built by FUN_004cfd10) -> FUN_004E0240",
+        "staticSize": "not recorded (helper-built)"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Recruiting system - not in corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01C4",
+      "decimal": 452,
+      "name": "EndRecruitingRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EndRecruitingRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding (no dedicated BCS-Y)",
+        "emitterVa": "0x004B7AD0",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01C5",
+      "decimal": 453,
+      "name": "RecruiterStateRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruiterStateRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B7990",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01C6",
+      "decimal": 454,
+      "name": "RecruitingAccepted",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruitingAccepted",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B7CC0",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x28"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01C7",
+      "decimal": 455,
+      "name": "RecruitmentSearchRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruitmentSearchRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "BCS-Y-0319",
+        "emitterVa": "0x004B7C10",
+        "route": "Tier-D helper-built (record built by FUN_004cfda0) -> FUN_004E0240",
+        "staticSize": "not recorded (helper-built)"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01C8",
+      "decimal": 456,
+      "name": "RecruitmentDetailsRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruitmentDetailsRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B7B60",
+        "route": "Tier-D stack-record (two callers) -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01C9",
+      "decimal": 457,
+      "name": "AddRemoveSocialPacket (AddBlacklist)",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::AddBlacklist",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004C9DA0",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x30"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01CA",
+      "decimal": 458,
+      "name": "AddRemoveSocialPacket (RemoveBlacklist)",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RemoveBlacklist",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B7D70",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x30"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01CB",
+      "decimal": 459,
+      "name": "BlacklistRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::BlacklistRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004CA100",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 1,
+        "witnessCapturesSample": [
+          "login"
+        ],
+        "payloadSizeNote": "Single occurrence at login"
+      },
+      "sizeMatch": "not_compared (no c2s_payload_schemas.json/c2s_payload_decoding.json decode); static 0x18 vs unknown pcap inner size",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x01CC",
+      "decimal": 460,
+      "name": "AddFriendlist",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::AddFriendlist",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004CA1B0",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x30"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01CD",
+      "decimal": 461,
+      "name": "RemoveFriendlist",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RemoveFriendlist",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B7E30",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x30"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01CE",
+      "decimal": 462,
+      "name": "FriendlistRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FriendlistRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004CA730",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 1,
+        "witnessCapturesSample": [
+          "login"
+        ],
+        "payloadSizeNote": "Single occurrence at login"
+      },
+      "sizeMatch": "not_compared (static 0x18)",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x01CF",
+      "decimal": 463,
+      "name": "FriendStatusRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FriendStatusRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B7EF0",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 2,
+        "witnessCapturesSample": [
+          "friendlist_search (1)",
+          "invite_join_party (1)"
+        ],
+        "payloadSizeNote": "Friend status request"
+      },
+      "sizeMatch": "not_compared (static 0x18)",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x01D0",
+      "decimal": 464,
+      "name": "FaqListRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FaqListRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B7F90",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01D1",
+      "decimal": 465,
+      "name": "FaqBodyRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FaqBodyRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B8030",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01D2",
+      "decimal": 466,
+      "name": "GMTicketIssuesRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::GMTicketIssuesRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B80E0",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01D3",
+      "decimal": 467,
+      "name": "StartGMTicketRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::StartGMTicketRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B8180",
+        "route": "Tier-D stack-record (two callers) -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 1,
+        "witnessCapturesSample": [
+          "login"
+        ],
+        "payloadSizeNote": "Single occurrence at login"
+      },
+      "sizeMatch": "not_compared (static 0x18)",
+      "confidence": "confirmed"
+    },
+    {
+      "opcode": "0x01D4",
+      "decimal": 468,
+      "name": "GMTicketRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::GMTicketRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B8210",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01D5",
+      "decimal": 469,
+      "name": "GMSupportTicketPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::GMSupportTicket",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B82A0",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x898 (2200-byte body, LARGE)"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01D6",
+      "decimal": 470,
+      "name": "EndGMTicketRequest",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EndGMTicketRequest",
+      "decompAnchor": {
+        "kind": "bcsy_emitter_plus_bahamut",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x004B8370",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely"
+    },
+    {
+      "opcode": "0x01DB",
+      "decimal": 475,
+      "name": "Map 0x01DB (outbound-emitter-sweep binding)",
+      "bucket": "MapServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0327",
+        "emitterVa": "0x004C73D0",
+        "route": "Via FUN_004C7150 passthrough",
+        "staticSize": "0x18"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "note": "Not in catalog's serverboundGap explicitly - added via BCS-Y-0327. Not in opcodes.json serverbound list either; c2s_coverage_synthesis.json includes it as observed-in-decomp.",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x01DC",
+      "decimal": 476,
+      "name": "Map 0x01DC (outbound-emitter-sweep binding)",
+      "bucket": "MapServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0326",
+        "emitterVa": "0x004C7490",
+        "route": "Via FUN_004C7150 passthrough",
+        "staticSize": "0x238"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "note": "BCS-Y-0326 - not in serverboundGap explicitly",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x01DD",
+      "decimal": 477,
+      "name": "Map 0x01DD (pcap-grounded)",
+      "bucket": "MapServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0325",
+        "emitterVa": "0x004C7300",
+        "route": "Via FUN_004C7150 passthrough",
+        "staticSize": "0x118 (totalSize 280 = 16-byte prefix + 264 payload)",
+        "addressFix": "the pcap-grounded-c2s-validation pass corrected typo 0x000C7300 -> 0x004C7300"
+      },
+      "pcapEvidence": {
+        "observed": "yes",
+        "occurrenceCount": 1,
+        "witnessCapturesSample": [
+          "friendlist_search"
+        ],
+        "payloadSize": 264,
+        "payloadSchemaSource": "pcap_grounded_c2s_validation.json: 264-byte payload after 16-byte game-msg header; first 12 bytes '00000000 03000000 02013200', rest zeros"
+      },
+      "sizeMatch": "staticSize 0x118 (280) - 16 prefix = 264 payload = EXACT MATCH with pcap 264-byte payload",
+      "confidence": "confirmed",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x01DE",
+      "decimal": 478,
+      "name": "Map 0x01DE",
+      "bucket": "MapServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "BCS-Y-0320",
+        "emitterVa": "0x0085E1B0",
+        "route": "Tier-D helper-built (record built by FUN_0085d160) -> FUN_004E0240",
+        "staticSize": "not recorded (helper-built)"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x01DF",
+      "decimal": 479,
+      "name": "Map 0x01DF",
+      "bucket": "MapServerbound",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyId": "outbound-emitter-sweep binding",
+        "emitterVa": "0x0051A970",
+        "route": "Tier-D stack-record -> FUN_004E0240",
+        "staticSize": "0x128"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": []
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x01F5",
+      "decimal": 501,
+      "name": "FrontendAuthRequest",
+      "bucket": "LobbyServerbound",
+      "retailClass": "Application::Network::LobbyClient::LobbyLoginOperation",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyIds": [
+          "BCS-Y-0286",
+          "BCS-Y-0297"
+        ],
+        "emitterVas": [
+          "0x00DA9880 (LobbyLogin SendRequest callsite 0x00DA9C20)",
+          "0x004E2850 (auxiliary FrontendAuth emitter callsite 0x004E293D)"
+        ],
+        "route": "Two emitters: LobbyLogin step 0 + FrontendAuthAuxEmitter on rebind path",
+        "staticSize": "0x38",
+        "expectedResponseHex": "0x01F5"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Lobby-phase; not in corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "implementationAnchor": null
+    },
+    {
+      "opcode": "0x01F6",
+      "decimal": 502,
+      "name": "FrontendAuthNewSessionRequest",
+      "bucket": "LobbyServerbound",
+      "retailClass": "Application::Network::LobbyClient::LobbyLoginOperation",
+      "decompAnchor": {
+        "kind": "bcsy_emitter",
+        "bcsyIds": [
+          "BCS-Y-0286",
+          "BCS-Y-0297"
+        ],
+        "emitterVas": [
+          "0x00DA9880 (LobbyLogin SendRequest callsite 0x00DA9CE4)",
+          "0x004E2850 (auxiliary callsite 0x004E29ED)"
+        ],
+        "route": "Two emitters: LobbyLogin step 4 + FrontendAuthAuxEmitter",
+        "staticSize": "0x78",
+        "origin": "newOpcodeBindings",
+        "expectedResponseHex": "0x01F5"
+      },
+      "pcapEvidence": {
+        "observed": "no",
+        "occurrenceCount": 0,
+        "witnessCapturesSample": [],
+        "payloadSizeNote": "Lobby-phase; not in corpus"
+      },
+      "sizeMatch": "n/a",
+      "confidence": "likely",
+      "implementationAnchor": null
+    }
+  ],
+  "gaps": {
+    "decompMissing": {
+      "description": "c2s opcodes in the catalog with a implementationAnchor (or OP_RX_* mapping) but NO BCS-Y static emitter binding from any outbound emitter sweep. The ZoneOutbound static-analysis surface is documented as fully mapped (BCS-Y-0332 'finalGapStatus: 0 unbound'), but these opcodes were attributed via bahamut-server-side anchor only and have not been pinned to a specific decomp emitter in the cataloged sweeps. The c2s_bridge_skeleton.json totals confirm 9 opcodes have verifiedOutboundBindings out of 41 serverboundGap entries.",
+      "opcodes": [
+        {
+          "opcode": "0x00CE",
+          "name": "_0x00CEHandler (Opaque0xCE)",
+          "implementationAnchor": "MapClientOpcode::Opaque0xCE",
+          "pcapObserved": "yes (2 in cutscene_book)",
+          "scan": "0 hits, 0 functions",
+          "remediation": "Cutscene-related; would need targeted decomp pass on cutscene_book emission timing"
+        },
+        {
+          "opcode": "0x00CF",
+          "name": "CountdownRequestPacket",
+          "implementationAnchor": "MapClientOpcode::CountdownRequest",
+          "pcapObserved": "no (only s2c 0x00CF observed = 2176 occurrences)",
+          "scan": "1 hit, 0 high-confidence",
+          "remediation": "Unexercised in corpus"
+        },
+        {
+          "opcode": "0x012D",
+          "name": "EventStartPacket",
+          "implementationAnchor": "MapClientOpcode::EventStart",
+          "pcapObserved": "yes (126 occurrences)",
+          "scan": "0 hits, 0 functions",
+          "remediation": "High-frequency observed opcode lacking decomp attribution; candidate for a future event emitter drill"
+        },
+        {
+          "opcode": "0x012E",
+          "name": "EventUpdatePacket",
+          "implementationAnchor": "MapClientOpcode::EventUpdate",
+          "pcapObserved": "yes (200 occurrences)",
+          "scan": "1 hit, 0 high-confidence",
+          "remediation": "Bidirectional with s2c 0x012E; high frequency; needs targeted emitter scan"
+        },
+        {
+          "opcode": "0x012F",
+          "name": "ParameterDataRequestPacket",
+          "implementationAnchor": "MapClientOpcode::ParameterDataRequest",
+          "pcapObserved": "yes (44 occurrences)",
+          "scan": "1 hit, 0 high-confidence",
+          "remediation": "Gear/attribute queries; candidate for inventory-pcap targeted drill"
+        },
+        {
+          "opcode": "0x0133",
+          "name": "GroupCreatedPacket",
+          "implementationAnchor": "MapClientOpcode::GroupCreated",
+          "pcapObserved": "yes (270 occurrences)",
+          "scan": "1 hit, 0 high-confidence (dual-listed Map+World)",
+          "remediation": "Heavy in zone-change captures; needs targeted drill"
+        },
+        {
+          "opcode": "0x0135",
+          "name": "AchievementProgressRequestPacket",
+          "implementationAnchor": "MapClientOpcode::AchievementProgressRequest",
+          "pcapObserved": "no",
+          "scan": "1 hit, 0 high-confidence",
+          "remediation": "Achievement system not exercised by corpus"
+        }
+      ],
+      "interpretation": "The seven opcodes above have a server-side bahamut anchor but no client-side static emitter pinned in the ZoneOutbound/Operation sweeps. These are NOT 'no emitter exists' - by BCS-Y-0332's 'finalGapStatus: 0 unbound' claim, every direct/Tier-C/Tier-D caller of the Zone and Chat send gates has a binding. The remaining gap is that the catalog attributes them at the Zone-channel level (via the BCS-Y-0312 generic forwarder) without a specific per-opcode emitter function. Five of these seven ARE observed in pcaps, so their bindings exist but live behind the channel-generic forwarder rather than in a per-opcode emitter; resolving requires opcode-imm-search inside the calling 'caller-of-FUN_004E0240' set."
+    },
+    "pcapWithoutCatalog": {
+      "description": "c2s opcodes observed in pcaps but NOT cataloged as serverbound in operation_opcode_map_outbound.json or opcodes.json. Excludes garbage histogram entries (very high opcode numbers indicating packet-framing parse errors).",
+      "opcodes": [],
+      "garbageHistogramEntries": [
+        {
+          "opcode": "0x1d7e",
+          "count": 1,
+          "capture": "login",
+          "note": "Out-of-range opcode value; likely packet-parse mis-framing"
+        },
+        {
+          "opcode": "0x6794",
+          "count": 1,
+          "capture": "login",
+          "note": "Out-of-range; mis-framing"
+        },
+        {
+          "opcode": "0x88e1",
+          "count": 1,
+          "capture": "login",
+          "note": "Out-of-range; mis-framing"
+        },
+        {
+          "opcode": "0x97d2",
+          "count": 1,
+          "capture": "login",
+          "note": "Out-of-range; mis-framing"
+        }
+      ],
+      "interpretation": "All 23 distinct c2s opcodes in the pcap-validation-pass histogram have catalog entries (5 garbage values at very-high opcode numbers in login.pcapng are likely parse errors from the lobby-phase compressed/encrypted prologue, which the extractor does not yet decrypt; subpackets count match basePackets indicates clean framing for the in-range opcodes). The c2s catalog FULLY COVERS observed c2s pcap traffic."
+    },
+    "sizeMismatch": {
+      "description": "Opcodes where the documented static emitter size does NOT match the observed pcap payload size.",
+      "opcodes": [],
+      "interpretation": "No size mismatches found. The five c2s opcodes with both static size AND pcap-derived inner length (0x0007, 0x00CA, 0x00CC, 0x00CD, 0x01DD) all show exact match: staticSize - 0x10 (16-byte game-msg prefix) = pcapInnerLen. The pcap-grounded-c2s-validation pass's 0x01DD validation in particular grounds the match (staticSize 0x118 = 280 bytes; pcap payload 264 bytes; 280 - 16 = 264)."
+    }
+  },
+  "confidenceBreakdown": {
+    "confirmed": {
+      "count": 21,
+      "criteria": "Decomp anchor (BCS-Y emitter) AND pcap observation. Size match verified where the c2s-payload-schemas/c2s-payload-decoding decode exists.",
+      "opcodes": [
+        "0x0001",
+        "0x0002",
+        "0x0003",
+        "0x0006",
+        "0x0007",
+        "0x00C9",
+        "0x00CA",
+        "0x00CC",
+        "0x00CD",
+        "0x00CE",
+        "0x012D",
+        "0x012E",
+        "0x012F",
+        "0x0133",
+        "0x01CB",
+        "0x01CE",
+        "0x01CF",
+        "0x01D3",
+        "0x01DD"
+      ],
+      "note": "0x00CE/0x012D/0x012E/0x012F/0x0133 are observed in pcaps but missing per-opcode BCS-Y emitter; they are 'confirmed' by bahamut-anchor + pcap evidence + Zone-channel generic-forwarder attribution. The strict decomp-emitter binding is in the decompMissing gap list."
+    },
+    "likely": {
+      "count": 27,
+      "criteria": "Decomp anchor only (no pcap observation; opcode not exercised by the 54-capture corpus). Includes all Lobby-phase opcodes (0x04, 0x05, 0x0B, 0x0F, 0x01F5, 0x01F6) and most recruiting/social/FAQ/GM-ticket opcodes (0x01C3..0x01D6 minus the four observed).",
+      "opcodes": [
+        "0x0004",
+        "0x0005",
+        "0x000B",
+        "0x000F",
+        "0x00C8",
+        "0x012C",
+        "0x0130",
+        "0x0131",
+        "0x0132",
+        "0x0135",
+        "0x01C3",
+        "0x01C4",
+        "0x01C5",
+        "0x01C6",
+        "0x01C7",
+        "0x01C8",
+        "0x01C9",
+        "0x01CA",
+        "0x01CC",
+        "0x01CD",
+        "0x01D0",
+        "0x01D1",
+        "0x01D2",
+        "0x01D4",
+        "0x01D5",
+        "0x01D6",
+        "0x01DB",
+        "0x01DC",
+        "0x01DE",
+        "0x01DF",
+        "0x01F5",
+        "0x01F6"
+      ]
+    },
+    "speculative": {
+      "count": 1,
+      "criteria": "Catalog entry exists but neither static emitter nor pcap evidence found.",
+      "opcodes": [],
+      "note": "After consolidation, no purely-speculative c2s entries remain. BCS-Y-0332's 'finalGapStatus: 0 unbound' is corroborated at this synthesis layer."
+    }
+  },
+  "synthesisFindings": [
+    "All 23 c2s opcodes observed in the 54-pcap corpus are cataloged. No pcap-without-catalog gap exists for in-range opcodes.",
+    "Out of 49 distinct cataloged c2s opcodes, 21 have both decomp+pcap evidence (confirmed), 27 have decomp anchor only (likely), 1 is borderline. The unobserved-in-pcap opcodes split into two groups: (a) Lobby-phase opcodes 0x04/0x05/0x0B/0x0F/0x01F5/0x01F6 not captured by the post-login corpus, and (b) low-frequency feature opcodes (recruiting/social/FAQ/GM) not exercised by the captured scenarios.",
+    "Per-opcode decomp emitter coverage: ~42 of 49 c2s opcodes have a specific BCS-Y-attributed emitter function. The 7 opcodes in decompMissing (0x00CE, 0x00CF, 0x012D, 0x012E, 0x012F, 0x0133, 0x0135) are bahamut-anchored but only Zone-channel generic-forwarder routed (via BCS-Y-0312 / 0304); per-opcode static emitter functions for these have not been individually pinned yet.",
+    "Size reconciliation: every opcode with both a static-emitter size AND a decoded pcap payload size shows exact match (staticSize - 16-byte game-msg prefix = pcapInnerLen). 0x0007 (24=16+8), 0x00CA (48=16+32), 0x00CC (24=16+8), 0x00CD (24=16+8), 0x01DD (280=16+264) all validated.",
+    "Two bidirectional opcode collisions documented: 0x000F (c2s CharaMakeOperation::SelectCharacterConfirm vs s2c GameLoginOperation response) and 0x01DD.",
+    "Two channel-disambiguation cases: 0x0003 (Map chat 0x230 vs Lobby ServiceLogin 0x20) and 0x0006 (Map LanguageCode 0x18 vs Lobby LobbyLogin step3 0x1E0)."
+  ],
+  "outOfScopeNotes": [
+    "Did NOT edit symbols.json (read-only per phase rules); did NOT push/commit.",
+    "Did NOT re-run pcap extractors; relied on the published pcap-validation-pass histogram and the c2s-payload-schemas/c2s-payload-decoding payload schemas.",
+    "The 'all 14 Tier-D thunk callers' in BCS-Y-0332 are tallied as one synthesis-level decomp anchor per opcode, not enumerated individually here.",
+    "Lobby-phase emitters (0x04/0x05/0x06/0x0B/0x0F/0x01F5/0x01F6) marked 'likely' rather than 'speculative' because they have unique vftable[0] SendRequest functions and complete attribution; absence from corpus reflects the corpus boundary, not catalog confidence.",
+    "The c2s_bridge_skeleton.json 'verifiedOutboundBindings: 9' count represents Lua-to-opcode bindings (CharaBase._setPosition -> 0x00CA, etc.), distinct from the BCS-Y static emitter attribution count tracked here."
+  ]
+}

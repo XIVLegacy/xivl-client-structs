@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "synthesis_only_no_catalog_change",
+  "scope": "Resolve an open question from the action-skill-subsystem pass: do s2c 0x016B (SetNoticeEventCondition) and 0x016C (SetEmoteEventCondition) have dual dispatch paths beyond Pattern B vftable[9]? Investigation reveals NO parallel dual path - the apparent duplication is a 2-layer single dispatch chain crossing the C++/Lua boundary via LuaActorImpl vtable.",
+  "method": {
+    "step1": "Cross-reference the high-switch-enumeration pass (FUN_004DC690 top dispatcher) case 0x16B/0x16C: both fall through to switchD_004dc749_caseD_f - the actor->vftable[9] generic dispatch (Pattern B). Confirmed via existing BCS-Y-0527 attribution.",
+    "step2": "Cross-reference the fun-0058cca0-walk pass (CharaElement::vftable[9] = FUN_0058CCA0) case table: 0x16B and 0x16C are NOT in the explicit case list. They fall to default branch -> FUN_004D8860 (BCS-Y-0280 sub-dispatcher).",
+    "step3": "Cross-reference the pattern-d-subdispatcher pass (FUN_004D8860 sub-dispatcher) case 0x16B/0x16C: both have dedicated 12-byte trampoline entries - case 0x16B -> FUN_00574FE0 (BCS-Y-0548), case 0x16C -> FUN_00574FF0 (BCS-Y-0549). Both trampolines call (*(*(actor_lua_impl) + 0xCC|0xD0))() = LuaActorImpl::vftable[51] | vftable[52].",
+    "step4": "Decomp BCS-Y-0734 (SetNoticeEventConditionReceiver::slot1 = FUN_0089D980) + BCS-Y-0736 (SetEmoteEventConditionReceiver::slot1 = FUN_0089D750). Critical finding: BOTH receiver Receive methods have NO direct callers in the binary - they are exclusively virtual dispatch targets reached via vtable. This confirms the trampolines (BCS-Y-0548/0549) are the C++-to-Lua-Receiver bridges - vftable[51/52] of the LuaActorImpl stored in the actor record resolves to the Receiver::Receive method.",
+    "step5": "Synthesize: the 'dual path' the action-skill-subsystem pass noted is actually a single 2-layer dispatch chain. Layer 1 is C++ network-tier dispatch through the actor vftable[9] chain; Layer 2 is C++/Lua boundary via virtual function dispatch from the actor's stored LuaActorImpl vtable. Not parallel paths."
+  },
+  "dispatch_chain_synthesis": {
+    "wire_arrival": "s2c 0x016B or 0x016C packet arrives at FUN_004DC690 (top dispatcher, BCS-Y-0527 family).",
+    "tier1_top_dispatch": "FUN_004DC690 high-switch case 0x16B/0x16C: NO dedicated case body - falls through to switchD_004dc749_caseD_f label which calls actor->vftable[9](this).",
+    "tier2_actor_vftable9": "For CharaElement actors (the most common s2c target), actor->vftable[9] resolves to FUN_0058CCA0 (BCS-Y-0561 third router). FUN_0058CCA0's case table does NOT include 0x16B or 0x16C; both fall to default branch.",
+    "tier3_default_subdispatcher": "FUN_0058CCA0 default -> FUN_004D8860 (BCS-Y-0280 sub-dispatcher) which has its own case table.",
+    "tier4_subdispatcher_case": "FUN_004D8860 case 0x16B -> FUN_00574FE0 (BCS-Y-0548); case 0x16C -> FUN_00574FF0 (BCS-Y-0549). Both are 12-byte trampolines.",
+    "tier5_lua_actor_vtable": "Trampoline body: (*(*(*(this+0x88)) + 0xCC|0xD0))() - reads the LuaActorImpl interface pointer stored at actor+0x88, dereferences its vtable pointer at offset 0, indexes vtable[51] (0xCC/4) or vtable[52] (0xD0/4), calls.",
+    "tier6_receiver_dispatch": "For actors whose Lua-side implementation is bound to SetNoticeEventConditionReceiver, LuaActorImpl::vftable[51] resolves to BCS-Y-0734 SetNoticeEventConditionReceiver_slot1_Receive_FUN_0089D980. For SetEmoteEventConditionReceiver, vftable[52] resolves to BCS-Y-0736 SetEmoteEventConditionReceiver_slot1_Receive_FUN_0089D750. Both Receive methods then perform RTDynamicCast (ActorBase -> DirectorBase) and route to rich or fallback registration helpers.",
+    "depth_summary": "6-layer dispatch chain from wire to Receiver. Deepest documented dispatch chain in the codebase so far (the 0x00CC-actor-record-apply pass's 0x00CC case was 5-layer; 0x16B/0x16C add the extra Lua-virtual-resolution layer)."
+  },
+  "key_findings": [
+    "RESOLVED open question from the action-skill-subsystem pass: 0x016B and 0x016C do NOT have dual dispatch paths. The apparent 'dual path' was a 2-layer view of the same dispatch chain - the C++ trampoline (BCS-Y-0548/0549) + the Lua-Receiver class vtable resolution are stacked layers of one continuous dispatch, not parallel pathways.",
+    "BCS-Y-0548/0549 trampolines are the C++-to-Lua-Receiver BRIDGE for vftable[51]/[52] dispatch slots. Their job is to translate the network-tier opcode-keyed dispatch (FUN_004D8860 case 0x16B/0x16C) into the actor-state-tier virtual call (vftable[51/52] on the LuaActorImpl stored in the actor record). Without these trampolines, opcodes 0x16B/0x16C would dead-end at FUN_004D8860's default.",
+    "FUN_0089D980 and FUN_0089D750 have NO direct callers in the binary - they are exclusively virtual dispatch targets. This is a structural confirmation that the LuaActorImpl vftable IS the receiver-registration mechanism for this family of opcodes. The receiver-class registry that the receiver-discovery pass cataloged via RTTI doesn't have a separate runtime dispatcher; it relies entirely on C++ MI vtable dispatch.",
+    "Implication for client-architecture 'S2C dispatch has five architectural patterns' Pattern B: the client-architecture 'S2C dispatch has five architectural patterns' worry about 'Pattern B Receivers don't have a runtime dispatcher' is unfounded for the LuaActorImpl::vftable-resident receivers. They DO have a runtime dispatcher - it's the standard C++ virtual dispatch via vftable[51..53] slots, fed by the FUN_004D8860 sub-dispatcher trampolines. The 23-receiver-class registry is bound to specific vtable slots via class layout. The vtable slot is the indirection mechanism.",
+    "Methodology refinement: For any Pattern A trampoline of shape (*(*param_1 + 0xNNN))() where param_1 is the actor's LuaActorImpl interface, the final dispatch resolves to a *Receiver::slot1 Receive method on the actor's specific Lua subclass. This pattern is bridge-cataloged: trampoline BCS-Y attributes to vtable slot, and slot-resident Receiver BCS-Y attributes to specific Receiver class. The two BCS-Y entries together fully describe one dispatch operation.",
+    "Other LuaActorImpl vtable[N] trampolines (BCS-Y-0548..0552 covering slots 51/52/53/others) follow the same pattern: each is a C++-to-Lua-Receiver bridge for its specific vtable slot. Future drill targets for opcode attribution: walk each of those trampolines -> vtable slot -> identify the Receiver class subscribed at that slot (via the receiver-discovery pass registry)."
+  ],
+  "proposed_bcs_y_entries": []
+}

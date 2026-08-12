@@ -1,0 +1,306 @@
+{
+  "version": 1,
+  "scope": "Catalog the 10 remaining Pattern C cases in FUN_004DC690's low-switch (cases 3, 4, 6, 8, 9, A, B, C, D, E). The actor-cluster-dispatch-model pass cataloged the major low-switch cases (case 2, 7, 0xCA AddActor, 0xCB RemoveActor, and the 24-opcode generic fallthrough via vftable[9]); this catalogs the rest of the bespoke low-switch handlers.",
+  "method": {
+    "decomp_input": "%BCS_GHIDRA_PROJECTS%/fun_004dc690_decomp.txt (existing dump from the actor-cluster-dispatch-model pass of FUN_004DC690 - re-parsed; not re-decompiled)",
+    "uncataloged_handler_decomp": "%BCS_GHIDRA_PROJECTS%/uncataloged_handlers.txt (this batch dump of 13 handler functions)",
+    "ghidra_invocation_bat": "%BCS_GHIDRA_PROJECTS%/run_handlers.bat",
+    "ghidra_script": "DumpFunctionDecomp.java (in <ghidra-scripts>)",
+    "handler_addresses_decompiled": [
+      "0x004d8560",
+      "0x004de800",
+      "0x004de190",
+      "0x004d87f0",
+      "0x004d8080",
+      "0x004b7340",
+      "0x004d9980",
+      "0x0081eb90",
+      "0x0081f090",
+      "0x004bbb30",
+      "0x004daf00",
+      "0x00565aa0",
+      "0x00446f50"
+    ],
+    "catalog_cross_reference": "Grepped manifests/symbols.json for each handler VA. Only two pre-existing entries: BCS-Y-0311 std_string_ctor_FUN_00447260 (used by cases 3+4) and BCS-Y-0534 ZoneActorMap_FindById_FUN_004d9910 (used by case 4 via the captured actor list iteration). FUN_004d8080 referenced only in dispatcher's case 4 - it is the 'client side init' branch that runs when zone+0x54b flag is already set."
+  },
+  "case_table": [
+    {
+      "opcode": "0x3",
+      "case_body_summary": "Constructs two std::string objects (sizes 32 and 512) from packet body at +0x10 and +0x34, then calls FUN_004d8560 with a 2-byte selector at packet+0x30, the local_978 (32-byte) string and the local_920 (512-byte) string. Both std::strings are destructed via FUN_00446f50 in reverse order. FUN_004d8560 itself: returns char; calls FUN_004b4ed0(1), FUN_00c99e80(param_4, 1, ret, 1), and on success FUN_00445c70 -> FUN_004c3dd0 -> FUN_004ce760(param_2, param_3, param_4) gated by zone+0x660. Pattern shape: 'execute named command with arg string'.",
+      "pattern": "C",
+      "primary_handler": "0x004d8560",
+      "other_called_functions": [
+        "0x00447260 (BCS-Y-0311 std_string_ctor, 2 calls)",
+        "0x00446f50 (std_string_dtor / scope-end cleanup, 2 calls)"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0535",
+      "notes": "Two strings: 32-byte (likely command name) + 512-byte (likely arg/parameter blob), keyed by a u16 selector at packet+0x30. The FUN_004ce760 inner call uses param_2=incoming sender, param_3=cmd name std::string, param_4=arg std::string. Could be the 'admin/debug command' or 'chat command parser' s2c entry point.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x4",
+      "case_body_summary": "Toggles zone+0x54b flag. If was 0: sets to 1, calls FUN_004de800(zone+0x1780c) to grow vector at zone+0x1804/+0x1808/+0x180c capacity; walks intrusive doubly-linked list rooted at zone+0x17804 (uses FUN_00944d70 iterator, FUN_0071b730 deref); for each entry whose +3 field is not in {-0x3FFFFFDC, -0x3FFFFFF9, -0x3FFFFFFB} runs FUN_004d87f0 (returns true if entry+0x80 non-zero AND FUN_00574aa0 returns non-zero); if not, calls FUN_004de190(entry_id) and if zero skips, else calls FUN_00813050(entry_id). Then FUN_004b7340 (audio/world manager reset), FUN_00578230. Builds a second list via FUN_006cfbb0/FUN_0071cb30, iterates calling FUN_004d9910(id) and invoking actor->vftable[0](1) (scalar-deleting-dtor). Calls FUN_004d9980(0xc0000000) to clear active target, FUN_0057a3c0(zone+0x174f4, zone+0x174f8, zone+0x554, zone). Final loop iterates actor list calling FUN_00575390(actor+0x10+0x80) (Pattern A on each actor's +0x80 substruct). Else branch (flag was 1): clears to 0 and calls FUN_004d8080(1) which conditionally invokes FUN_004dfaa0/FUN_004dfad0 against zone+0x174ec when zone+0x17838 (active player) is null.",
+      "pattern": "C",
+      "primary_handler": "0x004daf00 (mirror cleanup helper - FUN_004daf00 implements an almost identical actor-list-walk-and-destruct, shared logic) OR inline case body (no single primary)",
+      "other_called_functions": [
+        "0x004de800 (vector reserve/grow)",
+        "0x004de190 (map lookup helper)",
+        "0x004d87f0 (entry filter predicate)",
+        "0x00813050 (id-list emit/notify helper)",
+        "0x004b7340 (audio/timer subsystem reset - shared with case E)",
+        "0x00578230 (subsystem cleanup)",
+        "0x006cfbb0 / 0x0071cb30 (intrusive list iterator endpoint helpers)",
+        "0x00944d70 / 0x0091f7c0 (list iterator advance/deref helpers)",
+        "0x004d9910 (BCS-Y-0534 ZoneActorMap_FindById)",
+        "0x004d9980 (active target reset = the c0000000 sentinel - shared with cases 0xE and 0x11)",
+        "0x0057a3c0 (zone state re-bind)",
+        "0x009172c0 (iterator++)",
+        "0x00575390 (per-actor +0x80 substruct cleanup)",
+        "0x004d8080 (client-side init helper)",
+        "0x008fbe20 (dtor-side iterator helper)"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0536",
+      "notes": "By far the largest low-switch case body (~150 lines of decomp). Functional shape is 'zone tear-down to char-select / zone-change': clears active target, runs filtered actor list walks twice (with a 3-value 'preserve' filter at entry+3), invokes per-actor dtors, drains the audio/timer subsystem, rebinds zone state. The flag at zone+0x54b acts as a re-entry guard - second toggle becomes a no-op-ish client-side init path. The very similar FUN_004daf00 helper (case 0xE primary) duplicates much of this logic but with different filter sources and additional sound/transition prep; case 4 and case 0xE are siblings of the same teardown family.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x5",
+      "case_body_summary": "Fallthrough with cases 0xD and 0x10: `if (*(int **)(zone+0x4e0) != 0) (**(code **)(**(int **)(zone+0x4e0) + 0x24))(iVar8);` - reads the object pointer at zone+0x4e0, invokes vftable slot 9 (offset 0x24) on it, passing the packet pointer.",
+      "pattern": "A",
+      "primary_handler": "vftable[9] on (*(zone+0x4e0))",
+      "other_called_functions": [],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0537",
+      "notes": "**Multi-case fallthrough group**: opcodes 0x5, 0xD, 0x10 share this single body. Structurally identical to BCS-Y-0527 (the actor-vftable9 fallthrough for 24 opcodes 0xF/0xCC..0xE5) EXCEPT: the dispatch target is the object at zone+0x4e0 - NOT the actor map. zone+0x4e0 is a distinct sub-object pointer with its own vftable. The 'actual handler' is whatever class owns *(zone+0x4e0), and its vftable[9]. This is a Pattern A receiver dispatch through a different cluster than the actor map. Investigation of (*(zone+0x4e0))->vftable layout is a follow-up question for whoever picks up the receiver cluster work.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x6",
+      "case_body_summary": "Single call: `FUN_0081eb90(zone+0x950)` (zone+0x950 was bound to local_9f8 at function entry). FUN_0081eb90 reads vector range [zone+0x954, zone+0x958], asserts ordering via FUN_009d22b4, then calls FUN_00440940(local_8, vec_struct, begin, vec_struct, end) - a vector-range visitor.",
+      "pattern": "C",
+      "primary_handler": "0x0081eb90",
+      "other_called_functions": [],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0538",
+      "notes": "Pure vector flush/dispatch on zone+0x950. The vector at zone+0x950 is the SAME vector that cases 8/9/A/B append into. So case 6 is the 'flush all queued vector entries' command - it iterates the entire range and invokes FUN_00440940 (an std::for_each-shaped helper) on the contents. zone+0x950 is the shared 'pending operation queue' for cases 6/8/9/A/B.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x7",
+      "case_body_summary": "Already cataloged (the actor-cluster-dispatch-model pass). Tick-style actor walk + emits c2s 0xCA via FUN_004E0240.",
+      "pattern": "C",
+      "primary_handler": "0x004dc690 (inline)",
+      "other_called_functions": [
+        "0x004e0240 (c2s 0xCA emitter)"
+      ],
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0321 / BCS-Y-279 family",
+      "notes": "Out of scope here (the actor-cluster-dispatch-model pass caught this). Included for completeness of the case table.",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode": "0x8",
+      "case_body_summary": "Conditional 1-entry-style loop guarded by `*(char*)(packet+0x10) != 0`: vector_struct = zone+0x17810; entry_ptr=(undefined4*)(packet+0x14); does `do { local_a0c=(undefined8*)*entry_ptr; local_a08 = byte_at(packet+0x34+i); FUN_0081f090(zone+0x950, &(value,flag_byte_pair)); i++; entry_ptr++; } while (i < (uint)*(packet+0x10))`. So entry count is bounded by the byte at packet+0x10 (max 255 but variable). Values come from packet+0x14..; flags from packet+0x34..; both vectors are independent strides.",
+      "pattern": "C",
+      "primary_handler": "0x0081f090",
+      "other_called_functions": [
+        "0x0081f090 (vector-append (value, flag) pair, BCS-Y-0539 below)"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0540 (case body) and BCS-Y-0539 (handler)",
+      "notes": "Variable-length pair-array append. Pair = (u32 value, u8 flag). Appends each pair to the shared zone+0x950 queue. FUN_0081f090 either does an in-place pair push when capacity allows, else FUN_0081ee20 (reallocating push).",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0x9",
+      "case_body_summary": "Fixed 16-entry loop, values at packet+0x10+i*4 (u32) and flags at packet+0x50+i (u8). Appends each (value, flag) pair to zone+0x950 via FUN_0081f090. Identical inner logic to case 8 / 0xA / 0xB; only the entry-count and the flag-array offset differ.",
+      "pattern": "C",
+      "primary_handler": "0x0081f090",
+      "other_called_functions": [
+        "0x0081f090 (BCS-Y-0539)"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0541 (case body)",
+      "notes": "Fixed count = 16. Flag array at packet+0x50 (= +0x10 + 16*4 = +0x50, consistent with 16 u32 values followed by 16 flags). Packet payload size for this case = 0x60 bytes.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0xA",
+      "case_body_summary": "Fixed 32-entry loop, values at packet+0x10+i*4 and flags at packet+0x90+i. Identical inner logic to cases 8/9/B.",
+      "pattern": "C",
+      "primary_handler": "0x0081f090",
+      "other_called_functions": [
+        "0x0081f090 (BCS-Y-0539)"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0542 (case body)",
+      "notes": "Fixed count = 32. Flag array at packet+0x90 (= 0x10 + 32*4 = 0x90). Packet payload = 0xB0 bytes.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0xB",
+      "case_body_summary": "Fixed 64-entry loop, values at packet+0x10+i*4 and flags at packet+0x110+i. Identical inner logic to cases 8/9/A.",
+      "pattern": "C",
+      "primary_handler": "0x0081f090",
+      "other_called_functions": [
+        "0x0081f090 (BCS-Y-0539)"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0543 (case body)",
+      "notes": "Fixed count = 64. Flag array at packet+0x110 (= 0x10 + 64*4 = 0x110). Packet payload = 0x150 bytes. Cases 8/9/A/B form a sized-array family: 1..255 / 16 / 32 / 64 entries respectively, all feeding the same zone+0x950 vector via FUN_0081f090.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0xC",
+      "case_body_summary": "Single call: `FUN_004bbb30(*(undefined2*)(packet+0x10), *(undefined1*)(packet+0x12))` - passes a 16-bit ID and 8-bit selector. FUN_004bbb30 is a sound/UI fade-state machine: gated by `InterlockedExchangeAdd(&DAT_0132f3d0, 0) == 1` (only proceeds if a global busy flag is set), then dispatches on the second arg (which it calls param_2) to 11 actions: -10000 / 1 / 2..14, mostly calling FUN_004b7650 (audio fade), FUN_00b908f0 (animation/sound trigger), FUN_004b56c0 / FUN_004b5710 / FUN_004b5740 (sound state mutators) at param_1 + 0x7fe0000.",
+      "pattern": "C",
+      "primary_handler": "0x004bbb30",
+      "other_called_functions": [],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0544",
+      "notes": "Scalar pair = (u16 audio_id, u8 action_code). The 'param_1 + 0x7fe0000' offsetting strongly suggests param_1 is a small zone-ID treated as an index into a memory-mapped audio bank base. Pattern shape: bgm/sound cue trigger with state transitions. Could be 'PlayBgm' / 'StopBgm' / fade variants.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0xD",
+      "case_body_summary": "Falls through with cases 5 and 0x10. See case 5 entry.",
+      "pattern": "A",
+      "primary_handler": "vftable[9] on (*(zone+0x4e0))",
+      "other_called_functions": [],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "see BCS-Y-0537 (shared case body)",
+      "notes": "Multi-case fallthrough with 0x5 and 0x10. Dispatched via the same one-line body. Cataloged once under BCS-Y-0537.",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode": "0xE",
+      "case_body_summary": "Three-step shutdown: `FUN_004d9980(0xc0000000)` clears the active target/player ref, `FUN_004daf00()` runs the large zone-cleanup helper (1708 bytes - iterates and destructs filtered actor list, then re-runs init, calls FUN_004b7340 audio reset, FUN_0057a3c0 zone-state-rebind), then conditional `if (*(int *)(zone+0x4bc) != 0) FUN_00565aa0(0xb)` - emits a state-change-to-0xB notification (FUN_00565aa0 updates obj+0x98, then invokes (*(obj+0xa0))->vftable[1] which returns flags; if bit 0x2 is set runs FUN_004d6f40(0) (or for state 0x15 the FUN_004d73b0/FUN_005670b0 alt path)).",
+      "pattern": "C",
+      "primary_handler": "0x004daf00",
+      "other_called_functions": [
+        "0x004d9980 (active target reset)",
+        "0x00565aa0 (state-change notifier)",
+        "0x004b7340 (audio/timer subsystem reset, via FUN_004daf00)",
+        "0x0057a3c0 (zone state rebind, via FUN_004daf00)"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0545",
+      "notes": "Case 0x11 has the EXACT same shape: `FUN_004d9980(0xc0000000); FUN_004daf00(); if (zone+0x4bc != 0) FUN_00565aa0(0xc);` - the only difference is the state code passed to FUN_00565aa0 (0xb vs 0xc). Case 0xE = state 0xb (likely 'logout' / 'returning'); case 0x11 = state 0xc (likely 'zone-change' / 'transferring'). FUN_004daf00 is the canonical 'zone-leave / actor-cleanup' helper, called by case 0xE, case 0x11, and FUN_004db5b0.",
+      "existing_bcs_y_id": null
+    }
+  ],
+  "summary": {
+    "total_cases": 10,
+    "cataloged": 0,
+    "uncataloged": 10,
+    "pattern_a_count": 1,
+    "pattern_c_count": 9,
+    "pattern_d_count": 0,
+    "shared_case_bodies": 2,
+    "shared_case_body_descriptions": [
+      "Cases 0x5 + 0xD + 0x10 share one Pattern A body: dispatch to vftable[9] on (*(zone+0x4e0))",
+      "Cases 0x8 + 0x9 + 0xA + 0xB share the same pair-append inner: FUN_0081f090 on zone+0x950 (sized 1..255 / 16 / 32 / 64)"
+    ]
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0535",
+      "name": "S2cDispatcher_StringCommand_Case3_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 3 in FUN_004DC690 low-switch. Two-string command dispatch: builds std::string(32) from packet+0x10, std::string(512) from packet+0x34, reads u16 selector at packet+0x30, calls FUN_004d8560 to look up and invoke command (which goes through FUN_004ce760 gated by zone+0x660 - likely the named-command receiver registry)."
+    },
+    {
+      "id": "BCS-Y-0536",
+      "name": "S2cDispatcher_ZoneTearDown_Case4_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 4 in FUN_004DC690 low-switch. Toggle-driven zone teardown. First-call branch: walks actor list with 3-value preserve filter at entry+3, runs per-actor destructors (vftable[0](1)), clears active target via FUN_004d9980(0xC0000000), rebinds zone state via FUN_0057a3c0, runs per-actor +0x80-substruct cleanup via FUN_00575390. Second-call branch: clears flag, runs FUN_004d8080(1) (client-side init). Re-entrant via zone+0x54b flag. Sibling of case 0xE/0x11 cleanup family."
+    },
+    {
+      "id": "BCS-Y-0537",
+      "name": "S2cDispatcher_SubObjectVftable9_Case5_D_10_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Cases 0x5 + 0xD + 0x10 fallthrough in FUN_004DC690 low-switch. Pattern A receiver dispatch: `if (*(zone+0x4e0) != 0) (**(*(zone+0x4e0)+0x24))(packet)` - invokes vftable[9] on the object held at zone+0x4e0 (distinct from the actor map). The actual per-opcode behavior is owned by the class registered at zone+0x4e0; this case body is just the lookup-and-invoke wiring. Compare to BCS-Y-0527 which does the same shape but via the actor map for 24 opcodes."
+    },
+    {
+      "id": "BCS-Y-0538",
+      "name": "S2cDispatcher_FlushPendingVector_Case6_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 6 in FUN_004DC690 low-switch. Flushes the pending-operation vector at zone+0x950 by calling FUN_0081eb90 which range-visits [zone+0x954, zone+0x958] via FUN_00440940. The vector being flushed is the same one that cases 8/9/A/B append into - so case 6 = 'process all queued items'."
+    },
+    {
+      "id": "BCS-Y-0539",
+      "name": "PendingOpVector_AppendPair_FUN_0081f090",
+      "kind": "function",
+      "address": "0x0081f090",
+      "summary": "Vector pair-append helper. Inserts an (u32 value, u8 flag) pair into a std::vector-shaped struct (begin/end/cap at +0x4/+0x8/+0xC). Fast path when capacity allows (writes 8 bytes at end, bumps end); slow path FUN_0081ee20 (reallocating push) otherwise. Called by FUN_004DC690 cases 8/9/A/B and by FUN_0055ac30/FUN_00609200/FUN_006095f0/FUN_0081e3d0/FUN_0055abf0."
+    },
+    {
+      "id": "BCS-Y-0540",
+      "name": "S2cDispatcher_VariableArrayAppend_Case8_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 8 in FUN_004DC690 low-switch. Variable-length pair append: count = byte at packet+0x10 (0..255), value array at packet+0x14, flag array at packet+0x34. Appends each (u32 value, u8 flag) pair to zone+0x950 via FUN_0081f090 (BCS-Y-0539)."
+    },
+    {
+      "id": "BCS-Y-0541",
+      "name": "S2cDispatcher_Fixed16ArrayAppend_Case9_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 9 in FUN_004DC690 low-switch. Fixed-count (16) pair append: values at packet+0x10+i*4, flags at packet+0x50+i. Appends each (value, flag) pair to zone+0x950 via FUN_0081f090 (BCS-Y-0539). Packet payload 0x60 bytes."
+    },
+    {
+      "id": "BCS-Y-0542",
+      "name": "S2cDispatcher_Fixed32ArrayAppend_CaseA_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 0xA in FUN_004DC690 low-switch. Fixed-count (32) pair append: values at packet+0x10+i*4, flags at packet+0x90+i. Appends to zone+0x950 via FUN_0081f090 (BCS-Y-0539). Packet payload 0xB0 bytes."
+    },
+    {
+      "id": "BCS-Y-0543",
+      "name": "S2cDispatcher_Fixed64ArrayAppend_CaseB_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 0xB in FUN_004DC690 low-switch. Fixed-count (64) pair append: values at packet+0x10+i*4, flags at packet+0x110+i. Appends to zone+0x950 via FUN_0081f090 (BCS-Y-0539). Packet payload 0x150 bytes."
+    },
+    {
+      "id": "BCS-Y-0544",
+      "name": "S2cDispatcher_AudioCueStateMachine_CaseC_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 0xC in FUN_004DC690 low-switch. Calls FUN_004bbb30(u16 audio_id, u8 action_code) where the action_code drives an 11-state machine (audio fade / animation trigger / state set), all gated by global busy flag DAT_0132f3d0 == 1. Almost certainly the BGM/sound cue trigger from server."
+    },
+    {
+      "id": "BCS-Y-0545",
+      "name": "S2cDispatcher_ZoneLeaveCleanup_CaseE_FUN_004DC690",
+      "kind": "function_case",
+      "address": "0x004DC690",
+      "summary": "Case 0xE in FUN_004DC690 low-switch (and identical case 0x11 with state code 0xc instead of 0xb). Three-step zone-leave cleanup: clear active target via FUN_004d9980(0xC0000000), run full zone teardown via FUN_004daf00 (large 1708-byte helper), then if zone+0x4bc != 0 emit a state-change-to-0xB notification via FUN_00565aa0 (which propagates to the observer at obj+0xa0 vftable[1]). Pair with case 0x11 (state 0xC) - this is the 'enter logout state' opcode; 0x11 is 'enter zone-change state'."
+    }
+  ],
+  "key_findings": [
+    "Case grouping identified: cases 5/0xD/0x10 share ONE Pattern A fallthrough body (dispatch to vftable[9] on *(zone+0x4e0)). This is a distinct receiver cluster from the actor-map vftable[9] cluster (BCS-Y-0527) - same architectural pattern, different target object. Three opcodes catalogued under a single BCS-Y entry (BCS-Y-0537).",
+    "Case grouping identified: cases 8/9/A/B form a sized-array family that all append (u32 value, u8 flag) pairs to the shared queue at zone+0x950 via FUN_0081f090. Cases 8/9/A/B counts are 1..255 / 16 / 32 / 64. Case 6 is the corresponding 'flush' opcode that drains zone+0x950 via FUN_0081eb90 - so opcodes 6 + 8 + 9 + A + B form a producer/consumer set against the same in-memory queue.",
+    "Case 0xE and case 0x11 are sibling shutdown opcodes - identical bodies except for the state code passed to FUN_00565aa0 (0xB vs 0xC). Both delegate the heavy work to FUN_004daf00, which is the canonical zone-leave/actor-teardown helper. Case 4 is structurally a third sibling but with a re-entrancy toggle and slightly different teardown filters.",
+    "FUN_004daf00 (case 0xE primary) and the case 4 body inline very similar actor-list-walk-and-destruct loops, both with the same 3-value preserve filter at entry+3 ({-0x3FFFFFDC, -0x3FFFFFF9, -0x3FFFFFFB}). The two filter sentinels are u32-encoded class IDs in the 0xC0000000 family (see BCS-Y-0533 ZoneActorClassId_Validate) - they are the IDs of three actor classes that survive zone teardown (likely the local player, the camera, and one other persistent actor).",
+    "Case 3 is the 'execute named command' s2c entry point: 32-byte cmd name string + 512-byte arg string + u16 selector. Routes through FUN_004d8560 -> FUN_004ce760 gated by zone+0x660. The inner pipeline is the same shape as a Lua command bridge - this opcode is plausibly the 'server-pushed lua script execute' or 'admin command' path. Pattern matches the existing ExecuteDebugCommand receiver cluster in the symbols.json notes.",
+    "Case 0xC drives a global audio cue state machine (FUN_004bbb30) protected by an atomic busy flag (DAT_0132f3d0 set via InterlockedExchangeAdd). The 'param_1 + 0x7fe0000' base-offset pattern indicates an mmap'd audio bank addressed by ID. 11 action codes route to fade / start / stop / state-set variants. Likely the s2c BGM trigger.",
+    "Of 10 cases, 0 cataloged, 10 uncataloged. 1 Pattern A (5/D/10 shared body), 9 Pattern C. No Pattern D sub-dispatchers found in this slice (sub-dispatchers were the pattern-d-subdispatcher pass finding).",
+    "Eleven function candidates are absent from symbols.json: ten dispatcher case bodies (one shared by opcodes 5, D, and 10) and the FUN_0081F090 pair-append helper. Proposed IDs beginning at BCS-Y-0535 are noncanonical.",
+    "No new emissions found. None of the 10 cases call FUN_004E0240 (the c2s emitter that case 7 uses) or any other identified outbound sender. The cases are pure receivers / state-mutators / cleanup helpers."
+  ],
+  "open_questions": [
+    "What class lives at zone+0x4e0? Its vftable[9] is the actual handler for opcodes 0x5, 0xD, 0x10. zone+0x4e0 vs the actor map (zone+0x17804/+0x17808 area) is a distinct sub-system; resolving it requires finding writes to zone+0x4e0 elsewhere in the binary and reading the vftable layout. Follow-up candidate.",
+    "Cases 8/9/A/B emit (u32 value, u8 flag) pairs to zone+0x950. What does case 6 ultimately DO with those pairs? FUN_00440940 (the visitor inside FUN_0081eb90) is uncataloged. The semantic interpretation of the u32 value and u8 flag depends on FUN_00440940. Worth a follow-up decomp.",
+    "The case 4 'preserve filter' values {-0x3FFFFFDC, -0x3FFFFFF9, -0x3FFFFFFB} are class IDs (= 0xC0000024 / 0xC0000007 / 0xC0000005 in u32). Per BCS-Y-0533, these are 'engine-managed' actor classes. Mapping these three IDs to actor class names (via the registry at FUN_00d35af0) would name the persistent zone actors.",
+    "Case 0xC's FUN_004bbb30 uses param_1+0x7fe0000 as an mmap base. Need to confirm param_1 (u16 audio_id from packet+0x10) is bounded and what bank lives at base 0x7fe0000 relative to the audio context. This is musical/sfx state and worth its own phase.",
+    "Case 3's std::string sizes (32 + 512) and FUN_004ce760 inner call look identical to a Lua command bridge invocation. Worth correlating with the Lua engine attribution phases (32/41) to see if FUN_004ce760 is in the Lua bind cluster.",
+    "Case 4 sets a zone+0x54b flag; case 0xE/0x11 do NOT toggle this flag - they always run the full cleanup. Why does case 4 have a re-entry guard but cases 0xE/0x11 do not? Suggests case 4 is the 'pause' opcode and 0xE/0x11 are the irreversible logout/zone-change opcodes.",
+    "FUN_004d9980's 0xC0000000 sentinel: BCS-Y-0533 confirms this is the 'invalid class id that intentionally fails validation' value. So `FUN_004d9980(0xC0000000)` is the canonical 'clear active target' call. Worth promoting FUN_004d9980 itself to BCS-Y in a follow-up since it's used by cases 4, 0xE, 0x11 and likely many other clear-target sites."
+  ]
+}

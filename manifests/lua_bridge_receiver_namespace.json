@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete_with_breadth_expansion",
+  "scope": "Verify the 16 sibling Receivers are in the Lua-bridge namespace family. Result: VERIFIED + DRAMATICALLY EXPANDED. Found 42 distinct Receiver classes across 2 sub-namespaces (System + Network). Catalogs all 43 Receiver vftable VAs (UserDataReceiver has 2 vftables) as BCS-Y data entries.",
+  "method": {
+    "step1": "FindSymbolByName with query 'Application::Lua::Script::Client::Command::System' (run_c77_namespace_check.bat). 77 matches; 11 distinct *Receiver::vftable in the System sub-namespace.",
+    "step2": "Broader FindSymbolByName with query 'Receiver::vftable' (run_c77_broader_namespaces.bat). 88 matches across all namespaces. Identified 31 additional Receivers in the Network sub-namespace (Application::Lua::Script::Client::Command::Network::*Receiver). UserDataReceiver has 2 vftables (multi-inheritance, PRIMARY + SECONDARY).",
+    "step3": "Catalog 43 Receiver vftable BCS-Y data entries (11 System + 31 Network primary + 1 Network secondary for UserDataReceiver). Each entry includes the namespace + sub-namespace + cross-reference to client-architecture 'The LuaControl hierarchy is the runtime surface'.",
+    "step4": "Amend 12 existing entries with full namespace info: 6 NAMED factories (BCS-Y-1342/1343/1344/1346/1347/1348), 6 Receiver ctors (BCS-Y-1360..1365), plus BCS-Y-1399 (ChangeActorSubStatStatusReceiver::ctor) and BCS-Y-1145 (VehicleGradeReceiver from earlier work).",
+    "step5": "Update client-architecture 'The LuaControl hierarchy is the runtime surface' with the expanded 42-Receiver scope. Update ledger."
+  },
+  "key_findings": [
+    "**VERIFIED**: All 16 sibling Receivers' target classes are in the Application::Lua::Script::Client::Command::{System|Network}::*Receiver namespace family.",
+    "**DRAMATICALLY EXPANDED client-architecture 'The LuaControl hierarchy is the runtime surface' scope**: The Lua-bridge architecture covers 42 distinct Receiver classes (11 System + 31 Network), not just the 16 cataloged via the hybrid factories. The 16 are a SUBSET of the full Lua-bridge Receiver layer.",
+    "**Sub-namespace semantic split**:",
+    "  - System (11): UI/event-system Receivers including mount/vehicle (Chocobo/ChocoboGrade/Goobbue/VehicleGrade), trigger-box events (ExecutePushOnEnter/Leave/AttributeTypeEventEnter/Leave), sub-stat related (ChangeActorSubStatStatus/ChangeActorSubStatModeBorder), and debug (ExecuteDebugCommand).",
+    "  - Network (31): network-arrival event Receivers including achievements (AchievementPoint/Title/Id/AchievedCount), stats (ChangeActorExtraStat/ChangeSystemStat/HateStatus), jobs (JobChange/JobQuestCompleteTriple), social/grand-company (GrandCompany), hamlet (HamletSupplyRanking/HamletDefenseScore), event conditions (SetCommandEventCondition/SetEmoteEventCondition/SetNoticeEventCondition/SetTalkEventCondition + 3 SetPushEvent variants), command (SetTargetTime/EntrustItem/EndClientOrderEvent/KickClientOrderEvent/StartServerOrderEventFunction/SendLog/SetEventStatus/SetDisplayName + UserData/SyncMemory).",
+    "**UserDataReceiver has 2 vftables** (multi-inheritance pattern at offsets 0 and ??). PRIMARY at 0x01057488, SECONDARY at 0x010574A4. Consistent with the StatusBase multi-inheritance pattern - some Receivers participate in MULTIPLE Lua-bridge interface segments simultaneously.",
+    "**~42 Lua-bridge Receivers + ~22 ActorBase-derived classes = ~64 Lua-bridge participating classes minimum** (overlap between sets is plausible but not measured). This is the broader denominator for client-architecture 'The LuaControl hierarchy is the runtime surface' section's scope.",
+    "**Implication for wire-attribution work** (sibling-repo xivl-opcodes): the namespace-qualified class names enable direct cross-reference. E.g. SendLogReceiver (network-arrival), SetCommandEventConditionReceiver (already discussed in sibling-repo) - these names appear in catalog and can be matched against wire opcode signatures."
+  ],
+  "new_bcsy_entries_summary": {
+    "system_sub_namespace": 11,
+    "network_sub_namespace_primary": 31,
+    "network_secondary_vftables": 1,
+    "total_bcsy_added": 43,
+    "id_range": "BCS-Y-1411..BCS-Y-1453"
+  },
+  "amendments": [
+    {"id": "BCS-Y-1342", "full_namespace": "Application::Lua::Script::Client::Command::Network::AchievementPointReceiver"},
+    {"id": "BCS-Y-1343", "full_namespace": "Application::Lua::Script::Client::Command::Network::AchievementTitleReceiver"},
+    {"id": "BCS-Y-1344", "full_namespace": "Application::Lua::Script::Client::Command::Network::JobChangeReceiver"},
+    {"id": "BCS-Y-1346", "full_namespace": "Application::Lua::Script::Client::Command::Network::ChangeActorExtraStatReceiver"},
+    {"id": "BCS-Y-1347", "full_namespace": "Application::Lua::Script::Client::Command::System::ChangeActorSubStatModeBorderReceiver"},
+    {"id": "BCS-Y-1348", "full_namespace": "Application::Lua::Script::Client::Command::System::ChangeActorSubStatStatusReceiver"},
+    {"id": "BCS-Y-1360", "full_namespace": "Application::Lua::Script::Client::Command::System::ChocoboReceiver"},
+    {"id": "BCS-Y-1361", "full_namespace": "Application::Lua::Script::Client::Command::System::ChocoboGradeReceiver"},
+    {"id": "BCS-Y-1362", "full_namespace": "Application::Lua::Script::Client::Command::System::GoobbueReceiver"},
+    {"id": "BCS-Y-1363", "full_namespace": "Application::Lua::Script::Client::Command::Network::GrandCompanyReceiver"},
+    {"id": "BCS-Y-1364", "full_namespace": "Application::Lua::Script::Client::Command::Network::ChangeShadowActorFlagReceiver"},
+    {"id": "BCS-Y-1365", "full_namespace": "Application::Lua::Script::Client::Command::Network::SetDisplayNameReceiver"},
+    {"id": "BCS-Y-1399", "addition": "vftable backlink (already had namespace)"},
+    {"id": "BCS-Y-1145", "full_namespace": "Application::Lua::Script::Client::Command::System::VehicleGradeReceiver"}
+  ],
+  "architectural_finding_breadth_expansion": {
+    "before": "12 Lua-bridge classes (LuaControl + 4 derived + StatusBase + 1 Receiver ctor + 6 status helpers + cache layer)",
+    "after": "55+ Lua-bridge classes (12 from before + 42 distinct Receiver vftables + 1 UserDataReceiver secondary)",
+    "finding_section_to_update": "Add a 'Lua-bridge Receiver layer breadth' subsection summarizing the System + Network sub-namespaces + 42-class count."
+  },
+  "deferred_followups": [
+    "Bulk decomp the ~42 Receiver ctors to fully document each class. ~6+ hours work, ~84 BCS-Y entries (ctor + apply pair per Receiver). Wait for explicit user request.",
+    "Identify each Receiver's wire opcode by correlating with xivl-opcodes/data/opcodes.json + receiver-cross-reference.md. Currently 'TBD' for most.",
+    "Investigate UserDataReceiver's 2-vftable multi-inheritance: which secondary base class does it inherit from? RTTI dump on the 2 COLs would reveal.",
+    "Confirm the overlap between the 42 Receivers and the 22 ActorBase-derived classes from the deferred[1]. Are any Receivers also direct ActorBase derivatives, or are they all Receivers-only classes that compose-with rather than inherit-from the actor hierarchy?",
+    "Sibling-repo cross-sync (candidate): the 42-Receiver Lua-bridge breadth + sub-namespace split is highly relevant to wire-attribution work. Append to receiver-cross-reference.md."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1400 -> 1443 (+43 BCS-Y data entries: 11 System Receiver vftables + 31 Network Receiver primary vftables + 1 UserDataReceiver SECONDARY)",
+  "files_changed": [
+    "manifests/symbols.json: +43 entries (BCS-Y-1411..1453), 14 amendments",
+    "manifests/lua_bridge_receiver_namespace.json (NEW, this file)",
+    "tools/ghidra/logs/c77_lua_command_system_symbols.txt (NEW)",
+    "tools/ghidra/logs/c77_all_receiver_vftables.txt (NEW)"
+  ]
+}

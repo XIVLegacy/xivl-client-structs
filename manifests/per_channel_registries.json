@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_architectural_refinement",
+  "scope": "Identify the Sqwt event-source registry container's global address. Closes the manifest deferred_followups[0]. RESULT: registry is NOT a single std::map but MULTIPLE per-channel registry structs (one per Sqwt event channel). Cataloges 4 globals (3 per-channel registry containers + 1 event-id) + the key-hash helper. Refines client-architecture 'The Sqwt event-source registry is per-channel'.",
+  "method": {
+    "step1": "Decomp FUN_00800EC0 (BCS-Y-1357 map::find helper) via run_c65_registry_inspection.bat. Log: tools/ghidra/logs/c65_mapfind_decomp.txt. Reveals: 3-param helper that takes (registry_container, output_iter, key); calls FUN_0099B920 to hash/transform the key then walks the registry's std::_Tree.",
+    "step2": "Re-analyze the LuaDebugLog::ctor decomp to understand the call-site pattern: `FUN_0053e480(&DAT_0133caa8, &param_5)`. Conclusion: param_1 (ecx) is the per-channel registry global itself (not a key into a single map). Each lookup wrapper takes a specific registry's static address as `this`. There's no separate key argument - the channel selection IS the registry choice.",
+    "step3": "Identify the 3 known per-channel registries used by LuaDebugLog::ctor: DAT_0133C9F8 (FindAsWindow target), DAT_0133CA50 (used in subscribe/unsubscribe chain), DAT_0133CAA8 (raw Find target). 0x58-byte stride between them suggests each registry struct is ~88 bytes (std::_Tree + sibling fields).",
+    "step4": "Identify the event-id global DAT_01359614 used at the subscribe call site - DIFFERENT from the registry globals. The subscribe call is `(*(*(framework + 0xB4)) + 0x28)(&DAT_01359614, handler)`; the framework_element comes from a registry lookup but the channel-id passed to subscribe is a separate global. Reveals the architectural distinction between LOOKUP keys (registry globals) and SUBSCRIBE keys (event-id globals).",
+    "step5": "Catalog 5 new BCS-Y entries (BCS-Y-1370 key hash + BCS-Y-1371..1373 per-channel registry globals + BCS-Y-1374 event-id global). Amend BCS-Y-1355/1356/1357/1358 with architectural refinement note.",
+    "step6": "Append 'Refined' section to client-architecture 'The Sqwt event-source registry is per-channel' in the architectural findings, clarifying the per-channel registry architecture."
+  },
+  "key_findings": [
+    "**Registry architecture refined**: NOT a single global std::map (the initial interpretation) but MULTIPLE per-channel registry structs, each at its own static address. The lookup wrappers take the channel registry as their `this` argument; there's no key-argument-into-unified-map pattern. This is a more flexible architecture than the original interpretation suggested.",
+    "**3 per-channel registry globals identified**: DAT_0133C9F8 (FindAsWindow target, used by LuaDebugLog::ctor for first KeyEventHandler), DAT_0133CA50 (used in subscribe state op), DAT_0133CAA8 (raw Find target, used by LuaDebugLog::ctor for second KeyEventHandler). 0x58-byte stride between them suggests each registry struct is ~88 bytes.",
+    "**LOOKUP keys vs SUBSCRIBE keys are DISTINCT**: The lookup function takes a per-channel registry global (e.g. DAT_0133CAA8); the subscribe call takes a separate event-id global (e.g. DAT_01359614). Both identify a 'channel' but at different architectural layers: registry global = lookup index for finding the broadcaster; event-id global = the broadcaster's identifier for tracking which subscribers belong to it.",
+    "**FUN_0099B920 cataloged as the key-hash helper** (BCS-Y-1370): converts the find-input into a normalized form for comparison against tree node entries. Exact transformation (hash, string-intern, or member-pointer) is out of scope here.",
+    "**Client-architecture 'The Sqwt event-source registry is per-channel' refined**: New 'Refined' section appended documenting the per-channel registry architecture + the LOOKUP-vs-SUBSCRIBE key distinction. the wording about 'std::map keyed by event_id' was preserved but contextualized as the initial interpretation; the refinement supersedes it.",
+    "**Future enumeration potential**: The 3 known registries are surfaced from one ctor (LuaDebugLog). Other Sqwt UI ctors likely use other per-channel registries. Methodology to enumerate them: xref BCS-Y-1355/1356/1358 to find all callers, then collect the unique `&DAT_0133xxxx` argument values. Each unique address is another per-channel registry global to catalog."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1370", "name": "SqwtEventRegistry_KeyHash_FUN_0099B920", "addr": "0x0099B920", "kind": "function", "role": "Key hash/normalization for map::find input"},
+    {"id": "BCS-Y-1371", "name": "SqwtEventRegistry_Channel_DAT_0133C9F8", "addr": "0x0133C9F8", "kind": "data", "role": "Per-channel registry (Window-typed lookup target)"},
+    {"id": "BCS-Y-1372", "name": "SqwtEventRegistry_Channel_DAT_0133CA50", "addr": "0x0133CA50", "kind": "data", "role": "Per-channel registry (subscribe/unsubscribe state)"},
+    {"id": "BCS-Y-1373", "name": "SqwtEventRegistry_Channel_DAT_0133CAA8", "addr": "0x0133CAA8", "kind": "data", "role": "Per-channel registry (raw Find target)"},
+    {"id": "BCS-Y-1374", "name": "SqwtEventChannel_Id_DAT_01359614", "addr": "0x01359614", "kind": "data", "role": "Event-id global (broadcaster-side channel identifier)"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1355", "addition": "Per-channel-registry architectural refinement note"},
+    {"id": "BCS-Y-1356", "addition": "Per-channel-registry architectural refinement note"},
+    {"id": "BCS-Y-1357", "addition": "Per-channel-registry architectural refinement note"},
+    {"id": "BCS-Y-1358", "addition": "Per-channel-registry architectural refinement note"},
+    {"location": "the architectural findings client-architecture 'The Sqwt event-source registry is per-channel'", "addition": "Refined section appended"}
+  ],
+  "architectural_finding_refinement": {
+    "what_changed": "Registry is per-channel structs (multiple globals), not a single std::map keyed by event_id",
+    "lookup_key_layer": "Each per-channel registry global (e.g. DAT_0133CAA8) is passed as `this` to lookup wrappers",
+    "subscribe_key_layer": "Separate event-id global (e.g. DAT_01359614) is passed to the broadcaster's subscribe slot",
+    "implication": "More flexible than a unified map - allows per-channel optimization (e.g. some channels could have a single subscriber, others a tree, etc.)"
+  },
+  "deferred_followups": [
+    "Enumerate ALL per-channel registry globals by xref-ing BCS-Y-1355/1356/1358 across the binary. Each unique &DAT_0133xxxx argument value is another per-channel registry. Estimated ~30-60 per-channel registries exist (since the 52 parent classes earlier each likely have 1-3 event subscriptions).",
+    "Decomp one of the per-channel registry global writers to see the registration-time code. Each registry must have INSERT code somewhere that adds a FrameworkElement to it; finding those callers would reveal which classes broadcast on which channels.",
+    "Investigate the difference between LOOKUP key (registry global) and SUBSCRIBE key (event-id global) architecturally. Why two separate id types per channel? Possibilities: (a) historical (the API evolved), (b) flexibility (multiple registries can share an event-id), (c) security/scoping (registries are immutable per channel, event-ids are mutable for renaming).",
+    "Decomp FUN_00537110 + FUN_00537150 used by LuaDebugLog::ctor with DAT_0133CA50 - they're some kind of state operation but not yet identified. Could be subscribe-list mutation, ref-count, or similar.",
+    "Catalog ~30+ FrameworkElement-derived class RTTI types. cataloged evidence revealed 3 (FrameworkElement, Window, Controls::ListBox); cataloged evidence reveals nothing new. Later work could enumerate by scanning the RTTI section."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - clean (BCS-Y-1370..1374 wiki-links resolve; 4 amendment wiki-links resolve)"
+  },
+  "symbol_count_delta": "1359 -> 1364 (+5 BCS-Y: 1 function + 4 data globals)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1370..1374), 4 amendments (BCS-Y-1355/1356/1357/1358)",
+    "manifests/per_channel_registries.json (NEW, this file)",
+    "tools/ghidra/logs/c65_mapfind_decomp.txt (NEW)",
+    "tools/ghidra/logs/c65_globals_memrange.txt (NEW, attempted memrange dump - resolution issues with the requested addresses)"
+  ]
+}

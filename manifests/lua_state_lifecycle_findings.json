@@ -1,0 +1,131 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "Lua state lifecycle",
+  "generated": "2026-05-20",
+  "title": "Lua state lifecycle and script-loader findings",
+  "scope": "Lua VM lifecycle surface behind the callback registry: bytecode version, `.prog` loader pipeline, active frame/state wrapper fields, and the core named-callback invoker.",
+  "sourceRefs": [
+    "%BCS_GHIDRA_PROJECTS%\\sub6a_lua_state_lifecycle_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6a_lua_vm_helpers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6a_symbol_lpbloader.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6a_symbol_gameengine.txt"
+  ],
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0460",
+      "name": "lua_state_lifecycle_model"
+    },
+    {
+      "id": "BCS-Y-0461",
+      "name": "LuaCallbackInvokeCore_FUN_00CCF7D0"
+    },
+    {
+      "id": "BCS-Y-0462",
+      "name": "LuaThreadCurrentFrameGetter_FUN_00CF0910"
+    },
+    {
+      "id": "BCS-Y-0463",
+      "name": "LuaThreadCurrentFrameReset_FUN_00CF09C0"
+    },
+    {
+      "id": "BCS-Y-0464",
+      "name": "LuaThreadInvocationContextGuard_FUN_00CF08F0"
+    },
+    {
+      "id": "BCS-Y-0465",
+      "name": "LuaThreadBaseClassStackPrep_FUN_00CCCF90"
+    },
+    {
+      "id": "BCS-Y-0466",
+      "name": "LuaLpbLoaderResourceEvent_FUN_00D0FD70"
+    },
+    {
+      "id": "BCS-Y-0467",
+      "name": "LuaLpbLoaderCopyReadyBytes_FUN_00D0FC90"
+    },
+    {
+      "id": "BCS-Y-0468",
+      "name": "LuaLpbLoaderFinalizeChunk_FUN_00D0EC30"
+    },
+    {
+      "id": "BCS-Y-0469",
+      "name": "LuaLpbLoaderResourceEventVtable_0110F19C"
+    }
+  ],
+  "structsAdded": [
+    {
+      "id": "BCS-S-0036",
+      "name": "LuaThreadInvokeState"
+    }
+  ],
+  "luaVersion": {
+    "version": "Lua 5.1",
+    "chunkHeaderHex": "1b4c75615100010404040800"
+  },
+  "loaderPipeline": [
+    {
+      "stage": "resource event",
+      "nativeFunction": "FUN_00D0FD70",
+      "symbolId": "BCS-Y-0466",
+      "summary": "Fetches a `.prog` resource, refreshes loader cache state, asks the listener for destination pointer and byte count, copies ready bytes, signals completion, and calls the chunk finalizer."
+    },
+    {
+      "stage": "ready-byte copy",
+      "nativeFunction": "FUN_00D0FC90",
+      "symbolId": "BCS-Y-0467",
+      "summary": "Copies the ready byte span into the listener buffer at +0x68 and marks +0x74 loaded."
+    },
+    {
+      "stage": "chunk finalization",
+      "nativeFunction": "FUN_00D0EC30",
+      "symbolId": "BCS-Y-0468",
+      "summary": "Transforms the resource tuple, invokes FUN_00D0DC40 with an output pointer, and updates loader/cache state through FUN_00D0E7C0."
+    }
+  ],
+  "invokePipeline": [
+    {
+      "stage": "callback dispatch",
+      "nativeFunction": "FUN_00CC7A90",
+      "existingSymbolId": "BCS-Y-0399",
+      "summary": "Maps the target/control object and calls FUN_00CCF7D0 with the callback name and args."
+    },
+    {
+      "stage": "core callback invoke",
+      "nativeFunction": "FUN_00CCF7D0",
+      "symbolId": "BCS-Y-0461",
+      "summary": "Installs the active target, snapshots the stack, prepares the named function, pushes args, restores the stack, checks post-call state, and resets current-frame state when unwinding fails."
+    },
+    {
+      "stage": "base-class stack preparation",
+      "nativeFunction": "FUN_00CCCF90",
+      "symbolId": "BCS-Y-0465",
+      "summary": "Native stack-prep path for Lua super-call helpers such as `_callSuperClassFunc_inl`."
+    }
+  ],
+  "stateSurface": {
+    "structId": "BCS-S-0036",
+    "currentFrameGetter": "BCS-Y-0462",
+    "currentFrameReset": "BCS-Y-0463",
+    "invocationContextGuard": "BCS-Y-0464",
+    "summary": "Recovered state is a wrapped GameEngine Lua thread/frame surface: +0x2c holds the current frame/control object, +0x38 holds the active invocation target, and FUN_00CF09C0 rebuilds the +0x2c frame with a 0x140-byte allocation."
+  },
+  "negativeFindings": [
+    {
+      "finding": "No exported or PDB-named `lua_newstate`, `luaL_newstate`, `lua_close`, `lua_load`, or `lua_pcall` symbol was present in the harvested symbols.",
+      "basis": "Ghidra symbol searches for Component::Lua::GameEngine and LuaThreadImpl exposed wrapped GameEngine classes and diagnostics, while standard Lua C API names were absent from the recovered symbol surface."
+    },
+    {
+      "finding": "No process-wide global `lua_State*` variable was confirmed.",
+      "basis": "The callback paths use FUN_00CF0910/FUN_00CF09C0/FUN_00CF08F0 to read or mutate fields on the Lua thread wrapper. The strongest recovered state anchor is the per-wrapper `+0x2c` current-frame field, not a standalone global."
+    },
+    {
+      "finding": "FUN_00D0E250 is loader cache/map bookkeeping, not a confirmed VM load call.",
+      "basis": "FUN_00D0FD70 calls FUN_00D0E250 when the resource key changes, but the copied bytes and finalization path are anchored by FUN_00D0FC90 and FUN_00D0EC30 respectively."
+    }
+  ],
+  "followUps": [
+    "If later work needs exact lua_State internals, diff the recovered VM helper call families against Lua 5.1 source names after separating GameEngine wrapper methods from bundled Lua core routines.",
+    "Use FUN_00CCF7D0 and the +0x2c/+0x38 state helpers as the Lua-call surface when tracing coroutine yield/resume in the deferred-scheduler-findings pass."
+  ]
+}

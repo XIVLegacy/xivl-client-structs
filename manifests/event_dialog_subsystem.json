@@ -1,0 +1,631 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "draft",
+  "scope": "Characterize the FFXIV 1.x event/cutscene/NPC-dialog subsystem opcodes using the receiver_opcode_map_inbound classification and the FUN_004D8860 event-family sub-dispatcher case table. Identify which event opcodes are catalog-covered through existing chains, which are draft-staged, and which need new catalog entries.",
+  "method": {
+    "step1": "Extracted 13 packet definitions covering the c2s EventStart/Update pair plus the s2c KickEvent/RunEventFunction/EndEvent + SetXxxEventCondition variants",
+    "step3": "Cross-referenced existing manifests/receiver_opcode_map_inbound.json for confirmed opcode->receiver bindings (38 inbound receivers, 14 of them event-family)",
+    "step4": "Read manifests/pattern_d_subdispatcher.json to recover the FUN_004D8860 dispatch chains: 23 vtable-trampoline cases mapping LuaActorImpl::vftable slots to opcodes 0xCD, 0x12E..0x16A range. Identified the chain: FUN_004DC690 -> FUN_004D8860 -> slot trampoline -> LuaActorImpl::vftable[N] -> receiver dispatch wrapper -> Receiver::Receive",
+    "step5": "Cross-referenced manifests/sendlogreceiver_demux.json for the 20-opcode 0x157..0x16A SendLog fallthrough cluster - resolves the apparent collision where 0x166 SetCommandEventConditionReceiver appears in receiver_opcode_map but the sendlogreceiver demux pass confirms 0x157..0x16A all route to SendLogReceiver",
+    "step6": "Cross-referenced manifests/high_switch_enumeration.json for high-switch case bodies (0x13E..0x1A8). Note: the high-switch-enumeration pass and the pattern-d-subdispatcher pass disagree on whether 0x144/0x145/etc. dispatch via FUN_004D8860 vs FUN_004DC690 direct - both passes see them as Pattern B fallthrough via different paths",
+    "step7": "Identified BCS-Y-0426..0434 as the cataloged c2s 0x012D EventStartPacket emit chain (client-architecture '1.x combat is asymmetric') - the c2s EventStart side is fully attributed",
+    "step8": "Identified the deferred-event-condition scheduler (docs/deferred-event-scheduler.md) BCS-Y-0470..0476 chain that runs AFTER SetTalk/Push/Notice/Emote/Command condition receivers store callback slots in the 0x54-stride table - this is the runtime side that fires _onTalkEvent / _onPushEvent / _onPushRequest leaf callbacks",
+    "step9": "Identified the Lua-engine callback registry (docs/lua-engine-callback-registry.md, BCS-Y-0397..0403) where _onTalkEvent / _onPushEvent / _onPreEvent / _onPostEvent etc. are fired by C++ via FUN_00447260 + FUN_00CC7A90",
+    "step10": "Identified Control::CutScene cluster (existing BCS-Y entries for _setFilename / _loadCutScene / _play / _replay / _skip lua_firers) and the LuaActorImpl::vftable_slot38_onPreCutSceneCancel / slot39_onPostCutSceneCancel + NullActorImpl::vftable_slot36_onCutScenePreview cutscene callback slots",
+    "step11": "Built the opcode-to-chain table below; identified residual uncataloged handlers; proposed BCS-Y entries (BCS-Y-0680..0699 reserved high to avoid clash with other draft entries 0535..0579 which are not yet committed to symbols.json)"
+  },
+  "subsystem_overview": {
+    "summary": "FFXIV 1.x's event subsystem is the engine's mechanism for staging NPC dialog, cutscene playback, push-trigger interactions, talk events, and short-lived interactive sequences. It is bidirectional: the client EMITS c2s EventStart (0x012D) / EventUpdate (0x012E) packets with eventName + luaParams to declare intent, and the server REPLIES with the s2c control opcodes (KickEvent / RunEventFunction / EndEvent / SetXxxEventCondition variants) that drive the client-side event state machine and pick which Lua handlers fire.",
+    "c2s_side": "One opcode (0x012D EventStart) carries the entire c2s vocabulary via the eventName/luaParams strings (per client-architecture '1.x combat is asymmetric'). EventStart is built by MapEventStartPacketBuilder_FUN_00776760 (BCS-Y-0426), staged by 5 wrappers (BCS-Y-0427..0431), and sent through FUN_004D6D30 -> FUN_004E0240 -> FUN_00DAE010. The 0x012E EventUpdate pair is bidirectional with 0x012E SetTalkEventCondition (s2c), creating a known opcode collision.",
+    "s2c_side": "13 event-related opcodes split into 3 dispatch tiers: (a) Tier-A direct receivers for SetEmote / SetCommand-named / SetPushCircle / SetPushFan / SetPushTriggerBox / SetTalk / SetNotice (each is a *EventConditionReceiver class with its own RTTI - some route via Pattern B vftable[9] cases in the FUN_004DC690 high-switch); (b) Tier-D event-family dispatch via FUN_004D8860 (BCS-Y-0280) for KickEvent / RunEventFunction / EndEvent / SetEventStatus - each chain is FUN_004DC690 -> FUN_004D8860 -> case trampoline -> LuaActorImpl::vftable[slot] -> Receiver::Receive; (c) the Deferred Event-Condition scheduler (BCS-Y-0470..0476), where Talk/Push leaves fire callbacks after receivers store callback records. NoticeBlock/NoticeNonBlock leaf slot +0x28 is a no-op.",
+    "cutscene_side": "Cutscene playback is handled via the Control::CutScene class (existing BCS-Y entries: vtable, slot2 lua_api_dispatcher_multi_firer, and 5 lua_firers _setFilename / _loadCutScene / _play / _replay / _skip). Cutscene callbacks (onPreCutSceneCancel slot 38, onPostCutSceneCancel slot 39, onCutScenePreview NullActorImpl slot 36) are LuaActorImpl::vftable slots. Cutscene PLAYBACK is local-only; cutscenes are STARTED by EventStart 0x012D with a cutscene-shaped eventName/luaParams payload that the script-side then triggers via _play. CutScene_PlayExecuteParametersAdapter_FUN_006FB830 and CutScene_ReplayExecuteParametersAdapter_FUN_006F11B0 (existing BCS-Y) are the c++ adapters that script-side _play / _replay calls route through",
+    "no_dedicated_dialog_opcode": "The 1.x client has NO dedicated 'DialogBox' / 'NpcMenu' / 'YesNoMenu' opcode. NPC dialog rendering is a CLIENT-SIDE Lua-script concern driven by the SetTalkEventCondition (0x012E s2c) + RunEventFunction (0x0130 s2c) + EndEvent (0x0131 s2c) sequence. The script-side NpcBaseClass.lua / DirectorBaseClass.lua _onTalkEvent / _onTalkRequest handlers parse the LuaParams in RunEventFunction packets and call into the DesktopWidget UI (_appendLogPool / _appendMessagePool for system messages, message-box / menu APIs for dialog rendering)"
+  },
+  "event_opcode_table": [
+    {
+      "opcode": "0x012D",
+      "direction": "c2s",
+      "name": "EventStart (MapEventStartPacket)",
+      "purpose": "Client declares event intent (talk start, push trigger, command exec, cutscene init, combat command). Carries eventName + luaParams. The single c2s opcode for all event/intent emission per client-architecture '1.x combat is asymmetric'.",
+      "wireSize": "200 bytes",
+      "catalogStatus": "covered",
+      "dispatchChain": "Lua _doServerOnTalk/_callServerOnTalk/etc -> FUN_0075E230 EventStartServerCallWrapper (BCS-Y-0427) OR FUN_0075E1C0/0089E0D0 raw wrappers (BCS-Y-0428) OR FUN_0075E3A0 route wrapper (BCS-Y-0429) OR FUN_0075E510 follow-up wrapper (BCS-Y-0430) -> FUN_00776760 MapEventStartPacketBuilder (BCS-Y-0426) -> FUN_004D6D30 zone gate -> FUN_004E0240 Tier-C forwarder -> FUN_00DAE010 terminal send",
+      "bcsYRefs": [
+        "BCS-Y-0426",
+        "BCS-Y-0427",
+        "BCS-Y-0428",
+        "BCS-Y-0429",
+        "BCS-Y-0430",
+        "BCS-Y-0431",
+        "BCS-Y-0432",
+        "BCS-Y-0433"
+      ],
+      "luaCallbacks": [
+        "_doServerOnTalk",
+        "_doServerOnPush",
+        "_doServerOnEmote",
+        "_callServerOnTalk_cpp",
+        "_callServerOnPush_cpp",
+        "_callServerOnEmote_cpp"
+      ],
+      "pcapCount": "(c2s, varies)",
+      "notes": "Client-architecture '1.x combat is asymmetric' section's central opcode. Only the c2s emit path is wired in the FFXIV 1.x client binary."
+    },
+    {
+      "opcode": "0x012E",
+      "direction": "bidirectional",
+      "name": "EventUpdate (c2s) / SetTalkEventCondition (s2c)",
+      "purpose": "c2s: client follow-up update during a running event (menu selection, dialog confirm, mid-cutscene state). s2c: server tells client to install a talk-event condition on an actor (cast to NpcBase).",
+      "wireSize": "c2s 0x78 / s2c 0x48",
+      "catalogStatus": "s2c-covered-via-receiver",
+      "dispatchChainS2C": "FUN_004D8860 case 0x12E -> FUN_00574FD0 trampoline -> LuaActorImpl::vftable[50] (FUN_00759FE0 cataloged? slot 50 not explicitly in BCS-Y-0092) -> ... -> SetTalkEventConditionReceiver::Receive (slot1Fn FUN_0089df60) -> __RTDynamicCast(ActorBase->NpcBase) -> install talk condition. ATTENTION: receiver_opcode_map maps 0x012E to SetTalkEventConditionReceiver, but the pattern-d-subdispatcher pass maps case 0x12E to LuaActorImpl slot 50, which is in the noop/stateless range per BCS-Y-0092. The actual receiver dispatch may use a different mechanism than this case path; a follow-up walk is required.",
+      "dispatchChainC2S": "Lua menu/dialog response -> _doServerOn[Talk/...] family -> reuses the 0x012D EventStart emit chain? Or a separate builder? OPEN QUESTION - the c2s EventUpdate emitter has NOT been identified statically (the combat action c2s findings pass focused on 0x012D).",
+      "bcsYRefs": [],
+      "luaCallbacks": [
+        "_onTalkEvent",
+        "_onTalkRequest",
+        "_onPostTalkEvent"
+      ],
+      "pcapCount": "s2c 10 in party_battle_leve (subpacketSizes [72])",
+      "notes": "Bidirectional opcode collision - the third one found in the catalog after 0x01DD and 0x0F (CharaMakeOperation vs GameLoginOperation). Different payload shapes per direction (c2s 0x78 update vs s2c 0x48 condition install)."
+    },
+    {
+      "opcode": "0x012F",
+      "direction": "s2c",
+      "name": "KickEvent (KickEventPacket)",
+      "purpose": "Server kicks off an event sequence on an actor (talk / push / notice / emote / etc). Carries triggerActorId + ownerActorId + eventType byte + eventName + luaParams. Drives most NPC interactions.",
+      "wireSize": "0x90 (144 bytes)",
+      "catalogStatus": "covered_receiver",
+      "dispatchChain": "FUN_004DC690 high-switch (case 0x12F NOT in the high-switch-enumeration pass's table - falls into FUN_004D8860's path via case 0x12F) -> FUN_00575030 trampoline -> LuaActorImpl::vftable[56] (FUN_0076C0D0) -> KickClientOrderEventReceiver::Receive (5-slot vtable; real Receive at slot 2 = FUN_0089E450 NOT slot1Fn) -> FUN_0089F180 (KickEvent parser, 289 bytes) -> per kick_receiver_offset_map.md: receiver[+0x80] = 1 iff event_type byte == 0x05 (noticeEvent tag); conditionally seeds FUN_0089E200 (92 bytes) to set LuaParamsContainer+0x14 = 1",
+      "bcsYRefs": [
+        "BCS-Y-0028 RTTI",
+        "BCS-Y-0029 slot1_factory_FUN_0089F530"
+      ],
+      "proposedBcsYRefs": [
+        "BCS-Y-0680 (KickClientOrderEventReceiver::Receive_slot2_FUN_0089E450)",
+        "BCS-Y-0681 (KickEvent_parser_FUN_0089F180)",
+        "BCS-Y-0682 (KickEvent_NoticeFlag_Setter_FUN_0089E200)"
+      ],
+      "chain": "BCS-Y-0280 case 0x12F (proposed BCS-Y-0538 draft = KickClientOrderEventReceiverTrampoline_Case0x12F_FUN_00575030, LuaActorImpl slot 56 trampoline)",
+      "luaCallbacks": [
+        "_onTalkEvent",
+        "_onPushEvent",
+        "_onNoticeEvent",
+        "_onEmoteEvent"
+      ],
+      "pcapCount": "27 in pcap corpus",
+      "notes": "Deep-decoded. The `+0x5c` actor flag gate is the legendary silent-drop trigger - the kick is suppressed if actor[+0x5c] != 0 at receive time. KickClientOrderEventReceiver is a 5-slot vtable where slot1Fn is the New() factory NOT the Receive - per docs/receiver_classes_inventory.md, the real Receive is slot 2 (FUN_0089E450). client_receivers.json's slot1Fn field is misleading for 5/6-slot receivers (see local memory ledger reference-receiver-vtable-layouts.md)."
+    },
+    {
+      "opcode": "0x0130",
+      "direction": "s2c",
+      "name": "RunEventFunction (RunEventFunctionPacket)",
+      "purpose": "Server tells client to run a specific Lua function on an actor during an active event. Carries triggerActorId + ownerActorId + eventType + eventName + functionName + luaParams. This is how server passes 'show this dialog text' / 'play this cutscene' / 'open this menu' to the client mid-event. Probably the dominant 'NPC says X' delivery mechanism.",
+      "wireSize": "0x2B8 (696 bytes)",
+      "catalogStatus": "covered_receiver",
+      "dispatchChain": "FUN_004D8860 case 0x130 -> FUN_00575040 trampoline -> LuaActorImpl::vftable[57] (FUN_0076C220) -> StartServerOrderEventFunctionReceiver::Receive (5-slot vtable; real Receive at slot 2)",
+      "bcsYRefs": [
+        "BCS-Y-0030 RTTI",
+        "BCS-Y-0031 slot1_factory_FUN_0089F430"
+      ],
+      "proposedBcsYRefs": [
+        "BCS-Y-0683 (StartServerOrderEventFunctionReceiver::Receive_slot2)"
+      ],
+      "chain": "BCS-Y-0280 case 0x130 (proposed BCS-Y-0539 draft = StartServerOrderEventFunctionReceiverTrampoline_Case0x130_FUN_00575040, LuaActorImpl slot 57)",
+      "luaCallbacks": [
+        "server-passed function name; could be ANY method on the targeted actor's class"
+      ],
+      "pcapCount": "27 in pcap corpus",
+      "notes": "Deep-decoded. eventName at offset 9; functionName at offset 0x29; luaParams at offset 0x49. The 696-byte size suggests dialog text strings can be carried inline (much larger than KickEvent's 0x90)."
+    },
+    {
+      "opcode": "0x0131",
+      "direction": "s2c",
+      "name": "EndEvent (EndEventPacket)",
+      "purpose": "Server tells client an event has ended. Carries sourcePlayerActorId + eventOwnerActorID + eventType + eventName and drives native event cleanup without a Lua callback firer in this receiver chain.",
+      "wireSize": "0x50 (80 bytes)",
+      "catalogStatus": "covered_receiver",
+      "dispatchChain": "FUN_004D8860 case 0x131 -> FUN_00575050 trampoline -> LuaActorImpl::vftable[58] (FUN_0076C3B0) -> EndClientOrderEventReceiver slot 2 Receive FUN_0089D200; slot 3 FUN_0089E2D0 performs actor lookup and calls the 102-case FUN_008A13A0 dispatcher.",
+      "bcsYRefs": [
+        "BCS-Y-0032 RTTI",
+        "BCS-Y-0033 slot1Fn_FUN_0089D180"
+      ],
+      "chain": "BCS-Y-0280 case 0x131 (proposed BCS-Y-0540 draft = EndClientOrderEventReceiverTrampoline_Case0x131_FUN_00575050, LuaActorImpl slot 58)",
+      "luaCallbacks": [],
+      "pcapCount": "24 in pcap corpus, sizes 80",
+      "notes": "Deep-decoded. Slot 2 unconditionally writes success. Slot 3 calls the 102-case native end-event dispatcher; no Lua firer appears in this receiver chain. Source: xivl-decomp:docs/event/end-order-event-receiver.md."
+    },
+    {
+      "opcode": "0x0136",
+      "direction": "s2c",
+      "name": "SetEventStatus (SetEventStatusPacket)",
+      "purpose": "Server tells client to enable/disable an event-condition on an NPC actor. Carries enabled flag + type byte + conditionName (max 0x24 bytes).",
+      "wireSize": "0x48 (72 bytes)",
+      "catalogStatus": "covered_receiver",
+      "dispatchChain": "FUN_004D8860 case 0x136 -> FUN_00574FB0 trampoline -> LuaActorImpl::vftable[48] (FUN_00759D20) -> SetEventStatusReceiver::Receive (FUN_0089D860) -> __RTDynamicCast(ActorBase->NpcBase) -> FUN_006E67C0 apply: switches on receiver+0x58 to select a lookup helper, then calls vtable[9] on the looked-up state object. NO chain-key writes (per BCS-Y-0362).",
+      "bcsYRefs": [],
+      "proposedBcsYRefs": [
+        "BCS-Y-0684 (SetEventStatusReceiver_class_RTTI)",
+        "BCS-Y-0685 (SetEventStatusReceiver_slot1_FUN_0089D860)",
+        "BCS-Y-0686 (SetEventStatus_apply_FUN_006E67C0)"
+      ],
+      "chain": "BCS-Y-0280 case 0x136 (proposed BCS-Y-0543 draft = SetEventStatusReceiverTrampoline_Case0x136_FUN_00574FB0, LuaActorImpl slot 48)",
+      "luaCallbacks": [],
+      "pcapCount": "177 in pcap corpus (high-frequency)",
+      "notes": "Surprisingly no BCS-Y for the receiver class or slot1Fn. This is a Pattern A1 (RTDynamicCast + dispatch, no null-check guard) receiver. SetEventStatus is the most-emitted event-condition opcode in the corpus - any zone with active event NPCs generates lots of these."
+    },
+    {
+      "opcode": "0x013D",
+      "direction": "s2c",
+      "name": "SetActorNamePacket (SetDisplayName)",
+      "purpose": "Server tells client to update an actor's displayed name. NOT strictly event-family but in the same dispatch range and used during event triggers.",
+      "wireSize": "?",
+      "catalogStatus": "covered_via_event_family",
+      "dispatchChain": "FUN_004D8860 case 0x13D -> FUN_00575100 trampoline -> LuaActorImpl::vftable[62] (FUN_0076C4D0) -> SetDisplayNameReceiver::Receive (FUN_0089D610)",
+      "bcsYRefs": [],
+      "proposedBcsYRefs": [
+        "BCS-Y-0687 (SetDisplayNameReceiver_class_RTTI)",
+        "BCS-Y-0688 (SetDisplayNameReceiver_slot1_FUN_0089D610)"
+      ],
+      "chain": "BCS-Y-0280 case 0x13D (proposed BCS-Y-0546 draft = SetDisplayNameReceiverTrampoline_Case0x13D_FUN_00575100, LuaActorImpl slot 62)",
+      "notes": "Adjacent to the event family. Included here because the pattern-d-subdispatcher pass lists it in the event-family dispatcher's case table."
+    },
+    {
+      "opcode": "0x016B",
+      "direction": "s2c",
+      "name": "SetNoticeEventCondition (SetNoticeEventCondition)",
+      "purpose": "Server installs a notice event condition on a Director actor. The native NoticeBlock/NoticeNonBlock leaf slot +0x28 is a no-op; this receiver does not establish an _onNoticeEvent firer.",
+      "wireSize": "?",
+      "catalogStatus": "partially_covered",
+      "dispatchChain": "ATTENTION: FUN_004D8860's case table maps 0x16B to LuaActorImpl::vftable[51] FUN_00574FE0 trampoline. BUT receiver_opcode_map says 0x016B->SetNoticeEventConditionReceiver (slot1Fn FUN_0089d980). Possible chain: FUN_004D8860 case 0x16B -> FUN_00574FE0 trampoline -> LuaActorImpl slot 51 (no explicit BCS-Y-0092 entry but in stateless-wrapper range) -> some wrapper that ultimately reaches SetNoticeEventConditionReceiver::Receive (FUN_0089d980, RTDynamicCast(ActorBase->DirectorBase) with FALLBACK to ActorBase[+0x118])",
+      "bcsYRefs": [],
+      "proposedBcsYRefs": [
+        "BCS-Y-0689 (SetNoticeEventConditionReceiver_class_RTTI)",
+        "BCS-Y-0690 (SetNoticeEventConditionReceiver_slot1_FUN_0089d980)"
+      ],
+      "chain": "BCS-Y-0280 case 0x16B (proposed BCS-Y-0548 draft = LuaActorImpl_Slot51Trampoline_Case0x16B_FUN_00574FE0)",
+      "luaCallbacks": [],
+      "pcapCount": "33 in party_battle_leve, subpacketSizes [72]",
+      "notes": "b walk found the orphaned-conditions hypothesis: SetNoticeEventCondition packets sent BEFORE the actor's ScriptBind step land in ActorBase[+0x118] instead of DirectorBase[+0x60]. This is a load-bearing finding for any server-side event-condition sequencing."
+    },
+    {
+      "opcode": "0x016C",
+      "direction": "s2c",
+      "name": "SetEmoteEventCondition",
+      "purpose": "Server installs an 'emote' event condition. Triggers when player performs a specific emote near the actor. Drives the /salute, /wave-style NPC reactions.",
+      "wireSize": "?",
+      "catalogStatus": "partially_covered",
+      "dispatchChain": "FUN_004D8860 case 0x16C -> FUN_00574FF0 trampoline -> LuaActorImpl::vftable[52] (FUN_00759E10 no-op 3-byte stub). RECEIVER MISMATCH: receiver_opcode_map says 0x016C->SetEmoteEventConditionReceiver (slot1Fn FUN_0089d750, non-RTDynamicCast packer). Same issue as 0x016B - the LuaActorImpl slot is a no-op but the receiver class IS registered. Most likely the receiver is reached via FUN_004DC690 high-switch case 0x16C falling through to vftable[9] (Pattern B) rather than through FUN_004D8860 - the BCS-Y-0527 generic fallthrough mechanism.",
+      "bcsYRefs": [],
+      "proposedBcsYRefs": [
+        "BCS-Y-0691 (SetEmoteEventConditionReceiver_class_RTTI)",
+        "BCS-Y-0692 (SetEmoteEventConditionReceiver_slot1_FUN_0089d750)"
+      ],
+      "chain": "BCS-Y-0280 case 0x16C (proposed BCS-Y-0549 draft = LuaActorImplNoopE_Trampoline_Case0x16C_FUN_00574FF0)",
+      "luaCallbacks": [
+        "_onEmoteEvent",
+        "_onEmoteRejected"
+      ],
+      "notes": "Conflict between the pattern-d-subdispatcher pass (no-op slot 52) vs receiver_opcode_map (SetEmoteEventConditionReceiver). The likely resolution: FUN_004D8860's path is one of TWO dispatch sites for 0x16C, and the operative one is the FUN_004DC690 Pattern B fallthrough. Opcode 0x17B has dual dispatch paths per PATTERNDSUBD-F4 - 0x16C may be similar."
+    },
+    {
+      "opcode": "0x016F",
+      "direction": "s2c",
+      "name": "SetPushEventConditionWithCircle",
+      "purpose": "Server installs a 'push trigger' event condition with a circular geometry shape. When player enters the circle, fires _onPushEvent/_onPushRequest.",
+      "wireSize": "0x58 (88 bytes)",
+      "catalogStatus": "partially_covered",
+      "dispatchChain": "FUN_004DC690 high-switch (the high-switch-enumeration pass found case 0x16F = multi-case fallthrough to BCS-Y-0527 generic actor->vftable[9](zone_state)) - Pattern B per client-architecture 'S2C dispatch has five architectural patterns'. The actual *SetPushEventConditionWithCircleReceiver* (RTTI 0xc573b8, slot1Fn FUN_0089db00) is the eventual target.",
+      "bcsYRefs": [],
+      "proposedBcsYRefs": [
+        "BCS-Y-0693 (SetPushEventConditionWithCircleReceiver_class_RTTI)",
+        "BCS-Y-0694 (SetPushEventConditionWithCircleReceiver_slot1_FUN_0089db00)"
+      ],
+      "luaCallbacks": [
+        "_onPushEvent (Event::PushBlock vtable slot +0x28)",
+        "_onPushRequest (Event::PushNonBlock vtable slot +0x28)"
+      ],
+      "pcapCount": "19 in party_battle_leve, subpacketSizes [88]",
+      "notes": "Pattern A2 receiver (inline non-RTDynamicCast packer; geometry shape: float radius + 0x44533088 + 100.0f + outwards flag + silent flag + conditionName). The 3 SetPushEventCondition*With* siblings (Circle/Fan/TriggerBox) share the same 0x2f2bxx downstream handler family per."
+    },
+    {
+      "opcode": "0x0170",
+      "direction": "s2c",
+      "name": "SetPushEventConditionWithFan",
+      "purpose": "Server installs a 'push trigger' event condition with a fan/cone geometry shape.",
+      "wireSize": "?",
+      "catalogStatus": "partially_covered",
+      "dispatchChain": "FUN_004DC690 high-switch case 0x170 = multi-case fallthrough to BCS-Y-0527 -> actor->vftable[9](zone_state). Receiver: SetPushEventConditionWithFanReceiver (RTTI 0xc573c4, slot1Fn FUN_0089dc90).",
+      "bcsYRefs": [],
+      "proposedBcsYRefs": [
+        "BCS-Y-0695 (SetPushEventConditionWithFanReceiver_class_RTTI)",
+        "BCS-Y-0696 (SetPushEventConditionWithFanReceiver_slot1_FUN_0089dc90)"
+      ],
+      "luaCallbacks": [
+        "_onPushEvent",
+        "_onPushRequest"
+      ],
+      "pcapCount": "4 in pcap corpus",
+      "notes": "Sibling of 0x016F SetPushCircle. Same Pattern A2 packer shape."
+    },
+    {
+      "opcode": "0x0175",
+      "direction": "s2c",
+      "name": "SetPushEventConditionWithTriggerBox",
+      "purpose": "Server installs a 'push trigger' event condition with an axis-aligned bounding box.",
+      "wireSize": "?",
+      "catalogStatus": "partially_covered",
+      "dispatchChain": "FUN_004DC690 high-switch case 0x175 = multi-case fallthrough to BCS-Y-0527 -> actor->vftable[9](zone_state). Receiver: SetPushEventConditionWithTriggerBoxReceiver (RTTI 0xc573d0, slot1Fn FUN_0089de20).",
+      "bcsYRefs": [],
+      "proposedBcsYRefs": [
+        "BCS-Y-0697 (SetPushEventConditionWithTriggerBoxReceiver_class_RTTI)",
+        "BCS-Y-0698 (SetPushEventConditionWithTriggerBoxReceiver_slot1_FUN_0089de20)"
+      ],
+      "luaCallbacks": [
+        "_onPushEvent",
+        "_onPushRequest"
+      ],
+      "pcapCount": "1 in pcap corpus (rare - System NPC entry boxes only)",
+      "notes": "Sibling of 0x016F/0x0170."
+    }
+  ],
+  "deferred_event_scheduler_chain": {
+    "summary": "After SetTalk/Push/Notice/Emote event-condition receivers store callback records, the runtime side fires the actual _onTalkEvent/_onPushEvent/_onPreEvent/_onPostEvent leaf callbacks via a native C++ state machine (NOT Lua coroutines per client-architecture 'Deferred event execution uses native C++ state machines').",
+    "chain": "Set*EventCondition receiver -> FUN_0089DB00 (SetPushCircle slot1 example) -> FUN_006F2B70 DeferredEventConditionProducer -> FUN_00CC73B0 (actor/control wrap) -> FUN_0075C4A0 -> FUN_004D9970 (target key touch) + FUN_00445210 (key resolver) + FUN_0058B110 (slot writer) -> 2-slot 0x54-stride callback table BCS-S-0037 EventConditionCallbackSlot",
+    "execution_side": "FUN_00897310 (block) + FUN_008955C0 (non-block walker) check Event::Base vtable+0x1c, then dispatch via FUN_008962C0/FUN_008963F0 pair -> vtable+0x04 wrapper FUN_00897570 -> leaf vtable+0x28 firer (this is where _onTalkEvent / _onPushEvent / _onPushRequest land)",
+    "abstract_vtables": {
+      "Notice": "0x01056DD8",
+      "Talk": "0x01056E74",
+      "Push": "0x01056EA8"
+    },
+    "leaf_vtables": {
+      "NoticeBlock": "0x01056E0C (block slot +0x1c, noop leaf +0x28)",
+      "NoticeNonBlock": "0x01056E40 (non-block slot +0x1c, noop leaf +0x28)",
+      "TalkBlock": "0x01056F44 (block slot +0x1c, _onTalkEvent at +0x28)",
+      "TalkNonBlock": "0x01056F78 (non-block slot +0x1c, _onTalkRequest at +0x28)",
+      "PushBlock": "0x01056EDC (block slot +0x1c, _onPushEvent at +0x28)",
+      "PushNonBlock": "0x01056F10 (non-block slot +0x1c, _onPushRequest at +0x28)"
+    },
+    "bcsYRefs": [
+      "BCS-Y-0470..0476 (scheduler chain - per client-architecture 'Deferred event execution uses native C++ state machines')",
+      "BCS-Y-0397..0403 (Lua engine callback registry)"
+    ],
+    "bcsSRefs": [
+      "BCS-S-0037 EventConditionCallbackSlot",
+      "BCS-S-0038 EventExecutionQueueNode"
+    ]
+  },
+  "cutscene_chain": {
+    "summary": "Cutscene playback is local-only. Cutscenes are started by EventStart 0x012D with a cutscene-shaped payload, and the script side calls CutScene class methods (_setFilename, _loadCutScene, _play, _replay, _skip) that route through C++ adapters.",
+    "control_class": "Control::CutScene::vftable (cataloged)",
+    "lua_bindings": [
+      "Control::CutScene::_setFilename_lua_firer (cataloged)",
+      "Control::CutScene::_loadCutScene_lua_firer (cataloged)",
+      "Control::CutScene::_play_lua_firer (cataloged)",
+      "Control::CutScene::_replay_lua_firer (cataloged)",
+      "Control::CutScene::_skip_lua_firer (cataloged)"
+    ],
+    "execute_adapters": [
+      "CutScene_PlayExecuteParametersAdapter_FUN_006FB830 (cataloged)",
+      "CutScene_ReplayExecuteParametersAdapter_FUN_006F11B0 (cataloged)"
+    ],
+    "cancellation_slots": [
+      "LuaActorImpl::vftable_slot38_onPreCutSceneCancel_FUN_00759AD0 (cataloged)",
+      "LuaActorImpl::vftable_slot39_onPostCutSceneCancel_FUN_00759B40 (cataloged)",
+      "NullActorImpl::vftable_slot36_onCutScenePreview_FUN_0075AD70 (cataloged)"
+    ],
+    "callbacks_fired": [
+      "_onPreCutSceneCancel",
+      "_onPostCutSceneCancel",
+      "_onCutScenePreview"
+    ],
+    "lua_napi": [
+      "_loadCutScene (BCS-Y-0494 straggler - confirmed registered)"
+    ],
+    "no_dedicated_opcode": "Confirmed by absence: no cutscene-specific opcode appears in the FUN_004DC690 case table. Cutscene start uses 0x0130 RunEventFunction (where functionName is the cutscene name) or EventStart 0x012D with cutscene luaParams."
+  },
+  "npc_dialog_chain": {
+    "summary": "NPC dialog box rendering is ENTIRELY a client-side Lua-script concern with no dedicated wire opcode. The server triggers dialog via RunEventFunction 0x0130 (passing the script-side function name as a string), and the client-side NpcBaseClass.lua _onTalkEvent handler parses luaParams and calls into the DesktopWidget UI APIs to render dialog box / menu / yes-no widgets.",
+    "client_side_dialog_rendering": "Per docs/packet-dispatch-map.md, when the player initiates an NPC interaction, the client engine fires npc:_onTalkEvent(player, packet) through _callServerOnTalk_cpp (NpcBaseClass.lua line 446). The C++ binding writes npc[+0x128] = player_actor_id before sending the talk-request packet 0x012D EventStart. The response uses 0x0130 RunEventFunction to select the Lua function, which then calls DesktopWidget log-pool, message-pool, message-box, or menu APIs to render the dialog UI.",
+    "primary_lua_callback_chain": [
+      "NpcBaseClass.lua _onTalkEvent (line 446)",
+      "NpcBaseClass.lua _onTalkRequest (line 458)",
+      "NpcBaseClass.lua _onPushEvent (line 525)",
+      "NpcBaseClass.lua _onPushRequest (line 562)",
+      "PlayerBaseClass.lua _onPreEvent (line 2081)",
+      "PlayerBaseClass.lua _onPostEvent (line 2107)",
+      "DirectorBaseClass.lua _onNoticeEvent (similar pattern)"
+    ],
+    "ui_render_chain": "The shipped Lua scripts (chara/npc/<area>/<populace>/*.lua) typically: receive _onTalkRequest -> parse luaParams[0] (talk command name) -> dispatch to a per-command handler -> call DesktopWidget UI APIs (_setMessage / _setMessageMenu / _showYesNoMenu / etc.) to render the dialog. Client-driven; server only sees the c2s 0x012D follow-up EventStart with the menu selection result in luaParams"
+  },
+  "status_condition_receiver_audit": {
+    "source": "xivl-decomp:docs/event/status-condition-receivers.md",
+    "commonSourceType": {
+      "name": "Application::Lua::Script::Client::Control::ActorBase",
+      "typeDescriptor": "0x01270964"
+    },
+    "setEventStatus": {
+      "receiver": "SetEventStatusReceiver",
+      "receiveVa": "0x0089d860",
+      "targetType": "Application::Lua::Script::Client::Control::NpcBase",
+      "targetTypeDescriptor": "0x012709e4",
+      "cast": "ActorBase -> NpcBase is unguarded",
+      "applyVa": "0x006e67c0",
+      "gates": "kind byte must match one of three discriminator constants and the event-name lookup must find a registered entry; either mismatch is a silent no-op."
+    },
+    "setNoticeEventCondition": {
+      "receiver": "SetNoticeEventConditionReceiver",
+      "receiveVa": "0x0089d980",
+      "targetType": "Application::Lua::Script::Client::Control::DirectorBase",
+      "targetTypeDescriptor": "0x012bf9c8",
+      "cast": "ActorBase -> DirectorBase is a soft cast; success stores in DirectorBase+0x60, failure falls back to ActorBase+0x118.",
+      "conditionCtorSizes": ["0x60", "0x5c"],
+      "sequencingRisk": "A packet received before ScriptBind can register the condition in the ActorBase fallback container rather than the DirectorBase container."
+    }
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0680",
+      "name": "KickClientOrderEventReceiver_Receive_slot2_FUN_0089E450",
+      "kind": "function",
+      "address": "0x0089E450",
+      "confidence": "confirmed",
+      "notes": "The actual Receive method (vtable slot 2) of the 5-slot KickClientOrderEventReceiver class (RTTI BCS-Y-0028 at 0xc574b0). Deep-decoded. Distinct from the slot1Fn FUN_0089F530 which is the New() factory. Gates on actor[+0x5c] flag (silent drop if non-zero). Calls FUN_0089F180 parser then optionally FUN_0089E200 to set the noticeEvent flag. The kick_receiver_offset_map.md doc walks this in detail."
+    },
+    {
+      "id": "BCS-Y-0681",
+      "name": "KickEvent_BodyParser_FUN_0089F180",
+      "kind": "function",
+      "address": "0x0089F180",
+      "confidence": "confirmed",
+      "notes": "289-byte KickEvent packet body parser called from KickClientOrderEventReceiver::Receive. Reads event_type byte at packet body +8 (equivalent to receiver+0x68). Sets receiver+0x80 = 1 IFF event_type == 0x05 (the 'noticeEvent' tag at global [0x012c3f7e]). Conditionally calls FUN_0089E200 (BCS-Y-0682) on the noticeEvent branch to seed LuaParamsContainer+0x14. Per kick_receiver_offset_map.md."
+    },
+    {
+      "id": "BCS-Y-0682",
+      "name": "KickEvent_NoticeFlag_SetterHelper_FUN_0089E200",
+      "kind": "function",
+      "address": "0x0089E200",
+      "confidence": "confirmed",
+      "notes": "92-byte helper called by KickEvent_BodyParser (BCS-Y-0681) on the noticeEvent branch. Sets LuaParamsContainer+0x14 = 1 AND seeds the first LuaParam byte to 0x01. Also called defensively from KickClientOrderEventReceiver::Receive's Branch B2 (the fallback path). Per kick_receiver_offset_map.md."
+    },
+    {
+      "id": "BCS-Y-0683",
+      "name": "StartServerOrderEventFunctionReceiver_Receive_slot2",
+      "kind": "function",
+      "address": "TBD - to be recovered from Ghidra; vtable[2] of RTTI 0xc574c8",
+      "confidence": "hypothesis-strong",
+      "notes": "The actual Receive method (vtable slot 2) of the 5-slot StartServerOrderEventFunctionReceiver class (RTTI BCS-Y-0030). Deep-decoded. Distinct from slot1Fn FUN_0089F430 (factory). Per docs/receiver_classes_inventory.md - the 5-slot receivers have factory at slot 1 and Receive at slot 2. Needs Ghidra walk to recover exact VA."
+    },
+    {
+      "id": "BCS-Y-0684",
+      "name": "Application::Lua::Script::Client::Command::Network::SetEventStatusReceiver",
+      "kind": "rtti",
+      "address": "0x00C573A0",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc573a0 per docs/receiver_classes_inventory.md. 2-slot vtable (destructor + Receive). Handles s2c opcode 0x0136 SetEventStatus. RTDynamicCast(ActorBase -> NpcBase) unguarded - Pattern A1 per the receiver gate cheatsheet."
+    },
+    {
+      "id": "BCS-Y-0685",
+      "name": "SetEventStatusReceiver_slot1_Receive_FUN_0089D860",
+      "kind": "function",
+      "address": "0x0089D860",
+      "confidence": "confirmed",
+      "notes": "Receive method (vtable slot 1) of SetEventStatusReceiver. Per docs/event_status_condition_receivers_decomp.md. Casts ActorBase -> NpcBase, no null-check guard. Calls FUN_006E67C0 apply. NO actor field writes per BCS-Y-0362."
+    },
+    {
+      "id": "BCS-Y-0686",
+      "name": "SetEventStatus_apply_FUN_006E67C0",
+      "kind": "function",
+      "address": "0x006E67C0",
+      "confidence": "confirmed",
+      "notes": "Apply helper called by SetEventStatusReceiver::Receive (BCS-Y-0685). Switches on receiver+0x58 to select a lookup helper, then calls vtable[9] on the looked-up state object. Maintains event-status registry; no per-actor field writes per BCS-Y-0362."
+    },
+    {
+      "id": "BCS-Y-0687",
+      "name": "Application::Lua::Script::Client::Command::Network::SetDisplayNameReceiver",
+      "kind": "rtti",
+      "address": "0x00C57388",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc57388. 2-slot vtable. Handles s2c opcode 0x013D SetActorNamePacket. RTDynamicCast(ActorBase -> CharaBase) per dynamic_cast_callsite_sweep."
+    },
+    {
+      "id": "BCS-Y-0688",
+      "name": "SetDisplayNameReceiver_slot1_Receive_FUN_0089D610",
+      "kind": "function",
+      "address": "0x0089D610",
+      "confidence": "confirmed",
+      "notes": "Receive method (vtable slot 1) of SetDisplayNameReceiver. Pattern A1. Casts to CharaBase, updates the displayed name field."
+    },
+    {
+      "id": "BCS-Y-0689",
+      "name": "Application::Lua::Script::Client::Command::Network::SetNoticeEventConditionReceiver",
+      "kind": "rtti",
+      "address": "0x00C573AC",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc573ac. 2-slot vtable. Handles s2c opcode 0x016B SetNoticeEventCondition. RTDynamicCast(ActorBase -> DirectorBase) with FALLBACK to ActorBase[+0x118] if cast fails - per docs/event_status_condition_receivers_decomp.md. The fallback creates the 'orphaned conditions' hypothesis: packets sent BEFORE ScriptBind land in ActorBase[+0x118] instead of DirectorBase[+0x60]."
+    },
+    {
+      "id": "BCS-Y-0690",
+      "name": "SetNoticeEventConditionReceiver_slot1_Receive_FUN_0089D980",
+      "kind": "function",
+      "address": "0x0089D980",
+      "confidence": "confirmed",
+      "notes": "Receive method (vtable slot 1) of SetNoticeEventConditionReceiver. Pattern A1 with fallback path (RTDynamicCast guards = guarded). Per docs/event_status_condition_receivers_decomp.md."
+    },
+    {
+      "id": "BCS-Y-0691",
+      "name": "Application::Lua::Script::Client::Command::Network::SetEmoteEventConditionReceiver",
+      "kind": "rtti",
+      "address": "0x00C57394",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc57394. 2-slot vtable. Handles s2c opcode 0x016C SetEmoteEventCondition. Non-RTDynamicCast packer per receiver_classes_inventory.md (one of the 7 non-casting receivers)."
+    },
+    {
+      "id": "BCS-Y-0692",
+      "name": "SetEmoteEventConditionReceiver_slot1_Receive_FUN_0089D750",
+      "kind": "function",
+      "address": "0x0089D750",
+      "confidence": "confirmed",
+      "notes": "Receive method (vtable slot 1) of SetEmoteEventConditionReceiver. Pattern A2 - inline pack-and-forward without RTDynamicCast. Packs receiver fields and forwards to a 0x2f2bxx sibling downstream handler."
+    },
+    {
+      "id": "BCS-Y-0693",
+      "name": "Application::Lua::Script::Client::Command::Network::SetPushEventConditionWithCircleReceiver",
+      "kind": "rtti",
+      "address": "0x00C573B8",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc573b8. 2-slot vtable. Handles s2c opcode 0x016F SetPushEventConditionWithCircle. Non-RTDynamicCast packer. Geometry payload: float radius + 0x44533088 + 100.0f + outwards flag + silent flag + conditionName."
+    },
+    {
+      "id": "BCS-Y-0694",
+      "name": "SetPushEventConditionWithCircleReceiver_slot1_Receive_FUN_0089DB00",
+      "kind": "function",
+      "address": "0x0089DB00",
+      "confidence": "confirmed",
+      "notes": "Receive method of SetPushEventConditionWithCircleReceiver. Pattern A2 - 67-byte inline packer. Forwards to a 0x2f2bxx downstream handler that ultimately reaches the DeferredEventConditionProducer chain (FUN_006F2B70 + FUN_0075C4A0 -> 0x54-stride callback table at BCS-S-0037)."
+    },
+    {
+      "id": "BCS-Y-0695",
+      "name": "Application::Lua::Script::Client::Command::Network::SetPushEventConditionWithFanReceiver",
+      "kind": "rtti",
+      "address": "0x00C573C4",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc573c4. Sibling of SetPushCircle. Handles s2c opcode 0x0170."
+    },
+    {
+      "id": "BCS-Y-0696",
+      "name": "SetPushEventConditionWithFanReceiver_slot1_Receive_FUN_0089DC90",
+      "kind": "function",
+      "address": "0x0089DC90",
+      "confidence": "confirmed",
+      "notes": "Receive method of SetPushFanReceiver. Pattern A2 - identical-shaped sibling of FUN_0089DB00."
+    },
+    {
+      "id": "BCS-Y-0697",
+      "name": "Application::Lua::Script::Client::Command::Network::SetPushEventConditionWithTriggerBoxReceiver",
+      "kind": "rtti",
+      "address": "0x00C573D0",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc573d0. Sibling of SetPushCircle / SetPushFan. Handles s2c opcode 0x0175."
+    },
+    {
+      "id": "BCS-Y-0698",
+      "name": "SetPushEventConditionWithTriggerBoxReceiver_slot1_Receive_FUN_0089DE20",
+      "kind": "function",
+      "address": "0x0089DE20",
+      "confidence": "confirmed",
+      "notes": "Receive method of SetPushTriggerBoxReceiver. Pattern A2 - identical-shaped sibling."
+    },
+    {
+      "id": "BCS-Y-0699",
+      "name": "Application::Lua::Script::Client::Command::Network::SetTalkEventConditionReceiver",
+      "kind": "rtti",
+      "address": "0x00C573DC",
+      "confidence": "confirmed",
+      "notes": "RTTI vtable RVA 0xc573dc. 2-slot vtable. Handles s2c opcode 0x012E SetTalkEventCondition (the s2c side of the bidirectional 0x012E opcode collision). RTDynamicCast(ActorBase -> NpcBase) - Pattern A1. slot1Fn FUN_0089DF60 is not separately catalogued as a BCS-Y entry."
+    }
+  ],
+  "key_findings": [
+    {
+      "id": "EVENTDIALOGS-F1",
+      "title": "Event subsystem opcodes are well-mapped but receiver classes mostly lack BCS-Y RTTI entries",
+      "summary": "The 14 event-family receiver classes are all attributed in receiver_opcode_map_inbound.json by RTTI RVA + slot1Fn VA + opcode, but only 3 have actual BCS-Y RTTI entries (KickClientOrderEvent = 0028/0029, StartServerOrderEventFunction = 0030/0031, EndClientOrderEvent = 0032/0033). The other 11 receivers (SetEventStatus, SetDisplayName, SetNoticeEvent, SetEmoteEvent, SetPushCircle/Fan/TriggerBox, SetTalkEvent, SetCommandEvent, plus 2 5-slot Receive method gaps) need BCS-Y class+slot1 entries. This proposes 16 of these (BCS-Y-0684..0699)."
+    },
+    {
+      "id": "EVENTDIALOGS-F2",
+      "title": "1.x has NO dedicated NPC dialog / cutscene opcode - both are client-side Lua-rendered",
+      "summary": "Despite the user-visible prominence of NPC dialog boxes and cutscene playback, the 1.x wire protocol has ZERO dedicated opcodes for either. NPC dialog: server sends 0x0130 RunEventFunction with a Lua function name; client-side scripts render the dialog UI via DesktopWidget _appendLogPool / message-box APIs. Cutscene: server sends 0x012D EventStart with cutscene luaParams OR 0x0130 RunEventFunction with the cutscene play function; client-side Control::CutScene Lua bindings (_setFilename / _loadCutScene / _play / _replay / _skip) handle local playback. This is consistent with client-architecture 'Lua N-API setters are client-local by design' (server-authoritative state, client-emits-intent) - dialog rendering is purely a CLIENT presentation concern."
+    },
+    {
+      "id": "EVENTDIALOGS-F3",
+      "title": "The pattern-d-subdispatcher pass vs receiver_opcode_map disagreement: 0x16C SetEmote and 0x16B SetNotice route via no-op LuaActorImpl slots",
+      "summary": "FUN_004D8860's case table maps 0x16B->LuaActorImpl::vftable[51] (FUN_00574FE0, a no-op stub via BCS-Y-0092 categorization) and 0x16C->slot 52 (FUN_00759E10, confirmed 3-byte no-op stub per the event-family-sibling-findings pass). YET receiver_opcode_map confirms these opcodes have real receivers (SetNoticeEventConditionReceiver / SetEmoteEventConditionReceiver). Resolution hypothesis: the actual dispatch path is FUN_004DC690's Pattern B fallthrough (BCS-Y-0527 generic vftable[9]) - not FUN_004D8860's event-family path. This is the dual-path scenario flagged for 0x17B (PATTERNDSUBD-F4). 0x16B/0x16C likely have similar dual paths."
+    },
+    {
+      "id": "EVENTDIALOGS-F4",
+      "title": "0x166 SetCommandEventConditionReceiver entry in receiver_opcode_map is wrong - 0x166 is a SendLogReceiver subcategory",
+      "summary": "receiver_opcode_map_inbound.json lists 0x0166 SetCommandEventConditionReceiver (RTTI 0xc5737c, slot1Fn FUN_0089D4F0). But the SendLogReceiver demux confirms 0x0166 is the SendLogReceiver subcategory 'GameMessageWithoutActor1' with ctor handler FUN_008A0A60 (shared with 0x15C subcategory CustomSender1). The 20-opcode fallthrough cluster 0x157..0x16A all routes to SendLogReceiver via FUN_004D8860 case slot 63 (FUN_00575E30 wrapper). The receiver does exist (it has its own RTTI at 0xc5737c with slot1Fn FUN_0089D4F0); the wire opcode mapping in receiver_opcode_map is wrong. SetCommandEventCondition's real wire opcode (if any) needs re-identification. **This is a catalog data-quality finding worth a separate phase to clean up.**"
+    },
+    {
+      "id": "EVENTDIALOGS-F5",
+      "title": "EventStart 0x012D is the universal c2s entry point - 5 wrappers feed one builder",
+      "summary": "Client-architecture '1.x combat is asymmetric' already documents that 0x012D EventStart is the c2s 'central command opcode' (carrying combat semantics via eventName/luaParams, etc.). This confirms it's also the c2s entry for ALL event-family interactions: talk requests, push triggers, notice notifications, emote events, menu confirmations, and cutscene starts. The 5 cataloged wrappers BCS-Y-0427..0431 (EventStartServerCallWrapper, EventStartRawRecordWrapper pair, EventStartRouteWrapper, EventStartFollowupWrapper, EventStartDiagnosticEmitter) all feed FUN_00776760 MapEventStartPacketBuilder (BCS-Y-0426). The c2s side of the event subsystem is FULLY ATTRIBUTED - no proposed entries needed for the emit chain."
+    },
+    {
+      "id": "EVENTDIALOGS-F6",
+      "title": "Deferred Event-Condition Scheduler is the leaf-callback firer for Talk/Push/Notice events",
+      "summary": "Set*EventCondition receivers write callback records into the 2-slot 0x54-stride callback table (BCS-S-0037), then the native Event execution scheduler walks the queue. Talk and Push leaves fire _onTalkEvent / _onTalkRequest / _onPushEvent / _onPushRequest; NoticeBlock and NoticeNonBlock have a no-op leaf slot +0x28."
+    },
+    {
+      "id": "EVENTDIALOGS-F7",
+      "title": "Cutscene playback callbacks are LuaActorImpl::vftable cancellation slots (38/39/36)",
+      "summary": "Three cutscene-related vftable slots are already cataloged: LuaActorImpl slot 38 (_onPreCutSceneCancel, FUN_00759AD0), LuaActorImpl slot 39 (_onPostCutSceneCancel, FUN_00759B40), NullActorImpl slot 36 (_onCutScenePreview, FUN_0075AD70). These fire when the user cancels a cutscene mid-playback. The cutscene START sequence is NOT in this slot range - it's via Control::CutScene class methods invoked from Lua. The asymmetry (cancel = vtable slots, start = Lua-method) suggests cutscene cancellation is a low-level system response to user input that needs to interrupt the class-level state, while start is part of normal script flow."
+    },
+    {
+      "id": "EVENTDIALOGS-F8",
+      "title": "5/6-slot receiver classes' slot1Fn is misleading - real Receive method is at slot 2",
+      "summary": "Per docs/receiver_classes_inventory.md and the project's local memory ledger reference-receiver-vtable-layouts.md: client_receivers.json's slot1_fn field is misleading for 5-slot and 6-slot receivers. The 5-slot variants (KickClientOrderEvent, StartServerOrderEventFunction, ChangeActorSubStatStatus) have a New() factory at slot 1 and the real Receive method at slot 2. This manifest documents it by proposing distinct BCS-Y entries for the slot-2 Receive (BCS-Y-0680 KickEvent::Receive, BCS-Y-0683 StartServerOrderEvent::Receive). Note: EndClientOrderEvent is 5-slot but its slot1Fn IS the Receive (FUN_0089D180) - the factory pattern is specific to Kick/StartServerOrder. The 6-slot JobQuestCompleteTripleReceiver dispatches via 'Pattern C' instead per."
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "EVENTDIALOGS-Q1",
+      "question": "Where is the c2s EventUpdate 0x012E emitter? the combat action c2s findings pass focused only on 0x012D. The c2s EventUpdate builder is not cataloged.",
+      "next_step": "Run FindOpcodeImmediate.java on 0x012E in Ghidra and decomp candidates to identify the builder. Likely shares some helper functions with the 0x012D builder family (FUN_00776760 sibling)"
+    },
+    {
+      "id": "EVENTDIALOGS-Q2",
+      "question": "What is the real wire opcode for SetCommandEventCondition? Finding F4 disproves the 0x0166 claim in receiver_opcode_map. The receiver class itself does exist (RTTI 0xc5737c). Where is its actual dispatch case?",
+      "next_step": "Search Ghidra for callers/refs to FUN_0089D4F0 (the SetCommandEventConditionReceiver slot1Fn) and walk back to the dispatcher that calls it"
+    },
+    {
+      "id": "EVENTDIALOGS-Q3",
+      "question": "Does opcode 0x016B SetNoticeEventCondition actually route via FUN_004DC690 high-switch Pattern B (BCS-Y-0527 generic vftable[9]) or via FUN_004D8860 case 0x16B (LuaActorImpl slot 51 no-op stub)? FUN_004D8860 vs receiver_opcode_map disagree. Same question for 0x16C SetEmoteEventCondition (the pattern-d-subdispatcher pass says slot 52 no-op).",
+      "next_step": "Decomp the actual call sites in FUN_004DC690 + FUN_004D8860 for 0x16B and 0x16C; check whether they fall through to the BCS-Y-0527 fallthrough label or follow FUN_004D8860's slot trampoline. PATTERNDSUBD-F4 already documented 0x17B as having dual dispatch paths - 0x16B/0x16C may follow the same pattern"
+    },
+    {
+      "id": "EVENTDIALOGS-Q4",
+      "question": "Where is the StartServerOrderEventFunctionReceiver slot 2 Receive method? The family is deep-decoded but the 5-slot pattern means slot1Fn FUN_0089F430 is the factory, not Receive. Need to find the real Receive VA.",
+      "next_step": "Dump the StartServerOrderEventFunctionReceiver vtable (RTTI 0xc574c8) via Ghidra's DumpVtableSlots.java; confirm slot 2 is the Receive method and record its VA"
+    },
+    {
+      "id": "EVENTDIALOGS-Q5",
+      "question": "Are there other event-family opcodes routing via dispatchers OTHER than FUN_004DC690 + FUN_004D8860? PATTERNDSUBD-F3 documented FUN_0058CCA0 and FUN_0059CED0 as parent sub-dispatchers ABOVE FUN_004D8860. Both reach FUN_004D8860 via their default branch. Do they themselves carry dedicated handlers for event opcodes that bypass FUN_004D8860?",
+      "next_step": "Enumerate FUN_0058CCA0 (~2300 lines, estimated 30+ cases) and FUN_0059CED0 (272 bytes, 5 cases) case tables. Worth a dedicated phase since FUN_0058CCA0 is large enough to potentially redirect a substantial fraction of event-family opcodes around FUN_004D8860"
+    }
+  ],
+  "summary": {
+    "totalEventFamilyOpcodes": 13,
+    "covered_by_existing_bcsY": 3,
+    "covered_by_receiver_class_in_map_but_no_bcsY": 9,
+    "no_dedicated_opcode_documented": 2,
+    "proposed_new_bcsY_entries": 20,
+    "deferred_chain_already_cataloged": "BCS-Y-0470..0476 + BCS-Y-0397..0403 (scheduler + Lua engine callback registry)",
+    "c2s_emit_chain_already_cataloged": "BCS-Y-0426..0434 (MapEventStart family - client-architecture '1.x combat is asymmetric')",
+    "cutscene_already_cataloged": "Control::CutScene class entries (vtable, slot2 dispatcher, 5 _lua_firer entries, 2 execute adapters, 3 vtable cancellation slots)",
+    "catalog_quality_issue_found": "0x166 SetCommandEventConditionReceiver entry in receiver_opcode_map_inbound.json is wrong (the SendLogReceiver demux proves 0x166 is a SendLogReceiver subcategory)",
+    "architectural_finding_extension_candidate": "Could extend client-architecture 'S2C dispatch has five architectural patterns' with a 'Pattern F: Lua-rendered, no dedicated opcode' note covering the NPC dialog / cutscene case where the wire protocol carries no specific opcode and the rendering is purely client-side script"
+  },
+  "ghidraEvidence": [
+    "fun_004d8860_decomp.txt (existing dump)",
+    "uncataloged_handlers_batch_1.txt (existing dump)",
+    "handlers_batch[1-3].txt (existing dumps)",
+    "fun_004dc690_decomp.txt (existing dump)",
+    "sub3a_opcode_012d_immediates.txt (existing dump for EventStart)",
+    "turn13_sendlog_*.txt (existing SendLogReceiver dumps)"
+  ],
+  "evidence_sources": [
+    "manifests/receiver_opcode_map_inbound.json",
+    "manifests/pattern_d_subdispatcher.json",
+    "manifests/high_switch_enumeration.json",
+    "manifests/low_switch_remaining_cases.json",
+    "manifests/sendlogreceiver_demux.json",
+    "manifests/event_family_sibling_findings.json",
+    "manifests/event_condition_consumer_findings.json",
+    "docs/deferred-event-scheduler.md",
+    "docs/lua-engine-callback-registry.md",
+    "docs/combat-action-c2s.md"
+  ]
+}

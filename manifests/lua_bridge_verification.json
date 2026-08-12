@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete_with_promotion",
+  "scope": "Verify client-architecture 'The LuaControl hierarchy is the runtime surface' candidate via the 7 other FUN_00CC70E0 callers, decomp FUN_00D03A50 deepest fmt impl, and decomp the 4 LuaControl-derived class ctors. Result: client-architecture 'The LuaControl hierarchy is the runtime surface' PROMOTED (3+-tier Lua control hierarchy: LuaControl <- ActorBase <- StatusBase + 22 other ActorBase-derived classes).",
+  "method": {
+    "step1": "Decomp the 7 other callers of FUN_00CC70E0 (FUN_006E2000, FUN_008A3350, FUN_00792C40, FUN_006FF3E0, FUN_0078CC30, FUN_0078CE10, FUN_006DDA90) via run_c72_c73_c74_bulk.bat pass 1. Log: c72_other_callers_decomp.txt.",
+    "step2": "Identify FUN_008A3350 as Application::Lua::Script::Client::Command::System::ChangeActorSubStatStatusReceiver::ctor via vftable write. Reveals +200000 / +217232 (200000+0x4350) namespace-key offsets for sub-status types.",
+    "step3": "Decomp FUN_00D03A50 (deepest fmt thunk layer) via pass 2. Log: c73_fmt_deep_decomp.txt. Reveals status-id-to-intern-string converter using global epoch counter (DAT_0130D426) + ((epoch+0xa00) * 0x100000) shift hash.",
+    "step4": "Decomp the 4 LuaControl-derived class ctors via pass 3. Log: c74_luacontrol_derived_decomp.txt. Identifies: LuaManyTentativeControlCreator (FUN_0070A8A0), ActorBase (FUN_006DBB70, 23 callers), NilControl instantiator (FUN_00CD8990), CommandEventRelationControlBase (FUN_00712A90).",
+    "step5": "Confirm StatusBase::ctor (BCS-Y-1395, FUN_00776200) is ONE OF ActorBase::ctor's 23 callers - meaning StatusBase derives from ActorBase derives from LuaControl. This upgrades the '2-tier Lua-bridge' to a CONFIRMED 3-tier hierarchy.",
+    "step6": "Catalog 12 BCS-Y entries (BCS-Y-1399..1410). Amend BCS-Y-1393, BCS-Y-1395, BCS-Y-1368 with cross-references.",
+    "step_finding": "Promote client-architecture 'The LuaControl hierarchy is the runtime surface' in the architectural findings with full hierarchy description + Receiver-apply coupling evidence."
+  },
+  "key_findings": [
+    "**Client-architecture 'The LuaControl hierarchy is the runtime surface' PROMOTED**: 'Bahamut's actor/status state framework derives from a 3+-tier Lua control class hierarchy'. Evidence: 12 BCS-Y entries spanning all 3 tiers; RTTI confirmation that StatusBase inherits LuaControl via ActorBase; ChangeActorSubStatStatusReceiver lives in Application::Lua::Script::Client::Command::System namespace.",
+    "**LuaControl has 4 derived classes**: LuaManyTentativeControlCreator (engine-side), ActorBase (script-side, 23 derived classes), NilControl (Null Object), CommandEventRelationControlBase (script-side).",
+    "**ActorBase is the widely-used Tier-1 intermediate**: 23 callers of ActorBase::ctor = 23 derived classes (script-side actor specializations). StatusBase is one of them.",
+    "**ChangeActorSubStatStatusReceiver namespace identified**: Application::Lua::Script::Client::Command::System. Confirms the Lua-bridge architecture extends to packet Receivers, not just script-side actor classes.",
+    "**Status-id namespace offsets**: ChangeActorSubStatStatusReceiver uses +200000 for status_value < 0x8000, +217232 (200000+17232) for status_value >= 0x8000. The 200000 base + 17232 high-half offset = namespace key for sub-status types.",
+    "**FUN_00CC70E0 is a generic status-id-to-intern-string formatter**, not Lua-bridge-specific. Used by 8 functions (this entry plus BCS-Y-1368). The 3-level thunk chain (FUN_00CC70E0 -> FUN_00CD8050 -> FUN_00D03A50) implements a hash-table-based string-intern key generator over a global epoch counter.",
+    "**FUN_00D03A50 hash mechanism**: takes (raw_status_id, epoch_counter=DAT_0130D426) -> generates ((epoch+0xa00) * 0x100000) high-bits-shifted hash + looks up in a global intern table. Adds new entries on miss.",
+    "**NilControl is a Null Object pattern**: _anon_DAD46F4B::NilControl is a TU-internal singleton for LuaControl, returned when real-instance lookup fails. Avoids NULL-check at every callsite."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1399", "name": "Application_Lua_Script_Client_Command_System_ChangeActorSubStatStatusReceiver_ctor_FUN_008a3350", "addr": "0x008A3350", "size_bytes": 261, "role": "Receiver ctor; confirms Lua-bridge namespace + +200000/+217232 namespace offsets"},
+    {"id": "BCS-Y-1400", "name": "status_list_walk_initializer_FUN_006e2000", "addr": "0x006E2000", "size_bytes": 298, "role": "Status list walker/initializer; iterates global vector for startup registration"},
+    {"id": "BCS-Y-1401", "name": "lua_bridge_save_restore_FUN_00792c40", "addr": "0x00792C40", "size_bytes": 1081, "role": "Lua-bridge save/restore handler; serializes status state to/from savegame"},
+    {"id": "BCS-Y-1402", "name": "status_list_smaller_iterator_FUN_006ff3e0", "addr": "0x006FF3E0", "size_bytes": 242, "role": "Status list iterator (smaller scope than FUN_006E2000)"},
+    {"id": "BCS-Y-1403", "name": "status_upsert_helper_FUN_0078cc30", "addr": "0x0078CC30", "size_bytes": 477, "role": "Status entry UPSERT helper; 2-branch dispatch on entry format byte"},
+    {"id": "BCS-Y-1404", "name": "status_query_helper_FUN_0078ce10", "addr": "0x0078CE10", "size_bytes": 365, "role": "Status entry QUERY helper; mirror of upsert"},
+    {"id": "BCS-Y-1405", "name": "status_object_polymorphic_copy_ctor_FUN_006dda90", "addr": "0x006DDA90", "size_bytes": 151, "role": "Polymorphic status-object copy ctor; preserves source vftable"},
+    {"id": "BCS-Y-1406", "name": "status_id_intern_key_lookup_impl_FUN_00d03a50", "addr": "0x00D03A50", "size_bytes": 275, "role": "Deepest fmt impl; status-id-to-intern-string converter with epoch-based hash"},
+    {"id": "BCS-Y-1407", "name": "Component_Lua_GameEngine_LuaManyTentativeControlCreator_ctor_FUN_0070a8a0", "addr": "0x0070A8A0", "size_bytes": 86, "role": "Engine-side LuaControl-derived ctor"},
+    {"id": "BCS-Y-1408", "name": "Application_Lua_Script_Client_Control_ActorBase_ctor_FUN_006dbb70", "addr": "0x006DBB70", "size_bytes": 107, "role": "Script-side Tier-1 intermediate ctor; 23 derived classes"},
+    {"id": "BCS-Y-1409", "name": "NilControl_instantiator_FUN_00cd8990", "addr": "0x00CD8990", "size_bytes": 1978, "role": "_anon_DAD46F4B::NilControl singleton initializer (Null Object pattern)"},
+    {"id": "BCS-Y-1410", "name": "Application_Lua_Script_Client_Control_CommandEventRelationControlBase_ctor_FUN_00712a90", "addr": "0x00712A90", "size_bytes": 86, "role": "Script-side LuaControl-derived ctor"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1393", "addition": "4 LuaControl-derived classes identified via ctor callers; cross-refs to BCS-Y-1407/1408/1409/1410."},
+    {"id": "BCS-Y-1395", "addition": "Direct base IDENTIFIED: ActorBase (BCS-Y-1408). Confirms 3-tier inheritance chain on the Lua-bridge side."},
+    {"id": "BCS-Y-1368", "addition": "Companion ctor IDENTIFIED: BCS-Y-1399. Clarifies the fmt thunk chain role (generic id-to-key, not Lua-bridge-specific)."}
+  ],
+  "architectural_findings_promoted": [
+    {"title": "Bahamut's actor/status state framework derives from a 3+-tier Lua control class hierarchy", "evidence_summary": "12 BCS-Y entries spanning 3 tiers; RTTI confirmation of inheritance; ChangeActorSubStatStatusReceiver namespace evidence; 23 ActorBase-derived classes confirmed."}
+  ],
+  "deferred_followups": [
+    "Catalog vftable VAs for ActorBase, CommandEventRelationControlBase, LuaManyTentativeControlCreator, ChangeActorSubStatStatusReceiver, NilControl via FindSymbolByName runs. ~5 BCS-Y data entries + ~10min.",
+    "Decomp the 22 OTHER callers of ActorBase::ctor (besides StatusBase) to enumerate the broader actor-class set. Likely ~22 BCS-Y entries + significantly extends client-architecture 'The LuaControl hierarchy is the runtime surface' section's evidence breadth.",
+    "Decomp the 5 base classes of LuaControl (its primary base + 4 interface mixins per RTTI). Establishes the BELOW-LuaControl layers.",
+    "Identify the 11 base classes of StatusBase via BCDs - other than ActorBase, what are the other 10? Could be C++ interface mixins or property bags.",
+    "Investigate whether the OTHER 7 callers of FUN_00CC70E0 (BCS-Y-1400..1405) participate in the Lua-bridge or are independent uses of the formatter. Some may surface additional LuaControl-related classes.",
+    "Confirm client-architecture 'The LuaControl hierarchy is the runtime surface' across other Receivers in Application::Lua::Script::Client::Command::System namespace. the 16 sibling factories (BCS-Y-1338..1353) likely all live in this namespace - their ctor decomps would establish the pattern's full breadth."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1388 -> 1400 (+12 BCS-Y: all functions)",
+  "files_changed": [
+    "manifests/symbols.json: +12 entries (BCS-Y-1399..1410), 3 amendments (BCS-Y-1393 + 1395 + 1368)",
+    "manifests/lua_bridge_verification.json (NEW, this file)",
+    "tools/ghidra/logs/c72_other_callers_decomp.txt (NEW)",
+    "tools/ghidra/logs/c73_fmt_deep_decomp.txt (NEW)",
+    "tools/ghidra/logs/c74_luacontrol_derived_decomp.txt (NEW)"
+  ]
+}

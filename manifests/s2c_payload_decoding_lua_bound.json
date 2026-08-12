@@ -1,0 +1,523 @@
+{
+  "generated": "2026-05-20",
+  "bcsyRef": "BCS-Y-0389",
+  "scope": "s2c payload decoding for the ten user-listed Lua-bound inbound receiver opcodes",
+  "offsetBasis": "fields[] offsets are application-payload relative, after the 16-byte game-message prefix. The PCAP-derived mirror layouts keep full game-message body offsets separately.",
+  "inputs": [
+    "manifests\\data_dependency_catalog.json confirmedIndirectBindings",
+    "manifests\\receiver_opcode_map_inbound.json",
+    "%BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt",
+    "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\helpers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\receives_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\combat_lifecycles_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\decomp_00707d60.txt"
+  ],
+  "stats": {
+    "payloadStructsDecoded": 10,
+    "payloadFieldsDecoded": 32,
+    "distinctOpcodes": [
+      "0x013d",
+      "0x0144",
+      "0x0145",
+      "0x0179",
+      "0x0194",
+      "0x0195",
+      "0x0197",
+      "0x019c",
+      "0x019d",
+      "0x01a4"
+    ]
+  },
+  "payloadStructs": {
+    "s2c_0x013d": {
+      "direction": "s2c",
+      "opcode": 317,
+      "opcodeHex": "0x013d",
+      "name": "SetActorNamePacket",
+      "totalSize": 56,
+      "bodyHeaderSize": 16,
+      "payloadSize": 40,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:333-337; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:361",
+          "name": "displayNameId",
+          "note": "Constructor normalizes incoming zero to 0xffffffff before writing the CharaBase+0x60 display-name sub-struct."
+        },
+        {
+          "offset": 4,
+          "size": 32,
+          "type": "char[32]",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:345-352; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:361",
+          "name": "customName",
+          "note": "The client wrapper copies the full 0x20-byte name area before string construction."
+        },
+        {
+          "offset": 36,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:337; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:361; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:437",
+          "name": "displayNameKind",
+          "note": "The dword at payload+0x24; isSexMale; the client stores it; the display-name kind selector."
+        },
+        {
+          "offset": 37,
+          "size": 3,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x0089D610",
+          "receiverName": "SetDisplayNameReceiver::apply_FUN_0089D610",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:308-376; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:204-215; %BCS_GHIDRA_PROJECTS%\\helpers_decomp.txt:242-285",
+          "wrapperVa": "0x0076C4D0",
+          "wrapperName": "FUN_0076c4d0",
+          "note": "Wrapper reads displayNameId, copies payload+4..0x23 as the custom-name string, and passes payload+0x24 low byte to the receiver constructor."
+        }
+      ],
+      "evidenceVa": "0x0076C4D0",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x0144": {
+      "direction": "s2c",
+      "opcode": 324,
+      "opcodeHex": "0x0144",
+      "name": "SetActorSubStatePacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 1,
+          "type": "u8",
+          "name": "breakage"
+        },
+        {
+          "offset": 1,
+          "size": 1,
+          "type": "u8",
+          "name": "chantId"
+        },
+        {
+          "offset": 2,
+          "size": 1,
+          "type": "u8",
+          "name": "guard"
+        },
+        {
+          "offset": 3,
+          "size": 1,
+          "type": "u8",
+          "name": "waste"
+        },
+        {
+          "offset": 4,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt:138-144",
+          "name": "mode",
+          "note": "Apply chain writes the parsed u8 into CharaBase+0xdc+0x18 as the sub-stat mode/border value."
+        },
+        {
+          "offset": 5,
+          "size": 1,
+          "type": "bytes",
+          "name": "reserved"
+        },
+        {
+          "offset": 6,
+          "size": 2,
+          "type": "u16",
+          "name": "motionPack"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x008A32C0",
+          "receiverName": "ChangeActorSubStatModeBorderReceiver::apply_FUN_008A32C0",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1536-1552; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1575-1582; %BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt:138-144",
+          "wrapperVa": "0x0075A9A0",
+          "wrapperName": "FUN_0075a9a0",
+          "note": "The wrapper constructs a one-byte receiver value, and the apply method sends it to FUN_006EECB0, the CharaBase+0xdc+0x18 writer."
+        }
+      ],
+      "evidenceVa": "0x008A32C0",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x0145": {
+      "direction": "s2c",
+      "opcode": 325,
+      "opcodeHex": "0x0145",
+      "name": "SetActorIconPacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1467-1482; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1506-1513; %BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt:168-174",
+          "name": "iconCode",
+          "note": "Packed icon/net-stat flags; known bits include 0x00000100 is AFK, 0x00010000 is disconnecting, and 0x00020000 is GM."
+        },
+        {
+          "offset": 4,
+          "size": 4,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x0089C990",
+          "receiverName": "ChangeActorExtraStatReceiver::apply_FUN_0089C990",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1467-1482; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1506-1513; %BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt:168-174; %BCS_GHIDRA_PROJECTS%\\helpers_decomp.txt:355-385",
+          "wrapperVa": "0x0075A920",
+          "wrapperName": "FUN_0075a920",
+          "note": "FUN_006FA980 writes the parsed u32 into CharaBase+0xdc+0x10 and fires net-stat callbacks on bit differences."
+        }
+      ],
+      "evidenceVa": "0x0089C990",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x0179": {
+      "direction": "s2c",
+      "opcode": 377,
+      "opcodeHex": "0x0179",
+      "name": "SetActorStatusAllPacket",
+      "totalSize": 56,
+      "bodyHeaderSize": 16,
+      "payloadSize": 40,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 40,
+          "type": "u16[20]",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\combat_lifecycles_decomp.txt:1261-1310; %BCS_GHIDRA_PROJECTS%\\combat_lifecycles_decomp.txt:379-423; %BCS_GHIDRA_PROJECTS%\\decomp_00707d60.txt:31-108",
+          "name": "statusIds",
+          "note": "The client constructor seeds receiver state; this payload before the worker writes the CharaBase+0xdc dynamic status array."
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x008A34D0",
+          "receiverName": "ChangeActorSubStatStatusReceiver::slot1_FUN_008A34D0",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\combat_lifecycles_decomp.txt:1261-1310; %BCS_GHIDRA_PROJECTS%\\combat_lifecycles_decomp.txt:379-423; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:545-568; %BCS_GHIDRA_PROJECTS%\\decomp_00707d60.txt:31-108",
+          "wrapperVa": "0x0076C720",
+          "wrapperName": "FUN_0076c720",
+          "note": "Wrapper passes the payload into ChangeActorSubStatStatusReceiver construction; the slot method reads receiver+0x10/+0x14/+0x15 and the inner worker updates the indexed sub-stat status array."
+        }
+      ],
+      "evidenceVa": "0x0076C720",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x0194": {
+      "direction": "s2c",
+      "opcode": 404,
+      "opcodeHex": "0x0194",
+      "name": "SetGrandCompanyPacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:942-955; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:167-179",
+          "name": "currentAllegiance"
+        },
+        {
+          "offset": 1,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:942-955; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:167-179",
+          "name": "rankLimsa"
+        },
+        {
+          "offset": 2,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:942-955; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:167-179",
+          "name": "rankGridania"
+        },
+        {
+          "offset": 3,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:942-955; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:167-179",
+          "name": "rankUldah"
+        },
+        {
+          "offset": 4,
+          "size": 4,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x0089CD60",
+          "receiverName": "GrandCompanyReceiver::slot1_FUN_0089CD60",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:942-955; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:988-999; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:167-179",
+          "wrapperVa": "0x0075A400",
+          "wrapperName": "FUN_0075a400",
+          "note": "Wrapper reads four payload bytes into the receiver object; apply forwards them to PlayerBase vtable slot 0xa4, which writes PlayerBase+0xed..0xf0."
+        }
+      ],
+      "evidenceVa": "0x0075A400",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x0195": {
+      "direction": "s2c",
+      "opcode": 405,
+      "opcodeHex": "0x0195",
+      "name": "SetEnmityIndicatorPacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\receives_decomp.txt:497-508",
+          "name": "targetActorId",
+          "note": "Object-id style field; the no-specific-target sentinel."
+        },
+        {
+          "offset": 4,
+          "size": 2,
+          "type": "u16",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\receives_decomp.txt:497-508",
+          "name": "hateAmount",
+          "note": "Percentage style enmity indicator; the locked-hate sentinel."
+        },
+        {
+          "offset": 6,
+          "size": 2,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x0089D030",
+          "receiverName": "HateStatusReceiver::apply_FUN_0089D030",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\fun_wrappers_decomp.txt:25-50; %BCS_GHIDRA_PROJECTS%\\receives_decomp.txt:497-508",
+          "wrapperVa": "0x0075A160",
+          "wrapperName": "FUN_0075a160",
+          "note": "Wrapper constructor reads payload dword and u16; apply writes NpcBase+0x154 and NpcBase+0x158."
+        }
+      ],
+      "evidenceVa": "0x0089D030",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x0197": {
+      "direction": "s2c",
+      "opcode": 407,
+      "opcodeHex": "0x0197",
+      "name": "SetCurrentMountChocoboPacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "name": "rentalExpireTime"
+        },
+        {
+          "offset": 4,
+          "size": 1,
+          "type": "u8",
+          "name": "rentalMinLeft"
+        },
+        {
+          "offset": 5,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:741-756; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:767-773; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:301-306",
+          "name": "chocoboAppearance",
+          "note": "Client receiver stores the one-byte mount appearance/grade value and writes MyPlayer+0x15e."
+        },
+        {
+          "offset": 6,
+          "size": 2,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x008A3020",
+          "receiverName": "ChocoboGradeReceiver::slot1_FUN_008A3020",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:741-756; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:767-773; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:301-306",
+          "wrapperVa": "0x0075A280",
+          "wrapperName": "FUN_0075a280",
+          "note": "Wrapper constructs a one-byte receiver value; apply calls the MyPlayer handler that updates the chocobo grade/appearance byte."
+        }
+      ],
+      "evidenceVa": "0x0075A280",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x019c": {
+      "direction": "s2c",
+      "opcode": 412,
+      "opcodeHex": "0x019c",
+      "name": "SetAchievementPointsPacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1021-1038; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1047-1053; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:422-428",
+          "name": "achievementPoints",
+          "note": "UInt64 bytes, but the client receiver reads; applies the low u32."
+        },
+        {
+          "offset": 4,
+          "size": 4,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x0089C510",
+          "receiverName": "AchievementPointReceiver::apply_FUN_0089C510",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1021-1038; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1047-1053; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:422-428",
+          "wrapperVa": "0x0075A4B0",
+          "wrapperName": "FUN_0075a4b0",
+          "note": "Wrapper reads the first payload dword into receiver+4; apply forwards it to the MyPlayer achievement-point writer."
+        }
+      ],
+      "evidenceVa": "0x0075A4B0",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x019d": {
+      "direction": "s2c",
+      "opcode": 413,
+      "opcodeHex": "0x019d",
+      "name": "SetPlayerTitlePacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1088-1104; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1114-1120; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:451-460",
+          "name": "titleId",
+          "note": "UInt64 bytes, but the client receiver reads; applies the low u32."
+        },
+        {
+          "offset": 4,
+          "size": 4,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x0089C5F0",
+          "receiverName": "AchievementTitleReceiver::apply_FUN_0089C5F0",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1088-1104; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1114-1120; %BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:451-460",
+          "wrapperVa": "0x0075A530",
+          "wrapperName": "FUN_0075a530",
+          "note": "Wrapper reads the first payload dword into receiver+4; apply writes PlayerBase+0xe8."
+        }
+      ],
+      "evidenceVa": "0x0075A530",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    },
+    "s2c_0x01a4": {
+      "direction": "s2c",
+      "opcode": 420,
+      "opcodeHex": "0x01a4",
+      "name": "SetCurrentJobPacket",
+      "totalSize": 24,
+      "bodyHeaderSize": 16,
+      "payloadSize": 8,
+      "offsetBasis": "application payload offsets after the 16-byte game-message prefix; s2c SubPacket source/target header fields are not included in fields[]",
+      "fields": [
+        {
+          "offset": 0,
+          "size": 1,
+          "type": "u8",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1299-1314; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1350-1356; %BCS_GHIDRA_PROJECTS%\\jobchange_wrapper_and_apply.txt:25-51",
+          "name": "jobId",
+          "note": "a u32; the client receiver consumes the low byte; writes PlayerBase+0xf1."
+        },
+        {
+          "offset": 1,
+          "size": 7,
+          "type": "bytes",
+          "name": "reserved"
+        }
+      ],
+      "receiverVariants": [
+        {
+          "receiverVa": "0x0089CB60",
+          "receiverName": "JobChangeReceiver::slot1_FUN_0089CB60",
+          "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1299-1314; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1350-1356; %BCS_GHIDRA_PROJECTS%\\jobchange_wrapper_and_apply.txt:25-51",
+          "wrapperVa": "0x0075A6B0",
+          "wrapperName": "FUN_0075a6b0",
+          "note": "Wrapper reads the low payload byte into receiver+4; apply calls the PlayerBase current-job writer."
+        }
+      ],
+      "evidenceVa": "0x0075A6B0",
+      "evidenceSource": "receiver wrapper and apply decomp",
+      "bcsyRef": "BCS-Y-0389",
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+    }
+  },
+  "observations": [
+    "Most small s2c receivers split into a wrapper/constructor that reads packet bytes and an apply method that mutates actor fields from receiver storage.",
+    "SetActorNamePacket carries a 40-byte application payload: u32 displayNameId, 0x20-byte name area, and a low-byte display-name kind at payload+0x24.",
+    "Achievement points, but the client applies only the low u32.",
+    "SetCurrentJob's receiver applies only the low u8 into PlayerBase+0xf1.",
+    "SetActorIconPacket is a packed u32 flag word; the known AFK, disconnecting, and GM bits match the receiver's CharaBase+0xdc+0x10 net-stat storage.",
+    "SetActorStatusAllPacket is the wide 20*u16 status-id block; the receiver chain converts entries into dynamic CharaBase+0xdc status-array writes."
+  ]
+}

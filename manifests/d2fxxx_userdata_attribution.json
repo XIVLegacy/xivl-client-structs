@@ -1,0 +1,158 @@
+{
+  "version": "1",
+  "generated": "2026-05-23",
+  "scope": "Batch characterization of the 5 userdata metatables in the d2fXXX cluster (BCS-Y-0500). Decompiled all template constructors + 16 readable metamethod impls + at least one owning caller per template + the FUN_00d1ce10 'BaseClass' registration site. String-ref scan over the four dispatcher helpers recovered the full field-name vocabulary.",
+  "outcome": "All 5 metatables wrap pieces of the FFXIV 1.x Lua Game Engine (LGE) class system. The 'BaseClass' caller FUN_00d1ce10 (reached from _onLoop.__index = FUN_00d085b0, lge_bootstrap_attribution.json) is the class-registration entry point; it installs FUN_00D20B00 as the metatable for instances. Class instances expose 6 special fields (_save, _temp, _sync, _tag, _bind, _debug); the three pool fields read userdata of FUN_00D208A0 (memory-pool wrapper) which itself exposes 15 size-bookkeeping fields. FUN_00D207A0 wraps the member-descriptor records allocated when scripts assign a value to a class-instance field (the 0x54-byte block FUN_00d175b0 allocates). FUN_00D20540 is an indexed container (length at +0x58, vtable at +0x54) holding member records. FUN_00D20670 is a smaller 2-slot dispatcher (vtable+4/+8 tail-calls) that likely represents a cursor/pair entry within the container. The whole cluster forms one cohesive subsystem rather than five unrelated wrappers.",
+  "subsystem": "FFXIV 1.x LGE class system (Lua Game Engine) - instance, member descriptor, container, cursor, and per-instance memory pools",
+  "wrappedTypeFamily": "FFXIV.Client.LGE class infrastructure (C++ types unnamed in PDB; RTTI absent for this cluster)",
+  "templates": [
+    {
+      "regVa": "0x00D20B00",
+      "name": "LGE BaseClass instance metatable",
+      "metamethodCount": 4,
+      "innerSize_bytes": "varies (instance struct allocated by caller, with +0x60/+0x64/+0x68 = save/temp/sync pool*; +0x30 = name; +0x34 = state; vtable at *param_1)",
+      "constructor": "FUN_00d1ce10 (1943 bytes, __thiscall, the 'BaseClass' class registration entry; pushes 'BaseClass' literal twice; iterates class table at param_1[1]+0xc; for each field declares it; finally calls FUN_00D20B00 to install the metatable)",
+      "fieldVocabulary": ["_save", "_temp", "_sync", "_tag", "_bind", "_debug"],
+      "indexHelper": {
+        "va": "0x00d16d40",
+        "behavior": "Generic member-name dispatcher via FUN_00d16cd0 lookup. If found, copies the member name into param_1+0x30 (active-dispatch slot) and calls vtable +0x1c on the member-descriptor. Falls through to _save/_temp/_sync local readers if not found (returning a pool userdata or 1 if pool is non-null)."
+      },
+      "newindexHelper": {
+        "va": "0x00d175b0",
+        "behavior": "Same lookup pattern, but on miss compares against _save/_temp/_sync/_tag/_bind/_debug. The _tag branch allocates a 0x54-byte block via FUN_009d1b35(0x54) and routes through FUN_00d26b10/26ea0/_etc (the 0x54 block IS the inner struct of a D207A0 userdata - mutating _tag dynamically attaches a member descriptor)."
+      },
+      "interpretation": "Each LGE class instance owns 3 memory pools (save = persistent state, temp = transient/per-frame, sync = network-replicated), plus _tag (instance type marker), _bind (network-binding hook), _debug (instrumentation). Members are looked up through the parent class's member table; reads/writes dispatch through per-member vtables."
+    },
+    {
+      "regVa": "0x00D208A0",
+      "name": "LGE memory pool wrapper",
+      "metamethodCount": 3,
+      "innerSize_bytes": 40,
+      "constructor": "FUN_00d21090 (own) - allocates 0x28 via FUN_009d1b35 + inits via FUN_00d2efb0; FUN_00d20aa0 (borrow) - wraps existing pointer",
+      "fieldVocabulary": ["_save", "_temp", "_sync", "_reserve", "_nesting", "_name", "_saveAllocatedSize", "_tempAllocatedSize", "_syncAllocatedSize", "_saveAssignedSize", "_tempAssignedSize", "_syncAssignedSize", "_saveAvailableSize", "_tempAvailableSize", "_syncAvailableSize"],
+      "structLayout": {
+        "+0x10": "save_bitmap (uint, .Size/.8 used for available calc)",
+        "+0x14": "temp_bitmap (uint)",
+        "+0x18": "sync_bitmap (uint)",
+        "+0x1c": "save_table_ptr (non-null = real allocator)",
+        "+0x20": "temp_table_ptr",
+        "+0x24": "sync_table_ptr"
+      },
+      "indexHelper": {
+        "va": "0x00d2ea60",
+        "behavior": "Long if/else cascade over 15 field names. Pool fields (_save/_temp/_sync) push a Lua truthy via FUN_00d1da80 routing. Size queries delegate to FUN_00d1dca0 (allocated), FUN_00d1ddc0 (assigned), FUN_00d1dee0 (available) or the inline (>>3) bit-count calc."
+      },
+      "newindexHelper": {
+        "va": "0x00d2ea50",
+        "behavior": "Empty `return;` stub (3 bytes). Pools are read-only from Lua - assignment is silently no-op. Distinct from the FUN_00ab7340 `return 0;` 3-byte stub used by other read-only metatables."
+      },
+      "interpretation": "Lua-side view of the engine's three-scope memory allocator (save = persistent, temp = transient, sync = replicated). Exposes bookkeeping for scripts to introspect memory pressure (allocated vs assigned vs available) per scope without granting mutation."
+    },
+    {
+      "regVa": "0x00D207A0",
+      "name": "LGE member descriptor wrapper",
+      "metamethodCount": 4,
+      "innerSize_bytes": 84,
+      "constructor": "FUN_00d20fd0 (own, 5th arg=1) - alloc 0x54 + init via FUN_00d1c100; FUN_00d20f10 (own, 5th arg=0); FUN_00d20a40 (borrow)",
+      "structLayout": {
+        "+0x00": "vtable*",
+        "+0x2c": "name/key area (string)",
+        "+0x44": "...",
+        "+0x48": "lookup_table* (non-null = method dispatch active)",
+        "+0x4c": "...",
+        "+0x4e": "read_only_flag (char) - 0 = read-only path, 1 = mutable path",
+        "+0x4f": "type_tag (char) - set from FUN_00d12170"
+      },
+      "indexHelper": {
+        "va": "0x00d1c250",
+        "behavior": "Looks up Lua arg-2 as field name via FUN_00d1df90 against the lookup table at +0x48. If found, vtable-call +0x1c (member getter). Falls through to FUN_00cf3320(1) on the +0x4e read-only flag if name matches DAT_013780a8/01378050. Returns nil otherwise."
+      },
+      "newindexHelper": {
+        "va": "0x00d1c810",
+        "behavior": "Largest helper in the cluster (940 bytes). Looks up the field, then if mutation is permitted (+0x4e flag + +0x48 non-null) calls a 7-arg setter via FUN_00d272d0 (the shared member-write helper used by D20540's __newindex too). Has special-case branches for +0xb byte tags DAT_0130d422/0130d423 (likely 'method-call' vs 'value-set' member kinds)."
+      },
+      "interpretation": "Wraps a single member descriptor of an LGE class - the record that defines how reads/writes to one named field of an instance are dispatched (which getter, which setter, what type, mutable or not). Allocated dynamically when D20B00's __newindex declares a new member (the 0x54 block FUN_00d175b0 allocates)."
+    },
+    {
+      "regVa": "0x00D20540",
+      "name": "LGE indexed container",
+      "metamethodCount": 5,
+      "innerSize_bytes": 92,
+      "constructor": "FUN_00d20cb0 (own) - alloc 0x5c via FUN_009d1b35 + init via FUN_00d2e230; FUN_00d20980 (borrow)",
+      "structLayout": {
+        "+0x04": "data_base (indexable backing)",
+        "+0x34": "(used by FUN_00d272d0 write path)",
+        "+0x44": "(used by FUN_00d272d0 write path)",
+        "+0x54": "vtable* (indexed accessor)",
+        "+0x58": "length (int) - returned by __len"
+      },
+      "indexHelper": {
+        "va": "0x00d2e0a0",
+        "behavior": "Reads integer Lua arg-2 (FUN_009d6600 = lua_tonumber-or-int). Bounds-check against [1, +0x58]. On in-range: vtable-call +0x1c with (param_1+4, getter_state, arg2, integer_key, tag_a, tag_b). On out-of-range: error via FUN_00cf33a0."
+      },
+      "newindexHelper": {
+        "va": "0x00d2dfd0",
+        "behavior": "Same bounds check, then FUN_00d272d0 write at (param_1+4, getter_state, param_1+0x34, param_1+0x44, arg2, integer_key, tag_a, tag_b). Same write path used by D207A0 - the container shares the engine's generic member-write machinery."
+      },
+      "lenImpl": {
+        "va": "0x00d2f2a0",
+        "behavior": "Reads (int)*(piVar2+0x58) and pushes as double - virtual length field at struct +0x58."
+      },
+      "powImpl": {
+        "va": "0x00d2f340",
+        "behavior": "Calls FUN_00d2e170 which probably implements a container operation (set inclusion / exponentiation overload). Common across the cluster - 4 of 5 templates expose __pow."
+      },
+      "interpretation": "Fixed-length array/container of typed entries (probably member descriptors or named slots). The vtable at +0x54 abstracts the element type, so this template serves multiple element types via different ctors (D20cb0 vs D20980). __pow makes the type subscriptable with arithmetic-like syntax - probably class introspection (`Class ^ 'fieldName'` returns the field descriptor or similar Lua idiom)."
+    },
+    {
+      "regVa": "0x00D20670",
+      "name": "LGE cursor/pair entry",
+      "metamethodCount": 5,
+      "innerSize_bytes": 8,
+      "constructor": "FUN_00d20d70 (own, 9 params, init FUN_00d2e360); FUN_00d20e40 (own, 8 params, init FUN_00d2e2d0); FUN_00d209e0 (borrow)",
+      "structLayout": {
+        "+0x00": "kind_or_self_ptr",
+        "+0x04": "vtable*_or_target_ptr (dereferenced through *(piVar+4) then vtable + offset for __index/__newindex)"
+      },
+      "indexHelper": {
+        "va": "0x00d2e410",
+        "behavior": "10-byte tail-call: `(**(code **)(**(int **)(param_1 + 4) + 8))();` - vtable slot +8 of the wrapped object at +4."
+      },
+      "newindexHelper": {
+        "va": "0x00d2e400",
+        "behavior": "10-byte tail-call: `(**(code **)(**(int **)(param_1 + 4) + 4))();` - vtable slot +4 of the wrapped object at +4."
+      },
+      "lenImpl": {
+        "va": "0x00d2f4d0",
+        "behavior": "Calls FUN_00d2e420 (no-arg) then pushes return as double - virtual length probably equivalent."
+      },
+      "powImpl": {
+        "va": "0x00d2f570",
+        "behavior": "Boolean return via FUN_00d2e430 (with stack-buffer arg) - probably membership / equality test."
+      },
+      "interpretation": "Tiny 8-byte wrapper that delegates EVERY operation through a per-instance vtable. The 8-byte shape matches a single fat-pointer (kind tag + target ptr) or a pair (key, value). Most likely a CURSOR / ITERATOR entry returned when walking D20540 containers - the __pow returning bool and __len returning size suggests this is a 'view' into a single container slot with its own metaclass dispatch."
+    }
+  ],
+  "subsystemUnification": {
+    "entrypoint": "FUN_00d085b0 (_onLoop.__index from the lge bootstrap attribution pass) -> FUN_00d1ce10 (class registration, takes class table + name + 'BaseClass' tag) -> FUN_00D20B00 (installs instance metatable)",
+    "instanceMutation": "User script does `instance._tag = value` -> D20B00 __newindex (FUN_00d175b0) detects _tag branch, allocates 0x54 bytes (= D207A0 inner), routes through FUN_00d26b10/26ea0",
+    "memoryModel": "Each instance has 3 pools (D208A0 wrappers) at struct offsets +0x60/+0x64/+0x68: save (persistent), temp (transient), sync (network-replicated). Pool exposes 15 bookkeeping fields read-only.",
+    "memberRecords": "D207A0 represents one member descriptor. D20540 is a fixed-length container of these. D20670 is a tiny cursor that dispatches through whatever object it points to."
+  },
+  "rttiPresence": {
+    "checked": true,
+    "found": false,
+    "note": "Unlike the luacontrol userdata pass (LuaControl had Component::Lua::GameEngine::LuaControl RTTI), no template or caller in this cluster references RTTI_Type_Descriptor or dynamic_cast. The wrapped C++ types are non-polymorphic (or the dynamic_cast is hidden behind the FUN_00d272d0 / FUN_00d16cd0 helper layer). Type names assigned here are FUNCTIONAL (Engine/role-derived) rather than RTTI-confirmed - confidence is 'hypothesis-strong'."
+  },
+  "references": {
+    "templates": "d2fxxx_cluster_attribution.json - 5 templates with 21 impl VAs",
+    "cataloging": "BCS-Y-0500 (LuaUserdataMetatableCluster_d2fXXX) describes the cluster STRUCTURALLY. This attribution adds wrapped-type semantics."
+  },
+  "connection": "FUN_00d085b0 was identified in the lge bootstrap attribution pass as one of the metamethods bound by the LGE bootstrap (_onLoop metatable in BCS-Y-0501). This attribution shows that _onLoop is the class-registry entrypoint and the d2fXXX cluster IS the class-instance machinery - the two passes describe the SAME subsystem from different angles.",
+  "evidencePaths": {
+    "decomp": "%BCS_GHIDRA_PROJECTS%/d2fxxx_userdata_decomp.txt",
+    "dispatcher_strings": "%BCS_GHIDRA_PROJECTS%/dispatcher_strings.txt",
+    "d207a0_addrops": "%BCS_GHIDRA_PROJECTS%/d207a0_dispatcher_addrops.txt",
+    "tag_string_bytes": "%BCS_GHIDRA_PROJECTS%/dat_0110f258_bytes.txt"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "generated": "2026-05-28",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Resolves the spawn-burst-completion-as-state-push-gate question, part (b): do s2c state-push receivers gate their apply on Group::SharedWork registration? Method was an inverted audit - find the SharedWork member-lookup primitives, xref them to enumerate ALL callers, rather than blind-decompiling 15-25 receivers. Verdict: REFUTED. No s2c receiver consults the SharedWork member lookup; SharedWork gating is confined to the Group property-sync opcodes (0x017A / 0x0187 / 0x018B) and the Lua group-member callbacks. Live decomp against ffxivgame.exe via the port-8081 GhidraMCP bridge.",
+  "method": {
+    "step_a": "From symbols.json (Group SharedWork cluster BCS-Y-0069..0893) and receiver_opcode_map_inbound.json, identified the candidate s2c state-push receivers (UserDataReceiver 0x0133, SetTalkEventConditionReceiver 0x012E, KickClientOrderEventReceiver 0x012F) and the SharedWork accessor candidate FUN_006C9930 (CopyMemberByLookup, slot 22).",
+    "step_b": "Decompiled CopyMemberByLookup -> found the real lookup accessor FUN_006C97A0 (lookup-or-create), which calls FUN_006C8AC0 (find-by-id) + FUN_006C8C20 (create-if-absent).",
+    "step_c": "INVERTED AUDIT: get_xrefs_to on all three lookup functions. FUN_006C8AC0 and FUN_006C8C20 each have a single caller (FUN_006C97A0); FUN_006C97A0 has 6 callers, ALL in the 0x006C99xx-0x006C9Bxx SharedWork slot-22 property-copy family. Since every SharedWork member lookup funnels through FUN_006C97A0, this one xref set proves no s2c receiver gates on SharedWork - covering all 38 receivers without decompiling each.",
+    "step_d": "Corroborated with the receiver bodies: UserDataReceiver::apply FUN_008A0190 (BCS-Y-1665) parses its own buffer at +0x14 and fires _onReceiveDataPacket with no actor lookup; SetTalkEventConditionReceiver::apply FUN_0089DF60 RTTI-casts the PROVIDED actor (ActorBase->NpcBase) and applies; KickClientOrderEventReceiver slot1 FUN_0089F530 is the New() factory (0x84 alloc), not the apply.",
+    "step_e": "Promoted the 5-function SharedWork-lookup cluster (BCS-Y-1792..1796). Archived decomps to tools/ghidra/logs/sharedwork_gate_audit.txt."
+  },
+  "key_findings": [
+    "**Part (b) REFUTED**: s2c state-push receivers do NOT gate apply on Group::SharedWork registration. The SharedWork member lookup (FUN_006C97A0, via primitives FUN_006C8AC0 / FUN_006C8C20) is reachable only from the 6 SharedWork slot-22 property-copy methods. A missing/incomplete SharedWork record does NOT cause the client to silently drop general s2c state pushes.",
+    "**SharedWork gating is confined to the Group property-sync path**: only the Group property opcodes (0x017A SynchGroupWorkValues via FUN_006C96B0; 0x0187 SetOccupancyGroup via BCS-Y-0885; 0x018B SetGroupLayoutId) consume the SharedWork member lookup. These inherently target group members. The open-question's framing ('WorkSync 0x0187') conflated 0x017A SynchGroupWorkValues and 0x0187 SetOccupancyGroup - both are SharedWork property ops, neither a general per-actor state push.",
+    "**General receivers apply on their own buffer + the actor object handed to them**: UserDataReceiver (0x0133) parses its buffer and fires a Lua callback; SetTalkEventCondition (0x012E) RTTI-casts the provided actor. The gates that DO exist are per-receiver (RTTI type-cast of the target; the documented actor[+0x5C] readiness gate in KickClientOrderEventReceiver slot 2) - actor-object-level, NOT SharedWork-level.",
+    "**Blocker implication**: the blocker is NOT explained by 'state pushes dropped for unregistered actors'. If SharedWork population matters to the blocker, it is via the Lua callback cascade (spawn-ADD -> _onInit; engine state-diff -> slot 42 -> _onPostWarp -> Lua _fadeOut), not via dropped state. This re-focuses the blocker on bahamut's spawn-burst dual-subdecoder completion (part a) and the Lua callback path."
+  ],
+  "new_bcsy_entries_summary": {
+    "sharedwork_lookup_cluster": 5,
+    "total_bcsy_added": 5,
+    "id_range": "BCS-Y-1792..BCS-Y-1796",
+    "kinds": "5 function",
+    "already_cataloged_cited": [
+      "BCS-Y-0873 GroupPacketProcessor_OnSynchGroupWorkValues_FUN_006C9910 (wrapper of new BCS-Y-1795)",
+      "BCS-Y-0885 GroupSharedWork_SetOccupancy_FUN_006C8340 (0x0187 SetOccupancyGroup)",
+      "BCS-Y-1665 LuaFireSite__onReceiveDataPacket_FUN_008a0190 (UserDataReceiver::apply, 0x0133)"
+    ]
+  },
+  "verdict": {
+    "open_question": "Spawn-burst completion as a state-push gate?",
+    "part_a": "OPEN - bahamut-side structural check (spawn-burst dual-subdecoder completion) per docs/client-architecture.md, 'Zone-in actor bind and Lua-class-readiness pipeline'.",
+    "part_b": "RESOLVED NEGATIVE - s2c state-push receivers do not gate on SharedWork registration.",
+    "confidence": "high (inverted audit covers all 38 receivers via the single lookup funnel; residual caveat = a receiver could in principle walk the SharedWork member array inline without the primitive, but none of the decompiled receivers do)."
+  },
+  "deferred_followups": [
+    "Characterize the KickClientOrderEventReceiver slot-2 actor[+0x5C] readiness gate - an actor-object-level gate distinct from SharedWork; the more promising receiver-level gate for the blocker if part (a) comes back clean.",
+    "Promote the remaining 5 SharedWork property-copy slots (FUN_006C99B0 / 006C9A30 / 006C9AB0 / 006C9B30 / 006C9BB0) if later work needs the per-field mapping."
+  ],
+  "validators_post": {
+    "validate_json": "to_run"
+  },
+  "symbol_count_delta": "1778 -> 1783 (+5 BCS-Y; BCS-Y-1792..1796)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1792..1796)",
+    "manifests/sharedwork_gate_audit.json (NEW)",
+    "tools/ghidra/logs/sharedwork_gate_audit.txt (NEW)"
+  ]
+}

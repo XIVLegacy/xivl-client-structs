@@ -1,0 +1,79 @@
+{
+  "version": "1",
+  "generated": "2026-05-23",
+  "scope": "Drill of FUN_00cd8990 (1978-byte large class init, 18 cclosure pushes per the alt binding recon pass). Discovery: this is the Lua Game Engine (LGE) bootstrap function. It (a) embeds and loads a literal Lua wrapper script that redefines `require` and adds `__lge_isAlive`/`__lge_returnNil`, (b) registers 13 named C global functions including 4 Lua stdlib OVERRIDES, (c) sets up the `_onLoop` userdata metatable with 4 metamethods, (d) installs the LGE root table's `__newindex` cclosure. Methodology: new Ghidra DumpAddrOperandsInFunc.java utility scans every instruction operand recovering both string args and impl-function VAs, defeating the decompiler-arg-strip issue that blocked the alt binding recon pass. Two caller functions FUN_00cd9d80 and FUN_00cd9e80 are simple shim factories that just CALL FUN_00cd8990 (inheritance pair as hypothesized in recon).",
+  "summary": {
+    "implTotal": 18,
+    "namedGlobalRegistrations": 13,
+    "alreadyCataloged": 1,
+    "newCorpusAttestedExpected": 6,
+    "newEngineOnlyExpected": 7,
+    "metamethodCclosures": 4,
+    "rootTableMetamethodCclosure": 1,
+    "embeddedBootstrapScript": true,
+    "luaStdlibOverridesPresent": ["assert", "error", "pcall", "type"],
+    "luaStdlibPreservedAlias": "_pcall (rename of stock pcall before override)"
+  },
+  "embeddedBootstrapScript": {
+    "rdataAddr": "0x0110e680",
+    "loaderFn": "FUN_00cf4680",
+    "executorFn": "FUN_00cf4010",
+    "content": "require = nil\nfunction require(filename, listener, errorNotify)\n  if _luaGameEngineRequire(filename, listener, errorNotify) == true then\n    _luaGameEngineLoad(filename, listener)\n  end\n  _luaGameEngineRequireEnd()\nend\nfunction __lge_isAlive()\n  return false\nend\nfunction __lge_returnNil()\n  return nil\nend\ncollectgarbage = nil",
+    "scriptDefinedNames": ["require", "__lge_isAlive", "__lge_returnNil"],
+    "scriptStrippedNames": ["collectgarbage"]
+  },
+  "namedGlobals": [
+    {"name": "_luaGameEngineRequire",  "impl": "0x00d08a10", "status": "already_cataloged", "bcsy": "BCS-Y-0480"},
+    {"name": "_luaGameEngineLoad",     "impl": "0x00d08180", "status": "new"},
+    {"name": "_luaGameEngineRequireEnd","impl": "0x00d08e50", "status": "new"},
+    {"name": "__lge_getWork",          "impl": "0x00d094a0", "status": "new", "namePtrVa": "0x0130d510"},
+    {"name": "assert",                 "impl": "0x00d08ed0", "status": "new", "category": "lua_stdlib_override"},
+    {"name": "error",                  "impl": "0x00d090c0", "status": "new", "category": "lua_stdlib_override"},
+    {"name": "type",                   "impl": "0x00d09240", "status": "new", "category": "lua_stdlib_override"},
+    {"name": "pcall",                  "impl": "0x00d093b0", "status": "new", "category": "lua_stdlib_override"},
+    {"name": "_pcall",                 "impl": "stock_lua_pcall_alias", "status": "new", "category": "lua_stdlib_alias_pre_override", "notes": "Registered via the sequence at 0x00cd8fc7-0x00cd8ff1: PUSH \"pcall\"; pushstring; PUSH \"_pcall\"; pushstring; pushvalue; setglobal. This renames the stock Lua pcall (FUN_00DCxxxx area) to _pcall BEFORE the new override is installed. So _pcall is the original pcall, exposed under the underscore alias."},
+    {"name": "_time",                  "impl": "0x00d082a0", "status": "new"},
+    {"name": "_clock",                 "impl": "0x00d082a0", "status": "new", "notes": "SAME impl VA as _time. Likely a cclosure with upvalue discriminator or single function that branches on the calling-name passed via the Lua stack."},
+    {"name": "__lge_setLoopInterval",  "impl": "0x00d083b0", "status": "new", "namePtrVa": "0x0130d518"},
+    {"name": "__lge_syncById",         "impl": "0x00d09810", "status": "new", "namePtrVa": "0x0130d51c"},
+    {"name": "__lge_getIndividualIndex","impl": "0x00d098d0", "status": "new"}
+  ],
+  "onLoopMetatable": {
+    "tableName": "_onLoop",
+    "namePtrVa": "0x0110e7f0",
+    "metamethods": {
+      "__index":    "0x00d085b0",
+      "__newindex": "0x00d07eb0",
+      "__eq":       "0x00d08890",
+      "__gc":       "0x00d08070"
+    },
+    "notes": "Userdata-style metatable for `_onLoop`. Pattern matches the d2fxxx cluster attribution pass's 5-template metatable cluster (uses the same .rdata metamethod-name table at 0x0110ea7c..0x0110eabc). The zero caller napi survey findings pass's client-architecture 'The bound N-API surface is broader than shipped-script usage' had _onLoop listed as zero-shipped-caller; this clarifies why - scripts interact with the userdata via metamethods, not via the literal `_onLoop` name."
+  },
+  "lgeRootMetamethod": {
+    "metamethodName": "__newindex",
+    "namePtrVa": "0x0110e894",
+    "impl": "0x00d099b0",
+    "notes": "The LGE root table's __newindex metamethod. FUN_00d099b0 was one of the 14 unresolved templates from recon (categorized as parametric_template with 'Body has 3 FUN_00447260 literal-string calls' note). The lge bootstrap attribution pass attributes its role: it is the __newindex handler for the LGE bootstrap table itself, intercepting all global-write attempts after the bootstrap script runs."
+  },
+  "callerChain": {
+    "FUN_00cd9d80": {"size_bytes": 240, "calls_cd8990": true, "extra_calls": ["FUN_00d0c870", "FUN_00d0c5b0", "_free", "FUN_00446f50", "FUN_00447260"], "notes": "Shim factory; allocates+initializes some structure then calls FUN_00cd8990 to register the LGE on the Lua state."},
+    "FUN_00cd9e80": {"size_bytes": 170, "calls_cd8990": true, "extra_calls": ["FUN_00d0c870", "FUN_00d0c5b0", "_free"], "notes": "Sibling shim factory; same shape as FUN_00cd9d80 minus the FUN_00447260 string-literal call. The inheritance-pair hypothesis from the alt binding recon pass is confirmed."}
+  },
+  "luaStdlibFnHelpers": {
+    "FUN_00cf3360": "lua_pushstring (push C string onto Lua stack)",
+    "FUN_00cf32e0": "lua_pushcclosure (push C function as cclosure with N upvalues)",
+    "FUN_00cf32c0": "lua_pushvalue (or rotate; pushes copy of stack entry)",
+    "FUN_00cf3380": "lua_pushvalue variant or rawget",
+    "FUN_00cf3400": "lua_settable (assigns value at -1 to key at -2 in table at -3)",
+    "FUN_00cf3a50": "lua_setglobal (assigns value at -1 to global at name in stack)",
+    "FUN_00cf3a70": "lua_setglobal variant / lua_setfield",
+    "FUN_00cf3a90": "lua_setglobal variant",
+    "FUN_00cf3ad0": "lua_createtable or lua_newtable",
+    "FUN_00cf4680": "luaL_loadstring or luaL_loadbuffer (compile script)",
+    "FUN_00cf4010": "lua_pcall (run compiled chunk)"
+  },
+  "evidencePaths": {
+    "addrOperands": "%BCS_GHIDRA_PROJECTS%/cd8990_addr_operands.txt",
+    "stringRdata":  "%BCS_GHIDRA_PROJECTS%/strings_rdata.txt"
+  }
+}

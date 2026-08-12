@@ -1,0 +1,115 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-19",
+  "scope": "target-class identification",
+  "opcode": "0x0131",
+  "receiverName": "EndClientOrderEventReceiver",
+  "receiverNamespace": "Application::Lua::Script::Client::Command::Network::EndClientOrderEventReceiver",
+  "result": "no_chain_key_writes",
+  "summary": "The EndClientOrderEvent consumer chain mutates byte state flags on a polymorphic target object held by a std::weak_ptr at receiver+0x08. The mutated offsets (+0x07/+0x1C/+0x1D/+0x22) are small struct flags typical of an internal state-machine context, not actor chain keys. The target's class is in the Command/Event state-machine domain, not in the CharaBase/PlayerBase/NpcBase actor hierarchy. No new entries added to data_dependency_catalog.json.",
+  "evidence": {
+    "weakPtrLayout": {
+      "claim": "receiver+0x08 is a std::weak_ptr<TargetClass>",
+      "support": [
+        "FUN_00CD8160 (smart-ptr resolver): `if (*param_1 == DAT_0130c778) return 0;` - DAT_0130c778 is the MSVC weak_ptr expired-sentinel.",
+        "FUN_0089D210 (receiver vtable slot 0x10) does `*(int*)(param_1+8) != DAT_0130c778` - identical sentinel check.",
+        "FUN_0089D100 (dtor helper) writes EndClientOrderEventReceiver::vftable then runs FUN_00446F50 + FUN_007942C0 - standard MSVC weak_ptr release sequence.",
+        "FUN_00CC7A50 (consumer-side resolver) dispatches via FUN_00CD80F0 (expiry check) -> FUN_00CD8160 or FUN_00CD81D0 - the lock()/swap() two-path resolver pattern."
+      ]
+    },
+    "writeOffsets": {
+      "writes": [
+        {
+          "offset": "+0x07",
+          "type": "byte",
+          "via": "FUN_008934A0 case 0"
+        },
+        {
+          "offset": "+0x1C",
+          "type": "byte",
+          "via": "FUN_008934A0/008935b0/00893800 multiple cases"
+        },
+        {
+          "offset": "+0x1D",
+          "type": "byte",
+          "via": "FUN_008934A0/00893520/008935b0/00893800 multiple cases"
+        },
+        {
+          "offset": "+0x22",
+          "type": "byte",
+          "via": "FUN_00893800 case 5"
+        }
+      ],
+      "structuralMismatch": [
+        "All writes are SINGLE BYTES at offsets < 0x40. Canonical actor chain keys (CharaBase.0x60, CharaBase.0xDC.*, CharaBase.0x154/0x158, PlayerBase.0xF1, MyPlayer.0x15D-0x15F, etc.) all live at offsets >= 0x5D and are usually u16/u32 width.",
+        "The BCS-Y-0278 pure-native receivers write u32/u16 values at canonical actor offsets. The 0x0131 deep handlers write boolean state flags conditionally, in a pattern that matches a state-machine context object."
+      ]
+    },
+    "targetPolymorphism": {
+      "claim": "Target object has its own vtable with at least slots 0x00, 0x04, 0x08, 0x0C, 0x1C in use",
+      "support": [
+        "FUN_008934A0: `(**(code **)(**(int **)(param_1 + 8) + 0x1c))(0);` - slot+0x1C dispatch.",
+        "FUN_008934A0: `pcVar2 = *(code **)(*piVar1 + 8); (*pcVar2)(param_1 + 4, ...);` - slot+0x08 dispatch.",
+        "FUN_008934A0: `(**(code **)(**(int **)(param_1 + 8) + 0xc))();` - slot+0x0C dispatch.",
+        "FUN_008934A0: `(**(code **)**(undefined4 **)(param_1 + 8))(1);` - slot+0x00 (likely dtor) dispatch.",
+        "Polymorphic class with rich virtual interface places it in the Command/Event state-machine domain, not in the (mostly non-virtual data) actor hierarchy."
+      ]
+    },
+    "constructorChain": {
+      "wireSideCaller": "FUN_0076C3B0",
+      "behavior": "Builds an EndClientOrderEventReceiver locally from a wire packet (param_2), then enqueues it via FUN_00785AA0(param_1+4, param_2, local_74). The receiver+0x08 is set during FUN_0089D070 via `param_1[2] = *param_2;` - param_2 here is the result of a string/value-formatter call chain (FUN_0078DDA0/FUN_0078DE00) that reads byte fields from the wire packet. The target's class is NOT bound at receiver construction; the weak_ptr is wired up downstream via the queue subsystem."
+    },
+    "receiverConstructorVa": "0x0089D070",
+    "wireReceiveSlotVa": "0x0089D180",
+    "dtorVa": "0x008A1100",
+    "consumerDispatchSlotVa": "0x0089E2D0",
+    "topLevelDispatcherVa": "0x008A13A0",
+    "deepHandlerVas": [
+      "0x008934A0",
+      "0x00893520",
+      "0x008935B0",
+      "0x00893800"
+    ]
+  },
+  "structuralConclusion": "WS-G confirms the event-condition-consumer-findings pass's interim note: the target object class is in the Command/Event state-machine domain, not in the actor hierarchy. The writes at target+0x07/+0x1C/+0x1D/+0x22 are state flags managed by the EndClientOrderEvent consumer; they cannot be modeled as chain-key writes against CharaBase / PlayerBase / NpcBase because the offsets and the target class are both structurally incompatible. No N-API reader exists in the catalog that reads any actor offset matching these writes. The /loop's original '2-4 new chain-key writes' prediction is structurally false for 0x0131 just as it was for 0x012E/0x016B/0x016F: the deferred-apply receivers do not contribute per-actor chain-key writes.",
+  "scanEvidence": [
+    {
+      "kind": "decomp-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\target_chain.txt",
+      "functions": [
+        "0x0089D070",
+        "0x0089D180",
+        "0x008A1100",
+        "0x00CC7A50",
+        "0x008934A0",
+        "0x00893520",
+        "0x008935B0",
+        "0x00893800",
+        "0x008A13A0"
+      ]
+    },
+    {
+      "kind": "decomp-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\target_classifier.txt",
+      "functions": [
+        "0x0076C3B0",
+        "0x00447200",
+        "0x00894630",
+        "0x0089D100",
+        "0x006DE1E0",
+        "0x006DE170",
+        "0x00CD80F0",
+        "0x00CD8160",
+        "0x00CD81D0"
+      ]
+    }
+  ],
+  "pipelineResult": {
+    "newChainKeyWrites": 0,
+    "newConfirmedIndirectBindings": 0,
+    "newDeferredLuaNapiMutatorBindings": 0,
+    "rerun": "build_substruct_cross_ref.py -> 0 new indirect bindings",
+    "luaToOpcodeCountsChanged": false
+  }
+}

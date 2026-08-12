@@ -1,0 +1,796 @@
+{
+  "generated": "2026-05-24",
+  "status": "draft",
+  "gameVersion": "1.23b",
+  "scope": "Bulk-decomp the 43 callers of FUN_004d9910 (BCS-Y-0534 ZoneActorMap_FindById_FUN_004d9910, the actor map lookup primitive) and characterize what each caller does with the returned actor pointer. Builds a map of all actor-map-consuming code paths.",
+  "primitive_under_study": {
+    "va": "0x004d9910",
+    "bcs_id": "BCS-Y-0534",
+    "name": "ZoneActorMap_FindById_FUN_004d9910",
+    "summary": "STL-map find on zone+0x17804..+0x17808 keyed by actor id; returns *(iter + 0x10) (the actor pointer stored in the map node's value slot) or 0 if not found.",
+    "actor_type_stored_in_map": "Application::Main::RaptureElement (per the actor-map-writers pass RTTI evidence)"
+  },
+  "caller_count": {
+    "actual_from": 43
+  },
+  "method": {
+    "tools": [
+      "<ghidra-scripts>/DumpFunctionDecomp.java"
+    ],
+    "bat_wrappers": [
+      "%BCS_GHIDRA_PROJECTS%/run_callers_batch1.bat",
+      "%BCS_GHIDRA_PROJECTS%/run_callers_batch2.bat",
+      "%BCS_GHIDRA_PROJECTS%/run_callers_batch3.bat"
+    ],
+    "ghidra_outputs": [
+      "%BCS_GHIDRA_PROJECTS%/callers_batch_1.txt",
+      "%BCS_GHIDRA_PROJECTS%/callers_batch_2.txt",
+      "%BCS_GHIDRA_PROJECTS%/callers_batch_3.txt"
+    ],
+    "analysis_script": "%BCS_GHIDRA_PROJECTS%/analyze.py",
+    "analysis_output": "%BCS_GHIDRA_PROJECTS%/analysis.json",
+    "step1_extract_va_list": "Parsed factory_callers_decomp.txt 'Callers:' section for FUN_004d9910 entry to get the 43 caller VAs.",
+    "step2_check_catalog": "Cross-referenced each VA against manifests/symbols.json. 1 of 43 already cataloged: 0x004dc690 = BCS-Y-0527 (S2cDispatcher_ActorVtable9_GenericFallthrough). 42 of 43 uncataloged.",
+    "step3_batch_decomp": "Split 43 VAs into 3 batches (15/14/14) to fit Ghidra env-var budget. Each batch invoked DumpFunctionDecomp.java via run_callers_batchN.bat. Sequential execution due to project lock contention.",
+    "step4_pattern_analysis": "analyze.py parses each decomp body, extracts: (a) variable name assigned the FUN_004d9910 return value; (b) vtable slot offsets dispatched via that variable; (c) struct field offsets read/written; (d) functions the actor pointer is forwarded to; (e) presence of switch-on-opcode patterns; (f) system actor id constants used as lookup keys."
+  },
+  "caller_list": [
+    {
+      "va": "0x004d9980",
+      "name": "FUN_004d9980",
+      "body_bytes": 428,
+      "role": "active_actor_slot_writer",
+      "summary": "Maintains the 'currently active actor' singleton triple at zone+0x17838..+0x17840. Calls FUN_004d9910(param_2) to look up the new active actor, stores result at zone+0x17838, previous id at zone+0x17840, new id at zone+0x1783c. Sentinel id 0xc0000000 means 'no active actor' (takes the cleanup branch). 6 callers including the dispatcher FUN_004dc690.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "actor_passed_to_fns": [],
+      "catalog_status": "uncataloged",
+      "cross_ref": "Already characterized in the actor-map-writers pass candidate_functions[0x004d9980].verdict='active_actor_slot_writer_not_map_writer'."
+    },
+    {
+      "va": "0x0075ba50",
+      "name": "FUN_0075ba50",
+      "body_bytes": 24,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "Tiny Lua C-binding wrapper: validates actor exists via FUN_004d9910(*param_1) then dispatches FUN_00533ed0(param_2). Discards lookup result - lookup is for argument validation/side-effect only.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "actor_passed_to_fns": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x007694d0",
+      "name": "FUN_007694d0",
+      "body_bytes": 506,
+      "role": "lua_control_iterator_with_unbind",
+      "summary": "Walks a Lua control list. For each entry, calls FUN_004d9910(*puVar1) to verify the actor still exists. If lookup fails, calls FUN_00783e30 to unbind; if succeeds, does RTTI dynamic_cast against Component::Lua::GameEngine::LuaControl + Application::Lua::Script::Client::Control::CharaBase, then dispatches FUN_0075f6a0(param_2, iVar7) and FUN_007659c0. Map-driven Lua-side controller cleanup pass.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": ["0xc"],
+      "actor_passed_to_fns": [],
+      "catalog_status": "uncataloged",
+      "note": "Iterates a *separate* map at param_1+0x8 (the LuaControl list), not zone+0x17804. Uses FUN_004d9910 as 'does this actor id still exist in the zone' predicate."
+    },
+    {
+      "va": "0x0075b9e0",
+      "name": "FUN_0075b9e0",
+      "body_bytes": 34,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "Tiny Lua C-binding wrapper: FUN_004d9910(*param_1) then FUN_005386d0(param_2, param_3).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0054c160",
+      "name": "FUN_0054c160",
+      "body_bytes": 248,
+      "role": "config_apply_then_actor_unbind",
+      "summary": "Configuration-apply handler. Modifies a config struct at param_1, then calls FUN_004d9910(local_10) on a referenced actor id; if found, dispatches actor->vtable[0x2c] (slot 11, probably 'detach' or 'get_id') followed by actor->vtable[0] (slot 0 destructor with arg 1 = scalar-deleting destructor). This is an unbind + destroy sequence on a config-owned actor.",
+      "vtable_slots_called": ["0x0", "0x2c"],
+      "struct_offsets_accessed": ["0x2c"],
+      "actor_passed_to_fns": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x00765340",
+      "name": "FUN_00765340",
+      "body_bytes": 207,
+      "role": "doubly_linked_list_iterator_actor_lookup_and_destroy",
+      "summary": "Iterates a doubly-linked list at param_1+0x4. For each node, calls FUN_004d9910(node[2]) to look up the actor by id. If condition FUN_00535ce0(0) returns truthy, calls FUN_004d9910(node[2]) AGAIN then dispatches actor->vtable[0] (scalar-deleting destructor) with arg 1, and removes the node via FUN_0077b7f0. This is an actor-list teardown helper.",
+      "vtable_slots_called": ["0x0"],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged",
+      "note": "Has 2 FUN_004d9910 calls per iteration - 1st for the existence/state check, 2nd to recover the pointer for destruction (unusual pattern; possibly defensive against intervening invalidation)."
+    },
+    {
+      "va": "0x0075b840",
+      "name": "FUN_0075b840",
+      "body_bytes": 44,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "Tiny Lua C-binding wrapper: FUN_004d9910(*param_1) then FUN_005354d0(param_2..param_5).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x00774ad0",
+      "name": "FUN_00774ad0",
+      "body_bytes": 1694,
+      "role": "lua_actor_bind_init_with_lazy_create",
+      "summary": "Substantial Lua-side actor binding helper. Calls FUN_004d9910() once to test existence; if 0, lazy-creates via FUN_004d90c0(0x1a, ...) (BCS-Y-0531 ZoneActor_CreateOrGetById). Then proceeds to populate ~6 fields on a related struct: offsets 0x10/0x14/0x18/0x1c/0x4c/0xb6/0xb4 of an iVar5 helper struct (NOT directly on the actor - it's an init-args block obtained from FUN_0076a3f0). Calls FUN_004d9910 again later (line 602) for confirmation/follow-up.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": ["0x10", "0x14", "0x18", "0x1c", "0x4c", "0xb4", "0xb6"],
+      "actor_passed_to_fns": [],
+      "lazy_create_pattern": true,
+      "catalog_status": "uncataloged",
+      "note": "Sole caller FUN_00574780. Likely the high-level Lua actor binding entrypoint that ensures an actor exists and initializes its Lua-side context."
+    },
+    {
+      "va": "0x0054b680",
+      "name": "FUN_0054b680",
+      "body_bytes": 564,
+      "role": "system_actor_camera_command_registrar",
+      "summary": "Looks up the camera-control system actor via FUN_004d9910(0xc0000004). If found, computes a fixed offset (iVar2 + 8) and registers 3 callback bindings: 'RaptureCommands.MoveCamera' (DAT_013371b8), 'RaptureCommands.ForwardCameraOff' (DAT_01337160), 'RaptureCommands.BackwardCameraOff' (DAT_01337108) via FUN_00928f90/FUN_0052d3a0 + atexit teardown hooks. Increments param_1+0x54 (init counter) and returns it.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "system_actor_id": "0xc0000004",
+      "catalog_status": "uncataloged",
+      "note": "Confirms 0xc0000004 = the Camera system actor. Provides empirical mapping of one engine-managed actor id."
+    },
+    {
+      "va": "0x0075bb60",
+      "name": "FUN_0075bb60",
+      "body_bytes": 25,
+      "role": "lua_binding_actor_lookup_return",
+      "summary": "Returns the actor pointer directly to the Lua side: uVar1 = FUN_004d9910(*param_2); *param_1 = uVar1; return param_1. Pure ptr-fetch wrapper. 6 callers in the 0x006eaXXX/0x006ebXXX Lua-binding cluster.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "returns_actor_directly": true,
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075ba10",
+      "name": "FUN_0075ba10",
+      "body_bytes": 24,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_005359d0().",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b950",
+      "name": "FUN_0075b950",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_005386b0(param_2).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b7e0",
+      "name": "FUN_0075b7e0",
+      "body_bytes": 39,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_0053aa00(param_2..param_4).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b900",
+      "name": "FUN_0075b900",
+      "body_bytes": 44,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_0053aa10(param_2..param_5).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b9c0",
+      "name": "FUN_0075b9c0",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00538740(param_2).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b810",
+      "name": "FUN_0075b810",
+      "body_bytes": 39,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_005355a0(param_2..param_4). 6 callers - widely used Lua wrapper.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075bec0",
+      "name": "FUN_0075bec0",
+      "body_bytes": 37,
+      "role": "lua_binding_dispatch_slot_0",
+      "summary": "puVar1 = FUN_004d9910(*param_1); if (puVar1 != 0) (**(code **)*puVar1)(); - dispatches actor->vtable[0] with no args. Ghidra warns about indirect jump as call (jumptable not recovered). 3 callers in the 0x006e3XXX cluster.",
+      "vtable_slots_called": ["0x0"],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b770",
+      "name": "FUN_0075b770",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00535ce0(). 2 callers.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x004d9d70",
+      "name": "FUN_004d9d70",
+      "body_bytes": 994,
+      "role": "popup_dialog_handler",
+      "summary": "Popup/menu handler dispatching on sentinel DAT_0133XXXX values for various menu types (shortcut/contextmenu/system menus). One branch looks up the system actor at 0xc0000020 via FUN_004d9910 and calls FUN_00599820 if found. Modifies bytes at *(param_2 + 0x19) = 1 (a 'handled' flag) for several branches. Multiple branches forward actor refs to FUN_004ddcf0 (an STL container helper) and FUN_00927fa0 (a registry add helper).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": ["0xb4"],
+      "actor_passed_to_fns": ["FUN_004ddcf0", "FUN_00927fa0"],
+      "system_actor_id": "0xc0000020",
+      "catalog_status": "uncataloged",
+      "cross_ref": "Already characterized in the actor-map-writers pass candidate_functions[0x004d9d70].verdict='not_map_writer'.",
+      "note": "Confirms 0xc0000020 = a popup/menu system actor."
+    },
+    {
+      "va": "0x0075b870",
+      "name": "FUN_0075b870",
+      "body_bytes": 39,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00538500(param_2..param_4).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b970",
+      "name": "FUN_0075b970",
+      "body_bytes": 34,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00538630(param_2, param_3).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075bbd0",
+      "name": "FUN_0075bbd0",
+      "body_bytes": 23,
+      "role": "actor_existence_predicate_for_lua",
+      "summary": "Predicate-style helper: `iVar1 = FUN_004d9910(*param_1); return iVar1 != 0;`. Smallest caller in the set (23 bytes). 4 callers in the 0x006cXXXX/0x006dXXXX Lua-side cluster.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "is_existence_predicate": true,
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075bad0",
+      "name": "FUN_0075bad0",
+      "body_bytes": 39,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00535670(param_2..param_4).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x004dc690",
+      "name": "FUN_004dc690",
+      "body_bytes": 3364,
+      "role": "s2c_dispatcher_central",
+      "summary": "The central s2c dispatcher (BCS-Y-0279/0527). 4 calls to FUN_004d9910 across distinct cases: (1) case 0xCA AddActor: `iVar10 = FUN_004d9910(actor_id); if(iVar10==0) iVar10=FUN_004d90c0(class_id, packet); *(iVar10+0x92) = 1` - find-or-create and set 'alive' byte; (2) case 0xCB RemoveActor: `puVar11 = FUN_004d9910(actor_id); if(found) { if(puVar11 == active) clear_active; puVar11->vtable[0](1) }` - find and destroy; (3) case 4 zone clear iteration: walks queued ids and calls actor->vtable[0](1) on each; (4) switchD_004dc749_caseD_f generic Actor-cluster fallthrough (24 opcodes 0x0F + 0xCC..0xE5): `piVar12 = FUN_004d9910(actor_id); if(found) piVar12->vtable[0x24](packet)` - per-actor polymorphic dispatch (slot 9).",
+      "vtable_slots_called": ["0x0", "0x24"],
+      "struct_offsets_accessed": ["0x24", "0x92"],
+      "field_writes": ["0x92"],
+      "actor_passed_to_fns": ["FUN_004d9910", "FUN_004de190"],
+      "has_opcode_switch": true,
+      "lazy_create_pattern": true,
+      "catalog_status": "cataloged",
+      "cross_ref": "BCS-Y-0279 (Option2_central_packet_dispatcher) + BCS-Y-0525 (case 0xCA AddActor) + BCS-Y-0526 (case 0xCB RemoveActor) + BCS-Y-0527 (generic fallthrough vftable[9])."
+    },
+    {
+      "va": "0x0075be80",
+      "name": "FUN_0075be80",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_004d87c0(). 3 callers.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075ba90",
+      "name": "FUN_0075ba90",
+      "body_bytes": 24,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00533ff0().",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b8d0",
+      "name": "FUN_0075b8d0",
+      "body_bytes": 39,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_0053ab60(param_2..param_4).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b8a0",
+      "name": "FUN_0075b8a0",
+      "body_bytes": 44,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00538130(param_2..param_5).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075ba70",
+      "name": "FUN_0075ba70",
+      "body_bytes": 31,
+      "role": "lua_binding_two_ptr_wrapper",
+      "summary": "Variant: takes two param ptrs. FUN_004d9910(*param_2) then FUN_005393b0(*param_1).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0055d990",
+      "name": "FUN_0055d990",
+      "body_bytes": 135,
+      "role": "paired_actor_reference_swap",
+      "summary": "Manages a paired actor reference at param_1+0xec/+0xf0 (possibly an input/target binding). If param_2='\\0' (clear branch): looks up actor stored at param_1+0xf0 via FUN_004d9910 and forwards to FUN_004d72a0(actor_ptr); then resets sentinels (0x7fffffff to +0xec, 0xc0000000 to +0xf0). Otherwise: captures fresh ids via FUN_004d7420/FUN_004d6750. Pattern: swap pair-of-ids and re-bind via the actor's helper FUN_004d72a0.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "actor_passed_to_fns": ["FUN_004d72a0"],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075ba30",
+      "name": "FUN_0075ba30",
+      "body_bytes": 31,
+      "role": "lua_binding_two_ptr_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00535a00(*param_2).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b790",
+      "name": "FUN_0075b790",
+      "body_bytes": 32,
+      "role": "lua_binding_lookup_only",
+      "summary": "FUN_004d9910(*param_1) and returns immediately. Pure lookup, no follow-up call. Sole caller FUN_0071c970.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged",
+      "note": "Smallest 'pure lookup' wrapper - probably an exists/touch helper."
+    },
+    {
+      "va": "0x0075be50",
+      "name": "FUN_0075be50",
+      "body_bytes": 35,
+      "role": "lazy_initializer_for_system_actor_0xc0000024",
+      "summary": "Classic lazy-init: `iVar1 = FUN_004d9910(0xc0000024); if (iVar1 == 0) FUN_004d90c0(0x1a, 0xc0000024);` - look up system actor 0xc0000024, create class 0x1a if absent. No callers found in static refs (likely reached via dynamic dispatch or init bootstrap).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "system_actor_id": "0xc0000024",
+      "class_id_created": "0x1a",
+      "lazy_create_pattern": true,
+      "catalog_status": "uncataloged",
+      "note": "Provides another empirical engine-managed actor id mapping: 0xc0000024 -> class 0x1a."
+    },
+    {
+      "va": "0x0075b730",
+      "name": "FUN_0075b730",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00533ef0(param_2).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b7b0",
+      "name": "FUN_0075b7b0",
+      "body_bytes": 34,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_0053ab80(param_2, param_3).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075be30",
+      "name": "FUN_0075be30",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_004d87c0(param_2). 4 callers.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075bb00",
+      "name": "FUN_0075bb00",
+      "body_bytes": 44,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_005355c0(param_2..param_5).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075bab0",
+      "name": "FUN_0075bab0",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00537c10(param_2).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b750",
+      "name": "FUN_0075b750",
+      "body_bytes": 24,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00537d50().",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b930",
+      "name": "FUN_0075b930",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_0053a630(param_2). No callers found in static refs.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075bea0",
+      "name": "FUN_0075bea0",
+      "body_bytes": 28,
+      "role": "lua_binding_conditional_follow_up",
+      "summary": "iVar1 = FUN_004d9910(*param_1); if (iVar1 != 0) FUN_004d87e0(). Calls follow-up only when actor was found. Sole caller FUN_006f6900.",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x0075b9a0",
+      "name": "FUN_0075b9a0",
+      "body_bytes": 29,
+      "role": "lua_binding_thin_wrapper",
+      "summary": "FUN_004d9910(*param_1) then FUN_00535a90(param_2).",
+      "vtable_slots_called": [],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged"
+    },
+    {
+      "va": "0x004daa10",
+      "name": "FUN_004daa10",
+      "body_bytes": 310,
+      "role": "queued_actor_message_dispatcher",
+      "summary": "Walks a per-frame action queue at zone+0x17938..+0x17944 via FUN_004ddb50 + InterlockedExchangeAdd. For each entry with type != 2: extracts uVar5 = *(entry+0x14) - 3 (a relative opcode/method index), reads actor_id from entry+0x10, looks up actor via FUN_004d9910, and dispatches `actor->vtable[0x20](uVar5, entry+0x20, *(entry+0x18))` (slot 8). For type==2 entries: dispatches `(*(zone+0x17924)->vtable[0x18])(...)` directly (queue output writer).",
+      "vtable_slots_called": ["0x20"],
+      "struct_offsets_accessed": [],
+      "catalog_status": "uncataloged",
+      "cross_ref": "Already characterized in the actor-map-writers pass candidate_functions[0x004daa10].verdict='map_iterator_not_writer'.",
+      "note": "Confirms vtable slot 8 (offset 0x20) is a queued-message receiver method on RaptureElement actors. Reasonable hypothesis: per-frame deferred actor-update queue (animation/state changes batched and replayed)."
+    }
+  ],
+  "vtable_slot_histogram": {
+    "note": "Counts how many callers dispatch actor->vftable[slot] on the FUN_004d9910 return value. Total observed dispatches across 43 callers is small (~7) because 28 of 43 are lookup-only wrappers that discard the result.",
+    "top_slots": [
+      {
+        "slot_offset": "0x0",
+        "slot_index": 0,
+        "caller_count": 4,
+        "callers": ["0x0054c160", "0x00765340", "0x0075bec0", "0x004dc690"],
+        "interpretation": "Slot 0 on RaptureElement is FUN_004DEB40 (destructor). The 4 callers using slot 0 are all teardown paths: FUN_0054c160 config unbind, FUN_00765340 list erase, FUN_0075bec0 single destroy via Lua binding, FUN_004dc690 case 0xCB RemoveActor."
+      },
+      {
+        "slot_offset": "0x24",
+        "slot_index": 9,
+        "caller_count": 1,
+        "callers": ["0x004dc690"],
+        "interpretation": "Slot 9 on RaptureElement is FUN_0091F6F0 (set parent context per the actor-map-writers pass). The sole user is FUN_004dc690's generic Actor-cluster fallthrough (BCS-Y-0527). The actor-vftable9-investigation and actor-vtable9-bulk passes confirmed this is NOT an opcode handler; on RaptureElement instances it sets *(this+0x18) and calls FUN_00571bb0(this, 0)."
+      },
+      {
+        "slot_offset": "0x2c",
+        "slot_index": 11,
+        "caller_count": 1,
+        "callers": ["0x0054c160"],
+        "interpretation": "Slot 11 on RaptureElement is FUN_0091C5B0 (trampoline to slot[0x30]). Called by FUN_0054c160 before the slot-0 destructor - probably a pre-destroy notify hook."
+      },
+      {
+        "slot_offset": "0x20",
+        "slot_index": 8,
+        "caller_count": 1,
+        "callers": ["0x004daa10"],
+        "interpretation": "Slot 8 on RaptureElement is FUN_0091C520 (small helper per the actor-map-writers pass dump). Called by FUN_004daa10 with (opcode_index, msg_buf, value) - the queued-message receiver. Most interesting non-trivial slot use: this is a candidate for examination as the per-actor 'apply queued state change' entrypoint."
+      }
+    ]
+  },
+  "struct_offset_histogram": {
+    "note": "Counts how many callers read/write specific offsets on the FUN_004d9910 return value. Most callers don't touch struct fields directly - they dispatch via vtable or discard the result.",
+    "top_offsets": [
+      {
+        "offset": "0x92",
+        "caller_count": 1,
+        "callers": ["0x004dc690"],
+        "interpretation": "Byte at +0x92 = 'alive' flag (per BCS-Y-0525 case 0xCA AddActor and the actor-map-writers pass's FUN_004dab50 ctor evidence which zeros this byte during construction)."
+      },
+      {
+        "offset": "0xc",
+        "caller_count": 1,
+        "callers": ["0x007694d0"],
+        "interpretation": "Offset 0xc read in the Lua control iterator - probably the wrapped object pointer slot. May not be on the actor itself (could be the iVar8 helper struct)."
+      },
+      {
+        "offset": "0x24",
+        "caller_count": 1,
+        "callers": ["0x004dc690"],
+        "interpretation": "Offset 0x24 corresponds to vtable[9] dispatch (offset within vftable, not within struct)."
+      },
+      {
+        "offset": "0x2c",
+        "caller_count": 1,
+        "callers": ["0x0054c160"],
+        "interpretation": "Offset 0x2c = vtable[11] (per above; same caveat)."
+      },
+      {
+        "offset": "0x20",
+        "caller_count": 1,
+        "callers": ["0x004daa10"],
+        "interpretation": "Offset 0x20 = vtable[8] (per above)."
+      }
+    ],
+    "interpretation": "The actor pointer is rarely accessed via field offsets directly. The dominant pattern is vtable-dispatch (4 cases) or pass-to-helper. The actor's struct fields are accessed predominantly *inside* slot-0/8/9 implementations or in supporting helpers, not at the caller-of-004d9910 layer."
+  },
+  "classification_histogram": [
+    {
+      "class": "lookup_only_discards_result",
+      "count": 28,
+      "fraction": "65%",
+      "interpretation": "28 of 43 callers are thin Lua wrappers in the 0x0075bXXX cluster that call FUN_004d9910(*param_1) for argument validation/side-effect and then dispatch a separate Lua handler. The actor pointer returned is discarded - the wrappers care only that the lookup succeeded (an exists check is implicit; failure becomes 0 which the helpers handle)."
+    },
+    {
+      "class": "dispatches_vtable_slot_0_destructor",
+      "count": 4,
+      "interpretation": "Four callers use the actor pointer to invoke its vtable[0] destructor. All four are teardown paths."
+    },
+    {
+      "class": "modifies_actor_fields",
+      "count": 3,
+      "interpretation": "Three callers write to fields adjacent to a FUN_004d9910-derived variable, but only one (FUN_004dc690) is unambiguously writing to the actor pointer itself (+0x92 alive flag in case 0xCA AddActor). The other two (FUN_007694d0, FUN_00774ad0) actually write to *helper structs* derived from the actor in subsequent steps - the variable-tracking heuristic conflated them."
+    },
+    {
+      "class": "lazy_init_create_if_absent",
+      "count": 3,
+      "interpretation": "Three callers exhibit the 'find-or-create' pattern: lookup with FUN_004d9910, if NULL then create via FUN_004d90c0 (BCS-Y-0531). They are FUN_00774ad0 (Lua actor bind), FUN_004dc690 case 0xCA (s2c AddActor), FUN_0075be50 (system actor 0xc0000024 lazy init)."
+    },
+    {
+      "class": "forwards_actor_to_other_fn",
+      "count": 2,
+      "interpretation": "Two callers pass the actor pointer to another function without dispatching its vtable: FUN_004d9d70 (popup) -> FUN_004ddcf0/FUN_00927fa0, FUN_0055d990 (paired ref) -> FUN_004d72a0."
+    },
+    {
+      "class": "actor_existence_predicate",
+      "count": 1,
+      "interpretation": "FUN_0075bbd0 returns the lookup result as bool. Used by 4 Lua-side callers as 'does this actor id exist?' check."
+    }
+  ],
+  "system_actor_id_histogram": [
+    {
+      "id": "0xc0000004",
+      "caller_va": "0x0054b680",
+      "purpose": "Camera control system actor - receives RaptureCommands.MoveCamera, ForwardCameraOff, BackwardCameraOff callback bindings."
+    },
+    {
+      "id": "0xc0000020",
+      "caller_va": "0x004d9d70",
+      "purpose": "Popup/menu system actor - receives one branch of the popup handler dispatch."
+    },
+    {
+      "id": "0xc0000024",
+      "caller_va": "0x0075be50",
+      "purpose": "Lazy-initialized actor for class 0x1a (purpose unknown; class 0x1a not yet decompiled in this manifest)."
+    }
+  ],
+  "opcode_processing_candidates": {
+    "found": "yes_but_already_cataloged",
+    "candidates": [
+      {
+        "va": "0x004dc690",
+        "name": "FUN_004dc690",
+        "bcs_id": "BCS-Y-0279 (+ 0525/0526/0527 sub-attributions)",
+        "details": "Already known to be the central s2c dispatcher. Has the canonical switch(opcode) structure with FUN_004d9910 usage at AddActor (0xCA), RemoveActor (0xCB), and the generic Actor-cluster fallthrough (24 opcodes 0x0F + 0xCC..0xE5). This confirms no NEW opcode processor exists among the 42 other callers - none of them have a switch(opcode) shape; the 0x0075bXXX cluster is purely thin Lua argument-validation wrappers, not opcode handlers."
+      }
+    ],
+    "negative_finding": "The hypothesis that one of the 43 callers might be a hidden opcode handler is EMPIRICALLY REFUTED. Only FUN_004dc690 (already cataloged) has the switch(opcode) structure. The 42 other callers fall into 3 categories: thin Lua wrappers (28), substantive helpers with non-opcode purposes (9), and existence-predicate helpers (1). None of them inspect packet bytes by offset in a way consistent with opcode dispatch."
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "ZoneActor_QueuedMessageDispatcher_FUN_004daa10",
+      "address": "0x004daa10",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Per-frame zone actor message-queue dispatcher. Walks the queue at zone+0x17938..+0x17944 via FUN_004ddb50 (queue iterator) + InterlockedExchangeAdd / InterlockedExchange / InterlockedDecrement (lock-free pop). For each entry with type field != 2: extracts (uVar5 = *(entry+0x14) - 3) as a relative opcode/method index in [0, 0x101), reads actor_id from entry+0x10, looks up actor via FUN_004d9910 (BCS-Y-0534), and dispatches `actor->vtable[0x20](uVar5, entry+0x20, *(entry+0x18))` (slot 8). For type==2 entries: dispatches the slot-0x18 method on zone+0x17924 (the queue's output writer vtable). Concludes with a teardown step via `(*zone+0x17920)->vtable[0x14]() then FUN_00929b70 / FUN_005527a0 / FUN_004da680`.",
+      "rationale": "Most architecturally significant uncataloged caller. Establishes the existence of a per-frame zone-actor queued-message dispatch system separate from the s2c packet dispatcher (FUN_004dc690). Identifies vtable slot 8 (offset 0x20) of RaptureElement as the queued-message receiver method - the only non-destructor, non-lifecycle slot in active use across the catalog. Connects zone+0x17924/+0x17920 (queue output/input writer vtables) to actor dispatch. Sole caller is FUN_004b3c50 (likely the per-tick dispatcher caller)."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "ZoneActor_PairedReferenceSwap_FUN_0055d990",
+      "address": "0x0055d990",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Manages a paired actor reference pair at param_1+0xec/+0xf0 (input target binding?). When clearing (param_2='\\0'): looks up actor stored at param_1+0xf0 via FUN_004d9910 and forwards to FUN_004d72a0(actor); writes sentinels 0x7fffffff to +0xec and 0xc0000000 to +0xf0. When binding (param_2 != 0): captures fresh ids via FUN_004d7420/FUN_004d6750 (probably current-target queries) and stores at +0xec/+0xf0. Sole caller FUN_00566740.",
+      "rationale": "Demonstrates the actor-ref-pair swap pattern using FUN_004d9910 + a helper FUN_004d72a0 sibling. Useful for input/UI subsystem characterization."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "SystemActorRegistrar_CameraCommands_FUN_0054b680",
+      "address": "0x0054b680",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "One-shot camera-control system-actor registration. Looks up engine-managed actor 0xc0000004 via FUN_004d9910 (this is the Camera system actor). Registers 3 RaptureCommands callbacks ('MoveCamera' DAT_013371b8, 'ForwardCameraOff' DAT_01337160, 'BackwardCameraOff' DAT_01337108) via FUN_00928f90 / FUN_0052d3a0, with atexit teardown hooks (FUN_00f2f640/630/620). DAT_0133720c bit flags track which registration ran. Increments param_1+0x54 init counter and returns it.",
+      "rationale": "Provides the first empirical id->purpose mapping for engine-managed system actors: 0xc0000004 = Camera. Combined with FUN_004d9d70's 0xc0000020 (popup) and FUN_0075be50's 0xc0000024 (class 0x1a), this establishes 3 system-actor ids by purpose."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "SystemActor_LazyInit_Class0x1a_FUN_0075be50",
+      "address": "0x0075be50",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Idempotent lazy-init for engine-managed actor 0xc0000024. Pattern: if (FUN_004d9910(0xc0000024) == 0) FUN_004d90c0(0x1a, 0xc0000024). Class id 0x1a is the actor class to instantiate. Has 0 static callers - reached via dynamic dispatch or init bootstrap.",
+      "rationale": "Provides another empirical engine-managed actor id mapping: 0xc0000024 -> class 0x1a. Useful when drilling FUN_004d90c0's class-id space."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "LuaActorBind_LazyInit_FUN_00774ad0",
+      "address": "0x00774ad0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Substantial Lua-side actor binding entrypoint (1694 bytes). Pattern: `if (FUN_004d9910(actor_id) == 0) FUN_004d90c0(0x1a, actor_id)` then populates ~6 fields on a related Lua-context struct (FUN_0076a3f0-derived) at offsets 0x10/0x14/0x18/0x1c/0x4c/0xb6/0xb4. Heavily uses the Lua-engine helpers (FUN_0078fXXX) and the LGE chokepoints. Sole caller FUN_00574780.",
+      "rationale": "Second 'find-or-create + initialize' caller after the dispatcher's case 0xCA. Provides the Lua-side counterpart to the s2c AddActor path."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "ActorListEraseWithDestroy_FUN_00765340",
+      "address": "0x00765340",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Doubly-linked list iterator that erases actor entries. Walks list at param_1+0x4. For each node: looks up actor via FUN_004d9910(node[2]); if FUN_00535ce0(0) returns truthy, re-looks-up the actor and dispatches actor->vtable[0](1) (scalar-deleting destructor), then removes the node via FUN_0077b7f0. Sole caller FUN_00578970.",
+      "rationale": "Demonstrates the actor-list-erase pattern. Less common than the central dispatcher's case 0xCB path but architecturally significant for understanding Lua-side actor list management."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "ConfigActorUnbindDestroy_FUN_0054c160",
+      "address": "0x0054c160",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Config-apply handler with actor-unbind sequence. Modifies a config struct, then if a referenced actor id exists: `actor = FUN_004d9910(local_10); actor->vtable[0x2c](); actor->vtable[0](1)` - calls slot-11 (pre-destroy hook/trampoline-to-0x30) followed by slot-0 (destructor with arg 1). Demonstrates the 'unbind then destroy' pair pattern.",
+      "rationale": "Uses the only two distinct non-destructor vtable slots observed in this manifest outside the dispatcher (slot 11, slot 8 from FUN_004daa10). Cataloging captures the unbind+destroy idiom."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "LuaActorListUnbindIterator_FUN_007694d0",
+      "address": "0x007694d0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Iterates the Lua control list at param_1+0x8. For each entry, calls FUN_004d9910(*puVar1) to verify the actor still exists in the zone. If lookup returns 0, calls FUN_00783e30(puVar1) to unbind the orphaned reference. If actor present, dynamic_casts to Component::Lua::GameEngine::LuaControl + Application::Lua::Script::Client::Control::CharaBase (RTTI) and dispatches FUN_0075f6a0(param_2, iVar7) and FUN_007659c0. Garbage-collection-style sweep that prunes Lua refs to vanished actors.",
+      "rationale": "Demonstrates a third distinct use of FUN_004d9910 as a liveness check (after thin-wrapper validation and existence-predicate). Provides RTTI evidence linking the Lua control list to CharaBase actors specifically."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "LuaActorExistencePredicate_FUN_0075bbd0",
+      "address": "0x0075bbd0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Smallest caller (23 bytes). Pure predicate: `return FUN_004d9910(*param_1) != 0`. Used by 4 Lua-side callers (FUN_006cc760, FUN_006d8f30, FUN_006d9570, FUN_006e3a60) as the canonical 'does this actor id resolve to a live actor?' check.",
+      "rationale": "Architectural primitive - the simplest form of FUN_004d9910 consumption. Worth a catalog entry as the canonical pattern."
+    },
+    {
+      "id_placeholder": "BCS-Y-XXXX",
+      "name": "LuaActorBindingThinWrapperCluster_0x0075b7XX_0x0075beXX",
+      "addresses_first_24": ["0x0075ba50", "0x0075b9e0", "0x0075b840", "0x0075bb60", "0x0075ba10", "0x0075b950", "0x0075b7e0", "0x0075b900", "0x0075b9c0", "0x0075b810", "0x0075b770", "0x0075b870", "0x0075b970", "0x0075bad0", "0x0075be80", "0x0075ba90", "0x0075b8d0", "0x0075b8a0", "0x0075ba70", "0x0075ba30", "0x0075b790", "0x0075b730", "0x0075b7b0", "0x0075be30"],
+      "addresses_continued": ["0x0075bb00", "0x0075bab0", "0x0075b750", "0x0075b930", "0x0075bea0", "0x0075b9a0"],
+      "kind": "function_cluster",
+      "confidence": "confirmed",
+      "summary": "30 thin Lua-binding wrappers in the 0x0075b7XX..0x0075beXX address range, each ~24-44 bytes. Common shape: `FUN_004d9910(*param_1); FUN_005XXXXX(param_2..N);` - validate actor exists via lookup (result discarded), then dispatch a specific Lua-callable helper in the 0x0053XXXX cluster (FUN_005354d0, FUN_005355a0, FUN_00535670, etc.). These are auto-generated C-wrappers exposing zone-actor methods to Lua scripts.",
+      "rationale": "Bulk-catalog the 30 thin wrappers as a single cluster entry rather than 30 individual BCS-Y entries. Their volume (~70% of FUN_004d9910 callers) and structural homogeneity argue for cluster treatment. Future per-wrapper detail can be cataloged as needed when each helper FUN_005XXXXX is characterized."
+    }
+  ],
+  "key_findings": [
+    {
+      "title": "65% of FUN_004d9910 callers are thin Lua-binding wrappers that discard the result",
+      "detail": "28 of 43 callers (and 30 if you include the 2 more substantive ones with the same shape) are 24-44 byte functions in the 0x0075b7XX..0x0075beXX cluster. Each invokes FUN_004d9910(*param_1) as input validation, discards the result, and proceeds to call a specific FUN_005XXXXX (typically 0x0053XXXX range) helper. This is an auto-generated Lua C-binding pattern that exposes zone-actor methods to scripts.",
+      "implication": "The actor map lookup primitive's primary visible role is argument validation for the Lua API surface - not direct actor mutation. The 44-caller count overstates the architectural surface; real actor-pointer-consuming code paths are ~13."
+    },
+    {
+      "title": "Only 4 callers dispatch actor vtable slot 0 (destructor); only the dispatcher (FUN_004dc690) dispatches slot 9 or slot 8",
+      "detail": "Vtable dispatches via the FUN_004d9910 return value: slot 0 (destructor) = 4 callers (FUN_0054c160 config-unbind, FUN_00765340 list-erase, FUN_0075bec0 Lua-binding destroy, FUN_004dc690 case 0xCB RemoveActor); slot 9 (offset 0x24) = 1 caller (FUN_004dc690 generic fallthrough = BCS-Y-0527); slot 8 (offset 0x20) = 1 caller (FUN_004daa10 queued-message dispatcher); slot 11 (offset 0x2c) = 1 caller (FUN_0054c160 pre-destroy hook). No caller dispatches slot 5 (lifecycle hook).",
+      "implication": "The actor's vtable is dispatched from only a small number of well-defined call sites. The 'queued-message dispatcher' role of slot 8 (FUN_004daa10) is the most architecturally novel finding - a previously-unknown per-frame actor-message-queue system parallel to the s2c packet dispatcher."
+    },
+    {
+      "title": "FUN_004daa10 reveals a per-frame queued-message dispatch system separate from s2c packet dispatch",
+      "detail": "FUN_004daa10 walks a queue at zone+0x17938..+0x17944 (lock-free via Interlocked ops), and for each entry dispatches `actor->vtable[0x20](opcode_index, msg_buf, value)` (slot 8) on the actor recovered via FUN_004d9910. This is structurally a SECOND dispatcher (in addition to FUN_004dc690) that targets specific actors with per-actor opcode-indexed methods. Sole caller FUN_004b3c50 (the per-tick caller).",
+      "implication": "The architecture has a second actor-dispatch path outside FUN_004DC690. Actor-cluster opcodes 0x0F and 0xCC..0xE5 may reach this queued-message system through an intermediate handler. The unresolved source boundary is FUN_004B3C50, the caller of FUN_004DAA10: it may be fed by FUN_004DC690 or by an external producer."
+    },
+    {
+      "title": "No NEW opcode-processing handler exists among the 43 callers",
+      "detail": "Only FUN_004dc690 (already cataloged as BCS-Y-0279) exhibits a switch(opcode) structure with FUN_004d9910 lookups inside the cases. The 42 other callers do not switch on packet bytes. The thin wrappers, system-actor helpers, list iterators, and predicates all use FUN_004d9910 for either argument validation or specific actor management - not packet processing.",
+      "implication": "Refutes any hypothesis that a hidden opcode handler exists in the FUN_004d9910 caller set. The Actor cluster opcodes' processing pathway is confined to FUN_004dc690's generic fallthrough (vtable[9] no-op + queue-up?) or the still-uncharacterized FUN_004daa10 queue source."
+    },
+    {
+      "title": "Three system-actor ids empirically mapped by purpose",
+      "detail": "(1) 0xc0000004 = Camera system actor (FUN_0054b680 registers RaptureCommands.MoveCamera/ForwardCameraOff/BackwardCameraOff callbacks); (2) 0xc0000020 = Popup/menu system actor (FUN_004d9d70 dispatches to it for one popup type); (3) 0xc0000024 = unknown but instantiated from class 0x1a (FUN_0075be50 lazy-init). All three are in the 'engine-managed' id range (top byte 0xC0..0xDF per BCS-Y-0533 FUN_004d9030's pattern).",
+      "implication": "Provides the first empirical id-to-purpose mappings for engine-managed system actors. The C++ types behind class 0x1A and the camera actor remain unresolved."
+    },
+    {
+      "title": "The 'lazy_init_create_if_absent' (find-or-create) pattern appears 3 times",
+      "detail": "(1) FUN_004dc690 case 0xCA AddActor (find-or-create from network packet); (2) FUN_00774ad0 Lua actor bind (find-or-create with class 0x1a default); (3) FUN_0075be50 lazy init for 0xc0000024. All three use the same FUN_004d9910 -> FUN_004d90c0 fallback structure.",
+      "implication": "Confirms FUN_004d90c0 (BCS-Y-0531) as the canonical 'create' counterpart to FUN_004d9910's 'find'. The pattern is consistent across both network-driven (case 0xCA) and Lua-driven (FUN_00774ad0) and bootstrap (FUN_0075be50) contexts."
+    },
+    {
+      "title": "Actor field offset writes via the FUN_004d9910 return are limited to +0x92 (alive flag) in case 0xCA AddActor",
+      "detail": "The only unambiguous direct write to an actor field through the FUN_004d9910-derived pointer is FUN_004dc690's case 0xCA setting *(actor + 0x92) = 1 (the alive byte). Other 'modifies_actor_fields' classifications (FUN_007694d0, FUN_00774ad0) are heuristic false positives where the offsets are on related helper structs (iVar8 from FUN_0076a3f0 etc.), not on the actor itself.",
+      "implication": "Reinforces the BCS-Y-0525 case 0xCA description: AddActor sets the alive flag at +0x92 on the actor pointer recovered from the map (whether the actor was just created or was found pre-existing). No other actor fields are mutated at this dispatcher layer."
+    }
+  ],
+  "uncataloged_caller_list": [
+    "0x004d9980", "0x0075ba50", "0x007694d0", "0x0075b9e0", "0x0054c160", "0x00765340",
+    "0x0075b840", "0x00774ad0", "0x0054b680", "0x0075bb60", "0x0075ba10", "0x0075b950",
+    "0x0075b7e0", "0x0075b900", "0x0075b9c0", "0x0075b810", "0x0075bec0", "0x0075b770",
+    "0x004d9d70", "0x0075b870", "0x0075b970", "0x0075bbd0", "0x0075bad0",
+    "0x0075be80", "0x0075ba90", "0x0075b8d0", "0x0075b8a0", "0x0075ba70", "0x0055d990",
+    "0x0075ba30", "0x0075b790", "0x0075be50", "0x0075b730", "0x0075b7b0", "0x0075be30",
+    "0x0075bb00", "0x0075bab0", "0x0075b750", "0x0075b930", "0x0075bea0", "0x0075b9a0",
+    "0x004daa10"
+  ],
+  "cataloged_caller_list": [
+    {
+      "va": "0x004dc690",
+      "bcs_ids": ["BCS-Y-0279", "BCS-Y-0525", "BCS-Y-0526", "BCS-Y-0527"]
+    }
+  ],
+  "open_questions": [
+    {
+      "q": "What feeds the queue at zone+0x17938..+0x17944 that FUN_004daa10 dispatches?",
+      "approach": "Trace caller FUN_004b3c50 and writers of zone+0x17938/+0x1793c/+0x17944. An enqueue edge from the network thread or s2c dispatcher FUN_004dc690 would explain how Actor cluster opcodes reach this queue despite the slot-9 stub."
+    },
+    {
+      "q": "What is class 0x1a (the class id FUN_0075be50 and FUN_00774ad0 lazy-create with)?",
+      "approach": "Drill FUN_004d90c0 (BCS-Y-0531) with input class_id=0x1a to identify the actor class instantiated. Class 0x1a is in the 'regular' id range (not 0xC0..0xDF) so it bypasses the FUN_00d35af0 registry check; it must be a class index into the method table at zone+0x10."
+    },
+    {
+      "q": "What does vtable slot 8 (FUN_0091C520) on RaptureElement actually do?",
+      "approach": "FUN_0091C520 is the slot-8 queued-message receiver. Its handling of the (opcode_index, msg_buf, value) tuple remains unresolved."
+    },
+    {
+      "q": "Why does FUN_00765340 call FUN_004d9910 twice per iteration?",
+      "approach": "Pattern: 1st lookup, condition check via FUN_00535ce0, 2nd lookup, destroy. The double-lookup is unusual - either defensive against intervening invalidation (some FUN_00535ce0 side effect?) or a decompiler artifact. Quick disassembly inspection at 0x00765340 would clarify."
+    }
+  ],
+  "conclusion": "All 43 recorded callers are classified. FUN_004daa10 is a queue-based actor-message dispatcher parallel to network packet dispatcher FUN_004dc690 and targets RaptureElement vtable slot 8. The evidence also identifies three engine-managed system actor ids and the split between thin Lua wrappers and substantive callers."
+}

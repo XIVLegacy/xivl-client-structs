@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Catalog the 2 heap-allocation factory functions for AchievementIdReceiver + VehicleGradeReceiver surfaced during the lifecycle attribution tier. Closes the manifest deferred_followups[0]. Parallel to BCS-Y-1023 SendLogReceiver_HeapFactory_FUN_00762460. VehicleGrade case has a distinct HYBRID factory shape worth documenting (fast-path direct-write vs slow-path full alloc+ctor).",
+  "method": {
+    "step1": "Ghidra DumpFunctionDecomp via run_c54_factories.bat (BAHAMUT_DECOMP_VAS=0x007627A0,0x0076CDD0). Output: tools/ghidra/logs/c54_factories_decomp.txt.",
+    "step2": "Pattern match against BCS-Y-1023 SendLogReceiver_HeapFactory template (alloc check via FUN_009D1B35 -> if non-zero call ctor -> cleanup via FUN_007945A0, SEH-wrapped).",
+    "step3": "Confirm both factories call the cataloged ctors (BCS-Y-1128 for AchievementId, BCS-Y-1134 for VehicleGrade). Both have zero direct instruction-level callers (function-pointer table dispatch only).",
+    "step4": "Add 2 BCS-Y entries (BCS-Y-1144, BCS-Y-1145). Amend BCS-Y-1128 + BCS-Y-1134 notes with factory wiki-links. Append c54_factories_decomp.txt to relevant sourceRefs."
+  },
+  "key_findings": [
+    "**AchievementIdReceiver factory (FUN_007627A0)** is structurally identical to BCS-Y-1023 SendLogReceiver_HeapFactory: 184-byte SEH-wrapped wrapper with body alloc-check via FUN_009D1B35, conditional ctor via BCS-Y-1128, finalization via FUN_007945A0. Confirms the Receiver factory pattern generalizes across Pattern A receivers.",
+    "**VehicleGradeReceiver factory (FUN_0076CDD0) has a DISTINCT HYBRID shape** not seen in BCS-Y-1023 or BCS-Y-1144. 201-byte body with __thiscall(container, byte*) signature. Branches on container.byte[+0x50]: fast-path writes the grade byte directly to FUN_0076A3F0() return + 0xB8 (no receiver instantiation); slow-path runs the standard alloc + BCS-Y-1134 ctor + cleanup. The fast-path suggests VehicleGrade is special-cased with an inline cache byte at some target struct's +0xB8 - likely the actor's vehicle-grade inline field, applied directly when no command-queue context exists (the +0x50 flag).",
+    "**Both factories are dispatch-only**. Ghidra's Callers list is empty for both - they're reached EXCLUSIVELY via function-pointer table dispatch, same pattern as BCS-Y-1023. Likely registered in the Application::Lua::Script::Client::Command factory dispatch table (vftable_A at 0x00fdfb2c or vftable_B at 0x00fe02ac per evidence), but the calling slot is out of scope here.",
+    "**The hybrid factory shape opens a future question (deferred)**: is the fast-path/slow-path branch a per-receiver pattern variation (only VehicleGrade?), or a more general optimization (some receivers have inline-cache shortcuts for common state changes)? AchievementAchievedCountReceiver has a 16B instance with 3 fields (the structural anomaly) - its factory may also be hybrid. Currently no callers exist for it (BCS-Y-1131 is dead code), so no factory exists to catalog yet."
+  ],
+  "new_bcsy_entries": [
+    {
+      "id": "BCS-Y-1144",
+      "name": "AchievementIdReceiver_HeapFactory_FUN_007627A0",
+      "address": "0x007627A0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "shape": "simple-factory (parallel to BCS-Y-1023)",
+      "body_bytes": 184,
+      "ctor_called": "BCS-Y-1128 AchievementIdReceiver::ctor_FUN_0089C620"
+    },
+    {
+      "id": "BCS-Y-1145",
+      "name": "VehicleGradeReceiver_HybridFactory_FUN_0076CDD0",
+      "address": "0x0076CDD0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "shape": "hybrid: container.byte[+0x50]==0 -> fast-path direct-write; else -> slow-path alloc+ctor",
+      "body_bytes": 201,
+      "ctor_called": "BCS-Y-1134 VehicleGradeReceiver::ctor_FUN_008A3130 (slow-path only)",
+      "fast_path_target": "FUN_0076A3F0() return + 0xB8 (byte write of *param_2)"
+    }
+  ],
+  "amendments": [
+    {
+      "id": "BCS-Y-1128",
+      "added": "Wiki-link back to BCS-Y-1144 AchievementIdReceiver_HeapFactory; sourceRef c54_factories_decomp.txt"
+    },
+    {
+      "id": "BCS-Y-1134",
+      "added": "Wiki-link back to BCS-Y-1145 VehicleGradeReceiver_HybridFactory + note about hybrid shape; sourceRef c54_factories_decomp.txt"
+    }
+  ],
+  "deferred_followups": [
+    "Identify the function-pointer table slot(s) that dispatch to BCS-Y-1144 and BCS-Y-1145. Likely in vftable_A (0x00fdfb2c) or vftable_B (0x00fe02ac) per evidence on the LuaActorImpl-like factory tables. Low-EV unless later work needs to attribute a specific opcode emission to this code path.",
+    "Decomp FUN_0076A3F0 to confirm what the VehicleGrade fast-path target is (likely the actor's inline vehicle-grade byte field). Closes the inline-cache architectural question.",
+    "Investigate whether the container.byte[+0x50] flag has a known role (animation lock? command-queue flush state?) that explains the fast/slow-path choice. May surface architectural finding about Receiver fast-path optimization patterns.",
+    "AchievementAchievedCountReceiver (BCS-Y-1131) ctor has 0 callers currently - if later work finds it has a heap factory too, catalog it as BCS-Y-NNNN parallel to these two."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged; new addresses are simple scalars",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - unchanged"
+  },
+  "symbol_count_delta": "1133 -> 1135 (+2)",
+  "files_changed": [
+    "manifests/symbols.json: +2 entries (BCS-Y-1144, BCS-Y-1145), 2 amendments (BCS-Y-1128, BCS-Y-1134)",
+    "manifests/receiver_heap_factories.json (NEW, this file)",
+    "tools/ghidra/logs/c54_factories_decomp.txt (NEW)"
+  ]
+}

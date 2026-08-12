@@ -1,0 +1,2941 @@
+{
+  "version": "2012.09.19.0001",
+  "gameVersion": "1.23b",
+  "structCount": 50,
+  "structs": [
+    {
+      "id": "BCS-S-0001",
+      "name": "BasePacketHeader",
+      "namespace": "FFXIV.Client.Network",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "notes:packet-structure-ledger",
+        "notes:pcap-correlation-ledger"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "is_authenticated",
+          "type": "uint8_t",
+          "notes": "Pcap-correlated value 0x01 across all chat/world captures. See notes:pcap-correlation-ledger for the cross-repo counter-correction."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "is_compressed",
+          "type": "uint8_t",
+          "notes": "Pcap-correlated: 0x00 on c2s (raw body), 0x01 on s2c (zlib-compressed body)."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "connection_type",
+          "type": "uint16_t",
+          "notes": "Pcap shows 0x0000 in chat/world captures. The wire-protocol.md mapping (Lobby=0, Zone=1, Chat=2) does not match the observed chat traffic; per-channel numeric values are blocked until a clean per-channel capture set exists."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "packet_size",
+          "type": "uint16_t",
+          "notes": "Total bytes including this header. Pcap-correlated against every parsed outer frame."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "num_subpackets",
+          "type": "uint16_t",
+          "notes": "Pcap-correlated: 144 B frames with two 64 B subpackets show 0x0002; 200 B frames with three subpackets show 0x0003. xivl-opcodes stream-decoder mislabels this field as 'outer type'; see notes:pcap-correlation-ledger counter-correction."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "timestamp_lo",
+          "type": "uint32_t",
+          "notes": "Pcap-correlated low 32 bits of a Unix-epoch timestamp (e.g. 0x50E0F572 = 2013-01-09 09:42:42 UTC in chat_say.pcapng)."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "timestamp_hi_unused",
+          "type": "uint32_t",
+          "notes": "Pcap-correlated as a session-epoch counter (e.g. 0x0000013B in chat_say.pcapng). Per xivl-captures/notes:stream-decoder (known unknown), the high 4 bytes repeat across many adjacent frames in a single capture; treat as session-epoch state, not necessarily zero on the wire."
+        }
+      ],
+      "notes": "Wire header for all three IPC channels. The layout is pcap-correlated against xivl-opcodes extract_streams.py output across the 53-capture corpus. See notes:pcap-correlation-ledger for the full per-byte reconciliation of is_authenticated, is_compressed, packet_size, and num_subpackets."
+    },
+    {
+      "id": "BCS-S-0002",
+      "name": "SubPacketHeader",
+      "namespace": "FFXIV.Client.Network",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "notes:packet-structure-ledger"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "subpacket_size",
+          "type": "uint16_t",
+          "notes": "Total bytes of this subpacket including the 16-byte header."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "type",
+          "type": "uint16_t",
+          "notes": "0x03 = GameMessage envelope; other type values exist in the lobby down dispatcher's byte table (keys 1..23) but are not named here."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "source_id",
+          "type": "uint32_t",
+          "notes": "Sender entity id."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "target_id",
+          "type": "uint32_t",
+          "notes": "Recipient entity id. Event receivers (KickEvent, RunEventFunction, EndEvent) stall or drop early flow when this is not the receiving player/session actor."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0c",
+          "type": "uint32_t",
+          "notes": "Reserved."
+        }
+      ],
+      "notes": "Cross-validation found no divergences."
+    },
+    {
+      "id": "BCS-S-0003",
+      "name": "GameMessageHeader",
+      "namespace": "FFXIV.Client.Network",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "notes:packet-structure-ledger"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "unknown_00",
+          "type": "uint16_t",
+          "notes": "Reserved. Server-side senders write constant 0x0014 here; no client-side read or validation of the field has been found."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "opcode",
+          "type": "uint16_t",
+          "notes": "Dispatch key for the per-channel down dispatcher slot 1."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "uint32_t",
+          "notes": "Reserved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "timestamp",
+          "type": "uint32_t",
+          "notes": "Per-message timestamp, separate from the base header timestamp."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0c",
+          "type": "uint32_t",
+          "notes": "Reserved."
+        }
+      ],
+      "notes": "Present only when SubPacketHeader.type == 0x03."
+    },
+    {
+      "id": "BCS-S-0004",
+      "name": "RetainerListRecord",
+      "namespace": "FFXIV.Client.Network",
+      "size": "0x30",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "notes:ui-command-flow-ledger",
+        "mdi-017"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "id",
+          "type": "uint32_t",
+          "notes": "Retainer id."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "character_id",
+          "type": "uint32_t",
+          "notes": "Owning player character id."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x02",
+          "name": "total",
+          "type": "uint16_t",
+          "notes": "List/index counter."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "do_rename",
+          "type": "uint16_t",
+          "notes": "Client-visible needs-rename flag. The retainer rename UI keys on this field."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "zero",
+          "type": "uint32_t",
+          "notes": "Always zero."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x20",
+          "name": "name",
+          "type": "char[32]",
+          "notes": "Zero-padded retainer name buffer."
+        }
+      ],
+      "notes": "Record carried by RetainerList lobby opcode 0x17 (deserializer FUN_00DA4D80). The client deserializer confirms the 48-byte record layout."
+    },
+    {
+      "id": "BCS-S-0005",
+      "name": "SetActorPropertyRecord",
+      "namespace": "FFXIV.Client.Network",
+      "size": "variable",
+      "confidence": "probable",
+      "sourceRefs": [
+        "notes:murmur2-verification",
+        "notes:pcap-correlation-ledger"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "preamble",
+          "type": "uint16_t",
+          "notes": "Per-record preamble of unknown semantics; varies for the same property across captures (e.g. charaWork.battleSave.skillLevel observed with 0x5F72 and 0x0B1E). Plausible interpretations: a SyncWriter dirty/generation counter, a combined type+length tag, or a record sequence id. Not promoted to a fixed name."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x04",
+          "name": "property_id",
+          "type": "uint32_t",
+          "notes": "Little-endian Murmur2 (backward variant, seed 0) of the property's '/'-path string. Pcap-correlated against all 60 s2c 0x0137 samples and all 263 resolved entries in manifests/gam_hash_names.json. Hash function: BCS-Y-0075."
+        },
+        {
+          "offset": "0x06",
+          "size": "variable",
+          "name": "value",
+          "type": "typed",
+          "notes": "Typed property value; shape varies by property. Not promoted in this slice. Some records carry a trailing UTF-8 path string (e.g. 'work/guildleve') that may be a script identifier for client-side dispatch rather than part of the numeric value."
+        }
+      ],
+      "notes": "Per-property record carried in the SetActorPropertyPacket payload (s2c opcode 0x0137 body, starting at body offset 0x10 after the 16-byte GameMessageHeader). Observed s2c 0x0137 has sub-size 168 in every captured frame, suggesting either a fixed packet shape or multiple records per packet. See notes:murmur2-verification for the full validation."
+    },
+    {
+      "id": "BCS-S-0006",
+      "name": "CharacterModifyResponseRecord",
+      "namespace": "FFXIV.Client.Network",
+      "size": "0x1D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "notes:character-modify-flow",
+        "maintainer-ledger",
+        "mdi-017",
+        "mdi-024"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x09",
+          "name": "header",
+          "type": "byte[9]",
+          "notes": "Reserved/unknown header bytes. Not read by FUN_00DA79D0; may carry sequence or framing that the outer dispatcher (BCS-Y-0018) consumes."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "validity_flag",
+          "type": "uint8_t",
+          "notes": "FUN_00DA79D0 (BCS-Y-0024) skips processing if this byte is 0."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "command",
+          "type": "uint16_t",
+          "notes": "CharacterModify sub-command. Values observed: 1 = RESERVE, 2 = MAKE, 3 = RENAME, 4 = DELETE, 6 = RENAME_RETAINER. The c2s request uses the same values at a different offset and width (u8 at 0x11)."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0C",
+          "type": "uint32_t",
+          "notes": "Not read by the decoded handlers; reserved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "player_id",
+          "type": "uint32_t",
+          "notes": "Logged as 'MAKECHR[pid]'. Used as the join key for CMD_RENAME's list walk: each existing slot entry whose first dword equals this gets the new name + doRename flag patched in place."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "character_id",
+          "type": "uint32_t",
+          "notes": "Logged as 'MAKECHR[cid]'."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "name": "slot_or_chrindex",
+          "type": "uint8_t",
+          "notes": "Character slot index, read as a single byte by FUN_00DA79D0 (BCS-Y-0024): `*(byte *)(body + 0x18)` on the CMD_MAKE path, bounds-checked against the local slot count and then passed to the 0x2E0-stride slot indexer FUN_006B3D40 (BCS-Y-0096). Logged through the byte-value numeric ostream overload FUN_005434A0 (BCS-Y-1823), not the const char* overload, so the u8 width is parser-confirmed. The server and the parity baseline both write a u32 type constant 0x400017 across body+0x18..0x1B; little-endian that puts 0x17 (23) in the byte this parser reads, which exceeds any real slot count, so CMD_MAKE always takes the 'INVALID CHRINDEX 23 for MAKECHR' log branch and falls through to the append path rather than the in-place REPLACE path. That is the correct outcome for a newly created character, which is why the live client accepts the packet. The remaining three bytes of the server's constant are unread by this parser (see unknown_1A)."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x01",
+          "name": "do_rename",
+          "type": "uint8_t",
+          "notes": "Per-entry needs-rename flag. CMD_RENAME copies this byte into the existing matched character entry at entry+9."
+        },
+        {
+          "offset": "0x1A",
+          "size": "0x02",
+          "name": "unknown_1A",
+          "type": "uint16_t",
+          "notes": "Not read by the decoded handlers."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "ticket",
+          "type": "uint32_t",
+          "notes": "Logged as 'MAKECHR[tkt]'."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x20",
+          "name": "name",
+          "type": "char[32]",
+          "notes": "Character name. Logged as 'MAKECHR[nam]'. Copied into the existing matched character entry at entry+4 on CMD_RENAME."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x20",
+          "name": "world_name",
+          "type": "char[32]",
+          "notes": "World name, NUL-terminated ASCII. FUN_00DA79D0 (BCS-Y-0024) logs it as 'MAKECHR[wld]' by passing the ADDRESS body+0x40 to the const char* ostream overload FUN_004E7290 (BCS-Y-1821), in the identical two-call shape it uses for the character name at body+0x20; the pid / cid / ticket fields at body+0x10 / +0x14 / +0x1C instead load their value and pass it to the numeric overload FUN_00DA9670 (BCS-Y-1822). The overload split is the parser-side proof that body+0x40 is a string, not a scalar. Supersedes the earlier `world_id` uint32_t reading, which was a decode error, not a server error: the server writes a 32-byte padded ASCII world name here (kLobbyCharaCreatorWorldNameSize = 0x20), matching the parity baseline, and the live 1.23b client accepts it. Width 0x20 is taken from the server / parity-baseline field size; the parser itself only requires NUL termination."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x170",
+          "name": "remainder",
+          "type": "byte[368]",
+          "notes": "Remaining 368 bytes of the response body. The handler does not read fields past body+0x40 by name; instead bytes from body+0x10 through at least body+0x1E0 are copied into a local 0x2E0-byte buffer (with the trailing 0x110 bytes zeroed) and pushed onto a slot vector via FUN_00891F00. The handler thus implicitly assumes the body extends at least to body+0x1E0 (480 bytes), 16 bytes past the explicitly-named region; see BCS-S-0009 SlotEntry for the slot's interpretation and MDI-014 for the open width question."
+        }
+      ],
+      "notes": "s2c body for lobby opcode 0x0E (CharacterModify response). The handler (FUN_00DA79D0 / BCS-Y-0024) explicitly reads fields out to body+0x60 (world_name), but the body must extend to at least body+0x1E0 (480 bytes) because the push path copies 0x1D0 bytes starting at body+0x10. Documented size 0x1D0 reflects the named-field region; the actual on-the-wire body size remains open and is annotated on the remainder field. Re-anchored against the client parser (see phase-ledger the lobby-0x0e-0x0d-parser-re-anchor pass): the named region now agrees field-for-field with the server / parity-baseline layout (u64 sequence, u8 1, u8 1, u16 command @0x0A, u32 0, u32 pid @0x10, u32 cid @0x14, u32 type constant 0x400017 @0x18, u32 ticket @0x1C, 0x20-byte ASCII name @0x20, 0x20-byte ASCII world name @0x40). Two prior divergences resolved: body+0x40 was catalogued as a u32 `world_id` and is in fact an ASCII string (the parser hands its address to the const char* ostream overload); body+0x18 is genuinely read as a u8 by the client even though the server writes a u32 there, and the resulting 'INVALID CHRINDEX 23' branch is the normal append path for a new character. Shares the chara-list per-character record (BCS-S-0008) stride and feeds the same slot-entry vector (this+0x1D4..this+0x1D8, element stride 0x2E0) via the push path FUN_00891F00 (BCS-Y-0023 = std::vector::push_back). The two layouts are the SAME field frame offset by 0x10: this body's name at body+0x20 lands at slot entry+0x10, which is exactly where BCS-S-0008's record+0x20 name lands (see BCS-S-0008 notes for the three-way frame proof). The push does not source the body directly: the handler builds a local 0x2E0-byte buffer (body+0x10..body+0x1E0 copied to local[0..0x1D0), local[0x1D0..0x2D0) zeroed) and pushes that local. See BCS-S-0009 for the resulting slot layout. Earlier notes incorrectly described FUN_00891F00 as a 're-parser' (it is push_back) and as receiving body directly (it receives the local buffer). The packet is shared across the five sub-commands: the server emits this response after RESERVE/MAKE/RENAME/DELETE/RENAME_RETAINER to deliver the post-operation character state. Distinct from BCS-S-0007 CharacterModifyRequest which the client sends on the c2s side: same opcode, different layout, different command field offset and width (see MDI-024)."
+    },
+    {
+      "id": "BCS-S-0007",
+      "name": "CharacterModifyRequest",
+      "namespace": "FFXIV.Client.Network",
+      "size": "0x1C4",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "notes:character-modify-flow",
+        "mdi-024"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "sequence",
+          "type": "uint64_t",
+          "notes": "Per-request sequence number."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "character_id",
+          "type": "uint32_t",
+          "notes": "Target character id (0 when reserving a fresh slot)."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "person_type",
+          "type": "uint32_t",
+          "notes": "Specific value semantics not yet mapped."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "slot",
+          "type": "uint8_t",
+          "notes": "Character slot index."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "command",
+          "type": "uint8_t",
+          "notes": "Sub-command. 0x01 = RESERVE, 0x02 = MAKE, 0x03 = RENAME, 0x04 = DELETE, 0x06 = RENAME_RETAINER. The client parser confirms these values. This is a u8 at offset 0x11, distinct from BCS-S-0006's u16 at offset 0x0A on the response side."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x02",
+          "name": "world_id",
+          "type": "uint16_t",
+          "notes": "Target world id."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x20",
+          "name": "character_name",
+          "type": "char[32]",
+          "notes": "Character/retainer name. 32-byte ASCII, null-padded."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x190",
+          "name": "character_info_encoded",
+          "type": "char[400]",
+          "notes": "Base64-encoded CharaInfo blob for CMD_MAKE; empty/null-padded for the other commands."
+        }
+      ],
+      "notes": "452-byte c2s body for lobby opcode 0x0E (CharacterModify request). The client parser establishes the field widths and command code values. This is distinct from BCS-S-0006 CharacterModifyResponseRecord on the s2c side: same opcode, different layout, and a different command field offset and width (see MDI-024)."
+    },
+    {
+      "id": "BCS-S-0008",
+      "name": "CharaListPerCharacterRecord",
+      "namespace": "FFXIV.Client.Network",
+      "size": "0x1D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "maintainer-ledger",
+        "mdi-014"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "header_unknown",
+          "type": "byte[8]",
+          "notes": "Not read by FUN_00DA76B0 per-record loop. For record 0 these bytes are also at body+0..7 (since records are tightly packed starting at body+0). The chara-list outer init-path flag at record+8 and record count at record+9 are read off RECORD 0 only; other records' bytes at the same offsets are unused by the parser."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "init_flags",
+          "type": "uint8_t",
+          "notes": "Record 0 only: low bits of this byte (masked & 0xFE) control the first-call init path in FUN_00DA76B0 (BCS-Y-0019). 0 means initialize the slot vector from this+0x1D0 before processing records."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "record_count",
+          "type": "uint8_t",
+          "notes": "Record 0 only: total number of per-character records in this packet. FUN_00DA76B0 loops local_306 from 0 while local_306 < this byte, so the client reads a single byte. The server and the parity baseline write a u32 count at this offset; the two readings are wire-identical for counts below 256 and the client caps the list at 8 entries, so this is a width annotation rather than a contradiction. The u8 width is what the parser actually consumes."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x0E",
+          "name": "header_remainder",
+          "type": "byte[14]",
+          "notes": "Not read by the per-record loop."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "name": "slot_key",
+          "type": "uint8_t",
+          "notes": "Slot key, low 6 bits (masked with 0x3F). FUN_00DA76B0 walks the existing slot vector at this+0x1D4..this+0x1D8 (entries at stride 0x2E0) looking for an entry whose entry+8 byte matches this value."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x07",
+          "name": "options_and_pad",
+          "type": "byte[7]",
+          "notes": "record+0x19 is the per-character options byte (doRename bit 0x02, isLegacy bit 0x08 in the server / parity-baseline builder). Not read by the 0x0D parser, but confirmed positionally by the 0x0E handler FUN_00DA79D0 (BCS-Y-0024), whose CMD_RENAME path writes its own do_rename byte into the matched slot entry at entry+0x09 - and slot entry byte X is record byte 0x10+X, so entry+0x09 is record+0x19. Bytes 0x1A..0x1F are the u16 zero pad and the u32 current zone id in the server frame; neither is read by this parser."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x20",
+          "name": "name",
+          "type": "char[32]",
+          "notes": "Character name, fixed 0x20 bytes of padded ASCII. Not read by the 0x0D parser itself (which bulk-copies record+0x10 onward into the slot entry), but pinned here by the 0x0E handler FUN_00DA79D0 (BCS-Y-0024): its CMD_RENAME path copies 8 dwords (0x20 bytes) from CharacterModify body+0x20 into the matched slot entry at entry+0x10 (`piVar12 = piVar4 + 4` on an int*). Because the 0x0D parser fills a slot entry by copying 0x1D0 bytes starting at record+0x10, slot entry+0x10 IS record+0x20. Supersedes the earlier reading that placed the name at record+0x50: that offset holds a concatenable tail string (see appearance_tail_string), which a fixed-width name could never be. Agrees with the server / parity-baseline entry+0x10 name once the 0x10 frame shift is applied."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x10",
+          "name": "world_name_and_length_prefix",
+          "type": "byte[16]",
+          "notes": "Not read by FUN_00DA76B0. In the server / parity-baseline entry frame (entry = record+0x10) this span is the 0x0E-byte padded ASCII world name at entry+0x30 (record+0x40..0x4D) followed by the 7-bit-encoded length prefix of the appearance blob at entry+0x3E (record+0x4E). A two-byte prefix there is what puts the blob itself at record+0x50, where the parser does read it. Offsets inside this span are frame-aligned from the server builder, not parser-read."
+        },
+        {
+          "offset": "0x50",
+          "size": "variable",
+          "name": "appearance_tail_string",
+          "type": "char[]",
+          "notes": "NUL-terminated tail string, variable length within the record bounds. On a slot key match, FUN_00DA76B0 (BCS-Y-0019) strlens this string (length includes the terminator), finds the end of the existing slot entry's string starting at entry+0x40, and APPENDS these bytes there. Slot entry byte X is record byte 0x10+X, so entry+0x40 is record+0x50: the parser is concatenating this same logical field across successive records that share a slot key, which is how a blob longer than one record is paged in. That concatenation is the reason this cannot be the character name - a fixed 0x20-byte name would never be appended to itself. In the server / parity-baseline entry frame this is the length-prefixed appearance data written at entry+0x3E. Supersedes the earlier `name` reading of this offset; the real name is at record+0x20."
+        },
+        {
+          "offset": "variable",
+          "size": "variable",
+          "name": "payload_b",
+          "type": "byte[]",
+          "notes": "Remaining bytes after the tail string up to record+0x1CF. Sub-field widths not yet decoded."
+        }
+      ],
+      "notes": "Per-character record carried by the chara-list lobby packet (opcode 0x0D, dispatched via BCS-Y-0019 FUN_00DA76B0). Walked at stride 0x1D0 starting at body+0 for up to body[9] records (`local_304[0] = param_2 + local_306 * 0x1d0`); record 0's leading 16 bytes double as the outer chara-list header (init flag at +8, record count at +9). Re-anchored against the client parser in phase-ledger the lobby-0x0e-0x0d-parser-re-anchor pass. Frame relationship to the server / parity-baseline builder: the server writes a 0x10-byte list header (u64 sequence, u8 tracker @0x08, u32 count @0x09, u8 0, u16 0) and then entries at body+0x10 + i*0x1D0, so SERVER ENTRY i = CLIENT RECORD i + 0x10. The client's record window is deliberately shifted 0x10 earlier, which is exactly why its copy path sources record+0x10 for 0x1D0 bytes - that source span IS the server's entry. Three independent parser reads confirm the shift: the slot key the client masks at record+0x18 is the server's slot byte at entry+0x08; the do_rename byte the 0x0E handler writes to slot entry+0x09 is the server's options byte at entry+0x09 = record+0x19; and the 0x20-byte name the 0x0E handler writes to slot entry+0x10 is the server's name at entry+0x10 = record+0x20. The prior catalog reading placed the name at record+0x50 - that offset is really the length-prefixed appearance blob, which the parser treats as a NUL-terminated string and CONCATENATES onto the matched slot entry's existing string at entry+0x40, a paging mechanism no fixed-width name could use. The count field is read as a u8 by the client and written as a u32 by the server; the two are wire-identical below 256 and the client caps the list at 8 entries. The push path reads 0x1D0 bytes starting at record+0x10, copies that into a local 0x2E0-byte buffer with the trailing 0x110 bytes zeroed, and pushes onto the slot-entry vector (element size 0x2E0) via FUN_00891F00 (BCS-Y-0023 push_back) when no existing entry matches the record's slot key. The slot-copy-construct path FUN_00891900 has been decoded (chain FUN_00891900 -> FUN_008916F0 -> FUN_008913E0 -> FUN_00891360 / BCS-Y-0076..0079) and reveals the slot's 0x2E0 anatomy (see BCS-S-0009). Sub-field widths inside record+0x60..0x1CF remain undecoded and are still blocked on a payload-shape correlation; no lobby pcap exists, the capture corpus excludes login."
+    },
+    {
+      "id": "BCS-S-0009",
+      "name": "CharaMakeSlotEntry",
+      "namespace": "FFXIV.Client.Lobby",
+      "size": "0x2E0",
+      "confidence": "probable",
+      "sourceRefs": [
+        "notes:character-modify-flow",
+        "mdi-025"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x1D0",
+          "name": "wire_mirror",
+          "type": "byte[464]",
+          "notes": "Plain copy of the wire body bytes [+0x10..+0x1E0). For chara-list per-character records (BCS-S-0008), the source is record+0x10..0x1E0. For CharacterModify response bodies (BCS-S-0006), the source is body+0x10..0x1E0. The two source layouts disagree on field positions inside this region: chara-list places the slot key at record+0x18 (low 6 bits) and a variable-length name at record+0x50, which map to slot+0x08 and slot+0x40 respectively; response places slot_or_chrindex at body+0x18 (mapping to slot+0x08) and the 32-byte character name at body+0x20 (mapping to slot+0x10). The parser only relies on slot+0x08 being the slot key in both cases; downstream readers must know which source populated the entry to interpret fields past +0x10."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x01",
+          "name": "slot_key",
+          "type": "uint8_t",
+          "notes": "Slot key inside wire_mirror, used by the chara-list parser (FUN_00DA76B0 / BCS-Y-0019) for entry lookup. Comparison uses the low 6 bits (masked 0x3F) against the wire record's record+0x18 low 6 bits."
+        },
+        {
+          "offset": "0x010",
+          "size": "0x20",
+          "name": "response_name_window",
+          "type": "char[32]",
+          "notes": "32-byte name region populated only when the slot was filled or patched by the CharacterModify response handler (CMD_RENAME copies the name from body+0x20 here; the push path for the same body would also land it here via wire_mirror). Distinct from chara_list_name_window below."
+        },
+        {
+          "offset": "0x040",
+          "size": "variable",
+          "name": "chara_list_name_window",
+          "type": "char[]",
+          "notes": "Variable-length name region populated when the slot was filled by the chara-list parser from record+0x50. The chara-list parser scans from slot+0x3F forward to find the tail-string null terminator, then appends additional name bytes from incoming records that match this slot's key."
+        },
+        {
+          "offset": "0x1D0",
+          "size": "0x110",
+          "name": "zeroed_local_state",
+          "type": "byte[272]",
+          "notes": "Zeroed at push time by both source paths (chara-list parser and CharacterModify response handler). Use unknown; probably holds slot-local UI state populated after push."
+        },
+        {
+          "offset": "0x2D0",
+          "size": "0x10",
+          "name": "embedded_vector",
+          "type": "std::vector<RetainerListRecord> (element stride 0x30)",
+          "notes": "Embedded std::vector with element stride 0x30 = 48 bytes (matching BCS-S-0004 RetainerListRecord exactly). Initialized empty at push time via FUN_00890EE0 (BCS-Y-0080), which copy-constructs from the source local buffer's matching offset (which is also zeroed at push time). Element type confirmed as BCS-S-0004 RetainerListRecord: the upsert helper FUN_00DA94C0 (BCS-Y-0094) operates generically on any container's embedded vector at this+0x2D0, and one of its three callers is FUN_00DA4D80 (BCS-Y-0022 RetainerListParser, opcode 0x17), forcing the records carried in vectors of this exact shape to be BCS-S-0004. The upsert key is the byte at element+8 = low byte of BCS-S-0004's `total` field (a stable per-retainer index). The slot's specific vector is initialized empty by the copy-construct path; all three known FUN_00DA94C0 callsites have been traced to set `this` = CharaMakeSlotEntry, so the populated retainer vector is slot+0x2D0 in every observed path: (1) RetainerListParser FUN_00DA4D80 walks the chara-list slot vector at CharaMakeOperation+0x1D4 by character_id and upserts into each matching slot; (2) CMD_MAKE in FUN_00DA79D0 looks up chara-list-slot[body[0x18]] via the indexer FUN_006B3D40 (BCS-Y-0096) and upserts the installed record; (3) FUN_00DA9550 (BCS-Y-0091) inherits its `this` from FUN_00DA76B0's newly-pushed slot at slot[size-1]. Layout per std::vector implementation: vec+0x00 unused/allocator, vec+0x04 begin pointer, vec+0x08 end pointer, vec+0x0C cap_end pointer."
+        }
+      ],
+      "notes": "Slot entry stored in the CharaMakeOperation's slot-entry vectors at this+0x1D4..0x1D8 (chara-list vector, populated by FUN_00DA76B0) and this+0x218..0x21C (response vector, populated by FUN_00DA79D0). Both vectors share the 0x2E0 stride. Decoded from Ghidra 12.1 auto-decompiler analysis of the copy-construct chain FUN_00891900 -> FUN_008916F0 -> FUN_008913E0 -> FUN_00891360 / FUN_00890EE0 at VAs 0x00891900, 0x008916F0, 0x008913E0, 0x00891360, 0x00890EE0. Field widths inside wire_mirror remain blocked on pcap correlation of the chara-list (opcode 0x0D) or CharacterModify response (opcode 0x0E) payloads."
+    },
+    {
+      "id": "BCS-S-0010",
+      "name": "NpcBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "unknown",
+      "confidence": "probable",
+      "sourceRefs": [
+        "mdi-022",
+        "xivl-opcodes:data/client_receivers.json#9_decomp_batch"
+      ],
+      "fields": [
+        {
+          "offset": "0x154",
+          "size": "0x04",
+          "name": "hate_value",
+          "type": "uint32_t",
+          "notes": "Hate value (combat threat) field. Written inline by HateStatusReceiver (BCS-Y-0043, apply FUN_0089D030) from the u32 at packet body+0x4. Read by 2 confirmed Lua APIs: _isEnmity (NpcBase API, BCS-Y-0338) and _getLookAtCharacter (CharaBase API 0x006FA690 -> NpcBase::vftable[0xA0] override FUN_0072D000, the lua-name-to-opcode-bridge-open pass). Used by NPC targeting reticule UI (CmnTargetHateStatus, status ID 223107). Distinct from the SetActorProperty 0x0137 npcWork.hate emit path - this is a direct field write rather than a property-table mutation. Documented in MDI-022 lifecycle decode; corroborated by xivl-opcodes gap-receiver batch."
+        },
+        {
+          "offset": "0x158",
+          "size": "0x02",
+          "name": "hate_aux",
+          "type": "uint16_t",
+          "notes": "Hate auxiliary field paired with hate_value at +0x154. Written by HateStatusReceiver from the u16 at packet body+0x8. The semantic role is unknown; possible interpretations include a level or grade indicator, a paired secondary score, or threat-class flags. MDI-022 notes the likely pair (hate_target_id_or_value, hate_status_flag)."
+        }
+      ],
+      "notes": "Client-side runtime struct for NPC actors (Application::Lua::Script::Client::Control::NpcBase RTTI type descriptor). Full size and field layout unknown; only the two hate-status fields at +0x154 and +0x158 are decoded so far, surfaced from HateStatusReceiver lifecycle decode in MDI-022 and corroborated by xivl-opcodes gap-receiver batch. NpcBase appears in many other receiver RTTI cast targets (ExecutePushOnEnter/Leave TriggerBox, HateStatus); decomp of those receivers' downstream handlers can extend this struct's field map. Sibling of CharaBase / MyPlayer / PlayerBase / AreaBase / DirectorBase in the Application::Lua::Script::Client::Control hierarchy. The lua-name-to-opcode-bridge-open pass (BCS-Y-0343) added a 2nd confirmed reader of +0x154 via NpcBase::vftable[0xA0] override FUN_0072D000 reached by CharaBase _getLookAtCharacter."
+    },
+    {
+      "id": "BCS-S-0011",
+      "name": "PlayerBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "unknown",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/receiver_field_writes.json (receiver-classification)",
+        "manifests/vtable_resolved_evidence.json (virtual-dispatch-queries)",
+        "manifests/symbols.json (BCS-Y-0340, BCS-Y-0341 - pending virtual-dispatch-queries entry)"
+      ],
+      "fields": [
+        {
+          "offset": "0xe8",
+          "size": "0x01",
+          "name": "achievement_title",
+          "type": "uint8_t",
+          "notes": "Achievement title slot. Written by AchievementTitleReceiver (opcode 0x019D, slot1Fn FUN_0089C5F0 writes iVar1+0xE8 directly) and by N-API _setAchievementTitle (PlayerBase impl 0x0071E570 which is also reached via PlayerBase::vftable[0x190] -> MyPlayer::vftable[0x190] override 0x00704FA0). Discovered the receiver-classification pass (direct decomp) + corroborated the virtual-dispatch-queries pass (vtable resolution)."
+        },
+        {
+          "offset": "0xec",
+          "size": "0x01",
+          "name": "gm_rank",
+          "type": "uint8_t",
+          "notes": "GM (game-master) rank cache slot. Written by N-API _getGMRank (PlayerBase impl 0x00706C70) which caches the rank value at this offset. Read-back path uses the same offset. Discovered the lua-name-to-opcode-bridge-open pass step 2 SCALING (BCS-Y-0339)."
+        },
+        {
+          "offset": "0xed",
+          "size": "0x01",
+          "name": "grand_company_rank_byte0",
+          "type": "uint8_t",
+          "notes": "Grand-company rank/seal cluster byte 0. Written by GrandCompanyReceiver (opcode 0x0194, slot1Fn FUN_0089CD60 virtual call PlayerBase::vftable[0xA4] -> FUN_006DEB00 which writes 4 consecutive u8s at offsets 0xED..0xF0 from param_3, param_4, param_5, param_6). N-API _getBelongGrandCompany (PlayerBase impl 0x00706CC0) reads this offset directly. This is one of the 4 confirmed indirect Lua<->opcode bindings (the virtual-dispatch-queries pass cross-ref). Discovered the virtual-dispatch-queries pass."
+        },
+        {
+          "offset": "0xee",
+          "size": "0x01",
+          "name": "grand_company_rank_byte1",
+          "type": "uint8_t",
+          "notes": "Grand-company rank/seal cluster byte 1. Written by GrandCompanyReceiver (FUN_006DEB00 via PlayerBase::vftable[0xA4]). Discovered the virtual-dispatch-queries pass."
+        },
+        {
+          "offset": "0xef",
+          "size": "0x01",
+          "name": "grand_company_rank_byte2",
+          "type": "uint8_t",
+          "notes": "Grand-company rank/seal cluster byte 2. Written by GrandCompanyReceiver (FUN_006DEB00 via PlayerBase::vftable[0xA4]). Discovered the virtual-dispatch-queries pass."
+        },
+        {
+          "offset": "0xf0",
+          "size": "0x01",
+          "name": "grand_company_rank_byte3",
+          "type": "uint8_t",
+          "notes": "Grand-company rank/seal cluster byte 3. Written by GrandCompanyReceiver (FUN_006DEB00 via PlayerBase::vftable[0xA4]). Discovered the virtual-dispatch-queries pass."
+        },
+        {
+          "offset": "0xf1",
+          "size": "0x01",
+          "name": "job_slot",
+          "type": "uint8_t",
+          "notes": "Current job slot. Written by JobChangeReceiver (opcode 0x01A4, slot1Fn FUN_0089CB60 worker FUN_00706DC0 writes param_1+0xF1 directly). Read by N-API _getJob (CharaBase API 0x0071E020 -> PlayerBase::vftable[0x9C] override FUN_00706D90 reads param_1+0xF1). Discovered the receiver-classification pass (BCS-Y-0340); confirmed indirect binding added in the lua-name-to-opcode-bridge-open pass (BCS-Y-0343)."
+        },
+        {
+          "offset": "0x158",
+          "size": "0x01",
+          "name": "mount_cluster_byte_0x158",
+          "type": "uint8_t",
+          "notes": "Mount/chocobo cluster byte. Written by ChocoboReceiver (opcode 0x0198, worker writes MyPlayer+0x158). The full cluster spans 0x158..0x160 and encodes chocobo/goobbue/vehicle equip state. Discovered the receiver-classification pass."
+        },
+        {
+          "offset": "0x15c",
+          "size": "0x01",
+          "name": "mount_cluster_byte_0x15c",
+          "type": "uint8_t",
+          "notes": "Mount cluster byte. Written by ChocoboReceiver (opcode 0x0198). Discovered the receiver-classification pass."
+        },
+        {
+          "offset": "0x15d",
+          "size": "0x01",
+          "name": "mount_cluster_byte_0x15d",
+          "type": "uint8_t",
+          "notes": "Mount cluster byte. Written by GoobbueReceiver (opcode 0x01A0) and ChocoboReceiver (0x0198). N-API _getChocoboRidingGrade (PlayerBase impl 0x0071E4D0) reads this offset - confirmed indirect Lua<->opcode binding (the virtual-dispatch-queries pass). Discovered the receiver-classification pass + 12f."
+        },
+        {
+          "offset": "0x15e",
+          "size": "0x01",
+          "name": "mount_cluster_byte_0x15e",
+          "type": "uint8_t",
+          "notes": "Mount cluster byte (chocobo grade). Written by ChocoboGradeReceiver (opcode 0x0197). N-API _getChocoboGrade (PlayerBase impl 0x0071E4C0 reached via PlayerBase::vftable[0x1A0]) also writes/caches this offset. Discovered the receiver-classification pass + 12f."
+        },
+        {
+          "offset": "0x15f",
+          "size": "0x01",
+          "name": "mount_cluster_byte_0x15f",
+          "type": "uint8_t",
+          "notes": "Mount cluster byte. Written by GoobbueReceiver (opcode 0x01A0) and ChocoboReceiver (0x0198). N-API _getChocoboRidingGrade also writes this offset. Discovered the receiver-classification pass + 12f."
+        },
+        {
+          "offset": "0x160",
+          "size": "0x01",
+          "name": "mount_cluster_byte_0x160",
+          "type": "uint8_t",
+          "notes": "Mount cluster byte (vehicle grade). Written by VehicleGradeReceiver (opcode 0x01A1). N-API _isEnabledGoobbue (PlayerBase impl 0x0071E4E0) reads this offset - confirmed indirect Lua<->opcode binding (the virtual-dispatch-queries pass). Discovered the receiver-classification pass + 12f."
+        }
+      ],
+      "notes": "Client-side runtime struct for player actors (Application::Lua::Script::Client::Control::PlayerBase RTTI type descriptor; vftable at 0x00FD5E04 per the virtual-dispatch-queries pass resolution). Parent of MyPlayer in the Control hierarchy. Full size and field layout unknown; the entries here are the offsets touched by inbound receivers (the receiver-classification pass) and resolved virtual-dispatch targets (the virtual-dispatch-queries pass) that are confirmed actor-state mutators. The 0xE8..0xF1 cluster handles achievement/grand-company/job state; 0x158..0x160 handles mount equip state. Receiver writes use MyPlayer-cast pointers but the offsets live in PlayerBase's layout."
+    },
+    {
+      "id": "BCS-S-0012",
+      "name": "MyPlayer",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "unknown",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/receiver_field_writes.json (receiver-classification)",
+        "manifests/vtable_resolved_evidence.json (virtual-dispatch-queries)"
+      ],
+      "fields": [],
+      "notes": "Derived class of PlayerBase. MyPlayer's vftable (resolved the virtual-dispatch-queries pass) overrides 86 of 86 PlayerBase virtual slots in the 0xA4..0x210 range. The Control-class N-APIs typed against PlayerBase dispatch at runtime to MyPlayer overrides when the actor is the local player; this is the mechanism that connects the PlayerBase N-API impls to the actual state-mutating implementations. Receiver casts (ChocoboReceiver, GoobbueReceiver, VehicleGradeReceiver, ChocoboGradeReceiver) explicitly cast to MyPlayer; the offsets they write (0x158..0x160 mount cluster) are also visible at the PlayerBase layout (see PlayerBase struct entry). No MyPlayer-specific fields are catalogued yet - all known offsets share the PlayerBase layout."
+    },
+    {
+      "id": "BCS-S-0013",
+      "name": "MapActionUse",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0xb8",
+      "confidence": "confirmed-pcap-derived",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+      "sourceRefs": [
+        "manifests/opcode_payload_schemas.json (0x012d)",
+        "manifests/opcode_proposed_field_layouts.json (0x012d)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "u32",
+          "name": "selfActorId",
+          "evidence": "0x029b2941 (invariant in corpus = sample player actor)"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "type": "u32",
+          "name": "targetActorId",
+          "evidence": "high cardinality >41"
+        },
+        {
+          "offset": "0x08",
+          "size": "0x4",
+          "type": "u32",
+          "name": "actionOrAbilityId",
+          "evidence": "medium cardinality 11 - matches a small action catalog"
+        },
+        {
+          "offset": "0x0c",
+          "size": "0x4",
+          "type": "u32",
+          "name": "secondaryTargetOrSalt",
+          "evidence": "high cardinality >40"
+        },
+        {
+          "offset": "0x10",
+          "size": "0x4",
+          "type": "u32",
+          "name": "actionClassEnum",
+          "evidence": "medium cardinality 8"
+        },
+        {
+          "offset": "0x14",
+          "size": "0x4",
+          "type": "u32",
+          "name": "actionSubtypeEnum",
+          "evidence": "medium cardinality 8"
+        },
+        {
+          "offset": "0x18",
+          "size": "0x4",
+          "type": "u32",
+          "name": "stateOrFlags1",
+          "evidence": "medium cardinality 14"
+        },
+        {
+          "offset": "0x1c",
+          "size": "0x4",
+          "type": "u32",
+          "name": "casterStateId",
+          "evidence": "high cardinality >23"
+        },
+        {
+          "offset": "0x20",
+          "size": "0x4",
+          "type": "u32",
+          "name": "casterStateExtra",
+          "evidence": "high cardinality >25"
+        },
+        {
+          "offset": "0x24",
+          "size": "0x4",
+          "type": "f32?",
+          "name": "positionX_or_dir",
+          "evidence": "high cardinality - likely float"
+        },
+        {
+          "offset": "0x28",
+          "size": "0x4",
+          "type": "f32?",
+          "name": "positionY_or_dir",
+          "evidence": "high cardinality - likely float"
+        },
+        {
+          "offset": "0x2c",
+          "size": "0x4",
+          "type": "f32?",
+          "name": "positionZ_or_dir",
+          "evidence": "high cardinality - likely float"
+        },
+        {
+          "offset": "0x30",
+          "size": "0x4",
+          "type": "u32",
+          "name": "rotation_or_index",
+          "evidence": "high cardinality >32"
+        },
+        {
+          "offset": "0x34",
+          "size": "0x4",
+          "type": "u32",
+          "name": "tickOrSequence",
+          "evidence": "high cardinality >21"
+        },
+        {
+          "offset": "0x38",
+          "size": "0x4",
+          "type": "u32",
+          "name": "modifierFlags1",
+          "evidence": "medium cardinality 12"
+        },
+        {
+          "offset": "0x3c",
+          "size": "0x4",
+          "type": "u32",
+          "name": "modifierFlags2",
+          "evidence": "medium cardinality 12"
+        },
+        {
+          "offset": "0x40",
+          "size": "0x4",
+          "type": "u32",
+          "name": "comboChainState",
+          "evidence": "high cardinality >21"
+        },
+        {
+          "offset": "0x44",
+          "size": "0x4",
+          "type": "u32",
+          "name": "extraSlot1",
+          "evidence": "medium cardinality 7"
+        },
+        {
+          "offset": "0x48",
+          "size": "0x4",
+          "type": "u32",
+          "name": "extraSlot2",
+          "evidence": "medium cardinality 8"
+        },
+        {
+          "offset": "0x4c",
+          "size": "0x4",
+          "type": "u32",
+          "name": "extraSlot3",
+          "evidence": "medium cardinality 7"
+        },
+        {
+          "offset": "0x50",
+          "size": "0x4",
+          "type": "u32",
+          "name": "extraSlot4",
+          "evidence": "medium cardinality 8"
+        },
+        {
+          "offset": "0x54",
+          "size": "0x5c",
+          "type": "padding_or_reserved",
+          "name": "reserved",
+          "evidence": "92 bytes of zeros - likely expansion / future-action-payload reserved"
+        },
+        {
+          "offset": "0xb0",
+          "size": "0x4",
+          "type": "u32",
+          "name": "footer1",
+          "evidence": "medium cardinality 13"
+        },
+        {
+          "offset": "0xb4",
+          "size": "0x4",
+          "type": "u32",
+          "name": "footer2",
+          "evidence": "medium cardinality 7"
+        }
+      ],
+      "notes": "Action/skill use request; 184-byte body with action ID, target, position, and modifiers. Field offsets and types derive from per-byte entropy analysis across 126 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+    },
+    {
+      "id": "BCS-S-0014",
+      "name": "MapEventUpdatePayload",
+      "aliases": [
+        "MapInventoryTransaction (opcode-payload-schemas/66 pcap-only label, retracted 0x012e-direction-disambiguation/Tier-B3)"
+      ],
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x58 application payload; builder record bodySize 0x68 includes the 0x10 game-message prefix",
+      "confidence": "probable",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+      "sourceRefs": [
+        "manifests/opcode_payload_schemas.json (0x012e)",
+        "manifests/opcode_proposed_field_layouts.json (0x012e)",
+        "manifests/op012e_eventupdate_emitter.json",
+        "manifests/equipment_subsystem.json (the 0x012e-direction-disambiguation pass CORRECTION block at 0x012E entry)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "BCS-S-0034 (sibling MapEventStartPayload for 0x012D)",
+        "BCS-Y-0981 (MapEventUpdatePacketBuilder_FUN_0075E670)",
+        "BCS-Y-0982 (EventUpdateCallWrapper_FUN_00894090)",
+        "BCS-Y-0983 (MapEventC2sGatingThunk_FUN_004D6D30)"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "u32",
+          "name": "triggerActorId_or_selfActorId",
+          "evidence": "0x029b2941 invariant across all 200 pcap samples (known sample player actor); opcode-payload-schemas labeled this selfActorId."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "type": "u32",
+          "name": "serverCodes_or_transactionType",
+          "evidence": "medium cardinality 9 in pcap; inventory-scenario pcaps interpret this as a transactionType action selector; the field is generic over event family."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x4",
+          "type": "u32",
+          "name": "unknown1",
+          "evidence": "0 invariant in inventory-scenario pcaps. May carry non-zero values in other event-family scenarios outside the inventory subset."
+        },
+        {
+          "offset": "0x0c",
+          "size": "0x4",
+          "type": "u32",
+          "name": "unknown2_or_itemId_or_count",
+          "evidence": "high cardinality >46 in pcap; inventory-scenario pcaps interpret as itemId or count."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x1",
+          "type": "u8",
+          "name": "eventType",
+          "evidence": "A single byte follows the four u32 header fields; the remaining bytes through 0x57 are LuaParams."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x47",
+          "type": "bytes",
+          "name": "luaParamBlob_or_inventoryTail",
+          "evidence": "opcode-payload-schemas decomposed the 0x11..0x57 tail under an inventory-scenario hypothesis as a sequence of u32 fields (slotId/secondarySlotOrId/quantityOrMod/flagsOrCondition/subAction/flag1..flag5/footerHandleOrId1/footerHandleOrId2 with two 12-byte zero gaps). The pcap-derived u32-grid view is one observed instantiation in inventory-scenario captures, not the canonical layout. See opcode-payload-schemas proposed_field_layouts.json (0x012e) for the original per-byte entropy breakdown."
+        }
+      ],
+      "notes": "**the 0x012e-direction-disambiguation pass / Tier-B3 RECLASSIFICATION.** Originally cataloged the opcode-payload-schemas pass as MapInventoryTransaction based on entropy analysis of 200 pcap samples whose dominant scenarios (gather_wood/repair_items/accept_leve/sell_item/local_leve_complete) are inventory-adjacent. The op012e-eventupdate-emitter pass's decomp of FUN_0075E670 (the c2s 0x012E builder, BCS-Y-0981) proved 0x012E is the generic event-family EventUpdate opcode: builder writes 0x012E + body length 0x68 to a 0x8C0-byte stack record, routes via FUN_004D6D30 event-family gating thunk (BCS-Y-0983, shared by 14 event-family wrappers) into FUN_004E0240 terminal wire-send. Per client-architecture '1.x combat is asymmetric' (1.x combat asymmetry), inventory operations ride the generic event-family frame (0x012D EventStart + 0x012E EventUpdate) rather than using a dedicated inventory opcode. **Field relabeling**: offset 0x00..0x10 fields retain the pcap-derived labels with the original opcode-payload-schemas labels preserved as `_or_` suffixes. The 0x11..0x57 tail is reframed as a LuaParam blob; the original opcode-payload-schemas u32-grid decomposition is preserved in opcode-payload-schemas proposed_field_layouts.json (0x012e) as an inventory-scenario instantiation. Confidence demoted confirmed-pcap-derived -> probable: the size and per-offset entropy observations remain valid (200 samples, real wire bytes), but the original semantic interpretation as a dedicated inventory packet was incorrect. Sibling of BCS-S-0034 MapEventStartPayload (0x012D, same builder-record convention). See manifests/equipment_subsystem.json 0x012E entry for the 0x012e-direction-disambiguation pass correction note, and maintainer-ledger the 0x012e-direction-disambiguation pass entry for full rationale."
+    },
+    {
+      "id": "BCS-S-0015",
+      "name": "MapCharaWorkExpSet",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x28",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/opcode_payload_schemas.json (0x012f)",
+        "manifests/opcode_proposed_field_layouts.json (0x012f)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "u32",
+          "name": "selfActorId",
+          "evidence": "0x029b2941 invariant"
+        },
+        {
+          "offset": "0x04",
+          "size": "0xe",
+          "type": "cstring",
+          "name": "propertyPath",
+          "evidence": "\"charaWork/exp\" + 0x00 terminator (invariant across all 44 samples)"
+        },
+        {
+          "offset": "0x12",
+          "size": "0x10",
+          "type": "padding",
+          "name": "reserved",
+          "evidence": "16 bytes zeros (string buffer slack to 32 bytes total path field)"
+        },
+        {
+          "offset": "0x22",
+          "size": "0x2",
+          "type": "?",
+          "name": "valueOrType",
+          "evidence": "varying lower-cardinality field"
+        },
+        {
+          "offset": "0x24",
+          "size": "0x4",
+          "type": "u32",
+          "name": "newValueOrIndex",
+          "evidence": "medium cardinality 8 - likely the new XP/stat int value"
+        }
+      ],
+      "notes": "Character XP-property set; 40-byte body carries ASCII \"charaWork/exp\" path + value. Field offsets and types derive from per-byte entropy analysis across 44 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+    },
+    {
+      "id": "BCS-S-0016",
+      "name": "MapInitProperty",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x28",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/opcode_payload_schemas.json (0x0133)",
+        "manifests/opcode_proposed_field_layouts.json (0x0133)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "u32",
+          "name": "sequenceOrTimestamp",
+          "evidence": "high cardinality >65 - varies per emission"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "type": "u32",
+          "name": "transitionMode",
+          "evidence": "medium cardinality 8"
+        },
+        {
+          "offset": "0x08",
+          "size": "0x6",
+          "type": "cstring",
+          "name": "propertyPath",
+          "evidence": "\"/_init\" (6 chars, invariant in all 270 samples)"
+        },
+        {
+          "offset": "0x0e",
+          "size": "0x1a",
+          "type": "padding",
+          "name": "reserved",
+          "evidence": "26 bytes zeros (string buffer slack, no terminator visible in invariant span)"
+        }
+      ],
+      "notes": "Zone/property init request; 40-byte body carries ASCII \"/_init\" path + sequence. Field offsets and types derive from per-byte entropy analysis across 270 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+    },
+    {
+      "id": "BCS-S-0017",
+      "name": "MapPositionTick",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/opcode_payload_schemas.json (0x00ca)",
+        "manifests/opcode_proposed_field_layouts.json (0x00ca)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "u32",
+          "name": "actorIdOrHandle",
+          "evidence": "high cardinality - the moving actor"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "type": "u32",
+          "name": "stateOrFlag",
+          "evidence": "invariant 0 + 0x50 marker at 0x03"
+        },
+        {
+          "offset": "0x08",
+          "size": "0x4",
+          "type": "f32?",
+          "name": "positionX",
+          "evidence": "high cardinality - float"
+        },
+        {
+          "offset": "0x0c",
+          "size": "0x4",
+          "type": "f32?",
+          "name": "positionY",
+          "evidence": "high cardinality - float"
+        },
+        {
+          "offset": "0x10",
+          "size": "0x4",
+          "type": "f32?",
+          "name": "positionZ",
+          "evidence": "high cardinality - float"
+        },
+        {
+          "offset": "0x14",
+          "size": "0x4",
+          "type": "u32",
+          "name": "rotationOrTick",
+          "evidence": "varies"
+        },
+        {
+          "offset": "0x18",
+          "size": "0x4",
+          "type": "u32",
+          "name": "movementFlags",
+          "evidence": "medium cardinality"
+        },
+        {
+          "offset": "0x1c",
+          "size": "0x4",
+          "type": "u32",
+          "name": "extraStateOrIndex",
+          "evidence": "varies"
+        }
+      ],
+      "notes": "Periodic player position broadcast; 16867 samples across all 54 scenarios. Field offsets and types derive from per-byte entropy analysis across 16867 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+    },
+    {
+      "id": "BCS-S-0018",
+      "name": "ZoneHeartbeat",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x18",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/opcode_payload_schemas.json (0x0001)",
+        "manifests/opcode_proposed_field_layouts.json (0x0001)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "u32",
+          "name": "tickCounterOrSeq",
+          "evidence": "high cardinality - per-tick incrementing or randomised"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x14",
+          "type": "padding",
+          "name": "reserved",
+          "evidence": "20 bytes zeros (heartbeat carries no real payload)"
+        }
+      ],
+      "notes": "Empty 20-byte zero tail + 4-byte sequence/timestamp; emitted by client tick. Field offsets and types derive from per-byte entropy analysis across 3371 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+    },
+    {
+      "id": "BCS-S-0019",
+      "name": "SyncMemoryReceiverPayload",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x88",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/inbound_payload_schemas.json (0x0137)",
+        "manifests/inbound_proposed_field_layouts.json (0x0137)",
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x2",
+          "type": "uint16_t",
+          "name": "syncBlockTag",
+          "evidence": "offsets 0..1: medium+low entropy (21 / 3 unique values across 79 samples); likely a block-id + sub-id tag pair"
+        },
+        {
+          "offset": "0x02",
+          "size": "0x4",
+          "type": "uint32_t",
+          "name": "syncSequenceOrActorRef",
+          "evidence": "offsets 2..5: medium entropy (12-13 unique values), 4 of which dominate the corpus (~42% each); pair of u16 IDs or one u32 actor handle"
+        },
+        {
+          "offset": "0x06",
+          "size": "0x2",
+          "type": "uint16_t",
+          "name": "syncSelectorHigh",
+          "evidence": "offset 6: high entropy (48 unique values); the highest-variance byte in the body - candidate for an actor or session ID component"
+        },
+        {
+          "offset": "0x08",
+          "size": "0x56",
+          "type": "uint8_t[86]",
+          "name": "syncStateBlock",
+          "evidence": "offsets 8..93: medium-to-low entropy data block; layout is opaque without receiver-decomp byte-by-byte cross-correlation"
+        },
+        {
+          "offset": "0x5e",
+          "size": "0x2a",
+          "type": "uint8_t[42]",
+          "name": "reservedPad",
+          "evidence": "offsets 94..135: invariant zero across all 79 samples; reserved padding"
+        }
+      ],
+      "notes": "SyncMemoryReceiver wire payload; 94-byte sync state block + 42-byte zero pad. Field offsets and types derived from per-byte entropy analysis across 79 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = SyncMemoryReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+    },
+    {
+      "id": "BCS-S-0020",
+      "name": "SetEventStatusReceiverPayload",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/inbound_payload_schemas.json (0x0136)",
+        "manifests/inbound_proposed_field_layouts.json (0x0136)",
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x1",
+          "type": "uint8_t",
+          "name": "eventStatusKind",
+          "evidence": "offset 0: low entropy (few discrete status kind values)"
+        },
+        {
+          "offset": "0x01",
+          "size": "0x3",
+          "type": "uint8_t[3]",
+          "name": "pad1",
+          "evidence": "offsets 1..3: invariant zero across all 43 samples"
+        },
+        {
+          "offset": "0x04",
+          "size": "0xf",
+          "type": "uint8_t[15]",
+          "name": "eventMetadataBlock",
+          "evidence": "offsets 4..18: low entropy data block carrying per-event metadata (event ID, scene ID, conditions)"
+        },
+        {
+          "offset": "0x13",
+          "size": "0x12",
+          "type": "uint8_t[18]",
+          "name": "pad2",
+          "evidence": "offsets 19..36: invariant zero across all 43 samples"
+        },
+        {
+          "offset": "0x25",
+          "size": "0x1",
+          "type": "uint8_t",
+          "name": "trailingSelector",
+          "evidence": "offset 37: high entropy (48 unique values) - candidate for a trailing selector / index"
+        },
+        {
+          "offset": "0x26",
+          "size": "0x2",
+          "type": "uint8_t[2]",
+          "name": "trailingMetadata",
+          "evidence": "offsets 38..39: medium entropy; paired with offset 37"
+        }
+      ],
+      "notes": "SetEventStatusReceiver wire payload; status kind + event metadata block with two zero-padding gaps. Field offsets and types derived from per-byte entropy analysis across 43 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = SetEventStatusReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+    },
+    {
+      "id": "BCS-S-0021",
+      "name": "ChangeActorSubStatModeBorderReceiverPayload",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x8",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/inbound_payload_schemas.json (0x0144)",
+        "manifests/inbound_proposed_field_layouts.json (0x0144)",
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x1",
+          "type": "uint8_t",
+          "name": "pad1",
+          "evidence": "offset 0: invariant zero across all 36 samples"
+        },
+        {
+          "offset": "0x01",
+          "size": "0x3",
+          "type": "uint8_t[3]",
+          "name": "modeBlock",
+          "evidence": "offsets 1..3: low entropy mode bytes (sub-stat mode set)"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x2",
+          "type": "uint8_t[2]",
+          "name": "pad2",
+          "evidence": "offsets 4..5: invariant zero across all 36 samples"
+        },
+        {
+          "offset": "0x06",
+          "size": "0x2",
+          "type": "uint8_t[2]",
+          "name": "borderBlock",
+          "evidence": "offsets 6..7: low entropy border values"
+        }
+      ],
+      "notes": "ChangeActorSubStatModeBorderReceiver wire payload; compact 8-byte mode + border with two pad bytes. Field offsets and types derived from per-byte entropy analysis across 36 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeActorSubStatModeBorderReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+    },
+    {
+      "id": "BCS-S-0022",
+      "name": "ChangeActorExtraStatReceiverPayload",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x8",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/inbound_payload_schemas.json (0x0145)",
+        "manifests/inbound_proposed_field_layouts.json (0x0145)",
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x1",
+          "type": "uint8_t",
+          "name": "extraStatKind",
+          "evidence": "offset 0: low entropy (small set of stat-kind values)"
+        },
+        {
+          "offset": "0x01",
+          "size": "0x7",
+          "type": "uint8_t[7]",
+          "name": "reservedPad",
+          "evidence": "offsets 1..7: invariant zero across all 30 samples"
+        }
+      ],
+      "notes": "ChangeActorExtraStatReceiver wire payload; 1-byte stat-kind + 7-byte zero pad. Actor delta via header.. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeActorExtraStatReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+    },
+    {
+      "id": "BCS-S-0023",
+      "name": "ChangeActorSubStatStatusReceiverPayload",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/inbound_payload_schemas.json (0x0179)",
+        "manifests/inbound_proposed_field_layouts.json (0x0179)",
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "type": "uint8_t[40]",
+          "name": "reservedPad",
+          "evidence": "all 40 bytes invariant zero across all 30 samples; receiver's meaningful state is in the GameMessage header, not the body"
+        }
+      ],
+      "notes": "ChangeActorSubStatStatusReceiver wire payload; entirely-zero 40-byte body. Actor delta via header.. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeActorSubStatStatusReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+    },
+    {
+      "id": "BCS-S-0024",
+      "name": "ChangeShadowActorFlagReceiverPayload",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x8",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/inbound_payload_schemas.json (0x017b)",
+        "manifests/inbound_proposed_field_layouts.json (0x017b)",
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x8",
+          "type": "uint8_t[8]",
+          "name": "reservedPad",
+          "evidence": "all 8 bytes invariant zero across all 30 samples; receiver's meaningful state is in the GameMessage header, not the body"
+        }
+      ],
+      "notes": "ChangeShadowActorFlagReceiver wire payload; entirely-zero 8-byte body. Actor delta via header.. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeShadowActorFlagReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+    },
+    {
+      "id": "BCS-S-0025",
+      "name": "SetDisplayNameReceiverPayload",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/inbound_payload_schemas.json (0x013d)",
+        "manifests/inbound_proposed_field_layouts.json (0x013d)",
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x3",
+          "type": "uint8_t[3]",
+          "name": "displayNameSelector",
+          "evidence": "offsets 0..2: medium entropy (likely a 2-3 byte name-table index / kind)"
+        },
+        {
+          "offset": "0x03",
+          "size": "0x25",
+          "type": "uint8_t[37]",
+          "name": "reservedPad",
+          "evidence": "offsets 3..39: invariant zero across all 30 samples"
+        }
+      ],
+      "notes": "SetDisplayNameReceiver wire payload; 3-byte name-table selector + 37-byte zero pad. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = SetDisplayNameReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+    },
+    {
+      "id": "BCS-S-0026",
+      "name": "SetTarget",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x8",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/c2s_payload_schemas.json (0x00cd)",
+        "manifests/c2s_proposed_field_layouts.json (0x00cd)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "xivl-opcodes:opcodes.json",
+        "xivl-opcodes:data/decomp_opcodes.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "uint32_t",
+          "name": "targetActorHandle",
+          "evidence": "offsets 0..3: 30 unique u32 values across 118 samples; high-byte (offset 3) shows lower entropy than low bytes - consistent with 1.x actor-handle high-byte clustering (0x029b... known sample-player + a few NPC/peer ranges)"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "type": "uint32_t",
+          "name": "targetSelectorOrKind",
+          "evidence": "offsets 4..7: 16 unique u32 values across 118 samples; cardinality matches an enum/kind field (target-type selector: actor / location / NPC sub-target etc.)"
+        }
+      ],
+      "notes": "Set-target c2s; 8-byte body with target actor handle and selector. Field offsets derive from per-byte entropy analysis across 118 pcap samples (the c2s-payload-schemas pass - extension of the opcode-payload-schemas pass to opcodes with 24..118 sample counts). The 8-byte body shape with {u32, u32} fields matches the 0x18 SubPacket-size emission pattern from the Tier-D outbound scan (0x18 = 0x10 SubHdr + 0x08 GameMsgHdr-then-body? No: 0x18 = 0x10 SubHdr + 0x08 body but that excludes GameMsgHdr - actual emission shape is SubPacket(0x10) + GameMsg(0x10) + body(0x08) = 0x28 total = 40 bytes. The pcap-opcode-evidence pass subpacketSize=40 matches.)"
+    },
+    {
+      "id": "BCS-S-0027",
+      "name": "LockTarget",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x8",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/c2s_payload_schemas.json (0x00cc)",
+        "manifests/c2s_proposed_field_layouts.json (0x00cc)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "xivl-opcodes:opcodes.json",
+        "xivl-opcodes:data/decomp_opcodes.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "uint32_t",
+          "name": "targetActorHandle",
+          "evidence": "offsets 0..3: 27 unique u32 values across 66 samples; same high-byte clustering as 0x00CD"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "type": "uint32_t",
+          "name": "lockKindOrTargetType",
+          "evidence": "offsets 4..7: 10 unique u32 values across 66 samples - sister of 0x00CD's selector field"
+        }
+      ],
+      "notes": "Lock-target c2s; 8-byte body mirrors the set-target shape. Field offsets derive from per-byte entropy analysis across 66 pcap samples (the c2s-payload-schemas pass - extension of the opcode-payload-schemas pass to opcodes with 24..118 sample counts). The 8-byte body shape with {u32, u32} fields matches the 0x18 SubPacket-size emission pattern from the Tier-D outbound scan (0x18 = 0x10 SubHdr + 0x08 GameMsgHdr-then-body? No: 0x18 = 0x10 SubHdr + 0x08 body but that excludes GameMsgHdr - actual emission shape is SubPacket(0x10) + GameMsg(0x10) + body(0x08) = 0x28 total = 40 bytes. The pcap-opcode-evidence pass subpacketSize=40 matches.)"
+    },
+    {
+      "id": "BCS-S-0028",
+      "name": "MapChannelKeepalive",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x8",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "manifests/c2s_payload_schemas.json (0x0007)",
+        "manifests/c2s_proposed_field_layouts.json (0x0007)",
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "xivl-opcodes:opcodes.json",
+        "xivl-opcodes:data/decomp_opcodes.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "type": "uint32_t",
+          "name": "clientTimestampUnix",
+          "evidence": "offsets 0..3: 11 unique u32 values; offset 3 (MSB) is invariant 0x50 - matches Unix timestamps in the Dec 2012 capture range 0x50C66937..0x50C7XXXX. Decomp evidence (decomp_opcodes.json 0x0007): emitter writes `local_898 = timestamp` via __time64."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "type": "uint32_t",
+          "name": "paramOrSeed",
+          "evidence": "offsets 4..7: 16 unique values; per decomp evidence the dual-site emitter writes `local_894 = param / 0xFFFFFFFF`. FUN_00586F40 uses a real param value; FUN_00586FB0 fallback path uses 0xFFFFFFFF."
+        }
+      ],
+      "notes": "Map channel keepalive ping; 8-byte body with a Unix timestamp and param/0xFFFFFFFF. Field offsets derive from per-byte entropy analysis across 24 pcap samples (the c2s-payload-schemas pass - extension of the opcode-payload-schemas pass to opcodes with 24..118 sample counts). The 8-byte body shape with {u32, u32} fields matches the 0x18 SubPacket-size emission pattern from the Tier-D outbound scan (0x18 = 0x10 SubHdr + 0x08 GameMsgHdr-then-body? No: 0x18 = 0x10 SubHdr + 0x08 body but that excludes GameMsgHdr - actual emission shape is SubPacket(0x10) + GameMsg(0x10) + body(0x08) = 0x28 total = 40 bytes. The pcap-opcode-evidence pass subpacketSize=40 matches.)"
+    },
+    {
+      "name": "LuaClassRegistryRecord",
+      "namespace": "FFXIV.Client.System.Lua",
+      "size": "variable",
+      "confidence": "inferred",
+      "sourceRefs": [
+        "BCS-Y-0398"
+      ],
+      "fields": [
+        {
+          "offset": "n/a",
+          "size": "pointer/string",
+          "type": "const char*",
+          "name": "luaClassName",
+          "evidence": "Root names clustered in FUN_0078E3A0, e.g. ActorBaseClass, CharaBaseClass, PlayerBaseClass, NpcBaseClass, DirectorBaseClass."
+        },
+        {
+          "offset": "n/a",
+          "size": "pointer/string",
+          "type": "const char*",
+          "name": "scriptPath",
+          "evidence": "FUN_0078E3A0 pairs names with paths such as /ActorBaseClass.prog and /Chara/Player/PlayerBaseClass.prog per lua_class_registry.md."
+        },
+        {
+          "offset": "n/a",
+          "size": "4",
+          "type": "uint32_t",
+          "name": "nativeVtableVa",
+          "evidence": "Registry doc correlates several root classes to Control::* vtable RVAs, but not every registered path has a decoded vtable."
+        },
+        {
+          "offset": "n/a",
+          "size": "4",
+          "type": "uint32_t",
+          "name": "slotCountOrMethodCount",
+          "evidence": "Registry doc records slot counts for decoded Control roots, e.g. PlayerBaseClass 133 and CharaBaseClass 41."
+        }
+      ],
+      "notes": "Logical record shape for the root Lua class/path registry constructed by FUN_0078E3A0. Exact in-memory packing is not recovered; the struct entry records the observed tuple fields because this registry is the native entry point that causes script bytecode to load and populate callback prototype tables.",
+      "id": "BCS-S-0029"
+    },
+    {
+      "name": "LuaCallbackPrototypeSlot",
+      "namespace": "FFXIV.Client.System.Lua",
+      "size": "Lua table entry",
+      "confidence": "confirmed-script-derived",
+      "sourceRefs": [
+        "manifests/lua_engine_callback_registry_findings.json",
+        "BCS-Y-0402"
+      ],
+      "fields": [
+        {
+          "offset": "n/a",
+          "size": "Lua reference",
+          "type": "Lua table",
+          "name": "ownerClassTable",
+          "evidence": "Decompiled bytecode sets L0_1 to ActorBaseClass, CharaBaseClass, PlayerBaseClass, or NpcBaseClass before assigning callback fields."
+        },
+        {
+          "offset": "n/a",
+          "size": "Lua string",
+          "type": "const char*",
+          "name": "callbackName",
+          "evidence": "Assignments use field names such as _onChangeJob, _onPreEvent, _onTalkEvent, and _onPushEvent."
+        },
+        {
+          "offset": "n/a",
+          "size": "Lua closure",
+          "type": "Lua closure/function",
+          "name": "handlerClosure",
+          "evidence": "Unluac emits each handler as function L1_1(...) followed by L0_1._onName = L1_1."
+        },
+        {
+          "offset": "n/a",
+          "size": "Lua call expression",
+          "type": "optional super-call",
+          "name": "superDispatch",
+          "evidence": "Many handlers call A0_2._callSuperClassFunc with the same `_on*` method name before local work; ActorBaseClass exposes _callSuperClassFunc_inl."
+        }
+      ],
+      "notes": "Logical Lua-side callback registration slot. This is the missing other side of the C++ fire pair: the C++ callback name is resolved against these class/prototype-table entries at dispatch time.",
+      "id": "BCS-S-0030"
+    },
+    {
+      "id": "BCS-S-0031",
+      "name": "BattleResultQueueEntry",
+      "namespace": "FFXIV.Client.Scene.Combat",
+      "size": "0x1A0",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/combat_damage_findings.json",
+        "BCS-Y-0408",
+        "BCS-Y-0409",
+        "BCS-Y-0410",
+        "BCS-Y-0412",
+        "BCS-Y-0413"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequenceId",
+          "type": "uint32_t",
+          "notes": "Monotonic DAT_01338D2C value assigned by FUN_00587210."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "visualResultClass",
+          "type": "uint32_t",
+          "notes": "Selector returned by FUN_00585800 from the battle result's effect or animation id."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "routeFlagOrWrapperArg",
+          "type": "uint32_t",
+          "notes": "Forwarded wrapper argument; observed wrappers pass 1 for the decoded battle-result opcodes."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "sourceActorId",
+          "type": "uint32_t",
+          "notes": "Copied from battle-result payload+0x00."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "animationId",
+          "type": "uint32_t",
+          "notes": "Copied from battle-result payload+0x04."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x1C",
+          "name": "preActionBlock",
+          "type": "byte[28]",
+          "notes": "Shared middle block copied from payload+0x08..0x23."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x02",
+          "name": "actionCountLow",
+          "type": "uint16_t",
+          "notes": "Low halfword of payload+0x20 actionCount. The ten-target stager uses this as the row loop bound."
+        },
+        {
+          "offset": "0x32",
+          "size": "0x02",
+          "name": "actionCountHigh",
+          "type": "uint16_t",
+          "notes": "High halfword of payload+0x20 actionCount. The base stager has a nonzero side path."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x02",
+          "name": "commandId",
+          "type": "uint16_t",
+          "notes": "Copied from battle-result payload+0x24."
+        },
+        {
+          "offset": "0x36",
+          "size": "0x02",
+          "name": "flags",
+          "type": "uint16_t",
+          "notes": "Masked copy of payload+0x26. Both the base stager and copy routine preserve this through bit masks rather than a plain u16 assignment."
+        },
+        {
+          "offset": "0x38",
+          "size": "0xC8",
+          "name": "targetRows",
+          "type": "BattleResultTargetRow[10]",
+          "notes": "Each 0x14-byte row is {targetId u32, amount widened to u32, effectId u32, worldMasterTextId u16, param u8, hitNum u8, trailing bytes}. X01 fills row 0; X10 transposes sparse arrays into up to ten rows."
+        },
+        {
+          "offset": "0x100",
+          "size": "0xA0",
+          "name": "tail",
+          "type": "byte[160]",
+          "notes": "Copied by FUN_0058EBF0 as part of the 0x5A-dword tail region, but not decoded here."
+        }
+      ],
+      "notes": "Internal receive-side staging record for battle result and damage-feedback packets. FUN_005901D0 allocates queue slots at exactly 0x1A0 bytes, while FUN_0058EBF0 copies header fields through +0x36 then 0x5A dwords from +0x38. The record bridges clientbound CommandResult/BattleAction packets to later action-result visual processing."
+    },
+    {
+      "name": "PlayerInventoryStorageContainer",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10 header; 0x10-byte bucket elements",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/control_class_napi_field_access_recursive.json",
+        "BCS-Y-0414"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "type": "unknown/unused",
+          "name": "reservedOrAllocatorTag",
+          "evidence": "The constructor passes ECX=this+0x144 to FUN_0072DEB0, while the vector helper initializes only +0x04/+0x08/+0x0c."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "type": "InventoryPackageBucket*",
+          "name": "bucketBegin",
+          "evidence": "FUN_006EFBD0 reads [Player+0x148] through EBP+0x04 as the package-bucket vector begin pointer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "type": "InventoryPackageBucket*",
+          "name": "bucketEnd",
+          "evidence": "FUN_006EFBD0 subtracts [Player+0x148] from [Player+0x14c] and divides by 0x10 for bucket count."
+        },
+        {
+          "offset": "0x0c",
+          "size": "0x04",
+          "type": "InventoryPackageBucket*",
+          "name": "bucketCapacityEnd",
+          "evidence": "FUN_0072DEB0 writes param_1+0x0c after allocating count*0x10 bytes for the bucket array."
+        },
+        {
+          "offset": "element+0x04",
+          "size": "0x04",
+          "type": "uint32_t*",
+          "name": "slotBegin",
+          "evidence": "Each 0x10-byte bucket has a nested 4-byte vector: FUN_006EFBD0 reads element+0x04 as begin."
+        },
+        {
+          "offset": "element+0x08",
+          "size": "0x04",
+          "type": "uint32_t*",
+          "name": "slotEnd",
+          "evidence": "FUN_006EFBD0 uses element+0x08 as end, rewrites it after compaction, append, and sort."
+        },
+        {
+          "offset": "element+0x0c",
+          "size": "0x04",
+          "type": "uint32_t*",
+          "name": "slotCapacityEnd",
+          "evidence": "FUN_006EFBD0 compares element+0x08 against element+0x0c before appending and calls FUN_007228E0 when growth is required."
+        }
+      ],
+      "notes": "Embedded storage-bucket vector at MyPlayer/PlayerBase +0x144; the handoff's PlayerBase+0x148/+0x14c pointers are the vector begin/end fields inside this header. MyPlayer constructor FUN_006F9140 calls FUN_0072DEB0 with ECX=this+0x144 and count 4, which allocates four 0x10-byte bucket records. No container-specific RTTI, BaseClassDescriptor, or vtable was found; the owner classes have PlayerBase/MyPlayer vtables, while this member uses STL-like vector helpers. EntrustItemReceiver worker FUN_006EFBD0 iterates the 0x10-byte buckets, clears each nested slot vector, reserves package capacities 0x23/0x41/0x1a/0x04 through FUN_007222D0, appends bitset-derived slot ids through FUN_007228E0, and sorts buckets with FUN_00720BB0. PlayerBase N-API _countStoredItem dispatches through PlayerBase stub FUN_0071E6C0 slot 0x1f0; the MyPlayer target FUN_00706580 indexes the same +0x148/+0x14c vector and returns the selected bucket's nested slot count. The apparent PlayerBase 0x148/0x14c N-API hits for _setTouchAttribute/_isTouching are vtable slot offsets, not direct storage field accesses.",
+      "id": "BCS-S-0032"
+    },
+    {
+      "name": "ItemBaseHandleRef",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10 tail embedded in ItemBase at +0x64",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/control_class_napi_field_access_recursive.json",
+        "BCS-Y-0372",
+        "BCS-Y-0414"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "absoluteOffset": "ItemBase+0x64",
+          "size": "0x04",
+          "type": "void*",
+          "name": "ownerContext",
+          "evidence": "ItemBase APIs load [ItemBase+0x64] into ECX and call FUN_006F51A0 before resolving the handle."
+        },
+        {
+          "offset": "0x04",
+          "absoluteOffset": "ItemBase+0x68",
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "packageKey",
+          "evidence": "Callers pass &ItemBase+0x68 to FUN_006EE3E0/FUN_006EE480; the resolvers lower-bound an item-manager tree with this key."
+        },
+        {
+          "offset": "0x08",
+          "absoluteOffset": "ItemBase+0x6c",
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "slotIndex",
+          "evidence": "Callers push [ItemBase+0x6c] as the resolver's slot/index argument; the resolved tree value then calls FUN_0052F7F0 with this value."
+        },
+        {
+          "offset": "0x0c",
+          "absoluteOffset": "ItemBase+0x70",
+          "size": "0x01",
+          "type": "uint8_t",
+          "name": "linkedLookupSelector",
+          "evidence": "FUN_006F5260/FUN_006F5330 compare byte [ItemBase+0x70] to 1; value 1 selects FUN_006EE480, otherwise FUN_006EE3E0."
+        }
+      ],
+      "notes": "The resolver-visible handle tail begins at ItemBase+0x64 even though the package/index/selector triad is at +0x68/+0x6c/+0x70. ItemBase constructor FUN_006DD450 initializes +0x64, +0x68, +0x6c, and +0x70 to zero after installing the two ItemBase vtables. ItemBase N-API readers such as _getCatalogID, _getMaxStack, _getPackage, _isLocking, _isTrading, _isEquipping, and _getEquippingSlot read the +0x68/+0x6c/+0x70 triad; _getOwner and _updateWork also read +0x64. Assembly for FUN_006F5230/FUN_006F5260/FUN_006F5330/FUN_006F5400 shows [ItemBase+0x64] feeding FUN_006F51A0, then &ItemBase+0x68 and [ItemBase+0x6c] are passed to the storage-manager resolvers. FUN_006EE3E0 searches the manager tree at +0x08; FUN_006EE480 searches the tree at +0x14 and is selected by byte +0x70 == 1. Both resolvers return the backing item-record pointer or recursively follow item-record +0x0c/+0x10; this preserves the bridge-growth-and-ceiling pass's negative chain-key result because no packet-side writer was found to those resolved item-record fields.",
+      "id": "BCS-S-0033"
+    },
+    {
+      "name": "MapEventStartPayload",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0xb8 application payload; builder record bodySize 0xc8 includes the 0x10 game-message prefix",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/combat_action_c2s_findings.json",
+        "BCS-S-0013",
+        "BCS-Y-0426"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "type": "u32",
+          "name": "triggerActorId_or_selfActorId",
+          "evidence": "FUN_00776760 writes param_2 at record+0x18; pcap-derived BCS-S-0013 labels the same offset selfActorId."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "type": "u32",
+          "name": "ownerActorId_or_targetActorId",
+          "evidence": "FUN_00776760 writes param_3 at record+0x1C; pcap-derived BCS-S-0013 labels this targetActorId for combat samples."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "type": "u32",
+          "name": "serverCodes_or_actionOrAbilityId",
+          "evidence": "FUN_00776760 writes param_4 at record+0x20; BCS-S-0013's combat-only entropy pass labels this actionOrAbilityId."
+        },
+        {
+          "offset": "0x0c",
+          "size": "0x04",
+          "type": "u32",
+          "name": "unknown_or_secondaryArgument",
+          "evidence": "FUN_00776760 writes param_5 at record+0x24; unknown."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "type": "u8",
+          "name": "eventType",
+          "evidence": "FUN_00776760 writes param_6 at record+0x28; byte."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x20",
+          "type": "bytes/cstring-prefix",
+          "name": "eventNamePrefix_or_inlineData",
+          "evidence": "FUN_00776760 copies four qwords from param_7 into record+0x29..+0x48, producing a null-terminated eventName before the Lua params."
+        },
+        {
+          "offset": "0x31",
+          "size": "0x80",
+          "type": "bytes",
+          "name": "luaParamBlob_or_eventTail",
+          "evidence": "FUN_00776760 copies 0x20 dwords (0x80 bytes) from param_8 into record+0x49..+0xC8."
+        },
+        {
+          "offset": "0xb1",
+          "size": "0x07",
+          "type": "bytes",
+          "name": "reservedOrAlignmentTail",
+          "evidence": "FUN_00776760's explicit copies reach application offset 0xB0."
+        }
+      ],
+      "notes": "Decomp-backed refinement of the pcap-only BCS-S-0013 MapActionUse alias. The client builder proves 0x012D is an EventStart frame with a 200-byte body size in the outbound record. The wire/application size basis is the same convention used by the existing c2s layouts: total subpacket 0xD8, 0x10 game-message prefix, 0xB8 application payload. Combat action use in the pcap corpus appears to be a command-event specialization of this EventStart payload rather than a standalone CharaActionController packet.",
+      "id": "BCS-S-0034"
+    },
+    {
+      "name": "CharaSubStatStorage",
+      "namespace": "FFXIV.Client.GameObject.Chara",
+      "size": "0x1C (28 bytes); lazily allocated at CharaBase+0xDC by FUN_006EEC00 (BCS-Y-0354).",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/status_effect_findings.json",
+        "BCS-Y-0349",
+        "BCS-Y-0353",
+        "BCS-Y-0354",
+        "BCS-Y-0435"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "type": "u32",
+          "name": "headerOrReservedSlot",
+          "evidence": "FUN_006EEA80 does not write +0x00 inside its zero-init block; the slot is either a struct header or pre-zeroed by the heap allocator. No observed reader hits +0x00 directly."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "type": "u32*",
+          "name": "statusArrayBegin",
+          "evidence": "FUN_006EEA80 zeros this; FUN_007222D0(0x14) call in the same function reserves the array. FUN_00707D60 (BCS-Y-0353 apply-chain-and-substruct-evidence) writes *(statusArrayBegin + idx*4) for 0x0179 ChangeActorSubStatStatus. _getSubStatStatus reads via FUN_006FA150 with sub_stat_enum-1 index."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "type": "u32*",
+          "name": "statusArrayEnd",
+          "evidence": "FUN_006EEA80 zeros this; the readers validate (end-begin)>>4 (note: the apply-chain-and-substruct-evidence pass documented the array element stride as 4 bytes for the status u32, not 16 - the >>4 check belongs to a different validation path)."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "type": "u32*",
+          "name": "statusArrayCapacityEnd",
+          "evidence": "FUN_006EEA80 zeros this; reservation capacity of 0x14 (20) slots is set via FUN_007222D0(0x14) + FUN_00722DA0(0x14, 0) immediately after init."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "type": "u32 packed",
+          "name": "extraStatAndNetStatU32",
+          "evidence": "FUN_006EEA80 zeros this. FUN_006FA980 (BCS-Y-0349 receiver-apply-findings) is the canonical writer for 0x0145 ChangeActorExtraStat; it also handles the Lua-side _setActorExtraStat (BCS-Y-0442). Bit layout: bits 0..7 ExtraStat byte (read by _getActorExtraStat at +0x10 as a u8), bits 8..15 NetStatUser flags (per-bit _onChangeNetStatUser fire), bits 16..18 NetStatSystem flags (per-bit _onChangeNetStatSystem fire)."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "type": "u32",
+          "name": "reservedOrSecondaryFlags",
+          "evidence": "FUN_006EEA80 zeros this; no reader/writer from the status-effect-findings pass hits this offset directly. Possibly used by a follow-on phase."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "type": "u8",
+          "name": "modeBorder",
+          "evidence": "FUN_006EEA80 zeros this. FUN_006EECB0 (BCS-Y-0443) writes the byte for 0x0144 ChangeActorSubStatModeBorder; FUN_007084E0 (BCS-Y-0444) reads it before computing the diff and firing _onChangeSubStatMode. _getSubStatMode (FUN_00707FB0) reads the same byte via FUN_006EEC00 then forms a higher-level mode object."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x03",
+          "type": "bytes",
+          "name": "trailingPadding",
+          "evidence": "The allocator reserves 0x1C bytes (FUN_006EEC00's FUN_009D1B35(0x1c) call). Fields cover +0x00..+0x18; +0x19..+0x1B is alignment padding."
+        }
+      ],
+      "notes": "Per-actor SubStat (status-effect) storage container at CharaBase+0xDC. Holds the dynamic Status u32 array (capacity 20 slots, indexed by sub_stat_enum-1) plus three packed scalar facet fields (ExtraStat+NetStatUser+NetStatSystem at +0x10; ModeBorder at +0x18). The Status u32 slot itself encodes multiple sub-stat facets (Breakage bits 0..7, Chant bits 8..15, Guard bits 16..17, Waste bits 24..31) - see status_effect_findings.json:facetBitLayoutMap for the full bit-range table. Three opcodes write into this struct: 0x0179 (status array slots via FUN_00707D60), 0x0145 (+0x10 u32 via FUN_006FA980), 0x0144 (+0x18 byte via FUN_006EECB0). Six CharaBase N-API readers extract facets from the Status u32 slot (BCS-Y-0436..0441); _getActorExtraStat reads the +0x10 byte, _getSubStatMode reads the +0x18 byte.",
+      "id": "BCS-S-0035"
+    },
+    {
+      "name": "LuaThreadInvokeState",
+      "namespace": "FFXIV.Client.System.Lua",
+      "size": "at least 0x13c observed on the active frame object; wrapper fields observed through offsets +0x10, +0x2c, and +0x38",
+      "confidence": "inferred",
+      "sourceRefs": [
+        "BCS-Y-0461",
+        "BCS-Y-0462",
+        "BCS-Y-0463",
+        "BCS-Y-0464"
+      ],
+      "fields": [
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "type": "void*",
+          "name": "parentOrRuntimeContext",
+          "evidence": "FUN_00CF09C0 passes *(this+0x10) into FUN_00CCE2D0 while constructing the replacement current frame/control object."
+        },
+        {
+          "offset": "0x2c",
+          "size": "0x04",
+          "type": "void*",
+          "name": "currentFrameOrControl",
+          "evidence": "FUN_00CF0910 returns *(this+0x2c); FUN_00CF09C0 destroys/frees the old pointer and stores a newly allocated 0x140-byte replacement there."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x04",
+          "type": "void*",
+          "name": "activeInvocationTarget",
+          "evidence": "FUN_00CF08F0 gates and writes this slot; FUN_00CCF7D0 installs the callback target before stack preparation and clears it after invocation."
+        },
+        {
+          "offset": "0x138",
+          "size": "0x01",
+          "type": "uint8_t",
+          "name": "newFrameStatusByte",
+          "evidence": "FUN_00CF09C0 writes DAT_0130D424 to replacement+0x138 after constructing the new current frame/control object."
+        }
+      ],
+      "notes": "Observed native surface around the active Lua thread/frame rather than a complete stock lua_State layout. The bundled VM accepts Lua 5.1 bytecode, but the recovered code is wrapped by Component::Lua::GameEngine objects; this struct therefore records only the offsets touched by the lifecycle and invoke helpers here.",
+      "id": "BCS-S-0036"
+    },
+    {
+      "name": "EventConditionCallbackSlot",
+      "namespace": "FFXIV.Client.System.Event",
+      "size": "0x54 stride; two-slot table observed",
+      "confidence": "probable",
+      "sourceRefs": [
+        "BCS-Y-0472"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "flags",
+          "evidence": "FUN_0058B110 sets bit 0 while writing the slot and clears bit 1; FUN_0058AD10 sets bit 1 for the extended-param variant; FUN_0058AC60 reads status bits from this field."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x20",
+          "type": "char[0x20] / qword tuple",
+          "name": "keyAndSourceTuple",
+          "evidence": "FUN_00586810 compares slot+0x04 with strncmp(..., 0x20); FUN_0058B110 copies four qwords from the source tuple into slot+0x04..+0x23."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "primaryParam",
+          "evidence": "FUN_0058B110 writes its first explicit argument after the tuple to slot+0x24."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "secondaryParam",
+          "evidence": "FUN_0058B110 writes its second explicit argument after the tuple to slot+0x28."
+        },
+        {
+          "offset": "0x2c",
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "extendedParam0",
+          "evidence": "FUN_0058AD10 writes an extra parameter at slot+0x2c in the extended variant."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "extendedParam1",
+          "evidence": "FUN_0058AD10 writes an extra parameter at slot+0x30 in the extended variant."
+        }
+      ],
+      "notes": "This table is the callback/condition handoff store reached from the producer path, not a heap queue of EventCondition leaf objects. FUN_00588490 shows the owning object can embed/copy two 0x54-stride slots starting at owner+0x34.",
+      "id": "BCS-S-0037"
+    },
+    {
+      "name": "EventExecutionQueueNode",
+      "namespace": "FFXIV.Client.System.Event",
+      "size": "0x2c",
+      "confidence": "probable",
+      "sourceRefs": [
+        "BCS-Y-0474",
+        "BCS-Y-0476"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "type": "void*",
+          "name": "link0",
+          "evidence": "FUN_0089AF70 stores its first list argument at node+0x00; FUN_008955C0 iterates from the sentinel through this field."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "type": "void*",
+          "name": "link1",
+          "evidence": "FUN_0089AF70 stores its second list argument at node+0x04; FUN_00896510 repairs the sentinel/list link after allocation."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x1c observed through helper construction",
+          "type": "EventExecutionPayload",
+          "name": "payload",
+          "evidence": "FUN_0089AF70 constructs this region through FUN_0089AEE0; FUN_008955C0 reads the callback pointer at *(node+0x08)+0x04."
+        },
+        {
+          "offset": "0x25",
+          "size": "0x01",
+          "type": "uint8_t",
+          "name": "callbackFired",
+          "evidence": "FUN_008955C0 checks node+0x25 and sets it to 1 before invoking the node payload callback."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "type": "opaque tail",
+          "name": "mappedTail",
+          "evidence": "FUN_008955C0 passes node+0x28 as the third argument to FUN_006DE2D0 during list drain."
+        }
+      ],
+      "notes": "Allocated by FUN_0089AF70 with size 0x2c and inserted by FUN_00896510 into the non-block execution list rooted at owner+0x14.",
+      "id": "BCS-S-0038"
+    },
+    {
+      "id": "BCS-S-0039",
+      "name": "LuaIndividualRefInner",
+      "namespace": "FFXIV.Client.LGE",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/individualref_userdata.json",
+        "manifests/symbols.json#BCS-Y-0503"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "group_id",
+          "type": "int32_t",
+          "notes": "First dword. Group identifier for the FFXIV 1.x group-scoped entity addressing system (party/linkshell/area/content/etc). Compared structurally in __eq metamethod FUN_00d10f60."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "individual_index",
+          "type": "int32_t",
+          "notes": "Second dword. Per-group entity index. Set to -1 when the source group is one of the invalid/wildcard sentinels DAT_0130d78c or DAT_0130d79c (per FUN_00d2b810). Compared structurally in __eq."
+        }
+      ],
+      "notes": "8-byte inner struct wrapped by the Lua IndividualRef userdata (metatable installer FUN_00d11400 per BCS-Y-0503). The Lua userdata block holds a pointer to one of these structs. Allocated from a pool at offset +0x21c of an engine context structure (probably LuaState env), with a 0x200-entry recycle threshold per __gc impl FUN_00d112b0. Constructed by `__lge_getIndividualIndex(group, index)` (FUN_00d098d0 per BCS-Y-0501) from 2 Lua number args. Engine-side alive-check reads both dwords via FUN_00ce19c0."
+    },
+    {
+      "id": "BCS-S-0040",
+      "name": "LuaControlUserdataInner",
+      "namespace": "FFXIV.Client.LGE",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/luacontrol_userdata.json",
+        "manifests/symbols.json#BCS-Y-0504"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "control_ptr",
+          "type": "Component::Lua::GameEngine::LuaControl*",
+          "notes": "Pointer to the wrapped LuaControl. Read by __index/__len for vtable dispatch (slot +0x50 for length). Read by __gc which calls slot 0 with arg 1 (MSVC destructor-with-delete) before freeing the inner struct."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "slot1",
+          "type": "uint32_t",
+          "notes": "Initialized to 0 by FUN_00cfa400. Possibly a weak-reference epoch token or auxiliary state. Not inspected by any of the 4 metamethods examined in luacontrol-userdata."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "slot2",
+          "type": "uint32_t",
+          "notes": "Initialized to 0 by FUN_00cfa400. Possibly a weak-reference epoch token or auxiliary state. Not inspected by any of the 4 metamethods examined in luacontrol-userdata."
+        }
+      ],
+      "notes": "12-byte inner struct allocated by FUN_009d1b35(0xc) inside the LuaControl wrapper constructor FUN_00cfa400 (per BCS-Y-0504). The Lua userdata body holds a pointer to this struct (outer body size 4 bytes via FUN_00cf32a0(4)). Wrapped type Component::Lua::GameEngine::LuaControl resolved via Ghidra RTTI at 0x012bfc80. __gc destroys via vtable[0](1) on the wrapped control then _free on this inner struct - the wrapped LuaControl is presumably refcounted with its own destruction policy."
+    },
+    {
+      "id": "BCS-S-0041",
+      "name": "LGEClassInstanceInner",
+      "namespace": "FFXIV.Client.LGE",
+      "size": "variable (caller-allocated; minimum +0x68 = 104 bytes)",
+      "confidence": "hypothesis-strong",
+      "sourceRefs": [
+        "manifests/d2fxxx_userdata_attribution.json",
+        "manifests/symbols.json#BCS-Y-0505"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vtable_class",
+          "type": "void**",
+          "notes": "Class vtable. (param_1[1]+0x14) reads the class table; dispatchers reach it via *param_1+0x18 indirection."
+        },
+        {
+          "offset": "0x04",
+          "size": "varies",
+          "name": "members_area",
+          "type": "(class-defined)",
+          "notes": "Working area written to by FUN_00d272d0 during member assignment. Cluster-shared write path."
+        },
+        {
+          "offset": "0x30",
+          "size": "varies",
+          "name": "active_member_name",
+          "type": "buffer/string",
+          "notes": "Active-dispatch slot. Set by __index/__newindex helpers (FUN_00d11b60 copies the looked-up member name here) before calling the member-descriptor vtable."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x04",
+          "name": "lua_state_or_engine_ctx",
+          "type": "void*",
+          "notes": "Passed to member-record helpers as the engine state/context."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "save_pool",
+          "type": "MemoryPool*",
+          "notes": "Persistent-state pool. Wrapped as a D208A0 userdata when read via instance._save. Null = no save pool attached."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "temp_pool",
+          "type": "MemoryPool*",
+          "notes": "Transient/per-frame pool. Wrapped as D208A0 when read via instance._temp."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x04",
+          "name": "sync_pool",
+          "type": "MemoryPool*",
+          "notes": "Network-replicated pool. Wrapped as D208A0 when read via instance._sync."
+        }
+      ],
+      "notes": "LGE class instance struct. Caller-allocated (the user script's class declaration drives the actual size - the metatable just installs on whatever pointer the caller passes). Fields beyond +0x68 are class-specific members. The three pool pointers at +0x60/+0x64/+0x68 are the per-scope memory allocators tracked by the LGE memory model (save = persistent, temp = transient, sync = network-replicated)."
+    },
+    {
+      "id": "BCS-S-0042",
+      "name": "LGEMemoryPoolInner",
+      "namespace": "FFXIV.Client.LGE",
+      "size": "0x28",
+      "confidence": "hypothesis-strong",
+      "sourceRefs": [
+        "manifests/d2fxxx_userdata_attribution.json",
+        "manifests/symbols.json#BCS-Y-0506"
+      ],
+      "fields": [
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "save_bitmap",
+          "type": "uint32_t",
+          "notes": "Bit-allocation map for save scope. Available count = (bitmap & 7 != 0) + (bitmap >> 3) when save_table is null - so each bit is one 8-byte slot."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "temp_bitmap",
+          "type": "uint32_t",
+          "notes": "Bit-allocation map for temp scope."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "sync_bitmap",
+          "type": "uint32_t",
+          "notes": "Bit-allocation map for sync scope."
+        },
+        {
+          "offset": "0x1c",
+          "size": "0x04",
+          "name": "save_table",
+          "type": "void*",
+          "notes": "Pointer to the save-scope allocator table. Non-null = use real allocator (FUN_00d1dca0 for allocated-size etc); null = use inline bitmap-derived counts."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "temp_table",
+          "type": "void*",
+          "notes": "Pointer to the temp-scope allocator table."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "sync_table",
+          "type": "void*",
+          "notes": "Pointer to the sync-scope allocator table."
+        }
+      ],
+      "notes": "40-byte LGE memory pool struct. Header bytes +0x00..+0x0F not inspected by Lua metamethods (probably a refcount + RTTI / class pointer + name pointer for the C++ side). The 6 fields starting at +0x10 form the three-scope memory bookkeeping. Allocated by FUN_00d21090 via FUN_009d1b35(0x28) + FUN_00d2efb0 init."
+    },
+    {
+      "id": "BCS-S-0043",
+      "name": "LGEMemberDescriptorInner",
+      "namespace": "FFXIV.Client.LGE",
+      "size": "0x54",
+      "confidence": "hypothesis-strong",
+      "sourceRefs": [
+        "manifests/d2fxxx_userdata_attribution.json",
+        "manifests/symbols.json#BCS-Y-0507",
+        "manifests/symbols.json#BCS-Y-0505"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vtable",
+          "type": "void**",
+          "notes": "Member-descriptor vtable. Slot +0x1c = member getter (called by D20B00 __index and D207A0 __index when this descriptor is hit)."
+        },
+        {
+          "offset": "0x2c",
+          "size": "varies",
+          "name": "name_area",
+          "type": "buffer/string",
+          "notes": "Inline name/key storage for the member."
+        },
+        {
+          "offset": "0x48",
+          "size": "0x04",
+          "name": "method_table",
+          "type": "void*",
+          "notes": "Pointer to the member's method-dispatch table. Non-null = full member with named getter/setter; null = legacy/simple member."
+        },
+        {
+          "offset": "0x4c",
+          "size": "0x02",
+          "name": "reserved_or_flags",
+          "type": "uint16_t",
+          "notes": "Flags pair. Not directly inspected by Lua metamethods."
+        },
+        {
+          "offset": "0x4e",
+          "size": "0x01",
+          "name": "writable_flag",
+          "type": "char",
+          "notes": "Read-only / mutable flag. 0 = read-only path (D207A0 __index uses DAT_01378050 default value), 1 = mutable path (uses DAT_013780a8)."
+        },
+        {
+          "offset": "0x4f",
+          "size": "0x01",
+          "name": "type_tag",
+          "type": "char",
+          "notes": "Type tag byte. Set from FUN_00d12170 inside D207A0 __newindex. Determines member-write strategy."
+        }
+      ],
+      "notes": "84-byte LGE member descriptor. Allocated by D207A0 owning ctors (FUN_00d20fd0 / FUN_00d20f10) AND by D20B00 __newindex (FUN_00d175b0) on the _tag branch - so this is the shared inner type bridging instance metatable and member-wrapper metatable. Defines how reads/writes to one named field of a class instance get dispatched: what's the getter (vtable+0x1c), what's the method-table lookup (+0x48), is it mutable (+0x4e), what's the value type (+0x4f)."
+    },
+    {
+      "id": "BCS-S-0044",
+      "name": "LGEIndexedContainerInner",
+      "namespace": "FFXIV.Client.LGE",
+      "size": "0x5c",
+      "confidence": "hypothesis-strong",
+      "sourceRefs": [
+        "manifests/d2fxxx_userdata_attribution.json",
+        "manifests/symbols.json#BCS-Y-0508"
+      ],
+      "fields": [
+        {
+          "offset": "0x04",
+          "size": "varies",
+          "name": "data_base",
+          "type": "(element-typed)",
+          "notes": "Indexable backing data. Passed as (struct+4) to vtable +0x1c in __index reads."
+        },
+        {
+          "offset": "0x34",
+          "size": "varies",
+          "name": "write_helper_a",
+          "type": "void*",
+          "notes": "Auxiliary state for FUN_00d272d0 (shared cluster write helper)."
+        },
+        {
+          "offset": "0x44",
+          "size": "varies",
+          "name": "write_helper_b",
+          "type": "void*",
+          "notes": "Auxiliary state for FUN_00d272d0."
+        },
+        {
+          "offset": "0x54",
+          "size": "0x04",
+          "name": "element_vtable",
+          "type": "void**",
+          "notes": "Element-type vtable. Slot +0x1c is the indexed-access getter (called by __index after bounds check)."
+        },
+        {
+          "offset": "0x58",
+          "size": "0x04",
+          "name": "length",
+          "type": "int32_t",
+          "notes": "Virtual length. Returned by __len cast to double. Used for bounds-checking in __index/__newindex."
+        }
+      ],
+      "notes": "92-byte LGE indexed-container struct. The element_vtable at +0x54 abstracts the element type so this template can serve multiple container instantiations via different ctors (FUN_00d20cb0 with FUN_00d2e230 init vs FUN_00d20980 borrow). Fields 0x00..0x03 and the gaps +0x08..+0x33 / +0x38..+0x43 / +0x48..+0x53 are header bytes not directly inspected by Lua metamethods (refcount, owner ptr, name buffer, allocator ptr typical for C++ container layouts)."
+    },
+    {
+      "id": "BCS-S-0045",
+      "name": "LGECursorInner",
+      "namespace": "FFXIV.Client.LGE",
+      "size": "0x08",
+      "confidence": "hypothesis-strong",
+      "sourceRefs": [
+        "manifests/d2fxxx_userdata_attribution.json",
+        "manifests/symbols.json#BCS-Y-0509"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "kind_or_self",
+          "type": "uint32_t",
+          "notes": "Kind tag or self-pointer. Not directly dereferenced by the cluster's metamethods - all dispatch goes through the +0x04 target. Two ctors with different param counts (FUN_00d20d70 9-arg, FUN_00d20e40 8-arg) suggest two cursor flavors that vary this field."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "target_object",
+          "type": "void*",
+          "notes": "Target object pointer. Every metamethod dereferences this to reach the vtable: __index calls vtable+8, __newindex calls vtable+4, __len calls FUN_00d2e420 (which presumably reads this), __pow calls FUN_00d2e430."
+        }
+      ],
+      "notes": "8-byte cursor/pair wrapper. The smallest inner struct in the d2fXXX cluster - matches a single fat-pointer (kind + target) or a (key, value) pair. The full vtable delegation makes this a generic CURSOR type that can wrap anything with a compatible vtable shape - probably returned by container iteration on D20540."
+    },
+    {
+      "id": "BCS-S-0046",
+      "name": "LGE_MetamethodArray2D_Impl",
+      "namespace": "Component::Lua::GameEngine::Work",
+      "size": "0x60 (base) / 0x64 (ImplArray2D variant)",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_substrate.json",
+        "manifests/symbols.json#BCS-Y-0519",
+        "manifests/symbols.json#BCS-Y-0509"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void**",
+          "notes": "Polymorphic base vftable. RTTI-resolved: ::Impl, ::ImplArray (no extra fields), or ::ImplArray2D (extra dword at +0x18). Set by FUN_00d2e4d0 (base) then overridden by FUN_00d2e2d0/00d2e360 (subclass ctors)."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "second_dimension_width",
+          "type": "int32_t",
+          "notes": "ONLY present in ::ImplArray2D variant. Set by FUN_00d2e360 from *param_7. Used by FUN_00d211e0 as the row width in `width * row + col` index calc."
+        },
+        {
+          "offset": "0x54",
+          "size": "0x04",
+          "name": "row_param5",
+          "type": "void*",
+          "notes": "Stored at param_1[0x15]=*+0x54 in FUN_00d2e4d0 from param_5. Probably the row-data pointer for one scope of member descriptors."
+        },
+        {
+          "offset": "0x58",
+          "size": "0x04",
+          "name": "row_param6",
+          "type": "uint32_t",
+          "notes": "Stored at param_1[0x16]=*+0x58 from *param_6. Probably row-count or row-stride."
+        },
+        {
+          "offset": "0x5c",
+          "size": "0x04",
+          "name": "row_param7",
+          "type": "uint32_t",
+          "notes": "Stored at param_1[0x17]=*+0x5c from *param_7. Probably column-count or similar dimension."
+        }
+      ],
+      "notes": "Storage substrate for the LGE class system. Each class instance has 3 instances of this type (or a subclass) at struct offsets +0x60/+0x64/+0x68 - one per scope (save/own/sync). Members of the class instance are stored within these arrays keyed by name. RTTI: Component::Lua::GameEngine::Work::MetamethodArray2D::Impl. Subclass ::ImplArray adds nothing (0x60 bytes); subclass ::ImplArray2D adds the +0x18 width field (0x64 bytes total) for 2D indexed access via FUN_00d211e0. The d2fxxx-userdata-attribution pass's BCS-Y-0509 'LGE Cursor' wraps a pointer to this type via D20670 - the 8-byte cursor's +0x04 IS a pointer to one of these Impl objects. The d2fxxx-userdata-attribution pass's BCS-Y-0506 'LGE MemoryPool wrapper' (D208A0) wraps the SAME type at the Lua side, exposing _save/_temp/_sync/_reserve/_nesting/_name + the 9 size-bookkeeping fields - those are accessor methods on this C++ class. So D20670 and D208A0 are dual Lua-side views of one underlying C++ type. The header bytes +0x00..+0x17 (other than vftable) +0x1c..+0x53 are not directly inspected by the lge-substrate pass helpers - probably refcount, name buffer, member-table pointers (the actual array data), and other private C++ state."
+    },
+    {
+      "id": "BCS-S-0047",
+      "name": "ZoneActorMap_StlNode_Layout",
+      "namespace": "Application::Main",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/map_tick_handler.json",
+        "manifests/fun_0058cca0_caller_tree.json",
+        "manifests/actor_map_writers.json",
+        "manifests/fun_004d9910_callers_map.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "_Left",
+          "type": "void*",
+          "notes": "Left child pointer in the std::map red-black tree (MSVC _Tree_node layout)."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "_Parent",
+          "type": "void*",
+          "notes": "Parent pointer in the std::map red-black tree."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "_Right",
+          "type": "void*",
+          "notes": "Right child pointer in the std::map red-black tree."
+        },
+        {
+          "offset": "0x0c",
+          "size": "0x04",
+          "name": "key_actor_id",
+          "type": "uint32_t",
+          "notes": "_Myval.first - the actor id used as the map key. Read by FUN_004d9910 (BCS-Y-0534 ZoneActorMap_FindById) during lookup."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "value_actor_ptr",
+          "type": "void*",
+          "notes": "_Myval.second - pointer to Application::Main::RaptureElement (or derived). This is the pointer FUN_004d9910 returns to callers. Written by FUN_004ddf20 during node allocation."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "_Color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color flag (0=red, 1=black) per MSVC _Tree_node convention."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "_Isnil",
+          "type": "uint8_t",
+          "notes": "Header sentinel marker (1 on the head node, 0 on real nodes) per MSVC _Tree_node convention."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "uint8_t[2]",
+          "notes": "Trailing padding to round the 0x16-byte payload up to the 0x18 allocation size used by FUN_0044d350(node, 0x18, 0x20)."
+        }
+      ],
+      "notes": "Originally registered with address 'N/A (struct layout)' because this is a value-type layout, not a fixed-VA singleton. Live instances are heap-allocated by FUN_004ddf20 (size 0x18, alignment 0x20 per FUN_0044d350 dealloc args) and threaded into the zone actor map at zone+0x17804..+0x17808. STL std::map<actor_id, RaptureElement*>::node layout used by that map. Per the actor-map-writers pass investigation of the insert chain (RaptureElement::ctor -> FUN_004da9a0 -> FUN_004de940 -> FUN_004de610 -> FUN_004ddf20): 0x18 bytes, 0x20 alignment. Map header at zone+0x17804: +0 header sentinel; +4 _Myhead (root pointer via header[+4]); +8 _Mysize. Auxiliary array at zone+0x1780c is a separate substructure (not part of this node)."
+    },
+    {
+      "id": "BCS-S-0048",
+      "name": "SqexThreadQueue_MainPacket_Layout",
+      "namespace": "Sqex::Thread",
+      "size": "0x20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/async_queue_producer.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "name": "vftable",
+          "type": "ptr",
+          "notes": " Value: 0x00F90FDC (Sqex::Thread::Queue<Application::Main::MainPacket>::vftable)"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x4",
+          "name": "capacity",
+          "type": "uint32",
+          "notes": "Number of slots in the ring (passed to FUN_004DE080 constructor as param_2)"
+        },
+        {
+          "offset": "0x08",
+          "size": "0x4",
+          "name": "head_consumer",
+          "type": "uint32",
+          "notes": "Current read cursor. Read by FUN_004DDB50 (Dequeue) via InterlockedExchangeAdd(...,0)"
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x4",
+          "name": "tail_producer",
+          "type": "uint32",
+          "notes": "Current write cursor. Read by FUN_007CF7F0 (Enqueue) via InterlockedExchangeAdd(...,0). Advanced via InterlockedCompareExchange after successful slot grab"
+        },
+        {
+          "offset": "0x10",
+          "size": "0x4",
+          "name": "depth_counter",
+          "type": "uint32",
+          "notes": "Number of ready entries. InterlockedIncrement by enqueue, InterlockedDecrement by drainer"
+        },
+        {
+          "offset": "0x14",
+          "size": "0x4",
+          "name": "slot_state_array_ptr",
+          "type": "ptr LONG[capacity]",
+          "notes": "Each LONG: 0=EMPTY, 1=READY, 2=CONSUMING. Allocated as `new int[capacity]` in FUN_004DE080. Producer: Exchange 0->1. Consumer: Exchange 1->2 then 2->0"
+        },
+        {
+          "offset": "0x18",
+          "size": "0x4",
+          "name": "entries_array_ptr",
+          "type": "ptr MainPacket[capacity]",
+          "notes": "0x60 bytes per entry. Allocated as `new MainPacket[capacity]` with vector-constructor-iterator. Allocation has 16-byte header for capacity tracking"
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x4",
+          "name": "reserved",
+          "type": "?",
+          "notes": "5 unwind-handler refs hit this offset; likely cleanup/teardown bookkeeping"
+        }
+      ]
+    },
+    {
+      "id": "BCS-S-0049",
+      "name": "ApplicationMainMainPacket_Layout",
+      "namespace": "Application::Main",
+      "size": "0x60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/async_queue_producer.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x4",
+          "name": "vftable",
+          "type": "ptr",
+          "notes": " Value: 0x00F90EF8 (Application::Main::MainPacket::vftable)"
+        },
+        {
+          "offset": "0x04",
+          "size": "0xC",
+          "name": "header_unused",
+          "type": "?",
+          "notes": "First 16 bytes of packet are not used by the dispatcher (likely RTTI/sentinel)"
+        },
+        {
+          "offset": "0x10",
+          "size": "0x4",
+          "name": "actor_id",
+          "type": "uint32",
+          "notes": "Actor ID for FUN_004D9910 lookup. Often passed as 0 for zone-level/broadcast events. Producers set via FUN_004D65E0 param_2"
+        },
+        {
+          "offset": "0x14",
+          "size": "0x4",
+          "name": "event_type",
+          "type": "uint32",
+          "notes": "Opcode + 3. Decoded as opcode = event_type - 3 by FUN_004DAA10. Special value: 2 routes to audio/animation channel instead of actor dispatch"
+        },
+        {
+          "offset": "0x18",
+          "size": "0x4",
+          "name": "payload_length",
+          "type": "size_t",
+          "notes": "memcpy size for payload. Passed as 3rd arg to actor->vtable[8]"
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x4",
+          "name": "padding",
+          "type": "?",
+          "notes": "Alignment padding before payload"
+        },
+        {
+          "offset": "0x20",
+          "size": "0x40",
+          "name": "payload",
+          "type": "byte[64]",
+          "notes": "Inline payload bytes. memcpy'd from producer's source. Passed as 2nd arg to actor->vtable[8]"
+        }
+      ]
+    },
+    {
+      "id": "BCS-S-0050",
+      "name": "ReceiverStateCache",
+      "namespace": "Application::Lua::Script::Client::Command",
+      "size": "0xCC",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c62_cache_init_decomp.txt",
+        "tools/ghidra/logs/c61_sibling_factories_decomp.txt",
+        "tools/ghidra/logs/c59_vehiclegrade_fastpath_decomp.txt",
+        "manifests/receiver_state_cache_struct.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "owner_ref",
+          "type": "void *",
+          "notes": "Copied from *param_2 in ctor. Likely container backlink for navigation from cache to owner container."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "_unset_04",
+          "type": "uint32_t",
+          "notes": "NOT zero-init by ctor. Semantic TBD - may be shared with FUN_00CC9310 helper's output."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "_zero_init_08",
+          "type": "uint32_t",
+          "notes": "Zero-init dword. Semantic TBD."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "_zero_init_0c",
+          "type": "uint32_t",
+          "notes": "Zero-init dword. Semantic TBD."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "_zero_init_10",
+          "type": "uint32_t",
+          "notes": "Zero-init dword. Semantic TBD."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "_unset_14",
+          "type": "uint32_t",
+          "notes": "NOT zero-init by ctor. Semantic TBD - one of 5 contiguous-gap fields (0x04, 0x14, 0x24, 0x34, 0x4C) that the ctor does NOT initialize. May contain heap-allocator default state or be overwritten by ReceiverState write sites not surfaced earlier."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x0C",
+          "name": "_zero_init_18_block",
+          "type": "uint32_t[3]",
+          "notes": "Zero-init 3 dwords at 0x18, 0x1C, 0x20. Semantic TBD."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "_unset_24",
+          "type": "uint32_t",
+          "notes": "NOT zero-init by ctor. Semantic TBD - one of 5 contiguous-gap fields."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x0C",
+          "name": "_zero_init_28_block",
+          "type": "uint32_t[3]",
+          "notes": "Zero-init 3 dwords at 0x28, 0x2C, 0x30. Semantic TBD."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x04",
+          "name": "_unset_34",
+          "type": "uint32_t",
+          "notes": "NOT zero-init by ctor. Semantic TBD - one of 5 contiguous-gap fields."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x0C",
+          "name": "_zero_init_38_block",
+          "type": "uint32_t[3]",
+          "notes": "Zero-init 3 dwords at 0x38, 0x3C, 0x40. Semantic TBD."
+        },
+        {
+          "offset": "0x44",
+          "size": "0x04",
+          "name": "achievement_point_value",
+          "type": "uint32_t",
+          "notes": "Writable by [[AchievementPointReceiver_HybridFactory_FUN_0076D010]] (BCS-Y-1342) fast-path. The fast-path stores the AchievementPoint receiver's value directly here, bypassing receiver instantiation."
+        },
+        {
+          "offset": "0x48",
+          "size": "0x04",
+          "name": "achievement_title_id",
+          "type": "uint32_t",
+          "notes": "Writable by [[AchievementTitleReceiver_HybridFactory_FUN_0076D0E0]] (BCS-Y-1343) fast-path. The fast-path stores the AchievementTitle receiver's id directly here."
+        },
+        {
+          "offset": "0x4C",
+          "size": "0x04",
+          "name": "_unset_4c",
+          "type": "uint32_t",
+          "notes": "NOT zero-init by ctor. Semantic TBD - one of 5 contiguous-gap fields. Between AchievementTitle (0x48) and ChangeActorExtraStat (0x50)."
+        },
+        {
+          "offset": "0x50",
+          "size": "0x04",
+          "name": "change_actor_extra_stat_value",
+          "type": "uint32_t",
+          "notes": "Writable by [[ChangeActorExtraStatReceiver_HybridFactory_FUN_0076D2B0]] (BCS-Y-1346) inverted-hybrid fast-path. This is the LAST dword zero-init by ctor before the FUN_006BF420 helper call."
+        },
+        {
+          "offset": "0x54",
+          "size": "0x04",
+          "name": "display_name_id",
+          "type": "int32_t",
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369) fast-path (called from [[ReceiverHybridFactory_NamesArray_FUN_00771980]] BCS-Y-1349). The display ID for the player name; -1 sentinel value indicates 'unnamed' state. Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365). Discovered earlier by decomp of the fast-path apply helper."
+        },
+        {
+          "offset": "0x58",
+          "size": "0x54",
+          "name": "_mid_buffer_remainder",
+          "type": "uint8_t[84]",
+          "notes": "NOT zero-init by ctor. 84-byte gap between display_name_id (0x54) and display_name_set_byte (0xAC). Likely holds heap-allocator default state or unsurfaced Receiver state slots. Semantic TBD - the decomp surfaced only +0x54/+0xAC/+0xAD/+0xB0/+0xB4 as written by SetDisplayName apply; the 0x58..0xAB region remains uncharacterized."
+        },
+        {
+          "offset": "0xAC",
+          "size": "0x01",
+          "name": "display_name_set_byte",
+          "type": "uint8_t",
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Stores the param_4 (flag) argument from the SetDisplayName apply call. Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365). Discovered earlier."
+        },
+        {
+          "offset": "0xAD",
+          "size": "0x01",
+          "name": "display_name_is_unnamed",
+          "type": "bool",
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Boolean flag computed as (display_name_id == -1). Indicates the display-name slot is in the 'unnamed' sentinel state. Discovered earlier."
+        },
+        {
+          "offset": "0xAE",
+          "size": "0x02",
+          "name": "_pad_ae",
+          "type": "uint8_t[2]",
+          "notes": "Alignment padding between display_name_is_unnamed (0xAD) and _zero_init_b0 (0xB0). NOT zero-init by ctor."
+        },
+        {
+          "offset": "0xB0",
+          "size": "0x04",
+          "name": "display_name_alloc_ptr",
+          "type": "void *",
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Pointer to a 0x60=96-byte heap-allocated name-block (allocated via FUN_009D1B35 + initialized via FUN_00776400). The 96-byte block stores the actual display name string. The ctor zero-inits this slot (verified earlier); the apply helper sets it. Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365). Discovered earlier."
+        },
+        {
+          "offset": "0xB4",
+          "size": "0x01",
+          "name": "display_name_set_flag",
+          "type": "uint8_t",
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Set to 1 when the display name is applied; serves as a 'name-was-set' guard for subsequent reads. The ctor zero-inits this byte (verified earlier); the apply helper sets it to 1. Discovered earlier."
+        },
+        {
+          "offset": "0xB5",
+          "size": "0x01",
+          "name": "change_actor_sub_stat_mode_border",
+          "type": "uint8_t",
+          "notes": "Writable by [[ChangeActorSubStatModeBorderReceiver_HybridFactory_FUN_0076D380]] (BCS-Y-1347) inverted-hybrid fast-path."
+        },
+        {
+          "offset": "0xB6",
+          "size": "0x01",
+          "name": "_byte_b6_TBD",
+          "type": "uint8_t",
+          "notes": "Zero-init byte. No hybrid factory writes this offset; semantic TBD."
+        },
+        {
+          "offset": "0xB7",
+          "size": "0x01",
+          "name": "chocobo_grade",
+          "type": "uint8_t",
+          "notes": "Writable by [[ReceiverHybridFactory_byte0xB7_FUN_0076CC30]] (BCS-Y-1339) fast-path. Receiver class: [[ChocoboGradeReceiver_ctor_FUN_008A2F70]] (BCS-Y-1361). The grade byte for the player's active chocobo mount."
+        },
+        {
+          "offset": "0xB8",
+          "size": "0x01",
+          "name": "vehicle_grade",
+          "type": "uint8_t",
+          "notes": "Writable by [[VehicleGradeReceiver_HybridFactory_FUN_0076CDD0]] (BCS-Y-1145) canonical hybrid fast-path. The original cataloged evidence that surfaced the entire cache layer."
+        },
+        {
+          "offset": "0xB9",
+          "size": "0x01",
+          "name": "chocobo_state_byte_b9",
+          "type": "uint8_t",
+          "notes": "Writable by [[ReceiverHybridFactory_3byteCacheWrite_FUN_0076CB40]] (BCS-Y-1338) as part of 3-field write (+0xB9/+0xBC/+0xC0). Receiver class: [[ChocoboReceiver_ctor_FUN_008A2E70]] (BCS-Y-1360). The third of the 3-tuple chocobo state fields."
+        },
+        {
+          "offset": "0xBA",
+          "size": "0x02",
+          "name": "_pad_ba",
+          "type": "uint8_t[2]",
+          "notes": "Alignment padding between 0xB9 byte and 0xBC dword. No ctor zero-init for these bytes."
+        },
+        {
+          "offset": "0xBC",
+          "size": "0x04",
+          "name": "chocobo_state_dword_bc",
+          "type": "uint32_t",
+          "notes": "Writable by [[ReceiverHybridFactory_3byteCacheWrite_FUN_0076CB40]] (BCS-Y-1338) as part of 3-field write. The dword stores the param_3 argument (likely the chocobo id or color value). Receiver class: [[ChocoboReceiver_ctor_FUN_008A2E70]] (BCS-Y-1360)."
+        },
+        {
+          "offset": "0xC0",
+          "size": "0x01",
+          "name": "chocobo_state_byte_c0",
+          "type": "uint8_t",
+          "notes": "Writable by [[ReceiverHybridFactory_3byteCacheWrite_FUN_0076CB40]] (BCS-Y-1338) as part of 3-field write. The byte stores the param_2 argument (cast from undefined4). Receiver class: [[ChocoboReceiver_ctor_FUN_008A2E70]] (BCS-Y-1360)."
+        },
+        {
+          "offset": "0xC1",
+          "size": "0x01",
+          "name": "goobbue_state",
+          "type": "uint8_t",
+          "notes": "Writable by [[ReceiverHybridFactory_byte0xC1_FUN_0076CD00]] (BCS-Y-1340) fast-path. Receiver class: [[GoobbueReceiver_ctor_FUN_008A3050]] (BCS-Y-1362). The state byte for the player's active goobbue mount."
+        },
+        {
+          "offset": "0xC2",
+          "size": "0x04",
+          "name": "grand_company_state",
+          "type": "uint8_t[4]",
+          "notes": "Writable by [[ReceiverHybridFactory_4byteCacheWrite_FUN_0076CEA0]] (BCS-Y-1341) fast-path. 4 bytes at cache+0xC2..0xC5 written from a param_2 byte-array source (reordered: +0xC2=p[0], +0xC3=p[1], +0xC4=p[2], +0xC5=p[3]). Receiver class: [[GrandCompanyReceiver_ctor_FUN_0089CC90]] (BCS-Y-1363). Likely stores Grand Company affiliation (which of 3 GCs) + rank + seal-count."
+        },
+        {
+          "offset": "0xC6",
+          "size": "0x01",
+          "name": "job_change_id",
+          "type": "uint8_t",
+          "notes": "Writable by [[JobChangeReceiver_HybridFactory_FUN_0076D1B0]] (BCS-Y-1344) canonical hybrid fast-path. Owning Receiver class: JobChangeReceiver (see BCS-Y-0098)."
+        },
+        {
+          "offset": "0xC7",
+          "size": "0x02",
+          "name": "_pair_c7_TBD",
+          "type": "uint8_t[2]",
+          "notes": "Writable by [[ReceiverCacheDirectWrite_2byte_FUN_0076D280]] (BCS-Y-1350) cache-only-write stub. 2 bytes from a param_1 byte-array source (+0xC7=p[0], +0xC8=p[1]). No slow-path Receiver - this is fast-path-only state. Owning Receiver TBD."
+        },
+        {
+          "offset": "0xC9",
+          "size": "0x01",
+          "name": "shadow_actor_flag",
+          "type": "uint8_t",
+          "notes": "Writable by [[ReceiverHybridFactory_byte0xC9_FUN_0076D540]] (BCS-Y-1345) fast-path. Receiver class: [[ChangeShadowActorFlagReceiver_ctor_FUN_0089CBC0]] (BCS-Y-1364). The flag byte for shadow-actor (invisible-to-camera or pre-instantiated remote actor) state."
+        },
+        {
+          "offset": "0xCA",
+          "size": "0x02",
+          "name": "_tail_pad",
+          "type": "uint8_t[2]",
+          "notes": "Alignment padding to bring struct size to 0xCC = 204 = (51 dwords) bytes."
+        }
+      ],
+      "notes": "The 0xCC=204-byte Receiver state cache used as the fast-path target by 16-of-18 Receiver hybrid factories (the sibling cluster). Lazy-initialized by [[ReceiverStateCache_LazyGet_FUN_0076A3F0]] (BCS-Y-1337) via heap alloc + [[ReceiverStateCache_ctor_FUN_00767730]] (BCS-Y-1354). Stored at container[+0x48]. Holds inline state mirrors for ~14 known Receiver state fields (VehicleGrade, AchievementPoint, AchievementTitle, JobChange, ChangeActorExtraStat, ChangeActorSubStatModeBorder) + ~10 TBD-class slots (BCS-Y-1338/1339/1340/1341/1345/1350). The ctor calls 2 zero-arg helper functions (FUN_00CC9310, FUN_006BF420) but neither writes to cache fields - both are global-state initializers. The 5 contiguous-gap dwords at offsets 0x04/0x14/0x24/0x34/0x4C are NOT initialized by the ctor, plus a 92-byte mid-buffer at 0x54-0xAF; these gaps likely hold either heap-allocator-default state or Receiver state slots not surfaced earlier. The Receiver-state field layout was reverse-engineered by cross-referencing the per-factory fast-path write offsets earlier against the per-field zero-init in the ctor decomp - 14 of 18 Receiver state slots are now mapped to identified factories. Closes the manifest deferred_followups[1]. | [10-uncataloged-receiver-ctors-+-apply] **8 of 17 previously-unmapped fields now resolved** via the 10-ctor decomp: 0xB7 = chocobo_grade ([[ChocoboGradeReceiver_ctor_FUN_008A2F70]] BCS-Y-1361), 0xB9/0xBC/0xC0 = chocobo state tuple ([[ChocoboReceiver_ctor_FUN_008A2E70]] BCS-Y-1360), 0xC1 = goobbue_state ([[GoobbueReceiver_ctor_FUN_008A3050]] BCS-Y-1362), 0xC2..0xC5 = grand_company_state ([[GrandCompanyReceiver_ctor_FUN_0089CC90]] BCS-Y-1363), 0xC9 = shadow_actor_flag ([[ChangeShadowActorFlagReceiver_ctor_FUN_0089CBC0]] BCS-Y-1364). **Plus 5 NEW fields discovered** in the SetDisplayName apply helper [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369): 0x54 = display_name_id (int32 with -1 sentinel), 0xAC = display_name_set_byte, 0xAD = display_name_is_unnamed (bool), 0xB0 = display_name_alloc_ptr (was _zero_init_b0; now known to hold a 0x60 name-block heap pointer), 0xB4 = display_name_set_flag (was _byte_b4_TBD; now known to hold the apply-set flag). Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365). 13 of 18 expected Receiver state slots are now mapped to identified factories and class names."
+    }
+  ]
+}

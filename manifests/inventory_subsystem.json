@@ -1,0 +1,651 @@
+{
+  "generated": "2026-05-24",
+  "scope": "Characterize the inventory opcode family for FFXIV 1.23b. Catalogue Inventory*Packet wire types, cross-reference against existing BCS-Y coverage, classify each opcode against FUN_004DC690 dispatch (Patterns A-E), resolve or restate 0x0147 InventorySetEnd open question, and document the inventory data-flow into the PlayerBase/MyPlayer item-storage container.",
+  "conventions": {
+    "encoding": "ASCII only, no em dashes",
+    "paths": "Repo-relative or absolute Windows; per project policy"
+  },
+  "summary": {
+    "inventoryOpcodeCount": 19,
+    "uniqueInventoryOpcodesInDispatcher": 18,
+    "patternBreakdown": {
+      "pattern_a_receiver_class": 0,
+      "pattern_b_actor_vftable9_fallthrough": 0,
+      "pattern_c_low_switch_direct": 0,
+      "pattern_d_subdispatcher_event_family": 0,
+      "pattern_e_unrouted": 1,
+      "pattern_direct_handler_in_FUN_004DC690": 18
+    },
+    "catalogStatus": {
+      "fully_catalogued_with_payload_struct": 11,
+      "decompiled_handler_but_no_payload_struct": 7,
+      "pattern_e_unresolved": 1
+    },
+    "0x0147_status": "Pattern E (unrouted) - reconfirmed. 0x0147 InventorySetEndPacket has NO case in FUN_004DC690 explicit case list, NOT in the switchD_004dc749_caseD_f goto block (actor vftable[9] fallthrough), and NOT in FUN_0058CCA0 third-router. PCAP corpus contains 60 samples (sub-size 40, body 24); client silently discards via switch default fall-through. Open question pre-existing in the open-questions record.",
+    "proposed_bcsy_entries": 4,
+    "blockers": [
+      "Resolving 0x0147 dispatch requires live capture (live capture / runtime hook), deferred indefinitely per project direction.",
+      "Field labels for 0x014c InventoryListX64 (FUN_00576720), 0x014f LinkedItemListX16 (FUN_00576870), 0x150 LinkedItemListX32 (FUN_005768e0), 0x151 LinkedItemListX64 (FUN_00576950), 0x153 InventoryRemoveX08 (FUN_00576a30), 0x154 InventoryRemoveX16 (FUN_00576aa0), 0x155 InventoryRemoveX32 (FUN_00576b10), 0x156 InventoryRemoveX64 (FUN_00576b80) are handler-confirmed via FUN_004DC690 case dispatch, but their payload field shapes are not yet decoded with the depth applied to InventoryListX01/X08/X16/X32. These are mechanical decomp targets (single-call handlers similar to InventoryListX01)."
+    ]
+  },
+  "inventory_opcodes": {
+    "packets": [
+      {
+        "opcodeHex": "0x0146",
+        "packetSize": 40,
+        "payloadShape": "u32 sourceActorId, u16 size, u16 code",
+        "purpose": "Begin packing inventory items for a container (itemPackage)."
+      },
+      {
+        "opcodeHex": "0x0147",
+        "packetSize": 40,
+        "payloadShape": "8-byte empty payload",
+        "purpose": "End of inventory item enumeration for a container."
+      },
+      {
+        "opcodeHex": "0x0148",
+        "packetSize": 144,
+        "payloadShape": "1x InventoryItemRecord (0x70 bytes)",
+        "purpose": "Single item add/update."
+      },
+      {
+        "opcodeHex": "0x0149",
+        "packetSize": 936,
+        "payloadShape": "8x InventoryItemRecord (0x70 each) + u32 itemCount at +0x380",
+        "purpose": "Batch of 8 items add/update."
+      },
+      {
+        "opcodeHex": "0x014a",
+        "packetSize": 1824,
+        "payloadShape": "16x InventoryItemRecord (0x70 each)",
+        "purpose": "Batch of 16 items add/update."
+      },
+      {
+        "opcodeHex": "0x014b",
+        "packetSize": 3616,
+        "payloadShape": "32x InventoryItemRecord (0x70 each)",
+        "purpose": "Batch of 32 items add/update."
+      },
+      {
+        "opcodeHex": "0x014c",
+        "packetSize": 7200,
+        "payloadShape": "64x InventoryItemRecord (0x70 each)",
+        "purpose": "Batch of 64 items add/update."
+      },
+      {
+        "opcodeHex": "0x014d",
+        "packetSize": 40,
+        "payloadShape": "u16 linkedItemPackageSlot, u16 itemPackageSlot, u16 itemPackageCode",
+        "purpose": "Single linked-item slot update (e.g., equipped item -> source bag slot mapping)."
+      },
+      {
+        "opcodeHex": "0x014e",
+        "packetSize": 88,
+        "payloadShape": "8x LinkedItemEntry (6 bytes each) + u32 itemCount at +0x30",
+        "purpose": "Batch of 8 linked-item slot updates."
+      },
+      {
+        "opcodeHex": "0x014f",
+        "packetSize": 128,
+        "payloadShape": "16x LinkedItemEntry (6 bytes each)",
+        "purpose": "Batch of 16 linked-item slot updates."
+      },
+      {
+        "opcodeHex": "0x0150",
+        "packetSize": 224,
+        "payloadShape": "32x LinkedItemEntry (6 bytes each)",
+        "purpose": "Batch of 32 linked-item slot updates."
+      },
+      {
+        "opcodeHex": "0x0151",
+        "packetSize": 404,
+        "payloadShape": "64x LinkedItemEntry (6 bytes each)",
+        "purpose": "Batch of 64 linked-item slot updates."
+      },
+      {
+        "opcodeHex": "0x0152",
+        "packetSize": 40,
+        "payloadShape": "u16 slot",
+        "purpose": "Remove single item slot from inventory."
+      },
+      {
+        "opcodeHex": "0x0153",
+        "packetSize": 56,
+        "payloadShape": "u16 slots[8] + u8 count at +0x10",
+        "purpose": "Remove batch of 8 item slots."
+      },
+      {
+        "opcodeHex": "0x0154",
+        "packetSize": 64,
+        "payloadShape": "u16 slots[16]",
+        "purpose": "Remove batch of 16 item slots."
+      },
+      {
+        "opcodeHex": "0x0155",
+        "packetSize": 96,
+        "payloadShape": "u16 slots[32]",
+        "purpose": "Remove batch of 32 item slots."
+      },
+      {
+        "opcodeHex": "0x0156",
+        "packetSize": 160,
+        "payloadShape": "u16 slots[64]",
+        "purpose": "Remove batch of 64 item slots."
+      },
+      {
+        "opcodeHex": "0x016d",
+        "packetSize": 40,
+        "payloadShape": "u8 changeCode",
+        "purpose": "Begin atomic batch of inventory mutations."
+      },
+      {
+        "opcodeHex": "0x016e",
+        "packetSize": 40,
+        "payloadShape": "8-byte empty payload",
+        "purpose": "End atomic batch of inventory mutations."
+      }
+    ],
+    "supporting_record_classes": {
+      "InventoryItem": {
+        "serializedSize": 112,
+        "shape": "u64 uniqueId, s32 quantity, u32 itemId, u16 slotOrLinkSlot, u8 dealingValue, u8 dealingMode, s32 dealingAttached1, s32 dealingAttached2, s32 dealingAttached3, u8[4] tags, u8[4] tagValues, u8 quality, u8 modifierPresent, ItemModifier[64] (when present)",
+        "constants": {
+          "DEALINGMODE_NONE": 0,
+          "DEALINGMODE_REFERENCED": 1,
+          "DEALINGMODE_PRICED": 2,
+          "TAG_EXCLUSIVE": "0x3",
+          "TAG_DEALING": "0xC9",
+          "TAG_ATTACHED": "0xCA",
+          "MODE_SELL_SINGLE": 11,
+          "MODE_SELL_PSTACK": 12,
+          "MODE_SELL_FSTACK": 13,
+          "MODE_SEEK_ITEM": 20,
+          "MODE_SEEK_REPAIR": 30,
+          "MODE_SEEK_MELD": 40
+        }
+      },
+      "ItemModifier": {
+        "embeddedIn": "InventoryItem",
+        "size": 64,
+        "shape": "u32 durability, u16 use, u32 materiaId, u32 materiaLife, u8 mainQuality, u8[3] subQuality, u32 polish, u32 param1, u32 param2, u32 param3, u16 spiritbind, u8[5] materiaType, u8[5] materiaGrade"
+      }
+    }
+  },
+  "inventory_rtti_classes": {
+    "note": "This manifest uses inventory-related classes already in the BCS-Y catalog and a small set of structural anchors. A complete RTTI search for Inventory, Item, ItemPackage, ItemHandle, and Storage has not been recorded.",
+    "anchors_from_existing_catalog": [
+      {
+        "bcsy": "BCS-Y-0414",
+        "name": "InventoryStorageItemHandleLane2",
+        "scope": "PlayerBase/MyPlayer in-memory storage container: vector at this+0x144 with 4 buckets x 0x10-byte records; bucket capacities 0x23/0x41/0x1a/0x04 (35/65/26/4 slots)."
+      },
+      {
+        "rtti_name": "Application::Lua::Script::Client::Control::ItemManager",
+        "vtable_va": "0x00FD7618",
+        "scope": "Lua-bound manager class for inventory/trade state; vtable slot 1 = FUN_007036E0 = Item-update apply method that calls _onUpdateItemPackage and _onUpdateTradingItem firers.",
+        "evidence_bcsy": "see symbols.json line ~2125 'BootupManager::vftable_full_slot_inventory' notes"
+      },
+      {
+        "rtti_name": "Application::Lua::Script::Client::Control::ItemBase",
+        "scope": "Lua-bound item entity exposing _getItem / _getEquippingItem / _getItemPackageCapacity / _getItemPackageFreeSpace / _hasItemPackage / _isLockingItem / _isItemDealing / _getTradingItem / _updateWork bindings. 20 ItemBase reader N-APIs catalogued.",
+        "ctor": "FUN_006DD450 (initializes handle tail at +0x64/+0x68/+0x6c/+0x70)",
+        "evidence_bcsy": [
+          "BCS-Y-0414"
+        ]
+      }
+    ]
+  },
+  "opcode_dispatch_table": {
+    "dispatcher_va": "0x004DC690",
+    "dispatcher_bcsy": "BCS-Y-0279",
+    "dispatcher_name": "FUN_004DC690 - the central s2c packet dispatcher",
+    "dispatcher_pattern": "Pattern C - explicit case-per-opcode block within the high-opcode switch (opcodes >= 0x13E). Every inventory opcode except 0x0147 has a dedicated case body that calls a handler in the FUN_005764xx..FUN_00576Bxx range, passing (&param_2, iVar8 + 0x10) where iVar8 points at the packet record and +0x10 skips to the application payload.",
+    "evidence": [
+      "%BCS_GHIDRA_PROJECTS%\\dispatcher_candidates_decomp.txt:196-455 (FUN_004DC690 body)",
+      "%BCS_GHIDRA_PROJECTS%\\dispatcher_candidates_decomp.txt:314-367 (inventory case block)",
+      "manifests/unmapped_payload_decoding.json (all inventory payload structs and handler VAs)",
+      "manifests/receiver_discovery.json (negative result for 0x0147)"
+    ],
+    "rows": [
+      {
+        "opcodeHex": "0x0146",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x005764C0",
+        "handlerCall": "FUN_005764c0(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x0076BC20",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0393",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x0146",
+        "fields": [
+          "u32 sourceActorId @ +0",
+          "u16 size @ +4",
+          "u16 code @ +6 (low byte consumed)"
+        ],
+        "pcap_samples": 78
+      },
+      {
+        "opcodeHex": "0x0147",
+        "dispatchPattern": "pattern_e_unrouted",
+        "handlerVa": null,
+        "handlerCall": null,
+        "payloadStructDecoded": false,
+        "catalogStatus": "pattern_e_unresolved",
+        "bcsyRef": "BCS-Y-0386 (negative result), open in the open-questions record",
+        "fields": [],
+        "pcap_samples": 60,
+        "evidence": [
+          "FUN_004DC690 case list has NO case 0x147; control flows through the switch default and exits via switchD_004dc749_caseD_12 cleanup.",
+          "0x147 is also absent from the switchD_004dc749_caseD_f goto block (which handles actor->vftable[9] fallthrough opcodes).",
+          "0x0147 = no_case_in_documented_routers (BCS-Y-0386).",
+          "The third-router (FUN_0058CCA0) dump also has no 0x147 case.",
+          "0x147 appears in FUN_0057ABB0 (an opcode-to-message-id translator at line 1177) returning 0x273, but FUN_0057ABB0 is not a dispatcher - it is a translation table consumed by other code.",
+          "PCAP empirical: corpus contains 60 samples (sub-size 40, body length 24)."
+        ]
+      },
+      {
+        "opcodeHex": "0x0148",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576560",
+        "handlerCall": "FUN_00576560(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x00771540 (shares 0x70-byte InventoryItemRecord with X08/X16/X32 via FUN_0076B760)",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0394",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x0148",
+        "fields": [
+          "1x InventoryItemRecord (112 bytes)"
+        ],
+        "pcap_samples": 40
+      },
+      {
+        "opcodeHex": "0x0149",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x005765D0",
+        "handlerCall": "FUN_005765d0(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x007713E0",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0394",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x0149",
+        "fields": [
+          "8x InventoryItemRecord (896 bytes)",
+          "u32 itemCount @ +0x380 (low byte consumed)"
+        ],
+        "pcap_samples": 33
+      },
+      {
+        "opcodeHex": "0x014a",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576640",
+        "handlerCall": "FUN_00576640(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0395",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x014a",
+        "fields": [
+          "16x InventoryItemRecord (1792 bytes)"
+        ],
+        "pcap_samples": 11
+      },
+      {
+        "opcodeHex": "0x014b",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x005766B0",
+        "handlerCall": "FUN_005766b0(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x00771540 (shared with X01)",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0394",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x014b",
+        "fields": [
+          "32x InventoryItemRecord (3584 bytes)"
+        ],
+        "pcap_samples": 36
+      },
+      {
+        "opcodeHex": "0x014c",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576720",
+        "handlerCall": "FUN_00576720(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "64x InventoryItemRecord (7168 bytes)"
+        ],
+        "pcap_samples": 0,
+        "note": "Pattern matches the X01/X08/X16/X32 family - same handler shape, scaled record count. Decomp work deferred (no pcap-observed payload to validate against)."
+      },
+      {
+        "opcodeHex": "0x014d",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576790",
+        "handlerCall": "FUN_00576790(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x00768CF0",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0396",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x014d",
+        "fields": [
+          "u16 linkedItemPackageSlot @ +0",
+          "u16 itemPackageSlot @ +2",
+          "u16 itemPackageCode @ +4 (low byte consumed)"
+        ],
+        "pcap_samples": 6
+      },
+      {
+        "opcodeHex": "0x014e",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576800",
+        "handlerCall": "FUN_00576800(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x00768D80",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0394",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x014e",
+        "fields": [
+          "8x LinkedItemEntry (48 bytes)",
+          "u32 itemCount @ +0x30 (low byte consumed)"
+        ],
+        "pcap_samples": 21
+      },
+      {
+        "opcodeHex": "0x014f",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576870",
+        "handlerCall": "FUN_00576870(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "16x LinkedItemEntry (96 bytes)"
+        ],
+        "pcap_samples": 0
+      },
+      {
+        "opcodeHex": "0x0150",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x005768E0",
+        "handlerCall": "FUN_005768e0(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "32x LinkedItemEntry (192 bytes)"
+        ],
+        "pcap_samples": 0
+      },
+      {
+        "opcodeHex": "0x0151",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576950",
+        "handlerCall": "FUN_00576950(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "64x LinkedItemEntry (384 bytes)"
+        ],
+        "pcap_samples": 0
+      },
+      {
+        "opcodeHex": "0x0152",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x005769C0",
+        "handlerCall": "FUN_005769c0(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x00769050",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0396",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x0152",
+        "fields": [
+          "u16 slot @ +0"
+        ],
+        "pcap_samples": 6
+      },
+      {
+        "opcodeHex": "0x0153",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576A30",
+        "handlerCall": "FUN_00576a30(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred_from_pcap",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "u16[8] slots starting at +8",
+          "u8 count at +0x10"
+        ],
+        "pcap_samples": 2,
+        "pcap_evidence": "xivl-captures/data/payload_layouts.json:32113 (0x0153 body_length=40, 2 samples, distinct values for u16 at +8)"
+      },
+      {
+        "opcodeHex": "0x0154",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576AA0",
+        "handlerCall": "FUN_00576aa0(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "u16[16] slots (32 bytes)"
+        ],
+        "pcap_samples": 0
+      },
+      {
+        "opcodeHex": "0x0155",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576B10",
+        "handlerCall": "FUN_00576b10(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "u16[32] slots (64 bytes)"
+        ],
+        "pcap_samples": 0
+      },
+      {
+        "opcodeHex": "0x0156",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576B80",
+        "handlerCall": "FUN_00576b80(&param_2, iVar8 + 0x10)",
+        "payloadStructDecoded": false,
+        "catalogStatus": "handler_known_payload_inferred",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+        "bcsyRef": null,
+        "inferredFields": [
+          "u16[64] slots (128 bytes)"
+        ],
+        "pcap_samples": 0
+      },
+      {
+        "opcodeHex": "0x016d",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x005763C0",
+        "handlerCall": "FUN_005763c0(&param_2, iVar8 + 0x10)",
+        "callee_helper_va": "0x0076BAD0",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0394",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x016d",
+        "fields": [
+          "u8 changeCode @ +0 (the client forwards only the low byte)"
+        ],
+        "pcap_samples": 60
+      },
+      {
+        "opcodeHex": "0x016e",
+        "dispatchPattern": "direct_handler_in_FUN_004DC690",
+        "handlerVa": "0x00576430",
+        "handlerCall": "FUN_00576430(&param_2)",
+        "callee_helper_va": "0x0076BB00",
+        "payloadStructDecoded": true,
+        "catalogStatus": "fully_catalogued",
+        "bcsyRef": "BCS-Y-0394",
+        "payloadStructRef": "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x016e",
+        "fields": [
+          "empty payload (8 bytes reserved); handler signature takes no packet pointer from the dispatcher"
+        ],
+        "pcap_samples": 60,
+        "note": "Notable that 0x016e's dispatcher call takes &param_2 ONLY, not (&param_2, iVar8 + 0x10) like the other cases. The handler FUN_00576430 reads from the dispatcher-local data only and triggers the commit logic in FUN_0076BB00, which calls FUN_007840d0 / FUN_00cc9330 / FUN_00768b10 (inventory commit + ItemPackage cleanup helpers)."
+      }
+    ]
+  },
+  "pattern_e_unrouted": {
+    "opcodes": [
+      {
+        "opcodeHex": "0x0147",
+        "name": "InventorySetEndPacket",
+        "pcap_samples": 60,
+        "sub_size": 40,
+        "body_length": 24,
+        "verified_negatives": [
+          "Absent from FUN_004DC690 explicit case list (cases 0x143, 0x146, 0x148..0x156, 0x16d, 0x16e, 0x176, 0x17a, 0x17c..0x18b, 0x18d, 399, 400, 0x191, 0x193, 0x196, 0x198, 0x1a3) - dispatcher_candidates_decomp.txt:258-454",
+          "Absent from FUN_004DC690 switchD_004dc749_caseD_f goto block (which forwards specific opcodes to actor->vftable[9]; the block contains 0x144, 0x145, 0x157..0x16c, 0x16f, 0x170, 0x175, 0x177, 0x179, 0x17b, 0x18e, 0x192, 0x194..0x19f, 0x1a0..0x1a2, 0x1a4..0x1a8) - dispatcher_candidates_decomp.txt:263-313",
+          "Absent from FUN_0058CCA0 third-router dispatcher cases - fun_0058cca0_decomp.txt grep returned no 0x147 / case 327",
+          "Absent from FUN_004D8860 event-family dispatcher per BCS-Y-0386 no_case_in_documented_routers classification",
+          "Appears only in FUN_0057ABB0 (an opcode-to-message-id translator) returning the enum-id 0x273 - this is a name/id translation table, NOT a dispatcher; it is consumed by other code that needs an opaque integer id for the opcode"
+        ],
+        "behavior": "PCAP captures contain the packet, but the client silently drops it via the dispatcher switch default. The InventorySetBeginPacket (0x0146) and InventoryEndChangePacket (0x016e) appear to provide the actual 'storage commit' semantics; 0x0147 may be a vestigial / debug-only / NOP-on-client opcode.",
+        "status": "open in the open-questions record; resolution requires live capture (live capture / runtime hook) which is deferred indefinitely per project direction"
+      }
+    ]
+  },
+  "0x0147_status": {
+    "resolution": "Pattern E (unrouted) confirmed via three independent dispatcher dumps",
+    "confidence": "confirmed_negative",
+    "next_action_if_revisited": "live capture - hook into FUN_004DC690 entry at runtime, inject crafted 0x0147 sub-packet, observe if any side effect occurs (UI redraw, ItemPackage commit, logging, etc.); alternatively scan for any other dispatcher VA that takes the same packet record pointer shape and search its cases for 0x147"
+  },
+  "inventory_data_flow_summary": {
+    "ingress": "Wire packet stream -> FUN_004DC690 (BCS-Y-0279) opcode switch -> per-opcode handler FUN_005764xx..FUN_00576Bxx (lives in the inventory-handler block at 0x005763xx..0x00576Cxx)",
+    "handler_helpers": {
+      "FUN_0076B760": "InventoryItemRecord deserializer (0x70-byte record from payload)",
+      "FUN_0076BAD0": "InventoryBeginChange callee - calls FUN_0076B950 (begin-change state init) and FUN_0075F720 (notify ItemPackage of pending mutation)",
+      "FUN_0076BB00": "InventoryEndChange callee - calls FUN_0076BA10 (commit), FUN_007840D0 (post-commit fanout), FUN_00CC9330 (event firer), FUN_00768B10 (ItemPackage cleanup); also touches FUN_007649A0 (per-package finalizer) and FUN_0057AB60 (id translation)",
+      "FUN_0076BC20": "InventorySetBegin callee - sets up container size + code for the upcoming InventoryList payload",
+      "FUN_00771540": "InventoryListX01/X32 record-array deserializer (shared)",
+      "FUN_007713E0": "InventoryListX08 record-array deserializer",
+      "FUN_00768CF0": "LinkedItemListX01 callee",
+      "FUN_00768D80": "LinkedItemListX08 callee",
+      "FUN_00769050": "InventoryRemoveX01 callee"
+    },
+    "egress": "Inventory item updates land in the PlayerBase/MyPlayer storage vector at this+0x144 (BCS-Y-0414). The vector holds 4 ItemPackage buckets with capacities 0x23 / 0x41 / 0x1a / 0x04 (35 / 65 / 26 / 4 slots). Per-bucket records are 0x10 bytes and are appended via FUN_007228E0 / sorted via FUN_00720BB0 / capacity-reserved via FUN_007222D0. The EntrustItemReceiver worker FUN_006EFBD0 demonstrates the same bucket layout for the cross-receiver write path.",
+    "lua_surface": "Lua-bound readers on Application::Lua::Script::Client::Control::ItemBase: _getItem, _getEquippingItem, _getItemPackageCapacity, _getItemPackageFreeSpace, _hasItemPackage, _isLockingItem, _isItemDealing, _getTradingItem. ItemManager vtable (VA 0x00FD7618) slot 1 = FUN_007036E0 fires _onUpdateItemPackage and _onUpdateTradingItem firers. ItemBase._updateWork = c2s opcode 0x0132 (BCS-Y-0383 / 0x132 was tentatively named ItemWorkUpdatePacket).",
+    "commit_pattern": "Inventory mutations arrive in atomic batches gated by InventoryBeginChange (0x016d) -> InventoryListX01/08/16/32/64 (0x0148..0x014c) AND/OR InventoryRemoveX01/08/16/32/64 (0x0152..0x0156) AND/OR LinkedItemListX01..X64 (0x014d..0x0151) AND/OR InventorySetBegin (0x0146) -> InventoryEndChange (0x016e). 0x0147 InventorySetEnd appears to logically pair with 0x0146 InventorySetBegin (similar 8-byte empty payload, same 24-byte body length) but the client silently discards it.",
+    "c2s_counterpart": {
+      "0x0131": "UpdateItemPackagePacket (c2s) - client requests item-package state (retainer item listings, bazaar). Sent via FUN_0075EA50 builder; bound to CharaBase._updateItemPackage Lua N-API per BCS-Y-0382/0388. Payload is u32 actorID + u32 packageId; client emits u8 packageId only (FUN_0075EA50).",
+      "0x0132": "ItemWorkUpdatePacket (c2s, tentative) - bound to ItemBase._updateWork (BCS-Y-0383). Builder FUN_0075EAC0.",
+      "note": "There is NO 0x012E c2s inventory packet despite older pcap-mining heuristics suggesting so. The 0x012E c2s opcode is EventUpdatePacket (event family). The earlier memory note 'c2s vocab maps to inv=0x012E' was a size-based heuristic from the pcap-opcode-evidence pass that has since been refined - the inventory-shaped 120-byte c2s payload on 0x012E is actually event-framed inventory operations (EventUpdate wraps a Lua-param stream that includes inventory verbs); the underlying transport is still the EventStart/EventUpdate generic frame per docs/client-architecture.md, '1.x combat is asymmetric'."
+    }
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "proposedId": "BCS-Y-0535",
+      "name": "InventoryDispatchBlock_FUN_004DC690_cases_0x146_to_0x16e",
+      "kind": "function_case_block",
+      "address": "0x004DC690",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/inventory_subsystem.json",
+        "%BCS_GHIDRA_PROJECTS%\\dispatcher_candidates_decomp.txt:258-454",
+        "BCS-Y-0279"
+      ],
+      "notes": "The 16-case inventory dispatch block inside the central s2c dispatcher FUN_004DC690. Maps inventory s2c opcodes 0x146, 0x148..0x156, 0x16d, 0x16e to handlers FUN_005764C0, FUN_00576560..FUN_00576B80, FUN_005763C0, FUN_00576430 respectively. NOTE: 0x147 InventorySetEnd has NO case in this block (the only inventory opcode missing). All other inventory opcodes are direct_handler pattern with the call signature (&param_2, iVar8 + 0x10) except 0x16e InventoryEndChange which uses (&param_2) only. See inventory_subsystem.json manifest for the full table including handler VAs, callee helpers, and per-opcode catalog status."
+    },
+    {
+      "proposedId": "BCS-Y-0536",
+      "name": "Pattern_E_0x0147_InventorySetEnd_Triple_Negative",
+      "kind": "open_question",
+      "address": "0x00000000",
+      "confidence": "confirmed_negative",
+      "sourceRefs": [
+        "manifests/inventory_subsystem.json",
+        "manifests/receiver_discovery.json",
+        "manifests/unmapped_payload_decoding.json",
+        "BCS-Y-0386"
+      ],
+      "notes": "Restates and re-verifies the Pattern E 'unrouted' classification of 0x0147 InventorySetEndPacket. Triple negative evidence: absent from FUN_004DC690 cases AND fallthrough goto block, absent from FUN_0058CCA0 third-router, absent from FUN_004D8860 event router. Only static mention is in FUN_0057ABB0 (an opcode-to-message-id translator at line 1177 returning enum-id 0x273), which is not a dispatcher. PCAP corpus contains 60 samples (sub-size 40, body 24); client silently discards via the switch default fall-through. Resolution requires live capture (deferred indefinitely per project direction)."
+    },
+    {
+      "proposedId": "BCS-Y-0537",
+      "name": "InventoryChangeCommit_FUN_0076BB00",
+      "kind": "function",
+      "address": "0x0076BB00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/inventory_subsystem.json",
+        "%BCS_GHIDRA_PROJECTS%\\batch2_callees_decomp.txt:212-309"
+      ],
+      "notes": "InventoryEndChange callee invoked by FUN_00576430 (0x016e handler). Coordinates the atomic-batch commit of the preceding InventoryList/InventoryRemove/LinkedItemList mutations: invokes FUN_0076BA10 (commit), FUN_007840D0 (post-commit fanout), FUN_00CC9330 (event firer - twice, with an FUN_007649A0 / FUN_0057AB60 detour for per-package finalize), and FUN_00768B10 (ItemPackage cleanup). Paired with InventoryBeginChange callee FUN_0076BAD0 (which calls FUN_0076B950 + FUN_0075F720 to enter the change state). This pair brackets all multi-record inventory mutations between 0x016d and 0x016e."
+    },
+    {
+      "proposedId": "BCS-Y-0538",
+      "name": "InventoryItemRecordDeserializer_FUN_0076B760",
+      "kind": "function",
+      "address": "0x0076B760",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/inventory_subsystem.json",
+        "%BCS_GHIDRA_PROJECTS%\\batch2_inventory_item_decomp.txt:45-69",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "notes": "Deserializes a 0x70-byte InventoryItemRecord from a packet payload pointer. Layout: u64 uniqueId @ +0, s32 quantity @ +8, u32 itemId @ +12, u16 slotOrLinkSlot @ +16, u8 dealingValue @ +18, u8 dealingMode @ +19, s32 dealingAttached1 @ +20, s32 dealingAttached2 @ +24, s32 dealingAttached3 @ +28, u8[4] tags @ +32, u8[4] tagValues @ +36, u8 quality @ +40, u8 modifierPresent @ +41, ItemModifierRecord[64] @ +42 (when modifierPresent != 0), 6 bytes reserved @ +106. Shared by InventoryListX01/X08/X16/X32 (and presumably X64) record-array deserializers FUN_00771540 / FUN_007713E0. See unmapped_payload_decoding.json#payloadStructs.s2c_0x0148.recordLayouts.InventoryItemRecord for full evidence trail."
+    }
+  ],
+  "key_findings": [
+    "Inventory s2c subsystem comprises 17 unique opcodes (0x0146..0x014e, 0x014f..0x0151 linked-item variants, 0x0152..0x0156 remove variants, 0x016d, 0x016e). All but 0x0147 use Pattern direct_handler_in_FUN_004DC690.",
+    "11 of 17 inventory opcodes have decomp-backed payload structs already in unmapped_payload_decoding.json (covered by BCS-Y-0393 / 0394 / 0395 / 0396).",
+    "The 8 remaining handler-known-but-payload-inferred opcodes (0x014c, 0x014f, 0x0150, 0x0151, 0x0153, 0x0154, 0x0155, 0x0156) follow the same X01/X08/X16/X32/X64 record-array pattern as the decoded ones; decomp work is mechanical but only 0x0153 has any pcap samples (2) to validate against.",
+    "Inventory dispatch is NOT a Receiver-class pattern. None of the 17 inventory opcodes appear in receiver_opcode_map_inbound.json, consistent with the architectural finding that 'remaining s2c opcodes do not use the Receiver-class pattern'.",
+    "Inventory data flow goes through the PlayerBase/MyPlayer storage vector at this+0x144 (4 buckets x 0x10-byte records, capacities 0x23/0x41/0x1a/0x04) per BCS-Y-0414 InventoryStorageItemHandleLane2. The Lua surface is Application::Lua::Script::Client::Control::ItemBase (20 reader N-APIs) and Application::Lua::Script::Client::Control::ItemManager (vtable VA 0x00FD7618 slot 1 fires _onUpdateItemPackage / _onUpdateTradingItem).",
+    "c2s inventory traffic uses opcode 0x0131 UpdateItemPackagePacket (NOT 0x012E as an outdated memory note claimed; 0x012E is the event-family EventUpdatePacket). The earlier 'inv=0x012E' heuristic from the pcap-opcode-evidence pass was based on a 120-byte payload size that turned out to be event-framed inventory operations carried over the generic EventStart/EventUpdate frame per docs/client-architecture.md, '1.x combat is asymmetric'.",
+    "InventoryBeginChange (0x016d) + InventoryEndChange (0x016e) bracket atomic-batch mutations. The Begin callee (FUN_0076BAD0) sets the change state; the End callee (FUN_0076BB00) invokes the commit + fanout + ItemPackage cleanup chain. InventorySetBegin (0x0146) + InventorySetEnd (0x0147) appear to be the per-container analog of the same bracketing, but only the Begin side is consumed - again pointing to 0x0147 as a vestigial / NOP-on-client opcode."
+  ],
+  "evidence_appendix": {
+    "ghidra_dumps": [
+      "%BCS_GHIDRA_PROJECTS%\\dispatcher_candidates_decomp.txt (FUN_004D8860, FUN_004DC690, FUN_0057ABB0, FUN_0058CCA0)",
+      "%BCS_GHIDRA_PROJECTS%\\fun_004dc690_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\fun_0058cca0_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch1_handlers_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch1_callees_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch1_deeper_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch1_unmapped_callees_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch2_callees_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch2_deeper_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch2_inventory_item_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch4_callees_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\batch4_deeper_decomp.txt"
+    ],
+    "manifests": [
+      "manifests/symbols.json (BCS-Y-0279, BCS-Y-0280, BCS-Y-0386, BCS-Y-0393, BCS-Y-0394, BCS-Y-0395, BCS-Y-0396, BCS-Y-0414, BCS-Y-0527)",
+      "manifests/unmapped_payload_decoding.json",
+      "manifests/receiver_discovery.json",
+      "manifests/unmapped_s2c_opcode_worklist.json",
+      "manifests/operation_opcode_map_outbound.json",
+      "manifests/receiver_opcode_map_inbound.json",
+      "manifests/data_dependency_catalog.json"
+    ],
+    "external_data": [
+      "xivl-opcodes:data/opcodes.json (inventory family at lines 3296..3700)",
+      "xivl-opcodes:data/vendor/captures/payload_layouts.json (s2c inventory entries)",
+      "xivl-opcodes:data/processor_dispatch.json (c2s 0x0131 UpdateItemPackage)"
+    ],
+    "docs": []
+  }
+}

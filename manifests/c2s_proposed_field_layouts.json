@@ -1,0 +1,131 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-18",
+  "pass": "layouts",
+  "source": "manifests/c2s_payload_schemas.json + xivl-opcodes:data/decomp_opcodes.json (0x0007 emitter evidence) + xivl-opcodes:data/opcodes.json",
+  "method": "Hand-curated semantic field layouts for the next 3 c2s opcodes with usable pcap sample counts (after the opcode-payload-schemas pass's 6 heaviest). All 3 yielded fixed 8-byte bodies. Layout structure inferred from per-byte entropy + u32 cardinality patterns, with high-byte clustering disambiguating actor-handles from selectors.",
+  "opcodeLayouts": [
+    {
+      "opcodeHex": "0x00cd",
+      "innerLen": 8,
+      "sampleCount": 118,
+      "blurb": "Set-target request. 8-byte body: target actor handle + target selector / kind.",
+      "scenarios": {
+        "party_battle_leve": 59,
+        "local_leve_complete": 6,
+        "war_quest_update2": 6,
+        "accept_leve": 5,
+        "accept_local_leve": 3,
+        "buy_square_maple_shield": 3,
+        "checkbed": 3,
+        "combat_autoattack": 3,
+        "combat_skills": 3,
+        "cutscene_book": 3,
+        "move_out_of_room": 3,
+        "quest_update": 3,
+        "repair_items": 3,
+        "sell_item": 3,
+        "small_talk_louisoix": 3,
+        "war_quest_update3": 3,
+        "accept_quest": 2,
+        "gather_wood": 2,
+        "war_quest_update1": 2
+      },
+      "layoutTotal": 8,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 4,
+          "type": "uint32_t",
+          "role": "targetActorHandle",
+          "value": "offsets 0..3: 30 unique u32 values across 118 samples; high-byte (offset 3) shows lower entropy than low bytes - consistent with 1.x actor-handle high-byte clustering (0x029b... known sample-player + a few NPC/peer ranges)"
+        },
+        {
+          "off": 4,
+          "size": 4,
+          "type": "uint32_t",
+          "role": "targetSelectorOrKind",
+          "value": "offsets 4..7: 16 unique u32 values across 118 samples; cardinality matches an enum/kind field (target-type selector: actor / location / NPC sub-target etc.)"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x00cc",
+      "innerLen": 8,
+      "sampleCount": 66,
+      "blurb": "Lock-target request. 8-byte body mirrors SetTarget shape: target actor handle + lock kind.",
+      "scenarios": {
+        "party_battle_leve": 28,
+        "local_leve_complete": 4,
+        "war_quest_update2": 4,
+        "accept_leve": 2,
+        "accept_local_leve": 2,
+        "accept_quest": 2,
+        "buy_square_maple_shield": 2,
+        "checkbed": 2,
+        "combat_autoattack": 2,
+        "combat_skills": 2,
+        "cutscene_book": 2,
+        "move_out_of_room": 2,
+        "quest_update": 2,
+        "repair_items": 2,
+        "sell_item": 2,
+        "small_talk_louisoix": 2,
+        "war_quest_update1": 2,
+        "war_quest_update3": 2
+      },
+      "layoutTotal": 8,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 4,
+          "type": "uint32_t",
+          "role": "targetActorHandle",
+          "value": "offsets 0..3: 27 unique u32 values across 66 samples; same high-byte clustering as 0x00CD"
+        },
+        {
+          "off": 4,
+          "size": 4,
+          "type": "uint32_t",
+          "role": "lockKindOrTargetType",
+          "value": "offsets 4..7: 10 unique u32 values across 66 samples - sister of 0x00CD's selector field"
+        }
+      ]
+    },
+    {
+      "opcodeHex": "0x0007",
+      "innerLen": 8,
+      "sampleCount": 24,
+      "blurb": "Map channel keepalive ping (BCS-Y-0327 emission evidence). 8-byte body: timestamp + param (often 0xFFFFFFFF).",
+      "scenarios": {
+        "login": 16,
+        "gridania_to_coerthas": 1,
+        "move_out_of_room": 1,
+        "party_battle_leve": 1,
+        "return_to_inn": 1,
+        "teleport_to_camp_nine_ivies": 1,
+        "teleport_to_camp_tranquil": 1,
+        "teleport_to_gridania": 1,
+        "war_quest_update2": 1
+      },
+      "layoutTotal": 8,
+      "proposedFieldLayout": [
+        {
+          "off": 0,
+          "size": 4,
+          "type": "uint32_t",
+          "role": "clientTimestampUnix",
+          "value": "offsets 0..3: 11 unique u32 values; offset 3 (MSB) is invariant 0x50 - matches Unix timestamps in the Dec 2012 capture range 0x50C66937..0x50C7XXXX. Decomp evidence (decomp_opcodes.json 0x0007): emitter writes `local_898 = timestamp` via __time64."
+        },
+        {
+          "off": 4,
+          "size": 4,
+          "type": "uint32_t",
+          "role": "paramOrSeed",
+          "value": "offsets 4..7: 16 unique values; per decomp evidence the dual-site emitter writes `local_894 = param / 0xFFFFFFFF`. FUN_00586F40 uses a real param value; FUN_00586FB0 fallback path uses 0xFFFFFFFF."
+        }
+      ]
+    }
+  ]
+}

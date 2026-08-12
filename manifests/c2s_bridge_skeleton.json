@@ -1,0 +1,2010 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-19",
+  "description": "the bridge-growth-and-ceiling pass c2s bridge skeleton. Inverse of the s2c bridge: rather than 'receiver writes X, Lua reader sees X', the c2s direction is 'Lua setter triggers emission of opcode Y'. This skeleton joins serverboundGap (the 40 unbound c2s opcodes) with pcap_validation observation counts and proposes candidate Lua N-API names by token overlap with each opcode's anchor from the outbound map, predominantly Bahamut opcode-enum names alongside local decomp anchors. Token matching is heuristic; each row is a hypothesis for decomp-based verification, not a confirmed binding.",
+  "method": "1. For each serverboundGap entry, tokenize implementationAnchor and decompAnchor (split CamelCase, drop generic suffixes like 'Packet'/'Handler'/'Opcode'/'Request'). 2. For each Lua name in lua_api_index, tokenize the same way. 3. Score Lua candidates by token overlap with the opcode anchor. 4. Tag each row with observed pcap count + capture witnesses.",
+  "totals": {
+    "serverboundGap": 41,
+    "observedInPcaps": 21,
+    "alreadyClassAttributed": 4,
+    "verifiedOutboundBindings": 9
+  },
+  "rows": [
+    {
+      "opcode": 202,
+      "opcodeHex": "0x00ca",
+      "name": "UpdatePlayerPositionPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::PositionUpdate",
+      "decompAnchor": "OP_RX_UPDATE_PLAYER_POSITION",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 16871,
+        "captures": [
+          "accept_leve.pcapng",
+          "accept_local_leve.pcapng",
+          "accept_quest.pcapng",
+          "action_and_traits.pcapng",
+          "add_str.pcapng",
+          "attributes.pcapng",
+          "battle_mode_passive_mode.pcapng",
+          "buy_square_maple_shield.pcapng",
+          "change_bodyarmor.pcapng",
+          "change_helm.pcapng",
+          "change_to_botanist.pcapng",
+          "chat_say.pcapng",
+          "chat_shout.pcapng",
+          "check_room_map.pcapng",
+          "checkbed.pcapng",
+          "coerthas_map.pcapng",
+          "combat_autoattack.pcapng",
+          "combat_skills.pcapng",
+          "cutscene_book.pcapng",
+          "emote_dance.pcapng",
+          "emote_kneel.pcapng",
+          "friendlist_search.pcapng",
+          "from_gridania_to_blackshroud.pcapng",
+          "gather_wood.pcapng",
+          "gear_changesoul.pcapng",
+          "gear_changeweapon.pcapng",
+          "gridania_map.pcapng",
+          "gridania_to_coerthas.pcapng",
+          "harvest.pcapng",
+          "idle_in_party.pcapng",
+          "idling.pcapng",
+          "inventory.pcapng",
+          "invite_join_party.pcapng",
+          "local_leve_complete.pcapng",
+          "login.pcapng",
+          "mount_unmount_chocobo.pcapng",
+          "move_around_gridania.pcapng",
+          "move_out_of_room.pcapng",
+          "moving_around_gridania.pcapng",
+          "open_gear_menu.pcapng",
+          "party_battle_leve.pcapng",
+          "quest_journal.pcapng",
+          "quest_update.pcapng",
+          "repair_items.pcapng",
+          "return_to_inn.pcapng",
+          "sell_item.pcapng",
+          "small_talk_louisoix.pcapng",
+          "switch_to_weaver.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update1.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": true,
+      "anchorTokens": [
+        "update",
+        "position"
+      ],
+      "candidateLuaApis": [
+        "_getPosition",
+        "_onUpdate",
+        "_setPosition",
+        "_updateList",
+        "_updateWork"
+      ],
+      "verification": {
+        "bcsyRef": "BCS-Y-0375",
+        "result": "verified_state_trigger",
+        "verifiedLuaApi": "CharaBase._setPosition",
+        "bindingKind": "outbound_state_trigger",
+        "confidence": "confirmed_state_trigger",
+        "directness": "Not a direct synchronous send. _setPosition posts/updates actor position state; the map/dirty emitters later serialize the current actor position into opcode 0x00ca.",
+        "emissionSites": [
+          "0x004DC690",
+          "0x00589030",
+          "0x0058E0C0"
+        ]
+      },
+      "confirmedBinding": "CharaBase._setPosition; CharaBase._setDirection",
+      "confirmedBcsy": "BCS-Y-0375; BCS-Y-0376",
+      "confirmedBindings": [
+        {
+          "luaApi": "CharaBase._setPosition",
+          "bcsyRef": "BCS-Y-0375"
+        },
+        {
+          "luaApi": "CharaBase._setDirection",
+          "bcsyRef": "BCS-Y-0376"
+        }
+      ],
+      "chokePointSweep": {
+        "bcsyRef": "BCS-Y-0376",
+        "result": "verified_state_trigger",
+        "confirmedLuaApis": [
+          "CharaBase._setPosition",
+          "CharaBase._setDirection"
+        ],
+        "newConfirmedLuaApis": [
+          "CharaBase._setDirection"
+        ],
+        "recordOpcodeCorrelation": [
+          {
+            "recordId": "0x24",
+            "scenePacketId": "0x39",
+            "outboundOpcode": "0x00ca",
+            "correlationKind": "state_correlation_not_direct_dispatch_table",
+            "evidence": "FUN_0075F120 posts record 0x24, and the known 0x00ca emitters serialize the same actor position/direction state."
+          },
+          {
+            "recordId": "0x25",
+            "scenePacketId": "0x3a",
+            "outboundOpcode": "0x00ca",
+            "correlationKind": "state_correlation_not_direct_dispatch_table",
+            "evidence": "FUN_0075F120 posts record 0x25, and the known 0x00ca emitters serialize the same actor position/direction state."
+          }
+        ],
+        "directness": "Scene-record posting is not a synchronous send. The confirmed Lua APIs post/update position/direction state; the 0x00ca emitters serialize actor+0x9c/+0xa4/+0xac later.",
+        "emissionSites": [
+          "0x004DC690",
+          "0x00589030",
+          "0x0058E0C0"
+        ]
+      },
+      "depthExtendedBfs": {
+        "bcsyRef": "BCS-Y-0377",
+        "result": "depth_flatline",
+        "depthSensitivity": {
+          "3": {
+            "luaApisReachingChokePoint": 8,
+            "confirmedStateTriggers": 2,
+            "newConfirmedOutboundBindings": 0,
+            "existingConfirmedOutboundBindings": 2,
+            "confidenceCounts": {
+              "confirmed_state_trigger": 2,
+              "state_trigger_unverified_emitter": 6
+            }
+          },
+          "5": {
+            "luaApisReachingChokePoint": 8,
+            "confirmedStateTriggers": 2,
+            "newConfirmedOutboundBindings": 0,
+            "existingConfirmedOutboundBindings": 2,
+            "confidenceCounts": {
+              "confirmed_state_trigger": 2,
+              "state_trigger_unverified_emitter": 6
+            }
+          },
+          "7": {
+            "luaApisReachingChokePoint": 8,
+            "confirmedStateTriggers": 2,
+            "newConfirmedOutboundBindings": 0,
+            "existingConfirmedOutboundBindings": 2,
+            "confidenceCounts": {
+              "confirmed_state_trigger": 2,
+              "state_trigger_unverified_emitter": 6
+            }
+          }
+        },
+        "newConfirmedOutboundBindings": 0,
+        "conclusion": "Depth is not the limiting factor for this choke-point method: reachability is 8 APIs at depth 3 and remains 8 at depths 5 and 7. The c2s bottleneck is structural emitter correlation, not BFS depth."
+      }
+    },
+    {
+      "opcode": 1,
+      "opcodeHex": "0x0001",
+      "name": "PingPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Ping",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 3371,
+        "captures": [
+          "accept_leve.pcapng",
+          "accept_local_leve.pcapng",
+          "accept_quest.pcapng",
+          "action_and_traits.pcapng",
+          "add_str.pcapng",
+          "attributes.pcapng",
+          "battle_mode_passive_mode.pcapng",
+          "buy_square_maple_shield.pcapng",
+          "change_bodyarmor.pcapng",
+          "change_helm.pcapng",
+          "change_to_botanist.pcapng",
+          "chat_say.pcapng",
+          "chat_shout.pcapng",
+          "check_room_map.pcapng",
+          "checkbed.pcapng",
+          "coerthas_map.pcapng",
+          "combat_autoattack.pcapng",
+          "combat_skills.pcapng",
+          "cutscene_book.pcapng",
+          "emote_dance.pcapng",
+          "emote_kneel.pcapng",
+          "friendlist_search.pcapng",
+          "from_gridania_to_blackshroud.pcapng",
+          "gather_wood.pcapng",
+          "gear_changesoul.pcapng",
+          "gear_changeweapon.pcapng",
+          "gridania_map.pcapng",
+          "gridania_to_coerthas.pcapng",
+          "harvest.pcapng",
+          "idle_in_party.pcapng",
+          "idling.pcapng",
+          "inventory.pcapng",
+          "invite_join_party.pcapng",
+          "local_leve_complete.pcapng",
+          "login.pcapng",
+          "mount_unmount_chocobo.pcapng",
+          "move_around_gridania.pcapng",
+          "move_out_of_room.pcapng",
+          "moving_around_gridania.pcapng",
+          "open_gear_menu.pcapng",
+          "party_battle_leve.pcapng",
+          "quest_journal.pcapng",
+          "quest_update.pcapng",
+          "repair_items.pcapng",
+          "return_to_inn.pcapng",
+          "sell_item.pcapng",
+          "small_talk_louisoix.pcapng",
+          "switch_to_weaver.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update1.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "ping"
+      ],
+      "candidateLuaApis": [],
+      "decompAnchor": null
+    },
+    {
+      "opcode": 307,
+      "opcodeHex": "0x0133",
+      "name": "GroupCreatedPacket",
+      "bucket": "WorldServerbound",
+      "implementationAnchor": "MapClientOpcode::GroupCreated",
+      "decompAnchor": "OP_RX_GROUP_CREATED",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 270,
+        "captures": [
+          "combat_autoattack.pcapng",
+          "from_gridania_to_blackshroud.pcapng",
+          "gather_wood.pcapng",
+          "gridania_to_coerthas.pcapng",
+          "invite_join_party.pcapng",
+          "local_leve_complete.pcapng",
+          "login.pcapng",
+          "move_out_of_room.pcapng",
+          "moving_around_gridania.pcapng",
+          "party_battle_leve.pcapng",
+          "return_to_inn.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "group",
+        "created"
+      ],
+      "candidateLuaApis": [
+        "_getGroup",
+        "_getAllGroup",
+        "_getGroupCurrent",
+        "_getOccupancyGroup",
+        "_onUpdateGroup"
+      ]
+    },
+    {
+      "opcode": 307,
+      "opcodeHex": "0x0133",
+      "name": "GroupCreatedPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::GroupCreated",
+      "decompAnchor": "OP_RX_GROUP_CREATED",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 270,
+        "captures": [
+          "combat_autoattack.pcapng",
+          "from_gridania_to_blackshroud.pcapng",
+          "gather_wood.pcapng",
+          "gridania_to_coerthas.pcapng",
+          "invite_join_party.pcapng",
+          "local_leve_complete.pcapng",
+          "login.pcapng",
+          "move_out_of_room.pcapng",
+          "moving_around_gridania.pcapng",
+          "party_battle_leve.pcapng",
+          "return_to_inn.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "group",
+        "created"
+      ],
+      "candidateLuaApis": [
+        "_getGroup",
+        "_getAllGroup",
+        "_getGroupCurrent",
+        "_getOccupancyGroup",
+        "_onUpdateGroup"
+      ]
+    },
+    {
+      "opcode": 302,
+      "opcodeHex": "0x012e",
+      "name": "EventUpdatePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EventUpdate",
+      "decompAnchor": "OP_RX_EVENT_UPDATE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 200,
+        "captures": [
+          "accept_leve.pcapng",
+          "accept_local_leve.pcapng",
+          "accept_quest.pcapng",
+          "add_str.pcapng",
+          "buy_square_maple_shield.pcapng",
+          "checkbed.pcapng",
+          "gather_wood.pcapng",
+          "harvest.pcapng",
+          "local_leve_complete.pcapng",
+          "move_out_of_room.pcapng",
+          "party_battle_leve.pcapng",
+          "quest_update.pcapng",
+          "repair_items.pcapng",
+          "return_to_inn.pcapng",
+          "sell_item.pcapng",
+          "small_talk_louisoix.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update1.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "event",
+        "update"
+      ],
+      "candidateLuaApis": [
+        "_onUpdate",
+        "_updateList",
+        "_updateWork",
+        "_getEventPriority",
+        "_isEventPlaying"
+      ]
+    },
+    {
+      "opcode": 301,
+      "opcodeHex": "0x012d",
+      "name": "EventStartPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EventStart",
+      "decompAnchor": "OP_RX_EVENT_START",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 126,
+        "captures": [
+          "accept_leve.pcapng",
+          "accept_local_leve.pcapng",
+          "accept_quest.pcapng",
+          "action_and_traits.pcapng",
+          "add_str.pcapng",
+          "battle_mode_passive_mode.pcapng",
+          "buy_square_maple_shield.pcapng",
+          "change_bodyarmor.pcapng",
+          "change_helm.pcapng",
+          "change_to_botanist.pcapng",
+          "checkbed.pcapng",
+          "combat_autoattack.pcapng",
+          "combat_skills.pcapng",
+          "emote_dance.pcapng",
+          "emote_kneel.pcapng",
+          "from_gridania_to_blackshroud.pcapng",
+          "gather_wood.pcapng",
+          "gear_changesoul.pcapng",
+          "gear_changeweapon.pcapng",
+          "gridania_to_coerthas.pcapng",
+          "harvest.pcapng",
+          "invite_join_party.pcapng",
+          "local_leve_complete.pcapng",
+          "mount_unmount_chocobo.pcapng",
+          "move_out_of_room.pcapng",
+          "party_battle_leve.pcapng",
+          "quest_journal.pcapng",
+          "quest_update.pcapng",
+          "repair_items.pcapng",
+          "return_to_inn.pcapng",
+          "sell_item.pcapng",
+          "small_talk_louisoix.pcapng",
+          "switch_to_weaver.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update1.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "event",
+        "start"
+      ],
+      "candidateLuaApis": [
+        "_getEventPriority",
+        "_isEventPlaying",
+        "_onCommandEvent",
+        "_onEmoteEvent",
+        "_onEventCancel"
+      ]
+    },
+    {
+      "opcode": 205,
+      "opcodeHex": "0x00cd",
+      "name": "SetTargetPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::SetTarget",
+      "decompAnchor": "OP_RX_SET_TARGET",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 118,
+        "captures": [
+          "accept_leve.pcapng",
+          "accept_local_leve.pcapng",
+          "accept_quest.pcapng",
+          "buy_square_maple_shield.pcapng",
+          "checkbed.pcapng",
+          "combat_autoattack.pcapng",
+          "combat_skills.pcapng",
+          "cutscene_book.pcapng",
+          "gather_wood.pcapng",
+          "local_leve_complete.pcapng",
+          "move_out_of_room.pcapng",
+          "party_battle_leve.pcapng",
+          "quest_update.pcapng",
+          "repair_items.pcapng",
+          "sell_item.pcapng",
+          "small_talk_louisoix.pcapng",
+          "war_quest_update1.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "target",
+        "set"
+      ],
+      "candidateLuaApis": [
+        "_setLockonTarget",
+        "_setTargetCharacter",
+        "_setCurrentTargetCursor",
+        "_setTargetCursorImage",
+        "_setTargetNearestCharacter"
+      ],
+      "confirmedBindings": [
+        {
+          "luaApi": "DesktopWidget._setTargetCharacter",
+          "bcsyRef": "BCS-Y-0382"
+        },
+        {
+          "luaApi": "DesktopWidget._setTargetCharacterByDisplayName",
+          "bcsyRef": "BCS-Y-0382"
+        },
+        {
+          "luaApi": "DesktopWidget._setTargetCursorImage",
+          "bcsyRef": "BCS-Y-0382"
+        },
+        {
+          "luaApi": "WorldMaster._cancelAimCameraTutorial",
+          "bcsyRef": "BCS-Y-0382"
+        }
+      ],
+      "reverseBfs": {
+        "bcsyRef": "BCS-Y-0382",
+        "result": "verified_direct_emit",
+        "confirmedLuaApis": [
+          "DesktopWidget._setTargetCharacter",
+          "DesktopWidget._setTargetCharacterByDisplayName",
+          "DesktopWidget._setTargetCursorImage",
+          "WorldMaster._cancelAimCameraTutorial"
+        ],
+        "bindingKind": "direct_emit"
+      }
+    },
+    {
+      "opcode": 204,
+      "opcodeHex": "0x00cc",
+      "name": "LockTargetPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::LockTarget",
+      "decompAnchor": "OP_RX_LOCK_TARGET",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 66,
+        "captures": [
+          "accept_leve.pcapng",
+          "accept_local_leve.pcapng",
+          "accept_quest.pcapng",
+          "buy_square_maple_shield.pcapng",
+          "checkbed.pcapng",
+          "combat_autoattack.pcapng",
+          "combat_skills.pcapng",
+          "cutscene_book.pcapng",
+          "local_leve_complete.pcapng",
+          "move_out_of_room.pcapng",
+          "party_battle_leve.pcapng",
+          "quest_update.pcapng",
+          "repair_items.pcapng",
+          "sell_item.pcapng",
+          "small_talk_louisoix.pcapng",
+          "war_quest_update1.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "target",
+        "lock"
+      ],
+      "candidateLuaApis": [
+        "_lockTargetCursorControl",
+        "_getLockonTarget",
+        "_getTargetCharacter",
+        "_initTargetCursors",
+        "_lockLockonControl"
+      ],
+      "confirmedBindings": [
+        {
+          "luaApi": "WorldMaster._cancelAimCameraTutorial",
+          "bcsyRef": "BCS-Y-0382"
+        }
+      ],
+      "reverseBfs": {
+        "bcsyRef": "BCS-Y-0382",
+        "result": "verified_direct_emit",
+        "confirmedLuaApis": [
+          "WorldMaster._cancelAimCameraTutorial"
+        ],
+        "bindingKind": "direct_emit"
+      }
+    },
+    {
+      "opcode": 303,
+      "opcodeHex": "0x012f",
+      "name": "ParameterDataRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::ParameterDataRequest",
+      "decompAnchor": "OP_RX_DATA_REQUEST",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 44,
+        "captures": [
+          "action_and_traits.pcapng",
+          "attributes.pcapng",
+          "change_bodyarmor.pcapng",
+          "change_helm.pcapng",
+          "change_to_botanist.pcapng",
+          "friendlist_search.pcapng",
+          "gear_changesoul.pcapng",
+          "gear_changeweapon.pcapng",
+          "inventory.pcapng",
+          "open_gear_menu.pcapng",
+          "switch_to_weaver.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "data",
+        "parameter"
+      ],
+      "candidateLuaApis": [
+        "_getData",
+        "_bindSpreadSheetData",
+        "_getUserMacroData",
+        "_loadTextDataPermanently",
+        "_onReceiveDataPacket"
+      ]
+    },
+    {
+      "opcode": 7,
+      "opcodeHex": "0x0007",
+      "name": "ZoneInCompletePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::ZoneInComplete",
+      "decompAnchor": "OP_RX_ZONE_IN_COMPLETE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 24,
+        "captures": [
+          "gridania_to_coerthas.pcapng",
+          "login.pcapng",
+          "move_out_of_room.pcapng",
+          "party_battle_leve.pcapng",
+          "return_to_inn.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update2.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "complete",
+        "zone",
+        "in"
+      ],
+      "candidateLuaApis": [
+        "_getZoneName",
+        "_createWidgetInWidgetContainer",
+        "_isAccessibleInServer",
+        "_onJobQuestComplete",
+        "_cancelJobQuestCompleteTriple"
+      ]
+    },
+    {
+      "opcode": 201,
+      "opcodeHex": "0x00c9",
+      "name": "PartyChatMessagePacket",
+      "bucket": "WorldServerbound",
+      "implementationAnchor": "WorldClientOpcode::PartyChat",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 11,
+        "captures": [
+          "party_battle_leve.pcapng",
+          "war_quest_update2.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "chat",
+        "party"
+      ],
+      "candidateLuaApis": [
+        "_onChatMessage",
+        "_getLocalizedDisplayNameForChat"
+      ],
+      "decompAnchor": null
+    },
+    {
+      "opcode": 3,
+      "opcodeHex": "0x0003",
+      "name": "ChatMessagePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Chat",
+      "decompAnchor": "OP_RX_CHAT_MESSAGE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 2,
+        "captures": [
+          "chat_say.pcapng",
+          "chat_shout.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": true,
+      "anchorTokens": [
+        "chat",
+        "message"
+      ],
+      "candidateLuaApis": [
+        "_onChatMessage",
+        "_getLocalizedDisplayNameForChat"
+      ]
+    },
+    {
+      "opcode": 206,
+      "opcodeHex": "0x00ce",
+      "name": "_0x00CEHandler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Opaque0xCE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 2,
+        "captures": [
+          "cutscene_book.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "0",
+        "opaque",
+        "ce",
+        "x"
+      ],
+      "candidateLuaApis": [
+        "_onUpdateDisplayName_paired_FUN_00759FD0"
+      ],
+      "decompAnchor": null
+    },
+    {
+      "opcode": 463,
+      "opcodeHex": "0x01cf",
+      "name": "_0x01CFHandler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FriendStatusRequest",
+      "decompAnchor": "OP_RX_FRIEND_STATUS",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 2,
+        "captures": [
+          "friendlist_search.pcapng",
+          "invite_join_party.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "friend",
+        "status"
+      ],
+      "candidateLuaApis": [
+        "_getSubStatStatus",
+        "_onChangeSubStatStatus",
+        "_onChangeSubStatStatus_FUN_0075C490"
+      ]
+    },
+    {
+      "opcode": 2,
+      "opcodeHex": "0x0002",
+      "name": "_0x0002Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Opaque0x02",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 1,
+        "captures": [
+          "login.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "0",
+        "opaque",
+        "02",
+        "x"
+      ],
+      "candidateLuaApis": [
+        "_onUpdateDisplayName_paired_FUN_00759FD0"
+      ],
+      "decompAnchor": null
+    },
+    {
+      "opcode": 6,
+      "opcodeHex": "0x0006",
+      "name": "_0x0006Handler",
+      "bucket": "WorldServerbound",
+      "implementationAnchor": "WorldClientOpcode::Login",
+      "decompAnchor": "OP_RX_LANGUAGE_CODE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 1,
+        "captures": [
+          "login.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": true,
+      "anchorTokens": [
+        "login",
+        "code"
+      ],
+      "candidateLuaApis": [
+        "_onLoginEvent"
+      ]
+    },
+    {
+      "opcode": 6,
+      "opcodeHex": "0x0006",
+      "name": "LangaugeCodePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::Login",
+      "decompAnchor": "OP_RX_LANGUAGE_CODE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 1,
+        "captures": [
+          "login.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": true,
+      "anchorTokens": [
+        "login",
+        "code"
+      ],
+      "candidateLuaApis": [
+        "_onLoginEvent"
+      ]
+    },
+    {
+      "opcode": 459,
+      "opcodeHex": "0x01cb",
+      "name": "_0x01CBHandler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::BlacklistRequest",
+      "decompAnchor": "OP_RX_BLACKLIST_REQUEST",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 1,
+        "captures": [
+          "login.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "blacklist"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 462,
+      "opcodeHex": "0x01ce",
+      "name": "_0x01CEHandler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FriendlistRequest",
+      "decompAnchor": "OP_RX_FRIENDLIST_REQUEST",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 1,
+        "captures": [
+          "login.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "friendlist"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 467,
+      "opcodeHex": "0x01d3",
+      "name": "_0x01D3Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::StartGMTicketRequest",
+      "decompAnchor": "OP_RX_GM_TICKET_STATE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 1,
+        "captures": [
+          "login.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "gm",
+        "ticket",
+        "start",
+        "state"
+      ],
+      "candidateLuaApis": [
+        "_getGMRank"
+      ]
+    },
+    {
+      "opcode": 477,
+      "opcodeHex": "0x01dd",
+      "name": "_0x01DD",
+      "bucket": "MapServerbound",
+      "confidence": "pcap_observed",
+      "observedInPcaps": {
+        "count": 1,
+        "captures": [
+          "friendlist_search.pcapng"
+        ]
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [],
+      "candidateLuaApis": [],
+      "implementationAnchor": null,
+      "decompAnchor": null
+    },
+    {
+      "opcode": 207,
+      "opcodeHex": "0x00cf",
+      "name": "CountdownRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::CountdownRequest",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "countdown"
+      ],
+      "candidateLuaApis": [],
+      "decompAnchor": null
+    },
+    {
+      "opcode": 305,
+      "opcodeHex": "0x0131",
+      "name": "UpdateItemPackagePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::ItemPackageRequest",
+      "decompAnchor": "OP_RX_ITEM_PACKAGE_REQUEST",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "package",
+        "item"
+      ],
+      "candidateLuaApis": [
+        "_hasItemPackage",
+        "_getItemPackageCapacity",
+        "_onUpdateItemPackage",
+        "_getItemPackageFreeSpace",
+        "_getItem"
+      ],
+      "confirmedBindings": [
+        {
+          "luaApi": "CharaBase._updateItemPackage",
+          "bcsyRef": "BCS-Y-0382"
+        }
+      ],
+      "reverseBfs": {
+        "bcsyRef": "BCS-Y-0382",
+        "result": "verified_direct_emit",
+        "confirmedLuaApis": [
+          "CharaBase._updateItemPackage"
+        ],
+        "bindingKind": "direct_emit"
+      }
+    },
+    {
+      "opcode": 306,
+      "opcodeHex": "0x0132",
+      "name": "ItemWorkUpdatePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "ItemWorkUpdatePacket",
+      "decompAnchor": "FUN_0075EAC0",
+      "confidence": "tentative",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "item",
+        "work",
+        "update"
+      ],
+      "candidateLuaApis": [
+        "_updateWork",
+        "_onUpdateWork",
+        "_getSpecialEventWork"
+      ],
+      "confirmedBindings": [
+        {
+          "luaApi": "ItemBase._updateWork",
+          "bcsyRef": "BCS-Y-0383"
+        }
+      ],
+      "catalogGap0132": {
+        "bcsyRef": "BCS-Y-0383",
+        "result": "verified_direct_emit_after_catalog_recovery",
+        "confirmedLuaApis": [
+          "ItemBase._updateWork"
+        ],
+        "bindingKind": "direct_emit"
+      }
+    },
+    {
+      "opcode": 309,
+      "opcodeHex": "0x0135",
+      "name": "AchievementProgressRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::AchievementProgressRequest",
+      "decompAnchor": "OP_RX_ACHIEVEMENT_PROGRESS",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "achievement",
+        "progress"
+      ],
+      "candidateLuaApis": [
+        "_getAchievement",
+        "_getAchievementPoint",
+        "_getAchievementRate",
+        "_getAchievementTitle",
+        "_hasAchievementItem"
+      ]
+    },
+    {
+      "opcode": 451,
+      "opcodeHex": "0x01c3",
+      "name": "StartRecruitingRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::StartRecruitingRequest",
+      "decompAnchor": "OP_RX_START_RECRUITING",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "recruiting",
+        "start"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 452,
+      "opcodeHex": "0x01c4",
+      "name": "_0x01C4Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EndRecruitingRequest",
+      "decompAnchor": "OP_RX_END_RECRUITING",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "recruiting",
+        "end"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 453,
+      "opcodeHex": "0x01c5",
+      "name": "_0x01C5Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruiterStateRequest",
+      "decompAnchor": "OP_RX_RECRUITER_STATE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "recruiter",
+        "state"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 454,
+      "opcodeHex": "0x01c6",
+      "name": "_0x01C6Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruitingAccepted",
+      "decompAnchor": "OP_RX_RECRUITING_ACCEPTED",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "recruiting",
+        "accepted"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 455,
+      "opcodeHex": "0x01c7",
+      "name": "RecruitmentSearchRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruitmentSearchRequest",
+      "decompAnchor": "OP_RX_RECRUITING_SEARCH",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "recruitment",
+        "search"
+      ],
+      "candidateLuaApis": [
+        "_waitForItemSearchWidget"
+      ]
+    },
+    {
+      "opcode": 456,
+      "opcodeHex": "0x01c8",
+      "name": "RecruitmentDetailsRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RecruitmentDetailsRequest",
+      "decompAnchor": "OP_RX_RECRUITING_DETAILS",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "recruitment",
+        "details"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 457,
+      "opcodeHex": "0x01c9",
+      "name": "AddRemoveSocialPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::AddBlacklist",
+      "decompAnchor": "OP_RX_BLACKLIST_ADD",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "add",
+        "blacklist"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 458,
+      "opcodeHex": "0x01ca",
+      "name": "AddRemoveSocialPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RemoveBlacklist",
+      "decompAnchor": "OP_RX_BLACKLIST_REMOVE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "blacklist",
+        "remove"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 460,
+      "opcodeHex": "0x01cc",
+      "name": "AddRemoveSocialPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::AddFriendlist",
+      "decompAnchor": "OP_RX_FRIENDLIST_ADD",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "friendlist",
+        "add"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 461,
+      "opcodeHex": "0x01cd",
+      "name": "AddRemoveSocialPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::RemoveFriendlist",
+      "decompAnchor": "OP_RX_FRIENDLIST_REMOVE",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "friendlist",
+        "remove"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 464,
+      "opcodeHex": "0x01d0",
+      "name": "FaqListRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FaqListRequest",
+      "decompAnchor": "OP_RX_FAQ_LIST_REQUEST",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "list",
+        "faq"
+      ],
+      "candidateLuaApis": [
+        "_updateList",
+        "_clearAllList",
+        "_getListProperty",
+        "_setListProperty",
+        "_getAchievementRateList"
+      ]
+    },
+    {
+      "opcode": 465,
+      "opcodeHex": "0x01d1",
+      "name": "FaqBodyRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::FaqBodyRequest",
+      "decompAnchor": "OP_RX_FAQ_BODY_REQUEST",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "faq",
+        "body"
+      ],
+      "candidateLuaApis": []
+    },
+    {
+      "opcode": 466,
+      "opcodeHex": "0x01d2",
+      "name": "GMTicketIssuesRequestPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::GMTicketIssuesRequest",
+      "decompAnchor": "OP_RX_SUPPORT_ISSUE_REQUEST",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "issues",
+        "ticket",
+        "gm"
+      ],
+      "candidateLuaApis": [
+        "_getGMRank"
+      ]
+    },
+    {
+      "opcode": 468,
+      "opcodeHex": "0x01d4",
+      "name": "_0x01D4Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::GMTicketRequest",
+      "decompAnchor": "OP_RX_GM_TICKET_BODY",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "ticket",
+        "gm",
+        "body"
+      ],
+      "candidateLuaApis": [
+        "_getGMRank"
+      ]
+    },
+    {
+      "opcode": 469,
+      "opcodeHex": "0x01d5",
+      "name": "GMSupportTicketPacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::GMSupportTicket",
+      "decompAnchor": "OP_RX_GM_TICKET_SEND",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "support",
+        "ticket",
+        "gm",
+        "send"
+      ],
+      "candidateLuaApis": [
+        "_getGMRank"
+      ]
+    },
+    {
+      "opcode": 470,
+      "opcodeHex": "0x01d6",
+      "name": "_0x01D6Handler",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "MapClientOpcode::EndGMTicketRequest",
+      "decompAnchor": "OP_RX_GM_TICKET_END",
+      "confidence": "implemented",
+      "observedInPcaps": {
+        "count": 0,
+        "captures": []
+      },
+      "alreadyClassAttributed": false,
+      "anchorTokens": [
+        "gm",
+        "ticket",
+        "end"
+      ],
+      "candidateLuaApis": [
+        "_getGMRank"
+      ]
+    }
+  ],
+  "nextSteps": [
+    "Expanded reverse-BFS found no additional matches at the configured entry points."
+  ],
+  "positionUpdateVerification": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0375",
+    "targetOpcode": "0x00ca",
+    "targetName": "UpdatePlayerPositionPacket",
+    "targetChannel": "MapServerbound",
+    "result": "confirmed_state_trigger",
+    "verifiedLuaApi": "CharaBase._setPosition",
+    "bindingKind": "outbound_state_trigger",
+    "outboundOpcodeBindingsAdded": 1,
+    "directnessNote": "_setPosition does not directly call the send routine; it updates/posts position state consumed by the map/dirty 0x00ca emitters.",
+    "decompSources": [
+      "%BCS_GHIDRA_PROJECTS%\\position_update_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\position_dirty_helpers_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\position_scene_packet_helpers_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\actor_slot24_vtable.txt",
+      "%BCS_GHIDRA_PROJECTS%\\actor_slot24_and_movement_dispatch_decomp.txt"
+    ],
+    "emissionSites": [
+      {
+        "siteVa": "0x004DC690",
+        "siteName": "FUN_004dc690",
+        "recordKind": "helper-built",
+        "path": "map dispatcher case 7",
+        "positionSource": "current actor pointer at scene+0x17838; reads actor+0x9c/+0xa4/+0xac",
+        "packetBuilder": "FUN_004DD620",
+        "sendPath": "FUN_004E0240(..., 0x00ca, 0) -> FUN_00DAE010",
+        "evidence": "Reads the current actor from param_1+0x17838, copies position-like fields at actor+0x9c/+0xa4/+0xac, calls FUN_004DD620, then sends the built record through FUN_004E0240 with opcode 0x00ca."
+      },
+      {
+        "siteVa": "0x00589030",
+        "siteName": "FUN_00589030",
+        "recordKind": "stack-built",
+        "path": "dirty-gated actor movement flush",
+        "positionSource": "actor+0x9c/+0xa4/+0xac when actor+0xe8 has bit 0x40 set",
+        "packetBuilder": "inline stack record",
+        "sendPath": "FUN_004D6D10 -> FUN_004E0240(..., 0x00ca, 0) -> FUN_00DAE010",
+        "evidence": "Checks actor+0xe8 bit 0x40, clears it, copies actor+0x9c/+0xa4/+0xac, writes opcode 0x00ca and size 0x30 into a stack record, then routes through FUN_004D6D10."
+      },
+      {
+        "siteVa": "0x0058E0C0",
+        "siteName": "FUN_0058e0c0",
+        "recordKind": "helper-built",
+        "path": "movement/property case 0x51",
+        "positionSource": "actor+0x9c/+0xa4/+0xac",
+        "packetBuilder": "FUN_004DD620",
+        "sendPath": "FUN_004D6D10 -> FUN_004E0240(..., 0x00ca, 0) -> FUN_00DAE010",
+        "evidence": "Case 0x51 copies actor+0x9c/+0xa4/+0xac, calls FUN_004DD620, and routes the resulting 0x00ca record through FUN_004D6D10."
+      }
+    ]
+  },
+  "sceneRecordChokePointSweep": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0376",
+    "targetChokePoint": {
+      "va": "0x004D7980",
+      "name": "FUN_004d7980",
+      "scenePacketIdTransform": "scenePacketId = recordId + 0x15 in FUN_004EC080"
+    },
+    "callerFunctionsFound": 190,
+    "sceneRecordPostCalls": 246,
+    "luaApisReachingChokePoint": 2,
+    "knownEmitterSitesMapped": 3,
+    "recordOpcodeCorrelationsMapped": 2,
+    "existingOutboundBindingsCorroborated": 1,
+    "outboundOpcodeBindingsAdded": 1,
+    "newConfirmedBindings": [
+      "CharaBase._setDirection -> 0x00ca"
+    ],
+    "negativeFinding": "The three known 0x00ca emitters do not expose a generic Application::Scene::ScenePacket record_id -> outbound opcode switch table. FUN_004DC690 switches on inbound/network packet opcode fields, while FUN_00589030 and FUN_0058E0C0 emit from actor dirty/movement state. The scripted pass can therefore promote only the position/direction state path already correlated through FUN_0075F120.",
+    "findingsManifest": "manifests\\scene_record_choke_point.json"
+  },
+  "depthExtendedSceneRecordBfs": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0377",
+    "targetChokePoint": {
+      "va": "0x004D7980",
+      "name": "FUN_004d7980",
+      "scenePacketIdTransform": "scenePacketId = recordId + 0x15 in FUN_004EC080"
+    },
+    "method": "Re-ran the scene-record-choke-point pass scene-record extractor with max BFS depth 7 and caller-list edges parsed from Ghidra decomp sections; compared depths 3, 5, and 7.",
+    "callerFunctionsFound": 190,
+    "sceneRecordPostCalls": 246,
+    "maxBfsDepth": 7,
+    "callerListEdgesAdded": 296,
+    "depthSensitivity": {
+      "3": {
+        "luaApisReachingChokePoint": 8,
+        "confirmedStateTriggers": 2,
+        "newConfirmedOutboundBindings": 0,
+        "existingConfirmedOutboundBindings": 2,
+        "confidenceCounts": {
+          "confirmed_state_trigger": 2,
+          "state_trigger_unverified_emitter": 6
+        }
+      },
+      "5": {
+        "luaApisReachingChokePoint": 8,
+        "confirmedStateTriggers": 2,
+        "newConfirmedOutboundBindings": 0,
+        "existingConfirmedOutboundBindings": 2,
+        "confidenceCounts": {
+          "confirmed_state_trigger": 2,
+          "state_trigger_unverified_emitter": 6
+        }
+      },
+      "7": {
+        "luaApisReachingChokePoint": 8,
+        "confirmedStateTriggers": 2,
+        "newConfirmedOutboundBindings": 0,
+        "existingConfirmedOutboundBindings": 2,
+        "confidenceCounts": {
+          "confirmed_state_trigger": 2,
+          "state_trigger_unverified_emitter": 6
+        }
+      }
+    },
+    "luaApisAtDepth7": [
+      "CharaBase._setPosition",
+      "CharaBase._setDirection",
+      "CharaBase._setFloatingOffset",
+      "CharaBase._setGroundOn",
+      "CharaBase._turnDir",
+      "CharaBase._turnClientDir",
+      "CharaBase._turnBack",
+      "DesktopWidget._initTargetCursors"
+    ],
+    "unverifiedLuaApisAtDepth7": [
+      "CharaBase._setFloatingOffset",
+      "CharaBase._setGroundOn",
+      "CharaBase._turnDir",
+      "CharaBase._turnClientDir",
+      "CharaBase._turnBack",
+      "DesktopWidget._initTargetCursors"
+    ],
+    "confirmedStateTriggersAtDepth7": 2,
+    "newOutboundOpcodeBindingsAdded": 0,
+    "conclusion": "Depth is not the limiting factor for this choke-point method: reachability is 8 APIs at depth 3 and remains 8 at depths 5 and 7. The c2s bottleneck is structural emitter correlation, not BFS depth.",
+    "findingsManifest": "manifests\\scene_record_depth_bfs.json"
+  },
+  "recordIdEmitterTrace": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0378",
+    "method": "For each the scene-record-depth-bfs pass state_trigger_unverified_emitter row, preserve the Lua-to-FUN_004D7980 path, record id, and transformed scene-packet id; then compare that scene-packet id against the case sets in the three known 0x00ca emitter decompilations.",
+    "targetApis": [
+      "CharaBase._setFloatingOffset",
+      "CharaBase._setGroundOn",
+      "CharaBase._turnDir",
+      "CharaBase._turnClientDir",
+      "CharaBase._turnBack",
+      "DesktopWidget._initTargetCursors"
+    ],
+    "recordRoutes": [
+      {
+        "luaApi": "CharaBase._setFloatingOffset",
+        "recordIds": [
+          "0x26"
+        ],
+        "scenePacketIds": [
+          "0x3b"
+        ],
+        "reachedCallerVa": "0x00588360",
+        "verdict": "no_known_emitter_route",
+        "callerStateWriteHints": []
+      },
+      {
+        "luaApi": "CharaBase._setGroundOn",
+        "recordIds": [
+          "0x12"
+        ],
+        "scenePacketIds": [
+          "0x27"
+        ],
+        "reachedCallerVa": "0x00586750",
+        "verdict": "no_known_emitter_route",
+        "callerStateWriteHints": []
+      },
+      {
+        "luaApi": "CharaBase._turnDir",
+        "recordIds": [
+          "0x32"
+        ],
+        "scenePacketIds": [
+          "0x47"
+        ],
+        "reachedCallerVa": "0x00587D40",
+        "verdict": "no_known_emitter_route",
+        "callerStateWriteHints": [
+          "actor_or_scene_flags_0x26d",
+          "position_storage_0xac"
+        ]
+      },
+      {
+        "luaApi": "CharaBase._turnClientDir",
+        "recordIds": [
+          "0x32"
+        ],
+        "scenePacketIds": [
+          "0x47"
+        ],
+        "reachedCallerVa": "0x00587D40",
+        "verdict": "no_known_emitter_route",
+        "callerStateWriteHints": [
+          "actor_or_scene_flags_0x26d",
+          "position_storage_0xac"
+        ]
+      },
+      {
+        "luaApi": "CharaBase._turnBack",
+        "recordIds": [
+          "0x33"
+        ],
+        "scenePacketIds": [
+          "0x48"
+        ],
+        "reachedCallerVa": "0x00585EC0",
+        "verdict": "no_known_emitter_route",
+        "callerStateWriteHints": [
+          "actor_or_scene_flags_0x26d"
+        ]
+      },
+      {
+        "luaApi": "DesktopWidget._initTargetCursors",
+        "recordIds": [
+          "0x00"
+        ],
+        "scenePacketIds": [
+          "0x15"
+        ],
+        "reachedCallerVa": "0x0075EE70",
+        "verdict": "no_known_emitter_route",
+        "callerStateWriteHints": []
+      }
+    ],
+    "knownEmittersChecked": 3,
+    "newOutboundOpcodeBindings": 0,
+    "negativeFindings": 6,
+    "conclusion": "The six the scene-record-depth-bfs pass unverified state-trigger candidates do not route through the known 0x00ca emitters. FUN_004D7980 is exhausted for the currently mapped emitter family.",
+    "findingsManifest": "manifests\\record_id_emitter_trace.json"
+  },
+  "siblingChokePointDiscovery": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0379",
+    "method": "Dumped all callers of FUN_004EC080, decompiled the 27 unique caller functions, parsed ScenePacket constructor arguments, and BFS-tested Control-class Lua N-API reachability to each non-FUN_004D7980 caller at depth <= 7.",
+    "stats": {
+      "ec080UniqueCallers": 27,
+      "siblingCandidates": 26,
+      "luaReachableSiblingCandidates": 1,
+      "luaApisReachingSiblingCandidates": 1,
+      "newOutboundOpcodeBindings": 0,
+      "topCandidatesEvaluated": 2
+    },
+    "selectedCandidates": [
+      {
+        "candidateVa": "0x004D7890",
+        "candidateName": "FUN_004d7890",
+        "callerCountFromDecomp": 4,
+        "literalScenePacketIds": [
+          "0x10",
+          "0x11"
+        ],
+        "luaReachability": [
+          {
+            "luaApi": "CharaBase._setVisible",
+            "depth": 2,
+            "path": [
+              "0x006E41E0",
+              "0x0075C3C0",
+              "0x004D7890"
+            ]
+          }
+        ],
+        "routeVerdictCounts": {
+          "handled_no_outbound_send": 2,
+          "not_handled": 4
+        }
+      },
+      {
+        "candidateVa": "0x004DB6A0",
+        "candidateName": "FUN_004db6a0",
+        "callerCountFromDecomp": 67,
+        "literalScenePacketIds": [
+          "0x0e"
+        ],
+        "luaReachability": [],
+        "routeVerdictCounts": {}
+      }
+    ],
+    "newOutboundOpcodeBindings": 0,
+    "negativeFindings": [
+      "Only one Lua API reached a non-FUN_004D7980 ScenePacket constructor: CharaBase._setVisible -> FUN_004D7890.",
+      "FUN_004D7890 posts scene packet ids 0x10 and 0x11; the known map dispatcher handles them without a packet send helper in those cases.",
+      "No sibling FUN_004EC080 caller exposed a direct FUN_004DD620/FUN_004D6D10/FUN_004E0240/FUN_00DAE010 send path from a Lua N-API."
+    ],
+    "conclusion": "Sibling ScenePacket choke-points have the same low c2s yield profile as FUN_004D7980: one Lua-reachable local scene-state update and zero new outbound opcode bindings.",
+    "findingsManifest": "manifests\\sibling_choke_points.json"
+  },
+  "directEmissionMining": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0380",
+    "method": "Built a forward call graph from the Control-class recursive N-API corpus and reusable Ghidra decomp dumps, then BFS-tested every impl-bearing Control-class Lua N-API at depth <= 5 for packet builders, send helpers, or terminal wire forwarders.",
+    "stats": {
+      "luaImplsScanned": 362,
+      "decompSectionsParsed": 254,
+      "graphNodes": 840,
+      "helperTargets": 10,
+      "luaImplsReachingSendHelpers": 1,
+      "confirmedDirectEmitBindings": 1,
+      "newOutboundOpcodeBindings": 1
+    },
+    "helperTargets": {
+      "0x004DD620": "FUN_004dd620 packet builder",
+      "0x004E0240": "FUN_004e0240 zone send gate",
+      "0x00DAE010": "FUN_00dae010 zone wire forwarder",
+      "0x00DB3E30": "FUN_00db3e30 chat/world wire forwarder",
+      "0x004DF810": "FUN_004df810 world record builder",
+      "0x004E3750": "FUN_004e3750 world send helper",
+      "0x004C7150": "FUN_004c7150 map passthrough helper"
+    },
+    "newConfirmedBindings": [
+      {
+        "luaNameClass": "CharaBase",
+        "luaName": "_updateGroup",
+        "implVa": "0x006E42E0",
+        "registrationVa": "0x0072F1C0",
+        "path": [
+          "0x006E42E0",
+          "0x0075E860",
+          "0x004D6D30",
+          "0x004E0240"
+        ],
+        "opcode": "0x0130",
+        "size": "0x20",
+        "emitterVa": "0x0075E860",
+        "emitterName": "FUN_0075e860",
+        "sendThunk": "FUN_004d6d30",
+        "confidence": "confirmed_direct_emit"
+      }
+    ],
+    "negativeFindings": [
+      "361 impl-bearing Control-class Lua N-APIs did not reach any configured send helper at depth <= 5.",
+      "The direct-emission pass found one Lua trigger outside the bridge-growth-and-ceiling serverboundGap skeleton: CharaBase._updateGroup emits MapServerbound opcode 0x0130."
+    ],
+    "conclusion": "Direct-emission mining produced one new c2s Lua binding. CharaBase._updateGroup reaches FUN_0075E860, which builds a stack record with opcode 0x0130 and size 0x20, then routes through FUN_004D6D30 to the existing zone send path.",
+    "findingsManifest": "manifests\\direct_emission.json",
+    "confirmedOutsideSkeleton": [
+      {
+        "luaApi": "CharaBase._updateGroup",
+        "opcode": "0x0130",
+        "reason": "Opcode 0x0130 was already mapped by lua-name-to-opcode-bridge-open and was not one of the bridge-growth-and-ceiling serverboundGap rows."
+      }
+    ]
+  },
+  "depthExtendedDirectEmission": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0381",
+    "method": "Re-ran the direct-emission pass direct-emission mining over the same Control-class recursive N-API corpus and Ghidra decomp graph, comparing max BFS depths 5, 8, and 10.",
+    "stats": {
+      "luaImplsScanned": 362,
+      "decompSectionsParsed": 254,
+      "graphNodes": 840,
+      "helperTargets": 10,
+      "newDepthOnlyDirectEmitBindings": 0
+    },
+    "helperTargets": {
+      "0x004DD620": "FUN_004dd620 packet builder",
+      "0x004E0240": "FUN_004e0240 zone send gate",
+      "0x00DAE010": "FUN_00dae010 zone wire forwarder",
+      "0x00DB3E30": "FUN_00db3e30 chat/world wire forwarder",
+      "0x004DF810": "FUN_004df810 world record builder",
+      "0x004E3750": "FUN_004e3750 world send helper",
+      "0x004C7150": "FUN_004c7150 map passthrough helper"
+    },
+    "depthSensitivity": {
+      "5": {
+        "luaImplsReachingSendHelpers": 1,
+        "confirmedDirectEmitBindings": 1,
+        "confidenceCounts": {
+          "confirmed_direct_emit": 1,
+          "no_direct_send_helper_path": 361
+        }
+      },
+      "8": {
+        "luaImplsReachingSendHelpers": 1,
+        "confirmedDirectEmitBindings": 1,
+        "confidenceCounts": {
+          "confirmed_direct_emit": 1,
+          "no_direct_send_helper_path": 361
+        }
+      },
+      "10": {
+        "luaImplsReachingSendHelpers": 1,
+        "confirmedDirectEmitBindings": 1,
+        "confidenceCounts": {
+          "confirmed_direct_emit": 1,
+          "no_direct_send_helper_path": 361
+        }
+      }
+    },
+    "luaApisAtDepth10": [
+      "CharaBase._updateGroup"
+    ],
+    "newDirectEmitBindings": [],
+    "newOutboundOpcodeBindingsAdded": 0,
+    "negativeFindings": [
+      "361 impl-bearing Control-class Lua N-APIs still do not reach any configured send helper at depth <= 10.",
+      "No Lua API newly reaches a send helper at depth 8 or 10 versus the direct-emission depth-5 baseline."
+    ],
+    "conclusion": "Depth is saturated for the current forward direct-emission graph: depth 5, 8, and 10 all recover the same confirmed direct-emission binding, CharaBase._updateGroup -> 0x0130.",
+    "findingsManifest": "manifests\\depth_extended_direct_emission.json"
+  },
+  "reverseBfsSendHelpers": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0382",
+    "method": "Dumped callers for the known send-helper inventory, decompiled the unique callers, classified packet builders by opcode/size literals at send-helper call sites, then BFS-walked caller-list edges backward up to depth 5 looking for Control-class Lua N-API impl VAs.",
+    "stats": {
+      "sendHelpersScanned": 6,
+      "sendHelperUniqueCallers": 61,
+      "decompSectionsParsed": 123,
+      "reverseGraphNodes": 99,
+      "packetBuilders": 53,
+      "packetBuildersWithLuaReach": 7,
+      "luaReachRows": 9,
+      "confirmedDirectEmitBindings": 8,
+      "overlapWithExistingDirectBindings": 1,
+      "novelFromReverseOnly": 7,
+      "rejectedUncatalogedOpcodeCandidates": 1
+    },
+    "sendHelpers": {
+      "0x004DD620": "FUN_004dd620 packet builder",
+      "0x004D6CF0": "FUN_004d6cf0 zone thunk",
+      "0x004D6D10": "FUN_004d6d10 zone thunk",
+      "0x004D6D30": "FUN_004d6d30 zone thunk",
+      "0x004E0240": "FUN_004e0240 zone send gate",
+      "0x00DAE010": "FUN_00dae010 zone wire forwarder"
+    },
+    "newDirectEmitBindings": [
+      {
+        "luaApi": "WorldMaster._cancelAimCameraTutorial",
+        "opcode": "0x00cc",
+        "size": "0x18",
+        "builderVa": "0x00561BB0",
+        "reverseDepth": 2
+      },
+      {
+        "luaApi": "DesktopWidget._setTargetCharacter",
+        "opcode": "0x00cd",
+        "size": "0x18",
+        "builderVa": "0x00562D30",
+        "reverseDepth": 2
+      },
+      {
+        "luaApi": "DesktopWidget._setTargetCharacterByDisplayName",
+        "opcode": "0x00cd",
+        "size": "0x18",
+        "builderVa": "0x00562D30",
+        "reverseDepth": 2
+      },
+      {
+        "luaApi": "DesktopWidget._setTargetCursorImage",
+        "opcode": "0x00cd",
+        "size": "0x18",
+        "builderVa": "0x0075EB30",
+        "reverseDepth": 1
+      },
+      {
+        "luaApi": "WorldMaster._cancelAimCameraTutorial",
+        "opcode": "0x00cd",
+        "size": "0x18",
+        "builderVa": "0x00562D30",
+        "reverseDepth": 2
+      },
+      {
+        "luaApi": "GroupBase._updateMemberAndInformation",
+        "opcode": "0x0130",
+        "size": "0x20",
+        "builderVa": "0x0075E8D0",
+        "reverseDepth": 1
+      },
+      {
+        "luaApi": "CharaBase._updateItemPackage",
+        "opcode": "0x0131",
+        "size": "0x18",
+        "builderVa": "0x0075EA50",
+        "reverseDepth": 2
+      }
+    ],
+    "overlapWithDirectEmission": [
+      {
+        "luaApi": "CharaBase._updateGroup",
+        "opcode": "0x0130",
+        "builderVa": "0x0075E860"
+      }
+    ],
+    "rejectedReverseOnlyCandidates": [
+      {
+        "luaApi": "ItemBase._updateWork",
+        "opcode": "0x0132",
+        "reason": "opcode not present in operation_opcode_map_outbound.json"
+      }
+    ],
+    "newOutboundOpcodeBindingsAdded": 7,
+    "conclusion": "Reverse-BFS recovered 1 existing direct binding and added 7 catalog-confirmed direct-emission bindings. One reverse-only Lua path to opcode 0x0132 was retained as unpromoted because that opcode is not in operation_opcode_map_outbound.json.",
+    "findingsManifest": "manifests\\reverse_bfs_send_helpers.json"
+  },
+  "catalogGap0132": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0383",
+    "targetOpcode": "0x0132",
+    "catalogGap": "0x0132 was emitted by the client packet builder but was absent from the outbound opcode catalog.",
+    "opcodeCatalog": {
+      "opcode": 306,
+      "opcodeHex": "0x0132",
+      "name": "ItemWorkUpdatePacket",
+      "bucket": "MapServerbound",
+      "implementationAnchor": "ItemWorkUpdatePacket",
+      "decompAnchor": "FUN_0075EAC0",
+      "confidence": "tentative",
+      "size": "0x18"
+    },
+    "packetBuilderVa": "0x0075EAC0",
+    "packetBuilderName": "FUN_0075eac0",
+    "luaApi": "ItemBase._updateWork",
+    "size": "0x18",
+    "sendHelperVa": "0x004D6D30",
+    "wireSendPath": [
+      "0x004D6D30",
+      "0x004E0240",
+      "0x00DAE010"
+    ],
+    "bindingKind": "direct_emit",
+    "outboundOpcodeBindingsAdded": 1,
+    "totalsDelta": {
+      "outboundOpcodeBindings": "10 -> 11",
+      "outboundDirectBindings": "8 -> 9",
+      "outboundOpcodesWithDirectLuaEmit": "4 -> 5"
+    },
+    "pcapContext": {
+      "c2sCount": 0,
+      "s2cCount": 24,
+      "s2cCaptures": [
+        "gridania_to_coerthas.pcapng",
+        "login.pcapng",
+        "move_out_of_room.pcapng"
+      ]
+    },
+    "anchorDecision": "No serverbound Bahamut opcode anchor was found. The clientbound sibling is cataloged as an opaque 0x0132 packet, while the c2s builder is reached only from ItemBase._updateWork; the outbound anchor is therefore ItemWorkUpdatePacket with tentative name confidence.",
+    "findingsManifest": "manifests\\reverse_bfs_send_helpers.json"
+  },
+  "expandedReverseBfs": {
+    "generated": "2026-05-19",
+    "bcsyRef": "BCS-Y-0384",
+    "method": "Loaded the 53 the reverse-bfs-send-helpers pass packet-builder emissions as additional reverse-BFS entry points, refreshed caller lists for their 50 unique builder VAs, deduplicated callers already covered by the original send-helper scan, and re-used the reverse-bfs-send-helpers pass reverse graph and opcode-literal classification helpers to test for additional Lua N-API reach.",
+    "stats": {
+      "inventoryEntryPoints": 56,
+      "packetBuilderEmissionEntryPoints": 53,
+      "uniquePacketBuilderEntryPoints": 50,
+      "packetBuilderCallerTargets": 50,
+      "packetBuilderUniqueCallers": 59,
+      "newCallerCorpus": 56,
+      "missingDecompSections": 0,
+      "newPacketBuilders": 0,
+      "luaReachRows": 9,
+      "confirmedDirectEmitBindings": 9,
+      "newDirectEmitBindings": 0,
+      "overlapWithReverseBfsSendHelpers": 9,
+      "rejectedLuaReachCandidates": 0,
+      "inventoryCatalogGapCandidates": 2
+    },
+    "inventoryEntryPoints": {
+      "originalSendHelpers": 6,
+      "packetBuilderEmissions": 53,
+      "uniquePacketBuilderVas": 50,
+      "totalUniqueEntryPoints": 56
+    },
+    "newDirectEmitBindings": [],
+    "overlapWithReverseBfsSendHelpers": [
+      {
+        "luaApi": "WorldMaster._cancelAimCameraTutorial",
+        "opcode": "0x00cc",
+        "builderVa": "0x00561BB0"
+      },
+      {
+        "luaApi": "DesktopWidget._setTargetCharacter",
+        "opcode": "0x00cd",
+        "builderVa": "0x00562D30"
+      },
+      {
+        "luaApi": "DesktopWidget._setTargetCharacterByDisplayName",
+        "opcode": "0x00cd",
+        "builderVa": "0x00562D30"
+      },
+      {
+        "luaApi": "DesktopWidget._setTargetCursorImage",
+        "opcode": "0x00cd",
+        "builderVa": "0x0075EB30"
+      },
+      {
+        "luaApi": "WorldMaster._cancelAimCameraTutorial",
+        "opcode": "0x00cd",
+        "builderVa": "0x00562D30"
+      },
+      {
+        "luaApi": "CharaBase._updateGroup",
+        "opcode": "0x0130",
+        "builderVa": "0x0075E860"
+      },
+      {
+        "luaApi": "GroupBase._updateMemberAndInformation",
+        "opcode": "0x0130",
+        "builderVa": "0x0075E8D0"
+      },
+      {
+        "luaApi": "CharaBase._updateItemPackage",
+        "opcode": "0x0131",
+        "builderVa": "0x0075EA50"
+      },
+      {
+        "luaApi": "ItemBase._updateWork",
+        "opcode": "0x0132",
+        "builderVa": "0x0075EAC0"
+      }
+    ],
+    "catalogGapCandidates": [
+      {
+        "opcode": "0x00d0",
+        "builderVa": "0x00763DC0",
+        "size": "0x110",
+        "luaReach": false,
+        "reason": "packet-builder inventory opcode absent from operation_opcode_map_outbound.json; no Lua reach in expanded BFS"
+      },
+      {
+        "opcode": "0x0134",
+        "builderVa": "0x0075EBA0",
+        "size": "0x28",
+        "luaReach": false,
+        "reason": "packet-builder inventory opcode absent from operation_opcode_map_outbound.json; no Lua reach in expanded BFS"
+      }
+    ],
+    "conclusion": "Expanded reverse-BFS recovered only the 9 already-confirmed direct-emission bindings and found no second-tier packet builders in the 56-call-site new caller corpus. The reverse-BFS frontier is saturated for the current packet-builder entry set. This surfaced 2 uncataloged packet-builder emissions without Lua reach (0x00d0 and 0x0134), so the saturation finding applies to Lua binding yield, not to opcode-catalog completeness.",
+    "findingsManifest": "manifests\\expanded_reverse_bfs.json"
+  }
+}

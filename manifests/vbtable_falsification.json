@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Verifies/falsifies the vbtable hypothesis for the missing direct writers of this+0x1bc and this+0x220. **RESULT: VBTABLE HYPOTHESIS DEFINITIVELY FALSIFIED**. CharaBase (the actual owner class of the +0x1bc/+0x220 fields, NOT LTC/LGTC family) has CHD attributes=0x00 - NO virtual inheritance flag (bit 0x02). Catalog the CharaBase RTTI structure (4 new BCS-Y entries) and document the falsification. Also corrects the misattribution: the +0x1bc/+0x220 fields are in CHARABASE instances (large), not LTC/LGTC instances (only 0x78 bytes).",
+  "method": {
+    "step1": "Decomp the identified field-reader functions (FUN_00CD7A30 +0x1bc reader, FUN_00CC7510 +0x220 trampoline) plus the operator-new wrapper FUN_009D1B35 to find the actual instance size of LTC/LGTC family classes. **RESULT**: FUN_009D1B35 is operator-new wrapper - calls _malloc(param_1). Global's clone factory (BCS-Y-1544) allocates 0x78=120 bytes. So LTC/LGTC instances are at MOST 0x78 bytes, meaning +0x1bc=444 byte offset is OUT-OF-BOUNDS for LTC/LGTC instances. The earlier attribution of +0x1bc to 'LuaControl base' was WRONG.",
+    "step2": "Identified CharaBase as the actual owner class. The 290+ callers of FUN_00CC7510 are 'LuaActorImpl-area methods FUN_006xxxxx - FUN_008xxxxx' which include CharaBase slot 5 _onFinalize FUN_006FA7E0 (BCS-Y-0192) -> calls FUN_006F6900 _onFinalize firer with `this` = CharaBase instance. So CharaBase has +0x220 field. By extension CharaBase also has +0x1bc field (the FUN_00CD7A30 reader uses the same `this`).",
+    "step3": "Dump CharaBase RTTI: vftable VA 0x00FD5CAC -> COL at 0x00FD5CA8 = 0x0115EC78. COL contents: signature=0, offset=0 (primary), cdOffset=0, pTD=0x012709A4, pCHD=0x0115EC8C. Output: c105_charabase_rtti.txt, c105_charabase_cols.txt.",
+    "step4": "Dump CharaBase CHD at 0x0115EC8C (16 bytes). **RESULT**: signature=0, **attributes=0x00000000** (NO bits set - NOT MI 0x01, NOT VIRTUAL 0x02, NOT AMBIGUOUS 0x04), numBaseClasses=7, pBCA=0x0115EC9C. **VBTABLE HYPOTHESIS FALSIFIED**: bit 0x02 (CHD_VIRTINH) is NOT set on CharaBase, confirming CharaBase uses NON-virtual single inheritance. The +0x1bc field is NOT a virtual base pointer (vbptr). Output: c105_charabase_chd.txt.",
+    "step5": "Decode CharaBase TD name string at 0x012709AC..0x012709E0 (LE byte order): `.?AVCharaBase@Control@Client@Script@Lua@Application@@` = `Application::Lua::Script::Client::Control::CharaBase`. Confirms CharaBase is in the same namespace family as the 11 LTC/LGTC classes but is a SIBLING (not in the LTC/LGTC subset).",
+    "step6": "Catalog 4 new BCS-Y entries (CharaBase TD/CHD/BCA/COL) + 6 amendments to clarify the +0x1bc/+0x220 field ownership."
+  },
+  "key_findings": [
+    "**VBTABLE HYPOTHESIS DEFINITIVELY FALSIFIED**. CharaBase CHD attributes = 0x00000000. Bit 0x02 (CHD_VIRTINH = virtual inheritance) is NOT set. The +0x1bc and +0x220 fields are NOT vbptrs (virtual base pointers). MSVC virtual inheritance would require this bit to be set, plus a vbtable in .rdata containing virtual base offsets.",
+    "**OWNER-CLASS MISATTRIBUTION CORRECTED**: the +0x1bc and +0x220 fields are in **CharaBase-family instances** (CharaBase + PlayerBase + NpcBase + MyPlayer - the 50-slot vftable `Application::Lua::Script::Client::Control::*` chara/actor classes), NOT in LTC/LGTC family instances. Evidence: LTC/LGTC instances allocate at most 0x78 (120) bytes (per Global's clone factory BCS-Y-1544), making +0x1bc (444 bytes) and +0x220 (544 bytes) far out-of-bounds. CharaBase methods (like slot 5 _onFinalize FUN_006FA7E0 -> firer FUN_006F6900) call FUN_00CC7510 with `this` = CharaBase instance, confirming CharaBase has these fields.",
+    "**CharaBase RTTI structure** (NEW catalog): vftable [[Control::CharaBase::vftable]] (BCS-Y-0184) at 0x00FD5CAC. Primary COL [[Application_Lua_Script_Client_Control_CharaBase_RTTI_Complete_Object_Locator]] (BCS-Y-1724 NEW) at 0x0115EC78. TD [[Application_Lua_Script_Client_Control_CharaBase_TypeDescriptor]] (BCS-Y-1721 NEW) at 0x012709A4. CHD [[Application_Lua_Script_Client_Control_CharaBase_ClassHierarchyDescriptor]] (BCS-Y-1722 NEW) at 0x0115EC8C with attributes=0x00, numBaseClasses=7. BCA [[Application_Lua_Script_Client_Control_CharaBase_BaseClassArray]] (BCS-Y-1723 NEW) at 0x0115EC9C with 7 BCDs (deferred enumeration).",
+    "**CharaBase uses NON-virtual SINGLE inheritance with 7 base classes** (CHD attr=0x00, numBaseClasses=7). Unlike the LTC/LGTC family which uses MI (CHD attr=0x01 or 0x05) with 11-15 BCDs, CharaBase has a LINEAR 7-level inheritance chain. Likely chain: CharaBase < ActorBase < LuaControl < LuaObject < LgeBase (or similar) - 7 levels deep. This is a different inheritance model than the LTC/LGTC family, despite sharing the `Control::*` namespace.",
+    "**THE 6 ADJACENT VFTABLES BEFORE CharaBase'S PRIMARY ARE STANDALONE CLASSES** (per the standalone-class neighbor pattern). The 6 vftables at 0x00FD5C28/2C/34/68/84/A0 each have their own primary COL (all with offset=0) and distinct TDs (0x012C2150, 0x012C2208, 0x012C22C0, 0x012C2348, 0x012C2388, 0x012C0F38). They are NOT CharaBase MI subobjects - they are independent classes that happen to be placed in adjacent .rdata. Likely typed-delegate/EventHandler<CharaBase,...> instantiations or similar template specializations.",
+    "**ALTERNATIVE WRITER HYPOTHESES** (post-vbtable falsification): the +0x1bc and +0x220 fields must be set by ONE of these mechanisms - (a) **LEA + setter-function pattern** (the FindOffsetWriters scan only detected `MOV [reg+0x1bc], val` displacement-encoded writes; it would miss `LEA EAX, [ECX+0x1bc]; PUSH EAX; CALL setter_fn` where the setter writes via *this offset 0); (b) **POST-FACTORY CLASS-REGISTRY BINDING** (CharaBaseClass is registered with class ID 16 in the identified LuaClassRegistry FUN_0078E3A0 BCS-Y-0398; the registry may set instance.+0x1bc to point to the per-class metadata entry when an instance is created); (c) **MEMCPY/MEMSET BLOCK INIT** from a class template in .rdata. Most likely (b) given the class-registry mechanism's existence and the +0x1bc reader's use of `*(this+0x1bc)` as a class-identity lookup.",
+    "**ARCHITECTURAL IMPLICATION FOR LUA-BRIDGE DISPATCH**: the LuaCallbackDispatcher (BCS-Y-0399 FUN_00CC7A90) and its 23 caller-cluster sister functions all read this+0x1bc via FUN_00CD7A30 (BCS-Y-1581) to identify the calling class for dispatch routing. Since `this` in these calls is a CharaBase-family instance (not LTC/LGTC), the dispatch model is: 'CharaBase-family object has a pointer to its registered class metadata at +0x1bc; the dispatcher reads this metadata to route the Lua callback to the right class-specific handler'. The LTC/LGTC family has a SEPARATE dispatch model (they have triple/dual allocator scopes and their dispatch uses vftable-based MI, not +0x1bc-based class-ID routing)."
+  ],
+  "new_bcsy_entries_summary": {
+    "charabase_rtti_quartet": 4,
+    "amendments": 6,
+    "total_bcsy_added": 4,
+    "id_range": "BCS-Y-1721..BCS-Y-1724",
+    "amendment_targets": [
+      "BCS-Y-1581 (FUN_00CD7A30 +0x1bc reader): VBTable hypothesis FALSIFIED + correct owner class identification (CharaBase-family, not LTC/LGTC)",
+      "BCS-Y-1675 (FUN_00CD7910 +0x220 getter raw): correct owner class identification",
+      "BCS-Y-1676 (FUN_00CC7510 +0x220 trampoline): correct owner class identification",
+      "BCS-Y-1580 (FUN_00CC7280 alive flag getter): cross-link to CharaBase RTTI",
+      "BCS-Y-0184 (Control::CharaBase::vftable): cross-link to new RTTI quartet",
+      "BCS-Y-1670 (LuaClassTable_find_or_create FUN_00CD8870): cross-link - the post-factory class-registry binding hypothesis suggests this is part of the +0x1bc setter chain"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp CharaBase's BCA at 0x0115EC9C (7 BCDs, 28 bytes each = 196 bytes) to enumerate the 7-level linear inheritance chain. Decode each BCD's TD pointer to identify the chain (likely ActorBase, LuaControl, LuaObject, and 4 more).",
+    "Decomp CharaBase's PRIMARY CTOR (TBD - location not yet cataloged; likely in 0x006xxxxx-0x008xxxxx range as a 200+ byte ctor with vftable write to 0x00FD5CAC). Look for the +0x1bc / +0x220 writer pattern: (a) direct MOV [reg+0x1bc] (would refute the scan, unlikely); (b) LEA reg, [reg+0x1bc] then CALL setter (most likely - didn't scan for this); (c) memcpy from .rdata class template.",
+    "Search for a `setCharaBaseClassMetadata(CharaBase*, ClassMetadata*)` function or similar that takes the field address by reference. Pattern would be: `LEA EAX, [ECX+0x1bc]; PUSH metadata_ptr; CALL setter_fn`.",
+    "Investigate the actual mechanism by walking from CharaBase ctor through any post-ctor init calls to identify the +0x1bc setter chain.",
+    "Verify the 'post-factory class-registry binding' hypothesis: trace from FUN_0078E3A0 (LuaClassRegistry, BCS-Y-0398) - does it ALSO register a 'metadata-binder' function that's called when CharaBase instances are created? Or does the FACTORY for CharaBase instances call back into FUN_00CD8870 (BCS-Y-1670) to bind metadata?",
+    "Decomp 1-2 of the 290+ FUN_00CC7510 callers (besides BCS-Y-0192/0194 already cross-referenced) to confirm the +0x220 navigation pattern: `piVar3 = (int*)FUN_00cc7510(); ... *(*piVar3 + 4) + 0x108 ...` - identifies what static class metadata layout the +0x220 pointer references."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1707 -> 1711 (+4 BCS-Y; BCS-Y-1721..1724)",
+  "files_changed": [
+    "manifests/symbols.json: +4 entries (BCS-Y-1721..1724), 6 amendments",
+    "manifests/vbtable_falsification.json (NEW, this file)",
+    "tools/ghidra/logs/c105_ctors_check.txt (NEW - ActorBase/LuaControl/StatusBase/Global secondary ctor decomp)",
+    "tools/ghidra/logs/c105_actor_impl_probe.txt (NEW - operator-new wrapper + helpers decomp)",
+    "tools/ghidra/logs/c105_charabase_rtti.txt (NEW - CharaBase vftable region dump)",
+    "tools/ghidra/logs/c105_charabase_cols.txt (NEW - 7 COL contents)",
+    "tools/ghidra/logs/c105_charabase_chd.txt (NEW - CHD attributes + TD name)",
+    "tools/extractors/append_vbtable_falsification.py (NEW)"
+  ]
+}

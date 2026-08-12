@@ -1,0 +1,44 @@
+{
+  "title": "What LOADS+RUNS a content class's .lpb (defines it / +0x7d=1) and what triggers it for the OpeningDirector: the loader is Lua-require-driven only; the director class is never require()d during the bahamut opening",
+  "trigger": "docs/director-class-load-handoff.md (follow-up to client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline': what loads+runs the OpeningDirector .prog?)",
+  "imageBase": "0x00400000",
+  "noASLR": true,
+  "questionsAnswered": {
+    "Q1_lazy_on_resolve": {
+      "verdict": "NO. Resolve uses FUN_00CD8870(name, create=0) - it does not load. Class definition is eager-via-Lua-require, not lazy-on-resolve."
+    },
+    "Q2_what_triggers_the_load": {
+      "verdict": "A Lua `require(name)` call from a running script. The loader chain FUN_00D08A10 (_luaGameEngineRequire) -> FUN_00D0CFB0 (file lookup) -> FUN_00D08180 (_luaGameEngineLoad) -> FUN_00CF4680 (luaL_loadbuffer) runs the .lpb, whose top-level _defineClass reaches FUN_00CD9360 -> FUN_00CE1DD0 -> +0x7d=1. FUN_00D08A10 has ONLY a DATA xref (registered as a Lua C fn by FUN_00CD8990) - so the loader is invoked solely via Lua require() dispatch; there is NO native/server 'load class X' trigger. The server influences it only by driving the Lua flow (opening/content script) that issues the require.",
+      "noNativeTrigger": true
+    },
+    "Q3_player_vs_director": {
+      "verdict": "The player/chara/world classes are require()d by the core login/world bootstrap (always run). The director (OpeningDirector) is a CONTENT class, require()d only when the opening/content flow runs."
+    },
+    "Q4_what_bahamut_must_send": {
+      "verdict": "Drive the client's opening sequence / content-instance flow so its Lua require()s + _createActor()s the director - NOT just AddActor + ActorInstantiate. The director class load is a SIDE EFFECT of running the opening script. Ensure the parent DirectorBaseClass loads too.",
+      "differentiator": "ActorInstantiate is sent for the PLAYER too (player_spawn.cpp:188; test 'starter-city self spawn ActorInstantiate should bind the player script') AND the director (director_spawn.cpp:374). Player class is DEFINED (works); director class is not. So ActorInstantiate only BINDS actor->class-name (control + tentative ref); it does not load the class."
+    }
+  },
+  "directorsArePureLua": "zero EXE functions named Director/Judge. A director is an Actor created via the global Lua binding _createActor(className,...) which dispatches vtable[0x6c] and REQUIRES the class already defined (finding_createActor_thunk_async_actor_factory.md). FUN_00758260 (decompiled) is the DirectorBaseClass NATIVE method-surface master (5 registrars), NOT the Lua class definition.",
+  "functionsExamined": [
+    "FUN_00D08A10 (BCS-Y-1809 NEW) - _luaGameEngineRequire; DATA-xref-only (Lua-dispatched)",
+    "FUN_00D08180 (BCS-Y-1810 NEW) - _luaGameEngineLoad -> ring pop -> luaL_loadbuffer",
+    "FUN_00D0CFB0 (BCS-Y-1811 NEW) - LpbLoader file lookup; path+.lpb retry; not-found -> return 2",
+    "FUN_00CF4680 (BCS-Y-1812 NEW) - luaL_loadbuffer (terminal load step)",
+    "FUN_00CD8990 (BCS-Y-1813 NEW) - boot registrar; binds require/load; seeds 5 category tags d4f8..d508; loads boot chunk",
+    "FUN_00758260 - DirectorBaseClass native master (5 registrars; method surface, NOT the Lua class def) - ruled out",
+    "FUN_00CD9360 (BCS-Y-1806, amended) - class-define registrar; runs when a .lpb is loaded by the chain"
+  ],
+  "newSymbols": [
+    "BCS-Y-1809",
+    "BCS-Y-1810",
+    "BCS-Y-1811",
+    "BCS-Y-1812",
+    "BCS-Y-1813"
+  ],
+  "amendedSymbols": [
+    "BCS-Y-1806"
+  ],
+  "symbolCountBefore": 1795,
+  "symbolCountAfter": 1800
+}

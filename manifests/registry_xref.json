@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Closes the deferred follow-up: 'cross-reference the registry's class names with the enumerated LTC/LGTC class TDs to verify the 1:1 mapping'. Decomp of [[LuaClassRegistry_FUN_0078E3A0]] (BCS-Y-0398) confirms **36 classes registered** (not '~30' as the estimated). Cross-reference against catalog: 23 of 36 have catalog matches, 13 are GAPS. The 13 GAP class names have NO corresponding entries in `manifests/rtti_extraction_OUR.txt` (the RTTI ground-truth file) - they appear to be **abstract Lua-bridge base classes** registered for Lua-side lookup but with no C++ RTTI counterparts. This is a structural finding, not a catalog completeness gap.",
+  "method": {
+    "step1": "Decomp [[LuaClassRegistry_FUN_0078E3A0]] (BCS-Y-0398, 1986 bytes per Ghidra body-bytes count). Body: SEH-wrapped init, then 36 sequential (name -> register-call -> cleanup) blocks. Each block: (a) FUN_00447260(class_name_string, DAT_00f67298) registers the name in the LGE scope registry; (b) FUN_00CC71F0(local_60) or FUN_00CC71E0(local_60) registers the class metadata (LGTC-style or BaseClass-style respectively); (c) FUN_00446F50() cleans up the string. Output: c107_registry_decomp.txt.",
+    "step2": "Decoded the unresolved class-id-2 name DAT_00FE05B8 via byte dump - is the 4-byte ASCII string 'Math' (LE bytes 4D 61 74 68). This class was skipped earlier. Output: c107_dat_string.txt.",
+    "step3": "Wrote `analyze_registry_xref.py` to cross-reference the 36 registered class names against catalog entries. Match heuristic: case-sensitive substring match with boundary check, plus 'Class' suffix-strip fallback (so 'CharaBaseClass' matches 'CharaBase'). Output: registry_xref.txt (full xref report).",
+    "step4": "Grep'd the 13 GAP class names against `manifests/rtti_extraction_OUR.txt` (the RTTI ground-truth file) - **0 matches**. The GAP class names also don't appear in `manifests/symbols.json`. Only earlier work files + 2 docs/manifests (lua-class-system.md + class_registry_bridge.json). Confirms these are abstract Lua-bridge bases with no C++ RTTI.",
+    "step5": "Amend [[LuaClassRegistry_FUN_0078E3A0]] (BCS-Y-0398) with full 36-class enumeration + gap analysis. Amend [[LuaNApi_StdlibAliasRegistration_FUN_0078FC90]] (BCS-Y-0490, the sole caller of FUN_0078E3A0) with cross-link to the now-fully-enumerated registry."
+  },
+  "key_findings": [
+    "**FULL 36-CLASS REGISTRY ENUMERATED** (had estimated ~30; actual count is 36). Two registration styles split at class id 11/12 boundary: classes 0-11 (12 classes) use FUN_00CC71F0 (LGTC-style: Global, Debug, Math, String, Table, WorldMaster, OtherArea, SpreadSheet, CutScene, CommandDebuggerGM/DEV/TEST); classes 12-35 (24 classes) use FUN_00CC71E0 (BaseClass-style: SystemBaseClass, ProgDebugBaseClass, ActorBaseClass, CharaBaseClass, PlayerBaseClass, NpcBaseClass, WorldBaseClass, AreaBaseClass, PrivateAreaBaseClass, ZoneBaseClass, DebugBaseClass, JudgeBaseClass, CommandBaseClass, StatusBaseClass, QuestBaseClass, DirectorBaseClass, CommandDebuggerBaseClass, CommandDebuggerFUNCBaseClass, ItemBaseClass, ImportantItemBaseClass, MoneyItemBaseClass, NormalItemBaseClass, GameDataBaseClass, GroupBaseClass).",
+    "**23 of 36 registry classes have catalog matches** (some via direct TDs, others via tangentially-related entries). Cataloged with strong TD presence: Global (BCS-Y-1592), Math (BCS-Y-1591), String (BCS-Y-1596), Table (BCS-Y-1597), CutScene (per BCS-Y-1473 ctor), CharaBaseClass (BCS-Y-1721 NEW), StatusBaseClass (BCS-Y-1497), QuestBaseClass (BCS-Y-1595), CommandBaseClass (BCS-Y-1593), JudgeBaseClass (BCS-Y-1594), GroupBaseClass (BCS-Y-1588), ItemBaseClass (BCS-Y-1589). Plus 11 others with partial matches (Debug, WorldMaster, SpreadSheet, ActorBaseClass, PlayerBaseClass, NpcBaseClass, AreaBaseClass, PrivateAreaBaseClass, DebugBaseClass, DirectorBaseClass, CommandDebuggerBaseClass).",
+    "**13 GAP CLASSES** (registered in FUN_0078E3A0 but NO catalog presence): OtherArea (id 6), CommandDebuggerGM (id 9), CommandDebuggerDEV (id 10), CommandDebuggerTEST (id 11), SystemBaseClass (id 12), ProgDebugBaseClass (id 13), WorldBaseClass (id 18), ZoneBaseClass (id 21), CommandDebuggerFUNCBaseClass (id 29), ImportantItemBaseClass (id 31), MoneyItemBaseClass (id 32), NormalItemBaseClass (id 33), GameDataBaseClass (id 34).",
+    "**THE 13 GAPS ARE ABSTRACT LUA-BRIDGE BASES, NOT CATALOG OMISSIONS**. Grep of `manifests/rtti_extraction_OUR.txt` (RTTI ground truth, all class TDs extracted from the binary) returned ZERO matches for any of the 13 GAP names. This means the GAP classes have NO C++ class TD in the binary - they exist ONLY as registry entries. Architectural interpretation: these are 'abstract base' classes that Lua scripts use to declare derived classes via `_defineClass` / `_defineBaseClass` (per client-architecture 'The LGE class system is a 5-userdata-type model' / class registry bridge). The C++ engine registers them as named slots in the LGE class table so that Lua code can reference them as parent classes, but no C++ implementation exists for them.",
+    "**LGTC vs BaseClass split is at id 11/12 (not 3/4 as the implied)**. The first 12 classes (LGTC-style via FUN_00CC71F0) are concrete classes with C++ implementations. The next 24 classes (BaseClass-style via FUN_00CC71E0) include both concrete classes (ActorBase, CharaBase, PlayerBase, NpcBase, StatusBase, etc.) AND abstract Lua-bridge bases (SystemBaseClass, WorldBaseClass, ZoneBaseClass, etc.). So 'BaseClass-style' registration doesn't imply 'no C++ impl' - it's just a different registration mechanism.",
+    "**FOUR distinct CommandDebugger entries** (none of the 4 are cataloged): CommandDebuggerGM (id 9, LGTC), CommandDebuggerDEV (id 10, LGTC), CommandDebuggerTEST (id 11, LGTC), CommandDebuggerBaseClass (id 28, BaseClass), CommandDebuggerFUNCBaseClass (id 29, BaseClass). Suggests a debug-mode subsystem with 3 user-mode variants (GM/DEV/TEST) + 2 base classes - likely Lua-scriptable debug commands restricted by user role. The 3 user-mode variants (GM/DEV/TEST) are real classes (LGTC concrete) but happen to be uncataloged - they could be enumerable via Ghidra symbol scan of `Application::Lua::Script::Client::Control::CommandDebugger*` namespace. Deferred follow-up.",
+    "**FOUR distinct *ItemBaseClass variants** (3 of 4 are GAP): ItemBaseClass (id 30, cataloged BCS-Y-1589), ImportantItemBaseClass (id 31, GAP), MoneyItemBaseClass (id 32, GAP), NormalItemBaseClass (id 33, GAP). The 3 GAPs are likely abstract Lua-bridge bases for item categories (Important/Money/Normal). Lua scripts probably declare specific items inheriting from these abstract bases, and the C++ engine routes them to the concrete ItemBase implementation."
+  ],
+  "new_bcsy_entries_summary": {
+    "amendments_only": true,
+    "amendments": 2,
+    "total_bcsy_added": 0,
+    "id_range": "(none - amendments only)",
+    "amendment_targets": [
+      "BCS-Y-0398 (LuaClassRegistry FUN_0078E3A0): full 36-class enumeration + gap analysis (23 cataloged, 13 abstract Lua-bridge bases)",
+      "BCS-Y-0490 (LuaNApi_StdlibAliasRegistration FUN_0078FC90): cross-link to the now-fully-enumerated registry (closes the enumeration question)"
+    ]
+  },
+  "deferred_followups": [
+    "Verify the 'abstract Lua-bridge base' hypothesis by examining script bytecode (Lua-side) for references to the 13 GAP class names. If scripts use `_defineClass('FooImpl', ImportantItemBaseClass)` then the hypothesis is confirmed - the abstract bases are Lua-side parent class declarations.",
+    "Catalog the 3 CommandDebugger concrete classes (GM/DEV/TEST, ids 9-11). They're LGTC-style registered which means they SHOULD have C++ implementations and TDs. Likely findable via Ghidra symbol search for 'CommandDebuggerGM' / 'CommandDebuggerDEV' / 'CommandDebuggerTEST' in the `Application::Lua::Script::Client::Control::*` namespace. Estimated 3 TDs + 3 vftables = 6 new BCS-Y entries.",
+    "Catalog the SpreadSheet class (id 7, LGTC-style, partial catalog match). Likely findable similar to above.",
+    "Re-examine the 11 'partial match' cataloged classes (Debug, WorldMaster, SpreadSheet, ActorBaseClass, PlayerBaseClass, NpcBaseClass, AreaBaseClass, PrivateAreaBaseClass, DebugBaseClass, DirectorBaseClass, CommandDebuggerBaseClass) to verify they have STRONG catalog presence (TDs cataloged), not just incidental name overlap.",
+    "Catalog DAT_00F67298 - referenced from every FUN_00447260 call in the registry as the 'scope key' argument. Likely a global pointer to the LGE class table itself. Currently appears in 5+ catalog entries as a sub-reference but not as its own kind=data entry."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1718 -> 1718 (+0 BCS-Y; amendments only)",
+  "files_changed": [
+    "manifests/symbols.json: 0 new entries, 2 amendments (BCS-Y-0398, BCS-Y-0490)",
+    "manifests/registry_xref.json (NEW, this file)",
+    "tools/ghidra/logs/c107_registry_decomp.txt (NEW - full FUN_0078E3A0 decomp)",
+    "tools/ghidra/logs/c107_dat_string.txt (NEW - DAT_00FE05B8 = 'Math' decode)",
+    "tools/ghidra/logs/registry_xref.txt (NEW - full 36-class xref report)",
+    "tools/extractors/analyze_registry_xref.py (NEW)",
+    "tools/extractors/append_registry_xref.py (NEW)"
+  ]
+}

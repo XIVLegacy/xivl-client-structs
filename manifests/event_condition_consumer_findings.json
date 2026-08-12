@@ -1,0 +1,401 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-19",
+  "pass": "event_condition_consumer_tracing",
+  "source": [
+    "%BCS_GHIDRA_PROJECTS%\\ctors_and_endclientorder_slots.txt",
+    "%BCS_GHIDRA_PROJECTS%\\event_condition_vtables.txt",
+    "%BCS_GHIDRA_PROJECTS%\\event_virtuals_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\event_vtables_extend.txt",
+    "%BCS_GHIDRA_PROJECTS%\\execute_slots_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\endclientorder_handlers.txt"
+  ],
+  "scope": "Trace the deferred-apply consumers for opcodes 0x012E/0x016B/0x016F/0x0131. The receiver-apply-findings pass classified these as event-condition / deferred-apply receivers that construct queued event-condition objects (NoticeBlock/TalkBlock/PushBlock variants for the 3 event-condition opcodes; EndClientOrderEventReceiver for 0x0131) rather than mutating actor state directly. This follows those constructed objects through their vftables to identify which Lua callbacks fire when the queue is drained.",
+  "summary": "Deferred Lua firers identified for 3 of 4 traced opcodes. NoticeBlock/NoticeNonBlock/TalkBlock/TalkNonBlock/PushBlock/PushNonBlock share a 12-slot vftable layout (offsets 0x00..0x2C, RTTI at 0x30). Base class slots 0x0C (FUN_00897660) and 0x10 (FUN_008977b0) fire _onPreEvent and _onPostEvent respectively via FUN_00447260 + FUN_00cc7a90 - shared across all 6 event-condition classes. Slot 0x28 is per-class and fires a family-specific Lua callback via the same FUN_00447260 pattern: TalkBlock -> _onTalkEvent, TalkNonBlock -> _onTalkRequest, PushBlock -> _onPushEvent, PushNonBlock -> _onPushRequest. NoticeBlock and NoticeNonBlock slot 0x28 are empty noops (FUN_008927e0, FUN_00892850 just `return`). EndClientOrderEventReceiver (0x0131) uses a different pattern: queues a new instance of itself, then drains via a switch dispatcher FUN_008a13a0 (slot 0x0C of its 5-slot vtable) that routes to FUN_006e1080..e0 thin wrappers and ultimately to FUN_008934a0/3520/35b0/3800 which mutate a target-object's state flags (target_object = *(receiver+8); writes to target+0x07/+0x1c/+0x1d/+0x22 byte fields, clears target+8). NO Lua fires in the EndClientOrderEvent dispatch chain. NO canonical CharaBase/PlayerBase/NpcBase actor-state writes from any of the 4 opcodes - the deferred patterns target either Lua callbacks (event-conditions) or sub-object state flags (client-order context).",
+  "deferredApplyChainBindings": [
+    {
+      "luaName": "_onPreEvent",
+      "fromOpcodes": ["0x012e", "0x016b", "0x016f"],
+      "firingClass": "EventCondition base class (shared)",
+      "firingVftableSlot": "0x0c",
+      "firingFunction": "FUN_00897660",
+      "fireSite": "FUN_00447260(\"_onPreEvent\", DAT_00f67298) + FUN_00cc7a90(...)",
+      "intermediateClasses": [
+        "NoticeBlock @ 0x01056E0C",
+        "NoticeNonBlock @ 0x01056E40",
+        "TalkBlock @ 0x01056F44",
+        "TalkNonBlock @ 0x01056F78",
+        "PushBlock @ 0x01056EDC",
+        "PushNonBlock @ 0x01056F10"
+      ]
+    },
+    {
+      "luaName": "_onPostEvent",
+      "fromOpcodes": ["0x012e", "0x016b", "0x016f"],
+      "firingClass": "EventCondition base class (shared)",
+      "firingVftableSlot": "0x10",
+      "firingFunction": "FUN_008977b0",
+      "fireSite": "FUN_00447260(\"_onPostEvent\", DAT_00f67298) + FUN_00cc7a90(...)",
+      "intermediateClasses": [
+        "NoticeBlock @ 0x01056E0C",
+        "NoticeNonBlock @ 0x01056E40",
+        "TalkBlock @ 0x01056F44",
+        "TalkNonBlock @ 0x01056F78",
+        "PushBlock @ 0x01056EDC",
+        "PushNonBlock @ 0x01056F10"
+      ]
+    },
+    {
+      "luaName": "_onTalkEvent",
+      "fromOpcodes": ["0x012e"],
+      "firingClass": "TalkBlock",
+      "firingVftableSlot": "0x28",
+      "firingFunction": "FUN_00892d70",
+      "fireSite": "FUN_00447260(\"_onTalkEvent\", DAT_00f67298) + FUN_00cd0940(...)"
+    },
+    {
+      "luaName": "_onTalkRequest",
+      "fromOpcodes": ["0x012e"],
+      "firingClass": "TalkNonBlock",
+      "firingVftableSlot": "0x28",
+      "firingFunction": "FUN_00892e90",
+      "fireSite": "FUN_00447260(\"_onTalkRequest\", DAT_00f67298) + FUN_00cd0940(...)"
+    },
+    {
+      "luaName": "_onPushEvent",
+      "fromOpcodes": ["0x016f"],
+      "firingClass": "PushBlock",
+      "firingVftableSlot": "0x28",
+      "firingFunction": "FUN_00892a80",
+      "fireSite": "FUN_00447260(\"_onPushEvent\", DAT_00f67298) + FUN_00cd0940(...)"
+    },
+    {
+      "luaName": "_onPushRequest",
+      "fromOpcodes": ["0x016f"],
+      "firingClass": "PushNonBlock",
+      "firingVftableSlot": "0x28",
+      "firingFunction": "FUN_00892c30",
+      "fireSite": "FUN_00447260(\"_onPushRequest\", DAT_00f67298) + FUN_00cd0940(...)"
+    }
+  ],
+  "findingsByOpcode": {
+    "0x012e": {
+      "receiverName": "SetTalkEventConditionReceiver",
+      "category": "deferred_via_event_condition",
+      "deferredObjectClasses": ["TalkBlock", "TalkNonBlock"],
+      "constructorVas": ["0x00892d00", "0x00892e30"],
+      "vftableVas": ["0x01056F44", "0x01056F78"],
+      "luaCallbacksFired": [
+        {
+          "luaName": "_onPreEvent",
+          "fireSite": "EventCondition base class slot 0x0c (FUN_00897660) fires when queued TalkBlock/TalkNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via event-condition queue. Receiver does NOT fire synchronously; the queue drainer fires via base virtual slot 0x0c.",
+          "bindingFlavor": "deferred_via_event_condition"
+        },
+        {
+          "luaName": "_onPostEvent",
+          "fireSite": "EventCondition base class slot 0x10 (FUN_008977b0) fires when queued TalkBlock/TalkNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        },
+        {
+          "luaName": "_onTalkEvent",
+          "fireSite": "TalkBlock slot 0x28 (FUN_00892d70) fires when queued TalkBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via TalkBlock event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        },
+        {
+          "luaName": "_onTalkRequest",
+          "fireSite": "TalkNonBlock slot 0x28 (FUN_00892e90) fires when queued TalkNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via TalkNonBlock event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        }
+      ],
+      "actorWrites": []
+    },
+    "0x016b": {
+      "receiverName": "SetNoticeEventConditionReceiver",
+      "category": "deferred_via_event_condition",
+      "deferredObjectClasses": ["NoticeBlock", "NoticeNonBlock"],
+      "constructorVas": ["0x00892770", "0x008927f0"],
+      "vftableVas": ["0x01056E0C", "0x01056E40"],
+      "luaCallbacksFired": [
+        {
+          "luaName": "_onPreEvent",
+          "fireSite": "EventCondition base class slot 0x0c (FUN_00897660) fires when queued NoticeBlock/NoticeNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        },
+        {
+          "luaName": "_onPostEvent",
+          "fireSite": "EventCondition base class slot 0x10 (FUN_008977b0) fires when queued NoticeBlock/NoticeNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        }
+      ],
+      "actorWrites": [],
+      "note": "NoticeBlock and NoticeNonBlock slot 0x28 (FUN_008927e0 and FUN_00892850) are empty noops - no family-specific Lua callback fires for Notice variants. Only base class _onPreEvent and _onPostEvent fire."
+    },
+    "0x016f": {
+      "receiverName": "SetPushEventConditionWithCircleReceiver",
+      "category": "deferred_via_event_condition",
+      "deferredObjectClasses": ["PushBlock", "PushNonBlock"],
+      "constructorVas": ["0x00892980", "0x00892b40"],
+      "vftableVas": ["0x01056EDC", "0x01056F10"],
+      "luaCallbacksFired": [
+        {
+          "luaName": "_onPreEvent",
+          "fireSite": "EventCondition base class slot 0x0c (FUN_00897660) fires when queued PushBlock/PushNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        },
+        {
+          "luaName": "_onPostEvent",
+          "fireSite": "EventCondition base class slot 0x10 (FUN_008977b0) fires when queued PushBlock/PushNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        },
+        {
+          "luaName": "_onPushEvent",
+          "fireSite": "PushBlock slot 0x28 (FUN_00892a80) fires when queued PushBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via PushBlock event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        },
+        {
+          "luaName": "_onPushRequest",
+          "fireSite": "PushNonBlock slot 0x28 (FUN_00892c30) fires when queued PushNonBlock is processed",
+          "bridgeStatus": "DEFERRED apply-chain firer via PushNonBlock event-condition queue.",
+          "bindingFlavor": "deferred_via_event_condition"
+        }
+      ],
+      "actorWrites": []
+    },
+    "0x0131": {
+      "receiverName": "EndClientOrderEventReceiver",
+      "category": "deferred_via_self_class_queue",
+      "deferredObjectClasses": ["EndClientOrderEventReceiver (queues new instance of itself)"],
+      "constructorVas": ["0x0089d070"],
+      "vftableVas": ["0x01057348"],
+      "consumerDispatchVa": "0x008a13a0 (slot 0x0c of 5-slot vtable, switch on byte at *param_1)",
+      "subDispatchVa": "0x008a10c0 (sub-switch for cases 0x32..0x37)",
+      "luaCallbacksFired": [],
+      "actorWrites": [],
+      "targetObjectWrites": [
+        {
+          "targetExpression": "*(receiver+8)+0x07",
+          "type": "byte",
+          "semantic": "state flag set via vtable call (*[*[receiver+8]+0x1c])(0) then *(piVar1+7) = 1 (FUN_008934a0 case 0)"
+        },
+        {
+          "targetExpression": "*(receiver+8)+0x1c",
+          "type": "byte",
+          "semantic": "state flag cleared on completion across multiple sub-handlers"
+        },
+        {
+          "targetExpression": "*(receiver+8)+0x1d",
+          "type": "byte",
+          "semantic": "state flag set to 1 across multiple sub-handlers; cleared (set to 0) by FUN_00893800 case 5 when (char)piVar2[8] == 1"
+        },
+        {
+          "targetExpression": "*(receiver+8)+0x22",
+          "type": "byte",
+          "semantic": "state flag cleared to 0 by FUN_00893800 case 5"
+        },
+        {
+          "targetExpression": "*(receiver+8)",
+          "type": "u32 (pointer)",
+          "semantic": "target pointer cleared to 0 when *(*[target]+0xc)() returns 1 (sub-handler completion)"
+        }
+      ],
+      "note": "Target object class is unknown (no symbol name; constructed elsewhere). The deferred dispatcher mutates state-flag bytes on the queued context, not on a known actor class. NOT a canonical CharaBase/PlayerBase/NpcBase chain-key write; no entries added to data_dependency_catalog.json."
+    }
+  },
+  "newDeferredFirers": [
+    {
+      "luaName": "_onPreEvent",
+      "opcodes": ["0x012e", "0x016b", "0x016f"],
+      "previousBridgeStatus": "unbound (observedSlots empty, opcodes empty, applyChainBindings empty)",
+      "newBridgeStatus": "DEFERRED apply-chain binding to 3 opcodes"
+    },
+    {
+      "luaName": "_onPostEvent",
+      "opcodes": ["0x012e", "0x016b", "0x016f"],
+      "previousBridgeStatus": "unbound",
+      "newBridgeStatus": "DEFERRED apply-chain binding to 3 opcodes"
+    },
+    {
+      "luaName": "_onTalkEvent",
+      "opcodes": ["0x012e"],
+      "previousBridgeStatus": "unbound (bcsRefs present but opcodes empty)",
+      "newBridgeStatus": "DEFERRED apply-chain binding to 0x012e via TalkBlock"
+    },
+    {
+      "luaName": "_onTalkRequest",
+      "opcodes": ["0x012e"],
+      "previousBridgeStatus": "unbound",
+      "newBridgeStatus": "DEFERRED apply-chain binding to 0x012e via TalkNonBlock"
+    },
+    {
+      "luaName": "_onPushEvent",
+      "opcodes": ["0x016f"],
+      "previousBridgeStatus": "unbound",
+      "newBridgeStatus": "DEFERRED apply-chain binding to 0x016f via PushBlock"
+    },
+    {
+      "luaName": "_onPushRequest",
+      "opcodes": ["0x016f"],
+      "previousBridgeStatus": "unbound",
+      "newBridgeStatus": "DEFERRED apply-chain binding to 0x016f via PushNonBlock"
+    }
+  ],
+  "vtableLayouts": {
+    "EventConditionBase (inferred via shared slots)": {
+      "sharedAcross": ["NoticeBlock", "NoticeNonBlock", "TalkBlock", "TalkNonBlock", "PushBlock", "PushNonBlock"],
+      "slots": {
+        "0x00": "per-class dtor",
+        "0x04": "FUN_00897570 (shared - sets up Lua args, calls slot 0x28 via virtual dispatch)",
+        "0x08": "FUN_00712b40 (shared - empty noop / `return;`)",
+        "0x0c": "FUN_00897660 (shared - fires _onPreEvent)",
+        "0x10": "FUN_008977b0 (shared - fires _onPostEvent)",
+        "0x14": "per-family kind getter (returns ASCII char constant: Notice 0x012c3f7e, Talk 0x012c3f7a, Push 0x012c3f7b)",
+        "0x18": "per-family kind matcher (boolean comparison against same constants)",
+        "0x1c": "per-block-variant: Block returns 1, NonBlock returns 0 (FUN_00b73290 / FUN_005c5c80)",
+        "0x20": "per-block-variant getter (Block: FUN_008999d0 Notice/Talk OR FUN_00899900 Push; NonBlock: FUN_008993c0)",
+        "0x24": "per-family-variant (FUN_00899050 Notice/Talk; FUN_00894d30 Push)",
+        "0x28": "per-class execute virtual (called by slot 0x04 via dispatch). Fires family-specific Lua callback when present",
+        "0x2c": "per-class dtor / helper",
+        "0x30": "RTTI Complete Object Locator (end of vtable)"
+      }
+    },
+    "EndClientOrderEventReceiver consumer dispatch": {
+      "vtableVa": "0x01057348",
+      "slots": {
+        "0x00": "0x008A1100 (scalar deleting destructor)",
+        "0x04": "0x0089D180 (slot1Fn / Receive entry - allocates new instance and queues)",
+        "0x08": "0x0089D200 (writes single byte at *param_1 - kind getter)",
+        "0x0c": "0x0089E2D0 (loads param_2 = FUN_00cc7a50(param_1+8); calls FUN_008a13a0 = consumer dispatcher)",
+        "0x10": "0x0089D210 (boolean: *(param_1+8) != DAT_0130c778)"
+      }
+    }
+  },
+  "structuralFindings": [
+    "All 6 event-condition classes share an EventCondition base class with 5 virtual methods at slots 0x04..0x10 plus a per-class execute virtual at slot 0x28 dispatched indirectly from slot 0x04.",
+    "_onPreEvent and _onPostEvent fire from the base class on EVERY event-condition execution regardless of family (Notice/Talk/Push) or variant (Block/NonBlock). The 3 event-condition opcodes (0x012E + 0x016B + 0x016F) all funnel into these 2 shared callbacks.",
+    "Per-family slot 0x28 callbacks: TalkBlock fires _onTalkEvent, TalkNonBlock fires _onTalkRequest, PushBlock fires _onPushEvent, PushNonBlock fires _onPushRequest. NoticeBlock and NoticeNonBlock slot 0x28 are deliberate empty noops, suggesting the Notice variants only need the generic _onPreEvent/_onPostEvent hooks.",
+    "EndClientOrderEvent (0x0131) uses a structurally different queueing pattern: the receiver queues an instance of itself (not a separate Block/NonBlock class). The consumer dispatch in slot 0x0c (FUN_008a13a0) is a switch on a byte field that routes to 4 thin wrapper functions (FUN_006e1080..e0), which call deeper handlers (FUN_008934a0/3520/35b0/3800) that mutate state-flag bytes on a target object stored at *(receiver+8). No Lua fires in this chain.",
+    "The receiver-apply-findings pass's structural conclusion stands: the wire-confirmed deferred-apply receivers do NOT contribute new chain-key writes to data_dependency_catalog because they either fire Lua callbacks (event-conditions) or mutate sub-object state on classes that have no N-API readers (EndClientOrderEvent's target context)."
+  ],
+  "end_client_order_dispatch": {
+    "source": "xivl-decomp:docs/event/end-order-event-receiver.md",
+    "vtableSlots": {
+      "slot2Receive": {
+        "va": "0x0089d200",
+        "sizeBytes": 15,
+        "behavior": "Writes the success byte (0x01) unconditionally; performs no actor lookup or readiness gate."
+      },
+      "slot3Auxiliary": {
+        "va": "0x0089e2d0",
+        "sizeBytes": 73,
+        "behavior": "Looks up the actor by receiver+0x08 and passes the result, including NULL, to FUN_008a13a0 without a null gate."
+      },
+      "slot4Predicate": {
+        "va": "0x0089d210",
+        "behavior": "Returns whether receiver+0x08 differs from the shared NO_ACTOR sentinel at 0x0130c778."
+      }
+    },
+    "eventTypeBands": {
+      "dispatcher": "FUN_008a13a0",
+      "byteTableVa": "0x008a149c",
+      "dwordTableVa": "0x008a1464",
+      "invoke": "event types 0..5 dispatch through the six invoke entries (slots 0..5)",
+      "cleanup": "event types 50..55 dispatch through the six cleanup entries (slots 6..11); only method classes 2 and 3 perform cleanup",
+      "noOp": "event types 6..49, 56..74, 75..80, 81..99, and 100..101 resolve to no-op slots"
+    }
+  },
+  "addendum": {
+    "scope": "Trace upstream: confirm no synchronous C++ actor-state writes happen in the Receive -> apply-helper -> event-condition-construction chain. Find queue insertion sites if any.",
+    "sourceDumps": [
+      "%BCS_GHIDRA_PROJECTS%\\event_condition_vtable_xrefs.txt",
+      "%BCS_GHIDRA_PROJECTS%\\receives_and_second_ctors.txt",
+      "%BCS_GHIDRA_PROJECTS%\\post_construct_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\finalizer_calls.txt",
+      "%BCS_GHIDRA_PROJECTS%\\base_init_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%\\root_ec_init.txt",
+      "%BCS_GHIDRA_PROJECTS%\\intermediate_vtables.txt"
+    ],
+    "vftableXrefScan": {
+      "description": "Scanned all 3.17M instructions for references to the 6 event-condition vftable VAs. Found 14 hits total, ALL writes (constructor MOV [ESI], vftable_va) - NO direct reads.",
+      "implication": "Queue-drainer dispatch goes through OBJECT POINTER (loads *object[+0x04] for slot 0x04 dispatch), not through literal vftable VA. The drainer can't be found by literal vtable xref scan; it dispatches polymorphically via the same vftable mechanism."
+    },
+    "receiveEntryDecomp": {
+      "FUN_0089DB00": {
+        "receiver": "SetPushEventConditionWithCircleReceiver",
+        "body": "FUN_006F2B70(param_2, param_1+4, param_1+0x58, param_1+0x59, *(param_1+0x5c), *(param_1+0x60), ...)",
+        "interpretation": "param_1 = SetPush receiver, param_2 = wire/context pointer (passed as 'this' to FUN_006F2B70). The receiver's +0x58 is where PushBlock gets constructed (per FUN_006F2310 which routes to FUN_00892980(param_2=receiver+0x58, param_3=receiver+0x59))."
+      },
+      "FUN_0089DF60": {
+        "receiver": "SetTalkEventConditionReceiver",
+        "body": "FUN_009DA6CC(param_3, 0, ActorBase::RTTI, NpcBase::RTTI, 0); FUN_006F29B0(param_1+4, param_1+0x58, param_1+0x59); return;",
+        "interpretation": "RTTI cast on param_3 (result discarded - just safety check). FUN_006F29B0 constructs TalkBlock/TalkNonBlock at receiver+4 based on marker byte at receiver+0x59. No further calls; Receive returns immediately after construction."
+      },
+      "FUN_0089D980": {
+        "receiver": "SetNoticeEventConditionReceiver",
+        "body": "iVar1 = FUN_009DA6CC(param_3, 0, ActorBase::RTTI, DirectorBase::RTTI, 0); if (iVar1) { FUN_006F1380(param_1+4, ...); return; } FUN_006F2E80(param_1+4, ...); return;",
+        "interpretation": "RTTI route to FUN_006F1380 (DirectorBase path) or FUN_006F2E80 (fallback). Both construct NoticeBlock/NoticeNonBlock at receiver+4. No further calls in Receive."
+      }
+    },
+    "inlineStorageFinding": {
+      "description": "Event-condition objects are stored INLINE in their receivers (not heap-allocated and queued). Receiver layout: receiver's own vftable at +0, secondary EventCondition vftable at +4 (SetTalk/SetNotice) or +0x58 (SetPush). Multi-inheritance: the receiver is BOTH a Receiver and an EventCondition; the secondary vftable lets external code dispatch on the receiver via its EventCondition identity.",
+      "implication": "There is no separate queue holding event-condition pointers. The receiver instances live in the global dispatch table; the queue drainer iterates receivers and calls EventCondition virtual methods on their secondary-vftable sub-object."
+    },
+    "classHierarchyFound": {
+      "Event::Base": {
+        "ctor": "FUN_00891FB0",
+        "vftable": "0x00FAB5B8 (UNVERIFIED - 'Base' partial match grabbed an unrelated class in the dump; the real Event::Base vftable likely lives elsewhere)",
+        "init": "Sets Event::Base::vftable, calls FUN_00447200 (likely Lua-related setup), sets *(this+0x16) = DAT_0134c3fd"
+      },
+      "Event::Notice": {
+        "ctor": "FUN_00899570 (calls FUN_00891FB0 first)",
+        "vftable": "0x01056DD8",
+        "abstractness": "ABSTRACT: slots 0x1C/0x20/0x28/0x2C are __purecall"
+      },
+      "Event::Talk": {
+        "ctor": "FUN_00899740 (calls FUN_00891FB0 first)",
+        "vftable": "0x01056E74",
+        "abstractness": "ABSTRACT: slots 0x1C/0x20/0x28/0x2C are __purecall"
+      },
+      "Event::Push": {
+        "ctor": "FUN_00892880 (calls FUN_00891FB0 first; writes more fields than Notice/Talk because Push has spatial-circle data)",
+        "vftable": "0x01056EA8",
+        "abstractness": "ABSTRACT: slots 0x1C/0x20/0x28/0x2C are __purecall"
+      }
+    },
+    "pushPostConstructChain": {
+      "description": "FUN_006F2B70 is the only apply helper that does extra work after construction. After constructing the PushBlock/PushNonBlock at receiver+0x58, it calls 3 helpers:",
+      "calls": [
+        {
+          "func": "FUN_00CC7510",
+          "body": "Tiny wrapper: FUN_00CD7910(); return;",
+          "interpretation": "Generic event-system init; no actor-state writes."
+        },
+        {
+          "func": "FUN_00CC73B0",
+          "body": "FUN_00CD7A30(param_2); FUN_00CC7030(param_1); return param_1;",
+          "callerCount": 87,
+          "interpretation": "Generic event-system hook setup (87 callers across the binary). Not specific to event-conditions; no actor-state writes."
+        },
+        {
+          "func": "FUN_0075C4A0",
+          "body": "FUN_004D9970(*param_1); uVar1 = FUN_00445210(param_2, param_3); FUN_0058B110(uVar1, param_2, param_3); return;",
+          "callerCount": 1,
+          "interpretation": "Push-specific. FUN_0058B110 allocates a new 44-byte entry in a callback registry (FUN_00586810 allocator), writes 4 qwords (32 bytes) from *param_1 + 2 u32 params; sets bit 0 of flag word, clears bit 1. This IS queue insertion - but the queue is a deferred-event callback table, not actor-state."
+        }
+      ],
+      "implication": "Even the Push post-construct chain only inserts an entry into a deferred-event callback table. No actor-state mutations happen synchronously. The deferred entry presumably triggers a Lua callback when processed."
+    },
+    "actorStateWriteSearchResult": "EXHAUSTIVELY NEGATIVE for the 3 event-condition opcodes (0x012E/0x016B/0x016F). No synchronous C++ writes to CharaBase / PlayerBase / NpcBase / DirectorBase / NpcBase fields occur in the Receive -> apply-helper -> ctor -> post-construct chain. The actor-state mutations the user goal expected ('the deferred patterns ultimately must touch state somewhere') happen via Lua scripts: the Lua handlers for _onPreEvent / _onPostEvent / _onTalkEvent / _onTalkRequest / _onPushEvent / _onPushRequest call N-API methods whose implementations write actor state. Those N-API implementations are scoped to WS-C (N-API implementation scaling beyond pilot), not to any specific event-condition opcode.",
+    "ws-fConclusion": "WS-F (event-condition queue drainer trace) closed with structural finding: no synchronous C++ chain-key writes exist for opcodes 0x012E/0x016B/0x016F. The deferred pattern delegates actor-state mutation to Lua scripts that respond to the 6 documented apply-chain firers. The queue itself is a callback registry (FUN_0058B110 / FUN_00586810); identifying the drainer entry would only confirm the Lua-fire path which is already documented in lua_to_opcode.json via the bindingFlavor: deferred_via_event_condition entries.",
+    "ws-gStatus": "WS-G (0x0131 EndClientOrderEvent target-object class) remains open. This decomp surfaced state-flag byte writes to target+0x07/+0x1c/+0x1d/+0x22 but did not identify the target's class. Tracing FUN_0089D070 callers + the allocator that creates the target instance might surface a known class with N-API readers."
+  }
+}

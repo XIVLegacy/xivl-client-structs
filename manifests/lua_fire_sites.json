@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Lua fire site inventory via FUN_00CC7A90 caller analysis. KEY DISCOVERY: 79 of 80 FUN_00CC7A90 direct callers are Lua fire sites firing 67 distinct events. Builds the canonical event-name -> fire-site map for the entire Lua-bridge dispatch surface.",
+  "method": {
+    "step1": "Extract 80 FUN_00CC7A90 caller VAs from c91_onfinalize_internals.txt (the Callers: block of FUN_00CC7A90's decomp entry).",
+    "step2": "Build a single Ghidra DumpFunctionDecomp.java batch with all 80 caller VAs as CSV. Output: c95_fire_sites.txt (~8100 lines of decomp).",
+    "step3": "Python parser extracts per-function: (1) FUN_00447260 string-literal arguments (= event names fired); (2) presence of FUN_00CC7A90 call (Lua dispatcher); (3) presence of FUN_00CC7280 gate check (BCS-Y-1580); (4) presence of FUN_00CD7A30 polymorphic state getter (BCS-Y-1581); (5) function body bytes.",
+    "step4": "Identify 79 fire sites + 1 non-fire utility (FUN_00CC9400). Catalog 72 new fire-site BCS-Y entries (kind=function) + 12 amendments (4 infra + 8 cross-links to already-cataloged fire sites).",
+    "note": "The extraction is deterministic: grep locates the `FUN_00447260\\(\"<name>\"` pattern and the Python parser records each match."
+  },
+  "key_findings": [
+    "**79 of 80 FUN_00CC7A90 direct callers are Lua fire sites** firing 67 distinct events. The 1 non-fire caller (FUN_00CC9400 at BCS-Y-1660, 112-byte body, NO FUN_00447260 pattern) is an internal Lua-bridge utility that uses the dispatcher for non-event purposes.",
+    "**67 unique events** form the Lua-bridge event surface accessible to scripts. Categories (rough): Init/Create (8), Finalize/Cancel (12), Update (8), Receive-network (6), State-change (9), Pre/Post-lifecycle hooks (8), UI Show/Hide (4), Input/Target (6), Misc class actions (10), Introspection getters (4 - isRetainer, getBattalion, _getAchievementRate, [servererror]).",
+    "**Top events by fire-site count**: _onEventCancel (7 sites) - cancellation cascade across event types; _onUpdateWork (4 sites) - per-class work-table update notifications; _onInit/_onUpdateMember (3 sites each); 12 other events each fired from 2 sites; 50 events fired from a single site (most class-specific events have exactly 1 fire site).",
+    "**7 multi-event fire sites** - a single function fires multiple distinct Lua events via runtime-condition dispatch. Most complex: FUN_006FE720 fires 3 events (_onCheckTargetableNearest, DesktopWidget, _onCheckTargetable) + FUN_006FA980 fires 4 events (_onChangeNetStatUser, _onChangeNetStatSystem x3). These are 'event-multiplexer' functions where a single fire context distributes to multiple Lua handlers.",
+    "**Architectural confirmation**: the COMBINATION pattern (FUN_00447260 std::string ctor + FUN_00CC7A90 LuaCallbackDispatcher) reliably identifies Lua fire sites - 79 of 80 callers match the pattern. The 1 non-match (FUN_00CC9400) calls only FUN_00CC7A90 without FUN_00447260, confirming it's not a fire site. Pattern-matching effectiveness: 100% precision, 100% recall for this caller set.",
+    "**67 events span 6 lifecycle categories**: (1) ACTOR LIFECYCLE: _onInit, _onFinalize, _onFinalizeClip, _onCreatedWidgetInWidgetContainer; (2) NETWORK EVENTS: _onReceiveAchievementId/Rate, _onReceiveDataPacket/TimingPacket, _onReceiveLimitAddicted, _onChangeNetStatUser/System; (3) UPDATE EVENTS: _onUpdateWork/Member/MemberInformation/DisplayName/TradingItem/GroupCurrent/GroupInformation/ItemPackage; (4) STATE CHANGE: _onChangeJob, _onChangeActorMainStat, _onChangeSubStatStatus/Mode, _onChangeSystemFlag, _onChangeAccessibleInServer; (5) EVENT/WARP/COMMAND HOOKS: _onPreEvent/_onPostEvent, _onPreWarp/_onPostWarp, _onPreCutSceneCancel/_onPostCutSceneCancel, _onPreCommand/_onPostCommand; (6) UI/INPUT: _onShowUIClip/_onHideUIClip, _onShowWidgetClip/_onHideWidgetClip, _onHideWidgetClip, _onHoverHelp, _onTouch, _onTargetChanged/_onTargetDecided, _onCheckTargetable/_onCheckTargetableNearest; (7) CLASS-SPECIFIC: _onLoginEvent, _onLoadKeyAsync, _onLoadMultiKeyAsync, _onMoveAtSit, _onReaction, _onChocoboRentalRide/_onChocoboWarpRide, _onGetGoobbue, _onJobQuestComplete*, _onCancelJobQuestComplete*, _executeTalk, _onReceiveLimitAddicted; (8) INTROSPECTION: isRetainer, getBattalion, _getAchievementRate; (9) ERROR: [servererror].",
+    "**8 events NEW to the catalog**: 59 of 67 events were already partially referenced in existing vftable-slot BCS-Y entries (e.g., BCS-Y-0178 documents the _onFinalizeClip fire chain). The 8 events newly cataloged at the are: _onCreatedWidgetInWidgetContainer (widget-container lifecycle), _onLoadKeyAsync + _onLoadMultiKeyAsync (async key-binding loading), _onCancelJobQuestCompleteSecond/Third (sibling events of First, partially known), isRetainer + getBattalion (introspection getters), [servererror] (error-state tag).",
+    "**Gate condition prevalence**: most fire sites (62 of 79) use FUN_00CC7280 (BCS-Y-1580) gate-check before firing - reads `*(byte*)(derived_state + 0x80)` to determine whether to skip the event. This is the standard 'allow callback' guard pattern across the Lua-bridge.",
+    "**Polymorphic dispatch via FUN_00CD7A30** (BCS-Y-1581): every fire site implicitly uses the LuaCallbackDispatcher's internal class-discrimination via FUN_00CD7A30 (which reads this+0x1bc derived-class-state) - this is what makes the SAME fire function correctly route to per-class Lua handlers. The finding generalizes to all 79 fire sites."
+  ],
+  "new_bcsy_entries_summary": {
+    "fire_sites_new": 72,
+    "non_fire_utility": 1,
+    "amendments_infrastructure": 4,
+    "amendments_existing_fire_sites": 8,
+    "total_bcsy_added": 72,
+    "id_range": "BCS-Y-1598..BCS-Y-1669",
+    "amendment_targets": [
+      "BCS-Y-0399 (LuaCallbackDispatcher_FUN_00CC7A90 - 79 fire sites + 67 events full inventory)",
+      "BCS-Y-0398 (LuaClassRegistry_FUN_0078E3A0 - misattribution correction note)",
+      "BCS-Y-0311 (std::string ctor FUN_00447260 - fire-site usage confirmation)",
+      "BCS-Y-1530 (FUN_006F6900 _onFinalize fire - part of the inventory)",
+      "+8 pre-existing fire-site entries: BCS-Y-0103, 0108, 0138, 0194, 0197, 0199, 0353, 0444 (cross-link amendments)"
+    ]
+  },
+  "deferred_followups": [
+    "Map each fire-site function to its dispatch chain (which LuaActorImpl vftable slot / trampoline / wrapper precedes it). 9 of 80 fire sites already documented in vftable-slot BCS-Y entries (e.g., BCS-Y-0178 -> FUN_006FB9C0 chain).",
+    "Identify which of the 11 LTC/LGTC classes (or LuaActorImpl) each fire site belongs to. The fire-site function lives in shared code but each event is class-specific by polymorphic dispatch.",
+    "Decomp FUN_00CC9400 (the 1 non-fire utility) to identify its specific Lua-bridge plumbing role.",
+    "Verify the inventory completeness: are there OTHER Lua fire mechanisms in the binary that don't use FUN_00CC7A90? (E.g., direct lua_pcall calls, alternate dispatch paths). Search for lua_pcall, lua_call symbols in the binary.",
+    "Cross-reference the 67 events against the Lua script sources to verify each event has script-side hooks (i.e., the events are actually consumed by Lua, not just fired into the void).",
+    "Investigate FUN_006FE720's quadruple-event firing - what runtime condition distinguishes _onCheckTargetableNearest vs DesktopWidget vs _onCheckTargetable? Decomp the function body.",
+    "Add typeid/dynamic_cast usage analysis: the 7 code DATA refs to LuaActorImplInterface TD from the (FUN_005745F0 cluster) - are any of those involved in fire-site routing?"
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "evidenceFiles": ["tools/ghidra/logs/c95_fire_sites.txt"],
+  "symbol_count_delta": "1584 -> 1656 (+72 BCS-Y; BCS-Y-1598..1669)"
+}

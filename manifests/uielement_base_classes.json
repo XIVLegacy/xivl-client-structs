@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Enumerate Sqwt::UIElement's 8 RTTI base classes via Base Class Array dump at 0x01141924. Closes client-architecture 'The Sqwt event-source registry is per-channel' section's +0xB4 mystery anchor (= Sqwt::InputElement::vftable). Closes the deferred follow-up [0]. MAJOR architectural finding: Sqwt UI framework is structurally Windows Presentation Foundation (WPF) - identical DependencyObject + Visual + UIElement layered model with IInputElement interface.",
+  "method": {
+    "step1": "Reuse the UIElement BCA dump - 8 BCD addresses already captured. 1 BCD's TD inline (BCD #2); 7 unknown BCDs need dumping.",
+    "step2": "Dump of 7 unknown BCDs via run_c82_uielement_bcds.bat -> c82_uielement_bcds.txt. Extract 8 TD pointers total (1 from inline + 7 fresh).",
+    "step3": "Dump of 8 TD name strings via run_c82_uielement_tds.bat -> c82_uielement_tds.txt. 2 contiguous clusters in .data covered with 2 ranges.",
+    "step4": "Decode MSVC name mangling in Python. All 8 classes resolve to Sqwt namespace (with Sqwt::Media:: for Visual).",
+    "step5": "Catalog 8 BCS-Y RTTI entries (BCS-Y-1499..1506) + amend BCS-Y-1383 (UIElement ctor) and BCS-Y-1375 (InputElement ctor)."
+  },
+  "key_findings": [
+    "**8 base classes ENUMERATED** - all in Sqwt namespace (1 in Sqwt::Media sub-namespace).",
+    "**Primary chain (offset 0, 6 classes deep)**:",
+    "  - UIElement (self, BCS-Y-1499)",
+    "  - <- Sqwt::Media::Visual (BCS-Y-1500, depth=4)",
+    "  - <- Sqwt::DependencyObject (BCS-Y-1501, depth=3)",
+    "  - <- Sqwt::DependencyObjectBase (BCS-Y-1502, depth=2)",
+    "  - <- Sqwt::AllocatorBase (BCS-Y-1503, depth=1)",
+    "  - <- Sqwt::Object (BCS-Y-1504, depth=0, ROOT)",
+    "**Secondary chain (offset +0xB4)**:",
+    "  - InputElement (BCS-Y-1505, depth=1)",
+    "  - <- IInputElement (BCS-Y-1506, depth=0, interface root)",
+    "**WPF ARCHITECTURE CONFIRMED**: The Sqwt UI framework is structurally Windows Presentation Foundation. Identical layered model: DependencyObject <- Visual <- UIElement with IInputElement secondary interface. WPF's namespace mapping: System.Windows.DependencyObject, System.Windows.Media.Visual, System.Windows.UIElement, System.Windows.IInputElement. SQEX appears to have hand-rolled a WPF-shaped UI framework in C++ for their FFXIV client.",
+    "**+0xB4 MYSTERY ANCHOR CLOSED**: The +0xB4 secondary vftable observed in derived Sqwt UI classes is `Sqwt::InputElement::vftable` (BCS-Y-1377). This was an unidentified anchor; now resolved.",
+    "**Sqwt has its OWN AllocatorBase** (distinct from Component::Lua::GameEngine::LgeBase). Two parallel memory-allocator hierarchies: one for the Lua-bridge, one for the Sqwt UI framework. The SQEX engine designs per-subsystem allocator policies."
+  ],
+  "new_bcsy_entries_summary": {
+    "rtti_type_descriptors": 8,
+    "amendments": 2,
+    "total_bcsy_added": 8,
+    "id_range": "BCS-Y-1499..BCS-Y-1506"
+  },
+  "base_classes": [
+    "Sqwt::UIElement (self, BCS-Y-1499) - 0x01269EB0",
+    "Sqwt::Media::Visual (BCS-Y-1500) - 0x01269ED0",
+    "Sqwt::DependencyObject (BCS-Y-1501) - 0x01269EF0",
+    "Sqwt::DependencyObjectBase (BCS-Y-1502) - 0x01269F14",
+    "Sqwt::AllocatorBase (BCS-Y-1503) - 0x01269D18",
+    "Sqwt::Object (BCS-Y-1504, root primary chain) - 0x01269CFC",
+    "Sqwt::InputElement (BCS-Y-1505, offset +0xB4) - 0x01269D3C",
+    "Sqwt::IInputElement (BCS-Y-1506, interface root) - 0x01269D5C"
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1383", "addition": "Full 8-base RTTI composition with WPF pattern observation"},
+    {"id": "BCS-Y-1375", "addition": "Self Type Descriptor at 0x01269D3C cataloged; +0xB4 mystery closed"}
+  ],
+  "deferred_followups": [
+    "Decomp Sqwt::DependencyObject ctor + vftable (the key dependency-property system anchor).",
+    "Decomp Sqwt::Visual ctor + vftable (the rendering/transform layer).",
+    "Find ctor + vftable VAs for Object, AllocatorBase, DependencyObjectBase via FindSymbolByName.",
+    "Find IInputElement's vftable VA - it's an interface so likely doesn't have a ctor but does have a vftable for its slots.",
+    "Investigate whether DependencyObject implements the std::map<event_id, ...> event registry documented in client-architecture 'The Sqwt event-source registry is per-channel' - the WPF parallel suggests YES.",
+    "Cross-reference with the 20 FrameworkElement-derived classes (deferred) - they all transitively inherit this 6-class UIElement primary chain.",
+    "Architectural finding refinement: rename / refine client-architecture 'Sqwt UI elements follow a uniform heap-factory' section's 'Sqwt Element' framing to acknowledge it's a WPF-pattern UI framework."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1488 -> 1496 (+8 BCS-Y RTTI Type Descriptor entries)",
+  "files_changed": [
+    "manifests/symbols.json: +8 entries (BCS-Y-1499..1506), 2 amendments (BCS-Y-1383, BCS-Y-1375)",
+    "manifests/uielement_base_classes.json (NEW, this file)",
+    "tools/ghidra/logs/c82_uielement_bcds.txt (NEW)",
+    "tools/ghidra/logs/c82_uielement_tds.txt (NEW)"
+  ]
+}

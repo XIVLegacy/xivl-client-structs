@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "manifest_complete",
+  "scope": "Attribute the c2s 0x0133 GroupCreatedPacket emitter (the pcap-opcode-coverage-matrix pass's rank 1 c2s gap after 0x012E was closed, 270 pcap hits). Test whether the static C++ emitter follows the event-family pattern already confirmed for 0x012E (FUN_0075Exxx builders -> FUN_004D6D30 gating thunk -> FUN_004E0240 wire-send).",
+  "method": {
+    "step1": "FindOpcodeImmediate.java with BAHAMUT_OPCODE_IMMEDIATE=0x133. 21 matches across 19 functions. Strongest c2s candidate: instruction 0075EA09 'MOV [ESP+0x18], 0x133' in FUN_0075E950 - exact same EventStart-wrapper neighborhood as FUN_0075E670. Eliminated field-offset matches ([REG + 0x133] patterns at 008aa4cd / 00a83ae5 / 00b3b047 / 00c32xxx / 00c33xxx / 00c41xxx) and the FUN_00f1be40 opcode-registry init pair (writes to globals 0x012d42b0 / 0x012d45ec). 5 PUSH 0x133 candidates (FUN_004358b0 / FUN_00484440 / FUN_004988a0 / FUN_0049fb30 / FUN_00bbb610) are likely allocation sizes or line numbers in distant subsystems.",
+    "step2": "Decomp FUN_0075E950 (242B): writes local_8e0 = 0x133 (opcode) + local_8dc = 0x38 (body length 56 bytes) to stack record. Reads 32-bit IDs from param_1[0]/param_1[1], copies 32 bytes from local_40 + local_30 (each 16 bytes) into local_8c0..local_8a8. Calls FUN_004d6d30(&local_8e0, 0, 0) - the same shared gating thunk cataloged as [[MapEventC2sGatingThunk_FUN_004D6D30]] (BCS-Y-0983).",
+    "step3": "Decomp the single caller FUN_006C72E0 (617B): SEH-wrapped Group subsystem aggregator. Branches on flag *(char *)(param_3 + 0xac). If flag=0: walks via FUN_006cea20 (likely group-member iterator), calls FUN_004451f0 and FUN_00445210 (retainer_bazaar_subsystem.json's deferred '0x100-byte body block' candidates - now confirmed as Group state serializers), and emits twice. If flag=1: uses FUN_00ccaaf0 for allocation + walks differently. Always ends with FUN_0075E950(param_2, auStack_e4) emit. 4 upstream callers (FUN_006C8060/006C84A0/006C8CF0/006C7A80 - all Group subsystem, 006Cxxxx range)."
+  },
+  "key_findings": [
+    "FUN_0075E950 is the c2s 0x0133 GroupCreatedPacket emitter. Located in the FUN_0075Exxx event-family builder cluster (same neighborhood as FUN_0075E670 0x012E builder, plus FUN_0075E1C0/E230/E3A0/E510 EventStart wrappers per BCS-Y-0426..0429). Confirms predicted pattern: Group state mutations ride the generic event-family c2s emit infrastructure via the shared [[MapEventC2sGatingThunk_FUN_004D6D30]] chokepoint (now 15 callers including this one).",
+    "Wire format: 0x38 body length (56 bytes) covering 2 dwords of header IDs (param_1[0]/param_1[1] - likely group_id + member_id or sequence) + 32 bytes of serialized Group state (4 qwords copied from local_40/local_30 buffers populated by the upstream aggregator).",
+    "FUN_006C72E0 (617B) is the Group state aggregator that prepares the payload then triggers emit. The two-path branch on (param_3+0xac) is likely 'partial group update' (flag=1, uses FUN_00ccaaf0 walk) vs 'full group snapshot' (flag=0, uses FUN_006cea20 iterator + the FUN_00445210/004451F0 0x100-byte body block functions). Confirms the deferred 'q2' open question: FUN_00445210/004451F0 are Group state serializers, not generic shared infrastructure.",
+    "Naming reconciliation, but 4 Group subsystem upstream callers suggest a broader trigger surface (group join/leave/membership-change also likely route here). The 270 pcap hits in the corpus support frequent emission - not just creation events. Consider 'GroupStateChangedPacket' or 'GroupSyncPacket' as a more accurate name; reserved for future opcode-naming reconciliation pass.",
+    "Architecture confirmation: c2s 0x0133 routes through the SAME event-family chokepoint (FUN_004D6D30) as 0x012D EventStart and 0x012E EventUpdate. Despite 'GroupCreated' name implying a separate Group subsystem channel, the wire is event-family. This explains why s2c 0x0133 = UserDataReceiver / GenericDataPacket also routes via the FUN_004D8860 event-family sub-dispatcher (per the pcap-opcode-coverage-matrix pass's s2c table)."
+  ],
+  "proposed_bcs_y_entries": [
+    {
+      "name": "GroupCreatedPacketBuilder_FUN_0075E950",
+      "kind": "function",
+      "address": "0x0075E950",
+      "confidence": "confirmed",
+      "summary": "Canonical c2s 0x0133 GroupCreatedPacket builder. 242-byte function: writes opcode 0x133 + body_length 0x38 (56 bytes) to a 0x8E4-byte stack record. Reads 2 dwords from param_1 (group/member IDs at +0 and +4), copies 32 bytes from local_40 (16) + local_30 (16) into the body payload. Calls [[MapEventC2sGatingThunk_FUN_004D6D30]] (BCS-Y-0983) for dispatch. Stack-record sibling of [[MapEventStartPacketBuilder_FUN_00776760]] (BCS-Y-0426 0x012D) and [[MapEventUpdatePacketBuilder_FUN_0075E670]] (BCS-Y-0981 0x012E) - 3rd member of the event-family c2s emit cluster. Sole caller [[GroupStateAggregator_FUN_006C72E0]]."
+    },
+    {
+      "name": "GroupStateAggregator_FUN_006C72E0",
+      "kind": "function",
+      "address": "0x006C72E0",
+      "confidence": "confirmed",
+      "summary": "Group state aggregator for c2s 0x0133 GroupCreatedPacket emit. 617-byte SEH-wrapped function: branches on flag *(char *)(param_3 + 0xac) - if flag=0 walks via FUN_006cea20 (group-member iterator) and calls FUN_004451f0 + FUN_00445210 (deferred 'q2' 0x100-byte body block functions, now confirmed as Group state serializers); if flag=1 uses FUN_00ccaaf0 + alternate walk. Always ends with [[GroupCreatedPacketBuilder_FUN_0075E950]] (BCS-Y-this) emit. 4 upstream Group subsystem callers (FUN_006C8060 / FUN_006C84A0 / FUN_006C8CF0 / FUN_006C7A80) at 006Cxxxx range covering distinct group-change triggers (creation, join, leave, membership update). Confirms the retainer-bazaar-subsystem pass's q2 open question."
+    }
+  ]
+}

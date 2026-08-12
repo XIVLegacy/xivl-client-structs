@@ -1,0 +1,96 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "tick hypothesis follow-up for FUN_006EED90",
+  "generated": "2026-05-20",
+  "title": "FUN_006EED90 ExecuteParameters state-vector binder follow-up",
+  "scope": "Resolve whether FUN_006EED90 is the status-effect tick/expiration driver or a different state-machine list walker.",
+  "sourceRefs": [
+    "%BCS_GHIDRA_PROJECTS%\\agent_a_followups_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\turn14_cutscene_helpers_decomp.txt",
+    "manifests\\status_effect_findings.json",
+    "BCS-Y-0244",
+    "BCS-Y-0245",
+    "BCS-S-0035"
+  ],
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0445",
+      "name": "LuaExecuteParametersStateVectorBinder_FUN_006EED90"
+    },
+    {
+      "id": "BCS-Y-0446",
+      "name": "CutScene_PlayExecuteParametersAdapter_FUN_006FB830"
+    },
+    {
+      "id": "BCS-Y-0447",
+      "name": "CutScene_ReplayExecuteParametersAdapter_FUN_006F11B0"
+    }
+  ],
+  "conclusion": {
+    "isStatusEffectTick": false,
+    "actualRole": "Generic Lua ExecuteParameters state-vector binder for Control::CutScene `_play` and `_replay` signature adapters.",
+    "containerWalked": "`*(param_1 + 4)` points at a vector-like container with begin/end at +0x04/+0x08. Entries are 16 bytes each and have a state byte at +0x0C.",
+    "statusEffectStorageRuledOut": "No observed access reaches CharaBase+0xDC, CharaSubStatStorage (BCS-S-0035), the status u32 slot array, or the 0x0144/0x0145/0x0179 receiver helpers."
+  },
+  "callChain": [
+    {
+      "luaApi": "Control::CutScene `_play`",
+      "firer": "FUN_0074F810 (BCS-Y-0244)",
+      "signatureAdapter": "FUN_006FB830",
+      "binder": "FUN_006EED90",
+      "evidence": "FUN_0074F810 passes FUN_006FB830 to FUN_00726880, then fires `_play` via FUN_00447260."
+    },
+    {
+      "luaApi": "Control::CutScene `_replay`",
+      "firer": "FUN_00736150 (BCS-Y-0245)",
+      "signatureAdapter": "FUN_006F11B0",
+      "binder": "FUN_006EED90",
+      "evidence": "FUN_00736150 passes FUN_006F11B0 to FUN_00726880, then fires `_replay` via FUN_00447260."
+    }
+  ],
+  "entryStateHandlers": [
+    {
+      "stateByte": "0x02",
+      "handler": "FUN_0071BA00",
+      "role": "Returns entry+0x08 payload pointer when state==2; FUN_006EED90 tests the first byte and folds the result into a bitmask before calling FUN_00723C60."
+    },
+    {
+      "stateByte": "0x00",
+      "handler": "FUN_005819A0",
+      "role": "Generic value accessor for state==0 entries; FUN_006EED90 forwards its result to FUN_00723C60."
+    },
+    {
+      "stateByte": "0x03",
+      "handler": "FUN_0071CE70",
+      "role": "Returns dereferenced entry+0x08 payload when state==3; FUN_006EED90 forwards its result to FUN_00723100."
+    },
+    {
+      "stateByte": "range setup",
+      "handler": "FUN_0071CC50",
+      "role": "Vector/range assignment helper used before the entry walk to snapshot one argument range into local state."
+    }
+  ],
+  "closedQuestions": [
+    {
+      "question": "What does FUN_006EED90 walk, and is it the status-effect tick/expiration driver?",
+      "status": "closed",
+      "answer": "FUN_006EED90 walks a Lua ExecuteParameters state vector used by the Control::CutScene `_play` and `_replay` signature adapters. It is not a status-effect tick, not per-frame, and not connected to CharaBase+0xDC CharaSubStatStorage.",
+      "evidence": [
+        "%BCS_GHIDRA_PROJECTS%\\agent_a_followups_decomp.txt: FUN_006EED90 callers are FUN_006FB830 and FUN_006F11B0.",
+        "%BCS_GHIDRA_PROJECTS%\\turn14_cutscene_helpers_decomp.txt: FUN_0074F810 passes FUN_006FB830 to FUN_00726880 for `_play`; FUN_00736150 passes FUN_006F11B0 for `_replay`.",
+        "FUN_006EED90's entry processors FUN_0071BA00 and FUN_0071CE70 are generic state/value accessors keyed by the entry+0x0C state byte, not status-slot readers."
+      ]
+    }
+  ],
+  "negativeFindings": [
+    {
+      "finding": "FUN_006EED90 is not a per-frame status-effect tick or expiration driver.",
+      "basis": "Its only direct callers are CutScene `_play`/`_replay` signature adapters used as FUN_00726880 blobs, and the walked vector is the ExecuteParameters state vector, not actor sub-stat storage."
+    },
+    {
+      "finding": "No coherent new struct should be promoted from this follow-up.",
+      "basis": "The identified container is generic Lua argument-binding scaffolding already represented by ExecuteParameters-style vectors; the evidence does not expose a stable domain object field layout beyond begin/end/capacity vector mechanics."
+    }
+  ]
+}

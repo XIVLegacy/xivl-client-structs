@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_arch_finding_refinements",
+  "scope": "Complete the +0xB4 writer hunt from the deferred[1]. Identify Sqwt::FrameworkElement as the primary derived layer + Sqwt::UIElement::dtor + 5 vftable globals + the Sqwt::Markup::IAddChild interface. Refine client-architecture 'Sqwt UI elements follow a uniform heap-factory' + 'The Sqwt event-source registry is per-channel' with the full multi-inheritance + chain interpretation.",
+  "method": {
+    "step1": "FindReferencesToAddresses on (0x0106C3CC = UIElement::vftable_SECONDARY, 0x0093C750 = UIElement::ctor) via run_c70_uielement_refs.bat. Log: tools/ghidra/logs/c70_uielement_refs.txt. Result: only 2 writers of vftable_SECONDARY (UIElement::ctor + a likely dtor); only 1 caller of UIElement::ctor (FUN_0092F640).",
+    "step2": "DumpMemRange on UIElement RTTI structures (Class Hierarchy Descriptor 0x01141914 + 2 Complete Object Locators 0x01179B90/0x01179BA4) via the same bat (pass 2). Log: tools/ghidra/logs/c70_uielement_rtti_dump.txt. Result: UIElement has 8 base classes (numBaseClasses=8 in CHD); 2 base-class-descriptors at offset 180 (=0xB4) = the secondary vtable segment.",
+    "step3": "Decomp the 2 functions (FUN_0092F640 + FUN_0093AC10) via run_c70_decomp_helpers.bat. Log: tools/ghidra/logs/c70_helpers_decomp.txt. Result: FUN_0092F640 = Sqwt::FrameworkElement::ctor (1373 bytes, 20 callers, writes 3 vftables, debug name 'FrameworkElement'); FUN_0093AC10 = Sqwt::UIElement::~UIElement destructor (201 bytes, 4 callers including 2 SEH unwind handlers).",
+    "step4": "FindSymbolByName for Sqwt::FrameworkElement (run_c70_framework_vftables.bat pass 1) + Sqwt::Markup::IAddChild (pass 2). Logs: tools/ghidra/logs/c70_framework_vftables.txt + c70_iaddchild_vftable.txt. Result: 3 FrameworkElement vftables + LogicalChildrenList vftable + IAddChild vftable VAs.",
+    "step5": "Catalog 7 BCS-Y entries (BCS-Y-1386..1392). Amend BCS-Y-1383 (UIElement::ctor) + BCS-Y-1385 (UIElement::vftable_SECONDARY).",
+    "step6": "Refine client-architecture 'Sqwt UI elements follow a uniform heap-factory' + 'The Sqwt event-source registry is per-channel' in the architectural findings with the inheritance chain + the multi-inheritance secondary-vtable interpretation."
+  },
+  "key_findings": [
+    "**Sqwt::FrameworkElement IDENTIFIED as primary intermediate UI layer** (FUN_0092F640, 1373 bytes). Calls Sqwt::UIElement::ctor as base; writes Sqwt::FrameworkElement::vftable at THREE offsets (+0x00 primary, +0xB4 secondary overrides UIElement, +0x194 tertiary replaces Sqwt::Markup::IAddChild). Has 20 callers = 20 FrameworkElement-derived class ctors. Sqwt-side UI chain: Sqwt::FrameworkElement <- Sqwt::UIElement <- Sqwt::InputElement <- ....",
+    "**Sqwt::UIElement::dtor IDENTIFIED** (FUN_0093AC10, 201 bytes). Restores UIElement::vftable at both +0x00 and +0xB4 (standard MSVC dtor-vftable-reset pattern). Confirms the 2 writers of UIElement::vftable_SECONDARY are ctor + dtor only - derived classes do NOT write UIElement's secondary, they write their own.",
+    "**The +0xB4 mechanism in client-architecture 'The Sqwt event-source registry is per-channel' is the literal MSVC multiple-inheritance SECONDARY VTABLE**, not a pointer-to-interface-object field. The vtable IS the data at +0xB4 of the object (laid out by the compiler). The `event_source->vtable[+0xB4]->slot[+0x28]` should be read as `secondary_vtable_at_(this+0xB4)->slot[+0x28]`. Dynamic dispatch at +0xB4 works correctly because each class along the inheritance chain provides its own secondary vtable at that offset.",
+    "**Sqwt::FrameworkElement has 3 vftables** (a triple-vtable multi-inheritance layout): PRIMARY 0x0106AB80 at +0x00; SECONDARY 0x0106AB94 at +0xB4; TERTIARY 0x0106ACBC at +0x194 = decimal 404. The tertiary slot corresponds to Sqwt::Markup::IAddChild interface (RTTI Base_Class_Descriptor for IAddChild has offset 404). FrameworkElement-derived classes that participate in XAML-style markup add-child parsing use the IAddChild interface via this tertiary vtable.",
+    "**Sqwt::UIElement RTTI Class Hierarchy Descriptor reveals 8 base classes** (numBaseClasses=8 in 0x01141914..0x01141944), 2 of which are at offset 180 (=0xB4) = secondary vtable segment. The first base-class-descriptor at offset 0 has its OWN nested Class Hierarchy Descriptor with 5 more bases - indicating the UIElement primary base has its own deep inheritance subtree.",
+    "**Sqwt::Markup::IAddChild::vftable identified** (0x0106AB24). XAML-style 'parent that can have children added' interface. Allows XAML parsing infrastructure to call AddChild() / AddText() on parents during tree construction.",
+    "**Sqwt::FrameworkElement::LogicalChildrenList** embedded at FrameworkElement+0x258 (param_1[0x96]). Self-referential pointer at +0x254 (param_1[0x95] = param_1+0x96). Represents the framework's LOGICAL children (vs visual children) for XAML content trees.",
+    "**20 FrameworkElement-derived classes confirmed** via call-sites of FUN_0092F640 (Sqwt::FrameworkElement::ctor). Sites: FUN_00679ED0, FUN_0097B920, FUN_0091BC90, FUN_00995B70, FUN_009BA170, FUN_0099C460, FUN_009C9C60, FUN_009B5A30, FUN_0069D140, FUN_0097BB70, FUN_00990560, FUN_009C96B0, FUN_0099D650, FUN_0090EA40, FUN_0090F010, FUN_009A5B70, FUN_009CA9A0, FUN_009C9B30, FUN_0096A230, FUN_00938C80. Each is the ctor of a distinct FrameworkElement-derived class (likely Sqwt::Window, ListBox, Button, ScrollBar, ComboBox, Panel, etc. and Application-namespace specializations)."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1386", "name": "Sqwt_FrameworkElement_ctor_FUN_0092f640", "addr": "0x0092F640", "size_bytes": 1373, "role": "Sqwt::FrameworkElement::ctor; 20 derived-class callers; writes 3 vftables"},
+    {"id": "BCS-Y-1387", "name": "Sqwt_UIElement_dtor_FUN_0093ac10", "addr": "0x0093AC10", "size_bytes": 201, "role": "Sqwt::UIElement destructor; restores UIElement vftables"},
+    {"id": "BCS-Y-1388", "name": "Sqwt_FrameworkElement_vftable_PRIMARY_DAT_0106ab80", "addr": "0x0106AB80", "role": "FrameworkElement primary vftable (object+0x00)"},
+    {"id": "BCS-Y-1389", "name": "Sqwt_FrameworkElement_vftable_SECONDARY_DAT_0106ab94", "addr": "0x0106AB94", "role": "FrameworkElement secondary vftable (object+0xB4); overrides UIElement's secondary; THE +0xB4 vftable for FrameworkElement-derived objects"},
+    {"id": "BCS-Y-1390", "name": "Sqwt_FrameworkElement_vftable_TERTIARY_DAT_0106acbc", "addr": "0x0106ACBC", "role": "FrameworkElement tertiary vftable (object+0x194); IAddChild interface slot"},
+    {"id": "BCS-Y-1391", "name": "Sqwt_FrameworkElement_LogicalChildrenList_vftable_DAT_0106ab38", "addr": "0x0106AB38", "role": "LogicalChildrenList vftable; embedded at FrameworkElement+0x258"},
+    {"id": "BCS-Y-1392", "name": "Sqwt_Markup_IAddChild_vftable_DAT_0106ab24", "addr": "0x0106AB24", "role": "Sqwt::Markup::IAddChild interface vftable; XAML add-child mechanism"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1383", "addition": "Sqwt::FrameworkElement intermediate layer + UIElement::dtor + 8-base / 2-at-0xB4 RTTI evidence."},
+    {"id": "BCS-Y-1385", "addition": "Writers CONFIRMED as ctor + dtor only; derived classes write their own secondary."}
+  ],
+  "architectural_findings_refined": [
+    {"refinement_section": "Refined by hygiene passes", "summary": "Inheritance chain corrected: Sqwt-side (FrameworkElement <- UIElement <- InputElement <- ...) and Bahamut-side (concrete Element classes <- XamlElement [composition] <- RaptureElement <- InputElement). Two chains diverge at Sqwt::InputElement and converge in client-architecture 'The Sqwt event-source registry is per-channel' section's broadcaster/subscriber dispatch."},
+    {"refinement_section": "Refined", "summary": "+0xB4 mechanism is the literal MSVC multiple-inheritance SECONDARY VTABLE, not a pointer-to-interface field. The vtable IS the data at +0xB4. Dynamic dispatch at +0xB4 works correctly because each class along the chain provides its own secondary vtable at that offset. UIElement has 2 vftables (primary + secondary), FrameworkElement has 3 (primary + secondary + tertiary-IAddChild)."}
+  ],
+  "deferred_followups": [
+    "Decomp the 20 FrameworkElement-derived class ctors (FUN_00679ED0 etc.) to enumerate the leaf Sqwt UI class names (Window/ListBox/Button/etc.). Each adds 1+ BCS-Y entries (ctor + vftables). Bulk catalog opportunity - probably ~100+ BCS-Y entries.",
+    "Identify the specific UIElement base classes via the 6 BCDs in the Base Class Array at 0x01141924+0..23. UIElement's primary base appears to have 5 of its own bases (per the nested CHD at 0x01141964). Mechanical RTTI follow-up.",
+    "Identify the secondary-base class names at +0xB4 (2 BCDs at array offsets 24 + 28 in 0x01141924). They define what interfaces the +0xB4 secondary vtable implements - likely something like Sqwt::INotifyPropertyChanged or Sqwt::IRoutedEventSource etc.",
+    "Decomp the 12 dependency-property registration helpers used by Sqwt::UIElement::ctor + Sqwt::FrameworkElement::ctor (FUN_0093dde0, FUN_0093dbd0, FUN_0093dc40, FUN_0093de70, FUN_00973ef0, FUN_009c1fd0, FUN_00931a50, FUN_00931950, FUN_009319d0, FUN_009b2e50, FUN_00944bd0, FUN_0099d830, FUN_00939110, FUN_0095c960, FUN_00965600). Likely a small fixed-shape API: dep-prop ctor / dep-prop getter-setter ctor / dep-prop with default value ctor / dep-prop attached-property ctor / etc.",
+    "The dispatch-pattern refinements here are a promotion candidate for a consuming repo; consumers promote what they need and own their copy."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1375 -> 1382 (+7 BCS-Y: 2 functions, 5 data vftables)",
+  "files_changed": [
+    "manifests/symbols.json: +7 entries (BCS-Y-1386..1392), 2 amendments (BCS-Y-1383 + 1385)",
+    "manifests/framework_element_layer.json (NEW, this file)",
+    "tools/ghidra/logs/c70_uielement_refs.txt (NEW)",
+    "tools/ghidra/logs/c70_uielement_rtti_dump.txt (NEW)",
+    "tools/ghidra/logs/c70_helpers_decomp.txt (NEW)",
+    "tools/ghidra/logs/c70_framework_vftables.txt (NEW)",
+    "tools/ghidra/logs/c70_iaddchild_vftable.txt (NEW)"
+  ]
+}

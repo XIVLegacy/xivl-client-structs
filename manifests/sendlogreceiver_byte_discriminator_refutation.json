@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "synthesis_only_hypothesis_refuted",
+  "scope": "Resolve the open question: verify the hypothesized per-parser byte+0x10 write pattern (DisplayIdSender=1, CustomSender=2, WithActor=0, WithoutActor=0xFF). Batch-decomp all 14 body parsers (BCS-Y-0956..0969) + 3 install helpers (FUN_008A28C0/2940/29B0) to characterize the discriminator pattern. Finding: hypothesis REFUTED in location and partially in mapping; receiver's byte+0x10 is a SENTINEL (0xFF, never overwritten); actual discriminator lives in install helpers' arg+8.",
+  "method": {
+    "step1": "Re-read existing BCS-Y-0249 SendLogReceiver::ctor decomp to confirm byte+0x10 init pattern. Confirmed: line 69 `*(undefined1 *)(param_1 + 4) = 0xff;` initializes this+0x10 (param_1[4]=offset 16) to 0xFF.",
+    "step2": "Re-read ctor switch cases 0x157-0x16A to identify per-case write patterns to this+0x10 BEFORE calling parser. Finding: NO ctor case writes this+0x10 to a different value - the byte stays at 0xFF for all 20 opcodes.",
+    "step3": "Batch-decomp all 14 body parsers (BCS-Y-0956..0969). Findings: parsers write packet body fields to (a) *param_2 = (dword from Lua state lookup, this+0x14 sender id), (b) *param_3 = (ushort from packet, this+0x18 message field), (c) *param_4 = (byte from packet, this+0x1a parser-byte field). NONE write to this+0x10.",
+    "step4": "Decomp 3 install helpers (FUN_008A28C0 WithActor / FUN_008A2940 WithoutActor / FUN_008A29B0 DisplayIdSender) to find any byte-discriminator pattern. Found: each install helper writes a DIFFERENT byte value (0, 2, 1 respectively) to its FIRST ARG +8 offset. But the first arg is NOT the receiver - it's a separate object (Lua-state ref, std_string, stack frame).",
+    "step5": "Cross-reference install-helper bytes against ctor switch cases. Mapping: WithActor cases (0x157-0x15A) call FUN_008A28C0 -> byte 0 on Lua-state ref+8; WithoutActor cases (0x15B-0x160) call FUN_008A2940 -> byte 2 on std_string+8; DisplayIdSender cases (0x161-0x165) call FUN_008A29B0 -> byte 1 on stack frame+8; CustomSender cases (0x166-0x16A) have NO install helper.",
+    "step6": "Identify naming bug: existing catalog entry for FUN_008A2940 is named `SendLogReceiver::install_custom_sender_FUN_008a2940` but per ctor case enumeration FUN_008A2940 is called from cases 0x15B-0x160 (the WithoutActor family). The CustomSender family (0x166-0x16A) has NO install helper. Naming should be corrected to `install_without_actor`."
+  },
+  "ctor_byte_init_pattern": {
+    "field_offset": "this+0x10",
+    "ctor_init_value": "0xFF (sentinel)",
+    "ctor_init_line": "FUN_0089F5B0 line 69: *(undefined1 *)(param_1 + 4) = 0xff;",
+    "post_switch_value_per_opcode": {
+      "0x157_0x15A_WithActor": "0xFF (unchanged)",
+      "0x15B_0x160_WithoutActor": "0xFF (unchanged)",
+      "0x161_0x165_DisplayIdSender": "0xFF (unchanged)",
+      "0x166_0x16A_CustomSender": "0xFF (unchanged)"
+    },
+    "finding": "Receiver's byte+0x10 is a constant 0xFF sentinel for ALL 20 SendLogReceiver opcodes. NOT a family discriminator. Likely used elsewhere (e.g. CommandInterface dispatch) as 'this command hasn't been routed yet' sentinel."
+  },
+  "actual_discriminator_pattern": {
+    "discriminator_location": "Install-helper's first arg + 8 (NOT the receiver)",
+    "per_family_byte_write": {
+      "WithActor (0x157-0x15A)": {"install_helper": "FUN_008A28C0", "byte_value": 0, "first_arg_type": "Lua-state-acquired pointer (uVar5 from FUN_00cc9320)", "code": "*(undefined1 *)(param_1 + 2) = 0;"},
+      "WithoutActor (0x15B-0x160)": {"install_helper": "FUN_008A2940", "byte_value": 2, "first_arg_type": "std_string object pointer (uVar5 from FUN_00447260)", "code": "*(undefined1 *)(param_1 + 8) = 2;"},
+      "DisplayIdSender (0x161-0x165)": {"install_helper": "FUN_008A29B0", "byte_value": 1, "first_arg_type": "stack local (local_1c8 dword from packet+0x10)", "code": "*(undefined1 *)(param_1 + 2) = 1;"},
+      "CustomSender (0x166-0x16A)": {"install_helper": "NONE - ctor calls parser directly", "byte_value": "n/a", "first_arg_type": "n/a", "code": "n/a"}
+    }
+  },
+  "plan_hypothesis_assessment": {
+    "original_plan_hypothesis": "DisplayIdSender writes byte=1, CustomSender writes byte=2, WithActor writes byte=0, WithoutActor leaves byte=0xFF",
+    "verdict": "REFUTED in 2 ways",
+    "refutation_1_location": "Plan said byte+0x10 of receiver. Actually: install helpers write to arg+8 of a DIFFERENT object (Lua-state ref / std_string / stack frame). Receiver's +0x10 is never overwritten.",
+    "refutation_2_mapping": "Plan said CustomSender writes byte=2. Actually: CustomSender has NO install helper. The byte=2 is written by WithoutActor's install helper (FUN_008A2940). The plan swapped CustomSender and WithoutActor.",
+    "corrected_mapping": "WithActor=0, WithoutActor=2, DisplayIdSender=1, CustomSender=none"
+  },
+  "key_findings": [
+    "The byte+0x10 hypothesis REFUTED: receiver's byte+0x10 is a constant 0xFF sentinel set by ctor and never overwritten by any of 20 switch cases or 14 parsers. NOT a family discriminator.",
+    "Actual family discriminator pattern: install helpers FUN_008A28C0 (WithActor) / FUN_008A2940 (WithoutActor) / FUN_008A29B0 (DisplayIdSender) write byte values 0 / 2 / 1 respectively to their first-arg +8 offset. The first arg is a per-family context object (Lua state ref / std_string / stack frame), NOT the receiver. CustomSender family has no install helper.",
+    "Receiver field-write map (clarified): ctor inits this+0x10 = 0xFF and this+0x1a = 0; parsers write this+0x14 (dword, from Lua state lookup), this+0x18 (ushort, from packet), this+0x1a (byte, from packet). All 14 parsers follow the same shape with arg-count variations (4-arg for thin variants, 5-arg for body-text variants with FUN_006D5AF0 alloc + _memcpy of variable-length body text).",
+    "Naming bug from the sendlogreceiver-demux pass: existing BCS-Y entry for FUN_008A2940 is named `SendLogReceiver::install_custom_sender_FUN_008a2940` but ctor switch enumeration shows FUN_008A2940 is called from cases 0x15B-0x160 (the WithoutActor family). The CustomSender family (0x166-0x16A) has NO install helper. The correct name is `install_without_actor`. Renaming candidate for future cleanup pass.",
+    "Architectural finding for Receiver-class pattern: SendLogReceiver demonstrates that family-discriminator state can live OUTSIDE the receiver object (in per-family context objects acquired during installation). This is distinct from the typical 'discriminator-on-self' pattern. Future Receiver investigations should not assume the family discriminator is on the receiver itself - check the install-helper's other args.",
+    "Resolves the byte+0x10 question with refutation. No new BCS-Y needed (all 3 install helpers and 14 parsers already cataloged in sendlogreceiver_demux.json)."
+  ],
+  "naming_cleanup_recommendation": {
+    "current_name": "SendLogReceiver::install_custom_sender_FUN_008a2940",
+    "correct_name": "SendLogReceiver::install_without_actor_FUN_008a2940",
+    "rationale": "Ctor switch case enumeration shows FUN_008A2940 is called from cases 0x15B-0x160 (WithoutActor family), NOT from CustomSender cases (0x166-0x16A which have no install helper). The sendlogreceiver-demux pass's family attribution likely mis-mapped.",
+    "scope_for_cleanup": "Single entry rename in symbols.json + sourceRefs pointer to this manifest."
+  },
+  "proposed_bcs_y_entries": []
+}
