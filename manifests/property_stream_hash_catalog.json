@@ -1,0 +1,491 @@
+{
+  "version": 5,
+  "gameVersion": "1.23b",
+  "status": "main_skill_namespace_complete",
+  "scope": "Client-side grammar and carrier closure for the typed actor-property stream. Names and values describe client/capture evidence only and do not claim server behavior.",
+  "sourceSnapshots": {
+    "clientStructs": {
+      "repository": "XIVLegacy/xivl-client-structs",
+      "commit": "3384717be917c0c9464c33bcf17c723769af77da"
+    },
+    "captures": {
+      "repository": "XIVLegacy/xivl-captures",
+      "commit": "54a24c87faa4e3cebde808b74d80b6f1bee4b013"
+    },
+    "decomp": {
+      "repository": "XIVLegacy/xivl-decomp",
+      "commit": "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb"
+    },
+    "clientScripts": {
+      "repository": "XIVLegacy/xivl-client-scripts",
+      "commit": "ac866a27c8a335eeac035f7c57010e480b97efb1"
+    },
+    "clientData": {
+      "repository": "XIVLegacy/xivl-client-data",
+      "commit": "67d62ec4985f8438a7ed2d436d149814519b08c1",
+      "extraction": "2012.09.19.0001"
+    }
+  },
+  "grammar": {
+    "applicationPayloadBytes": 136,
+    "streamOffset": 0,
+    "runningByteTotal": "u8 at application +0; parsing is bounded to min(136, 1 + runningByteTotal)",
+    "termination": "A zero lead byte terminates the stream; the declared running-byte bound is an independent hard stop.",
+    "propertyRecord": {
+      "shape": "u8 valueWidth, u32 propertyHash little-endian, valueWidth raw value bytes",
+      "observedWidths": [1, 2, 4, 11, 95],
+      "typeBoundary": "The lead byte proves payload width. Width 1/2/4 is compatible with scalar storage, but the wire alone does not distinguish signedness or int32 from float32. Width 11/95 remains an opaque buffer.",
+      "hashIdentity": "The u32 hash identifies the complete property path. Array indices are ASCII bracket suffixes inside the hashed candidate string, not separate wire fields; for example castGauge_speed[0] and castGauge_speed[1] hash independently."
+    },
+    "targetMarker": {
+      "shape": "u8 marker followed by the marker-family decoded number of printable ASCII bytes; it changes the active target for following property records",
+      "ranges": "0x60..0x9f and 0xa4..0xe3 are marker families decoded by the retained corpus parser; decoded length is marker-0x60 below 0x82, marker-0x82 from 0x82..0x9f, or marker-0xa4 from 0xa4..0xe3.",
+      "boundary": "Target strings are capture-observed stream context. They do not alter the property hash or encode an array index."
+    },
+    "derivation": [
+      "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s:0x00775264-0x00775679 - client parser consumes one lead byte, branches across marker ranges, advances by decoded marker length, and applies registry records.",
+      "xivl-captures:tools/extractors/extract_gam_keys.py:parse_property_block - deterministic corpus grammar and width/hash/value extraction.",
+      "xivl-captures:tools/extractors/extract_property_targets.py:parse_property_block_with_targets - active-target association.",
+      "manifests/gam_hash_names.json and tools/verify_murmur2.py - exact backward MurmurHash2 matches, including indexed names."
+    ]
+  },
+  "carriers": [
+    {
+      "direction": "s2c",
+      "opcodeHex": "0x0137",
+      "name": "SetActorPropertyPacket",
+      "identicalStreamFormat": true,
+      "subpacketBytes": 168,
+      "applicationPayloadBytes": 136,
+      "applyRoute": [
+        "FUN_004D8860",
+        "FUN_00575070",
+        "FUN_00759ED0",
+        "FUN_0089E550",
+        "FUN_00775A30",
+        "FUN_00775180"
+      ],
+      "derivation": "The mapped 0x0137 dispatcher reaches SyncMemoryReceiver apply FUN_0089E550, which calls FUN_00775A30 and then FUN_00775180."
+    }
+  ],
+  "carrierClosure": {
+    "dispatcherCasesInRetainedRoute": 1,
+    "identicalWireCarriers": ["s2c:0x0137"],
+    "nonCarrierCallers": [
+      "FUN_00775890 reaches FUN_00775180 from client-local registry/state iteration; its callers FUN_006E17E0 and FUN_006E1F70 are not packet dispatcher cases."
+    ],
+    "conclusion": "No second dispatcher opcode feeding the identical typed stream was found in the retained client route. The catalog therefore covers s2c 0x0137 only.",
+    "evidence": [
+      "xivl-decomp:asm/ffxivgame/00375a30_FUN_00775a30.s:0x00775abb",
+      "xivl-decomp:asm/ffxivgame/00375890_FUN_00775890.s:0x007759f2",
+      "manifests/receiver_opcode_map_inbound.json",
+      "manifests/event_family_sibling_findings.json"
+    ]
+  },
+  "applyStorageBoundary": {
+    "contextPropertyMapOffset": "0x0C",
+    "mapNodeKeyOffset": "0x0C",
+    "mapNodeValueOffset": "0x10",
+    "mapNodeValueType": "polymorphic SyncWriter handler*",
+    "applyCallsite": "0x00775652",
+    "applyVtableSlot": 1,
+    "applyVtableByteOffset": "0x04",
+    "sharedApplyThunk": "FUN_00D30C70",
+    "dirtyCounterOffset": "0x0C",
+    "typedValueOffset": "0x10",
+    "typedWriters": [
+      {
+        "valueType": "u32",
+        "function": "FUN_00D2F9B0",
+        "width": 4
+      },
+      {
+        "valueType": "float32",
+        "function": "FUN_00D2FA20",
+        "width": 4
+      }
+    ],
+    "registryPopulation": {
+      "ownerType": "Application::Lua::Script::Client::ActorWorkSync",
+      "ownerConstructor": "FUN_0076DC40",
+      "constructionRoute": [
+        "FUN_0076DCE0",
+        "FUN_00CC8760",
+        "FUN_00CCB780"
+      ],
+      "hashDerivation": {
+        "pathBuilder": "FUN_00D278D0",
+        "hashWrapper": "FUN_00D31540",
+        "hashFunction": "FUN_00D31490",
+        "algorithm": "seed-0 backward MurmurHash2 over the canonical property path"
+      },
+      "factoryDispatch": {
+        "informationVtableSlot": 8,
+        "informationVtableByteOffset": "0x20",
+        "scalarWriters": [
+          {
+            "informationType": "BooleanInformation",
+            "factory": "FUN_00D2BC30",
+            "writerType": "SyncWriterBoolean",
+            "constructor": "FUN_00D2FB80"
+          },
+          {
+            "informationType": "Integer8Information",
+            "factory": "FUN_00D2BDB0",
+            "writerType": "SyncWriterInteger8",
+            "constructor": "FUN_00D2FBD0"
+          },
+          {
+            "informationType": "Integer16Information",
+            "factory": "FUN_00D2BF40",
+            "writerType": "SyncWriterInteger16",
+            "constructor": "FUN_00D2FC10"
+          },
+          {
+            "informationType": "Integer24Information",
+            "factory": "FUN_00D2C0D0",
+            "writerType": "SyncWriterInteger24",
+            "constructor": "FUN_00D2FC50"
+          },
+          {
+            "informationType": "Integer32Information",
+            "factory": "FUN_00D2C260",
+            "writerType": "SyncWriterInteger32",
+            "constructor": "FUN_00D2FC90"
+          },
+          {
+            "informationType": "FloatInformation",
+            "factory": "FUN_00D2C3F0",
+            "writerType": "SyncWriterFloat",
+            "constructor": "FUN_00D2FCD0"
+          },
+          {
+            "informationType": "StringInformation",
+            "factory": "FUN_00D2C580",
+            "writerType": "SyncWriterString",
+            "constructor": "FUN_00D304D0"
+          },
+          {
+            "informationType": "ActorInformation",
+            "factory": "FUN_00D2CA40",
+            "writerType": "SyncWriterActor",
+            "constructor": "FUN_00D30110"
+          },
+          {
+            "informationType": "IndividualIndexInformation",
+            "factory": "FUN_00D2CC70",
+            "writerType": "SyncWriterIndividualIndex",
+            "constructor": "FUN_00D2FD50"
+          }
+        ],
+        "arrayFactory": "FUN_00D22030",
+        "arraySelection": "ArrayInformation selects by element Information subtype and the partial-array branch.",
+        "arrayWriters": [
+          {
+            "writerType": "SyncWriterArray",
+            "constructor": "FUN_00D305A0"
+          },
+          {
+            "writerType": "SyncWriterActorArray",
+            "constructor": "FUN_00D30770"
+          },
+          {
+            "writerType": "SyncWriterArrayPartial",
+            "constructor": "FUN_00D309C0"
+          },
+          {
+            "writerType": "SyncWriterArrayEndianAdjust<short>",
+            "constructor": "FUN_00D30710"
+          },
+          {
+            "writerType": "SyncWriterArrayEndianAdjust<int>",
+            "constructor": "FUN_00D30730"
+          },
+          {
+            "writerType": "SyncWriterArrayEndianAdjust<float>",
+            "constructor": "FUN_00D30750"
+          }
+        ]
+      },
+      "registrationRoute": [
+        "FUN_00D126F0/FUN_00D12670",
+        "FUN_00CE4720",
+        "FUN_00CCB810",
+        "SyncContainer vtable slot 18 (FUN_00CFD610)",
+        "ActorWorkSync listener slot 1 (FUN_00766DA0)",
+        "FUN_006D45A0"
+      ],
+      "insertMapOffset": "0x0C",
+      "insertNodeKeyOffset": "0x0C",
+      "insertNodeValueOffset": "0x10",
+      "insertPair": "u32 property hash -> writer handler owning the selected concrete SyncWriter",
+      "handlerSurface": {
+        "raw": "FUN_00CFD610 registers the concrete writer directly when the shared-work-type sentinel is -2.",
+        "wrapped": "Otherwise FUN_00CFD610 registers a SyncWriterWithSharedWorkType adapter whose inner concrete writer is at +0x04.",
+        "wrappedApplyThunk": "FUN_00CFECE0",
+        "applyDispatch": "The adapter's vtable slot 1 forwards to inner-writer vtable slot 1."
+      },
+      "conclusion": "Construction and apply use the same ActorWorkSync +0x0C tree. The path hash selects a handler object whose concrete SyncWriter class is chosen by the field's Information subtype, not a fixed actor-structure offset.",
+      "evidence": [
+        "xivl-decomp:asm/ffxivgame/0036dc40_FUN_0076dc40.s",
+        "xivl-decomp:asm/ffxivgame/00366da0_FUN_00766da0.s",
+        "xivl-decomp:asm/ffxivgame/002d45a0_FUN_006d45a0.s",
+        "xivl-decomp:asm/ffxivgame/009278d0_FUN_00d278d0.s",
+        "xivl-decomp:asm/ffxivgame/00931540_FUN_00d31540.s",
+        "xivl-decomp:asm/ffxivgame/00931490_FUN_00d31490.s",
+        "xivl-decomp:asm/ffxivgame/00922030_FUN_00d22030.s",
+        "xivl-decomp:asm/ffxivgame/008fd610_FUN_00cfd610.s",
+        "xivl-decomp:asm/ffxivgame/008fece0_FUN_00cfece0.s",
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:config/ffxivgame.vtable_slots.jsonl"
+      ]
+    },
+    "pendingStream": {
+      "managerMapOffset": "0x0C",
+      "mapNodeSize": "0x24",
+      "mapNodeValueOffset": "0x10",
+      "recordStride": "0x10",
+      "initialReserveRecords": 8,
+      "replay": "FUN_00775890 replays each pending record through FUN_00775180, then FUN_00786C70 destroys the record vector and erases the map node."
+    },
+    "boundary": "The construction and apply paths close hash-to-writer-handler population and concrete writer selection. Writer-local storage remains distinct from CharaBase and PlayerBase; no fixed actor field offset is claimed."
+  },
+  "playerHpWriterIdentity": {
+    "status": "exact_writer_types_and_native_array_indexing_closed",
+    "indexConvention": {
+      "luaToNativeHelper": "FUN_00D1A620",
+      "rule": "Every positive Lua array index is decremented by one before the canonical path is built. Lua index 1 therefore hashes with suffix [0], and hash suffix [5] addresses Lua index 6.",
+      "pathBuilder": "FUN_00D278D0",
+      "hashWrapper": "FUN_00D31540",
+      "hashFunction": "FUN_00D31490"
+    },
+    "properties": [
+      {
+        "requestedPath": "charaWork.parameterSave.state_mainSkill[0]",
+        "hash": "0x7532ce24",
+        "cataloged": true,
+        "luaDescriptor": "parameterSave.state_mainSkill = array(4, integer8)",
+        "informationType": "ArrayInformation with Integer8Information elements",
+        "factory": "FUN_00D22030 via Information vtable slot 8 (+0x20)",
+        "writerType": "SyncWriterArray",
+        "writerConstructor": "FUN_00D305A0",
+        "typedSet": "FUN_00D30640",
+        "nativeIndex": 0,
+        "luaIndex": 1,
+        "storageTarget": "writer-local array state: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
+        "consumerBoundary": "Decoded Lua getStateMainSkill returns state_mainSkill[1] and [2]. The first value is consumed as a skill id by category, class/job, command, equipment-compatibility, and display helpers; the second is the sub-skill return and is ignored by getMainSkillCategory."
+      },
+      {
+        "requestedPath": "charaWork.parameterSave.state_mainSkillLevel",
+        "hash": "0x96063588",
+        "cataloged": true,
+        "luaDescriptor": "parameterSave.state_mainSkillLevel = integer16",
+        "informationType": "Integer16Information",
+        "factory": "FUN_00D2BF40 via Information vtable slot 8 (+0x20)",
+        "writerType": "SyncWriterInteger16",
+        "writerConstructor": "FUN_00D2FC10",
+        "typedSet": "FUN_00D2F910",
+        "nativeIndex": null,
+        "luaIndex": null,
+        "storageTarget": "writer-local integer16 at writer+0x10; no fixed actor field offset",
+        "consumerBoundary": "Decoded Lua getStateMainSkillLevel returns this scalar and level-adjustment code consumes it as a level. No separate native backing-field consumer was found."
+      },
+      {
+        "requestedPath": "charaWork.battleTemp.generalParameter[5]",
+        "hash": "0x416571ac",
+        "cataloged": true,
+        "luaDescriptor": "battleTemp.generalParameter = array(35, integer16)",
+        "informationType": "ArrayInformation with Integer16Information elements",
+        "factory": "FUN_00D22030 via Information vtable slot 8 (+0x20)",
+        "writerType": "SyncWriterArrayEndianAdjust<short>",
+        "writerConstructor": "FUN_00D30710",
+        "typedSet": "FUN_00D30640",
+        "nativeIndex": 5,
+        "luaIndex": 6,
+        "storageTarget": "writer-local endian-adjusted short array: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
+        "consumerBoundary": "Decoded Lua getPhysicalParameter(n) reads generalParameter[n+3]. The bonus-point widget labels n=2 as vitCurrent and n=3 as dexCurrent, so native index 5 reaches the latter Lua display projection, not the former. These labels are Lua/display evidence, not a native gameplay namespace; no direct native consumer names this element."
+      },
+      {
+        "requestedPath": "charaWork.battleTemp.hpMax[0]",
+        "hash": "0x0ea82712",
+        "cataloged": false,
+        "luaDescriptor": null,
+        "informationType": null,
+        "factory": null,
+        "writerType": null,
+        "writerConstructor": null,
+        "typedSet": null,
+        "nativeIndex": 0,
+        "luaIndex": 1,
+        "storageTarget": null,
+        "consumerBoundary": "No battleTemp.hpMax descriptor or observed property hash exists in the retained catalog. The registry chain cannot select a writer for this unregistered exact path."
+      }
+    ],
+    "mainSkillIdentifierNamespace": {
+      "status": "closed_as_skill_id_namespace",
+      "scriptRegistration": {
+        "kind": "decoded retail Lua methods listed in the CharaBaseClass corpus registry, not address-attributed native N-API registrations",
+        "getMainSkill": "CharaBaseClass.getMainSkill -> _getEquippingItem(1) -> ItemBaseClass.getMainSkill; returns skill id 3 for the retained base implementation, with fallback skill id 1 when the slot or method result is nil",
+        "getMainSkillCategory": "CharaBaseClass.getMainSkillCategory -> getStateMainSkill -> getSkillCategory(first return); the second state_mainSkill return is outside getSkillCategory's one-argument signature",
+        "getMainSkillLevel": "CharaBaseClass.getMainSkillLevel -> getStateMainSkillLevel -> charaWork.parameterSave.state_mainSkillLevel",
+        "nativeNameReferenceResult": "Verified COMPLETE exact-string export found zero defined-data matches for getMainSkill, getMainSkillCategory, and getMainSkillLevel among 28,414 defined strings. This excludes only Ghidra-recorded exact defined strings and does not replace the decoded Lua registration evidence."
+      },
+      "nativeDependencies": {
+        "getMainSkillEquipmentLookup": "_getEquippingItem registration FUN_00755D00 -> CharaBase vtable slot 2 switchboard FUN_007574A0 -> concrete implementation FUN_007088E0",
+        "getMainSkillItemMethod": "The decoded ItemBaseClass.getMainSkill method returns literal skill id 3; no target-specific native wrapper or implementation was established",
+        "getMainSkillCategory": "The decoded method is a Lua threshold projection over getStateMainSkill's first generic property read; no target-specific native wrapper or implementation was established",
+        "getMainSkillLevel": "The decoded method is a Lua wrapper over the generic scalar property read; no target-specific native wrapper or implementation was established"
+      },
+      "nativeReadChain": {
+        "instanceIndex": "FUN_00D16D40 dispatches an ordinary member read through the selected implementation vtable slot 7 (+0x1C)",
+        "indexedMetatable": "FUN_00D20540 registers indexed-container __index as FUN_00D2F220",
+        "indexedWrapper": "FUN_00D2F220 -> FUN_00D2E0A0",
+        "indexedImplementation": "FUN_00D2E0A0 bounds Lua indices to 1..extent at container+0x58, calls FUN_00D1A620, then dispatches the backing implementation vtable slot 7 (+0x1C)",
+        "indexConversion": "FUN_00D1A620 decrements every positive Lua index; Lua index 1 selects native slot 0",
+        "genericLookup": "FUN_00D1DF90 resolves a named MetamethodArray2D row and returns its payload at row+0x1C"
+      },
+      "namespace": {
+        "identifier": "skill id",
+        "notIdentifiers": ["category id", "discipline id", "job-only id"],
+        "categoryProjection": "getSkillCategory maps 0 -> 0, 1..20 -> 1, 21..28 -> 21, 29..38 -> 29, and >=39 -> 39; getMainSkillCategory applies this projection to native slot 0",
+        "classJobRelationship": "getMainClassOrJob returns a nonzero job id for players and otherwise forwards both getStateMainSkill values. isJob recognizes 15..19 and 26..27, while convertSkillId maps those job ids back to base skill ids including 3 and 4.",
+        "slotRelationship": "state_mainSkill native slot 0 / Lua index 1 is the primary skill id; Lua index 2 is the second return, and Lua index 3 is exposed separately as getStateMainSkillForSub. getMainSkill does not read this array."
+      },
+      "observedMappings": [
+        {
+          "value": 3,
+          "skillRow": 3,
+          "skillName": "Sword",
+          "classRow": 3,
+          "className": "Gladiator",
+          "category": 1
+        },
+        {
+          "value": 4,
+          "skillRow": 4,
+          "skillName": "Axe",
+          "classRow": 4,
+          "className": "Marauder",
+          "category": 1
+        }
+      ],
+      "consumerBridges": {
+        "battleClass": "isBattleClass explicitly accepts skill ids 2, 3, 4, 7, 8, 10, 22, and 23 from either of getStateMainSkill's two returns",
+        "commandEligibility": "gameCommandBasic column 38 is getCommandMainSkill; job permission tables and convertSkillId compare job ids with base skill ids, and command compatibility indexes compatibility.csv at column 8 + (skill id - 1)",
+        "equipmentCompatibility": "getItemMainSkill returns two item-data skill ids; getItemCompatibilityBySkill indexes the same compatibility-sheet skill axis, with job ids converted to their base skill id where required",
+        "display": "PcProfileWidget passes state_mainSkill[0], state_mainSkillLevel, and an optional job id to text resource 231; xtx_text_skillName and xtx_text_jobName use the skill/class row id directly",
+        "level": "state_mainSkillLevel is the scalar level paired with the primary skill in profile, progression, equipment, repair, materia, and matching displays; it is not another identifier"
+      },
+      "calibrationGate": "Values 3 and 4 now identify Sword/Gladiator and Axe/Marauder on the client skill-id axis, but the two HP anchors remain only two calibration points. Their admitted HP tuples and the no-two-point-formula gate are unchanged.",
+      "sourceRefs": [
+        "manifests/lua_api_contract.json",
+        "manifests/symbols.json",
+        "xivl-client-scripts:lua/registry.json",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass.lua:108-130",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_battle.lua:52-90",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_cliprog.lua:69-81",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_parameter.lua:31-49,734-955,961-999",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_ffxivbattle.lua:88-107,111-320",
+        "xivl-client-scripts:lua/scripts/item/itembaseclass_common.lua:1020-1160,4316-4324",
+        "xivl-client-scripts:lua/scripts/command/game/gamecommandbaseclass.lua:41-52,998-1060",
+        "xivl-client-scripts:lua/scripts/widget/pcprofilewidget.lua:45-69",
+        "xivl-client-scripts:lua/scripts/widget/pcmatchingfindwidget.lua:750-799,1031-1089",
+        "xivl-client-scripts:lua/scripts/widget/repairequipmentwidget.lua:404-486,2008-2020,2329-2340,2577-2593",
+        "xivl-client-scripts:lua/scripts/widget/desktopwidget_itemdetail.lua:3666-4035,6740-7532",
+        "xivl-client-data:csv/xtx_text_skillName.csv:rows 3-4; SHA-256 170FD51685AB160989DD836C1D67DDF87E95627180CF17AB86DEE271D04AB746",
+        "xivl-client-data:csv/xtx_text_jobName.csv:rows 3-4; SHA-256 61535798445DDB716CD16E8B68B06D9C6A67F76C321FE0DD5E9840C143DE8B57"
+      ]
+    },
+    "calibrationCorrection": {
+      "path": "charaWork.parameterSave.hpMax[0]",
+      "hash": "0x7bcdfb69",
+      "luaDescriptor": "parameterSave.hpMax = array(8, integer16)",
+      "informationType": "ArrayInformation with Integer16Information elements",
+      "factory": "FUN_00D22030 via Information vtable slot 8 (+0x20)",
+      "writerType": "SyncWriterArrayEndianAdjust<short>",
+      "writerConstructor": "FUN_00D30710",
+      "typedSet": "FUN_00D30640",
+      "nativeIndex": 0,
+      "luaIndex": 1,
+      "storageTarget": "writer-local endian-adjusted short array: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
+      "consumerBoundary": "Decoded Lua getHPMax calls getPartsHPMax with Lua index 1, which reaches getHpMaxImpl and parameterSave.hpMax[1]. CharaBase initialization also binds token 1011 to charaWork.parameterSave.hpMax. This proves the HP-maximum script/binding domain, not a fixed C++ actor field."
+    },
+    "evidenceRuns": [
+      {
+        "id": "lane1-player-hp-property-writers",
+        "script": "ghidra/DumpVAs.java",
+        "output": "tools/ghidra/logs/lane1_player-hp-property-writers.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\lane1_player-hp-property-writers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00775180,0x006D45A0,0x00766DA0,0x00CFD610,0x00D1A620,0x00D22030,0x00D278D0,0x00D2BDB0,0x00D2BF40,0x00D2F910,0x00D2FC10,0x00D305A0,0x00D30640,0x00D30710,0x00D31490,0x00D31540' } -ScriptPath @('ghidra')"
+      },
+      {
+        "id": "lane1-property-name-reference-negative",
+        "script": "ghidra/FindReferences.java",
+        "output": "tools/ghidra/logs/lane1_property-name-refs.txt",
+        "command": "tools\\ghidra\\export-references.ps1 -Strings @('battleTemp','generalParameter','hpMax','parameterSave','state_mainSkill','state_mainSkillLevel') -StringMatch EXACT -Out tools\\ghidra\\logs\\lane1_property-name-refs.txt",
+        "result": "Verified COMPLETE export: zero defined-string matches for battleTemp, generalParameter, hpMax, parameterSave, state_mainSkill, and state_mainSkillLevel among 28,414 defined strings. This excludes only Ghidra-recorded exact defined strings and does not exclude computed or script-loaded names."
+      },
+      {
+        "id": "lane4-main-skill-native-read",
+        "script": "ghidra/DumpVAs.java",
+        "output": "tools/ghidra/logs/lane4_main-skill-namespace.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\lane4_main-skill-namespace.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00D16D40,0x00D1A620,0x00D1DF90,0x00D20540,0x00D211E0,0x00D22030,0x00D2BF40,0x00D2E0A0,0x00D2F220,0x00D2F910,0x00D2FC10,0x00D305A0,0x00D30640' } -ScriptPath @('ghidra')"
+      },
+      {
+        "id": "lane4-main-skill-name-reference-negative",
+        "script": "ghidra/FindReferences.java",
+        "output": "tools/ghidra/logs/lane4_main-skill-api-name-refs.txt",
+        "command": "tools\\ghidra\\export-references.ps1 -Strings @('getMainSkill','getMainSkillCategory','getMainSkillLevel') -Out tools\\ghidra\\logs\\lane4_main-skill-api-name-refs.txt",
+        "result": "Verified COMPLETE export: zero defined-string matches for getMainSkill, getMainSkillCategory, and getMainSkillLevel among 28,414 defined strings."
+      }
+    ],
+    "conclusion": "The four requested strings do not all name registered properties. Three exact hashes select writer-local typed handlers with a proven Lua-to-native array-index shift. The requested battleTemp.hpMax[0] path is absent; the HP calibration property is parameterSave.hpMax[0]. Decoded Lua consumers and first-party text rows close state_mainSkill[0] as a skill id: 3 is Sword/Gladiator and 4 is Axe/Marauder. This does not promote generalParameter[5] to Vitality or authorize an HP formula from two points."
+  },
+  "catalog": {
+    "home": "manifests/gam_hash_names.json",
+    "status": "complete",
+    "distinctHashes": 263,
+    "resolvedHashes": 263,
+    "unresolvedHashes": 0,
+    "totalOccurrences": 8918,
+    "resolvedOccurrences": 8918,
+    "occurrenceWeightedResolvedShare": 1.0,
+    "resolutionRule": "Every promoted name exactly matches backward MurmurHash2 with seed 0. Similarity and contextual inference are excluded.",
+    "arrayIndexRule": "Bracket indices are part of the ASCII hash input. The castGauge_speed[0]/[1] pair hashes to distinct observed ids 0x573fe04c/0xbb9cc775."
+  },
+  "epochProbe": {
+    "property": "playerWork.castEndClient",
+    "observedRows": 2,
+    "observedValuesHex": ["dc1be150", "c21de150"],
+    "verdict": "CAPTURE_ONLY_INSUFFICIENT_NATIVE_CLOCK_CLOSED",
+    "obstruction": "The two retained deadline rows alone do not establish a clock representation. Independent native evidence now proves that worldMaster._getServerTime returns the NetworkModule whole-second field and that castEndClient is an absolute deadline in that same Unix-compatible clock domain.",
+    "boundary": "The property-row study remains insufficient by itself; the promoted whole-second absolute-deadline claim comes from xivl-decomp:docs/actor/cast-timing-clock.md at commit 51f908e6a963b7e4a33cdb3f1b9b2f3573ef31df."
+  },
+  "sourceRefs": [
+    "manifests/cast_chant_presentation.json",
+    "manifests/gam_hash_names.json",
+    "xivl-captures:studies/property-stream-hash-catalog/derived/accounting.json",
+    "manifests/receiver_opcode_map_inbound.json",
+    "xivl-captures:derived/property_targets.json",
+    "xivl-decomp:config/ffxivgame.rtti.json",
+    "xivl-decomp:config/ffxivgame.vtable_slots.jsonl",
+    "xivl-decomp:docs/net/sync-writer.md",
+    "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
+    "xivl-decomp:asm/ffxivgame/00375a30_FUN_00775a30.s",
+    "xivl-decomp:asm/ffxivgame/00375890_FUN_00775890.s",
+    "xivl-decomp:asm/ffxivgame/0036dc40_FUN_0076dc40.s",
+    "xivl-decomp:asm/ffxivgame/00366da0_FUN_00766da0.s",
+    "xivl-decomp:asm/ffxivgame/002d45a0_FUN_006d45a0.s",
+    "xivl-decomp:asm/ffxivgame/009278d0_FUN_00d278d0.s",
+    "xivl-decomp:asm/ffxivgame/00931540_FUN_00d31540.s",
+    "xivl-decomp:asm/ffxivgame/00931490_FUN_00d31490.s",
+    "xivl-decomp:asm/ffxivgame/00922030_FUN_00d22030.s",
+    "xivl-decomp:asm/ffxivgame/008fd610_FUN_00cfd610.s",
+    "xivl-decomp:asm/ffxivgame/008fece0_FUN_00cfece0.s",
+    "xivl-client-scripts:lua/scripts/chara/charabaseclass.lua",
+    "xivl-client-scripts:lua/scripts/chara/charabaseclass_battle.lua",
+    "xivl-client-scripts:lua/scripts/chara/charabaseclass_cliprog.lua",
+    "xivl-client-scripts:lua/scripts/chara/charabaseclass_ffxivbattle.lua",
+    "xivl-client-scripts:lua/scripts/chara/charabaseclass_parameter.lua",
+    "xivl-client-scripts:lua/scripts/widget/ask/bonuspointassignwidget.lua"
+  ]
+}

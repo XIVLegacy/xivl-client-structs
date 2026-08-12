@@ -1,0 +1,51 @@
+{
+  "title": "The +0x7d writer FOUND (FUN_00CE1DD0); the +0x7d gate is the lazy Lua-class-resolution (tentative-class) gate; the director blocker = OpeningDirector Lua class never DEFINED on the client",
+  "trigger": "docs/director-7d-handoff.md (bahamut localized the blocker to the opening battle instances; the director 0x65300002 reaches +0x16C bind=10 and the kick reaches FUN_0089E450, but FUN_00CC72A0 fails 2275x vs 213 pass; _fadeOut=0)",
+  "imageBase": "0x00400000",
+  "noASLR": true,
+  "questionsAnswered": {
+    "Q1_plus0x7d_writer": {
+      "verdict": "FUN_00CE1DD0 (BCS-Y-1805) writes *(entry+0x7d)=value and clears the TENTATIVE flag +0x7e on the value!=0 transition. The 'entry' is the actor's CLASS-BINDING ENTRY = *(control+4), a lazy name-keyed Lua class reference - NOT the actor struct. Verified by decomp.",
+      "fields": "entry+0xc=resolved class ptr (0 while unresolved); +0x7d=VALID (class defined); +0x7e=TENTATIVE (named, undefined); +0x7f=active; +0x80=set on promotion; +0x8=class-type discriminator."
+    },
+    "Q2_what_triggers_the_write": {
+      "verdict": "+0x7d=1 is set when the named Lua class is DEFINED. The class-definition registrar FUN_00CD9360 (BCS-Y-1806) find_or_creates the entry by name, populates members from a Lua method table, registers if new, then calls FUN_00CE1DD0(entry,.,1). Because find_or_create is name-keyed, defining a class promotes any pre-existing tentative entry of that name. The 7 wrappers FUN_00CC80A0..8440 reach it from native class registration (FUN_006E2xxx, GroupBase-derived built-ins) and from interpreted Lua class() calls.",
+      "tentativeSetter": "FUN_00CE2880 (BCS-Y-1807) sets entry+0x7e=1 when FUN_00CD8870(name, create=0) returns 0 (class not defined). Single caller FUN_00CCF7D0."
+    },
+    "Q3_does_the_director_go_through_that_path": {
+      "verdict": "OpeningDirector is a Lua-DEFINED class. bahamut spawns the director via AddActor + ActorInstantiate (script-bind), which creates the tentative class REFERENCE but does NOT itself DEFINE the class. Nothing defines OpeningDirector during the bahamut zone-in, so the entry stays tentative."
+    },
+    "Q4_is_the_ActorInstantiate_sufficient": {
+      "verdict": "NO. The script-bind classPath creates a tentative, name-keyed class reference; it is not a class definition. +0x7d=1 requires the named class to be DEFINED (its registrar / Lua class script to run). The director's class is never defined -> +0x7d stays 0. The PLAYER does not stall because its class is a core class defined at login (so the spawn-burst-completion fix sufficed: control created + class already defined => +0x7d=1)."
+    }
+  },
+  "unification": "Two INDEPENDENT preconditions for +0x7d=1 on an actor: (1) the control is created+bound (spawn-burst completion - fixed the player), and (2) the actor's Lua CLASS is DEFINED on the client (this finding - the director's OpeningDirector class is not). The director satisfies (1) (kick delivered, bind=10) but fails (2).",
+  "blockerGate": "FUN_00CC72A0(+0x7d) -> FUN_00766F00 sets control+0x5C=1 only if +0x7d -> FUN_0089E450 kick receiver short-circuits when owner+0x5C==0. director +0x7d=0 -> no +0x5C -> kick dropped -> opening event never starts -> Now Loading forever.",
+  "functionsExamined": [
+    "FUN_00CC72A0 (BCS-Y-1803, amended) + disasm - +0x7d validity predicate; reads off *(control+4)",
+    "FUN_00CD7A30 (BCS-Y-1581) - universal handle->entry deref (control+4 = entry)",
+    "FUN_00CE1DD0 (BCS-Y-1805 NEW) - THE +0x7d writer; clears +0x7e on promotion",
+    "FUN_00CD9360 (BCS-Y-1806 NEW) - Lua class-definition registrar; find_or_create + Lua-table iterate + FUN_00CE1DD0(.,1)",
+    "FUN_00CC80A0 / FUN_00CC8280 (+5 siblings) - the 7 class() registrar wrappers (one per base-type)",
+    "FUN_006E2240 / FUN_006E23B0 - native class-registration helpers (GroupBase-derived; RTTI LuaControl + GroupBase)",
+    "FUN_00CE2880 (BCS-Y-1807 NEW) - tentative-setter; +0x7e=1 when find-by-name(create=0) fails",
+    "FUN_00CCF7D0 - resolve-and-fire on the entry; sole caller of FUN_00CE2880",
+    "FUN_00CE1AE0 (BCS-Y-1808 NEW) - __RTDynamicCast LuaControl/LuaTentativeControl; names the control types",
+    "FUN_00CD8870 - find_or_create class entry by name (registry lookup FUN_00D0A2B0)",
+    "FUN_00766F00 (BCS-Y-0135) / FUN_0089E450 (BCS-Y-0724) - the +0x5C / kick-receiver coupling (re-confirmed)"
+  ],
+  "newSymbols": [
+    "BCS-Y-1805",
+    "BCS-Y-1806",
+    "BCS-Y-1807",
+    "BCS-Y-1808"
+  ],
+  "amendedSymbols": [
+    "BCS-Y-1803"
+  ],
+  "symbolCountBefore": 1791,
+  "symbolCountAfter": 1795,
+  "externalRefs": [
+    "External non-public Bahamut source consulted at research time: bahamut/src/map/director/director_spawn.cpp (BuildDirectorClassPath / BuildClassNameFromPath / BuildDirectorScriptBindInitParams)"
+  ]
+}

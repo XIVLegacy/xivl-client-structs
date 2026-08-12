@@ -1,0 +1,686 @@
+{
+  "version": 1,
+  "scope": "Characterize the equipment opcode family for FFXIV 1.23b: SetActorAppearance (0x00D6), the inventory/equip subsystem (0x0146..0x0156, 0x016D..0x016E, 0x018E..0x0191), c2s 0x0131 UpdateItemPackage, and the corrected event-family role of c2s 0x012E, using the existing data_dependency_catalog, receiver_opcode_map_inbound, and FUN_004DC690 dispatcher map.",
+  "method": {
+    "step3_existing_manifest_cross_ref": "Searched manifests/ for 0x0146/0x0147/0x0148/0x0149/0x014a/0x014b/0x014c/0x014d/0x014e/0x014f/0x0150/0x0151/0x016d/0x016e/0x00d6/0x00d7/0x018e/0x018f/0x0190/0x0191. data_dependency_catalog.json already documents s2c_0x0146 (handlerVa 0x005764C0), s2c_0x0148 (0x00576560), s2c_0x0149 (0x005765D0), s2c_0x014e (0x00576800), s2c_0x016d (0x005763C0), s2c_0x016e (0x00576430). pcap_validation.json shows pcap counts: 0x00D6=199, 0x0146=78, 0x0147=84, 0x0148=15, 0x0149=29, 0x014a=9, 0x014b=37, 0x014e=18, 0x0152=4, 0x016d=21, 0x016e=27.",
+    "step4_dispatcher_trace": "Read fun_004dc690_decomp.txt (the central s2c dispatcher). High-branch (uVar2 > 0x13D) has dedicated cases for 0x146 (FUN_005764C0), 0x148 (00576560), 0x149 (005765D0), 0x14A (00576640), 0x14B (005766B0), 0x14C (00576720), 0x14D (00576790), 0x14E (00576800), 0x14F (00576870), 0x150 (005768E0), 0x151 (00576950), 0x152 (005769C0), 0x153 (00576A30), 0x154 (00576AA0), 0x155 (00576B10), 0x156 (00576B80), 0x16D (005763C0), 0x16E (00576430). The handlers are thin wrappers: each does `uVar2 = FUN_00cc9320(*param_1); FUN_0076XXXX(uVar2, param_2)` - they obtain a per-packet context then call the per-opcode deeper handler. 0x147 InventorySetEnd is NOT in the case list (the unmapped-payload-decoding pass batch 1 noted this - Pattern E unrouted/missing). 0x00D6 SetActorAppearance is in the LOW branch (uVar2 < 0x12E) and falls through to the multi-case generic actor label (switchD_004dc749_caseD_f) which dispatches via actor->vftable[9](zone_state) - but the actor-vtable9-bulk pass exhaustively proved no actor class implements that as a real packet handler."
+  },
+  "opcodes": [
+    {
+      "opcode": "0x00D6",
+      "decimal": 214,
+      "packet_size_bytes": 296,
+      "direction": "s2c",
+      "role": "appearance_full_resend",
+      "slot_count": 28,
+      "slots_named": [
+        "SIZE",
+        "COLORINFO",
+        "FACEINFO",
+        "HIGHLIGHT_HAIR",
+        "VOICE",
+        "MAINHAND",
+        "OFFHAND",
+        "SPMAINHAND",
+        "SPOFFHAND",
+        "THROWING",
+        "PACK",
+        "POUCH",
+        "HEADGEAR",
+        "BODYGEAR",
+        "LEGSGEAR",
+        "HANDSGEAR",
+        "FEETGEAR",
+        "WAISTGEAR",
+        "NECKGEAR",
+        "L_EAR",
+        "R_EAR",
+        "R_WRIST",
+        "L_WRIST",
+        "R_RINGFINGER",
+        "L_RINGFINGER",
+        "R_INDEXFINGER",
+        "L_INDEXFINGER",
+        "UNKNOWN"
+      ],
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x00D6 SetActorAppearancePacket (x32 form)",
+      "wire_note": "The wire layout is `entry[i] { uint32 slot; uint32 value; }` with up to 32 entries plus a u32 numEntries field at payload+0x100."
+    },
+    {
+      "opcode": "0x00D7",
+      "decimal": 215,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x00D7 _0x00D7 (Set Actor Appearance x16)",
+      "packet_size_bytes": 144,
+      "direction": "s2c",
+      "role": "appearance_smaller_burst",
+      "slot_count": 16,
+      "note": "Smaller variant of 0x00D6. Not in pcap corpus (no hit in the pcap-validation pass). Use 0x00D6 as canonical retail path."
+    },
+    {
+      "opcode": "0x0131",
+      "decimal": 305,
+      "direction": "c2s",
+      "role": "request_inventory_package_resend",
+      "payload": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "name": "actorID"
+        },
+        {
+          "offset": 4,
+          "size": 4,
+          "type": "u32",
+          "name": "packageId"
+        }
+      ],
+      "bahamut_anchor": "MapClientOpcode::ItemPackageRequest",
+      "decomp_anchor": "OP_RX_ITEM_PACKAGE_REQUEST",
+      "note": "Used for retainer item listings + bazaar queries. opcode is bidirectional with s2c 0x0131 EndEventPacket - same opcode number, different direction, different meaning."
+    },
+    {
+      "opcode": "0x012E",
+      "decimal": 302,
+      "direction": "c2s",
+      "role": "event_family_update",
+      "size_bytes": 104,
+      "size_bytes_note_original": "88 (incorrect - the equipment-subsystem pass had inferred this from a hypothesized inventory transaction shape; actual wire body is 0x68 = 104 bytes per the op012e-eventupdate-emitter pass's decomp of FUN_0075E670)",
+      "note": "FUN_0075E670 and BCS-Y-0981 confirm that c2s 0x012E is the generic EventUpdatePacket with a 0x68-byte body, routed through the FUN_004D6D30 event-family thunk. BCS-S-0014 MapInventoryTransaction remains flagged for live reverification and must not be treated as a confirmed equipment request."
+    },
+    {
+      "opcode": "0x0146",
+      "decimal": 326,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x0146 InventorySetBeginPacket (ItemPackage chunk start)",
+      "direction": "s2c",
+      "role": "inventory_set_chunk_begin",
+      "totalSize": 24,
+      "payloadSize": 8,
+      "fields": [
+        {
+          "offset": 0,
+          "size": 4,
+          "type": "u32",
+          "name": "sourceActorId"
+        },
+        {
+          "offset": 4,
+          "size": 2,
+          "type": "u16",
+          "name": "size"
+        },
+        {
+          "offset": 6,
+          "size": 2,
+          "type": "u16",
+          "name": "code",
+          "note": "ItemPackage code (NORMAL=0, KEYITEMS=100, EQUIPMENT=0x00FE, BAZAAR=7, ...)"
+        }
+      ],
+      "handlerVa": "0x005764C0",
+      "alreadyDocumented": "data_dependency_catalog.json:s2c_0x0146 (BCS-Y-0393)"
+    },
+    {
+      "opcode": "0x0147",
+      "decimal": 327,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x0147 InventorySetEndPacket (ItemPackage chunk end)",
+      "direction": "s2c",
+      "role": "inventory_set_chunk_end",
+      "totalSize": 24,
+      "payloadSize": 8,
+      "handlerVa": null,
+      "dispatchNote": "NOT in FUN_004DC690 high-switch case list (verified by reading fun_004dc690_decomp.txt lines 240-430). The unmapped-payload-decoding pass (batch 1) also noted no case identified. Pattern E - unrouted/missing-from-client. Suggests retail-only opcode or a code path not reachable in 1.23b shipped client."
+    },
+    {
+      "opcode": "0x0148",
+      "decimal": 328,
+      "direction": "s2c",
+      "role": "inventory_items_chunk",
+      "totalSize": 128,
+      "payloadSize": 112,
+      "record": "InventoryItemRecord[1] (112 bytes per record)",
+      "handlerVa": "0x00576560",
+      "alreadyDocumented": "data_dependency_catalog.json:s2c_0x0148 (BCS-Y-0394)"
+    },
+    {
+      "opcode": "0x0149",
+      "decimal": 329,
+      "direction": "s2c",
+      "role": "inventory_items_chunk",
+      "totalSize": 920,
+      "record": "InventoryItemRecord[8]",
+      "handlerVa": "0x005765D0",
+      "alreadyDocumented": "data_dependency_catalog.json:s2c_0x0149 (BCS-Y-0394)"
+    },
+    {
+      "opcode": "0x014A",
+      "decimal": 330,
+      "direction": "s2c",
+      "role": "inventory_items_chunk",
+      "record": "InventoryItemRecord[16]",
+      "handlerVa": "0x00576640"
+    },
+    {
+      "opcode": "0x014B",
+      "decimal": 331,
+      "direction": "s2c",
+      "role": "inventory_items_chunk",
+      "record": "InventoryItemRecord[32]",
+      "handlerVa": "0x005766B0"
+    },
+    {
+      "opcode": "0x014C",
+      "decimal": 332,
+      "direction": "s2c",
+      "role": "inventory_items_chunk",
+      "record": "InventoryItemRecord[64]",
+      "handlerVa": "0x00576720"
+    },
+    {
+      "opcode": "0x014D",
+      "decimal": 333,
+      "direction": "s2c",
+      "role": "equipment_linked_item_chunk",
+      "record": "LinkedItemEntry[1] (6 bytes per entry)",
+      "handlerVa": "0x00576790",
+      "equipNote": "LinkedItem packets are the actual equipment-slot wire updates. They link an equipment slot back to the underlying inventory item (a u16 linkedItemPackageSlot + u16 itemPackageSlot + u16 itemPackageCode triple)."
+    },
+    {
+      "opcode": "0x014E",
+      "decimal": 334,
+      "direction": "s2c",
+      "role": "equipment_linked_item_chunk",
+      "totalSize": 72,
+      "payloadSize": 56,
+      "record": "LinkedItemEntry[8]",
+      "handlerVa": "0x00576800",
+      "alreadyDocumented": "data_dependency_catalog.json:s2c_0x014e (BCS-Y-0394)"
+    },
+    {
+      "opcode": "0x014F",
+      "decimal": 335,
+      "direction": "s2c",
+      "role": "equipment_linked_item_chunk",
+      "record": "LinkedItemEntry[16]",
+      "handlerVa": "0x00576870"
+    },
+    {
+      "opcode": "0x0150",
+      "decimal": 336,
+      "direction": "s2c",
+      "role": "equipment_linked_item_chunk",
+      "record": "LinkedItemEntry[32]",
+      "handlerVa": "0x005768E0"
+    },
+    {
+      "opcode": "0x0151",
+      "decimal": 337,
+      "direction": "s2c",
+      "role": "equipment_linked_item_chunk",
+      "record": "LinkedItemEntry[64]",
+      "handlerVa": "0x00576950"
+    },
+    {
+      "opcode": "0x0152",
+      "decimal": 338,
+      "direction": "s2c",
+      "role": "inventory_slot_remove_chunk",
+      "record": "u16 slot[1]",
+      "handlerVa": "0x005769C0"
+    },
+    {
+      "opcode": "0x0153",
+      "decimal": 339,
+      "direction": "s2c",
+      "role": "inventory_slot_remove_chunk",
+      "handlerVa": "0x00576A30"
+    },
+    {
+      "opcode": "0x0154",
+      "decimal": 340,
+      "direction": "s2c",
+      "role": "inventory_slot_remove_chunk",
+      "handlerVa": "0x00576AA0"
+    },
+    {
+      "opcode": "0x0155",
+      "decimal": 341,
+      "direction": "s2c",
+      "role": "inventory_slot_remove_chunk",
+      "handlerVa": "0x00576B10"
+    },
+    {
+      "opcode": "0x0156",
+      "decimal": 342,
+      "direction": "s2c",
+      "role": "inventory_slot_remove_chunk",
+      "handlerVa": "0x00576B80"
+    },
+    {
+      "opcode": "0x016D",
+      "decimal": 365,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x016D InventoryBeginChangePacket",
+      "direction": "s2c",
+      "role": "inventory_mutation_frame_begin",
+      "totalSize": 24,
+      "payloadSize": 8,
+      "fields": [
+        {
+          "offset": 0,
+          "size": 1,
+          "type": "u8",
+          "name": "changeCode",
+          "note": "The client forwards only the low byte."
+        }
+      ],
+      "handlerVa": "0x005763C0",
+      "alreadyDocumented": "data_dependency_catalog.json:s2c_0x016d (BCS-Y-0394)"
+    },
+    {
+      "opcode": "0x016E",
+      "decimal": 366,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x016E InventoryEndChangePacket",
+      "direction": "s2c",
+      "role": "inventory_mutation_frame_end",
+      "totalSize": 24,
+      "payloadSize": 8,
+      "handlerVa": "0x00576430",
+      "alreadyDocumented": "data_dependency_catalog.json:s2c_0x016e (BCS-Y-0394)"
+    },
+    {
+      "opcode": "0x018F",
+      "decimal": 399,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x018F _0x018F (MassSetItemModifier begin)",
+      "direction": "s2c",
+      "role": "modifier_frame_begin",
+      "bahamut_anchor": "MapServerOpcode::MassSetItemModifierBegin",
+      "decomp_anchor": "OP_MASS_SET_ITEM_MODIFIER_BEGIN",
+      "note": "Frame-start marker for a burst of 0x0190 bodies."
+    },
+    {
+      "opcode": "0x0190",
+      "decimal": 400,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x0190 _0x0190 (MassSetItemModifier body)",
+      "direction": "s2c",
+      "role": "modifier_burst_body",
+      "bahamut_anchor": "MapServerOpcode::MassSetItemModifier",
+      "decomp_anchor": "OP_MASS_SET_ITEM_MODIFIER"
+    },
+    {
+      "opcode": "0x0191",
+      "decimal": 401,
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x0191 _0x0191 (MassSetItemModifier end)",
+      "direction": "s2c",
+      "role": "modifier_frame_end",
+      "bahamut_anchor": "MapServerOpcode::MassSetItemModifierEnd",
+      "decomp_anchor": "OP_MASS_SET_ITEM_MODIFIER_END"
+    }
+  ],
+  "rtti_classes": {
+    "note": "No dedicated *EquipReceiver / *AppearanceReceiver / *InventoryReceiver RTTI classes exist in the binary - confirmed by grepping symbols.json for InventoryListX/LinkedItemList/InventorySetBegin/InventorySetEnd/InventoryBegin/InventoryEnd/InventoryItemEnd/InventoryItemPacket/InventoryRemove/SetActorAppearance/SetInitialEquipment/EquipChange/AppearanceChange and finding zero hits. This is consistent with the architectural pattern: equipment opcodes use direct-handler dispatch (Pattern C in client-architecture 'S2C dispatch has five architectural patterns') via FUN_004DC690 high-switch dedicated cases, NOT the *Receiver class system (Pattern A used for opcodes 0x12E..0x1F5).",
+    "related_struct_pending_reverify": "BCS-S-0014 MapInventoryTransaction conflicts with the FUN_0075E670 / BCS-Y-0981 EventUpdatePacket builder and is flagged for live reverification."
+  },
+  "opcode_dispatch_table": {
+    "dispatcher": "FUN_004DC690 (BCS-Y-0279, central s2c dispatcher)",
+    "evidence_file": "fun_004dc690_decomp.txt",
+    "low_branch_appearance": {
+      "opcode_range": "0x00D6",
+      "case_label": "switchD_004dc749_caseD_f (multi-case fallthrough)",
+      "handler": "actor = FUN_004d9910(packet); actor->vftable[9](zone_state)",
+      "verdict_vtable9_dispatch": "BCS-Y-0622 identifies CharaElement::vftable[9] FUN_0058CCA0 cases 0xD6 and 0xD7 as the SetActorAppearance handler. The shared helper stores indexed values at this+0xaac and sets this+0xb20=1. The actor-vtable9-bulk plurality result applies to other cataloged actor classes and does not negate the CharaElement implementation.",
+      "implication": "Static analysis closes the packet landing path through CharaElement::vftable[9]. The downstream repaint triggered from this+0xb20 remains to be characterized."
+    },
+    "high_branch_inventory_equip": {
+      "opcode_range": "0x0146, 0x0148..0x0156, 0x016D, 0x016E (18 dedicated cases)",
+      "missing_from_high_branch_case_list": [
+        "0x0147"
+      ],
+      "handler_pattern": "Each case is `FUN_005763XX(&param_2, iVar8 + 0x10); ExceptionList = local_1c; return;` where iVar8 + 0x10 is the packet payload pointer past the 16-byte game-message header.",
+      "wrapper_pattern": "Each FUN_005763XX wrapper is a 109-byte stub that: (1) calls FUN_00CC9320(*param_1) to obtain a per-packet allocation context, (2) calls the deep handler FUN_0076XXXX(uVar2, param_2) with the obtained context plus packet payload, (3) calls FUN_00CC9330 to release the context. The deep handlers (e.g. FUN_00581170 for opcode 0x14E, FUN_0076BAD0 for 0x16D) actually parse the payload and update the inventory state.",
+      "case_to_handler_va_map": {
+        "0x0146": "FUN_005764C0 -> FUN_0076BC20",
+        "0x0148": "FUN_00576560 -> FUN_00580E70 / FUN_00771350",
+        "0x0149": "FUN_005765D0 -> FUN_00580EF0 / FUN_007713E0",
+        "0x014A": "FUN_00576640 -> deep_handler_unconfirmed",
+        "0x014B": "FUN_005766B0 -> deep_handler_unconfirmed",
+        "0x014C": "FUN_00576720 -> deep_handler_unconfirmed",
+        "0x014D": "FUN_00576790 -> deep_handler_unconfirmed",
+        "0x014E": "FUN_00576800 -> FUN_00581170 / FUN_00768D80",
+        "0x014F": "FUN_00576870 -> deep_handler_unconfirmed",
+        "0x0150": "FUN_005768E0 -> deep_handler_unconfirmed",
+        "0x0151": "FUN_00576950 -> deep_handler_unconfirmed",
+        "0x0152": "FUN_005769C0 -> deep_handler_unconfirmed",
+        "0x0153": "FUN_00576A30 -> deep_handler_unconfirmed",
+        "0x0154": "FUN_00576AA0 -> deep_handler_unconfirmed",
+        "0x0155": "FUN_00576B10 -> deep_handler_unconfirmed",
+        "0x0156": "FUN_00576B80 -> deep_handler_unconfirmed",
+        "0x016D": "FUN_005763C0 -> FUN_0076BAD0",
+        "0x016E": "FUN_00576430 -> FUN_0076BB00"
+      },
+      "high_branch_mass_modifier": {
+        "0x018E": "case 0x18e not in dispatcher case list - Pattern E unrouted",
+        "0x018F": "FUN_00576CD0 (case 0x18F)",
+        "0x0190": "FUN_00576C60 (case 399)",
+        "0x0191": "FUN_00576D40 (case 0x191)"
+      }
+    }
+  },
+  "data_flow_summary": {
+    "c2s_player_equip_initiation": "Unresolved. FUN_0075E670 / BCS-Y-0981 identifies c2s 0x012E as the generic EventUpdatePacket, not a confirmed equipment-specific transaction.",
+    "s2c_inventory_frame": "The inventory mutation frame is: 0x016D InventoryBeginChange -> 0x0146 InventorySetBegin (with ItemPackage code) -> 0x0148/9/A/B/C InventoryListX0N (item rows) AND/OR 0x014D-0x0151 LinkedItemListX0N (slot bindings) -> [0x018F MassSetItemModifierBegin -> 0x0190 MassSetItemModifier... -> 0x0191 MassSetItemModifierEnd] -> 0x0147 InventorySetEnd (but 1.23b client lacks the case so this is no-op) -> 0x016E InventoryEndChange.",
+    "s2c_appearance_resend": "PCAP evidence records 199 s2c 0x00D6 SetActorAppearance packets. BCS-Y-0622 identifies CharaElement::vftable[9] FUN_0058CCA0 cases 0xD6 and 0xD7 as the receive path and this+0xaac as the landing array.",
+    "request_resend_path": "If client desyncs, it can request a full inventory resync via c2s 0x0131 UpdateItemPackagePacket (actorID + packageId u32 pair); the inventory-frame sequence above follows."
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0580",
+      "name": "EquipmentDispatcher_Opcode0x0146_FUN_005764C0",
+      "address": "0x005764C0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "FUN_004DC690 high-switch case 0x0146 thunk for InventorySetBegin. 109-byte SEH wrapper that calls FUN_00CC9320 (allocate context), forwards to deep handler FUN_0076BC20, then FUN_00CC9330 (release). Already cross-referenced by data_dependency_catalog.json s2c_0x0146 handlerVa.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:240-243",
+        "batch1_unmapped_callees_decomp.txt",
+        "data_dependency_catalog.json:s2c_0x0146"
+      ]
+    },
+    {
+      "id": "BCS-Y-0581",
+      "name": "EquipmentDispatcher_Opcode0x0148_FUN_00576560",
+      "address": "0x00576560",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "FUN_004DC690 high-switch case 0x0148 thunk for InventoryListX01. Wrapper pattern identical to BCS-Y-0580. Deep handler at FUN_00580E70 / FUN_00771350.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:247-250",
+        "batch2_handlers_decomp.txt:9-12",
+        "data_dependency_catalog.json:s2c_0x0148"
+      ]
+    },
+    {
+      "id": "BCS-Y-0582",
+      "name": "EquipmentDispatcher_Opcode0x0149_FUN_005765D0",
+      "address": "0x005765D0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "FUN_004DC690 high-switch case 0x0149 thunk for InventoryListX08. Deep handler at FUN_00580EF0 / FUN_007713E0.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:251-254",
+        "data_dependency_catalog.json:s2c_0x0149"
+      ]
+    },
+    {
+      "id": "BCS-Y-0583",
+      "name": "EquipmentDispatcher_Opcode0x014E_FUN_00576800",
+      "address": "0x00576800",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "FUN_004DC690 high-switch case 0x014E thunk for LinkedItemListX08 (the canonical 8-slot equipment chunk). Deep handler at FUN_00581170 / FUN_00768D80.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:271-274",
+        "batch2_handlers_decomp.txt:144-181",
+        "data_dependency_catalog.json:s2c_0x014e"
+      ]
+    },
+    {
+      "id": "BCS-Y-0584",
+      "name": "EquipmentDispatcher_Opcode0x016D_FUN_005763C0",
+      "address": "0x005763C0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "FUN_004DC690 high-switch case 0x016D thunk for InventoryBeginChange. Deep handler at FUN_0076BAD0 reads the 1-byte changeCode.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:307-310",
+        "batch2_handlers_decomp.txt:188-226",
+        "data_dependency_catalog.json:s2c_0x016d"
+      ]
+    },
+    {
+      "id": "BCS-Y-0585",
+      "name": "EquipmentDispatcher_Opcode0x016E_FUN_00576430",
+      "address": "0x00576430",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "FUN_004DC690 high-switch case 0x016E thunk for InventoryEndChange. Takes no payload (FUN_00576430 is a single-param variant that just signals frame end).",
+      "evidence": [
+        "fun_004dc690_decomp.txt:311-314",
+        "batch2_handlers_decomp.txt:234-261",
+        "data_dependency_catalog.json:s2c_0x016e"
+      ]
+    },
+    {
+      "id": "BCS-Y-0586",
+      "name": "EquipmentDispatcher_Opcode0x014A_FUN_00576640",
+      "address": "0x00576640",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x014A thunk for InventoryListX16. Deep handler not yet decomp-confirmed; uncataloged in data_dependency_catalog.json.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:255-258"
+      ]
+    },
+    {
+      "id": "BCS-Y-0587",
+      "name": "EquipmentDispatcher_Opcode0x014B_FUN_005766B0",
+      "address": "0x005766B0",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x014B thunk for InventoryListX32. Deep handler not yet decomp-confirmed.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:259-262"
+      ]
+    },
+    {
+      "id": "BCS-Y-0588",
+      "name": "EquipmentDispatcher_Opcode0x014C_FUN_00576720",
+      "address": "0x00576720",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x014C thunk for InventoryListX64. Deep handler not yet decomp-confirmed.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:263-266"
+      ]
+    },
+    {
+      "id": "BCS-Y-0589",
+      "name": "EquipmentDispatcher_Opcode0x014D_FUN_00576790",
+      "address": "0x00576790",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x014D thunk for LinkedItemListX01. Single-equipment-slot update.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:267-270"
+      ]
+    },
+    {
+      "id": "BCS-Y-0590",
+      "name": "EquipmentDispatcher_Opcode0x014F_FUN_00576870",
+      "address": "0x00576870",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x014F thunk for LinkedItemListX16.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:275-278"
+      ]
+    },
+    {
+      "id": "BCS-Y-0591",
+      "name": "EquipmentDispatcher_Opcode0x0150_FUN_005768E0",
+      "address": "0x005768E0",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x0150 thunk for LinkedItemListX32.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:279-282"
+      ]
+    },
+    {
+      "id": "BCS-Y-0592",
+      "name": "EquipmentDispatcher_Opcode0x0151_FUN_00576950",
+      "address": "0x00576950",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x0151 thunk for LinkedItemListX64.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:283-286"
+      ]
+    },
+    {
+      "id": "BCS-Y-0593",
+      "name": "EquipmentDispatcher_Opcode0x0152_FUN_005769C0",
+      "address": "0x005769C0",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x0152 thunk for InventoryRemoveX01.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:287-290"
+      ]
+    },
+    {
+      "id": "BCS-Y-0594",
+      "name": "EquipmentDispatcher_Opcode0x0153_FUN_00576A30",
+      "address": "0x00576A30",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x0153 thunk for InventoryRemoveX08.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:291-294"
+      ]
+    },
+    {
+      "id": "BCS-Y-0595",
+      "name": "EquipmentDispatcher_Opcode0x0154_FUN_00576AA0",
+      "address": "0x00576AA0",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x0154 thunk for InventoryRemoveX16.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:295-298"
+      ]
+    },
+    {
+      "id": "BCS-Y-0596",
+      "name": "EquipmentDispatcher_Opcode0x0155_FUN_00576B10",
+      "address": "0x00576B10",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x0155 thunk for InventoryRemoveX32.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:299-302"
+      ]
+    },
+    {
+      "id": "BCS-Y-0597",
+      "name": "EquipmentDispatcher_Opcode0x0156_FUN_00576B80",
+      "address": "0x00576B80",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x0156 thunk for InventoryRemoveX64.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:303-306"
+      ]
+    },
+    {
+      "id": "BCS-Y-0598",
+      "name": "EquipmentDispatcher_Opcode0x018F_FUN_00576CD0",
+      "address": "0x00576CD0",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x18F thunk for MassSetItemModifierBegin. It ships in the 1.23b client dispatcher.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:405-408"
+      ]
+    },
+    {
+      "id": "BCS-Y-0599",
+      "name": "EquipmentDispatcher_Opcode0x0190_FUN_00576C60",
+      "address": "0x00576C60",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 399 (0x18F) thunk for MassSetItemModifier (per-item modifier body row).",
+      "evidence": [
+        "fun_004dc690_decomp.txt:401-404"
+      ]
+    },
+    {
+      "id": "BCS-Y-0600",
+      "name": "EquipmentDispatcher_Opcode0x0191_FUN_00576D40",
+      "address": "0x00576D40",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 0x191 thunk for MassSetItemModifierEnd. Frame-end marker matching BCS-Y-0598's begin.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:409-412"
+      ]
+    }
+  ],
+  "key_findings": [
+    {
+      "title": "Equipment opcodes use the dedicated-case-handler dispatch pattern (Pattern C), NOT the *Receiver class pattern (Pattern A)",
+      "detail": "Of the 24 equipment/inventory s2c opcodes (0x0146..0x0156, 0x016D, 0x016E, 0x018F, 0x0190, 0x0191), 23 have dedicated handler thunks in FUN_004DC690's high-switch (uVar2 > 0x13D) and 1 (0x0147 InventorySetEnd) is unrouted. None use the *Receiver class system used by event/social/group opcodes (Pattern A). This is consistent with the s2c dispatch architecture client-architecture 'S2C dispatch has five architectural patterns': equipment is high-frequency inventory state that needs a tight 109-byte SEH-wrapped thunk (Pattern C) rather than the heavier per-class polymorphic dispatch.",
+      "implication": "The receiver_opcode_map_inbound.json catalog will NEVER list these opcodes - they don't fit that schema. The data_dependency_catalog.json (already covering 0x0146, 0x0148, 0x0149, 0x014E, 0x016D, 0x016E) is the correct home. The remaining 17 dispatcher thunks (BCS-Y-0586..0600) need similar entries with payload-shape decomp from the deep handlers FUN_0076XXXX."
+    },
+    {
+      "title": "SetActorAppearance (0x00D6) lands through CharaElement::vftable[9]",
+      "detail": "BCS-Y-0622 identifies FUN_0058CCA0 cases 0xD6 and 0xD7 as the SetActorAppearance handler. The shared helper writes indexed values to this+0xaac and sets this+0xb20=1. The actor-vtable9-bulk plurality result describes other cataloged actor classes, not the CharaElement implementation.",
+      "implication": "The packet landing array is known. The remaining static-analysis question is which downstream path consumes the this+0xb20 dirty flag to repaint equipment."
+    },
+    {
+      "title": "Opcode 0x0147 InventorySetEnd is unrouted in the v1.23b client dispatcher (Pattern E)",
+      "detail": "FUN_004DC690's high-switch case list (verified by reading fun_004dc690_decomp.txt lines 240-430) has cases for 0x146, 0x148-0x156, 0x16D, 0x16E but NO case for 0x147. unmapped_payload_decoding.json batch 1 also flagged this gap. PCAP evidence shows 84 hits for 0x147 across 53 captures (more than 0x146's 78), while the client silently drops it. This is consistent with the InventoryEndChange/SetEnd having essentially zero client-side work (a sentinel marker the client doesn't need to acknowledge).",
+      "implication": "Open question for Pattern E catalog: 0x0147 joins 0x00D2 as a known-unrouted opcode in 1.23b. Could be a retail-only addition or simply a wire artifact the client doesn't need."
+    },
+    {
+      "title": "Equipment/inventory wire frame ordering is canonical: BeginChange -> SetBegin -> {ItemList | LinkedItemList} -> [ModifierFrame] -> SetEnd -> EndChange",
+      "detail": "The wire frame ordering is BeginChange -> SetBegin -> {ItemList | LinkedItemList} -> [ModifierFrame] -> SetEnd -> EndChange. The 5 X01/X08/X16/X32/X64 size variants for each row family allow the game loop to pick the smallest power-of-2 chunk that fits the burst.",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
+      "implication": "Anyone implementing or fuzzing the equipment subsystem must respect this frame ordering. A LinkedItemListX08 packet outside a Begin/EndChange bracket is malformed; the client may or may not reject it (unknown without test)."
+    },
+    {
+      "title": "The c2s equipment-initiation carrier remains unresolved",
+      "detail": "FUN_0075E670 / BCS-Y-0981 confirms c2s 0x012E as the generic EventUpdatePacket with a 0x68-byte body. The BCS-S-0014 MapInventoryTransaction attribution conflicts with that first-party builder evidence.",
+      "implication": "Do not use BCS-S-0014 as a confirmed equipment request until the retail 1.23b client accepts the event-family payload during an equip action in a live session.",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    }
+  ],
+  "open_questions": [
+    "Which downstream path consumes the SetActorAppearance landing array at CharaElement+0xaac after FUN_0058CCA0 cases 0xD6/0xD7 set the dirty flag at this+0xb20?",
+    "What are the deep handlers (FUN_0076XXXX) for opcodes 0x014A, 0x014B, 0x014C, 0x014D, 0x014F, 0x0150, 0x0151, 0x0152..0x0156, 0x018F, 0x0190, 0x0191? data_dependency_catalog.json only covers 6 of the 24 opcodes; 17 remain with structural-only attribution in BCS-Y-0586..0600 above.",
+    "Is opcode 0x0147 InventorySetEnd truly unused by the 1.23b client, or does it route via a non-dispatcher path? 84 pcap hits confirm repeated wire emission.",
+    "What is the exact field layout of LinkedItemEntry (in the 6-byte form)? data_dependency_catalog.json documents linkedItemPackageSlot / itemPackageSlot / itemPackageCode (all u16); acceptance by the retail 1.23b client in a live session must confirm the interpretation.",
+    "Which EventUpdate event name and Lua-parameter shape carry an equipment action over c2s 0x012E?"
+  ],
+  "data_provenance": {
+    "primary_references": [
+      "xivl-opcodes/opcodes.json 0x00D7 _0x00D7 (Set Actor Appearance x16)",
+      "xivl-opcodes/opcodes.json 0x00D6 SetActorAppearancePacket (x32 form)",
+      "xivl-opcodes/opcodes.json 0x016D InventoryBeginChangePacket",
+      "xivl-opcodes/opcodes.json 0x016E InventoryEndChangePacket",
+      "xivl-opcodes/opcodes.json 0x0146 InventorySetBeginPacket (ItemPackage chunk start)",
+      "xivl-opcodes/opcodes.json 0x0147 InventorySetEndPacket (ItemPackage chunk end)",
+      "xivl-opcodes/opcodes.json 0x018F _0x018F (MassSetItemModifier begin)",
+      "xivl-opcodes/opcodes.json 0x0191 _0x0191 (MassSetItemModifier end)",
+      "xivl-opcodes/opcodes.json 0x0190 _0x0190 (MassSetItemModifier body)"
+    ],
+    "ghidra_evidence": [
+      "%BCS_GHIDRA_PROJECTS%\\fun_004dc690_decomp.txt (FUN_004DC690 high-switch case map, 3364 bytes)",
+      "%BCS_GHIDRA_PROJECTS%\\batch2_handlers_decomp.txt (FUN_00576560 / 00576800 / 005763C0 / 00576430 wrapper bodies)",
+      "%BCS_GHIDRA_PROJECTS%\\batch2_callees_decomp.txt (FUN_0076BAD0 / 0076BB00 deep handlers)",
+      "%BCS_GHIDRA_PROJECTS%\\batch2_deeper_decomp.txt (payload parsing for InventoryList / LinkedItemList)",
+      "%BCS_GHIDRA_PROJECTS%\\batch2_inventory_item_decomp.txt (InventoryItemRecord 112-byte layout)"
+    ],
+    "existing_manifests_cross_referenced": [
+      "manifests\\data_dependency_catalog.json (s2c_0x0146/0x0148/0x0149/0x014e/0x016d/0x016e)",
+      "manifests\\structs.json (BCS-S-0014 MapInventoryTransaction; needs live reverification)",
+      "manifests\\pcap_validation.json (pcap counts for all 24 opcodes)",
+      "manifests\\actor_cluster_dispatch_model.json (FUN_004DC690 dispatch model, BCS-Y-0279/0525/0526/0527)",
+      "manifests\\actor_vtable9_bulk.json (the actor-vtable9-bulk pass's verdict on vftable[9] no-op for 0x00D6)",
+      "manifests\\unmapped_payload_decoding.json (the unmapped-payload-decoding pass's worklist coverage)",
+      "xivl-opcodes:data/opcodes.json (canonical opcode catalog with names + implementationAnchor + decompAnchor)",
+      "xivl-opcodes:data/vendor/captures/payload_layouts.json (referenced by data_dependency_catalog for reserved-byte sizing)"
+    ]
+  }
+}

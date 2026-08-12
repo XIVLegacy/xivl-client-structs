@@ -1,0 +1,473 @@
+{
+  "version": 1,
+  "scope": "Characterize FUN_004E20A0 - the Map tick handler that is the sole caller of the s2c packet dispatcher FUN_004DC690. Determine what state is mutated per tick beyond packet dispatch, identify the call-tree position, and trace whether the actor map at zone+0x17804..+0x17808 is iterated here or by a sibling helper. Resolve whether Actor cluster opcodes (the 24 multi-case fallthrough opcodes the actor-cluster-dispatch-model pass mapped to actor->vftable[9]) get their effects applied somewhere other than the (no-op per the actor-vtable9-bulk pass) vftable[9] slot.",
+  "method": {
+    "step1": "Re-decomped FUN_004E20A0 (1442 body bytes) plus 12 of its uncataloged direct callees (FUN_004E5FF0, FUN_004E12F0, FUN_004D0760, FUN_00DB7110, FUN_00DB7130, FUN_004E3EB0, FUN_004DA670, FUN_00DB70F0, FUN_004E38B0, FUN_004E4270, FUN_00DADF50, plus the immediate caller FUN_004E30A0 (837 body bytes)). Output: ghidra-projects/fun_004e20a0_decomp.txt.",
+    "step2": "Re-used existing decomps for callees decompiled in prior phases: FUN_004DC690, FUN_004B3C50 (parent of FUN_004E30A0), FUN_004DAA10 (the sibling helper called by FUN_004B3C50 immediately before FUN_004E30A0), FUN_004DDB50 (the lock-free queue dequeue primitive), FUN_00DAE3B0 / FUN_00DAE1E0 (Zone connection-manager getter + 0x02 handshake emitter), FUN_004D9910 / BCS-Y-0534 (zone+0x17804..+0x17808 actor-map find primitive).",
+    "step3": "Cross-referenced every callee against manifests/symbols.json by name + by VA (case-insensitive both ways since some catalog entries have a known 0x000XXXXX vs 0x004XXXXX leading-digit typo). Identified 4 callees with prior catalog entries (FUN_004DC690/BCS-Y-0279, FUN_00DAE010/BCS-Y-0304, FUN_004E0240/BCS-Y-0312 via thunk_FUN_004E0240, FUN_00DAE520/BCS-Y-0107) and the function itself (FUN_004E20A0/BCS-Y-0314); ALL other direct callees are uncataloged.",
+    "step4": "Traced the call tree upward from FUN_004E20A0: -> FUN_004E30A0 (uncataloged 837-byte state-machine pump) -> FUN_004B3C50 (uncataloged 523-byte per-frame Scene+Map tick that ALSO calls the per-tick actor-event drain FUN_004DAA10 and the ScenePacket builder FUN_004EC080). FUN_004B3C50 has NO callers in static xref - it is the top of the chain that the project's frame-loop / scheduler invokes by function pointer.",
+    "step5": "Re-read FUN_004DAA10 from its existing decomp - confirmed it is a PRODUCER-CONSUMER LOCK-FREE LOOP draining a ring buffer via FUN_004DDB50, and for each entry it looks up the actor via FUN_004D9910 (BCS-Y-0534, the zone+0x17804..+0x17808 actor-map find) then dispatches to actor->vtable[8] (offset 0x20) with (event_type-3, payload_ptr+0x20, payload_word+0x18). This is the per-tick per-actor effect application path that BYPASSES vtable[9] entirely."
+  },
+  "function_metadata": {
+    "va": "0x004E20A0",
+    "existing_bcs_y_id": "BCS-Y-0314",
+    "name": "ZoneOutbound_TickHandler_FUN_004E20A0",
+    "body_bytes": 1442,
+    "signature": "void __thiscall FUN_004e20a0(int param_1=Map_channel_state, char param_2=collect_bandwidth_flag)",
+    "callers": [
+      "FUN_004E30A0 (uncataloged Map channel state-machine pump)"
+    ],
+    "primary_purpose_refined": "Per-frame Map channel pump invoked from FUN_004E30A0 case 4 (running state) and case 5 (shutdown drain). NOT an actor iterator. Two responsibilities: (a) DRAIN INBOUND PACKET QUEUE - a while loop that calls FUN_00DAE520 to dequeue the next s2c packet from the Map channel's inbox at param_1+0x234, normalizes the opcode via 0x5ff80000 mask, then hands the packet to FUN_004DC690 (the s2c central dispatcher); per packet it also runs a state-machine switch on the packet opcode (cases 1/2/0xE/0x11) that may emit response c2s opcodes (0x04, 0x06) or schedule timing updates; (b) EMIT PERIODIC C2S 0x01 PING - gated on idle (no inbound progress) and a per-second time tick (__time64 mod compare), emits c2s opcode 1 size 0x28 via thunk_FUN_004E0240 (BCS-Y-0312) and updates bandwidth stats (FUN_00DB70F0/FUN_00DB7110 byte counters scaled by FUN_009DA820 fpoint math into param_1+0x380/+0x384)."
+  },
+  "tick_structure": {
+    "actor_map_iteration_found": false,
+    "actor_map_iteration_in_function": "NO - FUN_004E20A0 does NOT iterate zone+0x17804..+0x17808 itself. The actor-map iteration happens in a SIBLING function FUN_004DAA10 that the same parent (FUN_004B3C50) calls earlier in the per-frame tick, BEFORE invoking FUN_004E30A0 -> FUN_004E20A0.",
+    "sibling_actor_iteration_function": "FUN_004DAA10",
+    "sibling_actor_iteration_pattern": "Producer-consumer drain: while(entry = FUN_004DDB50(&slot)) { if (entry.type==2) sound/animation channel call on zone+0x17924->vtable[6]; else { actor = FUN_004D9910(entry.actor_id); if (actor) actor->vtable[8](entry.type-3, entry.payload+0x20, entry.payload+0x18); } InterlockedDecrement(zone+0x17938 if ring slot ready); }",
+    "sibling_actor_iteration_vtable_slot": "actor->vtable[8] (offset 0x20), NOT vtable[9] (offset 0x24). vtable[8] takes 3 args (event_type subtracted by 3, payload_ptr, extra_word) and IS the polymorphic per-actor-class state-application slot. The actor-vtable9-bulk pass found vtable[9] is no-op; the real apply slot for the per-tick actor-event drain is vtable[8].",
+    "packet_dispatch_call_site": "Decomp line 152: FUN_004dc690(uVar5, uVar8) where uVar5 = opcode (post-mask) and uVar8 = packet body pointer at local_1178+0x24. Inside a while loop that repeats while FUN_00DAE520 returns non-zero (queue still has packets).",
+    "packet_queue_field": "param_1 + 0x234 (Map channel state inbox); the queue node iterator is local_1178; the packet body is at *(local_1178 + 0x24).",
+    "periodic_emissions": [
+      {
+        "opcode": "c2s 0x06",
+        "size": "0x18",
+        "trigger": "case 2 of per-packet switch (FUN_004DC690 returned with packet opcode==2)",
+        "emitter_call": "FUN_00DAE010(&local_1160, local_1188)",
+        "binding": "BCS-Y-0314 emission (a)"
+      },
+      {
+        "opcode": "c2s 0x04",
+        "size": "0x18",
+        "trigger": "cases 0xE / 0x11 of per-packet switch (zone-leave / shutdown packet types from server)",
+        "emitter_call": "FUN_00DAE010(&local_8c0, &local_1190)",
+        "binding": "BCS-Y-0314 emission (b)"
+      },
+      {
+        "opcode": "c2s 0x01",
+        "size": "0x28",
+        "trigger": "per-second time tick (when __time64 != param_1+0x340) AND no inbound packet was processed this frame",
+        "emitter_call": "thunk_FUN_004E0240(&local_1160, 1, 0) -> FUN_004E0240 (BCS-Y-0312) -> FUN_00DAE010 (BCS-Y-0304)",
+        "binding": "BCS-Y-0314 emission (c) - the heartbeat ping"
+      },
+      {
+        "opcode": "various via case 7 (c2s 0xCA UpdatePlayerPositionPacket)",
+        "size": "0x30",
+        "trigger": "INSIDE FUN_004DC690 case 7 (NOT here); included for completeness since the tick handler is the only path to FUN_004DC690",
+        "emitter_call": "FUN_004E0240(uVar6, 0xCA, 0)",
+        "binding": "BCS-Y-0321"
+      },
+      {
+        "opcode": "wakeup/ping FUN_00DADF50",
+        "size": "n/a",
+        "trigger": "case 1 of per-packet switch, when packet opcode at body+0x14 > 0x14C (compressed payload threshold)",
+        "emitter_call": "FUN_00DADF50(channel) - looks up ConnectionManager via FUN_009DA6CC and writes u16 at +0xe2",
+        "binding": "uncataloged - this is a connection-manager state write, not a packet emit"
+      }
+    ],
+    "lua_onloop_hook": "NOT FOUND in FUN_004E20A0 directly. No call to FUN_00CC7A90 (Lua dispatcher BCS-Y-0311) or to FUN_00447260 (std::string ctor used in Lua-name building). Per-tick Lua _onLoop callbacks (if they exist for Map subsystem) must live in a sibling: candidates are FUN_004DAA10 (drains actor events, calls actor->vtable[8] which COULD reach Lua per-class), FUN_004B3C50 (Scene tick - also calls FUN_00C99830 / FUN_00C98160 / FUN_00C97030 which are unknown engine helpers worth investigating), or in the broader frame loop one level above FUN_004B3C50.",
+    "garbage_collection": "FUN_004E5FF0 at decomp line 214 is called once per drained packet - it invokes packet->vtable[1] (some pre-destruct hook), then computes a packet-size threshold (param_2[7] < 0x1c11 = 7185 bytes), and either calls FUN_004E5CA0 (small-path destruct) or packet->vtable[0](1) (MSVC destructor-with-delete). This is per-packet cleanup, NOT actor garbage collection. NO dead-actor cleanup found in this function. Per the actor-cluster-dispatch-model pass, case 0xCB (RemoveActorPacket) handles actor removal INSIDE FUN_004DC690 via actor->vtable[0](1).",
+    "render_state_syncs": "NONE in FUN_004E20A0. Render state (ScenePacket etc.) is built ONE LEVEL UP in FUN_004B3C50 via FUN_004D6570(param_1+0x6c, param_1+0xc4, param_1+0xe4) and FUN_004EC080(0, 3, 0, 0) which constructs an Application::Scene::ScenePacket. FUN_004B3C50 also collects iterator results from sub-objects at +0x40, +0x44, +0x48 (each iterated via vtable[8] / vtable[10] / vtable[14] in MSVC iterator pattern) into stack buffers - these are the per-frame state snapshots that get serialized into the ScenePacket.",
+    "scheduled_timers": [
+      {
+        "field": "param_1+0x340",
+        "purpose": "epoch-second timestamp of last c2s 0x01 ping emission - compared against current __time64 to gate the next ping"
+      },
+      {
+        "field": "param_1+0x3a8",
+        "purpose": "denominator for bandwidth scaling (last-window byte count); param_1+0x380 / +0x384 receive scaled byte deltas via fpoint math"
+      },
+      {
+        "field": "param_1+0x3ac",
+        "purpose": "per-packet time delta in microseconds (TimeGetTime - last_packet_time) used to set param_1+0x308 (packet sequence number / per-packet drift correction)"
+      },
+      {
+        "field": "param_1+0x338",
+        "purpose": "one-shot init flag - if 0, call FUN_004E38B0 to initialize timing baseline then set to 1"
+      },
+      {
+        "field": "param_1+0x3b0",
+        "purpose": "shutdown flag - if 1, take the early-exit branch that calls FUN_004E14B0 + FUN_004DF4F0 instead of draining packets"
+      }
+    ]
+  },
+  "callees_table": [
+    {
+      "va": "0x004DC690",
+      "purpose": "Central s2c packet dispatcher - the function this tick handler is the SOLE caller of. Called per-dequeued-packet inside the while loop.",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0279",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "va": "0x00DAE520",
+      "purpose": "ZoneConnectionStateMachineDispatchFrame - the s2c packet queue DEQUEUE primitive. Returns non-zero when a packet is dequeued into local_1178; returns 0 when queue is empty (terminating the while loop).",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0107",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "va": "0x00DAE010",
+      "purpose": "Zone outbound generic forwarder - used for direct emission of c2s 0x06 (case 2) and c2s 0x04 (cases 0xE/0x11) inside the per-packet switch.",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0304",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "va": "0x004E0240",
+      "purpose": "Zone outbound Tier-C wrapper - used (via thunk_FUN_004E0240 = thunk in .text at 0x004DD660) for the periodic c2s 0x01 heartbeat ping emission.",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0312",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "va": "0x004E30A0",
+      "purpose": "Map channel state-machine pump (sole caller of FUN_004E20A0). 837-byte body switching on *(this+0x250): case 0 = pre-connect, case 1 = connecting (FUN_004E2D00), cases 2/3 advance to 4, case 4 = running (calls FUN_004E20A0 with collect-bandwidth flag) and emits c2s opcode 0 size 0 via thunk_FUN_004E0240 if a 70-second time gate passes, case 5 = shutdown drain (also calls FUN_004E20A0). Also calls FUN_004E2850 / FUN_00D36D40 / FUN_004E2670 per frame for auxiliary work.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-1",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004B3C50",
+      "purpose": "Per-frame Scene+Map tick handler - TOP OF THE TICK CHAIN. 523-byte body: (a) iterates 2 sub-objects at param_1+0x40 (vtable[8] reset + vtable[14] next, 2 records of 44 bytes each) into param_1+0x6c..; (b) iterates 1 sub-object at param_1+0x44 (vtable[8]/[10]) copies 32 bytes into param_1+0xc4; (c) iterates 1 sub-object at param_1+0x48 (vtable[8]/[10]) feeds result to FUN_004B4C40; (d) calls FUN_004D6570 with all 3 collected buffers; (e) calls FUN_004DAA10 (THE PER-TICK ACTOR-EVENT DRAIN) which iterates the actor map via FUN_004D9910; (f) calls FUN_004EC080(0, 3, 0, 0) which constructs an Application::Scene::ScenePacket; (g) calls FUN_004E30A0 (the Map channel state machine pump that ends up at FUN_004E20A0); (h) virtual call (this+0x5c)->vtable[3] to dispatch the ScenePacket. NO STATIC CALLERS - top of chain invoked by the frame loop / scheduler via function pointer.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-2",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004DAA10",
+      "purpose": "PER-TICK ACTOR-EVENT DRAIN - the function that ACTUALLY iterates the actor map per frame. 310-byte body. Producer-consumer drain via lock-free ring (FUN_004DDB50 dequeue, Interlocked* primitives). For each ready entry: if type==2 invokes zone+0x17924->vtable[6] with (0xffffffff, count_byte, freq_byte) - probably sound/animation throttle; else looks up actor via FUN_004D9910(entry.actor_id) (BCS-Y-0534) then invokes actor->vtable[8] (offset 0x20) with (event_type-3, payload_ptr+0x20, payload+0x18). vtable[8] is the polymorphic per-actor-class apply slot - this is where Actor cluster opcode EFFECTS get applied per tick. Post-drain calls FUN_005527A0 + FUN_004DA680 (cleanup). Sole caller: FUN_004B3C50.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-3",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004DDB50",
+      "purpose": "Lock-free ring-buffer dequeue primitive (Interlocked* InterlockedCompareExchange / InterlockedExchangeAdd / InterlockedExchange). Reads param_1+8 = read index, atomically checks slot state at (param_1+0x14)[idx*4] == 1 (ready), CAS-advances read index modulo (param_1+4) = capacity, marks slot state 2 (processing), writes slot index to *param_2, returns entry pointer at (param_1+0x18) + idx*0x60 (entries are 96 bytes each). The ring base is at *(channel+0x14), slot states at *(channel+0x14), entries at *(channel+0x18). Sole caller: FUN_004DAA10.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-4",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004D9910",
+      "purpose": "Actor-map find primitive - keyed STL-map lookup over zone+0x17804..+0x17808. Returns *(node+0x10) = actor pointer if found, 0 otherwise. Called by FUN_004DAA10 per dequeued entry to resolve actor_id -> actor pointer.",
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0534",
+      "proposed_bcs_y_id": null
+    },
+    {
+      "va": "0x00DAE3B0",
+      "purpose": "Zone connection-manager getter + handshake driver. Looks up the ConnectionManagerTmpl<ZoneProtoUp,ZoneProtoDown> via FUN_009DA6CC RTTI lookup, calls FUN_00DB1120, then invokes *piVar1->vtable[1] and indirectly FUN_00DAE1E0 (BCS-Y-0305, c2s 0x02 handshake emitter). Called 3 times by FUN_004E20A0: (a) pre-loop init (line 98), (b) inside cases 0xE/0x11 of per-packet switch after the c2s 0x04 emit (line 211), (c) before the early shutdown branch.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-5",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004E14B0",
+      "purpose": "NOT DECOMPILED THIS MANIFEST (batch 2 run failed due to Ghidra lock contention with parallel phases). Per BCS-Y-0314 notes: called as part of the shutdown-flag early-exit branch (param_1+0x3b0 == 1) alongside FUN_004DF4F0. Suspected role: shutdown / cleanup handler. Deferred: re-run batch 2 in isolation.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-6",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004DF4F0",
+      "purpose": "NOT DECOMPILED THIS MANIFEST (batch 2 lock contention). Per BCS-Y-0314 notes: called alongside FUN_004E14B0 in shutdown branch and at the end of the post-loop dispatch state>=4 branch. Suspected role: shutdown / final state-emit. Deferred.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-7",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004E3E60",
+      "purpose": "NOT DECOMPILED THIS MANIFEST (batch 2 lock contention). Called once at the end of the running branch as a final-cleanup helper. Suspected role: destructor of the stack PacketBufferTmpl<ZoneProtoDown> built by FUN_004E3EB0 at the top of the running branch (symmetric pair). Deferred.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-8",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004E3EB0",
+      "purpose": "Constructs a stack-local Application::Network::ZoneProtoChannel::PacketBufferTmpl<ZoneProtoDown> on the stack. 90-byte body. Calls FUN_00DC1E00 to set up the buffer, then installs the PacketBufferTmpl<ZoneProtoDown> vftable into *param_1 and zeros param_1[2]. Sole caller FUN_004E20A0 at line 108. Pairs with FUN_004E3E60 (destructor) at line 301. This is the stack-allocated dispatch buffer that the dequeued packet body is copied into for processing.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-9",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004E5FF0",
+      "purpose": "Per-packet destruct/cleanup helper. 132-byte body. Calls packet->vtable[1] (pre-destruct), FUN_0071D420 to copy a pointer pair, FUN_008A87F0 (a hash-table or scene-state update), then either FUN_004E5CA0 (small-record path, when packet[7] < 0x1c11 = 7185 bytes) or packet->vtable[0](1) (MSVC destructor-with-delete, large-record path), then packet->vtable[2] (post-destruct). Returns 1. Has 8 callers (most are FUN_00DB1XXX channel state machine variants); FUN_004E20A0 calls it once per drained packet at line 214.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-10",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004E12F0",
+      "purpose": "Map channel state-extractor helper. 68-byte body. Reads channel state at param_1+0x70+0x88 (sub-state pointer), calls FUN_004E4B40 then FUN_004E4BA0 to walk it, returns either *(result+0x20+8) or *(result+0x1c) depending on the +0x20 field. Sole caller: FUN_004E20A0 (line 225, inside the post-loop state>=4 branch). Probably extracts the connection state / shutdown reason for the FUN_004DA670 call.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-11",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004D0760",
+      "purpose": "Timing baseline reset. 44-byte body. Writes __time64() into *param_1, timeGetTime() into param_1[2], 0 into param_1[3], FUN_004CFA50() qword result into param_1[4..6]. Pure timing initializer. 8 callers including FUN_004E20A0 (line 259, inside post-loop time-tick branch that emits c2s 0x01 ping).",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-12",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x00DB7110",
+      "purpose": "Channel byte-counter getter (recv bytes). 18-byte body. Returns *(channel+0xF4+0x10D8) or 0 if +0xF4 is null. Sole caller FUN_004E20A0 - used in the bandwidth-calc periodic block.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-13",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x00DB7130",
+      "purpose": "Channel byte-counter reset (both +0x10D4 and +0x10D8). 25-byte body. Sole caller FUN_004E20A0 - resets both byte counters after sampling for bandwidth calc.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-14",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x00DB70F0",
+      "purpose": "Channel byte-counter getter (sent bytes). 18-byte body. Returns *(channel+0xF4+0x10D4) or 0 if +0xF4 is null. Sole caller FUN_004E20A0 - paired with FUN_00DB7110 for bandwidth calc.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-15",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004DA670",
+      "purpose": "Trivial wrapper: calls FUN_004DA380 only. 8-byte body. Used by FUN_004E20A0 (line 240) to invoke shutdown helper with arguments uVar8 (state-derived code) and param_1+0xC (channel id). Likely surface for a future graceful-shutdown emit.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-16",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004E38B0",
+      "purpose": "Timing baseline init for the per-packet state record. 87-byte body. Writes param_1[1] = param_2 + param_3/1000, param_1[2] = param_3 % 1000, param_1[0] = 0, then __time64 into +6, timeGetTime into +8, 0 into +9, FUN_004CFA50 qword into +10..+11. Sole caller FUN_004E20A0 (line 126) - the one-shot init gated by *(channel+0x338)==0.",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-17",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x004E4270",
+      "purpose": "Per-tick channel-state stash. 75-byte body. Reads 0x28 bytes from *(channel+0x8)+0x18 and copies into param_2[0..9] (40 bytes). Used to snapshot the channel header per tick. Sole caller FUN_004E20A0 (line 101).",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-18",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x00DADF50",
+      "purpose": "Connection-manager state-write helper. 45-byte body. Looks up the ConnectionManagerTmpl via FUN_009DA6CC, writes a u16 value at +0xE2. Sole caller FUN_004E20A0 (line 184) - inside case 1 of per-packet switch when the inbound packet opcode > 0x14C. The u16 value is the packet's opcode (probably as a 'last-processed' marker for compressed-payload threshold detection).",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-NEW-19",
+      "existing_bcs_y_id": null
+    },
+    {
+      "va": "0x009DA820",
+      "purpose": "MSVC C runtime - floating-point math helper (likely sqrt or pow based on argument shape - dVar1 * DAT_00f91c48 / dVar2). External CRT, not Bahamut code. Excluded from BCS-Y proposals.",
+      "catalog_status": "external_crt",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "va": "0x00C9B410",
+      "purpose": "Likely a logging / Debug.Print helper - called 3 times in the post-loop state>=4 branch to log timing values (uptime, __time64 second). Each call reads from local_1190 written by the prior FUN_004E12F0 / __time64 / FUN_009DA820 sequence. Engine helper - not on the c2s/s2c path; defer cataloging.",
+      "catalog_status": "uncataloged_low_priority",
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    }
+  ],
+  "key_findings": [
+    {
+      "title": "FUN_004E20A0 does NOT iterate the actor map - it is a packet-queue drain, not an actor pump",
+      "detail": "Empirically confirmed by reading the 1442-byte body: the only iteration is a while loop calling FUN_00DAE520 (BCS-Y-0107, zone connection state machine dispatch frame) which pops s2c packets off param_1+0x234. There is no read of zone+0x17804 / zone+0x17808 anywhere in the function. The actor-cluster-dispatch-model pass's hypothesis ('FUN_004E20A0 Map tick handler') was correct in name but the verb was overloaded - it's a CHANNEL tick (packets in, periodic c2s out), not an ACTOR tick.",
+      "implication": "The actor-vtable9-bulk pass finding that vftable[9] on actor classes is no-op is consistent with this discovery. Actor-cluster opcode handlers (cases 0x0F / 0xCC..0xE5 in FUN_004DC690) DO call actor->vftable[9] but those are no-ops; the actual per-actor effects happen elsewhere. The per-frame caller chain has an actor-event drain (FUN_004DAA10) at the level ABOVE FUN_004E20A0, not below."
+    },
+    {
+      "title": "FUN_004DAA10 is the per-tick actor pump and uses vtable[8], NOT vtable[9]",
+      "detail": "FUN_004DAA10 (310 bytes, sole caller FUN_004B3C50) drains a lock-free ring buffer via FUN_004DDB50 producer-consumer queue (Interlocked* primitives, 0x60-byte entries). For each entry it (a) classifies by entry.type at +0x14: type==2 is a special sound/animation-channel call on zone+0x17924->vtable[6]; otherwise (b) looks up actor via FUN_004D9910(entry.actor_id at +0x10) (BCS-Y-0534) then invokes actor->vtable[8] (offset 0x20) with (event_type-3, payload_ptr+0x20, payload+0x18). The 3-arg actor->vtable[8] call is the polymorphic per-actor-class apply slot. The vtable[9] survey found no-op implementations across actor classes; an equivalent vtable[8] survey would test this attribution.",
+      "implication": "Actor cluster opcode EFFECTS are applied via the **producer-consumer queue + actor->vtable[8] pattern** in FUN_004DAA10, not via reactive packet handlers in FUN_004DC690's vtable[9] dispatch. The QUEUE PRODUCER side is the missing link - somewhere a write path enqueues an actor event when an Actor cluster s2c packet arrives. Candidate enqueue sites: FUN_004DC690 case 0x0F/0xCC..0xE5 (the multi-case fallthrough that invokes vftable[9] - the no-op vftable[9] call may be a LEFTOVER and the REAL enqueue happens before it via case-specific code that's collapsed in decomp), or FUN_004DA670/FUN_004DA380 (called from FUN_004E20A0's shutdown path - probably wrong direction), or in unrelated network-receive paths."
+    },
+    {
+      "title": "The tick chain has FOUR levels - not all are pumps; some are pure state-build",
+      "detail": "FUN_004B3C50 (top, per-frame Scene+Map tick) -> FUN_004E30A0 (state-machine pump) -> FUN_004E20A0 (channel packet pump) -> FUN_004DC690 (s2c dispatcher). FUN_004B3C50 additionally calls FUN_004DAA10 (actor-event drain) and FUN_004EC080 (ScenePacket builder) at the same level as FUN_004E30A0 - they all run once per frame in fixed order: stash sub-object iterator state -> drain actor events -> build ScenePacket -> drive Map channel state machine -> dispatch ScenePacket. FUN_004B3C50 has NO STATIC CALLERS in xref - it is invoked by function pointer from the outer frame loop (TBD - candidate is the main GameLoop or the Engine::FrameTick scheduler).",
+      "implication": "The 'Map tick' label is overloaded in three senses: (1) FUN_004B3C50 is the per-frame composite tick; (2) FUN_004E30A0 is the per-frame Map channel state-machine pump; (3) FUN_004E20A0 is the per-frame Map channel packet pump. Each does a different job. Catalog entries should distinguish by name suffix."
+    },
+    {
+      "title": "Periodic c2s emissions from the tick handler total FOUR distinct opcodes",
+      "detail": "(1) c2s 0x01 size 0x28 - the per-second heartbeat ping (post-loop time-tick branch); (2) c2s 0x04 size 0x18 - the zone-leave / shutdown response (per-packet switch cases 0xE/0x11); (3) c2s 0x06 size 0x18 - the case-2 response (per-packet switch case 2); (4) c2s 0xCA UpdatePlayerPositionPacket via FUN_004DC690 case 7 (one level deeper but same call chain). All four are already cataloged at the EMIT site (BCS-Y-0314 covers 1/2/3; BCS-Y-0321 covers 4); no new outbound opcode bindings emerge here.",
+      "implication": "The tick handler is BOTH a sink (drains inbound s2c) AND a source (emits periodic c2s). The opcode catalogue already documents this fully. What's NEW here is the call-tree position and the actor-pump sibling identification."
+    },
+    {
+      "title": "NO Lua _onLoop hook in the FUN_004E20A0 tick handler itself",
+      "detail": "Static scan of FUN_004E20A0's direct callees finds no reference to FUN_00CC7A90 (Lua dispatcher per BCS-Y-0311), FUN_00447260 (std::string builder commonly used for Lua API name lookup), or any of the known LuaActorImpl wrapper VAs from prior phases. The Map subsystem does NOT fire Lua _onLoop callbacks per tick at this level. If a Lua _onLoop hook exists, it must be one of: (a) inside actor->vtable[8] implementations (called by FUN_004DAA10) where individual actor classes may dispatch to Lua; (b) inside FUN_00C99830 / FUN_00C98160 / FUN_00C97030 (the unknown engine helpers called by FUN_004B3C50 before FUN_004E30A0); (c) at the outer frame-loop level (above FUN_004B3C50).",
+      "implication": "Lua hooks (if any) are deferred to a follow-on phase. The LGE _onLoop dispatcher cluster mentioned in the task brief is NOT visible from the FUN_004E20A0 / FUN_004E30A0 / FUN_004B3C50 chain."
+    }
+  ],
+  "actor_cluster_opcode_processing_hypothesis": "The Actor cluster opcode effects (0x00CA AddActor, 0x00CB RemoveActor, and the 24-opcode multi-case fallthrough at 0x0F / 0xCC..0xE5 covering MoveActor/SetActorPosition/SetActorSpeed/SetActorAppearance/etc.) are NOT applied directly inside FUN_004DC690's actor->vftable[9] call (that slot is no-op per the actor-vtable9-bulk pass). Instead the effect-application happens TWO STEPS LATER: (1) when an Actor cluster s2c packet arrives, FUN_004DC690's per-case body (the 24-case fallthrough, dedicated cases 0xCA/0xCB, or case 7) RE-INTERPRETS the packet payload and WRITES into the actor state directly (the actor map at zone+0x17804..+0x17808 + actor object fields), AND/OR queues a per-actor event into the ring buffer at zone+0x18 / zone+0x14 that FUN_004DAA10 drains; (2) on the NEXT frame tick, FUN_004B3C50 calls FUN_004DAA10 BEFORE FUN_004E30A0/FUN_004E20A0 - FUN_004DAA10 drains the queue and for each entry invokes actor->vtable[8] (offset 0x20) with (event_type-3, payload+0x20, payload+0x18); the actor's own vtable[8] implementation interprets the event_type and applies the position/animation/etc. mutation. The actor-vtable9-bulk pass's mistake was to look at vtable[9] - the correct slot is vtable[8]. A follow-on phase should: (a) survey vtable[8] across the same Actor class set the actor-vtable9-bulk pass surveyed to confirm it is non-empty; (b) trace the QUEUE PRODUCER - find which function writes into zone+0x18 ring buffer with state 1 (ready); the most likely candidate is one of FUN_004DC690's per-case bodies but it could also be in the network-receive callbacks BEFORE the queue dispatch. The opcode-to-event_type mapping is the missing piece: each Actor cluster opcode case in FUN_004DC690 (cases 0x0F, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD3-0xE5) probably enqueues an event with event_type = (3 + opcode_subtype) so that FUN_004DAA10 can dispatch to actor->vtable[8] with event_type-3 = opcode_subtype - this would explain why FUN_004DAA10 subtracts 3 before dispatch.",
+  "proposed_bcs_y_entries": [
+    {
+      "draft_id": "BCS-Y-NEW-1",
+      "proposed_name": "MapChannel_StateMachinePump_FUN_004E30A0",
+      "address": "0x004E30A0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Map channel state-machine pump - sole caller of FUN_004E20A0 (BCS-Y-0314). 837-byte body switching on *(this+0x250): case 0 = pre-connect, case 1 = connecting, cases 2/3 advance to 4, case 4 = running (invokes FUN_004E20A0 with the 70-second time-gate-derived bandwidth flag), case 5 = shutdown. Also emits a thunk_FUN_004E0240(uVar5, 0, 0) periodically (case 4 inner) where uVar5 is a 0-opcode 0-size record built via FUN_004E3910(0, FUN_00445210(0,0)) - likely a no-op keepalive or a special-purpose tick packet. Per-frame auxiliary callees: FUN_004E2850 (auxiliary FrontendAuth emitter), FUN_00D36D40 (engine helper, unknown), FUN_004E2670 (engine helper, unknown). Sole caller: FUN_004B3C50.",
+      "sourceRefs": [
+        "%BCS_GHIDRA_PROJECTS%/fun_004e20a0_decomp.txt",
+        "manifests/map_tick_handler.json"
+      ]
+    },
+    {
+      "draft_id": "BCS-Y-NEW-2",
+      "proposed_name": "SceneAndMap_PerFrameTick_FUN_004B3C50",
+      "address": "0x004B3C50",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "TOP-OF-CHAIN per-frame Scene+Map tick handler. 523-byte body. Six-step composite: (1) iterates 2 sub-objects at param_1+0x40 via vtable[8]/vtable[14] copying 44-byte records into param_1+0x6c..; (2) iterates 1 sub-object at param_1+0x44 vtable[8]/[10] copies 32 bytes into param_1+0xc4; (3) iterates 1 sub-object at param_1+0x48 vtable[8]/[10] feeds result to FUN_004B4C40; (4) calls FUN_004D6570 to compose Scene-side state from the 3 buffers; (5) calls FUN_004DAA10 (per-tick actor-event drain over the actor map); (6) calls FUN_004EC080(0,3,0,0) to construct an Application::Scene::ScenePacket; (7) calls FUN_004E30A0 (BCS-Y-NEW-1 the Map channel state-machine pump that drives FUN_004E20A0/BCS-Y-0314); (8) dispatches the ScenePacket via (this+0x5c)->vtable[3]. Also calls FUN_004B3FC0 (init), FUN_00C99830 / FUN_00C98160 / FUN_00C97030 (engine helpers, unknown). NO STATIC CALLERS in xref - invoked by function pointer from the outer frame loop / scheduler. CRITICAL: this is the function that connects the Scene subsystem (ScenePacket build) to the Map channel subsystem (FUN_004E30A0/FUN_004E20A0) per frame.",
+      "sourceRefs": [
+        "%BCS_GHIDRA_PROJECTS%/ec080_callers_decomp.txt",
+        "manifests/map_tick_handler.json"
+      ]
+    },
+    {
+      "draft_id": "BCS-Y-NEW-3",
+      "proposed_name": "ZoneActor_PerTickEventDrain_FUN_004DAA10",
+      "address": "0x004DAA10",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "PER-TICK ACTOR-EVENT DRAIN - the function that ACTUALLY iterates the actor map per frame (FUN_004E20A0 does NOT). 310-byte body. Producer-consumer loop: while (entry = FUN_004DDB50(&slot_idx)) { if (entry.type at +0x14 == 2) call zone+0x17924->vtable[6](0xffffffff, count_byte, freq_byte) - sound/animation channel scaling; else { actor = FUN_004D9910(entry.actor_id at +0x10) (BCS-Y-0534 actor map lookup); if (actor) actor->vtable[8] (offset 0x20)(entry.type-3, entry.payload+0x20, entry.payload+0x18); } Interlocked ring-slot release; }. Post-drain: if zone+0x17920->vtable[5]() returns nonzero, calls FUN_00929B70 (unknown notify), then FUN_005527A0 + FUN_004DA680 (cleanup). Sole caller: FUN_004B3C50 (BCS-Y-NEW-2). **THIS IS WHERE ACTOR CLUSTER OPCODE EFFECTS GET APPLIED via actor->vtable[8] (NOT vtable[9] - the actor-vtable9-bulk pass confirmed vtable[9] is no-op).** Each ring entry is 0x60 bytes; the ring base is at zone+0x18, slot states at zone+0x14, write index at zone+0x8, capacity at zone+0x4. The QUEUE PRODUCER is the missing piece - candidate is FUN_004DC690's per-case Actor cluster bodies, which would enqueue events instead of directly mutating actor state.",
+      "sourceRefs": [
+        "%BCS_GHIDRA_PROJECTS%/004d9_siblings_decomp.txt",
+        "manifests/map_tick_handler.json"
+      ]
+    },
+    {
+      "draft_id": "BCS-Y-NEW-4",
+      "proposed_name": "ZoneActor_RingBufferDequeue_FUN_004DDB50",
+      "address": "0x004DDB50",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Lock-free ring-buffer dequeue primitive for the per-tick actor-event queue drained by FUN_004DAA10 (BCS-Y-NEW-3). 119-byte body using only Interlocked* primitives (InterlockedCompareExchange / InterlockedExchangeAdd / InterlockedExchange). Layout: param_1+0 = ring header context, param_1+4 = capacity, param_1+8 = read-index, param_1+0x14 = pointer to slot-state array (LONG[capacity]), param_1+0x18 = pointer to entry array (0x60-byte entries). Algorithm: read index, atomically check state[idx] == 1 (READY), advance index mod capacity via CAS, set state[idx] = 2 (PROCESSING), write idx to *param_2, return entry pointer at entries[idx]. Returns 0 if slot not ready. Sole caller: FUN_004DAA10. Producer-side (function that writes state 1 to enqueue an event) is NOT yet identified - follow-on phase.",
+      "sourceRefs": [
+        "%BCS_GHIDRA_PROJECTS%/004de_cluster_decomp.txt",
+        "manifests/map_tick_handler.json"
+      ]
+    },
+    {
+      "draft_id": "BCS-Y-NEW-5",
+      "proposed_name": "ZoneConnection_HandshakeDriver_FUN_00DAE3B0",
+      "address": "0x00DAE3B0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Zone connection-manager getter + handshake driver. 361-byte body. Calls FUN_009DA6CC to look up the Component::Network::IpcChannel::ConnectionManagerTmpl<ZoneProtoUp,ZoneProtoDown> singleton via RTTI; if found calls FUN_00DB1120 (queue manipulation) then invokes the manager's vtable[1] (state advance) which transitively calls FUN_00DAE1E0 (BCS-Y-0305, the c2s 0x02 handshake emitter). Effectively a 'kick the handshake state machine' helper. Sole caller: FUN_004E20A0 (BCS-Y-0314) - called 3 times: pre-loop, after c2s 0x04 emit (cases 0xE/0x11), and pre-shutdown. The kick triggers c2s 0x02 emission IF channel state is at 1 with the expected magic gate.",
+      "sourceRefs": [
+        "%BCS_GHIDRA_PROJECTS%/decomp_wrappers.txt",
+        "manifests/map_tick_handler.json"
+      ]
+    },
+    {
+      "draft_id": "BCS-Y-NEW-9",
+      "proposed_name": "ZoneChannel_PacketBufferTmpl_StackCtor_FUN_004E3EB0",
+      "address": "0x004E3EB0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Constructs a stack-local Component::Network::IpcChannel::PacketBufferTmpl<Application::Network::ZoneProtoChannel::ZoneProtoDown> in-place. 90-byte body. Calls FUN_00DC1E00 to seed the base buffer, installs the PacketBufferTmpl<ZoneProtoDown>::vftable into *param_1, zeros param_1[2]. Sole caller FUN_004E20A0 (BCS-Y-0314) at line 108 (just before the while loop). Symmetric with FUN_004E3E60 (the destructor, called at the end at line 301). This is the per-tick stack-local buffer that the dequeued s2c packets are dispatched THROUGH for the loop iteration (the actual packet body comes from the queue at *(local_1178+0x24), not this buffer; this buffer is the polymorphic dispatch container vtable for state).",
+      "sourceRefs": [
+        "%BCS_GHIDRA_PROJECTS%/fun_004e20a0_decomp.txt",
+        "manifests/map_tick_handler.json"
+      ]
+    },
+    {
+      "draft_id": "BCS-Y-NEW-10",
+      "proposed_name": "ZoneChannel_PerPacketDestruct_FUN_004E5FF0",
+      "address": "0x004E5FF0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Per-packet destruct helper called by FUN_004E20A0 (BCS-Y-0314) once per drained packet at line 214. 132-byte body. Algorithm: invoke buffer->vtable[1] (pre-destruct hook); copy a pointer pair via FUN_0071D420; call FUN_008A87F0 (hash-table / scene-state update on the pointer pair - speculation); then branch: if packet[7] (probably size field at +0x1C) < 0x1C11 (7185 bytes), use FUN_004E5CA0 (small-record destruct path); else call packet->vtable[0](1) (MSVC destructor-with-delete, large-record path); finally invoke buffer->vtable[2] (post-destruct hook). Returns 1. 8 callers total - most are FUN_00DB1XXX channel state machine variants; FUN_004E20A0 is one of them.",
+      "sourceRefs": [
+        "%BCS_GHIDRA_PROJECTS%/fun_004e20a0_decomp.txt",
+        "manifests/map_tick_handler.json"
+      ]
+    }
+  ],
+  "deferred_proposed_bcs_y_entries_low_priority": [
+    {
+      "draft_id": "BCS-Y-NEW-6",
+      "name": "FUN_004E14B0 (uncataloged shutdown helper - not decompiled this manifest due to Ghidra lock contention)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-7",
+      "name": "FUN_004DF4F0 (uncataloged shutdown final-emit helper - not decompiled this manifest)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-8",
+      "name": "FUN_004E3E60 (paired destructor of FUN_004E3EB0 - not decompiled this manifest)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-11",
+      "name": "FUN_004E12F0 (Map channel state-extractor helper, 68-byte body)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-12",
+      "name": "FUN_004D0760 (timing baseline reset, 44-byte body)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-13",
+      "name": "FUN_00DB7110 (channel recv-byte-counter getter, 18-byte body)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-14",
+      "name": "FUN_00DB7130 (channel byte-counter reset, 25-byte body)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-15",
+      "name": "FUN_00DB70F0 (channel sent-byte-counter getter, 18-byte body)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-16",
+      "name": "FUN_004DA670 (shutdown wrapper, 8-byte body forwarding to FUN_004DA380)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-17",
+      "name": "FUN_004E38B0 (per-packet timing baseline init, 87-byte body)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-18",
+      "name": "FUN_004E4270 (per-tick channel-state stash, 75-byte body)"
+    },
+    {
+      "draft_id": "BCS-Y-NEW-19",
+      "name": "FUN_00DADF50 (connection-manager state-write helper, 45-byte body)"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q1",
+      "question": "What writes ring-buffer state 1 (READY) at zone+0x14[idx*4] to enqueue an actor event for FUN_004DAA10 to consume?",
+      "context": "The actor-event ring drained by FUN_004DDB50 / FUN_004DAA10 needs a producer. The most likely candidate is one of FUN_004DC690's per-case bodies (especially the 24-opcode multi-case fallthrough for cases 0x0F / 0xCC..0xE5) which would enqueue an event with event_type = 3 + opcode_subtype, payload = packet body bytes. A grep for InterlockedExchange writes of constant 1 to *(channel+0x14)+offset_dynamic should isolate the producer. Defer to a follow-on phase."
+    },
+    {
+      "id": "Q2",
+      "question": "Is actor->vtable[8] (offset 0x20) non-empty for the Actor classes the actor-vtable9-bulk pass surveyed?",
+      "context": "The actor-vtable9-bulk pass found vtable[9] (offset 0x24) is no-op for Actor classes (Player, NPC, EventObject, etc.). The hypothesis in this manifest is that vtable[8] is the REAL per-actor apply slot for tick-time events. A bulk vtable[8] dump and decomp of the resulting bodies across the same Actor class set would confirm/deny. The 3-argument signature ((event_type-3, payload+0x20, payload+0x18)) matches a per-class polymorphic dispatcher."
+    },
+    {
+      "id": "Q3",
+      "question": "What is the outer frame-loop / scheduler that invokes FUN_004B3C50?",
+      "context": "FUN_004B3C50 has NO STATIC CALLERS in xref - it is invoked by function pointer. Candidates: (a) the main GameLoop in the Application::FrameTick scheduler; (b) the Engine::TickScheduler if Bahamut uses one; (c) the Scene::Update virtual dispatch. A dword scan of *(any_obj+offset) == 0x004B3C50 across .data should isolate the dispatch table that holds the pointer. Defer."
+    },
+    {
+      "id": "Q4",
+      "question": "Where do Lua _onLoop callbacks fire per tick (if anywhere in the Map subsystem)?",
+      "context": "FUN_004E20A0 has NO Lua dispatcher calls. The candidates one level up: FUN_004B3C50's calls to FUN_00C99830 / FUN_00C98160 / FUN_00C97030 (unknown engine helpers - could be Lua-related), or actor->vtable[8] implementations called by FUN_004DAA10 (each actor class could fire its own _onUpdate). Defer to a Lua-bridge-focused follow-on phase."
+    },
+    {
+      "id": "Q5",
+      "question": "What is FUN_004E30A0's case-4 thunk_FUN_004E0240(uVar5, 0, 0) emission?",
+      "context": "FUN_004E30A0 case 4 (running state) calls thunk_FUN_004E0240(uVar5, 0, 0) where uVar5 = FUN_004E3910(0, FUN_00445210(0, 0)). The 0 opcode argument is suspicious - is this an actual c2s opcode 0 emission (which would be unusual), or is it the THUNK's first argument that's a record pointer with opcode embedded? The gate condition (FUN_004E11F0() returns nonzero AND zone+0x234 nonzero AND the 70-second timer expired) suggests it's a periodic non-trivial emit. Defer to verify the c2s opcode bound here."
+    },
+    {
+      "id": "Q6",
+      "question": "This batch 2 (uncataloged callees FUN_004E14B0 / FUN_004E3E60 / FUN_004DF4F0 / FUN_004E11F0 / FUN_004E2670 / FUN_004E2D00) was killed by Ghidra lock contention. Re-running these in isolation would complete the callees_table classifications.",
+      "context": "Concurrent Ghidra access likely held the project lock. Retry when exclusive access is available."
+    }
+  ]
+}

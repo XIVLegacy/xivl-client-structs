@@ -1,0 +1,77 @@
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  repository-boundary:
+    name: Repository Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Check repository boundary
+        run: python tools/validate_repo.py
+
+      - name: Validate JSON and manifest counts
+        shell: pwsh
+        run: ./tools/validate-json.ps1
+
+      - name: Validate catalogs
+        run: python tools/validate_catalog.py
+
+      - name: Validate IR
+        run: python tools/validate_ir.py
+
+      - name: Check Lua API index regeneration
+        run: python tools/extract_lua_api_index.py --check
+
+      - name: Check receiver opcode map regeneration
+        run: python tools/extract_receiver_opcode_map.py --check
+
+      - name: Check operation opcode map regeneration
+        run: python tools/extract_operation_opcode_map.py --check
+
+      - name: Check apply-chain firer regeneration
+        run: python tools/extractors/build_apply_chain_firers.py --check
+
+      - name: Check Lua-to-opcode regeneration
+        run: python tools/build_lua_to_opcode.py --check
+
+      - name: Scan repository hygiene
+        run: python tools/hygiene_scan.py
+
+      - name: Prove IR gates detect defects
+        run: python tools/test_ir_gates.py
+
+      - name: Audit catalog cross-references
+        run: python tools/audit_catalog_xref.py
+
+      - name: Verify MurmurHash2 evidence
+        run: python tools/verify_murmur2.py
+
+      - name: Test LPB decoding
+        run: python tools/test_decode_lpb.py
+
+      - name: Check IR regeneration
+        run: python tools/build_ir.py --check

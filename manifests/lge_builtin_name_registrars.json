@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "scope": "Bulk .rdata C-string search for the 21 top-rank corpus N-API residuals from manifests/corpus_napi_residual_findings.json. Goal: separate genuine missed C++ N-API bindings from Lua-side script methods and stdlib aliases that the residual survey could not distinguish. Found 4 LGE built-in name registrars worth cataloguing as BCS-Y entries plus a major architectural reframe of client-architecture 'lua_api_index undercounted the engine N-API surface'.",
+  "method": {
+    "string_search_script": "BulkFindLuaApiNames.java (NUL-anchored)",
+    "needles_csv": "_ask,_assignForChild,_bindWork,_globalTemp,_widget,_memberSave,_setOthersWork,_format,_getOthersWork,_globalSave,_getLocalizedXtx,_getTimeCostRanking,_floor,_gsub,_sub,_rep,_match,_upper,_find,_modf,_pcall",
+    "ghidra_evidence": [
+      "%BCS_GHIDRA_PROJECTS%/residual_strings.txt",
+      "%BCS_GHIDRA_PROJECTS%/binders_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%/dat_00f67298_xrefs.txt"
+    ]
+  },
+  "summary": {
+    "needles_searched": 21,
+    "needles_with_rdata_hit": 7,
+    "needles_with_zero_rdata_hit": 14,
+    "new_bcs_y_entries": 4,
+    "control_already_attributed": "_pcall (BCS-Y-0501 LGE bootstrap)"
+  },
+  "rdata_hits": [
+    {
+      "name": "_assignForChild",
+      "string_va": "0x0110f6bc",
+      "xrefs": [
+        {"from_va": "0x00d212b2", "function": "FUN_00d212a0", "kind": "code"},
+        {"from_va": "0x0130d84c", "function": "(data)", "kind": "data_symbol_PTR_s__assignForChild_0130d84c"}
+      ],
+      "bcs_y_assigned": true,
+      "interpretation": "LGE substrate operation name. FUN_00d212a0 is a single-statement helper that calls FUN_00447260(PTR_s__assignForChild, DAT_00f67298) and has 8 callers all in the LGE substrate cluster (FUN_00d1ed90, FUN_00d20190, FUN_00d1e0f0, FUN_00d1ddc0, FUN_00d1dca0, FUN_00d24940, FUN_00d21580, FUN_00d21650). The string is invoked transiently when the LGE substrate handles the '_assignForChild' operation - likely a member-descriptor registration path for parent-class method inheritance."
+    },
+    {
+      "name": "_globalSave",
+      "string_va": "0x00fd43f4",
+      "xrefs": [{"from_va": "0x006da484", "function": "FUN_006da450", "kind": "code"}],
+      "bcs_y_assigned": true,
+      "interpretation": "LGE scope tag keyword. Static initializer FUN_006da450 calls FUN_00447260(\"_globalSave\", DAT_00f67298) at CRT init. No callers (static-ctor pattern - linker invokes during program init). Adjacent to _globalTemp and _memberSave initializers in a tight cluster (FUN_006da450/4c0/530 at 0x70 byte stride)."
+    },
+    {
+      "name": "_globalTemp",
+      "string_va": "0x00fd4400",
+      "xrefs": [{"from_va": "0x006da4f4", "function": "FUN_006da4c0", "kind": "code"}],
+      "bcs_y_assigned": true,
+      "interpretation": "LGE scope tag keyword. Same static-initializer pattern as _globalSave - calls FUN_00447260(\"_globalTemp\", DAT_00f67298). Pairs with the 'temp' scope in the 3-scope memory model (save/temp/sync) but at GLOBAL scope rather than instance scope."
+    },
+    {
+      "name": "_memberSave",
+      "string_va": "0x00fd440c",
+      "xrefs": [{"from_va": "0x006da564", "function": "FUN_006da530", "kind": "code"}],
+      "bcs_y_assigned": true,
+      "interpretation": "LGE scope tag keyword. Same static-initializer pattern - calls FUN_00447260(\"_memberSave\", DAT_00f67298). The 'memberSave' scope is the per-instance save-scope analogue (versus _globalSave's process-wide scope)."
+    },
+    {
+      "name": "_widget",
+      "string_va_primary": "0x00fa0650",
+      "string_va_secondary": "0x00fc7dd4",
+      "xrefs": [{"from_va": "0x00f0beb6", "function": "(no function - data section)", "kind": "data"}],
+      "bcs_y_assigned": false,
+      "interpretation": "Only data-section reference. Likely a vtable/RTTI entry or static table label rather than a registered LGE keyword. Did not catalogue - needs live capture or live capture to confirm runtime use. The second .rdata match at 0x00fc7dd4 has no xrefs (probably substring of a longer string like '_widgetbase' or similar)."
+    },
+    {
+      "name": "_pcall",
+      "string_va_primary": "0x0110e860",
+      "string_va_secondary": "0x0110f108",
+      "xrefs": [
+        {"from_va": "0x00cd8fd3", "function": "FUN_00cd8990", "bcs_y": "BCS-Y-0501", "kind": "LGE bootstrap (already catalogued)"},
+        {"from_va": "0x00d09424", "function": "FUN_00d093b0", "kind": "secondary alias context - calls FUN_00cf3360(\"_pcall\") then FUN_00cf3a50() in a Lua C-API sequence"}
+      ],
+      "bcs_y_assigned": false,
+      "interpretation": "Already attributed via BCS-Y-0501 (LGE bootstrap). Secondary occurrence at 0x0110f108 lies inside the special-string dispatch table range .rdata 0x0110f034..0x0110f278 documented in docs/lua-class-system.md. FUN_00d093b0 is an LGE helper that pushes '_pcall' as a string argument via the Lua C-API wrapper layer - likely the preserved-alias dispatch site."
+    },
+    {
+      "name": "_sub",
+      "string_va_primary": "0x0110f1c9",
+      "string_va_secondary": "0x01131811",
+      "xrefs": [],
+      "bcs_y_assigned": false,
+      "interpretation": "Both matches have no incoming references. The 0x0110f1c9 match falls inside the special-string dispatch table region, but with no direct xrefs it is likely accessed by offset rather than literal-address reference. Not actionable from .rdata alone."
+    }
+  ],
+  "zero_hit_needles": {
+    "stdlib_aliases": ["_format", "_floor", "_gsub", "_rep", "_match", "_upper", "_find", "_modf"],
+    "lge_class_methods": ["_ask", "_bindWork", "_setOthersWork", "_getOthersWork", "_getLocalizedXtx", "_getTimeCostRanking"],
+    "interpretation": "None of these 14 names appear as .rdata C-strings, refuting the hypothesis that they are missed C++ N-APIs. Empirical evidence: (a) `_ask` is consistently invoked as `debug._ask(\"question?\")` in `chara/npc/debug/debugcraftassist.lua` and 9 other debug scripts - a method on the global `debug` table (which is one of the 12 utility classes registered by FUN_0078E3A0 per class_registry_bridge.json). (b) `_bindWork` is invoked as `A0_2._bindWork(L10_2 = A0_2, ...)` - the desugared form of `self:_bindWork(...)` - in `chara/charabaseclass.lua` and other baseclass files - a method on class instances. The class-method names live as Lua-string constants in the script bytecode, never as C-strings in .rdata. (c) Stdlib aliases like `_floor`/`_gsub` are almost certainly Lua-side assignments (e.g., `_floor = math.floor`) set up by a startup Lua chunk - they have no C-side registration site at all."
+  },
+  "architectural_finding": {
+    "title": "The corpus-napi-residual-findings pass's candidate_missed_napi count is severely inflated",
+    "detail": "Of the 21 top-rank candidates by refCount (representing the bulk of the 534-entry residual list), only 4 produced a new BCS-Y entry (_globalSave, _globalTemp, _memberSave, _assignForChild). 14 of 21 had ZERO .rdata presence. Extrapolating: the 'missed C++ N-API' interpretation of the 534 residuals is wrong - most are Lua-side script methods or stdlib aliases. The 514-entry lua_api_index is effectively complete for C++ bindings. The remaining gap is user-space Lua, not engine code.",
+    "implication": "Future N-API cataloguing should not chase the candidate_missed_napi list as a primary target. Genuine residuals number in the dozens, not hundreds. live capture would resolve the few remaining ambiguities cheaply by observing runtime symbol resolution. Static analysis has hit diminishing returns on the N-API surface."
+  },
+  "new_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0521",
+      "name": "LGEKeywordRegistrar_globalSave_FUN_006da450",
+      "kind": "function",
+      "address": "0x006da450",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "BCS-Y-0522",
+      "name": "LGEKeywordRegistrar_globalTemp_FUN_006da4c0",
+      "kind": "function",
+      "address": "0x006da4c0",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "BCS-Y-0523",
+      "name": "LGEKeywordRegistrar_memberSave_FUN_006da530",
+      "kind": "function",
+      "address": "0x006da530",
+      "confidence": "confirmed"
+    },
+    {
+      "id": "BCS-Y-0524",
+      "name": "LGESubstrate_AssignForChildHelper_FUN_00d212a0",
+      "kind": "function",
+      "address": "0x00d212a0",
+      "confidence": "inferred"
+    }
+  ]
+}

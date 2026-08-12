@@ -1,0 +1,44 @@
+{
+  "title": "Runtime-handoff resolution: the +0x16C bind stall is the pre-switch validity gate (FUN_00CC72A0/+0x7d), not case 9; FUN_007663D0 signature corrected; Q1/Q2/Q3 answered and unified to client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline' part (a)",
+  "trigger": "docs/runtime-frida-handoff.md (bahamut Frida runtime data: _onInit=0 hits, bind parked at state 9, +0x170=0xC0000024)",
+  "imageBase": "0x00400000",
+  "noASLR": true,
+  "questionsAnswered": {
+    "Q1_FUN_007663D0_signature": {
+      "verdict": "__thiscall(this=ECX=InitializeWaitingActorContainer, record=[ESP+4]=candidate LuaControl record)",
+      "correction": "client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline' mislabeled +0x16C/+0x170 as control-record fields; they are CONTAINER fields. Confirmed by FUN_00773A30 ctor (param_1[0x5b]=+0x16C, param_1[0x5c]=+0x170) and FUN_00766F00 disasm (MOV ECX,EBX=container; PUSH record at both call sites 00766f53 and 00766fa0).",
+      "probeReads": "the Frida probe sampled ECX -> its state(+0x16C)=9 and (+0x170)=0xC0000024 reads were CORRECT (container fields). Only the record id/name needed the stack arg.",
+      "case9NotTheStall": "FUN_00CC9320 (BCS-Y-1801) is *this=sid, so *FUN_00CC9320(0xC0000024)==0xC0000024 tautologically; with container+0x170==0xC0000024, case 9 would pass. The stall is the per-frame PRE-SWITCH validation block."
+    },
+    "Q2_create_SID_0xC0000024_and_populate_0x170": {
+      "verdict": "REFRAMED. The control IS registered (special 0xc0000000-class table FUN_00CD81D0->FUN_00D0A3D0 returns a stored object) and +0x170 IS populated (=0xC0000024, never nulled). The gap is the resolved control FAILS the validity predicate FUN_00CC72A0 (its +0x7d byte == 0).",
+      "serverFixTarget": "drive whatever marks the MyPlayer control valid/Lua-class-bound (+0x7d) -> unified to Q3 (spawn-burst completion).",
+      "plus0x7d_writer": "NOT located here; a per-instance bind flag set deeper in the actor-create/bind path (multi-tier trace, cf. the +0x1bc writer). Best confirmed by a runtime write-watchpoint on (resolved_control + 0x7d)."
+    },
+    "Q3_FUN_006CDE30_dual_subdecoder": {
+      "verdict": "IF/ELSE, not parallel. One packet latches +0xe8 (sub-decoder this+0x40) XOR +0xe9 (sub-decoder this+0x94) via FUN_00445D20 buffer-equality; ring drain FUN_006CDA80 needs BOTH.",
+      "onInit_proof": "_onInit firer FUN_006F6D60 has EXACTLY 1 caller FUN_006C8CF0 (spawn-ADD); FUN_006C8CF0 has EXACTLY 1 caller FUN_006CBC90 (ADD leaf <- ring drain). So runtime _onInit=0 PROVES the ring never drained PROVES one latch never set PROVES the spawn-burst is incomplete."
+    }
+  },
+  "unification": "Q3 (ring never drains because one subdecoder latch never sets) is the upstream cause of Q2 (MyPlayer control never created+bound -> +0x7d==0 -> FUN_00CC72A0 fails -> FUN_007663D0 stalls at the pre-switch validate AND FUN_00766F00 skips +0x5C=1/LuaActorImpl install). Single server fix = complete the spawn-burst so both Group sub-decoders latch = client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline' part (a).",
+  "blockerGateUnification": "ONE predicate FUN_00CC72A0 (+0x7d via FUN_00CD7A30 BCS-Y-1581) gates BOTH the +0x16C bind-state advance 9->10 (client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline') AND the actor+0x5C=1 Lua-bind (client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline'). They are the same gate, not two.",
+  "functionsExamined": [
+    "FUN_007663D0 (BCS-Y-1799, amended) - bind state machine; __thiscall(container, record)",
+    "FUN_00766F00 (BCS-Y-0135) - actor-list install pass; disasm confirms call convention + the +0x5C=1 gate on FUN_00CC72A0",
+    "FUN_00773A30 (BCS-Y-1802 NEW) - InitializeWaitingActorContainer ctor; vftable 0x00FE0478",
+    "FUN_00CC72A0 (BCS-Y-1803 NEW) - +0x7d validity predicate; the terminal blocker gate",
+    "FUN_00CD7A30 (BCS-Y-1581) - universal handle->object deref read by FUN_00CC72A0",
+    "FUN_00CC9320 (BCS-Y-1801) - ScopedSidHandle ctor; *this=sid (tautological)",
+    "FUN_00CC7A50 (BCS-Y-1797) / FUN_00CD80F0 / FUN_00CD8160 / FUN_00CD81D0 / FUN_00D0A3D0 - handle resolve chain; 0xC0000024 = special-class table",
+    "FUN_006CDE30 (BCS-Y-1056, amended) - Group::PacketProcessor OnPacket; if/else dual-subdecoder latch",
+    "FUN_00445D20 / FUN_00445530 - sub-decoder TryParse (buffer-equality) / Process(reset)",
+    "FUN_006C8CF0 (BCS-Y-1804 NEW) - spawn-ADD 84B actor creator; sole _onInit caller",
+    "FUN_006F6D60 - _onInit firer (single caller = FUN_006C8CF0)",
+    "FUN_00574830 (BCS-Y-0134) - LuaActorImpl installer",
+    "FUN_00CD9F30 / FUN_00CDA610 / FUN_00CD5620 / FUN_00CD8870 - Lua class registration cores (do NOT write +0x7d at top level)"
+  ],
+  "newSymbols": ["BCS-Y-1802", "BCS-Y-1803", "BCS-Y-1804"],
+  "amendedSymbols": ["BCS-Y-1799", "BCS-Y-1056"],
+  "symbolCountBefore": 1788,
+  "symbolCountAfter": 1791
+}

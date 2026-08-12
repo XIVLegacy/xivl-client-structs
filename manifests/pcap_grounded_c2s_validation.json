@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "scope": "Pcap-grounded validation of c2s emitter attributions. Started from the single c2s opcode observed-in-pcap-without-bahamut-anchor (0x01dd in friendlist_search.pcapng); confirmed it matches the existing BCS-Y-0325 static-analysis attribution; fixed an address typo; updated operation_opcode_map_outbound's serverboundGap entry. No new BCS-Y entries (this is validation + refinement, not new discovery).",
+  "method": {
+    "step1_residual_survey": "Cross-referenced the pcap-validation pass's c2sOpcodeHistogram (23 distinct observed) against operation_opcode_map_outbound's serverboundGap. Only 0x01dd had `confidence: pcap_observed` with `implementationAnchor: null` (vs. the 8 other observed game-range opcodes which all had bahamut server-side anchors).",
+    "step2_pcap_extraction": "New extractor `tools/extractors/extract_opcode_payload.py` pulls raw payload bytes for a specific opcode in a specific pcap (reuses the pcap-opcode-evidence pass's BasePacket/SubPacket parser). Extracted the single 0x01dd occurrence from friendlist_search.pcapng: 264-byte payload after the 16-byte game-message header.",
+    "step3_ghidra_scan": "FindOpcodeImmediate.java with BAHAMUT_OPCODE_IMMEDIATE=0x01dd produced 11 matches; 7 are openssl/d3d source line numbers (false positives from .\\crypto\\x509v3\\v3_alt.c:0x1dd, .\\crypto\\ec\\ec_ameth.c:0x1dd, d3d9textureblend.cpp:0x1dd, stack-offset reads); 4 are real candidate emitters at FUN_0046e2f0, FUN_0047cfe0, FUN_004c7300, FUN_00c95800.",
+    "step4_decomp": "DumpFunctionDecomp on the 4 candidates. FUN_004c7300 alone matches packet-emitter shape: sets `local_8b0 = 0x1dd` (opcode), `local_8ac = 0x118` (size = 280 bytes total = 264 payload + 16 game-msg header - EXACT MATCH with pcap), copies 0x41 dwords (260 bytes) from param_2, embeds timestamp via FUN_00d353f0, dispatches via FUN_004c7150 -> FUN_004e0240 (Tier-C forwarder per client-architecture '1.x combat is asymmetric').",
+    "step5_catalog_cross_ref": "Discovered FUN_004c7300 already attributed as BCS-Y-0325 'ZoneOutbound_TierD_0x01DD_emitter_FUN_004C7300'. Address recorded as '0x000C7300' is a 4->0 transcription typo (should be '0x004C7300'); name string is correct. Notes accurately describe the emit pattern."
+  },
+  "pcap_evidence": {
+    "source_pcap": "xivl-captures/captures/friendlist_search.pcapng",
+    "opcode": "0x01dd",
+    "occurrence_count": 1,
+    "direction": "c2s",
+    "subpacket_size_hex": "0x128",
+    "subpacket_size_decimal": 296,
+    "payload_size_decimal": 264,
+    "payload_size_minus_subhdr_match_static_size": true,
+    "static_size_from_emitter": "0x118 = 280 bytes total (local_8ac in FUN_004c7300)",
+    "static_size_minus_game_msg_header": "0x108 = 264 bytes payload after game-msg header (matches pcap exactly)",
+    "payload_first_16_bytes_hex": "00000000 03000000 02013200 00000000",
+    "payload_structure_observation": "u32@0 = 0; u32@4 = 3; u8@8 = 2; u8@9 = 1; u8@10 = 0x32 (50); u8@11 = 0; rest (bytes 12..263) = all zeros. Shape suggests a search query with mostly-empty filter fields - possibly a list-first-page or refresh request rather than a name-based search."
+  },
+  "address_fix": {
+    "bcsy_id": "BCS-Y-0325",
+    "old_address": "0x000C7300",
+    "new_address": "0x004C7300",
+    "evidence": "Name string in BCS-Y-0325 explicitly says 'FUN_004C7300'; this FindOpcodeImmediate scan locates the function at 0x004c7300 entry point; binary has no loaded code at 0x000C7300 (range is 0x00400000..0x00DFFFFF). Transcription typo (leading 4->0) from an earlier manifest preserved into the catalog."
+  },
+  "outbound_map_update": {
+    "file": "manifests/operation_opcode_map_outbound.json",
+    "field": "serverboundGap entry for opcode 0x01dd",
+    "before": {
+      "implementationAnchor": null,
+      "decompAnchor": null,
+      "confidence": "pcap_observed"
+    },
+    "after": {
+      "implementationAnchor": null,
+      "decompAnchor": "BCS-Y-0325 ZoneOutbound_TierD_0x01DD_emitter_FUN_004C7300",
+      "confidence": "decomp_routed"
+    },
+    "note": "implementationAnchor remains null; the c2s emitter is established by the pcap payload and BCS-Y-0325 decomp attribution."
+  },
+  "summary": {
+    "new_bcs_y_entries": 0,
+    "bcs_y_address_fixed": 1,
+    "outbound_map_entries_updated": 1,
+    "new_extractor_added": "tools/extractors/extract_opcode_payload.py",
+    "ghidra_evidence_files": [
+      "%BCS_GHIDRA_PROJECTS%/opcode_01dd_imm.txt",
+      "%BCS_GHIDRA_PROJECTS%/op_01dd_candidates_decomp.txt",
+      "%BCS_GHIDRA_PROJECTS%/op_01dd_context_decomp.txt"
+    ]
+  }
+}

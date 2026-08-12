@@ -1,0 +1,277 @@
+# Tooling
+
+This guide lists catalog generators, validators, and analysis tools. Commands
+run from the repository root and use explicit local inputs where shown.
+
+## Commands
+
+- Check Python lint and formatting with `ruff check --no-cache tools` and
+  `ruff format --check --no-cache tools`.
+
+The following commands are the supported entry points. Other scripts documented
+below are implementation modules.
+
+### Catalog and fixture commands
+
+| Task | Command | Prerequisite or scope |
+|---|---|---|
+| Run CI-covered checks | See `.github\workflows\checks.yml` | Repository root |
+| Build or check the canonical IR | `python tools\build_ir.py [--check]` | Repository catalog inputs |
+| Refresh vendor fixtures | `python tools\refresh_vendor.py --repo NAME=PATH [...]` | Explicit source checkout names |
+
+### Lua and bridge commands
+
+| Task | Command | Prerequisite or scope |
+|---|---|---|
+| Decode and decompile LPB scripts | `python tools\lpb_pipeline.py [INSTALL_ROOT] [options]` | `unluac.jar` and Java are required for decompilation |
+| Build decoded Lua callback contract | `python tools\extractors\build_lua_callback_contract.py --scripts-repo PATH` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only |
+| Build complete Lua API contract | `python tools\extractors\build_lua_api_contract.py --scripts-repo PATH --decomp-repo PATH [--check]` | Requires explicit script and decomp checkouts; script bodies remain local-only |
+| Promote the six-primitive LGE closure | `python tools\extractors\promote_lge_primitive_registrar_closure.py [--check]` | Serialized `symbols.json` correction/allocation from `manifests\lge_primitive_registrar_closure.json` |
+| Build deferred Lua callsite context | `python tools\extractors\build_lua_callsite_context.py --scripts-repo PATH [--check]` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only for the 19 fixed binding names |
+| Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
+| Build command-slot context | `python tools\extractors\build_command_slot_context.py --captures-repo PATH --client-data-repo PATH [--check]` | Joins ordered `0x0137` command slots to static actors and observed category writes |
+| Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit local decomp assembly exports and emits the bounded Group-family static manifest |
+
+### Catalog and evidence checks
+
+| Task | Command | Prerequisite or scope |
+|---|---|---|
+| Validate the PCAP bridge | `python tools\validate_pcap_bridge.py --captures-dir PATH [--write]` | Explicit capture corpus. `--write` deliberately regenerates the sidecar |
+| Test EventStart field provenance | `python tools\test_eventstart_field_provenance.py` | Asset-free contract and mutation tests for the +0x08 binding SID writer/domain and +0x0C layout |
+| Validate RaptureElement registry | `python tools\validate_rapture_selector_0d.py` | Asset-free member, selector/factory, cache, producer, and boundary checks |
+| Test RaptureElement registry validation | `python tools\test_rapture_selector_0d.py` | Twenty-one planted defects covering extent, factories, caches, producers, fields, consumers, and evidence |
+| Validate s2c 0x018D presentation | `python tools\validate_s2c_018d_presentation.py` | Ownership, RTTI, layout, projection, XML-row, lifetime, accessor, and PcSearch boundary checks |
+| Test s2c 0x018D presentation validation | `python tools\test_s2c_018d_presentation.py` | Focused planted defects covering identity, extents, ownership, resource registration, RTTI, accessors, marker verdicts, and the separate gate |
+| Verify actor-rebuild observations | `python tools\verify_retail_actor_rebuild.py [options]` | Structured output from `ghidra/VerifyActorRebuild.java`, the expected check manifest, and the approved input declaration |
+| Test the retail-input contract | `python tools\test_retail_actor_rebuild.py` | Asset-free mutation and attestation-schema tests |
+| Verify the lobby character-list fixture | `python tools\verify_lobby_character_list.py [--captures-repo PATH]` | Public-shape validation by default; explicit restricted-capture reproduction when a capture checkout is supplied |
+| Test lobby layout and sanitization guards | `python tools\test_lobby_character_list.py` | Asset-free mutation tests for wire lengths, projection shape, session accounting, and sensitive-data rejection |
+| Test Resource DAT-open evidence | `python tools\test_resource_dat_open.py` | Asset-free mutation tests for the exact-build signature, bounded missing-file result, and unresolved launcher-hook requirements |
+| Test text-command ingress evidence | `python tools\test_text_command_ingress.py` | Asset-free contract and mutation tests for the exact-build lookup boundary and unresolved runtime claims |
+| Check lobby catalog promotion | `python tools\extractors\promote_lobby_character_list.py --check` | Deterministic BCS-S-0008/0009 and related BCS-Y projection from the canonical lobby manifest |
+| Verify player render-transform anchors | `python tools\audit_player_render_boundary.py --binary PATH` | Explicit pinned FFXIV 1.23b PE; checks model, NamePlate, WindowActor anchor-producer, target-helper, state-operation, field-store, and publication anchors |
+| Promote player render-transform symbols | `python tools\extractors\promote_player_render_boundary.py` | Serialized BCS-Y projection from `manifests\player_render_boundary.json` |
+
+### PE, Ghidra, and call-graph commands
+
+| Task | Command | Prerequisite or scope |
+|---|---|---|
+| Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
+| Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |
+| Query callers and callees | `python tools\callers.py TARGET` | Requires `build\callgraph.json`; generate it first with the documented `DumpCallGraph.java` -> `build_callgraph.py` pipeline |
+
+## Layout
+
+- `tools\`: reusable pipelines, audit invariants, and validators for catalog inputs.
+- `tools\extractors\`: Lua-bridge pipelines and the standalone `client_pe\` PE-extractor package; see `tools\extractors\client_pe\README.md`.
+- `tools\ghidra\`: the headless dispatcher (`run-headless.ps1`), program-edit applier (`ApplyProgramEdits.java`), and RTTI exporter (`ExtractRtti.java`). Logs under `logs/` are ignored local evidence; decompiled bodies must not be committed. Regenerate logs from explicit target inputs.
+- `data\vendor\`: byte-identical fixture promotions under `opcodes\` and `captures\`. Each has a `PROVENANCE.json` with source repo, path, license, URL, and copied-byte SHA-256. `tools\validate_vendor.py` checks hashes; `tools\refresh_vendor.py` restores or re-pins from a named source checkout.
+
+All scripts use only Python 3 standard library or PowerShell built-ins, except `validate_pcap_bridge.py` (requires the third-party `scapy` package for pcap parsing).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\validate-json.ps1
+```
+
+## Reusable pipelines
+
+### Shared helpers
+
+- `_symbols_io.py`: the single home for `manifests\symbols.json` I/O.
+- `load_symbols()` always opens UTF-8 to avoid Windows cp1252 decoding.
+- `next_bcsy_id()` allocates the next `BCS-Y-NNNN` from `max()` over the parsed ids (never array position, which is not globally sorted).
+- `append_symbol()` appends and syncs `symbolCount`.
+- `write_symbols()` writes the house style (indent 2, `ensure_ascii=False`, LF, trailing newline) via a temp file plus `os.replace()`, so an interrupted write cannot truncate the catalog.
+- Writers must wrap the whole cycle in `symbols_transaction()`, which holds an exclusive lock file across the re-read and the write. Without it two concurrent processes allocate the same `BCS-Y-NNNN` and the later write silently drops the earlier writer's entry.
+- Importing tools add `sys.path.insert(0, str(Path(__file__).resolve().parent))` then `from _symbols_io import load_symbols`.
+- New readers or writers of symbols.json should use it rather than re-rolling the read / allocate / write.
+
+Both catalog transactions use `_catalog_lock.py`. A lock records its owner PID
+and a unique acquisition token. Its age never permits another writer to take
+it, and release removes only the matching token. A timeout leaves the lock
+untouched. For abandoned-lock recovery, inspect the owner PID and verify that
+the owning process has exited and no catalog transaction is active before
+removing that exact `.lock` file. An unreadable or empty owner record requires
+the same writer check; do not infer abandonment from its age.
+
+### Vendor fixtures
+
+- `refresh_vendor.py`: the only path for updating a vendored fixture. Re-fetches each declared file from its `PROVENANCE.json` source and restamps the entry's sha256. First-party source checkouts are named with repeatable `--repo NAME=PATH`; there is no workspace-layout default, and an entry whose repo is not named is skipped. `refreshMode: copy` reads the bytes from the source checkout's committed state (`git show HEAD:<path>`), not "<commit>:<path>"/"pinned to the commit". `--only <fixture> --promote` accepts a newer source state (add `--source-path` when the file moved).
+- `validate_vendor.py`: the drift check, run by `validate-json.ps1`. Re-hashes every file under `data\vendor\` against its `PROVENANCE.json` entry and fails on a hash mismatch, a missing or undeclared file, a vendor subdir with no `PROVENANCE.json`, or an entry missing its source citation fields.
+- `manifests\receiver_opcode_map_overlay.json` and `manifests\operation_opcode_map_overlay.json`: committed curated enrichment layers, hand-maintained plus written to by `analyze_outbound_emissions.py` (operation overlay only). `extract_receiver_opcode_map.py` and `extract_operation_opcode_map.py` deterministically merge these over the vendored-fixture base on every run.
+
+### Bridge build pipeline
+
+- `extract_lua_api_index.py`: reads explicit `symbols.json` Lua references and indexes mentions from other symbol names and prose. Emits `manifests\lua_api_index.json`; `--check` writes nothing and fails on drift. The [symbol reference contract](../manifests/README.md#structured-lua-references) owns the fields and evidence categories.
+- `extractors\build_lua_callsite_context.py`: scans the explicit local Lua
+  corpus, registry, and per-script call sidecars for the fixed 19-name deferred
+  binding set. It separates registry declarations, sidecar references, lexical
+  identifier/string references, and identifier-plus-parentheses calls. For
+  that bounded call form it records simple same-line dot/colon receivers and
+  delimiter-balanced written arguments without semantic promotion; Lua sugar,
+  bracket-index calls, parenthesized callees, and nested function bodies remain
+  lexical or bounded-parser cases. `--check` writes nothing and fails on drift
+  in `manifests\lua_callsite_context.json`.
+- `extract_receiver_opcode_map.py`: normalizes the vendored `data\vendor\opcodes\client_receivers.json` fixture into BCS-Y-cross-referenced inbound + client-internal + strong / candidate buckets, then deterministically merges the curated `manifests\receiver_opcode_map_overlay.json` layer. Emits `manifests\receiver_opcode_map_inbound.json`; `--check` writes nothing and fails on drift.
+- `extract_operation_opcode_map.py`: scaffolds the outbound side by inventorying the vendored `data\vendor\opcodes\opcodes.json` fixture's `retail_class_name` Operation classes, then deterministically merges the curated `manifests\operation_opcode_map_overlay.json` layer. Emits `manifests\operation_opcode_map_outbound.json`; `--check` writes nothing and fails on drift.
+- `build_lua_to_opcode.py`: joins the bridge inputs into `manifests\lua_to_opcode.json`; `--check` writes nothing and fails on drift.
+  Slot joins require the symbol's explicit `bindsOpcode` eligibility and the receiver map's `luaActorImplSlot`. BCS-Y-0238 explicitly excludes slot 63: it is the SendLogReceiver path, while the `_onUpdateDisplayName` fire is the slot 62 apply chain confirmed by the apply-chain evidence. Slot eligibility does not depend on names or prose.
+- `analyze_outbound_emissions.py`: parses the Ghidra `ScanOpcodeEmissions` output and writes per-opcode candidate emitter lists + high-confidence filters into `manifests\operation_opcode_map_overlay.json`. Re-run `extract_operation_opcode_map.py` afterward to fold the updated overlay into `manifests\operation_opcode_map_outbound.json`. The underlying Ghidra script is an external input to the research run.
+- `build_c2s_bridge_skeleton.py`: builds the C2S catalog from `c2s_bridge_overlay.json`; `--check` verifies exact output bytes without writing. `--candidates` prints unpromoted token-match proposals from the current outbound, capture-observation, and Lua catalogs without changing any file.
+- `extractors\build_data_dependency_catalog.py`: rebuilds the data-dependency catalog from its curated inputs and local field observations; `--check` verifies exact output bytes without writing. `--normalize-citations` updates declared sibling path moves in `data_dependency_overlay.json` under its catalog lock, then rebuilds the output.
+- `extractors\build_apply_chain_firers.py`: aggregates the `receiver_apply_findings_*.json` snapshots into `lua_apply_chain_firers.json`; `--check` writes nothing and fails on drift.
+- `extractors\build_substruct_cross_ref.py`: appends supported substruct relationships to `data_dependency_overlay.json` under its catalog lock, then rebuilds the catalog. It never uses the generated catalog as an input.
+
+### Curated bridge ownership
+
+The two bridge catalogs can be rebuilt without their previous output files or
+private assets. Edit the curated inputs or the owning observation source,
+rebuild the affected catalogs, then run their `--check` commands. Review source
+and output changes together; removing curated input deliberately removes it
+from the generated view.
+
+| Input | Owned fields |
+|---|---|
+| `manifests/c2s_bridge_overlay.json` | Catalog metadata, retained candidate rows and their confirmations, the verified-binding summary assertion, next-step evidence boundaries, and shared `outboundFindings`. Candidate discovery does not automatically replace these reviewed rows. |
+| `manifests/data_dependency_overlay.json` | Catalog metadata, native and virtual receiver-write observations, additional index entries, confirmed indirect bindings, recursive-match source assertions, summary assertions, relationship findings, and payload findings. Its `directEmissionMining` is the data-dependency-specific projection. |
+| `receiver_field_writes.json`, direct/recursive N-API field-access catalogs, and `vtable_resolved_evidence.json` | Extracted receiver writes and flat/recursive candidate cross-references. Their producing tools and evidence policies remain authoritative. |
+
+C2S generation derives row, capture-observation, and class-attribution counts.
+Data-dependency generation combines curated native/virtual writes with the
+extracted receiver writes, derives flat/recursive candidates from that base,
+and adds the curated index entries used by substruct matching. It derives the
+confirmed-binding, indexed-key, and pilot-match counts. Other summary values
+retain their recorded research scope and are curated assertions.
+
+The C2S input owns the shared outbound findings used by both catalogs. The
+data-dependency builder substitutes only its explicitly owned direct-emission
+projection. Curated sections cannot overwrite derived fields, and a recursive
+evidence-source assertion must still match its declared candidate and prior
+source classification. Drift fails the build instead of silently choosing a
+different evidence tier.
+
+Curated input writes by the citation and substruct tools use the catalog lock
+and atomic file replacement. Generated files are individually reproducible;
+the input and output files are not published as one atomic transaction. Run
+the builder again after an interrupted publication. CI checks both complete
+catalogs, including rows and nested findings.
+
+### LPB decode pipeline
+
+- `decode_lpb.py`: decodes shipped `.le.lpb` Lua bytecode wrappers (rlu/rle) plus the script tree filename cipher.
+- `test_decode_lpb.py`: unit tests for `decode_lpb.py` (rlu passthrough, rle XOR-0x73, filename cipher involution, known fixtures). Run with `python tools\test_decode_lpb.py`.
+- `lpb_pipeline.py`: end-to-end orchestration of `.le.lpb` -> `.luac` (via `decode_lpb.py`) -> `.lua` (via external `unluac.jar`). Outputs to `build\lpb\` and `build\lua\`. `unluac.jar` location via env var `UNLUAC_JAR` or `--unluac-jar`. Stage 2 also requires `java` on PATH.
+
+### Audit invariants
+
+These checks should report 0 findings in a clean repository.
+
+- `validate-json.ps1`: parses JSON files (explicit UTF-8) and checks manifest counts for `structs.json` and `symbols.json` against their array sizes.
+- `validate_repo.py`: pins the tracked public surface and `.gitignore`, rejects every ignored private or scratch category even when force-added, scans tracked bytes for PE files, maintainer paths, and private-reference tokens, and checks local documentation links. `validate-json.ps1`, `validate_ir.py`, and `validate_vendor.py` own JSON parsing, IR schemas, and vendor provenance respectively.
+- `validate_catalog.py`: semantic invariants over the catalog manifests (kind enum, confidence enum, address conventions, cross-refs, retained reverse-BFS projection synchronization, and role-refinement `evidenceKind`). The accepted evidence kinds are `pcap_observed`, `pcap_unobserved`, and `live_validated`; the last is reserved for behavior accepted by the retail 1.23b client in a live session. Should report 0 ERRORs in a clean repo (warnings and info are advisory). This is the single source of truth for the manifest enums. It does not read `schemas\`: that directory holds the C1 IR contracts only, which `validate_ir.py` loads and enforces. A schema that nothing loads and gates does not belong there.
+- `validate_rapture_selector_0d.py`: focused cross-catalog invariants for the exact `RaptureElementContainer+0x4AC` member extent, the 28-entry vector, all 25 installed selector factories, null entries, every fixed and map-backed cache and clear route, promoted helper/factory symbols, deterministic producer bounds, the bounded virtual `0/0x1A` domain, the fixed selector-`0x1A` FormElement lifecycle/cache verdict, the literal selector-`0x0C` clear mismatch, the separate `FUN_00585800` upper-id boundary, the read-only reproduction recipe, and the retained ClientWorkElement storage/consumer closure. `test_rapture_selector_0d.py` plants independent mutations across those claims and requires each to fail.
+- `validate_s2c_018d_presentation.py`: focused cross-catalog invariants for the neutral `_0x018D` identity, immutable wire/storage projection, exact ClientWork record partition, 0xA70 MapScreenControl layout and registry lifetime, slot-7 resource lookup, 0xC4 ResourceDictionary key lifetime, generic XAML data-maker production, bounded package-path correlations, 0x210 SqwtXmlDataMaker and embedded 0xE4 XmlDocument ownership, the 0x18 temporary helper context, six record accessors, dense XML-backed presentation rows, the non-native `MapMarkerParty` verdict, and the separate `PcSearchWidgetOperator` slot-29 gate. `test_s2c_018d_presentation.py` plants independent mutations across those claims and requires each to fail.
+- `validate_pcap_bridge.py`: optional explicit-path research command that requires `scapy` and is not part of repository validation. It requires `--captures-dir` with no workspace default and validates the pcap-grounded s2c bridge against that directory. It validates without writing by default; pass `--write` to regenerate the committed `manifests/pcap_validation.json` sidecar deliberately because downstream evidence records cite its numbers.
+- `audit_catalog_xref.py`: detects notes-level paired-citation bugs of the form `FUN_XXXXXXXX (BCS-Y-NNNN)` where the cited id's address differs from `FUN_XXXXXXXX`. CLI: `--mismatch-only`, `--include-uncataloged`, `--json`.
+- `audit_matrix.py`: combines the matrix attribution and downstream-drift audits over their shared inputs. `attribution` mode gates latent RTTI and case-handler findings while wire-name curation stays advisory; CLI: `--json`, `--invariant {rtti,case_handler,wire_name,all}`. `drift` mode has HIGH/LOW review buckets plus the triaged SIBLING_CONTEXT, NEGATIVE_CONTEXT, and UBIQUITOUS_HELPER classes; CLI: `--high-only`, `--include-sibling`, `--json`.
+- `hygiene_scan.py`: combined hygiene scan for the documentation and catalog surfaces.
+- It checks wiki-link integrity and matrix-vs-symbols reconciliation.
+- It also checks duplicate addresses, sourceRef form in `symbols.json` and `structs.json`, and embedded-manifest address drift.
+- A3 validates citation form without leaving the checkout: `repository:path` citations and maintainer-record labels pass by shape, in-repo relative refs resolve on disk, and any live parent-dir path is a validation defect.
+- It exits 1 on A1 cross-reference breaks, A3 live parent-dir refs, A4 broken wiki-links, and A5 embedded-address drift.
+- A2 and missing in-repo refs such as ungenerated `build/` or local Ghidra logs stay advisory.
+- Both `audit_matrix.py` modes likewise exit 1 on structural findings.
+
+### Client-structure IR
+
+The C1 normalization of the catalog into one versioned intermediate
+representation. Reader's guide: `..\docs\ir-schema.md`.
+
+- `build_ir.py`: builds `manifests\ir_catalog.json` from `structs.json`, `symbols.json`, `ir_overlay.json`, `manifests\rtti_vftable_index.json`, and the six relationship sources (the pcap opcode coverage matrix, the inbound receiver map, the outbound operation map, the Lua bridge, the c2s bridge skeleton, and the receiver field-write catalog). Generated, never hand-edited: `--check` rebuilds in memory and exits 1 on any drift. When a local `rtti_extraction_OUR.txt` dump (gitignored) is also present, it verifies the tracked index still matches that dump and fails on staleness. Refuses rather than guesses - an unrecognised size, offset, address, or opcode form raises instead of degrading to "unknown", a live sibling-checkout path is refused as a citation, and a relationship edge citing an uncataloged symbol is a build error.
+- `build_rtti_index.py`: generates the tracked `manifests\rtti_vftable_index.json` as a sorted vftable VA column from a local `rtti_extraction_OUR.txt` dump. The dump is gitignored; regenerate it with `tools\extractors\client_pe` against your own client install.
+- `validate_ir.py`: loads both schemas from `..\schemas\` and enforces them, plus thirteen invariants a schema cannot express: deferred dimensions stay empty, BCS identifiers survive unrenumbered, confidence is copied rather than moved, every sourceRef round-trips, parsed values preserve their raw string, layout byte arithmetic closes and no unknown span covers a declared field, every overlay entry reaches exactly one IR value, every relationship reference resolves in both directions, and opcode identity agrees with the summary counts.
+- `ghidra\export-references.ps1`: the read-only entry point for exact named-string/address reference evidence. It requires explicit targets and a new output, runs `ghidra\FindReferences.java` with hard bounds, then rejects cancellation, partial output, count drift, and missing completion through `verify_reference_export.py`.
+- `ghidra\DumpFunctionListing.java`: read-only instruction listing for exact function-entry VAs. Use it when the decompiler hides register state at a copy or branch boundary; output remains ignored local evidence.
+- `test_reference_export.py`: mutation tests for short-string acceptance, cancellation/failure/limit rejection, deterministic reference ordering, summary drift, and wrapper read-only enforcement.
+- `test_ir_gates.py`: mutation tests that plant one defect per invariant and require the named invariant to fire. One case additionally asserts that no other invariant fires on the same plant. Its docstring records the two things it does not prove (the cross-talk check covers five of the thirteen invariants, and the determinism cases are single-process). Run with `python tools\test_ir_gates.py`.
+- `_schema_check.py`: stdlib interpreter for the JSON Schema draft 2020-12 subset the in-repo schemas use, because CI installs no packages. Its exact keyword set is `$schema`, `$id`, `$defs`, `$ref`, `title`, `description`, `examples`, `type`, `properties`, `patternProperties`, `required`, `additionalProperties`, `items`, `enum`, `const`, `pattern`, `minimum`, `maximum`, `minItems`, `minLength`, `uniqueItems`, `oneOf`, and `dependentRequired`. It raises on any other keyword rather than passing it silently. When a maintainer has `jsonschema` installed, `crosscheck()` reports disagreements as local calibration; CI does not install that package and the calibration is not a required check.
+- `manifests\ir_overlay.json`: the curated companion, and the sole hand-maintained home for the two fields no source catalog records (type alignment, and the reading of a derived unknown span). Both populated and empty paths are bite-proved.
+
+### Retail-input checks
+
+- `verify_retail_actor_rebuild.py`: validates the fixed structured observation
+  set for `actor-rebuild-receiver-field-v1`, cross-checks its target BCS entries
+  through `tools/_symbols_io.py`, and emits only the sanitized attestation
+  allowed by `schemas/retail-evidence-attestation.schema.json`. It fails on
+  missing, duplicate, extra, malformed, or drifted observations.
+- `test_retail_actor_rebuild.py`: asset-free bite proofs for every expected
+  call target, field offset, and field value plus observation-set, BCS drift,
+  schema, failure-sanitization, and deterministic-output defects.
+
+- `verify_murmur2.py`: cross-checks backward-walking MurmurHash2 against the first-party `manifests\gam_hash_names.json` dataset and the vendored `data\vendor\captures\payload_samples.json` fixture. Fails loudly (exit 2) if either input is missing. 6/6 test vectors, 263/263 resolved (id, name) pairs, 60/60 s2c 0x0137 payload property ids.
+- `build_property_stream_hash_catalog.py`: enriches the canonical hash-name
+  manifest from an explicit full-corpus accounting input, re-verifies every
+  name with seed-0 backward MurmurHash2, and records occurrence-weighted
+  coverage and conservative wire profiles.
+
+### Headless Ghidra
+
+- `ghidra\run-headless.ps1`: runs any post-script against the analyzed project, replacing hand-authored per-tier `.bat` wrappers. Install and project locations are machine-local and come from `BCS_GHIDRA_HOME`, `BCS_GHIDRA_PROJECTS`, `BCS_GHIDRA_PROJECT`, `BCS_JAVA_HOME` (plus optional `BCS_GHIDRA_PROGRAM`, default `ffxivgame.exe`); the script carries no path defaults and fails naming the missing variable. Defaults to `-noanalysis`. Pass `-ReadOnly` for every read-only script so an unexpected write cannot be saved, `-Out` for the `XIVL_DUMP_PATH` convention, and `-ScriptEnv` for per-script variables. Returns status plus elapsed seconds and exits 1 on script error or project lock.
+- `ghidra\ExtractRtti.java`: read-only MSVC RTTI export. `XIVL_RTTI_OUT` writes the full RTTI index. For targeted structural details, set exact comma-separated mangled names in `XIVL_RTTI_DETAILS_TARGETS` and an output path in `XIVL_RTTI_DETAILS_OUT`; each detail row records the vftable, COL, TypeDescriptor, class hierarchy descriptor, executable slot count, base-array order, and code references that write or read the vftable.
+
+  ```powershell
+  tools\ghidra\run-headless.ps1 -Script DumpVAs.java -ReadOnly `
+      -Out tools\ghidra\logs\c140.txt `
+      -ScriptEnv @{ XIVL_TARGET_VAS = '0x00891F00' } `
+      -ScriptPath @('ghidra')
+  ```
+
+  The project lock is exclusive: headless aborts with `LockException` rather than degrading, so a Ghidra GUI holding the project must be closed first. A `.lock` file left by a killed GUI is stale and reclaimed automatically.
+
+- `ghidra\ApplyProgramEdits.java`: applies name / comment / prototype edits to the program database from a tab-separated file (`op<TAB>address<TAB>value`), so the annotation layer is reproducible from a tracked file rather than living only in a local `.gpr`. Ops: `rename` (function), `rename_data` (existing data symbol), `comment` (plate), `eol` (disassembly), `prototype` (C signature), `rename_local` (decompiler local). Values take `\t` / `\n` / `\\` escapes. Not covered: local variable types.
+
+  Validation runs to completion before any transaction opens and reports every bad row at once. The apply transaction commits only if all rows succeed, so a malformed file cannot leave a partially annotated database. `BCS_EDITS_DRYRUN=1` validates without writing. `BCS_EDITS_UNDO` writes an inverse edit file that reverts the apply. It is emitted on dry runs too, where it doubles as a read-only dump of the current value of every targeted address.
+
+  ```powershell
+  # list the locals of two functions as an editable template
+  tools\ghidra\run-headless.ps1 -Script ApplyProgramEdits.java -ScriptEnv @{
+      BCS_LIST_LOCALS  = '0x00DA2AD0,0x005A4160'
+      BCS_EDITS_REPORT = 'locals.tsv'
+  }
+
+  # apply an edit file
+  tools\ghidra\run-headless.ps1 -Script ApplyProgramEdits.java -ScriptEnv @{
+      BCS_EDITS        = 'edits.tsv'
+      BCS_EDITS_REPORT = 'report.txt'
+      BCS_EDITS_UNDO   = 'undo.tsv'
+  }
+  ```
+
+  `rename_local` takes `currentName|storage|newName` (pipe-delimited because a storage string can itself contain commas, as in `EDX:4,EAX:4`). It matches on name AND storage because a decompiler local has no stable identifier across decompiles; a row whose pair no longer matches fails the batch rather than renaming the wrong variable. To author rows, set `BCS_LIST_LOCALS` to a CSV of function VAs: the script applies nothing and writes a ready-to-edit template to `BCS_EDITS_REPORT`, one `rename_local` row per local with the placeholder `<newName>`, parameters listed as comments, and unresolvable addresses noted inline. The placeholder is deliberately not a legal symbol name, so a row left unedited fails validation instead of renaming a variable to it. An unmatched row in a normal run also lists the candidate `name|storage` pairs it did find. Parameters are renamed through `prototype` and are rejected here. A file carrying both a `prototype` and a `rename_local` for the same function is refused: applying the signature re-runs the decompiler and can restorage the locals resolved during validation, so those renames belong in a second run.
+
+  One caveat is inherent to Ghidra rather than to this script: renaming a local that the decompiler had given synthetic storage commits it to a permanent dynamic `HASH:` slot, so its storage changes on first rename and does not change back. Names revert exactly. An edit file written against a pristine decompile will not match a second time for such symbols, and fails loudly when it does not. Ordinary stack and register locals keep their storage and round-trip exactly. The emitted undo file re-resolves storage after the commit. If that post-commit decompile fails, the report says `APPLIED_UNDO_FAILED` and the run fails while stating that the edits already landed. It never presents the stale undo file as usable.
+
+  Edit throughput is dominated by fixed startup, not by the edit count: 1200 edits commit in a ~270ms transaction inside a ~6s run, the same wall clock as a single-function read. `rename_local` is the one op with real per-target cost, since it needs a decompile per distinct function during validation and another after the commit to re-resolve storage - about 24ms per function on typical functions, seconds on the largest in the binary. 16 local renames across 16 functions still complete in ~6s end to end. The report's `status=` line is the authority on whether edits landed; `analyzeHeadless` runs its save step unconditionally without `-readOnly`, including after a script aborts.
+
+  Addresses are Ghidra absolute VAs and must resolve in the program database. Three catalog distinctions matter: some `address` fields hold multiple semicolon-joined VAs (rejected by validation); a catalog name is research-side and is not necessarily applied in the `.gpr`, so `rename_data` against a cataloged data address commonly fails with "no symbol at"; and `rtti` / `data` / `global` addresses carry the catalog's dual shift convention, so they are not always feedable as-is the way `kind=function` addresses are.
+
+### Ghidra RTTI
+
+- `ghidra\ExtractRtti.java`: walks the program's symbol table for MSVC RTTI Complete Object Locator symbols and emits vftable VA, COL VA, mangled name, and demangled name as tab-separated records.
+
+### Offline call graph
+
+- `ghidra\DumpCallGraph.java` (headless post-script): iterates the FunctionManager and emits the full static direct-call edge list as TSV (one row per function: entryVA, maxBodyVA, name, comma-separated callee entry VAs via `Function.getCalledFunctions`). Run it like the RTTI extractor. Point `XIVL_CALLGRAPH_OUT` at `tools\ghidra\logs\callgraph_edges.tsv` (gitignored). Indirect / virtual (vtable) dispatch is NOT captured - that surface has its own snapshot manifests.
+- `build_callgraph.py`: folds the TSV into `build\callgraph.json` (gitignored, regenerable) keyed by entry VA -> `{name, maxVA, callees, callers}` (callers are the inverted edges). A generated index, not a curated manifest: it lives in `build\`, not `manifests\`, and is not gated by `validate_catalog.py`.
+- `callers.py <FUN_xxxxxxxx | 0xVA>`: resolves a raw / mid-function VA to its owning function via `[entryVA, maxVA]` and prints the function, its callees, and its callers, each annotated with the curated name + BCS-Y id from `symbols.json` (uncataloged -> `FUN_<va>`). `--json` for machine output. Turns the hand-built caller-tree snapshots (e.g. `manifests\fun_004d9910_callers_map.json`) into a one-liner from a Ghidra call-graph export.
+
+Regenerate: dump the TSV (headless), then `python tools\build_callgraph.py`, then query with `python tools\callers.py FUN_004d9910`.
+
+### Client PE toolkit
+
+- `extractors\client_pe\`: stdlib-only toolkit that reads `ffxivgame.exe` directly (no Ghidra) for bulk RTTI / vtable / struct / string / import-table extraction. Additive to the Ghidra workflow. See `tools\extractors\client_pe\README.md`.
+
+### Repository checks
+
+The [checks workflow](../.github/workflows/checks.yml) is authoritative for
+CI-covered checks.
