@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/XIVLegacy/xivl-client-structs/schemas/ir-overlay-v1.schema.json",
+  "title": "Client-structure IR curated overlay, version 1",
+  "description": "Contract for manifests/ir_overlay.json. Holds type alignment and derived unknown-span interpretations not recorded by source catalogs. It may not restate symbols.json or structs.json; tools/validate_ir.py rejects collisions and unknown ids.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["overlayVersion", "gameVersion", "schema", "alignment", "unknownSpanAnnotations"],
+  "properties": {
+    "overlayVersion": {"const": "1.0"},
+    "gameVersion": {"const": "1.23b"},
+    "schema": {"const": "schemas/ir-overlay-v1.schema.json"},
+    "alignment": {
+      "description": "Keyed by BCS-S id. Present only where evidence establishes alignment; absence leaves the IR kind 'unknown'.",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^BCS-S-\\d{4}$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bytes", "reason", "sourceRefs"],
+          "properties": {
+            "bytes": {"type": "integer", "minimum": 1},
+            "reason": {"type": "string", "minLength": 1},
+            "sourceRefs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+          }
+        }
+      }
+    },
+    "unknownSpanAnnotations": {
+      "description": "Keyed by '<BCS-S id>@<span offset>'; matches a build-derived span. Absence leaves the span 'unmapped' and makes no field claim.",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^BCS-S-\\d{4}@0x[0-9a-fA-F]+$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "note", "sourceRefs"],
+          "properties": {
+            "kind": {"enum": ["padding", "reserved"]},
+            "note": {"type": "string", "minLength": 1},
+            "sourceRefs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "version": "1",
+  "generated": "2026-05-23",
+  "scope": "Userdata characterization for FUN_00cfa400's 4-metamethod metatable (cataloged structurally in BCS-Y-0502). Goal: identify the C++ type the userdata wraps.",
+  "outcome": "Ghidra-resolved RTTI symbols directly name the wrapped type: Component::Lua::GameEngine::LuaControl (polymorphic base class) created by Component::Lua::GameEngine::LuaManyTentativeControlCreator (factory). The userdata wraps a 12-byte inner struct holding a LuaControl* pointer; all metamethod operations dispatch through the wrapped pointer's vtable. Read-only (the shared FUN_00ab7340 stub serves as __newindex). __gc invokes the wrapped LuaControl's release method (vtable slot 0) and frees the inner struct.",
+  "wrappedCppType": "Component::Lua::GameEngine::LuaControl",
+  "wrappedCppTypeRttiVa": "0x012bfc80",
+  "factoryCppType": "Component::Lua::GameEngine::LuaManyTentativeControlCreator",
+  "factoryCppTypeRttiVa": "0x01270b4c",
+  "innerStruct": {
+    "size_bytes": 12,
+    "allocator": "FUN_009d1b35 (0xc)",
+    "fields": [
+      {"offset": "0x00", "size": "0x04", "name": "control_ptr", "type": "Component::Lua::GameEngine::LuaControl*", "notes": "Pointer to the wrapped LuaControl object. Set by FUN_00cfa400 after RTTI cast succeeds. Inspected by __index/__len for vtable dispatch and by __gc for release."},
+      {"offset": "0x04", "size": "0x04", "name": "slot1", "type": "uint32_t", "notes": "Initialized to 0 by FUN_00cfa400. Possibly a weak-reference epoch token or auxiliary state."},
+      {"offset": "0x08", "size": "0x04", "name": "slot2", "type": "uint32_t", "notes": "Initialized to 0 by FUN_00cfa400. Possibly a weak-reference epoch token or auxiliary state."}
+    ]
+  },
+  "luaUserdataLayout": {
+    "outerBodySize": 4,
+    "outerBodyContent": "pointer_to_12byte_inner_struct",
+    "outerAllocator": "FUN_00cf32a0(4)"
+  },
+  "metamethods": {
+    "__index": {
+      "impl": "0x00cfc8d0",
+      "behavior": "Loads userdata, calls FUN_00cfc6d0 with stack-buffer (probably the dispatch lookup for the requested field name against the wrapped LuaControl's exposed interface). Not a hard-coded string compare like the individualref-userdata pass's _isAlive dispatcher - this is a general field-name dispatcher."
+    },
+    "__newindex": {
+      "impl": "0x00ab7340",
+      "implSize_bytes": 3,
+      "behavior": "Bare `return 0;` stub. Read-only - assignments are silently no-ops (no error raised, no state changed). Shared utility identified (BCS-Y-0502) for read-only Lua surfaces."
+    },
+    "__len": {
+      "impl": "0x00cfc950",
+      "behavior": "Calls vtable slot +0x50 (= slot index 0x14 / 20) of the wrapped LuaControl. Returns the integer cast to double, pushed as Lua number. This is `#userdata` returning a virtual 'length' field of the underlying control - likely a child/entry/element count."
+    },
+    "__gc": {
+      "impl": "0x00cfc9e0",
+      "behavior": "Two-stage destructor: (1) if control_ptr != 0 AND first dword of *control_ptr != 0, call vtable slot 0 of *control_ptr with arg 1 (= virtual `release(true)` or destructor-with-delete - the value 1 typically requests delete-after-call in MSVC vtable destructors). (2) _free(inner_struct). Note: passes only the inner-struct pointer to _free, NOT the wrapped LuaControl pointer - the LuaControl is presumably refcounted and the release call handles its actual destruction."
+    }
+  },
+  "constructorPath": {
+    "regVa": "0x00cfa400",
+    "signature": "FUN_00cfa400(lua_State*, vector_of_control_ptrs*, *position)",
+    "behavior": "Iterator-shaped constructor. Treats param_2 as a 16-byte-stride vector (size check via `(end - begin) >> 4`), loads the element at *param_3, switches on a tag byte (local_14): tag 6 = push nil; tag 4 = proceed with userdata creation; other = throw std::bad_cast. For tag 4: RTTI-checks the element via dynamic_cast to LuaControl, vtable-calls slot +0x50 (verify), allocates 12-byte inner struct + 4-byte userdata body, installs the 4-metamethod metatable, increments *param_3. Probably the IMPL of a Lua iterator (next/__call) that walks a LuaControl container.",
+    "factoryUsage": "RTTI cast targets BOTH LuaControl AND LuaManyTentativeControlCreator - the dynamic_cast checks if the source can produce a LuaControl directly, otherwise falls through. This is a polymorphism-aware factory dispatch."
+  },
+  "ffxiv1xInterpretation": "LuaControl appears to be a base class for Lua-accessible 'controllers' in the FFXIV 1.x engine - probably one subclass per game feature exposing its read-only state to Lua scripts (inventory list, equipment slots, party members, retainer state, etc). The 'Many Tentative Control' factory naming suggests this handles plural/aggregate results (lists of controls). __len returning a virtual count + __index dispatching field names + read-only __newindex is the classic 'view onto engine state' shape - Lua scripts read but cannot mutate. Mutation goes through dedicated N-APIs (the FUN_00cccad0 method-N-API surface) which then update C++ state via authorized paths. The corpus-napi-residual-findings/high-signal-napi-attribution-findings passes attributed many of those mutator N-APIs (`_setActorExtraStat` etc); this metatable is the READ side of the same model.",
+  "evidencePath": "%BCS_GHIDRA_PROJECTS%/cfa400_userdata_decomp.txt"
+}

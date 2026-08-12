@@ -1,0 +1,163 @@
+{
+  "version": "1",
+  "generated": "2026-05-24",
+  "scope": "Characterize the LGE class system engine substrate that the d2fxxx-userdata-attribution pass named but didn't drill: the shared write helper FUN_00d272d0, member lookup FUN_00d16cd0, generic table lookup FUN_00d1df90, active-name slot writer FUN_00d11b60, the 3 small lua-state helpers (FUN_00d20490/FUN_00d204b0/FUN_00d204d0), the 5 inner-struct initializers (FUN_00d2e230 / FUN_00d2e360 / FUN_00d2e2d0 / FUN_00d1c100 / FUN_00d2efb0), and the sub-helpers FUN_00d2e4d0 / FUN_00d16080 / FUN_00d211e0.",
+  "outcome": "MAJOR architectural finding: the LGE class system's underlying C++ storage type is Component::Lua::GameEngine::Work::MetamethodArray2D - Ghidra-resolved RTTI references in FUN_00d2e360 and FUN_00d2e2d0 (the two D20670 inner ctors) and in FUN_00d2e4d0 (the shared row populator) directly name this type. The BCS-Y-0509 'LGE Cursor' wrapped type is actually Component::Lua::GameEngine::Work::MetamethodArray2D::Impl (polymorphic base) with two known derived variants: ::ImplArray (allocated 0x60 bytes, no extra field) and ::ImplArray2D (allocated 0x64 bytes, extra dword at +0x18 = 2D second-dim parameter). FUN_00d211e0 is the 2D-index calculator: `width * row + col` with sentinel checks against DAT_0130d78c (invalid row) and DAT_0130d79c (invalid col). The 3 'scopes' the d2fxxx-userdata-attribution pass named (save/temp/sync) at instance struct offsets +0x60/+0x64/+0x68 are 3 ImplArray pointers - one per scope - forming the first dimension of the 2D array; member descriptors are the second dimension. FUN_00d16cd0 dispatches member lookups across the 3 scopes in priority order: own (+0x64) > save (+0x60) > sync (+0x68), tagging the active-dispatch byte at +0x30 with DAT_0130d422 (own hit) or DAT_0130d423 (sync hit) or DAT_01377fb9 (not found). FUN_00d272d0 is the 9-param polymorphic write entrypoint: vtable +0x6c on the class context, then vtable +4 on the member descriptor depending on tag byte +0xb being DAT_01377fb9 (the not-found marker - so writes to unknown members go through the default path).",
+  "rttiConfirmations": [
+    {
+      "type": "Component::Lua::GameEngine::Work::MetamethodArray2D::Impl",
+      "role": "Polymorphic base class for the 3-scope member storage",
+      "vftableSource": "FUN_00d2e4d0 line: *param_1 = Component::Lua::GameEngine::Work::MetamethodArray2D::Impl::vftable",
+      "connection": "BCS-Y-0509 LGECursorMetatable_FUN_00D20670 - the userdata at +0x04 IS a pointer to this Impl object"
+    },
+    {
+      "type": "Component::Lua::GameEngine::Work::MetamethodArray2D::ImplArray",
+      "role": "Derived: 1D array variant (no 2nd dimension)",
+      "vftableSource": "FUN_00d2e2d0 line: *puVar1 = Component::Lua::GameEngine::Work::MetamethodArray2D::ImplArray::vftable",
+      "allocSize_bytes": "0x60 (96)",
+      "instantiatedBy": "D20670 caller FUN_00d20e40 (8 params)"
+    },
+    {
+      "type": "Component::Lua::GameEngine::Work::MetamethodArray2D::ImplArray2D",
+      "role": "Derived: 2D array variant",
+      "vftableSource": "FUN_00d2e360 line: *puVar1 = Component::Lua::GameEngine::Work::MetamethodArray2D::ImplArray2D::vftable",
+      "allocSize_bytes": "0x64 (100) - 4 extra bytes for the 2nd-dim parameter at +0x18",
+      "instantiatedBy": "D20670 caller FUN_00d20d70 (9 params)"
+    }
+  ],
+  "modelRevision": {
+    "claim": "BCS-S-0041 fields +0x60/+0x64/+0x68 named save_pool/temp_pool/sync_pool wrapping D208A0 MemoryPool userdata",
+    "refinement": "+0x60/+0x64/+0x68 hold MetamethodArray2D::Impl* pointers - each pointing to one ImplArray (or ImplArray2D) instance representing one scope's member-descriptor storage. The 'pool' interpretation is partial: each Impl IS the storage for members of one scope, but the storage isn't purely a heap allocator - it's a structured array of member descriptors keyed by name. D208A0 (BCS-Y-0506) wraps the SAME Impl objects from the Lua side, exposing _save/_temp/_sync/_reserve/_nesting/_name + the 9 size-bookkeeping fields - these are introspection accessors on the same C++ type. The model is unified: D20670 and D208A0 wrap DIFFERENT facets of the same underlying Component::Lua::GameEngine::Work::MetamethodArray2D::Impl object.",
+    "claim2": "BCS-Y-0509 'LGE Cursor' (8-byte wrapper) - role unclear",
+    "refinement2": "The wrapped C++ type is Component::Lua::GameEngine::Work::MetamethodArray2D::Impl - the polymorphic base of the same type-family that backs the class instance's 3 scopes. So D20670 is a Lua-side view onto one of the three scope arrays directly. The 'cursor' interpretation should be replaced with 'scope view' or 'method-array row'. D20670 userdata is what scripts get when they access `instance._save` (etc) - so the wrapped object IS a scope-bucket Impl, not a cursor into anything."
+  },
+  "engineSubstrateHelpers": {
+    "FUN_00d272d0": {
+      "size_bytes": 300,
+      "params": 9,
+      "role": "POLYMORPHIC WRITE CHOKEPOINT for the cluster",
+      "callers": ["FUN_00d1c810 (D207A0 __newindex)", "FUN_00d2dfd0 (D20540 __newindex)", "FUN_00d175b0 (D20B00 __newindex)", "FUN_00d2e760"],
+      "callees": ["FUN_00d211e0 (2D index calc)", "FUN_00d12210 (write-validate)", "FUN_00cd2af0/00cd2b00 (string ref pair)"],
+      "dispatch": "vtable +0x6c on the class context (param_1), then conditional dispatch: tag byte at param_2+0xb matches DAT_01377fb9 -> if *param_2 == 0 use FUN_00d211e0 + vtable+4 of class; else use vtable+4 of *param_2 (member descriptor's writer)"
+    },
+    "FUN_00d16cd0": {
+      "size_bytes": 103,
+      "role": "Multi-scope member lookup with priority dispatch",
+      "callers_count": 9,
+      "scopePriority": "own (+0x64) > save (+0x60) > sync (+0x68) - reads class instance struct's 3 ImplArray pointers, queries each via FUN_00d1df90",
+      "markerTags": {
+        "DAT_0130d422": "Active-dispatch byte at +0x30 set after own-scope hit",
+        "DAT_0130d423": "Active-dispatch byte set after sync-scope hit",
+        "DAT_01377fb9": "Active-dispatch byte set on miss / save-scope hit (the default)"
+      }
+    },
+    "FUN_00d1df90": {
+      "size_bytes": 96,
+      "role": "Generic member-table lookup; returns +0x1c of matched entry (member-getter slot)",
+      "callers_count": 9,
+      "mechanism": "Calls FUN_00d1f650 to extract (key, value) pair, validates pair is from param_1+8 (the table data), bounds-checks against param_1+0xc (table end), returns *(matched+0x1c)"
+    },
+    "FUN_00d11b60": {
+      "size_bytes": 7,
+      "role": "Active-name slot writer (7-byte shim into FUN_00ce4080 = string-set helper)",
+      "callers_count": 5
+    },
+    "FUN_00d20490": {
+      "size_bytes": 20,
+      "role": "lua_pushvalue(2) + lua_touserdata - reads a userdata from stack slot 2",
+      "callers_count": 19
+    },
+    "FUN_00d204b0": {
+      "size_bytes": 8,
+      "role": "lua_pushvalue(1) - pushes the first Lua arg onto the stack",
+      "callers_count": 3
+    },
+    "FUN_00d204d0": {
+      "size_bytes": 91,
+      "role": "Stores the Lua state context into the caller's local struct at +8 (via FUN_00cf3ce0)",
+      "callers_count": 26
+    },
+    "FUN_00d211e0": {
+      "size_bytes": 50,
+      "role": "2D-index calculator: width * row + col with sentinel checks",
+      "formula": "`*param_2 * (*param_1) + *param_3` where param_1=row, param_2=width, param_3=col",
+      "sentinels": ["DAT_0130d78c = invalid row", "DAT_0130d79c = invalid col"],
+      "callers": ["FUN_00d272d0 (write helper)", "FUN_00d22030"]
+    },
+    "FUN_00d16080": {
+      "size_bytes": 128,
+      "role": "Shared header-copy initializer for cluster inner structs",
+      "copyMap": "dst[0]=src[0]; FUN_00cd2b30(src+1); dst[5]=src[5] (byte); FUN_00cd2b30(src+6); dst[10]=src[10]; dst[0xb]=src[0xb] (byte)",
+      "callers_count": 12,
+      "usedBy": "FUN_00d2e230 (D20540 init), FUN_00d1c100 (D207A0 init), FUN_00d2e4d0 (Impl row init)"
+    }
+  },
+  "innerStructInitializers": {
+    "FUN_00d2e230_D20540_init": {
+      "size_bytes": 129,
+      "target": "0x5c indexed container",
+      "operations": ["FUN_00d16080 header copy", "FUN_00cd2b30 x2 string refs", "*(+0x54) = param_5 (vtable)", "*(+0x58) = *param_6 (length)"]
+    },
+    "FUN_00d2e360_D20670_ImplArray2D_init": {
+      "size_bytes": 145,
+      "target": "Component::Lua::GameEngine::Work::MetamethodArray2D::ImplArray2D (allocated 100 = 0x64 bytes)",
+      "operations": ["FUN_009d1b35(100) allocates the inner C++ object", "FUN_00d2e4d0 populates the base Impl fields", "*puVar1 = ::ImplArray2D::vftable", "puVar1[0x18] = *param_7 (the 2D 2nd-dimension extra field)"]
+    },
+    "FUN_00d2e2d0_D20670_ImplArray_init": {
+      "size_bytes": 136,
+      "target": "Component::Lua::GameEngine::Work::MetamethodArray2D::ImplArray (allocated 0x60 = 96 bytes)",
+      "operations": ["FUN_009d1b35(0x60)", "FUN_00d2e4d0", "*puVar1 = ::ImplArray::vftable"]
+    },
+    "FUN_00d1c100_D207A0_init": {
+      "size_bytes": 142,
+      "target": "0x54 member descriptor",
+      "operations": [
+        "FUN_00d16080 header copy",
+        "FUN_00cd2b30 string ref",
+        "*(+0x40) = *param_4 (NEW field not in BCS-S-0043)",
+        "*(+0x44) = *param_5 (NEW field not in BCS-S-0043)",
+        "*(+0x48) = 0 (method_table, populated later)",
+        "*(+0x4c) = DAT_0130d420 (16-bit flag pair init)",
+        "*(+0x4e) = param_6 (writable_flag, passed in by caller)",
+        "*(+0x4f) = 1 (type_tag initialized to 1)",
+        "*(+0x50) = 0 (NEW byte field not in BCS-S-0043)"
+      ],
+      "refinement": "BCS-S-0043 LGEMemberDescriptorInner: needs +0x40 (param_4-derived), +0x44 (param_5-derived), and +0x50 (init-zero byte) fields added. +0x4f is initialized to 1, not arbitrary."
+    },
+    "FUN_00d2efb0_D208A0_init": {
+      "size_bytes": 57,
+      "target": "0x28 memory pool descriptor",
+      "operations": [
+        "FUN_00cd2b30(param_2) string ref",
+        "*(+0x10) = *param_3 (SET FROM EXTERNAL POINTER, not arbitrary bitmap)",
+        "*(+0x14) = *param_4",
+        "*(+0x18) = *param_5",
+        "*(+0x1c) = 0 (save_table init zero)",
+        "*(+0x20) = 0",
+        "*(+0x24) = 0"
+      ],
+      "refinement": "BCS-S-0042 LGEMemoryPoolInner: +0x10/+0x14/+0x18 are config-loaded values from external pointers (not pure bitmap registers as BCS-S-0042 named them). +0x1c/+0x20/+0x24 are init-zero pool table pointers that become non-null when the real allocator attaches."
+    },
+    "FUN_00d2e4d0_ImplBase_row_init": {
+      "size_bytes": 144,
+      "role": "Base-class row populator called by both D20670 ImplArray and ImplArray2D ctors",
+      "operations": [
+        "*param_1 = ::Impl::vftable (sets the polymorphic base vftable - subclass ctors override after)",
+        "FUN_00d16080 shared header init",
+        "FUN_00cd2b30 x2 string refs",
+        "param_1[0x15] = param_5",
+        "param_1[0x16] = *param_6",
+        "param_1[0x17] = *param_7"
+      ]
+    }
+  },
+  "phaseClosure": {
+    "impact": "BCS-S-0041..0045 inner struct layouts now have RTTI-confirmed C++ type names and corrected field semantics. Confidence upgrades possible: BCS-Y-0509 (LGECursor) - hypothesis-strong -> confirmed via RTTI; BCS-Y-0505 (LGEClassInstance) - +0x60/+0x64/+0x68 model refined to MetamethodArray2D::Impl* per scope.",
+    "connection": "BCS-Y-0513 documented the dynamic method registration flow (FUN_00d07eb0 -> FUN_00d07bb0). FUN_00d272d0 is the C++ side of that flow - when the registered closure is later invoked from script, its writes go through this 9-param polymorphic dispatcher.",
+    "model": "LGE class system is built on Component::Lua::GameEngine::Work::MetamethodArray2D. Each class instance has 3 ImplArray pointers (one per scope = save/own/sync). Members are stored in these arrays keyed by name. Lookups dispatch in priority order (own > save > sync). Writes go through a polymorphic dispatcher that uses the member descriptor's vtable+4. Index arithmetic for 2D variants uses width*row+col formula."
+  },
+  "evidencePaths": {
+    "main": "%BCS_GHIDRA_PROJECTS%/substrate_decomp.txt",
+    "subHelpers": "%BCS_GHIDRA_PROJECTS%/sub_decomp.txt"
+  }
+}

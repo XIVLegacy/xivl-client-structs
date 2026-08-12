@@ -1,0 +1,211 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Resolve the 5 NOT_FUNCTION_ENTRY findings (BCS-Y-0004, 0007, 0008, 0009, 0010) - all lobby-crypto and lobby-channel entries in the catalog. For each, identify what the catalog intended to point at, propose the correct VA, and characterize the bug pattern.",
+  "method": {
+    "step1": "Re-read each entry from manifests/symbols.json to get name, current address, notes",
+    "step2": "Compare sourceRefs for matching class/function name and any embedded address",
+    "step3": "Try the +0x400000 shift the catalog validation report pass already ruled out, plus +0x800000 (image_base + relabeling delta)",
+    "step4": "Pull the LobbyCryptEngine vftable from Ghidra at the stated vtable VA to read the actual 9 function-pointer slots stored in the binary",
+    "step5": "Decompile candidate VAs to verify slot semantics match the catalog notes (dtor, PrepareHandshake, SetSessionKey, Encrypt/Decrypt with 32-byte AND-mask quirk, BuildHeader)",
+    "step6": "Propose the corrected VA per entry; flag any false-positive PASSes uncovered in the process"
+  },
+  "ghidra_evidence": {
+    "lobby_crypt_engine_vftable_va": "0x01127698",
+    "vftable_label": "Application::Network::LobbyProtoChannel::ServiceConsumerConnectionManager::LobbyCryptEngine::vftable",
+    "vftable_dword_dump_artifact": "%BCS_GHIDRA_PROJECTS%\\lobby_crypt_vtable.txt",
+    "vftable_slots": [
+      {
+        "slot": 0,
+        "stored_va": "0x00DA1E40",
+        "ghidra_symbol": "FUN_00da1e40",
+        "role": "~LobbyCryptEngine (dtor)"
+      },
+      {
+        "slot": 1,
+        "stored_va": "0x00DA1590",
+        "ghidra_symbol": "FUN_00da1590",
+        "role": "PrepareHandshake"
+      },
+      {
+        "slot": 2,
+        "stored_va": "0x00DA1640",
+        "ghidra_symbol": "FUN_00da1640",
+        "role": "GetExtendedFlag stub"
+      },
+      {
+        "slot": 3,
+        "stored_va": "0x00DA0F10",
+        "ghidra_symbol": "FUN_00da0f10",
+        "role": "Verify-A stub"
+      },
+      {
+        "slot": 4,
+        "stored_va": "0x00DA1670",
+        "ghidra_symbol": "FUN_00da1670",
+        "role": "SetSessionKey"
+      },
+      {
+        "slot": 5,
+        "stored_va": "0x00DA0F20",
+        "ghidra_symbol": "FUN_00da0f20",
+        "role": "Verify-B stub"
+      },
+      {
+        "slot": 6,
+        "stored_va": "0x00DA18D0",
+        "ghidra_symbol": "FUN_00da18d0",
+        "role": "Encrypt"
+      },
+      {
+        "slot": 7,
+        "stored_va": "0x00DA0F30",
+        "ghidra_symbol": "FUN_00da0f30",
+        "role": "Decrypt"
+      },
+      {
+        "slot": 8,
+        "stored_va": "0x00DA1920",
+        "ghidra_symbol": "FUN_00da1920",
+        "role": "GetCompatibility stub"
+      }
+    ],
+    "decomp_verification_artifact": "%BCS_GHIDRA_PROJECTS%\\verify_slots_decomp.txt",
+    "buildheader_decomp_artifact": "%BCS_GHIDRA_PROJECTS%\\buildheader_decomp.txt",
+    "sym_at_addr_artifact": "%BCS_GHIDRA_PROJECTS%\\sym_at_addr.txt",
+    "lobby_crypt_engine_symbol_artifact": "%BCS_GHIDRA_PROJECTS%\\lobby_crypt_engine_sym.txt"
+  },
+  "root_cause": {
+    "bug_class": "TYPO_SHIFT_0x800000",
+    "summary": "The catalog stores 0x005Axxxx for every entry in this batch where the real VA in ffxivgame.exe is 0x00DAxxxx (delta = +0x00800000). Earlier transcription appears to have stripped the high half-byte (0x00DA -> 0x005A) when copying function names like FUN_00da1e40 into the address field, possibly via a regex that captured the wrong nibble or by manual two-character truncation.",
+    "evidence": [
+      "LobbyCryptEngine::vftable at 0x01127698 stores 9 dwords whose values are all 0x00DAxxxx and resolve to Ghidra symbols FUN_00daXXXX (slots 0,1,4,6,7 match the 5 broken catalog entries verbatim).",
+      "Decompilation of FUN_00da1590 shows the Test Ticket Data seed copy + __time64 + writes to param_1+0x8 and param_2+0x34/0x74 that the catalog notes for BCS-Y-0007 PrepareHandshake describe verbatim.",
+      "Decompilation of FUN_00da18d0 shows the 'EnctyptPackedPacket' log line and the AND 0xffe0 round-down-to-32 quirk for BCS-Y-0009 Encrypt.",
+      "Decompilation of FUN_00da0f30 shows the matching 32-byte round-down quirk for BCS-Y-0010 Decrypt, calling FUN_0045abb0 (BF_decrypt path).",
+      "Decompilation of FUN_00da2ad0 (46 bytes) shows the BasePacketHeader build sequence (byte 0 = (in & 0xFFFFFF14) | 0x14, byte 1 = 0, byte 2..3 = [this+0x1c], byte 8..11 = _time64), matching lobby_proto_channel.h slot-2 documentation for BCS-Y-0004 BuildHeader.",
+      "DumpSymbolsAtAddress confirms 0x009A1590, 0x009A1670, 0x009A18D0, 0x009A0F30, 0x009A1E40, 0x009A2AD0, 0x005A1590, 0x005A1670, 0x005A18D0, 0x005A0F30, 0x005A2AD0 all have (no symbols), so neither the catalog VA nor the +0x400000 shift lands on the real function. Only the +0x800000 shift (0x00DAxxxx) does."
+    ],
+    "false_positive_uncovered": {
+      "bcs_y_id": "BCS-Y-0006",
+      "catalog_address": "0x005A1E40",
+      "classification": "PASS",
+      "actual_finding": "The catalog validation report pass marked this PASS because Ghidra DOES have a function FUN_005a1e40 (21 bytes) at that VA, but it is an unrelated wrapper that calls (*vtable[0x40])(100) and an indirect dispatch via [result+0x1c]. It is NOT ~LobbyCryptEngine. The real ~LobbyCryptEngine is FUN_00da1e40 at 0x00DA1E40 (18 bytes, sets vftable then frees [this+0x30] via _free per the catalog notes). BCS-Y-0006 needs the same +0x00800000 fix.",
+      "recommended_address": "0x00DA1E40"
+    }
+  },
+  "entries": [
+    {
+      "bcs_y_id": "BCS-Y-0004",
+      "name": "LobbyProtoChannel::ClientPacketBuilder::BuildHeader",
+      "kind": "function",
+      "catalog_address": "0x005A2AD0",
+      "finding": "NOT_FUNCTION_ENTRY; insn= (no instruction at catalog VA at all)",
+      "shift_tried_plus_0x400000": "0x009A2AD0 -> Ghidra: no symbols, no function",
+      "shift_proposed_plus_0x800000": "0x00DA2AD0 -> Ghidra: FUN_00da2ad0 (46 bytes)",
+      "name_evidence": {
+        "decomp_confirms": "FUN_00da2ad0 writes (byte0 & 0xFFFFFF14)|0x14, byte1=0, bytes 2..3 from [this+0x1c], bytes 8..11 from low 32 bits of _time64(NULL) - exact match for the catalog notes",
+        "ghidra_body_bytes": 46
+      },
+      "recommended_address": "0x00DA2AD0",
+      "recommended_action": "FIX_VA: change address from 0x005A2AD0 to 0x00DA2AD0; classification should move from NOT_FUNCTION_ENTRY to TYPO_SHIFT_0x800000 in the validation report; entry is salvageable, no live capture work needed",
+      "confidence": "high"
+    },
+    {
+      "bcs_y_id": "BCS-Y-0007",
+      "name": "LobbyCryptEngine::PrepareHandshake",
+      "kind": "function",
+      "catalog_address": "0x005A1590",
+      "finding": "NOT_FUNCTION_ENTRY; insn= (no instruction at catalog VA at all)",
+      "shift_tried_plus_0x400000": "0x009A1590 -> Ghidra: no symbols, no function",
+      "shift_proposed_plus_0x800000": "0x00DA1590 -> Ghidra: FUN_00da1590 (170 bytes), at slot 1 of LobbyCryptEngine::vftable",
+      "name_evidence": {
+        "decomp_confirms": "FUN_00da1590 calls _strncpy(param_1+0x10, \"Test Ticket Data\", 0x20), __time64 -> param_1+0x8, _strncpy(param_2+0x34, param_1+0x10, 0x40), writes param_1+0x8 to param_2+0x74 - exact match for the catalog notes (Test Ticket Data seed copy to this+0x10, time low 32 bits to this+0x8 and req+0x74)",
+        "vtable_slot_confirms": "Slot 1 of 0x01127698 stores 0x00DA1590"
+      },
+      "recommended_address": "0x00DA1590",
+      "recommended_action": "FIX_VA: change address from 0x005A1590 to 0x00DA1590; classification should move from NOT_FUNCTION_ENTRY to TYPO_SHIFT_0x800000; entry is salvageable",
+      "confidence": "high"
+    },
+    {
+      "bcs_y_id": "BCS-Y-0008",
+      "name": "LobbyCryptEngine::SetSessionKey",
+      "kind": "function",
+      "catalog_address": "0x005A1670",
+      "finding": "NOT_FUNCTION_ENTRY; insn=; interior of FUN_005a1650@0x005A1650",
+      "shift_tried_plus_0x400000": "0x009A1670 -> Ghidra: no symbols, no function",
+      "shift_proposed_plus_0x800000": "0x00DA1670 -> Ghidra: FUN_00da1670 (125 bytes), at slot 4 of LobbyCryptEngine::vftable",
+      "name_evidence": {
+        "decomp_confirms": "FUN_00da1670 logs 'InitializeSecureSession(INIT)', then enters a long body that frees [this+0x30] via _free. The catalog notes (frees old BF_KEY, mallocs 4168 bytes, builds 16-byte key, calls BF_set_key) match the FUN_0045abf0 (BF_set_key) call path documented elsewhere; only the prologue is exposed by the decompiler's first-block summary but the entry point and free-old-key behavior align.",
+        "vtable_slot_confirms": "Slot 4 of 0x01127698 stores 0x00DA1670",
+        "interior_note": "catalog_validation_report.json reported the catalog VA was 'interior of FUN_005a1650' - that surrounding function is unrelated to crypto, not the real SetSessionKey at all"
+      },
+      "recommended_address": "0x00DA1670",
+      "recommended_action": "FIX_VA: change address from 0x005A1670 to 0x00DA1670; classification should move from NOT_FUNCTION_ENTRY to TYPO_SHIFT_0x800000; entry is salvageable",
+      "confidence": "high"
+    },
+    {
+      "bcs_y_id": "BCS-Y-0009",
+      "name": "LobbyCryptEngine::Encrypt",
+      "kind": "function",
+      "catalog_address": "0x005A18D0",
+      "finding": "NOT_FUNCTION_ENTRY; insn= (no instruction at catalog VA at all)",
+      "shift_tried_plus_0x400000": "0x009A18D0 -> Ghidra: no symbols, no function",
+      "shift_proposed_plus_0x800000": "0x00DA18D0 -> Ghidra: FUN_00da18d0 (74 bytes), at slot 6 of LobbyCryptEngine::vftable",
+      "name_evidence": {
+        "decomp_confirms": "FUN_00da18d0 logs 'EnctyptPackedPacket' (sic, the binary has this typo), checks [this+0x30] != 0, then calls FUN_0045ab60(buf, buf, len & 0xffe0). The AND 0xffe0 is exactly the round-down-to-32 quirk the catalog notes call out (= AND 0xFFFFFFE0). FUN_0045ab60 is the BF_encrypt-per-block helper.",
+        "vtable_slot_confirms": "Slot 6 of 0x01127698 stores 0x00DA18D0"
+      },
+      "recommended_address": "0x00DA18D0",
+      "recommended_action": "FIX_VA: change address from 0x005A18D0 to 0x00DA18D0; classification should move from NOT_FUNCTION_ENTRY to TYPO_SHIFT_0x800000; entry is salvageable",
+      "confidence": "high"
+    },
+    {
+      "bcs_y_id": "BCS-Y-0010",
+      "name": "LobbyCryptEngine::Decrypt",
+      "kind": "function",
+      "catalog_address": "0x005A0F30",
+      "finding": "NOT_FUNCTION_ENTRY; insn=MOV EAX,dword ptr [EDX + 0x1c]; interior of FUN_005a0f20@0x005A0F20",
+      "shift_tried_plus_0x400000": "0x009A0F30 -> Ghidra: no symbols, no function",
+      "shift_proposed_plus_0x800000": "0x00DA0F30 -> Ghidra: FUN_00da0f30 (32 bytes), at slot 7 of LobbyCryptEngine::vftable",
+      "name_evidence": {
+        "decomp_confirms": "FUN_00da0f30 checks [this+0x30] != 0, then calls FUN_0045abb0(buf, buf, len & 0xffe0). Identical shape to Encrypt but with BF_decrypt helper FUN_0045abb0. The AND 0xffe0 confirms the 32-byte round-down quirk.",
+        "vtable_slot_confirms": "Slot 7 of 0x01127698 stores 0x00DA0F30",
+        "interior_note": "catalog_validation_report.json reported the catalog VA was 'interior of FUN_005a0f20' - that surrounding function is unrelated, not the real Decrypt"
+      },
+      "recommended_address": "0x00DA0F30",
+      "recommended_action": "FIX_VA: change address from 0x005A0F30 to 0x00DA0F30; classification should move from NOT_FUNCTION_ENTRY to TYPO_SHIFT_0x800000; entry is salvageable",
+      "confidence": "high"
+    }
+  ],
+  "summary": {
+    "total_entries_investigated": 5,
+    "fix_va_recommended": 5,
+    "needs_live_capture": 0,
+    "remove_from_catalog": 0,
+    "uniform_shift": "+0x00800000",
+    "uniform_action": "Update address field of BCS-Y-0004, 0007, 0008, 0009, 0010 by +0x00800000 (catalog 0x005Axxxx -> real VA 0x00DAxxxx); reclassify all 5 in the catalog_validation_report.json report from NOT_FUNCTION_ENTRY to TYPO_SHIFT_0x800000. All function semantics in the catalog notes match the verified decompilations at the corrected VAs."
+  },
+  "ancillary_findings": [
+    {
+      "bcs_y_id": "BCS-Y-0006",
+      "name": "LobbyCryptEngine::~LobbyCryptEngine",
+      "classification": "PASS",
+      "finding": "FALSE_POSITIVE_PASS: catalog address 0x005A1E40 happens to land on an unrelated 21-byte function (FUN_005a1e40) that calls (*vtable[0x40])(100) and an indirect dispatch via [result+0x1c]. This is NOT the destructor. The real ~LobbyCryptEngine is FUN_00da1e40 at 0x00DA1E40 (18 bytes, sets *param_1 = LobbyCryptEngine::vftable then _free(param_1[0xc])), confirmed by both the vtable slot 0 dump and decompilation. BCS-Y-0006 needs the same +0x00800000 correction as the other 5 entries.",
+      "recommended_address": "0x00DA1E40",
+      "recommended_action": "FIX_VA: change address from 0x005A1E40 to 0x00DA1E40; downgrade the catalog validation report pass classification from PASS to TYPO_SHIFT_0x800000; out-of-scope for the not function entry investigation pass task (which only covers NOT_FUNCTION_ENTRY) but should be flagged for the next catalog cleanup pass"
+    }
+  ],
+  "open_questions": [
+    "Are there other entries in the catalog that share the +0x800000 typo pattern but PASSED the catalog validation report pass by coincidence (like BCS-Y-0006)? A targeted scan over all entries whose address starts with 0x005A or 0x009A could surface them. Symbols.json appears to use 0x009Axxxx for some lobby entries (BCS-Y-0019 through 0025) which the catalog validation report pass PASSED at face value - these would need re-verification against vtable / RTTI evidence rather than just function-existence to confirm they are not the same kind of false-positive."
+  ],
+  "constraints_honored": [
+    "No symbols.json edit",
+    "No appender script",
+    "No commit",
+    "Draft manifest only",
+    "ASCII only",
+    "No em dashes"
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "generated": "2026-08-04",
+  "gameVersion": "1.23b",
+  "status": "decomp_observed",
+  "imageBase": "0x00400000",
+  "addressConvention": "absolute Ghidra VA",
+  "scope": "Client-side event block-execution state: what a 0x0130 RunEventFunction needs in order to run, what a 0x0131 EndEvent actually tears down, and the shared event-command queue both are submitted through. Opened against a live defect where ending an event server-side while a client-function call is outstanding leaves the client unable to render any later event until relog.",
+  "evidenceLog": "tools/ghidra/logs/evt_block_execution_state.txt",
+  "method": [
+    "Read-only headless Ghidra via tools/ghidra/run-headless.ps1: DumpFunctionDecomp.java, DumpFunctionListing.java, DumpMemRange.java, FindAllReferencesToAddress.java, FindSymbolByName.java.",
+    "Entered from the dispatch chain in manifests/event_dialog_subsystem.json; walked parser -> receiver ctor -> submit wrapper -> command queue -> per-frame drain -> receiver Apply -> event-context method -> event vtable.",
+    "Class identity from RTTI COL -> TypeDescriptor -> name string over 0x0117208C..0x011722F0 and 0x012D7700..0x012D7940."
+  ],
+  "eventCommandQueue": {
+    "summary": "0x012F, 0x0130, 0x0131 and two sibling command classes all submit through one shared FIFO. Submission is not execution.",
+    "queueLocator": "*(*(luaActorImplSubObject + 0x220))->[+0x04]->[+0xF4]; the +0x220 hop is FUN_00CC7510 (thunk to FUN_00CD7910, 'return this + 0x220')",
+    "queueLayout": {
+      "+0x04": "block-pointer array (ring of 4-entry blocks)",
+      "+0x08": "block capacity",
+      "+0x0C": "head offset",
+      "+0x10": "pending count - the submit gate reads this"
+    },
+    "submitWrappers": {
+      "0x012F": "FUN_007858C0, called by parser FUN_0076C0D0",
+      "0x0130": "FUN_007859B0, called by parser FUN_0076C220",
+      "0x0131": "FUN_00785AA0, called by parser FUN_0076C3B0",
+      "sibling_a": "FUN_00785BF0, called by FUN_0076C690",
+      "sibling_b": "FUN_0076C720, inlined variant of the same shape"
+    },
+    "submitSemantics": "if queue[+0x10] != 0, skip the inline attempt entirely; else run the per-class precheck and, on SUCCESS, FUN_00794250 = vtable[2] Receive then vtable[3] Apply. If the inline attempt did not complete, clone via vtable[1] (FUN_00794240) and push_back via FUN_00785570 -> FUN_007238B0. Read off the FUN_007859B0 listing, 0x007859E3..0x00785A7D.",
+    "prechecks": {
+      "0x012F": "FUN_0089D220 - unconditional SUCCESS",
+      "0x0131": "FUN_0089D170 - unconditional SUCCESS",
+      "0x0130": "FUN_0089E3F0 -> FUN_0089E320 - unpacks luaParams at packet+0x49 through StartServerOrderEventFunctionChecker::UnpackerFunctor (FUN_008A0870); SUCCESS only when the resulting pending-target vector is empty"
+    },
+    "drain": {
+      "function": "FUN_005836D0",
+      "calledFrom": "FUN_00578970 LuaFrameTick (BCS-Y-1701) <- FUN_004DA680 Application_FrameTick (BCS-Y-1711), every frame",
+      "semantics": "pop-front loop running FUN_00794250 per head command. Status DAT_012C3120 (Receive failed) BREAKS the loop and leaves the command at the head. Completed commands are destroyed, capped at 0x20 per frame.",
+      "consequence": "head-of-line blocking: a head command whose Receive never succeeds wedges every later event command, and a non-empty queue means no command is attempted inline."
+    }
+  },
+  "eventExecutionContext": {
+    "locator": "actor + 0xF8",
+    "evidence": "every EndEvent / RunEventFunction entry thunk does MOV ECX,[ECX+0xF8] before tail-calling the 0x0089xxxx implementation: FUN_006E1080, FUN_006E10A0, FUN_006E10C0, FUN_006E10E0, FUN_006E1140",
+    "fields": {
+      "+0x08": "client-side block-event slot, ExecutionClientSideBlockEvent* - the slot RunEventFunction resumes",
+      "+0x0C": "server-order block-event slot, ExecutionClientSideBlockEvent* - the slot whose start path emits the c2s EventStart",
+      "+0x1C": "block-ended flag",
+      "+0x1D": "notified flag",
+      "+0x1E": "the KickReceiver Branch-A inhibitor byte read by FUN_006E11D0; written by FUN_008947C0 (callers FUN_00703F60, FUN_006F94D0)"
+    },
+    "kickTargetState": {
+      "+0x128": "active/previous kick target actor id; when +0x12C is NO_ACTOR and this field is non-NO_ACTOR, KickReceiver follows its Branch-B2 target-check path",
+      "+0x12C": "staged/current kick target actor id; when non-NO_ACTOR, KickReceiver follows Branch A",
+      "sentinel": "NO_ACTOR = 0xE0000000 from DAT_0130C778",
+      "branchSummary": "KickReceiver slot 2 tests [+0x12C] first. With an established current target it resolves that id and gates on actor[+0x5C] plus FUN_006E11D0. With no current target it tests [+0x128]; a previous target uses Branch B2 and the same +0x5C gate, while a cleared pair takes Branch B1 and stores a primary target only when receiver[+0x80] is set.",
+      "sourceRefs": [
+        "xivl-decomp:docs/event/kick-order-event-receiver.md"
+      ]
+    },
+    "eventStart": {
+      "function": "FUN_00897310",
+      "callers": [
+        "FUN_00898480",
+        "FUN_008984C0",
+        "FUN_008985A0",
+        "FUN_00898680"
+      ],
+      "semantics": "allocates a 0x2C-byte ExecutionClientSideBlockEvent (FUN_00896680), deletes whatever held the target slot, installs it. Mode DAT_012D7C40 targets ctx+0x08 and arms locally via FUN_008962C0; mode DAT_012D7C41 targets ctx+0x0C and emits the c2s EventStart through FUN_0075E3A0 / FUN_0075E510 (BCS-Y-0429 / BCS-Y-0430)."
+    }
+  },
+  "executionClientSideBlockEvent": {
+    "rttiName": "Application::Lua::Script::Client::Event::ExecutionClientSideBlockEvent",
+    "vftable": "0x01057080",
+    "rttiCol": "0x0117260C",
+    "instanceSize": "0x2C",
+    "ctor": "FUN_00896680",
+    "dtor": "FUN_008966F0 - reverts to ExecutionBlockEventBase::vftable",
+    "fields": {
+      "+0x04": "owning context sub-object pointer",
+      "+0x1C": "end-notified-once latch, set by FUN_008934A0",
+      "+0x1D": "abort-notified-once latch, set by FUN_00893520 / FUN_008935B0 / FUN_00893800",
+      "+0x20": "'a server order has already executed against this event' - set to 1 by FUN_00896F70 on the successful RunEventFunction path",
+      "+0x21": "armed flag - set by FUN_008962C0, cleared by FUN_00893C80 / FUN_00893D00",
+      "+0x24": "unpacked-order payload pointer used by FUN_00896950",
+      "+0x28": "ClientOrderEventWaitingResumeChecker* - non-null exactly while the Lua event coroutine is suspended awaiting a server client-order"
+    },
+    "vtableSlots": {
+      "3 (+0x0C)": "FUN_00892670 - 'return 0'. Hard false; this is the predicate the name-matched EndEvent handlers test before freeing the event.",
+      "4 (+0x10)": "FUN_00892680 - 'return this[+0x28] != 0'. The RunEventFunction execution gate.",
+      "5 (+0x14)": "FUN_00893160 - allocates a 12-byte ClientOrderEventWaitingResumeChecker via FUN_00899490",
+      "6 (+0x18)": "FUN_00892690 - 'this[+0x28] = arg'",
+      "7 (+0x1C)": "FUN_008926A0 - canceller: if this[+0x28] != 0 then checker[+0x08]=1, checker[+0x09]=arg, checker[+0x04]=0, this[+0x28]=0",
+      "8 (+0x20)": "FUN_00896950 - runs the unpacked server order via FUN_008962C0"
+    },
+    "slotAttributionEvidence": "FindAllReferencesToAddress on 0x00892670 / 0x00892680 / 0x00892690 / 0x008926A0 returns exactly one DATA reference each, at 0x0105708C / 0x01057090 / 0x01057098 / 0x0105709C - all inside this vftable and nowhere else."
+  },
+  "clientOrderEventWaitingResumeChecker": {
+    "rttiName": "Application::Lua::Script::Client::Event::ExecutionClientSideBlockEvent::ClientOrderEventWaitingResumeChecker",
+    "vftable": "0x01056DC8",
+    "rttiCol": "0x0117208C",
+    "typeDescriptor": "0x012D7740",
+    "instanceSize": "0x0C",
+    "ctor": "FUN_00899490",
+    "implements": "Component::Lua::GameEngine::ResumeCheckerInterface",
+    "fields": {
+      "+0x00": "vftable",
+      "+0x04": "owning ExecutionClientSideBlockEvent*",
+      "+0x08": "resume-now flag",
+      "+0x09": "resume result byte"
+    },
+    "role": "the object the Lua VM polls to decide whether a suspended event coroutine may resume; its presence in ExecutionClientSideBlockEvent+0x28 is the 'client-function call in flight' state"
+  },
+  "runEventFunction_0x0130": {
+    "parser": "FUN_0076C220, LuaActorImpl::vftable[57] via trampoline FUN_00575040",
+    "packetLayout": {
+      "+0x00": "u32 actor id",
+      "+0x04": "u32 actor id",
+      "+0x08": "u8 event type",
+      "+0x09": "eventName",
+      "+0x29": "functionName",
+      "+0x49": "luaParams, 0x40 bytes"
+    },
+    "receiverClass": "Application::Lua::Script::Client::Command::Network::StartServerOrderEventFunctionReceiver",
+    "receiverCtor": "FUN_0089EDB0",
+    "receiverSize": "0xDC",
+    "receiveSlot2": "FUN_0089EB20 -> FUN_0089E8E0, draining the receiver's pending-target vector at +0xCC. The ctor zeroes that vector, so a freshly parsed packet returns SUCCESS immediately.",
+    "applySlot3": "FUN_0089E260 -> FUN_006E1140 -> FUN_00896F70",
+    "executionGate": {
+      "function": "FUN_00896F70",
+      "condition": "actor resolvable (FUN_00CC7190 or FUN_00CC7A50) AND actor[+0x5C] != 0 AND ctx[+0x08] != NULL AND ctx[+0x08]->vtable[4]() != 0",
+      "vtable4Meaning": "ExecutionClientSideBlockEvent+0x28 != 0 - the client's event coroutine is suspended awaiting a server client-order",
+      "onPass": "sets ctx[+0x08][+0x20] = 1, then FUN_00896950 -> FUN_008962C0 resumes the coroutine with the packet's functionName and luaParams and re-arms the event (+0x21 = 1)",
+      "onFail": "falls through to FUN_00894090 -> FUN_0075E670, which sends c2s opcode 0x012E at size 0x68 through FUN_004D6D30"
+    },
+    "pendingTargetResolution": {
+      "function": "FUN_0089E8E0",
+      "vector": "receiver sub-object at +0xCC; entries are 8 bytes each",
+      "phase1": "Forward scan calls FUN_00CC7A50, then FUN_00CC7180, then FUN_00CC78C0 for each entry; the tracked source leaves the third call's semantic role unresolved.",
+      "phase3": "Backwards scan calls FUN_00CC7A50 and checks FUN_00CC72A0 before shifting one 8-byte entry and decrementing the vector end, so dispatch drains from the back (LIFO).",
+      "result": "An empty vector returns the success byte; unresolved entries leave the vector non-empty and return the failure byte, allowing the event command to remain pending.",
+      "sourceRefs": [
+        "xivl-decomp:docs/event/start-event-fn-receiver.md"
+      ]
+    }
+  },
+  "endEvent_0x0131": {
+    "parser": "FUN_0076C3B0, LuaActorImpl::vftable[58] via trampoline FUN_00575050",
+    "packetLayoutAsClientReadsIt": {
+      "+0x00": "u32 actor id, via FUN_00CC9320",
+      "+0x04": "u8 teardown-variant selector, stored raw into receiver+0x0C by FUN_0078DDA0 (bare byte store, no validation)",
+      "+0x08": "u8 event type, stored raw into receiver+0x0D by FUN_0078DE00",
+      "+0x09": "eventName"
+    },
+    "layoutNote": "The client consumes only one byte at +0x04, so a sender using that layout feeds an actor-id low byte into the teardown-variant selector.",
+    "receiverClass": "Application::Lua::Script::Client::Command::Network::EndClientOrderEventReceiver",
+    "receiverCtor": "FUN_0089D070",
+    "receiveSlot2": "FUN_0089D200 - unconditional SUCCESS writer, so an EndEvent never wedges the queue",
+    "applySlot3": "FUN_0089E2D0 -> FUN_008A13A0",
+    "dispatchStage1": {
+      "function": "FUN_008A13A0",
+      "key": "*(byte*)(receiver + 0x0D) = packet+0x08 event type",
+      "tables": "byte table at 0x008A149C (102 entries), dword table at 0x008A1464 (14 entries)",
+      "bands": {
+        "0..5": "invoke - all six slots are the identical body 'MOV ECX,[EAX+0x18]; JMP FUN_008A09E0'",
+        "50..55": "cleanup - CALL FUN_008A10C0",
+        "everything else": "RET, no-op"
+      }
+    },
+    "dispatchStage2": {
+      "function": "FUN_008A09E0",
+      "key": "*(byte*)(receiver + 0x0C) = packet+0x04 selector byte; anything above 5 falls to a bare RET",
+      "jumpTable": "0x008A0A3C",
+      "cases": {
+        "0": "0x008A09EF -> JMP FUN_006E1080 -> FUN_008934A0",
+        "1": "0x008A0A01 -> JMP FUN_006E10A0 -> FUN_00893520",
+        "2": "0x008A0A38 -> RET, no-op",
+        "3": "0x008A0A38 -> RET, no-op",
+        "4": "0x008A0A13 -> JMP FUN_006E10C0 -> FUN_008935B0",
+        "5": "0x008A0A25 -> CALL FUN_006E10E0 -> FUN_00893800"
+      }
+    },
+    "teardownVariants": [
+      {
+        "selector": 0,
+        "function": "FUN_008934A0",
+        "requiresEventNameMatch": true,
+        "nameCompare": "FUN_00445D20, std::string equality",
+        "actions": "ctx[+0x08]->vtable[7](0) cancels the pending call (+0x28 = 0, checker resumed with result 0); +0x1C latch, then vtable[2] = FUN_00893D00 closes the scene; then tests vtable[3]",
+        "freesEventSlot": false,
+        "whyNot": "the free is gated on vtable[3] = FUN_00892670, a hard 'return 0'. ctx[+0x08] is left non-null on a dead event with +0x28 == 0."
+      },
+      {
+        "selector": 1,
+        "function": "FUN_00893520",
+        "requiresEventNameMatch": true,
+        "actions": "as selector 0 but cancels with arg 1 and latches +0x1D",
+        "freesEventSlot": false,
+        "whyNot": "same vtable[3] gate"
+      },
+      {
+        "selector": 4,
+        "function": "FUN_008935B0",
+        "requiresEventNameMatch": true,
+        "actions": "notify only; additionally requires ctx[+0x08][+0x20] != 0",
+        "freesEventSlot": false
+      },
+      {
+        "selector": 5,
+        "function": "FUN_00893800",
+        "requiresEventNameMatch": false,
+        "actions": "deletes and nulls ctx[+0x0C] and clears ctx[+0x1C] / [+0x1D]. For ctx[+0x08]: if [+0x20] == 1 it clears [+0x22] and notifies only; otherwise it notifies and, when FUN_00CD0980() != 1, deletes the event and sets ctx[+0x08] = 0.",
+        "freesEventSlot": "conditional",
+        "note": "the only variant that can free the client-side block-event slot, and the only one that does not require the event name to match"
+      }
+    ]
+  },
+  "defectModel": {
+    "confirmedFromBinary": [
+      "Pending-call state and scene teardown are separate: EndEvent selectors 0 and 1 cancel ExecutionClientSideBlockEvent+0x28 and run the scene-close path, but can never free ctx[+0x08], because the free is gated on a vtable slot that hard-returns 0.",
+      "A 0x0130 runs only when ctx[+0x08] is non-null AND ctx[+0x08][+0x28] is non-null. After a selector-0 or selector-1 EndEvent, +0x28 is 0, so a later 0x0130 fails the gate and never invokes its Lua function.",
+      "The event execution context lives at actor+0xF8, not on the zone, which matches zone changes not clearing the condition.",
+      "The c2s EventStart emit chain (BCS-Y-0426..0431) never touches actor+0xF8, which is why input, targeting and event-start emission keep working while event execution does not."
+    ],
+    "notConfirmed": [
+      "Whether the second 0x0130 dies at the FUN_00896F70 gate or earlier at the command-queue gate (queue[+0x10] != 0). Both are live drop sites.",
+      "Whether the Lua event script re-enters FUN_00897310 on a later click, which would reinstall ctx[+0x08] and mask the stale slot.",
+      "The call site that installs the checker into +0x28; vtable slot 6 is only reachable through an indexed virtual call."
+    ],
+    "discriminator": "FUN_00896F70's failure branch sends c2s opcode 0x012E at size 0x68. A 104-byte 0x012E arriving shortly after an ignored 0x0130 puts the drop at the FUN_00896F70 gate; nothing arriving puts it upstream, at the command-queue gate."
+  },
+  "serverRecommendation": {
+    "primary": "EndEvent +0x04 is a one-byte teardown-variant selector, not an actor id. Selector 5 routes to FUN_00893800, the only variant that unconditionally frees ctx[+0x0C], can free ctx[+0x08], and does not require the event name to match.",
+    "caveat": "FUN_00893800 skips the ctx[+0x08] free when that event's +0x20 is 1, which FUN_00896F70 sets on every successful RunEventFunction. For an event that already rendered a client-function call, selector 5 frees ctx[+0x0C] but may leave ctx[+0x08] installed.",
+    "fallbackIfNoEscape": "if selector 5 does not clear the condition in practice, no server-sendable escape exists for the post-render case, and the server should refuse to end an event with a client-function call in flight rather than releasing the player into a broken state."
+  },
+  "proposedBcsYEntries": [
+    "EventCommandQueue_PushBack_FUN_007238B0",
+    "EventCommandQueue_Drain_FUN_005836D0",
+    "EventCommandSubmit_RunEventFunction_FUN_007859B0",
+    "EventCommandSubmit_EndEvent_FUN_00785AA0",
+    "EventCommandSubmit_KickEvent_FUN_007858C0",
+    "RunEventFunction_Executor_FUN_00896F70",
+    "EndEvent_TypeDispatcher_FUN_008A13A0",
+    "EndEvent_VariantDispatcher_FUN_008A09E0",
+    "EndEvent_Teardown_NameMatched_FUN_008934A0",
+    "EndEvent_Teardown_Unconditional_FUN_00893800",
+    "ExecutionClientSideBlockEvent_vftable_0x01057080",
+    "ExecutionClientSideBlockEvent_PendingCallPredicate_FUN_00892680",
+    "ExecutionClientSideBlockEvent_NeverFinished_FUN_00892670",
+    "ExecutionClientSideBlockEvent_CancelPendingCall_FUN_008926A0",
+    "ClientOrderEventWaitingResumeChecker_ctor_FUN_00899490",
+    "EventExecution_StartBlockEvent_FUN_00897310"
+  ]
+}

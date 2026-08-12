@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Enumerate StatusBase's 11 RTTI base classes via Base Class Array dump at 0x0115F858. Closes client-architecture 'The LuaControl hierarchy is the runtime surface' section's StatusBase composition. Major architectural discovery: the +0x60 secondary vftable observed earlier derivatives (StatusBase + 9 MI ActorBase derivatives) is LuaGlobalTentativeControl::vftable - an engine-side class previously unidentified.",
+  "method": {
+    "step1": "Reuse the BCA dump (already had 11 BCD addresses) - 3 BCDs already known (StatusBase self, LuaControl, LuaObject). 8 unknown BCDs need TD-pointer extraction.",
+    "step2": "Dump the 8 unknown BCDs (28 bytes each) via run_c81_statusbase_bases.bat -> c81_statusbase_bcds.txt. Extract TD pointers: 5 of 8 already point to known TDs (3x LgeBase chain at offset 4, 3x at offset 100 - DIAMOND). 2 NEW TDs (0x01270964 + 0x012c0a28) + 1 confirmed self TD (0x012c31f8).",
+    "step3": "Dump 3 TD name strings (80-100 bytes each) via run_c81_tds.bat -> c81_statusbase_tds.txt. Decode MSVC name mangling in Python.",
+    "step4": "Catalog 3 BCS-Y RTTI entries (ActorBase TD, StatusBase TD, LuaGlobalTentativeControl TD) + amend BCS-Y-1395 (StatusBase ctor), BCS-Y-1408 (ActorBase ctor), BCS-Y-1407 (LuaManyTentativeControlCreator ctor)."
+  },
+  "key_findings": [
+    "**StatusBase's 11 RTTI base classes ENUMERATED**: 4 primary chain + 3 offset-4 (LuaControl secondary) + 1 at offset 96 + 3 offset-100 (LuaGlobalTentativeControl secondary, DIAMOND).",
+    "  - Primary chain (offset 0, 4 tiers): StatusBase <- ActorBase <- LuaControl <- LuaObject. Confirms client-architecture 'The LuaControl hierarchy is the runtime surface' section's 3+-tier Lua control hierarchy.",
+    "  - Secondary chain at offset 4 (inherited via LuaControl): LgeBase <- LgeCommonMemoryAllocator <- LgeBasicMemoryAllocator. SAME chain as LuaControl's secondary.",
+    "  - Secondary chain at offset 96 (0x60): LuaGlobalTentativeControl (NEW class, BCS-Y-1498).",
+    "  - Secondary chain at offset 100 (0x64): SAME Lge chain repeats via LuaGlobalTentativeControl's own MI to Lge. **DIAMOND INHERITANCE** - StatusBase has 2 paths to LgeBase.",
+    "**+0x60 SECONDARY VFTABLE IDENTIFIED as LuaGlobalTentativeControl::vftable** - CRITICAL architectural anchor that was unidentified earlier. The class is the per-instance 'tentative control state' that the LuaManyTentativeControlCreator factory (BCS-Y-1407) creates - likely a per-class registry slot for ScriptControl(ActorBase) typed instances managed by the LuaControl runtime.",
+    "**3 NEW BCS-Y RTTI Type Descriptor entries**: ActorBase TD (0x01270964), StatusBase TD (0x012C31F8), LuaGlobalTentativeControl TD (0x012C0A28)."
+  ],
+  "new_bcsy_entries_summary": {
+    "rtti_type_descriptors": 3,
+    "amendments": 3,
+    "total_bcsy_added": 3,
+    "id_range": "BCS-Y-1496..BCS-Y-1498"
+  },
+  "base_classes": [
+    "BCD #1 (self, offset 0): Application::Lua::Script::Client::Control::StatusBase (BCS-Y-1497 TD, BCS-Y-1395 ctor)",
+    "BCD #2 (depth=5, offset 0): Application::Lua::Script::Client::Control::ActorBase (BCS-Y-1496 TD, BCS-Y-1408 ctor)",
+    "BCD #3 (depth=4, offset 0): Component::Lua::GameEngine::LuaControl (known, BCS-Y-1393 ctor)",
+    "BCD #4 (depth=3, offset 0): Component::Lua::GameEngine::LuaObject (BCS-Y-1476)",
+    "BCD #5 (offset 4): Component::Lua::GameEngine::LgeBase (BCS-Y-1477)",
+    "BCD #6 (offset 4): Component::Lua::GameEngine::LgeCommonMemoryAllocator (BCS-Y-1478)",
+    "BCD #7 (offset 4): Component::Lua::GameEngine::LgeBasicMemoryAllocator (BCS-Y-1479)",
+    "BCD #8 (depth=3, offset 96): Component::Lua::GameEngine::LuaGlobalTentativeControl (BCS-Y-1498)",
+    "BCD #9 (offset 100): Component::Lua::GameEngine::LgeBase (DIAMOND, BCS-Y-1477 reused)",
+    "BCD #10 (offset 100): Component::Lua::GameEngine::LgeCommonMemoryAllocator (DIAMOND, BCS-Y-1478 reused)",
+    "BCD #11 (offset 100): Component::Lua::GameEngine::LgeBasicMemoryAllocator (DIAMOND, BCS-Y-1479 reused)"
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1395", "addition": "Full 11-base RTTI enumeration with the +0x60 vftable identified as LuaGlobalTentativeControl::vftable"},
+    {"id": "BCS-Y-1408", "addition": "Self Type Descriptor at 0x01270964 cataloged as BCS-Y-1496"},
+    {"id": "BCS-Y-1407", "addition": "Related class LuaGlobalTentativeControl identified - likely the per-class tentative control state base"}
+  ],
+  "deferred_followups": [
+    "Find LuaGlobalTentativeControl ctor + vftable VAs (via FindSymbolByName).",
+    "Decomp LuaGlobalTentativeControl ctor when found - understand the per-class state structure.",
+    "Verify the DIAMOND inheritance hypothesis by dumping LuaGlobalTentativeControl's own RTTI BCA - if it has its own Lge chain, that confirms diamond.",
+    "Catalog the 9 MI ActorBase-derived classes' +0x60 vftable writes as LuaGlobalTentativeControl::vftable references (currently they're just labeled by their primary class vftable earlier).",
+    "Test architectural hypothesis: does EVERY ActorBase-derived MI class write LuaGlobalTentativeControl::vftable at +0x60? If yes, the +0x60 slot IS the tentative-control hook for the Lua-bridge."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1485 -> 1488 (+3 BCS-Y RTTI Type Descriptor entries)",
+  "files_changed": [
+    "manifests/symbols.json: +3 entries (BCS-Y-1496..1498), 3 amendments (BCS-Y-1395, BCS-Y-1408, BCS-Y-1407)",
+    "manifests/statusbase_base_classes.json (NEW, this file)",
+    "tools/ghidra/logs/c81_statusbase_bcds.txt (NEW)",
+    "tools/ghidra/logs/c81_statusbase_tds.txt (NEW)"
+  ]
+}

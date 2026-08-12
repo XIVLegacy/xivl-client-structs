@@ -1,0 +1,195 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-18",
+  "pass": "remaining_wire_confirmed_receivers",
+  "source": [
+    "%BCS_GHIDRA_PROJECTS%\\receives_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\helpers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\deeper_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\vtable_slots.txt"
+  ],
+  "scope": "The 9 wire-confirmed inbound receivers that receiver_apply_findings_wire_derived.json did not cover, decomped to identify apply patterns and any actor-state writes.",
+  "summary": "Mixed structural findings; no new chain-key actor writes added to the catalog. The 9 receivers split into 4 categories: (1) PURE-NATIVE already-documented [0x0195 HateStatus per BCS-Y-0278, SendLog 0x0157..0x016A per BCS-Y-0238]; (2) Event-condition / deferred-apply [0x012E SetTalkEventCondition, 0x016B SetNoticeEventCondition, 0x016F SetPushEventConditionWithCircle, 0x0131 EndClientOrderEvent - all construct event-condition objects (NoticeBlock/TalkBlock/PushBlock/etc.) that are queued for deferred processing rather than directly mutating actor state]; (3) Apply-chain Lua fire only [0x00D3 SetTargetTimeReceiver fires _onReceiveTimingPacket from FUN_008A0370 on the expired/zero-time path - DUAL EVIDENCE for existing slot-61 binding]; (4) Buffer-copy pattern [0x0133 UserDataReceiver memcpys wire bytes into a buffer at receiver+0x14 for later Lua-side consumption; no actor writes]. The 'low-hanging fruit' for direct CharaBase/PlayerBase/NpcBase writes was already captured by the receiver-apply-findings pass's coverage of the 7 heaviest wire-confirmed receivers.",
+  "vtableLayouts": {
+    "EndClientOrderEventReceiver": {
+      "vftableVa": "0x01057348",
+      "shape": "5-slot+ (slots 0..4 + RTTI at 0x14)",
+      "slots": {
+        "0x00": "0x008A1100 (likely scalar deleting destructor)",
+        "0x04": "0x0089D180 (slot1Fn per receiver_opcode_map; allocates 100B + FUN_0089D070 ctor)",
+        "0x08": "0x0089D200",
+        "0x0C": "0x0089E2D0",
+        "0x10": "0x0089D210",
+        "0x14": "RTTI_Complete_Object_Locator"
+      },
+      "notes": "The receiver-apply-findings pass decomp: slot1Fn FUN_0089D180 calls FUN_009D1B35 (malloc 100B) then FUN_0089D070 which sets vftable + copies 3 bytes (receiver+8/+0xc/+0xd) into the new object. Pattern is the 5-slot factory wrap. NO direct actor-state writes in this path; the resulting EndClientOrderEventReceiver object is presumably queued for deferred processing."
+    },
+    "SetNoticeEventConditionReceiver": {
+      "vftableVa": "0x010573AC",
+      "shape": "2-slot (slot 0 dtor + slot 1 Receive + RTTI at 0x8) PLUS adjacent secondary vftable at +0xC..0x14",
+      "slots": {
+        "0x00": "0x008A1200 (likely scalar deleting destructor)",
+        "0x04": "0x0089D980 (Receive entry - the slot1Fn from receiver_opcode_map)",
+        "0x08": "RTTI_Complete_Object_Locator",
+        "0x0C": "0x008A1220 (secondary-vtable dtor variant)",
+        "0x10": "0x0089DB00 (same function as SetPushEventConditionWithCircleReceiver's slot 1)",
+        "0x14": "RTTI_Complete_Object_Locator (secondary)"
+      },
+      "notes": "True 2-slot Receive shape; slot1Fn IS the apply entry. The apply does an ActorBase->DirectorBase RTTI check and routes to either FUN_006F1380 (DirectorBase path) or FUN_006F2E80 (non-DirectorBase fallback). Both paths construct a NoticeBlock or NoticeNonBlock event-condition object (FUN_00892770 or FUN_008927F0). NO direct actor-state writes."
+    },
+    "SetTalkEventConditionReceiver": {
+      "vftableVa": "0x010573DC",
+      "shape": "2-slot (slot 0 dtor + slot 1 Receive + RTTI at 0x8)",
+      "slots": {
+        "0x00": "0x008A1280",
+        "0x04": "0x0089DF60 (Receive entry)",
+        "0x08": "RTTI_Complete_Object_Locator",
+        "0x0C": "0x008A12A0",
+        "0x10": "0x008A2DF0",
+        "0x14": "RTTI"
+      },
+      "notes": "Apply does an unchecked RTTI cast to NpcBase, then always calls FUN_006F29B0 which constructs either a TalkBlock or TalkNonBlock event-condition object via FUN_00892D00 / FUN_00892E30. NO direct actor-state writes."
+    },
+    "SetPushEventConditionWithCircleReceiver": {
+      "vftableVa": "0x010573B8",
+      "shape": "2-slot (overlaps with SetNoticeEventConditionReceiver's secondary vftable region; multi-inheritance layout)",
+      "slots": {
+        "0x00": "0x008A1220",
+        "0x04": "0x0089DB00 (Receive entry)",
+        "0x08": "RTTI",
+        "0x0C": "0x008A1240",
+        "0x10": "0x0089DC90",
+        "0x14": "RTTI"
+      },
+      "notes": "Receive calls FUN_006F2B70 which builds a push-block event-condition record (FUN_006F2310 routes to FUN_00892980 or FUN_00892B40 based on a marker byte). NO direct actor-state writes."
+    },
+    "UserDataReceiver": {
+      "vftableVa": "0x01057488",
+      "shape": "6-slot",
+      "slots": {
+        "0x00": "0x008A15E0",
+        "0x04": "0x008A2A20 (slot1Fn per receiver_opcode_map; tiny 16-byte getter wrapping FUN_0089F070 and returning result+8)",
+        "0x08": "0x0089E080",
+        "0x0C": "0x0089E090",
+        "0x10": "0x0089E0C0",
+        "0x14": "0x0089F070 (the actual factory; allocates 0x24 bytes, sets UserDataReceiver::vftable on the new object, memcpys wire bytes into the new object's buffer at +0x14)"
+      },
+      "notes": "True 6-slot pattern - slot1Fn (0x008A2A20) is a getter that calls FUN_0089F070 (slot 5 / the ctor at offset 0x14) and returns offset+8 within the constructed object. FUN_0089EFA0 (called by FUN_0089F070) sets UserDataReceiver::vftable + memcpys wire payload bytes into a buffer at constructed_obj+0x14. The Lua script later reads this buffer via _onReceiveDataPacket (slot 59 binding already in bridge)."
+    }
+  },
+  "findingsByOpcode": {
+    "0x00d3": {
+      "receiverName": "SetTargetTimeReceiver",
+      "category": "apply_chain_lua_fire_only",
+      "receiveVa": "0x008A04B0",
+      "receiveBodyBytes": 400,
+      "vtableShape": "2-slot",
+      "applyChainBehavior": "Reads param_1+4 / +8 / +0xc (time fields + actor handle). Computes elapsed time vs current via FUN_0075BDA0 get-current-time. Two paths: (A) FUN_008A0700 sets up a Timer object (vftable Timer; param_4/param_5 stored at offsets 0xe/0xf) for future expiration; (B) FUN_008A0370 fires _onReceiveTimingPacket Lua callback immediately on the expired-or-zero path.",
+      "actorWrites": [],
+      "luaCallbacksFired": [
+        {
+          "luaName": "_onReceiveTimingPacket",
+          "fireSite": "FUN_008A0370 calls FUN_00447260(\"_onReceiveTimingPacket\", DAT_00f67298) + FUN_00CC7A90(param_2, local_60, local_a0) on the expired/zero-time path",
+          "bridgeStatus": "DUAL EVIDENCE for existing slot-61 binding (LuaActorImpl::vftable_slot61_onReceiveTimingPacket). The receiver-apply-findings pass's apply-chain decomp confirms the actual fire site is inside the receiver's apply helper, not a direct slot dispatch."
+        }
+      ]
+    },
+    "0x012e": {
+      "receiverName": "SetTalkEventConditionReceiver",
+      "category": "event_condition_deferred",
+      "receiveVa": "0x0089DF60",
+      "applyHelperVa": "0x006F29B0 -> 0x00892D00 / 0x00892E30",
+      "vtableShape": "2-slot",
+      "applyChainBehavior": "ActorBase->NpcBase RTTI cast (return unchecked), then FUN_006F29B0 routes by marker byte to FUN_00892D00 (constructs TalkBlock) or FUN_00892E30 (constructs TalkNonBlock). The constructed event-condition object is queued for deferred processing elsewhere; nothing in this apply chain writes to actor state directly.",
+      "actorWrites": [],
+      "luaCallbacksFired": []
+    },
+    "0x0131": {
+      "receiverName": "EndClientOrderEventReceiver",
+      "category": "event_condition_deferred",
+      "receiveVa": "0x0089D180",
+      "applyHelperVa": "0x0089D070",
+      "vtableShape": "5-slot+",
+      "applyChainBehavior": "Allocates 100 bytes via FUN_009D1B35 malloc, then FUN_0089D070 sets EndClientOrderEventReceiver::vftable on the new object and copies receiver+8/+0xc/+0xd into the new object. Constructor pattern - no direct actor-state writes.",
+      "actorWrites": [],
+      "luaCallbacksFired": []
+    },
+    "0x0133": {
+      "receiverName": "UserDataReceiver",
+      "category": "buffer_copy",
+      "receiveVa": "0x008A2A20",
+      "applyHelperVa": "0x0089F070 -> 0x0089EFA0",
+      "vtableShape": "6-slot",
+      "applyChainBehavior": "Tiny wrapper at slot 1 (16B) calls slot 5 factory FUN_0089F070 which allocates 0x24-byte object, sets UserDataReceiver::vftable + a related CommandInterface::vftable, then memcpys wire payload bytes into a buffer at obj+0x14. The Lua side reads this buffer via _onReceiveDataPacket (existing slot-59 binding). NO direct actor-state writes - the receiver is itself a state-buffer object.",
+      "actorWrites": [],
+      "luaCallbacksFired": []
+    },
+    "0x016b": {
+      "receiverName": "SetNoticeEventConditionReceiver",
+      "category": "event_condition_deferred",
+      "receiveVa": "0x0089D980",
+      "applyHelperVa": "0x006F1380 (DirectorBase path) / 0x006F2E80 (non-DirectorBase fallback)",
+      "vtableShape": "2-slot",
+      "applyChainBehavior": "ActorBase->DirectorBase RTTI cast routes to one of two helper paths. Both helpers branch on a marker byte (*param_3 vs DAT_0134C3FE) to construct either a NoticeBlock (FUN_00892770) or NoticeNonBlock (FUN_008927F0) event-condition object. The constructed object is queued; no direct actor-state writes.",
+      "actorWrites": [],
+      "luaCallbacksFired": []
+    },
+    "0x016f": {
+      "receiverName": "SetPushEventConditionWithCircleReceiver",
+      "category": "event_condition_deferred",
+      "receiveVa": "0x0089DB00",
+      "applyHelperVa": "0x006F2B70",
+      "vtableShape": "2-slot",
+      "applyChainBehavior": "Calls FUN_006F2B70 which initializes a push-block sub-structure at receiver+0x108 via FUN_006F2310, then dispatches to event-system functions FUN_00CC73B0 / FUN_0075C4A0. Construction-only; no direct actor-state writes.",
+      "actorWrites": [],
+      "luaCallbacksFired": []
+    },
+    "0x0157_to_0x016a": {
+      "receiverName": "SendLogReceiver",
+      "category": "pure_native_already_documented",
+      "receiveVa": "0x0089FBF0",
+      "applyHelperVa": "1092B switch dispatcher on log kind byte",
+      "vtableShape": "2-slot (slot 63 in LuaActorImpl)",
+      "applyChainBehavior": "Switch on param_1+0x10 byte (log kind 0/1/2/0xff). Each case calls a log-record builder (FUN_007720*) writing into a log-system buffer. NOT actor-state writes - the log subsystem is a separate sink consumed by other native code. Classified PURE-NATIVE in BCS-Y-0238 already.",
+      "actorWrites": [],
+      "luaCallbacksFired": []
+    },
+    "0x0195": {
+      "receiverName": "HateStatusReceiver",
+      "category": "documented_in_bcs_y_0278",
+      "receiveVa": "0x0089D030",
+      "vtableShape": "2-slot",
+      "applyChainBehavior": "ActorBase->NpcBase RTTI cast, then writes *(NpcBase+0x154) = *(param_1+4) u32 (enmity amount) and *(NpcBase+0x158) = *(param_1+8) u16 (enmity kind). Already in data_dependency_catalog from BCS-Y-0278.",
+      "actorWrites": [
+        {
+          "actorClass": "NpcBase",
+          "offsetChain": ["+0x154"],
+          "type": "u32",
+          "semantic": "enmity amount",
+          "evidence": "The receiver-apply-findings pass's re-decomp confirms `*(iVar2 + 0x154) = *(param_1 + 4)` matching BCS-Y-0278's classification"
+        },
+        {
+          "actorClass": "NpcBase",
+          "offsetChain": ["+0x158"],
+          "type": "u16",
+          "semantic": "enmity kind",
+          "evidence": "The receiver-apply-findings pass's re-decomp confirms `*(iVar2 + 0x158) = uVar1` (u16 from param_1+8)"
+        }
+      ],
+      "luaCallbacksFired": [],
+      "note": "No new evidence beyond BCS-Y-0278; the receiver-apply-findings pass's decomp serves as a cross-confirmation of the existing PURE-NATIVE classification."
+    }
+  },
+  "newActorWrites": [],
+  "newLuaFirers": [
+    {
+      "opcode": "0x00d3",
+      "receiver": "SetTargetTimeReceiver",
+      "luaName": "_onReceiveTimingPacket",
+      "fireSite": "FUN_008A0370 calls FUN_00447260 + FUN_00CC7A90 on the expired/zero path",
+      "bridgeStatus": "DUAL EVIDENCE for existing slot-61 binding - the receiver-apply-findings pass's apply-chain decomp identifies the actual fire site inside the receiver's apply helper. Adds an apply_chain_lua_readers entry alongside the existing lua_actor_impl_slot binding."
+    }
+  ],
+  "structuralConclusion": "receiver_apply_findings_wire_derived.json covered the 7 wire-confirmed receivers with the heaviest pcap sample counts (30..79 samples). These are exactly the receivers that perform DIRECT CharaBase/PlayerBase/NpcBase field writes - the 'apply-now, fire-callback-now' pattern. The remaining 9 receivers receiver_apply_findings_remaining.json investigated (sample counts 2..38) overwhelmingly use DEFERRED patterns: event-condition objects queued for later application (Notice/Talk/Push blocks; ClientOrderEvent), state-buffer objects (UserData), or already-documented PURE-NATIVE cases (HateStatus, SendLog). This makes intuitive sense: high-traffic receivers update real-time actor state (display name, sub-stat, shadow flags) while low-traffic receivers configure deferred events (notice triggers, talk conditions, push regions). receiver_apply_findings_remaining.json does NOT extend receiverWriteIndex chain-keys; the cross-ref pipeline retains the 24 entries from prior phases. ONE apply-chain firer added (_onReceiveTimingPacket / 0x00D3) as dual evidence."
+}

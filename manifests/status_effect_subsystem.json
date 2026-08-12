@@ -1,0 +1,440 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Characterize the StatusEffect opcode family for FFXIV 1.23b: dispatchers, receivers, packet shapes, data flow.",
+  "ascii_only": true,
+  "draft_manifest": true,
+  "modifies_symbols_json": false,
+  "scope_notes": [
+    "1.x calls the modern 'status effect' subsystem 'SubStat'. The C++ binary has no dedicated 'StatusEffect' class hierarchy (the only StatusEffect symbol is the UI widget label s_Window_StatusEffectWidget_00fc1bec). The client receivers are named ChangeActorSubStat*/ChangeActorExtraStat*.",
+    "Four opcodes form the family: 0x0144 SetActorSubState (SubStat ModeBorder byte), 0x0145 ChangeActorExtraStat (ExtraStat / NetStat packed u32), 0x0177 SetActorStatus (single index/statusCode pair into staging array), 0x0179 SetActorStatusAll (full 20-slot status array batch).",
+    "Per the pcap-validation pass's c2sOpcodeHistogram none of these opcodes appear c2s in any of the 54 pcaps. They are all pure s2c."
+  ],
+  "sources": [
+    "%BCS_GHIDRA_PROJECTS%\\status_effect_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%\\substat_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%\\extrastat_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%\\fun_004dc690_decomp.txt",
+    "manifests\\pcap_validation.json",
+    "manifests\\receiver_opcode_map_inbound.json",
+    "manifests\\data_dependency_catalog.json",
+    "manifests\\pattern_d_subdispatcher.json",
+    "manifests\\status_effect_findings.json",
+    "manifests\\symbols.json",
+    "docs\\status-effect-lifecycle.md"
+  ],
+  "status_effect_id_enum_summary": {
+    "encoding": "Wire value = id - 200000 (truncated to ushort by GetStatusId()).",
+    "id_ranges": [
+      {
+        "range": "221021",
+        "category": "Special class effects (RageofHalone)"
+      },
+      {
+        "range": "223001-223275",
+        "category": "Combat/job buffs and debuffs (Quick, Haste, Poison, etc.)"
+      },
+      {
+        "range": "223992-223999",
+        "category": "Permanent / consumable buffs (Sanction, Medicated, WellFed, Podling)"
+      },
+      {
+        "range": "228001-228051",
+        "category": "Status afflictions (Sleep, Bind, Charm, Doom)"
+      },
+      {
+        "range": "230001-230018",
+        "category": "Crafting/gathering support flags (SynthesisSupport, GearChange)"
+      },
+      {
+        "range": "231002-231004",
+        "category": "Mob-only DoTs (Poison3, Envenom, Berserk4)"
+      },
+      {
+        "range": "253002",
+        "category": "Mob-only buffs (GuardiansAspect)"
+      },
+      {
+        "range": "300000-300004",
+        "category": "Custom/non-visible procs (EvadeProc, BlockProc, ParryProc, MissProc, EXPChain)"
+      }
+    ],
+    "flags_enum_extracted": [
+      "LoseOnDeath",
+      "LoseOnZoning",
+      "LoseOnEsuna",
+      "LoseOnDispel",
+      "LoseOnLogout",
+      "LoseOnAttacking",
+      "LoseOnCastStart",
+      "LoseOnAggro",
+      "LoseOnClassChange",
+      "ActivateOnCastStart",
+      "ActivateOnCommandStart",
+      "ActivateOnCommandFinish",
+      "ActivateOnPreactionTarget",
+      "ActivateOnPreactionCaster",
+      "ActivateOnDamageTaken",
+      "ActivateOnHealed",
+      "ActivateOnMiss",
+      "ActivateOnEvade",
+      "ActivateOnParry",
+      "ActivateOnBlock",
+      "ActivateOnHit",
+      "ActivateOnCrit",
+      "PreventSpell",
+      "PreventWeaponSkill",
+      "PreventAbility",
+      "PreventAttack",
+      "PreventMovement",
+      "PreventTurn",
+      "PreventUntarget",
+      "Stance"
+    ]
+  },
+  "status_effect_rtti_classes": [
+    {
+      "rtti_label": "Application::Lua::Script::Client::Command::System::ChangeActorSubStatStatusReceiver",
+      "rtti_va": "0x010575C8",
+      "namespace": "System",
+      "slot_count": 5,
+      "slot1_va": "0x008A34D0",
+      "apply_va": "0x008A3350",
+      "dtor_va": "0x008A3460",
+      "drives_opcode": "0x0179",
+      "bcsy_class_id": "BCS-Y-0050",
+      "bcsy_slot1_id": "BCS-Y-0051",
+      "bcsy_apply_id": "BCS-Y-0124",
+      "bcsy_dtor_id": "BCS-Y-0125"
+    },
+    {
+      "rtti_label": "Application::Lua::Script::Client::Command::System::ChangeActorSubStatModeBorderReceiver",
+      "rtti_va": "0x010575E0",
+      "namespace": "System",
+      "slot_count": 5,
+      "ctor_va": "0x008A3210",
+      "apply_va": "0x008A32C0",
+      "dtor_va": "0x008A3270",
+      "drives_opcode": "0x0144",
+      "bcsy_ctor_id": "BCS-Y-0121",
+      "bcsy_apply_id": "BCS-Y-0122",
+      "bcsy_dtor_id": "BCS-Y-0123"
+    },
+    {
+      "rtti_label": "Application::Lua::Script::Client::Command::Network::ChangeActorExtraStatReceiver",
+      "rtti_va": "0x010572E8",
+      "namespace": "Network",
+      "slot_count": 2,
+      "slot1_va": "0x0089C990",
+      "apply_va": "0x0089C990",
+      "drives_opcode": "0x0145",
+      "bcsy_class_id": "(class entry in receiver_opcode_map_inbound.json)",
+      "bcsy_slot1_id": "BCS-Y-0045",
+      "bcsy_apply_id": "BCS-Y-0119"
+    },
+    {
+      "rtti_label": "Application::Lua::Script::Client::Command::System::(no_receiver_for_0x0177)",
+      "slot_count": 0,
+      "drives_opcode": "0x0177",
+      "note": "0x0177 has NO dedicated Receiver class. It is handled inline by the third-router FUN_0058CCA0 (BCS-Y-0404), which writes a u16 statusCode into the staging array by u16 index. See dispatch table.",
+      "rtti_va": null,
+      "namespace": null
+    },
+    {
+      "rtti_label": "Application::Scene::Cut::Clip::RaptureActionSubStatusSchKickClip",
+      "rtti_va": "0x0102CAE0",
+      "namespace": "App::Scene::Cut::Clip",
+      "note": "Cutscene clip class. Plays the 'sub-status school kick' visual effect (likely the knockback / animation triggered when a sub-stat changes). Not directly a packet receiver, but part of the status-effect VFX dispatch surface.",
+      "slot_count": null,
+      "drives_opcode": null
+    },
+    {
+      "rtti_label": "s_Window_StatusEffectWidget_00fc1bec",
+      "rtti_va": "0x00FC1BEC",
+      "namespace": "Sqwt::UI",
+      "note": "Only StatusEffect string literal in the entire binary. UI widget id label; actual rendering lives in Lua + Sqwt"
+    }
+  ],
+  "n_api_facet_readers": [
+    {
+      "napi": "_getSubStatStatus",
+      "va": "0x006FA150",
+      "extracts": "CharaSubStatStorage.statusArray[sub_stat_enum-1] u32 (the per-slot packed status word)",
+      "bcsy": null
+    },
+    {
+      "napi": "_getSubStatMode",
+      "va": "0x00707FB0",
+      "extracts": "CharaSubStatStorage.modeBorder byte at +0x18",
+      "bcsy": null
+    },
+    {
+      "napi": "_getSubStatWaste",
+      "va": "0x006F9D60",
+      "bcsy": "BCS-Y-0436",
+      "extracts": "Status u32 bits 24..31 (4 two-bit fields by sub_kind_tag)"
+    },
+    {
+      "napi": "_getSubStatGuard",
+      "va": "0x006F9E20",
+      "bcsy": "BCS-Y-0437",
+      "extracts": "Status u32 bits 16..17 (2 single bits by sub_kind_tag)"
+    },
+    {
+      "napi": "_getSubStatChant",
+      "va": "0x006F9EC0",
+      "bcsy": "BCS-Y-0438",
+      "extracts": "Status u32 bits 8..15 (2 nibbles by sub_kind_tag)"
+    },
+    {
+      "napi": "_getSubStatObject",
+      "va": "0x006F9F70",
+      "bcsy": "BCS-Y-0439",
+      "extracts": "Status u32 bits 8..15 (overlapping triple)"
+    },
+    {
+      "napi": "_getSubStatBreakage",
+      "va": "0x006FA020",
+      "bcsy": "BCS-Y-0440",
+      "extracts": "Status u32 bits 0..7 (8 single bits by sub_kind_tag)"
+    },
+    {
+      "napi": "_getSubStatMotionPack",
+      "va": "0x006FA100",
+      "bcsy": "BCS-Y-0441",
+      "extracts": "Status u32 low byte (opaque)"
+    },
+    {
+      "napi": "_getActorExtraStat",
+      "va": "0x006FA1F0",
+      "extracts": "CharaSubStatStorage+0x10 bits 0..7",
+      "bcsy": null
+    },
+    {
+      "napi": "_getGrandOnExtraStat",
+      "extracts": "label only - VA not enumerated",
+      "va": null,
+      "bcsy": null
+    },
+    {
+      "napi": "_setActorExtraStat",
+      "va": "0x007080F0",
+      "bcsy": "BCS-Y-0442",
+      "extracts": "Client-local mutation via FUN_006FA980. No c2s opcode emission (the lua-napi-c2s-trace-findings pass finding)."
+    }
+  ],
+  "opcode_dispatch_table": [
+    {
+      "opcodeHex": "0x0144",
+      "name": "SetActorSubState",
+      "top_level_dispatcher": "FUN_004DC690",
+      "dispatch_path": "FUN_004DC690 case 0x144 -> goto switchD_004dc749_caseD_f -> FUN_004D9910(actor_id) lookup -> piVar12->vftable[9](packet_iVar8) -> per-actor sub-dispatcher (often FUN_0058CCA0 third_router) -> ChangeActorSubStatModeBorderReceiver::apply (FUN_008A32C0) -> FUN_006EECB0 ModeBorder writer -> sibling FUN_007084E0 fires _onChangeSubStatMode",
+      "dispatcher_pattern": "B (vftable[9] actor dispatch with intra-class third_router; receiver Pattern A apply)",
+      "handler_va": "0x008A32C0",
+      "receiver_class": "ChangeActorSubStatModeBorderReceiver",
+      "receiver_apply_bcsy": "BCS-Y-0122",
+      "writer_va": "0x006EECB0",
+      "writer_bcsy": "BCS-Y-0443",
+      "lua_callback": "_onChangeSubStatMode",
+      "catalog_status": "FULLY_CATALOGED"
+    },
+    {
+      "opcodeHex": "0x0145",
+      "name": "ChangeActorExtraStat",
+      "top_level_dispatcher": "FUN_004DC690",
+      "dispatch_path": "FUN_004DC690 case 0x145 -> goto switchD_004dc749_caseD_f -> vftable[9] -> ChangeActorExtraStatReceiver::apply (FUN_0089C990, 2-slot receiver) -> FUN_006FA980 atomic merge-writer on CharaSubStatStorage+0x10 -> per-changed-bit fires _onChangeNetStatUser (bits 8..15) and _onChangeNetStatSystem (bits 16..18)",
+      "dispatcher_pattern": "B (vftable[9] actor dispatch; receiver Pattern A 2-slot apply)",
+      "handler_va": "0x0089C990",
+      "receiver_class": "ChangeActorExtraStatReceiver",
+      "receiver_apply_bcsy": "BCS-Y-0119",
+      "writer_va": "0x006FA980",
+      "writer_bcsy": "BCS-Y-0349",
+      "lua_callback": "_onChangeNetStatUser, _onChangeNetStatSystem",
+      "catalog_status": "FULLY_CATALOGED"
+    },
+    {
+      "opcodeHex": "0x0177",
+      "name": "SetActorStatus (single index/code into staging array)",
+      "top_level_dispatcher": "FUN_004DC690",
+      "dispatch_path": "FUN_004DC690 case 0x177 -> goto switchD_004dc749_caseD_f -> vftable[9] -> FUN_0058CCA0 third_router case 0x177 -> writes u16 statusCode by u16 index into a staging array (no dedicated receiver class)",
+      "dispatcher_pattern": "B-then-C (vftable[9] -> third_router intra-class case; NO dedicated receiver subclass)",
+      "handler_va": "0x0058CCA0",
+      "writer_va": "(inline in third_router; not separately enumerated)",
+      "lua_callback": "(none direct; the staging array is later consumed by polling / refresh logic)",
+      "catalog_status": "PARTIAL - third_router cataloged as BCS-Y-0404; 0x0177-specific writer not isolated",
+      "receiver_class": null,
+      "receiver_apply_bcsy": null,
+      "writer_bcsy": null
+    },
+    {
+      "opcodeHex": "0x0179",
+      "name": "SetActorStatusAll (batch 20-slot status array refresh)",
+      "top_level_dispatcher": "FUN_004DC690",
+      "dispatch_path": "FUN_004DC690 case 0x179 -> goto switchD_004dc749_caseD_f -> vftable[9] -> ChangeActorSubStatStatusReceiver::apply (FUN_008A3350, 5-slot receiver) -> FUN_007084B0 depth-3 thunk -> FUN_00707D60 array writer (writes statusArray[sub_stat_enum-1] u32) -> fires _onChangeSubStatStatus on change; PlayerBase override at FUN_006F0220, MyPlayer override at FUN_006F3420",
+      "dispatcher_pattern": "B (vftable[9] actor dispatch; receiver Pattern A 5-slot apply with depth-3 chain)",
+      "handler_va": "0x008A3350",
+      "receiver_class": "ChangeActorSubStatStatusReceiver",
+      "receiver_apply_bcsy": "BCS-Y-0124",
+      "writer_va": "0x00707D60",
+      "writer_bcsy": "BCS-Y-0353",
+      "lua_callback": "_onChangeSubStatStatus (LuaActorImpl vftable slot 88) plus PlayerBase/MyPlayer overrides at slot 30 (BCS-Y-0215/BCS-Y-0216)",
+      "catalog_status": "FULLY_CATALOGED"
+    }
+  ],
+  "pcap_frequency": {
+    "source": "manifests\\pcap_validation.json",
+    "corpus": "54 unencrypted 1.x pcaps in xivl-captures/captures",
+    "client_ip": "192.168.1.101 (RFC 1918)",
+    "s2c_totals": {
+      "0x0144": {
+        "total": 265,
+        "scenarios_witnessed": 23,
+        "subpacket_sizes": [
+          40
+        ],
+        "frequency_class": "very_high - emitted on virtually every state change incl. zone, login, combat, gather"
+      },
+      "0x0145": {
+        "total": 236,
+        "scenarios_witnessed": 13,
+        "subpacket_sizes": [
+          40
+        ],
+        "frequency_class": "very_high - per-bit changes of ExtraStat/NetStat fire individual packets"
+      },
+      "0x0177": {
+        "total": 29,
+        "scenarios_witnessed": 4,
+        "subpacket_sizes": [
+          24
+        ],
+        "frequency_class": "low - single-slot status updates are rare relative to the 0x0179 batch refresh; mostly seen in party_battle_leve (26 fires)"
+      },
+      "0x0179": {
+        "total": 236,
+        "scenarios_witnessed": 13,
+        "subpacket_sizes": [
+          72
+        ],
+        "frequency_class": "very_high - 1:1 with 0x0144/0x0145 in zone/login sequences (batch refresh on actor instantiation)"
+      }
+    },
+    "c2s_totals": {
+      "0x0144": 0,
+      "0x0145": 0,
+      "0x0177": 0,
+      "0x0179": 0,
+      "note": "Zero c2s emissions observed for any StatusEffect family opcode across the entire 54-pcap corpus. This is a pure s2c (server -> client) subsystem in 1.x. The c2sOpcodeHistogram dominant c2s opcodes are 0x0001 (3371), 0x00ca (16871 heartbeat), 0x012d/0x012e/0x012f/0x0133 (combat/inv/movement) - none StatusEffect family."
+    }
+  },
+  "status_effect_data_flow_summary": {
+    "in_memory_struct": "BCS-S-0035 CharaSubStatStorage at CharaBase+0xDC, lazily allocated by FUN_006EEC00 (BCS-Y-0354), initialized by FUN_006EEA80 (BCS-Y-0435). 0x1C bytes.",
+    "layout": {
+      "+0x00 headerOrReservedSlot": "u32 zeroed",
+      "+0x04..+0x0F statusArray pointers": "u32* begin/end/capacityEnd - dynamic capacity-20 array of u32 packed status slots",
+      "+0x10 extraStatAndNetStatU32": "u32 packed: bits 0..7 ExtraStat, bits 8..15 NetStatUser, bits 16..18 NetStatSystem",
+      "+0x14 reservedOrSecondaryFlags": "u32 zeroed (no observed writer)",
+      "+0x18 modeBorder": "u8 ModeBorder; written by 0x0144 receiver via FUN_006EECB0"
+    },
+    "ingress_paths": [
+      "0x0179 SetActorStatusAll -> writes statusArray u32 slot by sub_stat_enum index -> _onChangeSubStatStatus Lua fire",
+      "0x0144 SetActorSubState -> writes modeBorder byte -> _onChangeSubStatMode Lua fire via sibling FUN_007084E0",
+      "0x0145 ChangeActorExtraStat -> atomic merge-write on +0x10 u32 -> per-bit _onChangeNetStatUser / _onChangeNetStatSystem fires for ONLY the changed bits",
+      "0x0177 SetActorStatus -> writes a single ushort statusCode into a separate staging array indexed by ushort index (NOT directly into CharaSubStatStorage; this is a UI-staging slot consumed by polling/refresh)"
+    ],
+    "egress_paths": [
+      "Eight N-API facet readers (_getSubStatStatus, _getSubStatMode, _getSubStatWaste, _getSubStatGuard, _getSubStatChant, _getSubStatObject, _getSubStatBreakage, _getSubStatMotionPack) - Lua-callable per-facet bit extraction",
+      "Two N-API ExtraStat readers (_getActorExtraStat, _getGrandOnExtraStat) on +0x10 byte",
+      "_setActorExtraStat is client-local only - no c2s emission (the lua-napi-c2s-trace-findings pass)",
+      "Lua callbacks on change (_onChangeSubStatStatus / _onChangeSubStatMode / _onChangeNetStatUser / _onChangeNetStatSystem) drive Sqwt UI buff-strip rebinding"
+    ],
+    "no_dedicated_timer_subsystem": "The 1.x client does NOT run per-effect duration countdown in C++. The client receives charaWork.statusShownTime updates via property packets (separate from this opcode family) and the Lua/Sqwt UI consumes those for countdown rendering. FUN_006EED90 is a 579-byte per-frame state-machine over a DIFFERENT 16-byte-entry list (state byte at +0xC takes values 0/2/3) reached from FUN_006FB830 / FUN_006F11B0 - likely a tick/transition driver for a parallel status queue, attribution still OPEN (an open question carried forward from the status-effect-findings pass).",
+    "visual_effect_trigger": "RaptureActionSubStatusSchKickClip (vftable 0x0102CAE0) is the cutscene clip used for the sub-status knockback / activation animation. Not directly invoked by the packet receivers - dispatched through the Cut::Scheduler when a sub-stat triggers a queued action."
+  },
+  "catalog_coverage_summary": {
+    "fully_cataloged_opcodes": [
+      "0x0144",
+      "0x0145",
+      "0x0179"
+    ],
+    "partially_cataloged_opcodes": [
+      "0x0177"
+    ],
+    "uncataloged_opcodes": [],
+    "key_existing_bcsy_entries": {
+      "receivers": [
+        "BCS-Y-0050 ChangeActorSubStatStatusReceiver (RTTI)",
+        "BCS-Y-0119 ChangeActorExtraStatReceiver::apply",
+        "BCS-Y-0121 ChangeActorSubStatModeBorderReceiver::ctor",
+        "BCS-Y-0122 ChangeActorSubStatModeBorderReceiver::apply",
+        "BCS-Y-0124 ChangeActorSubStatStatusReceiver::apply"
+      ],
+      "writers": [
+        "BCS-Y-0349 FUN_006FA980 (ExtraStat merge-write)",
+        "BCS-Y-0353 FUN_00707D60 (statusArray writer)",
+        "BCS-Y-0443 FUN_006EECB0 (ModeBorder writer)",
+        "BCS-Y-0354 FUN_006EEC00 (lazy storage initializer)",
+        "BCS-Y-0435 FUN_006EEA80 (storage initializer)"
+      ],
+      "lua_facet_readers": [
+        "BCS-Y-0436..BCS-Y-0441 SubStat facet bit-decoders"
+      ],
+      "lua_firers": [
+        "BCS-Y-0444 FUN_007084E0 (Mode change Lua fire)",
+        "BCS-Y-0149 FUN_008A3630 (Status receiver Lua firing slot)"
+      ],
+      "struct": "BCS-S-0035 CharaSubStatStorage"
+    },
+    "third_router_attribution": "BCS-Y-0404 CombatBattleResultThirdRouter_FUN_0058CCA0 covers the dispatcher itself but its 0x0177 case body has NOT been isolated as its own BCS-Y entry. The single-slot SetActorStatus writer is inlined into the third_router and the data_dependency_catalog entry s2c_0x0177 documents the wire shape but not a dedicated handler function."
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id_placeholder": "BCS-Y-NEXT+1",
+      "proposed_name": "ThirdRouter_SetActorStatus_inline_case_0x0177_handler",
+      "kind": "function",
+      "address": "(within FUN_0058CCA0 body; specific case-block VA not separately enumerated yet)",
+      "confidence": "probable",
+      "draft_notes": "0x0177 case body inside FUN_0058CCA0 (BCS-Y-0404 CombatBattleResultThirdRouter) that copies *(u16 *)(payload+2) statusCode into staging_array[*(u16 *)(payload+0)] (index). Per data_dependency_catalog s2c_0x0177 evidence: dispatcher_candidates_decomp.txt:2738-2744, batch2_handlers_decomp.txt:415-423. Promote to BCS-Y when the case-VA is isolated via a dedicated dump.",
+      "rationale": "Currently the only catalog gap in the family. The third-router itself is cataloged but the per-opcode-case handler body is not."
+    },
+    {
+      "id_placeholder": "BCS-Y-NEXT+2",
+      "proposed_name": "RaptureActionSubStatusSchKickClip_vftable",
+      "kind": "rtti",
+      "address": "0x0102CAE0",
+      "confidence": "confirmed",
+      "draft_notes": "Cutscene clip class used for sub-status knockback visual effect. RTTI at 0x0116AA00. Inherits BaseClipImpl<...SubStatusSchKickClip_DATA>. Not directly invoked by packet receivers, but is the visual side of the status-effect subsystem (triggered when certain status changes need a knockback animation). Useful to catalog as the SubStat visual-effect entry point.",
+      "rationale": "First catalog entry for the visual-effect layer of the status-effect subsystem; complements the data layer (BCS-S-0035) and receiver layer (BCS-Y-0050/0121/etc)."
+    },
+    {
+      "id_placeholder": "BCS-Y-NEXT+3",
+      "proposed_name": "StatusEffectStagingArray_field_on_actor_class",
+      "kind": "field",
+      "address": "(per-actor offset; deduced from FUN_0058CCA0 case 0x0177 body)",
+      "confidence": "probable",
+      "draft_notes": "The u16[] staging array written by 0x0177 SetActorStatus (separate from CharaSubStatStorage.statusArray u32 written by 0x0179). The relationship between this staging array and the consolidated CharaSubStatStorage.statusArray needs follow-up: whether 0x0179 rebuilds the staging array or whether they are independent data structures.",
+      "rationale": "Currently undocumented data field on the actor class. Documentation gap that should close before final catalog promotion."
+    }
+  ],
+  "key_findings": [
+    "Four-opcode family fully bounded: 0x0144 SetActorSubState, 0x0145 ChangeActorExtraStat, 0x0177 SetActorStatus (single-slot), 0x0179 SetActorStatusAll (batch). All four route via FUN_004DC690 -> goto switchD_004dc749_caseD_f -> vftable[9] (Pattern B - actor dispatch).",
+    "Three of four opcodes have dedicated Receiver subclasses in the Lua::Script::Client::Command namespace: ChangeActorSubStatStatusReceiver (System), ChangeActorSubStatModeBorderReceiver (System), ChangeActorExtraStatReceiver (Network). 0x0177 has NO dedicated receiver - it is handled inline by the FUN_0058CCA0 third_router (BCS-Y-0404).",
+    "Catalog coverage is strong: all three receiver Apply methods, both writer paths (FUN_006FA980 ExtraStat merge, FUN_006EECB0 ModeBorder, FUN_00707D60 statusArray), the lazy storage allocator (FUN_006EEC00), and eight N-API facet readers are catalogued from the receiver-apply-findings and status-effect-findings passes. Only documentation gap: the 0x0177 case body inside FUN_0058CCA0.",
+    "No 'StatusEffect' C++ class exists in 1.x. The only StatusEffect symbol is s_Window_StatusEffectWidget UI label. 1.x uses 'SubStat' for what modern FFXIV calls status effects, plus 'ExtraStat' / 'NetStat' for the packed-bit ancillary state.",
+    "All four opcodes are pure s2c: c2sOpcodeHistogram across 54 pcaps shows zero c2s emissions for any of them. Status effect mutation is server-authoritative and the client is a passive applier with Lua callback fan-out per changed field.",
+    "Per-bit Lua callback fan-out is the architectural distinguisher: FUN_006FA980 (0x0145 writer) is an atomic merge-write that fires _onChangeNetStatUser / _onChangeNetStatSystem ONLY for bits that actually changed. This is a deliberate optimization to avoid spurious Lua UI rebinding.",
+    "Status timers (charaWork.statusShownTime) are NOT delivered via this opcode family - they flow through a separate ActorPropertyPacketUtil property-packet stream (likely 0x0137 SetActorProperty), with the client running NO C++ countdown logic.",
+    "FUN_006EED90 (579-byte per-frame state machine over 16-byte-entry list with state byte at +0xC taking values 0/2/3) remains UNATTRIBUTED to a specific opcode/class - carried forward from status_effect_findings.json as an open question. Could be the status-effect tick driver for the staging array path."
+  ],
+  "open_questions_carried": [
+    "FUN_006EED90 per-frame iterator: which subsystem owns it? (open per the status-effect-findings pass)",
+    "The eight sub_stat_enum integer constants (Status / Mode / Waste / Guard / Chant / Object / Breakage / MotionPack) have no enumerated numeric values yet - likely Lua-side enum table.",
+    "0x0177 single-slot staging array's relationship to CharaSubStatStorage.statusArray: are they the same data structure (read/write via different paths) or two parallel structures?",
+    "The 'Network::ChangeActorExtraStatReceiver' namespace contrasts with the 'System::ChangeActorSubStat*Receiver' namespace. Why is ExtraStat in Network but the SubStat siblings in System? Possible historical split when ExtraStat was extracted from the network-derived auto-update path."
+  ],
+  "blockers": [
+    "None for manifest generation. live capture (catalog edits to symbols.json) is deferred per task constraints - the proposed BCS-Y entries are draft-only.",
+    "0x0177 inline case-body VA isolation would require a targeted DumpFunctionDecomp at FUN_0058CCA0 with case-extraction grep; not in scope here (defer to a follow-up catalog promotion phase)."
+  ]
+}

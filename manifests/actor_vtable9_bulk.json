@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "scope": "Bulk-empirical scan of vftable[9] (offset 0x24) across all RTTI-identified actor classes in the binary, to definitively resolve the open question from the actor vftable9 investigation and actor factory drill passes: is there ANY actor class whose vftable[9] processes the s2c Actor cluster opcodes (0xCC..0xE5)? The actor vftable9 investigation pass examined 5 cataloged actor classes (4 Control:: + CharaActor) and found all are either no-op stubs (FUN_005c5c80) or unrelated Scene-graph helpers (FUN_00621430). The actor factory drill pass confirmed the dispatcher passes zone_state to slot 9, not the packet. The actor vtable9 bulk pass brute-forces the question by scanning every RTTI-named Actor::* class.",
+  "method": {
+    "step1_enumerate": "Re-ran FindSymbolByName.java with BAHAMUT_QUERY_LIMIT=500 (the actor vftable9 investigation pass had limit 100, so only first 100 displayed of 214 hits). Output: actor_vftables_full.txt. Total 214 ::*Actor*::vftable symbols, but these dedupe to 96 distinct vftable addresses across 95 distinct leaf class names (the actor vftable9 investigation pass's 214 count was conflating vftable + vftable_meta_ptr pairs and secondary multi-inheritance vftables).",
+    "step2_dedupe": "Parsed the symbol list (parse_classes.py). Dropped *::vftable_meta_ptr lines. Grouped by leaf class name (the last segment before ::vftable). DumpVtableSlots.java's matcher uses endsWith('::ClassName::vftable') so leaf names are the right granularity. Found 1 leaf-name collision: 'CDevActor' appears in both Application::Scene::Actor::CDevActor and SQEX::CDev::Engine::CDevVfx::Qix::CDevActor namespaces - the endsWith matcher returned the Application::Scene one first (verified by slot resolution).",
+    "step3_bulk_dump": "Split 95 leaf names into 4 batches of 30/30/30/5 (env-var-friendly sizes, queries 99-696 chars each). Generated run_vtable9_batch_{1..4}.bat. Each batch invokes DumpVtableSlots.java with BAHAMUT_VTABLE_QUERIES=<batch>. Outputs vtable9_batch_{1..4}.txt. Ran each via PowerShell sequentially. Results: 93 resolved + 2 null_slot (ProxyActor at 0x01097C58 and RaptureProxyActor at 0x00FB94B8 both have a zero word at vftable+0x24).",
+    "step4_histogram": "Built VA -> [classes] histogram via parse_results.py. Output: histogram.json. Distinct slot-9 VAs: 54. Top: FUN_00621430 (19 classes), FUN_00a20a50 (12 classes), FUN_009c7f00 (5 classes), __purecall=0x009d364d (3 classes), FUN_00b98d00 (3 classes).",
+    "step5_classify_garbage": "VAs outside the .text code range (< 0x00400000 or > 0x01100000) flagged as garbage from out-of-bounds reads (short vftables where +0x24 spills into adjacent RTTI metadata or unrelated data). 13 garbage VAs covering 14 classes: values 0x00000018, 0x00000015, 0xCB989680, 0x4B189680, plus 10 RTTI_Complete_Object_Locator addresses in the 0x0114xxxx-0x0118xxxx range (verified by Ghidra symbol labels in the dump output). These represent classes whose vftable is shorter than 10 slots.",
+    "step6_decomp_interesting": "Collected the 38 distinct code-range VAs not in {FUN_005c5c80, FUN_00621430, __purecall} (boring/known set). Split into 2 batches of 19. Generated run_slot9_decomp_batch_{1,2}.bat invoking DumpFunctionDecomp.java. Outputs slot9_decomp_batch_{1,2}.txt.",
+    "step7_pattern_match": "Inspected each decomp body for switch(opcode) / case 0xCC..0xE5 / packet-offset reads (param_1 + N where N matches a packet header layout). NONE of the 38 functions exhibits an opcode dispatch pattern. All 38 are accounted for by one of these benign categories: (a) C++ scalar-deleting destructor stubs from out-of-bounds reads past short vftables (the 0x009c63xx-0x009c67xx range, FUN_00555b70, FUN_009c7f00, FUN_00d311f0 - 23 total), (b) trivial getters/no-ops (FUN_00b98d00 returns void, FUN_00b73290 returns 1, FUN_00bb8ad0 returns 1.0 - 5 total), (c) container helpers (FUN_00a20a50 reads (param_1+4)+0x14 bit, FUN_00a20b00 vector erase by value, FUN_00a20bd0 vector find-or-push - 14 total across the Cut::Scheduler actors), (d) a debug-logging wrapper that delegates to vtable+0x34 or vtable+0x8 (FUN_006204f0 for EffectActor)."
+  },
+  "results": {
+    "total_actor_vftable_symbols_in_binary": 214,
+    "distinct_actor_vftables_after_dedupe": 96,
+    "distinct_leaf_class_names": 95,
+    "classes_scanned": 95,
+    "classes_resolved_to_slot9": 93,
+    "classes_with_null_slot9": 2,
+    "distinct_slot9_function_vas": 54,
+    "distinct_code_range_vas": 41,
+    "boring_known_vas": ["0x00621430", "0x009d364d"],
+    "interesting_slot9_count": 38,
+    "interesting_slot9_with_opcode_dispatch": 0,
+    "slot9_histogram_top10": [
+      { "function_va": "0x00621430", "callers_count": 19, "category": "boring_known", "function_name": "SceneObject::Actor::AddReferenceResourceListener", "summary": "Scene-graph resource lifecycle log stub (BCS-Y-0529)", "classes": ["Actor", "BgModelActor", "BgObjActor", "BgPlateActor", "BootupActor", "CDevActor", "CameraActor", "CharaActor", "CommonResourceActor", "CutManagerActor", "EffectDebugActor", "GameManagerActor", "LightActor", "MapLayoutActor", "RaptureActor", "ScreenshotManagerActor", "TargetActor", "WeaponActor", "WindowActor"] },
+      { "function_va": "0x00a20a50", "callers_count": 12, "category": "container_helper", "function_name": "FUN_00a20a50", "summary": "Returns ((*(this+4))+0x14 byte >> 1) as bool. Reads a flag bit from a member object - NOT packet handling.", "classes": ["ActionActor", "CharacterActor", "CommonActor", "LaySchedulerSystemActor", "LayerActor", "LayoutActor", "MapActor", "ModelActor", "MotionActor", "ScheduleActor", "SoundActor", "VirtualActor"] },
+      { "function_va": "0x009c7f00", "callers_count": 5, "category": "destructor_oob", "function_name": "Sqwt::Markup::ConfigurationFactor scalar-deleting destructor", "summary": "Standard C++ scalar-deleting destructor (*p=vftable; if(p2&1) free(p)). Reached from out-of-bounds reads past the end of short Sqwt::Markup::*Factor vftables.", "classes": ["ColumnDefinitionFactor", "DiscreteValueKeyFrameFactor", "GridColumnDefinitionsFactor", "GridRowDefinitionsFactor", "IconDataFactor"] },
+      { "function_va": "0x009d364d", "callers_count": 3, "category": "purecall", "function_name": "__purecall", "summary": "C++ purecall trap for pure-virtual slot in interface vftables (IActor, IScheduleActor, IVfxActor).", "classes": ["IActor", "IScheduleActor", "IVfxActor"] },
+      { "function_va": "0x00b98d00", "callers_count": 3, "category": "noop", "function_name": "FUN_00b98d00", "summary": "3-byte function: `return;`. No-op stub for VFX actor hierarchy.", "classes": ["IRaptureVfxActor", "RaptureVfxActor", "VfxActor"] },
+      { "function_va": "0x00000018", "callers_count": 2, "category": "garbage_oob", "function_name": "(invalid)", "summary": "Reading past short vftable returned the literal value 0x18. Not a valid function pointer.", "classes": ["IInquiryGameActor", "PcSearchContractor"] },
+      { "function_va": "0xCB989680", "callers_count": 2, "category": "garbage_oob", "function_name": "(invalid)", "summary": "Reading past short vftable returned an address outside any valid section.", "classes": ["PadBindingFactor", "SetterActionFactor"] },
+      { "function_va": "0x00000015", "callers_count": 1, "category": "garbage_oob", "function_name": "(invalid)", "summary": "Reading past short vftable returned the literal value 0x15.", "classes": ["CRaptureInquiryGameActor"] },
+      { "function_va": "0x00555b70", "callers_count": 1, "category": "destructor_oob", "function_name": "Sqwt::FontInterface scalar-deleting destructor", "summary": "C++ scalar-deleting destructor for Sqwt::FontInterface. ConfigurationFactor's vftable is too short, +0x24 lands in adjacent destructor pointer.", "classes": ["ConfigurationFactor"] },
+      { "function_va": "0x006204f0", "callers_count": 1, "category": "debug_dispatch", "function_name": "FUN_006204f0", "summary": "EffectActor slot 9. Reads *(this+8). If null, formats a debug string via snprintf and calls vtable+0x34 with a format constant. Else delegates to *(*(this+8)+0x8)(). Not opcode-based; this is a debug-logging wrapper.", "classes": ["EffectActor"] }
+    ],
+    "interesting_slot9_va_list_decompiled": [
+      "0x00a20a50", "0x009c7f00", "0x00b98d00", "0x00555b70", "0x006204f0",
+      "0x009c6390", "0x009c63b0", "0x009c63d0", "0x009c63f0", "0x009c6410",
+      "0x009c6430", "0x009c6450", "0x009c6470", "0x009c6490", "0x009c64b0",
+      "0x009c64d0", "0x009c64f0", "0x009c6510", "0x009c6530", "0x009c6550",
+      "0x009c6570", "0x009c6590", "0x009c65b0", "0x009c65d0", "0x009c6610",
+      "0x009c6630", "0x009c6650", "0x009c6670", "0x009c6690", "0x009c66b0",
+      "0x009c66d0", "0x009c66f0", "0x009c6710", "0x00a20b00", "0x00a20bd0",
+      "0x00b73290", "0x00bb8ad0", "0x00d311f0"
+    ],
+    "null_slot9_classes": [
+      { "class": "ProxyActor", "vftable": "0x01097C58", "slot_addr": "0x01097C7C" },
+      { "class": "RaptureProxyActor", "vftable": "0x00FB94B8", "slot_addr": "0x00FB94DC" }
+    ],
+    "categorical_breakdown_of_38_interesting": {
+      "destructor_oob_short_vftable": 23,
+      "container_helper_cut_scheduler": 14,
+      "noop_or_trivial_getter": 5,
+      "debug_dispatch_wrapper": 1
+    }
+  },
+  "key_findings": [
+    {
+      "title": "No actor class in the entire RTTI catalog has a vftable[9] that processes s2c Actor cluster opcodes",
+      "detail": "Exhaustive scan of 93 resolved + 2 null slot-9 values across all 95 distinct leaf-named actor classes finds zero functions exhibiting opcode dispatch. The 19-class plurality is the known boring FUN_00621430 (BCS-Y-0529, Scene-graph AddReferenceResourceListener). The 12-class plurality (Cut::Scheduler actors via FUN_00a20a50) is a member-flag bit-read. The 23 short-vftable destructor hits, 5 no-op/getter hits, and the 1 debug-dispatch hit (EffectActor) all lack any switch(opcode) or 0xCC..0xE5 range comparison.",
+      "implication": "The open question from the actor vftable9 investigation and actor factory drill passes is now empirically closed for actor classes that exist in the binary's RTTI section. The Pattern B 'polymorphic per-actor-class' hypothesis for the 24 Actor cluster opcodes is decisively wrong. The actor cluster's actual processing must live elsewhere (alternative dispatch path that doesn't go through actor->vftable[9])."
+    },
+    {
+      "title": "vftable[9] semantics confirmed: 19-class plurality uses it for SceneObject::Actor::AddReferenceResourceListener (BCS-Y-0529)",
+      "detail": "The single most popular slot-9 implementation across the 95 actor classes is FUN_00621430 (19 classes - all the SQEX::CDev::Engine::Fw::SceneObject::Actor descendants including Application::Scene::Actor::Chara::CharaActor). This is the Scene-graph resource-listener stub. Slot 9's intended C++ semantics is the resource-listener hook in the SQEX Scene-graph framework, NOT a packet handler.",
+      "implication": "Confirms the hypothesis that BCS-Y-0529 is the canonical slot-9 implementation for ::Actor::* classes. The dispatcher (FUN_004DC690 generic case) calling actor->vftable[9] is calling AddReferenceResourceListener, which logs an assertion-style message and returns - that explains why the actor factory drill pass saw zone_state being passed as the only argument (matches the listener function signature, not a packet-handler signature)."
+    },
+    {
+      "title": "12 Cut::Scheduler actors share FUN_00a20a50 - a container flag bit-read (NOT a handler)",
+      "detail": "Second-most-popular slot-9 implementation (12 classes) is FUN_00a20a50. Decomp: `return CONCAT31((int3)((uint)*(int*)(param_1+4) >> 8), *(byte*)(*(int*)(param_1+4)+0x14) >> 1) & 0xffffff01;`. Reads bit-1 of a byte at offset 0x14 of the object pointed to by (this+4). Returns 0 or 1. This is a `bool isXxx() const` getter on the Cut::Scheduler actor hierarchy (ActionActor, CharacterActor, CommonActor, LayerActor, LayoutActor, MapActor, ModelActor, MotionActor, ScheduleActor, SoundActor, VirtualActor, LaySchedulerSystemActor).",
+      "implication": "These actors share an entirely different slot-9 contract than the SceneObject hierarchy. None of them touches packet data. The Cut::Scheduler class family is for cutscene scheduling, not network message processing."
+    },
+    {
+      "title": "23 of 38 interesting slot-9 functions are spurious destructor pointers from out-of-bounds reads past short Sqwt::Markup::*Factor vftables",
+      "detail": "The 0x009c6390-0x009c6710 range of slot-9 results (and FUN_00555b70, FUN_009c7f00, FUN_00d311f0) are all C++ scalar-deleting destructors with the textbook shape `*param_1 = vftable; if (param_2 & 1) free(param_1); return param_1;`. They appear at vftable+0x24 only because the Sqwt::Markup::*Factor classes have vftables shorter than 10 slots - the +0x24 offset reads into adjacent destructor pointer storage from a sibling class's vftable. These are not real slot-9 implementations.",
+      "implication": "These 23 classes (BeginStoryboardFactor, BindingFactor, CommandTriggerFactor, ColumnDefinitionFactor, ConditionFactor, ConfigurationFactor, DiscreteValueKeyFrameFactor, DoubleAnimationFactor, EventTriggerFactor, ExecuteCommandActionFactor, GridColumnDefinitionsFactor, GridRowDefinitionsFactor, IconControlIconDatasFactor, IconDataFactor, InputBindingsFactor, MergedDictionariesFactor, MultiTriggerConditionsFactor, MultiTriggerFactor, PauseStoryboardFactor, PropertyAnimationUsingKeyFramesFactor, RenderTransformFactor, ResourceFactor, ResumeStoryboardFactor, RotateTransformFactor, RowDefinitionFactor, ScaleTransformFactor, SetterFactor, SoundPlayActionFactor, StaticResourceFactor, StopStoryboardFactor, StoryboardFactor, CommonTemplateFactor, TriggerFactor, TriggersFactor, SyncWriterActor) genuinely don't have a slot-9 method - the slot doesn't exist in their vftable. They can be excluded from any further actor-vftable[9] analysis."
+    },
+    {
+      "title": "Two actors have an explicit null at vftable+0x24 (ProxyActor, RaptureProxyActor)",
+      "detail": "ProxyActor (vftable 0x01097C58) and RaptureProxyActor (vftable 0x00FB94B8) have the literal value 0 at +0x24. These are interface/forwarding classes that explicitly declare slot 9 as null - calling actor->vftable[9] on a ProxyActor would null-deref. The fact that the dispatcher in BCS-Y-0527 never crashes implies either ProxyActor/RaptureProxyActor instances are never the target of the actor-id lookup, or some upstream check filters them.",
+      "implication": "Additional evidence that the slot-9 dispatch path is not designed to be the universal actor-cluster handler. A real packet dispatcher would not have null slots in instantiable derived classes."
+    }
+  ],
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0535",
+      "name": "SceneObject_Actor_AddReferenceResourceListener_vftable9_19class_plurality",
+      "address": "0x00621430",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Already cataloged as BCS-Y-0529. This finding from the actor vtable9 bulk pass escalates its observed coverage: 19 distinct ::Actor::* leaf classes (Actor, BgModelActor, BgObjActor, BgPlateActor, BootupActor, CDevActor, CameraActor, CharaActor, CommonResourceActor, CutManagerActor, EffectDebugActor, GameManagerActor, LightActor, MapLayoutActor, RaptureActor, ScreenshotManagerActor, TargetActor, WeaponActor, WindowActor) share this vftable[9] - the canonical slot-9 implementation for the SQEX::CDev::Engine::Fw::SceneObject::Actor hierarchy.",
+      "rationale": "Catalog enrichment: existing BCS-Y-0529 entry documents the function. This finding from the actor vtable9 bulk pass documents that the 19-class plurality empirically confirms slot-9's intended C++ semantics for the SceneObject hierarchy is the resource-listener hook, NOT a packet handler. Worth recording as a separate Y entry because it establishes the vftable[9] usage convention across the broader actor catalog, not just CharaActor."
+    },
+    {
+      "id": "BCS-Y-0536",
+      "name": "CutScheduler_Actor_vftable9_BoolGetter_FUN_00a20a50",
+      "address": "0x00a20a50",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "vftable[9] of 12 classes in the SQEX::CDev::Engine::Cut::Scheduler::* actor hierarchy (ActionActor, CharacterActor, CommonActor, LayerActor, LayoutActor, MapActor, ModelActor, MotionActor, ScheduleActor, SoundActor, VirtualActor, LaySchedulerSystemActor). 11-byte function: reads bit-1 of byte at offset 0x14 of object referenced by (this+4). Returns bool. Container-state getter (likely something like `bool IsActive() const` or `bool HasMembers() const`). NOT a packet handler.",
+      "rationale": "Second-most-popular slot-9 implementation in the actor catalog. Together with BCS-Y-0535 these two cover 31/93 (33%) of resolved slot-9 implementations. Catalog this so future phases don't waste time re-investigating the Cut::Scheduler hierarchy when chasing the actor-cluster dispatch."
+    },
+    {
+      "id": "BCS-Y-0537",
+      "name": "VFX_Actor_vftable9_Noop_FUN_00b98d00",
+      "address": "0x00b98d00",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "3-byte no-op stub (`return;`). vftable[9] of IRaptureVfxActor, RaptureVfxActor, VfxActor in the Application::Scene::Vfx::* hierarchy.",
+      "rationale": "Documents the VFX hierarchy's vftable[9] convention. Establishes parity with BCS-Y-0528 (the 3-byte stub FUN_005c5c80 for Control:: classes) - 1.23b uses two similar but distinct no-op stubs across different actor hierarchies. Helps future phases recognize this pattern without re-decompiling."
+    },
+    {
+      "id": "BCS-Y-0538",
+      "name": "ActorCluster_VFtable9_Dispatch_Hypothesis_Refuted_Empirically",
+      "address": "0x00621430",
+      "kind": "finding",
+      "confidence": "confirmed",
+      "summary": "The actor vtable9 bulk pass result: zero of 95 distinct RTTI-named actor classes in the binary has a vftable[9] (offset 0x24) implementation that processes s2c Actor cluster opcodes (0x0F, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD3..0xE5). All 93 resolved slot-9 values decompose to: 19 instances of SceneObject::AddReferenceResourceListener (BCS-Y-0529/0535), 12 instances of a Cut::Scheduler bool getter (BCS-Y-0536), 3 instances of __purecall (interface stubs), 3 instances of a VFX no-op (BCS-Y-0537), 23 spurious destructor pointers from short vftables, 14 other small functions (FUN_00a20b00 vector-erase, FUN_00a20bd0 vector-find, FUN_00b73290 returns 1, FUN_00bb8ad0 returns 1.0, FUN_006204f0 debug wrapper, etc.). The 'polymorphic actor->vftable[9] dispatches the cluster' hypothesis from the actor cluster dispatch model pass's Pattern B is decisively wrong.",
+      "rationale": "This is the canonical resolution to the open question from the actor vftable9 investigation and actor factory drill passes. Cataloging as a Y-confidence finding (not just a free-text note) so downstream phases can cite it definitively when re-evaluating the actor cluster dispatch model pass."
+    }
+  ],
+  "resolution_of_open_question": "RESOLVED (NEGATIVE). The actor vftable9 investigation pass left open: 'is there a derived actor class not in the catalog that DOES override slot 9 with a real implementation?' The actor vtable9 bulk pass's brute-force scan of all 95 RTTI-named actor classes answers NO. The Pattern B hypothesis (FUN_004DC690 generic case dispatches the 24-opcode Actor cluster via actor->vftable[9]) is wrong: the dispatched function is harmless in every actor class. The dispatch line in BCS-Y-0527 (call_actor_slot9_with_zone_state) genuinely fires but does NO opcode-related work - it calls AddReferenceResourceListener (logs a string) or a bool getter or a no-op. The actual Actor-cluster opcode processing must therefore live elsewhere in FUN_004DC690 or a sibling dispatcher, OR the opcodes are recorded passively without per-opcode logic in 1.23b. Future phases should re-examine FUN_004DC690 looking for branches BEFORE the generic vftable-9 case, and look at whether the opcodes have side effects via the actor lookup itself (FUN_004d9910) rather than the dispatch call.",
+  "open_questions": [
+    "Where DOES the Actor cluster processing happen for s2c 0xCC..0xE5? Candidate paths to investigate in the high switch enumeration pass: (a) earlier per-opcode cases in FUN_004DC690 before the generic vftable[9] fallback; (b) side-effects of FUN_004d9910 (the actor-id lookup) that mutate state during lookup; (c) a sibling dispatcher invoked from a different network read site, not the main FUN_004DC690 path; (d) the packets are recorded into the actor map (zone+0x17804) but visual updates use a parallel client-prediction system that consumes the map asynchronously.",
+    "ProxyActor and RaptureProxyActor have explicit null slot-9 pointers. Are these instantiable runtime classes or interface stubs? If instantiable, what prevents the dispatcher from calling their null slot-9? Worth a one-shot caller-graph trace in the high switch enumeration pass if relevant.",
+    "FUN_006204f0 (EffectActor slot-9) is the one slot-9 implementation with real branching logic (delegates to vtable+0x34 or vtable+0x8 based on a member check, calls snprintf with a format constant and a debug-print PTR_FUN_012651b4). Is the vtable+0x34 call a packet handler hidden one layer deeper? Probably not (no packet-shaped argument), but worth a one-decomp follow-up if other paths dry up."
+  ],
+  "evidence_paths": [
+    "%BCS_GHIDRA_PROJECTS%/actor_vftables_full.txt (raw symbol list, 214 entries)",
+    "%BCS_GHIDRA_PROJECTS%/actor_leaves.json (parsed leaf-name catalog)",
+    "%BCS_GHIDRA_PROJECTS%/batches.json (4 batched query strings)",
+    "%BCS_GHIDRA_PROJECTS%/vtable9_batch_1.txt (30 classes resolved)",
+    "%BCS_GHIDRA_PROJECTS%/vtable9_batch_2.txt (30 classes resolved)",
+    "%BCS_GHIDRA_PROJECTS%/vtable9_batch_3.txt (28 resolved + 2 null)",
+    "%BCS_GHIDRA_PROJECTS%/vtable9_batch_4.txt (5 classes resolved)",
+    "%BCS_GHIDRA_PROJECTS%/histogram.json (VA-to-class histogram, full)",
+    "%BCS_GHIDRA_PROJECTS%/slot9_decomp_batch_1.txt (19 decomps)",
+    "%BCS_GHIDRA_PROJECTS%/slot9_decomp_batch_2.txt (19 decomps)"
+  ]
+}

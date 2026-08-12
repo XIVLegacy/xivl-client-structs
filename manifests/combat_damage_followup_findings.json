@@ -1,0 +1,176 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "combat damage follow-up",
+  "generated": "2026-05-20",
+  "title": "The combat damage followup findings pass: 0x013B payload decode and queue consumer linkage to Vfx/Rapture pipeline",
+  "scope": "Closes the two follow-on threads explicitly flagged by the combat damage findings pass (combat_damage_findings.json:openQuestions): (1) decode the 0x013B CommandResultX18 payload that the combat damage findings pass left unresolved, and (2) prove the FUN_007C7F80 queue consumer reaches the Rapture*Clip subsystem via direct namespace evidence.",
+  "sourceRefs": [
+    "%BCS_GHIDRA_PROJECTS%\\tier1_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\tier1_round2_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\all_vftables.txt",
+    "%BCS_GHIDRA_PROJECTS%\\dispatcher_candidates_decomp.txt",
+    "manifests\\combat_damage_findings.json"
+  ],
+  "openQuestionsClosed": [
+    {
+      "from": "combat_damage_findings.json:openQuestions[0]",
+      "question": "Direct xref from the 0x1A0 queue consumer to RaptureActionDamageCallClip or sibling Rapture*Clip classes is still open.",
+      "resolution": "FUN_007C7F80 is the canonical queue-to-Vfx bridge. It is a copy-constructor that initializes a Application::Scene::Vfx::VfxRaptureParameter object (vftable at 0x00FE7FCC, base class Application::Scene::Cut::Register::BaseRaptureParameter at 0x00FE7EA4). The source struct's tail at +0x68 is copied through FUN_0058EBF0 (BCS-Y-0413), which is the same primitive used to copy the 0x1A0 battle-result queue entry. Direct caller FUN_00812B50 reads a sub-object via vtable slot lookup, verifies a 'vfx\\0' type tag at +0x04, and invokes FUN_007C7F80 to construct the VfxRaptureParameter; that caller is part of the same Application::Scene::Cut::Clip subsystem as RaptureActionDamageCallClip (constructor FUN_00811690 sets BCS-Y-0059's vftable). The queue consumer thus reaches the Rapture pipeline via the Vfx parameter type rather than by direct call to a specific Rapture*Clip class.",
+      "evidence": [
+        "BCS-Y-0417 VfxRaptureParameterCtor_FUN_007C7F80",
+        "BCS-Y-0418 VfxRaptureParameter::vftable @ 0x00FE7FCC",
+        "BCS-Y-0419 BaseRaptureParameter::vftable @ 0x00FE7EA4",
+        "BCS-Y-0420 VfxRaptureClipProcessor_FUN_00812B50",
+        "BCS-Y-0421 RaptureActionDamageCallClip_ctor_FUN_00811690"
+      ]
+    },
+    {
+      "from": "combat_damage_findings.json:openQuestions[1]",
+      "question": "Opcode 0x013B has a visible router case, but no decoded payload here.",
+      "resolution": "Decomped FUN_005874B0 (the 0x013B stager, 198 bytes) called from wrapper FUN_0058C990. The stager calls FUN_00587210 (shared base header stager, BCS-Y-0408) and walks an 18-row sparse-array transpose loop: targetIds u32[18] at payload+0x28, amounts u16[18] at payload+0x70, worldMasterTextIds u16[18] at payload+0x94, effectIds u32[18] at payload+0xB8, params u8[18] at payload+0x100, and hitNums u8[18] at payload+0x112. Total payload size is 0x128 (296 bytes); total wire size is 0x148 (328 bytes) including the SubPacket header.",
+      "evidence": [
+        "BCS-Y-0415 BattleResultEighteenTargetStager_FUN_005874B0",
+        "BCS-Y-0416 CommandResultX18QueueWrapper_FUN_0058C990",
+        "decomp at %BCS_GHIDRA_PROJECTS%\\tier1_round2_decomp.txt:7-61"
+      ]
+    }
+  ],
+  "openQuestionsRemaining": [
+    "FUN_00585800 selector return values 7..0x11 still need names from clip ids or effect tables. The combat damage followup findings pass did not pursue this."
+  ],
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0415",
+      "name": "BattleResultEighteenTargetStager_FUN_005874B0",
+      "address": "0x005874B0",
+      "role": "Stager for opcode 0x013B. After the shared base stage, walks an 18-row sparse-array transpose loop that copies one row per iteration: u32 targetId from wire+0x28+4i, u32-widened amount from u16 wire+0x70+2i, u32 effectId from wire+0xb8+4i, u16 worldMasterTextId from wire+0x94+2i, u8 param from wire+0x100+i, u8 hitNum from wire+0x112+i. Rows land in BCS-S-0031 target-row slots at queue-entry+0x38, 0x14 bytes each. Nonzero worldMasterTextId rows take the FUN_004D7470 / FUN_00578390 text-side path."
+    },
+    {
+      "id": "BCS-Y-0416",
+      "name": "CommandResultX18QueueWrapper_FUN_0058C990",
+      "address": "0x0058C990",
+      "role": "Wrapper for clientbound opcode 0x013B CommandResultX18 / BattleActionX18. Allocates a 0x1A0 local battle-result staging entry, invokes the effect visual-class selector FUN_00585800 with default 6 and payload+0x04, calls the 18-row stager FUN_005874B0, then enqueues through FUN_005901D0. This completes the 0x0139/0x013A/0x013B/0x013C battle-result family at the wrapper level."
+    },
+    {
+      "id": "BCS-Y-0417",
+      "name": "VfxRaptureParameterCtor_FUN_007C7F80",
+      "address": "0x007C7F80",
+      "role": "Copy-constructor for Application::Scene::Vfx::VfxRaptureParameter. Initializes vftable to BaseRaptureParameter then overwrites with VfxRaptureParameter (multi-inheritance-style refinement). Copies fixed fields from a source object: param_1+1 = src+4 (u32), bitset packing at param_1+2 (6 bits 0x01..0x20 from src+8), bitset at param_1+9 (7 bits from src+9), u8 at param_1+0xb..+0xf, u32 at param_1+0x10/+0x14, u64 at param_1+0x18/+0x20, calls sub-object initializers FUN_007C7650 (src+0x28), FUN_007C7870 (src+0x38), FUN_0080C7D0 (src+0x50), then calls FUN_0058EBF0 (BCS-Y-0413 BattleResultQueueEntryCopy) on src+0x68. The last call is the bridge from the 0x1A0 battle-result queue entry into the Vfx parameter struct. 9 direct callers, including FUN_00812B50 in the Rapture clip subsystem."
+    },
+    {
+      "id": "BCS-Y-0418",
+      "name": "App::Scene::Vfx::VfxRaptureParameter::vftable",
+      "address": "0x00FE7FCC",
+      "role": "Primary vftable for Application::Scene::Vfx::VfxRaptureParameter, the Vfx-side parameter object that consumes battle-result queue entries through FUN_007C7F80. Meta-ptr at 0x00FE7FC8."
+    },
+    {
+      "id": "BCS-Y-0419",
+      "name": "App::Scene::Cut::Register::BaseRaptureParameter::vftable",
+      "address": "0x00FE7EA4",
+      "role": "Base-class vftable for Application::Scene::Cut::Register::BaseRaptureParameter. FUN_007C7F80 writes this vftable first (base initialization) before overwriting with VfxRaptureParameter::vftable (derived initialization). Meta-ptr at 0x00FE7EA0."
+    },
+    {
+      "id": "BCS-Y-0420",
+      "name": "VfxRaptureClipProcessor_FUN_00812B50",
+      "address": "0x00812B50",
+      "role": "Rapture-side Vfx clip processor. 593-byte function in the App::Scene::Cut::Clip range (RaptureActionDamageCallClip ctor FUN_00811690 is at +0xFE0 from here). Reads a sub-object pointer at param_1+0x14, dereferences a vtable slot at +0xF0 offset +0x6c to obtain a typed work record, checks the type tag at record+4 equals 0x766678 ('vfx\\0'), bounds-checks a position counter at param_1+0x58, and on match constructs a VfxRaptureParameter via FUN_007C7F80 (BCS-Y-0417). One concrete exemplar caller of the queue consumer ctor, confirming the queue -> Vfx -> Rapture clip linkage at the Cut/Clip subsystem level."
+    },
+    {
+      "id": "BCS-Y-0421",
+      "name": "RaptureActionDamageCallClip_ctor_FUN_00811690",
+      "address": "0x00811690",
+      "role": "Constructor for App::Scene::Cut::Clip::RaptureActionDamageCallClip (RTTI at BCS-Y-0059, 0x007F7AAC; primary vftable BCS-Y-0060 region at 0x007F7AA0). Calls FUN_008115B0 (base ctor) then writes the RaptureActionDamageCallClip vftable into *param_1 and param_1[2] (multi-inheritance secondary slot)."
+    }
+  ],
+  "decomp_evidence": {
+    "FUN_005874B0": {
+      "dump": "%BCS_GHIDRA_PROJECTS%\\tier1_round2_decomp.txt",
+      "body_bytes": 198,
+      "callers": [
+        "FUN_0058C990"
+      ],
+      "callees": [
+        "FUN_004D7470",
+        "FUN_00587210",
+        "FUN_00578390"
+      ],
+      "stride_per_row": 20,
+      "row_field_layout_at_queue": {
+        "0x00": "targetId u32",
+        "0x04": "amount u32 widened from u16",
+        "0x08": "effectId u32",
+        "0x0C": "worldMasterTextId u16",
+        "0x0E": "param u8",
+        "0x0F": "hitNum u8"
+      }
+    },
+    "FUN_0058C990": {
+      "dump": "%BCS_GHIDRA_PROJECTS%\\tier1_decomp.txt",
+      "body_bytes": 85,
+      "callers": [
+        "FUN_0058CCA0 (BCS-Y-0404 router)"
+      ],
+      "callees": [
+        "FUN_005874B0 (stager)",
+        "FUN_00585800 (BCS-Y-0411 selector)",
+        "FUN_005901D0 (BCS-Y-0412 queue push)"
+      ]
+    },
+    "FUN_007C7F80": {
+      "dump": "%BCS_GHIDRA_PROJECTS%\\tier1_decomp.txt",
+      "body_bytes": 365,
+      "callers": [
+        "FUN_00812B50",
+        "FUN_0080F710",
+        "FUN_00820680",
+        "FUN_0080F660",
+        "FUN_0081DFF0",
+        "FUN_007C8360",
+        "FUN_007B71B0",
+        "FUN_007C21B0",
+        "FUN_007C8300"
+      ],
+      "callees": [
+        "FUN_007C7870",
+        "FUN_0080C7D0",
+        "FUN_0058EBF0 (BCS-Y-0413)",
+        "FUN_007C7650"
+      ],
+      "vftables_written": [
+        "Application::Scene::Cut::Register::BaseRaptureParameter::vftable (initial)",
+        "Application::Scene::Vfx::VfxRaptureParameter::vftable (derived)"
+      ]
+    }
+  },
+  "payloadStructAdded": "s2c_0x013b in data_dependency_catalog.json:payloadStructs",
+  "mirrorTarget": "xivl-captures/data/payload_layouts.json decompLayouts.s2c.0x013b",
+  "damage_display_path": {
+    "source": "xivl-decomp:docs/actor/damage-display.md",
+    "popup_elements": [
+      {
+        "name": "NamePlate",
+        "vtableRva": "0xbcf98c",
+        "slots": 24,
+        "role": "Persistent name and HP overlay"
+      },
+      {
+        "name": "DamagePlate",
+        "vtableRva": "0xbe1e34",
+        "slots": 1,
+        "role": "Floating damage number; leaf destructor-only class"
+      },
+      {
+        "name": "LevelupPlate",
+        "vtableRva": "0xbe22c8",
+        "slots": 1,
+        "role": "Level-up/job-change popup; leaf destructor-only class"
+      }
+    ],
+    "clip_family": {
+      "sharedShape": "RaptureActionDamageCallClip, RaptureCastResultClip, RaptureActionSelectClip, RaptureActionSelectAttackClip, and RaptureActionSelectDamageMccClip each expose a 42-slot CDev cut/scheduler vtable.",
+      "multipleInheritance": "RaptureActionDamageCallClip writes a secondary BaseClipImpl vtable at object+0x08 in addition to its primary vtable.",
+      "factoryIndirection": "FUN_00638700 is the thin RaptureActionDamageCallClip constructor wrapper and has zero direct CALL callers; the source therefore bounds its upstream invocation to an indirect call and labels clip-factory dispatch as likely."
+    }
+  }
+}

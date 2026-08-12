@@ -1,0 +1,251 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "Lua engine callback registry",
+  "generated": "2026-05-20",
+  "title": "Lua engine callback registration registry findings",
+  "scope": "Callback registration registry: Lua-side declarations for C++-fired `_on*` callbacks, bounded away from lua_State lifecycle (6A) and deferred scheduler internals (6C).",
+  "sourceRefs": [
+    "build/lua",
+    "build/lua/3yv89y_p.lua",
+    "%BCS_GHIDRA_PROJECTS%\\turn6_lua_callbacks.txt",
+    "%BCS_GHIDRA_PROJECTS%\\turn12_firer_map.txt",
+    "%BCS_GHIDRA_PROJECTS%\\aux_fun447260.txt",
+    "%BCS_GHIDRA_PROJECTS%\\agent_a_followups_decomp.txt"
+  ],
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0397",
+      "name": "lua_callback_registry_model"
+    },
+    {
+      "id": "BCS-Y-0398",
+      "name": "LuaClassRegistry_FUN_0078E3A0"
+    },
+    {
+      "id": "BCS-Y-0399",
+      "name": "LuaCallbackDispatcher_FUN_00CC7A90"
+    },
+    {
+      "id": "BCS-Y-0400",
+      "name": "LuaControlLifecycleFirer_FUN_00CDC410"
+    },
+    {
+      "id": "BCS-Y-0401",
+      "name": "LuaControlLoopFirer_FUN_00CD8990"
+    },
+    {
+      "id": "BCS-Y-0402",
+      "name": "LuaPrototypeCallbackAssignments_ActorCharaPlayerNpc"
+    },
+    {
+      "id": "BCS-Y-0403",
+      "name": "LuaSuperCallInlineRegistry_ActorBaseClass"
+    },
+    {
+      "id": "BCS-Y-0458",
+      "name": "LuaProgFuncCallbackFirer_FUN_00CDA690"
+    },
+    {
+      "id": "BCS-Y-0459",
+      "name": "LuaProgFuncReservedNameLoader_FUN_00D099B0"
+    }
+  ],
+  "structsAdded": [
+    {
+      "id": "BCS-S-0029",
+      "name": "LuaClassRegistryRecord"
+    },
+    {
+      "id": "BCS-S-0030",
+      "name": "LuaCallbackPrototypeSlot"
+    }
+  ],
+  "binaryAnchors": [
+    {
+      "name": "LuaClassRegistry_FUN_0078E3A0",
+      "va": "0x0078E3A0",
+      "role": "Registers root Lua class globals and script paths.",
+      "evidence": "string/path cluster inside FUN_0078E3A0."
+    },
+    {
+      "name": "std_string_ctor_FUN_00447260",
+      "va": "0x00447260",
+      "role": "Builds the callback-name std::string; not a dispatcher by itself.",
+      "evidence": "BCS-Y-0311."
+    },
+    {
+      "name": "LuaCallbackDispatcher_FUN_00CC7A90",
+      "va": "0x00CC7A90",
+      "role": "Maps target/control object then invokes callback name plus args.",
+      "evidence": "aux_fun447260.txt decomp and further verification."
+    },
+    {
+      "name": "LuaControlLifecycleFirer_FUN_00CDC410",
+      "va": "0x00CDC410",
+      "role": "Fires `_onInit`, `_onFinalize`, and `_onTimer`.",
+      "evidence": "turn6_lua_callbacks.txt and turn12_firer_map.txt."
+    },
+    {
+      "name": "LuaControlLoopFirer_FUN_00CD8990",
+      "va": "0x00CD8990",
+      "role": "Fires `_onLoop`.",
+      "evidence": "turn6_lua_callbacks.txt and turn12_firer_map.txt."
+    },
+    {
+      "name": "LuaProgFuncCallbackFirer_FUN_00CDA690",
+      "va": "0x00CDA690",
+      "role": "Fires embedded prog-function `_onProgFunc` through Lua VM helpers, not through the class/prototype callback dispatcher.",
+      "evidence": "agent_a_followups_decomp.txt; turn6_lua_callbacks.txt records the `_onProgFunc` xref."
+    },
+    {
+      "name": "LuaProgFuncReservedNameLoader_FUN_00D099B0",
+      "va": "0x00D099B0",
+      "role": "Loader/reserved-name checker for `__lge_defineWork`, `__lge_setLoopInterval`, `_progFunc`, and `_onProgFunc`; not a callback fire site.",
+      "evidence": "agent_a_followups_decomp.txt shows FUN_00D07E10 checks over the four reserved names."
+    }
+  ],
+  "callbackDeclarationSurvey": {
+    "luaCorpusRoot": "build/lua",
+    "luaFilesScanned": 2671,
+    "filesWithOnAssignments": 73,
+    "totalOnAssignments": 209,
+    "distinctOnCallbacksInLua": 81,
+    "binaryOnCallbacksWithCodeRefs": 76,
+    "overlapLuaVsBinaryCodeRefs": 75,
+    "superCallFiles": 52,
+    "assignmentPattern": "L0_1._onName = L1_1 after L0_1 is assigned to a class table",
+    "topDeclaredCallbacks": [
+      {
+        "luaName": "_onInit",
+        "declarationCount": 45
+      },
+      {
+        "luaName": "_onFinalize",
+        "declarationCount": 25
+      },
+      {
+        "luaName": "_onUpdateWork",
+        "declarationCount": 15
+      },
+      {
+        "luaName": "_onUpdateMember",
+        "declarationCount": 11
+      },
+      {
+        "luaName": "_onLoop",
+        "declarationCount": 8
+      },
+      {
+        "luaName": "_onReceiveDataPacket",
+        "declarationCount": 6
+      }
+    ],
+    "scriptOnlyExamples": [
+      "_onEmoteRejected",
+      "_onFilterLog",
+      "_onNoticeRejected",
+      "_onReceiveTimingPacket",
+      "_onTalkRejected",
+      "_onUICommandEvent"
+    ],
+    "binaryOnlyExamples": [
+      "_onProgFunc"
+    ],
+    "binaryOnlyResolution": {
+      "luaCorpusLiteralSearch": "No `_onProgFunc` literal was found under build/lua. One `_progFunc` reference exists in build\\lua\\3yv89y_p.lua inside the `_getLanguage` inline wrapper.",
+      "binaryFirer": "FUN_00CDA690 via wrapper FUN_00CC77C0",
+      "loaderXref": "FUN_00D099B0 reserved-name check"
+    }
+  },
+  "representativeDeclarations": [
+    {
+      "decodedPath": "ActorBaseClass.lua",
+      "encodedPath": "build/lua/97qvs89r57y9rr.lua",
+      "ownerClass": "ActorBaseClass",
+      "callbacks": [
+        "_onInit",
+        "_onFinalize",
+        "_onTimer",
+        "_onReceiveDataPacket",
+        "_onReceiveTimingPacket"
+      ],
+      "notes": "Fallback root declarations for common lifecycle/data callbacks."
+    },
+    {
+      "decodedPath": "Chara/CharaBaseClass.lua",
+      "encodedPath": "build/lua/729s9/729s989r57y9rr.lua",
+      "ownerClass": "CharaBaseClass",
+      "callbacks": [
+        "_onUpdateDisplayName",
+        "_onUpdateWork",
+        "_onChangeJob",
+        "_onChangeNetStatSystem",
+        "_onChangeNetStatUser",
+        "_onChangeSubStatStatus"
+      ],
+      "notes": "_onChangeJob at line 1508 pairs with the JobChangeReceiver C++ fire path."
+    },
+    {
+      "decodedPath": "Chara/Player/PlayerBaseClass.lua",
+      "encodedPath": "build/lua/729s9/uy9l5s/uy9l5s89r57y9rr.lua",
+      "ownerClass": "PlayerBaseClass",
+      "callbacks": [
+        "_onPreEvent",
+        "_onPostEvent",
+        "_onPreCommand",
+        "_onPostCommand"
+      ],
+      "notes": "_onPreEvent and _onPostEvent are the Lua handler side for the deferred event-condition firers documented in the deferred-napi-writers pass."
+    },
+    {
+      "decodedPath": "Chara/Npc/NpcBaseClass.lua",
+      "encodedPath": "build/lua/729s9/wu7/wu789r57y9rr.lua",
+      "ownerClass": "NpcBaseClass",
+      "callbacks": [
+        "_onTalkEvent",
+        "_onTalkRequest",
+        "_onPushEvent",
+        "_onPushRequest",
+        "_onEventCancel"
+      ],
+      "notes": "The Talk/Push handlers dispatch into C++ N-API mutators or server-RPC helpers after FUN_00CC7A90 resolves the callback."
+    }
+  ],
+  "registryModel": [
+    {
+      "stage": "root class registration",
+      "nativeFunction": "FUN_0078E3A0",
+      "summary": "Creates/registers root class globals and pairs them with script paths."
+    },
+    {
+      "stage": "script load",
+      "nativeFunction": "LpbLoader path from lua_bytecode_format.md",
+      "summary": "Loads/decompiles standard Lua 5.1 bytecode; executing the chunk assigns callback closures to class tables."
+    },
+    {
+      "stage": "Lua prototype registration",
+      "nativeFunction": "Lua bytecode",
+      "summary": "Handlers register as class-table fields, e.g. CharaBaseClass._onChangeJob = closure."
+    },
+    {
+      "stage": "C++ fire",
+      "nativeFunction": "FUN_00447260 + FUN_00CC7A90",
+      "summary": "C++ builds a callback-name string and dispatches by name against the target Lua object."
+    }
+  ],
+  "negativeFindings": [
+    {
+      "finding": "No standalone native callback-name registry was identified.",
+      "basis": "FUN_0078E3A0 carries class/path records, while individual C++ firers carry their own `_on*` literals. The Lua handler side is visible as prototype assignments in decoded script bytecode."
+    },
+    {
+      "finding": "FUN_00447260 alone is not a fire site.",
+      "basis": "BCS-Y-0311 identifies it as a std::string constructor; FUN_00CC7A90 must be present to complete the Lua dispatch."
+    },
+    {
+      "finding": "`_onProgFunc` is not a missing shipped Lua-side class/prototype declaration.",
+      "basis": "The `build\\lua` corpus contains no `_onProgFunc` literal. The two binary xrefs resolve to FUN_00CDA690 (actual embedded prog-function firer through Lua VM helpers, reached by wrapper FUN_00CC77C0) and FUN_00D099B0 (reserved-name loader check). `_onProgFunc` is the entry function name for two embedded `.rdata` Lua chunks outside the shipped `.lpb` class-table callback declarations."
+    }
+  ]
+}

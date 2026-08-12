@@ -1,0 +1,86 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "Lua state and scheduler negatives verification",
+  "generated": "2026-05-20",
+  "title": "Lua state global and coroutine API verification findings",
+  "scope": "Follow-up verification for two open architecture questions: whether the client has a process-global lua_State* holder, and whether stripped Lua coroutine APIs exist anywhere outside the deferred event-condition scheduler.",
+  "sourceRefs": [
+    "docs\\lua-state-lifecycle.md",
+    "docs\\deferred-event-scheduler.md",
+    "%BCS_GHIDRA_PROJECTS%\\sub6a_lua_state_lifecycle_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lua_state.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lual_newstate.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lua_newstate.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lua_pcall.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lua_load.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lua_close.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lua_resume.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_lua_yield.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_cannot_resume.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_attempt_to_yield.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_coroutine_string_refs_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_coroutine_callers_decomp.txt"
+  ],
+  "scanSummary": {
+    "stockApiNameStrings": {
+      "lua_State": 0,
+      "luaL_newstate": 0,
+      "lua_newstate": 0,
+      "lua_pcall": 0,
+      "lua_load": 0,
+      "lua_close": 0,
+      "lua_resume": 0,
+      "lua_yield": 0
+    },
+    "stockCoroutineDiagnosticStrings": {
+      "cannot resume": [
+        "0x01131154 -> FUN_00DCFD30",
+        "0x011330F0 -> FUN_00DDDE20"
+      ],
+      "attempt to yield": [
+        "0x0113117C -> FUN_00DCF7D0"
+      ]
+    }
+  },
+  "processGlobalLuaState": {
+    "status": "not_found",
+    "summary": "No process-global lua_State* holder was identified. The re-read 6A anchors still pass state through Component::Lua::GameEngine wrapper fields and call-frame wrappers: FUN_00CCF7D0 uses the LuaThreadInvokeState helper surface, FUN_00CF0910 returns this+0x2c, FUN_00CF09C0 replaces this+0x2c with a 0x140-byte frame, and FUN_00CF08F0 gates the active target at this+0x38. The loader bridge FUN_00D0FD70 uses resource/listener pointers and loader cache maintenance rather than a shared .data lua_State singleton.",
+    "basis": [
+      "No `lua_State` debug string was present in the binary string scan.",
+      "No named stock state construction/destruction API strings were present.",
+      "The relevant 6A decompilation evidence shows object-relative fields and parameters, with no recovered shared holder referenced by both FUN_00CCF7D0 and FUN_00D0FD70."
+    ]
+  },
+  "coroutineApis": {
+    "status": "found_outside_deferred_event_path",
+    "summary": "The binary contains stripped stock Lua 5.1 coroutine API bodies and client wrappers, but the deferred event-condition scheduler still uses native C++ state machines rather than these API calls.",
+    "confirmedLuaCoroutineApiCalls": [
+      {
+        "symbolId": "BCS-Y-0477",
+        "api": "lua_resume",
+        "clientCallsite": "FUN_00CF4230",
+        "stockBodyCandidate": "FUN_00DCFD30",
+        "evidence": "FUN_00DCFD30 references the stock `cannot resume` diagnostic and implements resume-state checks; FUN_00CF4230 calls FUN_00DCFD30(*param_1, param_2) and maps Lua error status values."
+      },
+      {
+        "symbolId": "BCS-Y-0478",
+        "api": "lua_yield",
+        "clientCallsite": "FUN_00CF38D0",
+        "stockBodyCandidate": "FUN_00DCF7D0",
+        "evidence": "FUN_00DCF7D0 references the stock `attempt to yield across metamethod/C-call boundary` diagnostic and writes yield status/stack state; FUN_00CF38D0 calls FUN_00DCF7D0(*param_1, 0)."
+      }
+    ],
+    "deferredEventSchedulerConclusion": "No event-condition scheduler function in the recovered chain (FUN_00897310, FUN_00897290, FUN_00896950, FUN_008955C0) calls the coroutine API bodies. The scheduler conclusion is narrowed to: deferred event continuation is native C++ state, while Lua coroutine support exists elsewhere in the binary."
+  },
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0477",
+      "name": "LuaCoroutineResumeCallsite_FUN_00CF4230"
+    },
+    {
+      "id": "BCS-Y-0478",
+      "name": "LuaCoroutineYieldCallsite_FUN_00CF38D0"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "synthesis_only_no_catalog_change",
+  "scope": "Apply the established Pattern B drill methodology to s2c 0x00D0 - new rank 1 s2c gap (332 pcap hits) after the 0x00CF-moveactor-pipeline pass closed 0x00CF. Verify the fun-0058cca0-walk pass's case 0xD0 enumeration, confirm all leaf helpers are cataloged, synthesize end-to-end pipeline, refresh the pcap-opcode-coverage-matrix from covered_pattern_no_receiver to covered_pipeline.",
+  "method": {
+    "step1": "Re-verify the fun-0058cca0-walk pass's case 0xD0 enumeration against decomp dump (%BCS_GHIDRA_PROJECTS%/fun_0058cca0_decomp.txt lines 251-273). Confirmed match: up-to-16-record (dword+ushort) copy loop, 0xffff terminator pair, FUN_0058ECB0 helper, FUN_004D7980(0x88,...) broadcast.",
+    "step2": "Cross-reference all helpers against symbols.json: FUN_0058CCA0 = BCS-Y-0561 (parent dispatcher); FUN_0058ECB0 = BCS-Y-0619 (record-table init); FUN_004D7980 = scene-packet broadcast framework documented BCS-Y-0375/0376. All helpers cataloged - no new BCS-Y entries needed.",
+    "step3": "Synthesize the pipeline shape and field semantics from the inline case body + the documented helper bodies. Document the 16-slot (dword+ushort) state table at this+0x188 + 32-record secondary init + scene-packet 0x88 broadcast."
+  },
+  "case_body_decomp_excerpt": "case 0xd0:\n  uVar8 = 0;\n  if (*(char *)(param_2 + 0x90) != '\\0') {\n    puVar9 = (undefined4 *)(param_1 + 0x188);\n    do {\n      if (uVar8 < 0x10) {\n        *(undefined2 *)(puVar9 + 1) = *(undefined2 *)(param_2 + 0x14 + uVar8 * 8);\n        *puVar9 = *(undefined4 *)(param_2 + 0x10 + uVar8 * 8);\n      }\n      uVar8 = uVar8 + 1;\n      puVar9 = puVar9 + 2;\n    } while ((int)uVar8 < (int)(uint)*(byte *)(param_2 + 0x90));\n  }\n  *(undefined2 *)(param_1 + 0x18c + (uint)*(byte *)(param_2 + 0x90) * 8) = 0xffff;\n  *(undefined2 *)(param_1 + 0x20c) = 0xffff;\n  FUN_0058ecb0(param_1 + 0x188, ...);\n  FUN_004d7980(0x88, ..., 0x10);\n  break;",
+  "pipeline_synthesis": {
+    "wire_arrival": "s2c 0x00D0 packet arrives at CharaElement::vftable[9] = FUN_0058CCA0 (BCS-Y-0561, third router / Pattern D sub-sub-dispatcher)",
+    "case_dispatch": "Case 0xD0 of the main low-half switch (uVar3 < 0x135 branch). NOT in the entry filter whitelist - reaches case body directly.",
+    "step1_inline_table_copy": "Read byte at packet+0x90 = record count N (max 16). For i in 0..N-1: copy dword at packet+0x10+i*8 (record id) and ushort at packet+0x14+i*8 (record param) into this+0x188+i*8 (dword) and this+0x18C+i*8 (ushort). Records 0..15 only; loop allows N > 16 but caps writes at 16.",
+    "step2_inline_terminator": "Write ushort 0xffff at this+0x18c+N*8 (terminator immediately after last record). Also write ushort 0xffff at this+0x20c (separate end-of-list sentinel field).",
+    "step3_secondary_init": "Call FUN_0058ECB0 (BCS-Y-0619, ThirdRouter_Case0xD0_RecordTableInit) with this+0x188 as param_1. Helper zeros 17 6-byte entries then copies 0x22 dwords from param_2 to param_1. This is a secondary table reset/init for the larger 32-record companion table that overlaps the same +0x188 region.",
+    "step4_broadcast": "Call FUN_004D7980(0x88, &local, 0x10) - scene-packet broadcast helper documented BCS-Y-0375/0376. Subtype 0x88 = Application::Scene::ScenePacket record id (per FUN_004EC080 framework). Broadcasts 16 bytes of state-change context to scene observers."
+  },
+  "key_findings": [
+    "s2c 0x00D0 (new rank 1 s2c gap, 332 pcap hits) is now end-to-end attributed. Sole leaf helper FUN_0058ECB0 was already cataloged at BCS-Y-0619 (added during the fun-0058cca0-walk follow-up). Broadcast helper FUN_004D7980 is the documented Application::Scene::ScenePacket post framework (BCS-Y-0375/0376). Pipeline closure required zero new BCS-Y entries - this is a synthesis-only matrix refresh.",
+    "Case 0xD0 packet layout (inferred from decomp): byte at +0x90 = record count N (max 16 enforced by case body). 16 records of 8 bytes each at +0x10..+0x90: (dword id + ushort param + 2 bytes pad). Total packet body size = at least 0x91 bytes.",
+    "Target field layout (on Chara actor at this+0x188): 16-slot (dword+ushort) primary table at +0x188..+0x208 (16 * 8 = 0x80 bytes). End-of-list sentinel ushort at +0x20c. The 32-record secondary init via FUN_0058ECB0 writes through the same +0x188 region with a different layout (17 6-byte entries = 0x66 bytes; then 0x22 dwords = 0x88 bytes) - so the same +0x188 region has dual access patterns depending on the consumer.",
+    "Methodology confirmation: this sequence of Pattern-B-drill passes demonstrates that the per-opcode Pattern B drill scales well. Pattern B opcodes whose fun-0058cca0-walk enumeration covered the leaf helpers AND those helpers were subsequently cataloged require only synthesis-only closures. The pcap-opcode-coverage-matrix becomes the source of truth for which Pattern B opcodes are 'covered_pattern_no_receiver' vs 'covered_pipeline'.",
+    "Sentinel pattern: this case writes 0xffff terminator at TWO distinct locations (slot N after last record AND fixed slot +0x20c). The +0x20c terminator is independent of N - likely a separate fixed-position state field used by a different consumer path (probably the 32-record secondary table's end marker)."
+  ],
+  "matrix_updates_needed": {
+    "topUncoveredS2cGaps": "Remove rank 1 (0x00d0) from gap list. Shift rank 2 (0x00cc) and rank 3 (0x00d6) up by one position. New rank 1 becomes 0x00cc (242 hits) for the 0x00CC-actor-record-apply pass.",
+    "main_matrix_0x00d0": "Update catalogStatus from covered_pattern to covered_pipeline. Update bcsYIds to include BCS-Y-0619 (record-table init helper) and BCS-Y-0561 (parent dispatcher). Update notes to reference the pipeline synthesis in this manifest.",
+    "closedSinceLastRefresh": "Append: {opcode: 0x00d0, originalRank: 1, closedBy: 'this synthesis only - BCS-Y-0619 + BCS-Y-0561 + the scene-record-choke-point pass's scene-packet framework all pre-existed; closure was matrix-state correction', previousNotes: '332 pcap hits; new rank 1 s2c gap after the 0x00CF-moveactor-pipeline pass closed 0x00CF'}"
+  },
+  "proposed_bcs_y_entries": [],
+  "catalog_growth": "+0 BCS-Y (synthesis-only phase)"
+}

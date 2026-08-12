@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "synthesis_complete_no_changes",
+  "scope": "Resolve the open question from the action skill subsystem pass: 0x00DA PlayAnimationOnActor dispatch via FUN_0058CCA0 case 0xDA - find the actual animation-trigger path. Per client-architecture 'S2C dispatch has five architectural patterns', all actor classes' vftable[9] is no-op. Where does the animation actually happen?",
+  "method": {
+    "step1": "Cross-reference the FUN_0058CCA0 case enumeration: case 0xDA goes to FUN_0058CAD0 (already cataloged as ThirdRouter_Case0xDA_DefaultsForwardWrapper_FUN_0058CAD0) -> FUN_0058C690 (already cataloged as ThirdRouter_Cases0xE0_0xE1_0xDA_ActionRecordStageDispatch_FUN_0058C690).",
+    "step2": "Decomp FUN_0058C690 (142B). Confirms it builds a 0x38-byte action record stack frame: local_1e0 = FUN_004d6750() (actor ID), local_1be = param_3 (sub-action ID), local_1dc = param_1 (target), local_1c0/local_1b0 = 1 (flags), local_1b8 = param_2 (action data). Then calls 3 functions that ARE ALL ALREADY CATALOGED.",
+    "step3": "Trace the 3 downstream calls: FUN_00585800 = [[BattleResultEffectVisualClassSelector_FUN_00585800]] (already cataloged at BCS-Y line 5232 era - selects the visual class for battle result effects). FUN_00587370 = [[BattleResultSingleTargetStager_FUN_00587370]] (BCS-Y-1009). FUN_005901D0 = [[BattleEffectEntryProcess_FUN_005901D0]] (BCS-Y-1010)."
+  },
+  "key_findings": [
+    "RESOLVED: 'PlayAnimationOnActor' (0x00DA) is a misnomer. The opcode does NOT directly trigger an animation. The handler builds a battle-effect action record, selects a visual class via BattleResultEffectVisualClassSelector, packages it as a log entry, and posts it to a subscriber/queue dispatcher. The actual animation playback happens DOWNSTREAM in a separate poll loop (likely the actor tick or animation system reads from the queue).",
+    "ARCHITECTURAL: 0x00DA + 0x00E0 + 0x00E1 ALL route through the same FUN_0058C690 BattleEffectActionRecord builder. They differ in caller wrappers (0xDA via FUN_0058CAD0 with defaults; 0xE0 via FUN_0058CAF0; 0xE1 via FUN_0058CB40 - the 4 callers of FUN_0058C690 are FUN_0058CAD0/CAF0/CB40/CCA0). All three opcodes are battle-effect-visual triggers, not generic animation requests.",
+    "CROSS-PIPELINE LINK: The LogEntryBuilder + LogEntryDispatcher (BCS-Y-1009/1010) functions previously cataloged (as the CharaElement slot 8 sub-op 0x64 handlers) are SHARED with the slot 9 third-router action-record path. This means the same log/event queue dispatcher serves: (a) slot 8 sub-op 0x64 generic event log entries, AND (b) slot 9 third-router 0xDA/0xE0/0xE1 battle-effect entries. Suggests a unified actor event log structure consumed by multiple downstream subsystems.",
+    "OPEN QUESTION PARTIALLY ANSWERED (BCS-Y-0540 PlayAnimationOnActor open question): the dispatch path is now fully traceable, but the 'how does the animation actually play' final-mile question is deferred. The answer lives in whatever subsystem polls the FUN_005901D0 queue - likely a per-frame actor animation tick that consumes pending battle-effect records and invokes the animation system with the visual class selected by FUN_00585800.",
+    "BATTLE EFFECT QUEUE CONSUMER PASS RELATED FINDING: The action skill subsystem pass's open question about CharaActionController.enqueue caller chain may be partially answered: there's no direct enqueue call from the wire-packet receive path. Instead, the wire-packet handlers (0xDA/0xE0/0xE1) post BATTLE-EFFECT records to a queue, and CharaActionController would consume from that queue at tick time. The 'missing link' the original plan referenced may not exist as a direct call - it's a queue/poll boundary."
+  ],
+  "proposed_bcs_y_entries": []
+}

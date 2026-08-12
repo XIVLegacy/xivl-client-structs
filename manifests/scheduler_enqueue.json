@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Closes the deferred follow-up: identify the schedule(callback, delay) entry point for the Lua scheduler. **MAJOR DISCOVERY**: the candidate FUN_00D082A0 is NOT the schedule entry point - it's a Lua-callable TIME-GETTER registered by the LGE bootstrap FUN_00CD8990. The actual MS-scheduler enqueue path is FUN_00CEEE70 (core, 500 bytes) with 3 distinct callers: FUN_00CEF510 (ms-tick, known), FUN_00CEF0F0 (schedule-if-not-pending API, 1047 bytes), FUN_00CEF900 (batch-schedule API, 184 bytes). Also characterizes both scheduler queues as RED-BLACK TREES (not lists - the 'us-queue/ms-list' naming was approximate).",
+  "method": {
+    "step1": "Decomp 6 candidate functions in batch: FUN_00D082A0 (264 bytes, candidate with 0 listed callers), FUN_00CF51A0 (us-queue head allocator, sole caller=scheduler ctor), FUN_00D0A870 (ms-list head allocator, 5 callers), FUN_00CF58E0 (scheduler ctor re-decomp), FUN_00CEEE70 (500 bytes, scheduler-internal helper), FUN_00CEFFF0 (82 bytes, another scheduler internal). Output: c108_scheduler_decomp.txt.",
+    "step2": "From the decomp, identified FUN_00CEEE70 as the **MS-scheduler ENQUEUE function** (3 distinct callers per FUN_00CEF510 tick + 2 unknown). Decomped the 2 unknown callers: FUN_00CEF900 (184 bytes, batch-schedule via vector<ushort> iteration) + FUN_00CEF0F0 (1047 bytes, schedule-if-not-pending with timeGetTime + dedup search). Also decomped FUN_00CF6080 (856 bytes, us-scheduler tick body with R-B tree traversal). Output: c108_enqueue_api.txt.",
+    "step3": "FindAllReferencesToAddress on FUN_00D082A0 - **RESULT: 2 DATA references in FUN_00CD8990** (the LGE bootstrap function; see client-architecture 'The LGE class system is a 5-userdata-type model'). DATA refs confirm FUN_00D082A0 is REGISTERED AS A LUA-CALLABLE function pointer in the LGE bootstrap's named-global cclosure installation. NOT the schedule entry point - it's a Lua-side time-getter. Also xref FUN_00CEEE70 (4 refs, 3 distinct callers confirmed), FUN_00CF51A0 (1 ref = scheduler ctor only), FUN_00D0A870 (8 refs, 5 distinct callers - reused for other R-B tree initializations). Output: c108_xrefs.txt.",
+    "step4": "Analyzed scheduler ctor FUN_00CF58E0 in full: layout established as: +0x00=config ptr (param_2), +0x08/+0x0C=epoch (DAT_01377FB0/FB4), +0x14=us-tree head pointer (from FUN_00CF51A0 allocator, 0x30-byte node), +0x18=0 (count?), +0x24=ms-tree head pointer (from FUN_00D0A870 allocator, 0x24-byte node), +0x28=0, +0x30=0, +0x34=0, +0x38=0. Total scheduler size 0x40 (64 bytes). The +0x29 (us) / +0x21 (ms) byte set to 1 in head initialization = SENTINEL color (red). Both queues are RED-BLACK TREES (not lists as the approximated).",
+    "step5": "Catalog 7 new BCS-Y entries (1 LGE callback + 3 enqueue chain functions + 1 us-tick body + 2 R-B tree node allocators) + 5 amendments to scheduler entries."
+  },
+  "key_findings": [
+    "**candidate FUN_00D082A0 IS NOT THE SCHEDULE ENTRY POINT**. FindAllReferencesToAddress confirmed only 2 DATA refs, BOTH inside FUN_00CD8990 (the LGE bootstrap; see docs/client-architecture.md, 'The LGE class system is a 5-userdata-type model'). DATA refs = function-pointer registration as a cclosure. FUN_00D082A0 (264 bytes) is a TIME-GETTER exposed to Lua scripts - it reads the scheduler epoch, computes a time delta via FUN_004CFA50 (QueryPerformanceCounter wrapper) divided by DAT_00F909C8 (frequency), and returns a double seconds-since-epoch value. Likely registered as `_lge_getTime` or similar Lua API.",
+    "**MS-scheduler ENQUEUE PATH FULLY MAPPED**. Core enqueue function: [[LuaSchedulerMs_enqueue_core_FUN_00CEEE70]] (BCS-Y-1725 NEW, 500 bytes). Has 3 distinct callers: (1) [[LuaSchedulerTickMs_FUN_00CEF510]] (BCS-Y-1696) for re-enqueueing during tick scan; (2) [[LuaSchedulerMs_enqueue_schedule_if_not_pending_FUN_00CEF0F0]] (BCS-Y-1726 NEW, 1047 bytes) - the 'schedule(callback, delay) if not already pending' API with timeGetTime + dedup search; (3) [[LuaSchedulerMs_enqueue_batch_FUN_00CEF900]] (BCS-Y-1727 NEW, 184 bytes) - batch schedule over a vector<ushort> of event IDs. Both enqueue APIs eventually delegate to FUN_00CEEE70 for the actual R-B tree insertion.",
+    "**SCHEDULER QUEUES ARE RED-BLACK TREES, NOT LISTS** (refinement of the 'us-queue/ms-list' approximation). Evidence: (a) head nodes are sentinel pattern with 3-pointer initialization (left/right/parent self-refs), (b) color byte at fixed offset (+0x29 for us-tree node, +0x21 for ms-tree node) set to 1 (red) on init, (c) tick traversal in FUN_00CF6080 (us tick body, 856 bytes) walks tree via `cVar4 == '\\0'` color check then descends left/right based on key comparison. The MS tree node is 0x24 bytes; US tree node is 0x30 bytes (extra 0x0C bytes for higher-resolution time storage). Both are std::map / std::set-style R-B trees keyed by absolute scheduled time.",
+    "**US-scheduler tick body FUN_00CF6080** (BCS-Y-1728 NEW, 856 bytes, sole caller [[LuaSchedulerTickUs_FUN_00CF63E0]] BCS-Y-1699): traverses the us-tree at scheduler+0x14, computes current-time-divided-by-1000 (us -> ms scale alignment), walks the tree via R-B color comparison to find ready entries (key <= now). For each ready entry, processes its child list (puVar3[7] field), invokes the dispatch via [[LuaScheduledDispatch_entry_FUN_00CF5EC0]] (BCS-Y-1686), frees consumed entries via FUN_0044D350. Also processes a separate vector at scheduler+0x30..+0x38 (auxiliary dispatch list?). The us-tree node has fields at: +0x0/+0x4/+0x8 = left/right/parent (R-B), +0x10/+0x14 = key (64-bit absolute time), +0x18 = ?, +0x1C = child list head, +0x20 = ?, +0x29 = color byte.",
+    "**TREE NODE ALLOCATORS (R-B tree sentinel constructors)**: [[LuaSchedulerUs_tree_node_alloc_FUN_00CF51A0]] (BCS-Y-1729 NEW, 59 bytes) allocates 0x30-byte us-tree head via FUN_0044D500 + initializes 3-pointer self-refs + color byte +0x29 = 1. [[LuaSchedulerMs_tree_node_alloc_FUN_00D0A870]] (BCS-Y-1730 NEW, 59 bytes) allocates 0x24-byte ms-tree head via FUN_0044D500 + similar init with color byte +0x21 = 1. The ms-tree allocator has 5 distinct callers (not just scheduler ctor) - reused for other R-B tree initializations in the engine.",
+    "**FUN_00D082A0 Lua-callable time getter** (BCS-Y-1731 NEW, 264 bytes): exposed to Lua scripts via LGE bootstrap FUN_00CD8990's cclosure-registration block. Computes seconds-since-epoch using QueryPerformanceCounter (FUN_004CFA50) divided by frequency (DAT_00F909C8). Has 2 code paths: one for high-precision (us-based), one for relative-to-epoch. Returns a double value. Likely registered as `_lge_getTime` or `_lge_clock` Lua API.",
+    "**MS-scheduler enqueue API call chain**: high-level callers identified but not deeply decomped: FUN_00CEF0F0's sole caller is FUN_00CE27F0; FUN_00CEF900's sole caller is FUN_00CEFA70. These are likely the closest-to-user-facing wrappers. Going further upstream would identify the actual Lua-callable `schedule(callback, ms_delay)` API entry. Deferred to follow-up."
+  ],
+  "new_bcsy_entries_summary": {
+    "enqueue_path_total": 3,
+    "us_tick_body_total": 1,
+    "tree_node_allocators_total": 2,
+    "lua_time_getter_total": 1,
+    "amendments": 5,
+    "total_bcsy_added": 7,
+    "id_range": "BCS-Y-1725..BCS-Y-1731",
+    "amendment_targets": [
+      "BCS-Y-1693 (LuaScheduler_constructor_FUN_00CF58E0): document complete layout - both queues are R-B trees, refined +0x14 / +0x24 head fields",
+      "BCS-Y-1696 (LuaSchedulerTickMs_FUN_00CEF510): cross-link to FUN_00CEEE70 enqueue + FUN_00CEFFF0 list-processor",
+      "BCS-Y-1699 (LuaSchedulerTickUs_FUN_00CF63E0): cross-link to FUN_00CF6080 us-tick body",
+      "BCS-Y-1687 (LuaSchedulerUs_us_queue_iterator_FUN_00CF6080 - the original entry): supersede - the entry was the us-tick body itself, NOT a separate iterator; corrected and consolidated with the new BCS-Y-1728 entry",
+      "BCS-Y-0501 (FUN_00CD8990 LGE bootstrap): cross-link to the new FUN_00D082A0 Lua-callable time getter (BCS-Y-1731 NEW)"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp FUN_00CE27F0 (sole caller of [[LuaSchedulerMs_enqueue_schedule_if_not_pending_FUN_00CEF0F0]] BCS-Y-1726 NEW) to identify the next level of the schedule API. Likely a `schedulePending(state, callback, ms_delay)` wrapper.",
+    "Decomp FUN_00CEFA70 (sole caller of [[LuaSchedulerMs_enqueue_batch_FUN_00CEF900]] BCS-Y-1727 NEW) to identify the batch-schedule's parent. Likely a `scheduleBatch(state, vector<event_id>, payload)` wrapper.",
+    "Identify the LUA-callable `_lge_schedule` (or similarly-named) API entry. Trace upstream from FUN_00CE27F0 and FUN_00CEFA70 until reaching the cclosure-registration site (probably in FUN_00CD8990 LGE bootstrap, same place as FUN_00D082A0 time getter).",
+    "Confirm the exact Lua name of FUN_00D082A0 by examining FUN_00CD8990's cclosure-registration block at xref sites 0x00CD9017 and 0x00CD9037. The DAT_xxx near those refs should hold the Lua function name string.",
+    "Decomp the us-scheduler enqueue path: there must be a function analogous to FUN_00CEEE70 (ms-enqueue) but for the us-tree. Candidate: a function that writes to scheduler+0x14 R-B tree. The us-tick FUN_00CF63E0 -> FUN_00CF6080 only consumes; the producer is unidentified.",
+    "Investigate FUN_00CE63B0, FUN_00CE64A0, FUN_00CE65B0, FUN_00D0A6F0 - the 4 non-scheduler callers of FUN_00D0A870 ms-tree allocator. These likely create OTHER R-B trees in the Lua-bridge codebase (probably for object-tracking maps, listener lists, etc).",
+    "Decomp FUN_00CEFFF0 (82 bytes, sole caller=ms-tick FUN_00CEF510) to characterize the list-batch-move helper - it traverses a linked list from param_3 to param_5 and re-links nodes via FUN_008F75C0 + FUN_00D4AC50. Likely the 'extract ready entries' helper."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1711 -> 1718 (+7 BCS-Y; BCS-Y-1725..1731)",
+  "files_changed": [
+    "manifests/symbols.json: +7 entries (BCS-Y-1725..1731), 5 amendments",
+    "manifests/scheduler_enqueue.json (NEW, this file)",
+    "tools/ghidra/logs/c108_scheduler_decomp.txt (NEW - 6 candidate function decomps)",
+    "tools/ghidra/logs/c108_enqueue_api.txt (NEW - 3 enqueue API decomps)",
+    "tools/ghidra/logs/c108_xrefs.txt (NEW - 4 xref scans)",
+    "tools/extractors/append_scheduler_enqueue.py (NEW)"
+  ]
+}

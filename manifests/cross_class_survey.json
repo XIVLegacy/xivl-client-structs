@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Cross-class survey of the 10 other LTC/LGTC-derived classes' (GroupBase, ItemBase, WidgetHandle, Math, Global, CommandBase, JudgeBase, QuestBase, String, Table) secondary vftable slot 0+1+5 to test the hypothesis that each class has its own _onFinalize fire method. Hypothesis FALSIFIED. KEY FINDING: FUN_006F6900 is LITERALLY SHARED across all 11 classes' slot 5 - one engine-wide implementation, not per-class overrides. Slots 0 and 1 ARE per-class (uniform 27-byte / 94-byte templates with class-specific subobject-dtor/ctor targets).",
+  "method": {
+    "step1": "FindSymbolByName 'Application::Lua::Script::Client::Control::' substring with limit=5000 to enumerate all symbols in the namespace. Filter for '::vftable' suffix per the 11 target classes.",
+    "step2": "Extract per-class primary + secondary (+tertiary for Global) vftable VAs from the symbol output. Layout pattern: meta_ptr + slots + next_meta_ptr + next_slots.",
+    "step3": "DumpMemRange 10 secondary (or tertiary for Global) vftable ranges 0x40 bytes each to read slot 0..15 contents for each class. Plus 10 primary ranges to verify primary slot count.",
+    "step4": "Bulk DumpFunctionDecomp of slot 0 + slot 1 functions for all 10 classes (20 decomps total) to verify the uniform-template hypothesis.",
+    "step5": "Catalog 10 vector-deleting-dtor entries + 9 clone-factory entries (QuestBase factory pre-existing as BCS-Y-0898 - amend not create). 4 amendments to BCS-Y-0898/1529/1530/1531."
+  },
+  "key_findings": [
+    "**SLOT 5 IS LITERALLY SHARED**: All 11 LTC/LGTC-derived classes' secondary vftable slot 5 = FUN_006F6900 (same address). This is ONE engine-wide _onFinalize fire implementation, NOT 11 per-class overrides. the hypothesis that 'each class likely has its own slot 5 _onFinalize fire method' is FALSIFIED.",
+    "**SLOT 0 IS CLASS-SPECIFIC (uniform template)**: All 11 classes have their own 27-byte vector deleting dtor at slot 0 of secondary vftable. Pattern: `fn(this, flag) { class_subobj_dtor(this); if (flag&1) _free(this); return this; }`. Only the subobject dtor target varies per-class.",
+    "**SLOT 1 IS CLASS-SPECIFIC (uniform template)**: All 11 classes have their own 94-byte clone/factory at slot 1 of secondary vftable. Pattern: `fn() { mem = operator_new(SIZE, COOKIE); if (mem==0) return 0; return class_ctor(mem); }`. Allocation size (0x64-0x78) and ctor target vary per-class.",
+    "**LTC vs LGTC PRIMARY VFTABLE ASYMMETRY**: LTC-derived classes (GroupBase, ItemBase, WidgetHandle) have 7-slot primary vftables (dtor + 6 LuaControl polymorphic methods). LGTC-derived classes have 1-4 slot primary vftables (StatusBase/Math/CommandBase: 1 slot; JudgeBase/QuestBase/String/Table: 2 slots; Global: 4 slots + tertiary). Variation reflects different inheritance chain depths.",
+    "**GLOBAL HAS A TERTIARY VFTABLE**: Global is the only class with 3 vftables (primary 0x00fd6090, secondary 0x00fd60a4 1-slot, tertiary 0x00fd60ac LGTC chain). Tertiary occupies the LGTC role - slot 5 there is FUN_006F6900 as expected. Layout: 4-slot primary + 1-slot secondary + ~25-slot tertiary.",
+    "**Per-class slot 0/1 data table** (target VA -> subobject dtor / clone ctor / clone size):",
+    "  - GroupBase (LTC, sec): slot 0 FUN_00719150 -> FUN_006dd070;  slot 1 FUN_007186D0 -> FUN_006dcff0 / 0x78",
+    "  - ItemBase (LTC, sec):  slot 0 FUN_00719170 -> FUN_006dd4d0;  slot 1 FUN_00718730 -> FUN_006dd450 / 0x74",
+    "  - WidgetHandle (LTC, sec): slot 0 FUN_00719400 -> FUN_006def60; slot 1 FUN_00719220 -> FUN_006deee0 / 0x68",
+    "  - Math (LGTC, sec):     slot 0 FUN_007192E0 -> FUN_006dde00;  slot 1 FUN_00719280 -> FUN_006ddd80 / 0x68",
+    "  - Global (LGTC, tert):  slot 0 FUN_007277F0 -> FUN_006ef040;  slot 1 FUN_00728950 -> FUN_006f15a0 / 0x78",
+    "  - CommandBase (LGTC, sec): slot 0 FUN_00758A00 -> FUN_00758930; slot 1 FUN_007589A0 -> FUN_007588c0 / 0x64",
+    "  - JudgeBase (LGTC, sec):  slot 0 FUN_00776F30 -> FUN_00776e60; slot 1 FUN_00776ED0 -> FUN_00776df0 / 0x64",
+    "  - QuestBase (LGTC, sec):  slot 0 FUN_00777090 -> FUN_00776fc0; slot 1 FUN_00777030 -> FUN_00776f50 / 0x64 (BCS-Y-0898 pre-existing)",
+    "  - String (LGTC, sec):    slot 0 FUN_007771F0 -> FUN_00777120; slot 1 FUN_00777190 -> FUN_007770b0 / 0x64",
+    "  - Table (LGTC, sec):     slot 0 FUN_00777350 -> FUN_00777280; slot 1 FUN_007772F0 -> FUN_00777210 / 0x64",
+    "  - StatusBase (LGTC, sec): slot 0 FUN_00776350 -> FUN_00776270 (BCS-Y-1396); slot 1 FUN_007762E0 -> FUN_00776200 (BCS-Y-1395) / 0x64"
+  ],
+  "new_bcsy_entries_summary": {
+    "slot0_vector_dtors": 10,
+    "slot1_clone_factories": 9,
+    "amendments": 4,
+    "total_bcsy_added": 19,
+    "id_range": "BCS-Y-1535..BCS-Y-1553",
+    "amendment_targets": ["BCS-Y-0898", "BCS-Y-1529", "BCS-Y-1530", "BCS-Y-1531"]
+  },
+  "deferred_followups": [
+    "Decomp FUN_006F6900 internals to understand HOW the shared _onFinalize fire reads `this` to determine per-class Lua callback context. scope.",
+    "Catalog the 10 class-specific ctors and subobject dtors that are called BY slot 0/1 (40 functions). Many overlap with existing scaffolding entries from the schema-rescue and quest-subsystem passes - check for duplicates first.",
+    "Sample slot 2-15 of GroupBase secondary vftable to validate LTC vs LGTC slot semantic uniformity (whether all 11 classes share the same slot 2-15 mostly-stub pattern). scope.",
+    "Verify that Global's tertiary vftable (LGTC chain) is layout-identical to other LGTC-derived classes' secondary vftables beyond the slot 0-5 confirmed shared parts. Global has 3 vftables due to multiple inheritance - the secondary at 0x00fd60a4 with 1 slot is some other interface (possibly UI/widget).",
+    "Investigate the LTC-side primary vftable's 7 slots (GroupBase 0x00fd53ac slots 0-6: FUN_00718580/FUN_00776340/FUN_006dd180/FUN_006dd230/FUN_006dd240/FUN_006dd250/FUN_006dd270) - these are the LuaControl polymorphic methods that LTC-derived classes inherit and override. LGTC-side equivalents differ structurally.",
+    "Trace HOW FUN_006F6900 selects per-class behavior at runtime. Possibilities: (a) RTTI lookup on `this`, (b) virtual-table-walked class identifier, (c) string-name registered at ctor time pointing to per-class Lua callback table."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1524 -> 1543 (+19 BCS-Y: 10 slot 0 dtors + 9 slot 1 clones; QuestBase slot 1 amended in place at BCS-Y-0898)",
+  "files_changed": [
+    "manifests/symbols.json: +19 entries (BCS-Y-1535..1553), 4 amendments (BCS-Y-0898, 1529, 1530, 1531)",
+    "manifests/cross_class_survey.json (NEW, this file)",
+    "tools/ghidra/logs/c88_namespace_symbols.txt (NEW)",
+    "tools/ghidra/logs/c88_vftable_slots.txt (NEW)",
+    "tools/ghidra/logs/c88_primary_dumps.txt (NEW)",
+    "tools/ghidra/logs/c88_slot01_decomp.txt (NEW)",
+    "tools/extractors/append_cross_class_survey.py (NEW)"
+  ]
+}

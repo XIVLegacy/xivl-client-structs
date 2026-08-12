@@ -1,0 +1,61 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-18",
+  "pass": "vtable_resolution",
+  "source": "Ghidra FindSymbolByName ::vftable dump + DumpMemRange slot inspection + DumpFunctionDecomp emitter and sibling-slot decompilation + FindBytePattern dead-code confirmation",
+  "scope": "the 4 cluster opcodes left UNRESOLVED by the cluster-refinements pass's static caller dig",
+  "summary": "All 3 vtable-dispatched opcodes (0x01D9, 0x01DA, 0x01DE) resolve to ItemSearch widget classes in the Retainer marketplace UI (1.x's pre-marketboard NPC-vendor system): PriceViewWidget, HistoryViewWidget, DirectPurchaseWidget. Subsystem identification anchored by UI-control name 'ListBox_RetainerList' in PriceView's slot-4 init plus the Polish/Materia/Gil/ItemStack detail controls in DirectPurchase. Opcode 0x01CD's emitter FUN_004B7E30 has zero byte-pattern hits anywhere in memory, ruling out vtable/function-pointer indirection - it is dead code, an unreferenced compiled function adjacent to the Mail cluster. Cluster now 26 of 29 opcodes carrying a concrete subsystem label (was 22; +3 from Retainer; 1 dead-code stub explicitly classified). The remaining 3 unresolved (0x01D7, 0x01D8, 0x01DF) are small internal handlers that share generic callers without distinguishing UI strings.",
+  "subsystemSummary": {
+    "Retainer/ItemSearch": [
+      "0x01d9",
+      "0x01da",
+      "0x01de"
+    ],
+    "Cluster-Adjacent (dead code)": [
+      "0x01cd"
+    ]
+  },
+  "refinements": [
+    {
+      "opcodeHex": "0x01cd",
+      "emitterVa": "0x004B7E30",
+      "subsystem": "Cluster-Adjacent (dead code)",
+      "refinedRole": "C2S - emitter FUN_004B7E30 is dead code in 1.23b. The cluster-refinements pass (FindXRefs) found no instruction references; this (FindBytePattern scan for the 4-byte little-endian VA 0x004B7E30 across ALL program memory) found ZERO hits, ruling out vtable slot / function-pointer-table indirection. Adjacent in .text address space to the Mail cluster emitters (0x004B7AD0..0x004B8370 range), so likely a leftover from an earlier dev iteration of the Mail subsystem that was compiled in but never wired up.",
+      "evidenceSource": "ghidra-projects/caller_decomp.txt + ghidra-projects/find_004b7e30.txt (0 byte-pattern hits)"
+    },
+    {
+      "opcodeHex": "0x01d9",
+      "emitterVa": "0x004FA750",
+      "owningVftable": "Application::Main::Element::Window::Widget::ItemSearchPriceViewWidget::vftable",
+      "vftableVa": "0x00F9E71C",
+      "slotOffset": "0x14",
+      "slotIndex": 5,
+      "subsystem": "Retainer/ItemSearch (1.x marketplace)",
+      "refinedRole": "C2S - ItemSearchPriceViewWidget slot-5 virtual emit. Emitter FUN_004FA750 packs a 0x20-byte (32-byte) payload that includes the widget-state itemId at offset +0xC48 (set in the slot-4 Init method FUN_0050D9D0 from a ListBox_RetainerList selection), then calls the wire-send helper FUN_004E0240(buf, 0x1d9, 0). The slot-4 init UI controls include ListBox_RetainerList, Button_Search, Button_Cancel, TextBlock_NoContents - the retainer-listing browse pane. Role: request server-side price listings for a specific item across retainers (1.x marketboard price-search query).",
+      "evidenceSource": "ghidra-projects/itemsearch_emitter_decomp.txt (VA 0x004FA750 decomp shows local_8b0=0x1d9; local_8ac=0x20; FUN_004E0240(&local_8b0,0x1d9,0))"
+    },
+    {
+      "opcodeHex": "0x01da",
+      "emitterVa": "0x00532A40",
+      "owningVftable": "Application::Main::Element::Window::Widget::ItemSearchHistoryViewWidget::vftable",
+      "vftableVa": "0x00FA030C",
+      "slotOffset": "0x14",
+      "slotIndex": 5,
+      "subsystem": "Retainer/ItemSearch (1.x marketplace)",
+      "refinedRole": "C2S - ItemSearchHistoryViewWidget slot-5 virtual emit. Emitter FUN_00532A40 packs a 0x20-byte payload including widget field +0x240 (an itemId/historyKey set in slot-4 Init FUN_00532BF0), then calls FUN_004E0240(buf, 0x1da, 0). Slot-4 init UI controls are DataMaker_ListBox_Key, TextBlock_Title, Button_Close, TextBlock_NoContents - the purchase-history view pane. Title format-string ID 0x297F is one greater than PriceView's 0x297A, confirming sequential resource-string allocation for the matched widgets. Role: request server-side retainer purchase / sale history for an item or for the player.",
+      "evidenceSource": "ghidra-projects/itemsearch_emitter_decomp.txt (VA 0x00532A40 decomp shows local_8b0=0x1da; local_8ac=0x20; FUN_004E0240(&local_8b0,0x1da,0))"
+    },
+    {
+      "opcodeHex": "0x01de",
+      "emitterVa": "0x0085E1B0",
+      "owningVftable": "Application::Main::Element::Window::Widget::ItemSearchDirectPurchaseWidget::vftable",
+      "vftableVa": "0x01049EDC",
+      "slotOffset": "0x2C",
+      "slotIndex": 11,
+      "subsystem": "Retainer/ItemSearch (1.x marketplace)",
+      "refinedRole": "C2S - ItemSearchDirectPurchaseWidget slot-11 virtual emit. Emitter FUN_0085E1B0 is a __thiscall(this, buttonId, eventArg) click-event handler that compares buttonId to this+0x234 (the slot-4-resolved Button_Search handle); on match it builds a multi-field purchase payload via FUN_0085D160 with item metadata (puVar2[0..5], +0x19=stack, +0x1A=quantity, puVar2[6]=...) then sends opcode 0x1DE via FUN_004E0240. The slot-4 init FUN_0085D330 (3704-byte body) wires per-item-detail controls: IconControl_NotEquiped, IconControl_PolishMAX (gear condition), IconControl_ItemSourceIcon, TextBlock_ItemSourceName, IconControl_MateriaIcon, TextBlock_MateriaNumber, TextBlock_ItemStack, TextBlock_Gil - exactly the per-listing detail panel for a specific retainer-sold item. Role: send retainer direct-buy request (full purchase commit) when the player clicks the Search/Buy button on the item-detail view.",
+      "evidenceSource": "ghidra-projects/itemsearch_emitter_decomp.txt (VA 0x0085E1B0 decomp shows __thiscall handler comparing button-ID, FUN_004E0240(uVar3,0x1de,0))"
+    }
+  ]
+}

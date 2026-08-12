@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "scope": "Classify the 16 duplicate-VA groups reported in the catalog validation report pass (manifests/catalog_validation_report.json). For each group decide whether the entries are a legitimate alias (vtable slot + apply method, dispatcher + embedded case-handler aliases), a metadata-cluster sentinel address (phase summaries / RTTI markers sharing a VA), a merge candidate (two records describing the same thing that should be unified), or a bug (an entry that is wrong and should be removed or relabeled). Pure manifest analysis - no Ghidra, no symbols.json edits.",
+  "method": {
+    "tool": "Python manifest reader",
+    "inputs": [
+      "manifests/catalog_validation_report.json (source of the 16 groups)",
+      "manifests/symbols.json (524-entry symbol catalog; resolved by id lookup)"
+    ],
+    "classification_keys": {
+      "LEGITIMATE_ALIAS": "Multiple BCS-Y entries that should share a VA because the function is intentionally re-tagged from two correct perspectives (e.g., 'vtable slot 1' name + the 'apply method' decomp name; or a dispatcher function + the case-handler records embedded inside it). No action needed; keep all entries.",
+      "METADATA_CLUSTER": "Several BCS-Y entries pinned at a known sentinel VA - the address is a vftable VA reused as the 'anchor' for phase-summary or RTTI/class-marker globals. Address collision is intentional bookkeeping, not a real symbol clash. Long-term these phase-summary records belong in a separate notes manifest (the catalog validation report pass's recommended actions), but they are not bugs.",
+      "MERGE_CANDIDATE": "Two entries describe the same underlying symbol with redundant data. Should be merged into one record with combined notes.",
+      "BUG": "One entry is materially wrong - wrong kind, wrong VA, or wrong subject - and should be corrected or removed."
+    }
+  },
+  "groups": [
+    {
+      "group_index": 1,
+      "va": "0x0049c990",
+      "bcs_y_ids": ["BCS-Y-0045", "BCS-Y-0119"],
+      "classification": "LEGITIMATE_ALIAS",
+      "rationale": "Both entries describe the same function under two complementary tags. BCS-Y-0045 names it as the slot-1 entry of ChangeActorExtraStatReceiver (vtable perspective from the receiver_classes_inventory.md harvest). BCS-Y-0119 names it as the apply method, with full decomp body details (52 bytes, __thiscall, RTTI cast, tail-calls FUN_006FA980). They are not wrong - they are the same VA tagged twice from two distinct discovery paths (RTTI sweep + decomp sweep). Functional aliasing: vtable slot identity AND apply-method semantics co-exist. Note the address in both records is the same RVA-as-VA bug (the catalog validation report pass's fix is +0x00400000); apply that uniformly when correcting addresses.",
+      "recommended_action": "Keep both. Optionally cross-link in notes: add 'See companion BCS-Y-0119 apply-method decomp' to BCS-Y-0045 and 'See companion BCS-Y-0045 vtable-slot designation' to BCS-Y-0119. No merge needed; the two perspectives carry different evidence (RTTI source vs Ghidra decomp source)."
+    },
+    {
+      "group_index": 2,
+      "va": "0x0049cb60",
+      "bcs_y_ids": ["BCS-Y-0047", "BCS-Y-0100"],
+      "classification": "LEGITIMATE_ALIAS",
+      "rationale": "Identical pattern to group 1. BCS-Y-0047 is the slot-1 RTTI tag for JobChangeReceiver (from receiver_classes_inventory.md). BCS-Y-0100 is the apply-method decomp with full body (46 bytes, vtable address 0x01057300, dtor pair BCS-Y-0101). Vtable-slot view + apply-method view of the same function VA.",
+      "recommended_action": "Keep both. Optional notes cross-link."
+    },
+    {
+      "group_index": 3,
+      "va": "0x004a04b0",
+      "bcs_y_ids": ["BCS-Y-0049", "BCS-Y-0116"],
+      "classification": "LEGITIMATE_ALIAS",
+      "rationale": "Identical pattern to groups 1 and 2. BCS-Y-0049 is the slot-1 RTTI tag for SetTargetTimeReceiver. BCS-Y-0116 is the apply-method decomp (400-byte body). The two tags arose from independent inventory passes and both correctly point at the same function.",
+      "recommended_action": "Keep both. Optional notes cross-link."
+    },
+    {
+      "group_index": 4,
+      "va": "0x00bdfb2c",
+      "bcs_y_ids": ["BCS-Y-0092", "BCS-Y-0241", "BCS-Y-0271"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "BCS-Y-0092 is the legitimate vftable global for LuaActorImpl::vftable (at VA 0x00FDFB2C - currently stored as RVA 0x00BDFB2C in the catalog, same +0x00400000 bug). BCS-Y-0241 and BCS-Y-0271 are phase-summary records about the LuaActorImpl::vftable slot-mapping progress; they re-use the vftable's anchor VA as a 'pin' for the summary record. Sentinel address overlap, intentional.",
+      "recommended_action": "Keep BCS-Y-0092 as the canonical vftable entry. Long-term move BCS-Y-0241 and BCS-Y-0271 into a separate phase-notes manifest as the catalog validation report pass's recommended action advocates (78 metadata records currently live at 0x00000000 plus dozens more pinned to anchor VAs). For now they are not bugs - just bookkeeping. If kept in symbols.json, add a 'metadata_anchor' flag or 'kind: phase_summary' to clearly distinguish from the canonical global."
+    },
+    {
+      "group_index": 5,
+      "va": "0x0035a0e0",
+      "bcs_y_ids": ["BCS-Y-0109", "BCS-Y-0161"],
+      "classification": "LEGITIMATE_ALIAS",
+      "rationale": "Mixed-perspective alias. BCS-Y-0109 names this function as the AddictLoginTimeKindReceiver::ApplyWrapper (entry slot 12 of the ReceiverApplyWrapperTable). BCS-Y-0161 names it as LuaActorImpl::vftable slot 65 = _onReceiveLimitAddicted. Both are TRUE simultaneously: the AddictLoginTimeKindReceiver apply-wrapper is reached via two distinct dispatch routes - the receiver-apply-wrapper table AND the LuaActorImpl vtable slot 65. BCS-Y-0161's notes explicitly confirm this is the MDI-022 Receiver template (single apply method shared between LuaActorImpl-side wrapper and the Network::*Receiver class).",
+      "recommended_action": "Keep both. Add reciprocal cross-references in notes so the dual-dispatch nature is documented at the symbol level (currently only documented in BCS-Y-0161)."
+    },
+    {
+      "group_index": 6,
+      "va": "0x00bd785c",
+      "bcs_y_ids": ["BCS-Y-0163", "BCS-Y-0191", "BCS-Y-0220"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "BCS-Y-0163 is the canonical Control::MyPlayer::vftable global. BCS-Y-0191 is a partial slot-inventory pinned to the same vftable VA. BCS-Y-0220 is a negative-finding closure record about MyPlayer + BootupManager unmapped slots, also pinned. The two extra records are phase-progress checkpoints anchored to the vftable's address.",
+      "recommended_action": "Keep BCS-Y-0163 as the canonical vftable global. Promote the slot-inventory content from BCS-Y-0191 into BCS-Y-0163's notes (or to a dedicated docs/vftable-inventories.md) and convert BCS-Y-0191 to a slimmer pointer; convert BCS-Y-0220 to a phase-notes record. Same pattern recommendation as group 4."
+    },
+    {
+      "group_index": 7,
+      "va": "0x00bdfaf8",
+      "bcs_y_ids": ["BCS-Y-0164", "BCS-Y-0253", "BCS-Y-0264"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "BCS-Y-0164 (kind=global) and BCS-Y-0253 (kind=class) both describe the ExecutePushOnEnterTriggerBoxReceiver vftable / class at 0x00FDFAF8 from two angles: vftable-as-global vs class-as-RTTI-record. They are essentially two facets of the same RTTI artifact. BCS-Y-0264 is the structural-finding summary pinned to the same anchor VA. Address overlap is intentional.",
+      "recommended_action": "BCS-Y-0264 is a phase-notes record - same handling as groups 4 and 6. For BCS-Y-0164 vs BCS-Y-0253: these two are arguably a MERGE_CANDIDATE pair (vftable-global vs class-RTTI for the exact same vftable), but the kind=global vs kind=class distinction is a deliberate ontology choice that may be load-bearing elsewhere in the manifest. Recommend keeping both but cross-linking. If the project decides one record per class is enough, prefer keeping BCS-Y-0253 (richer notes including ctor/apply/factory chain) and merging BCS-Y-0164's slot-1 layout detail into it."
+    },
+    {
+      "group_index": 8,
+      "va": "0x00bdfb04",
+      "bcs_y_ids": ["BCS-Y-0165", "BCS-Y-0255"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "Mirror of group 7 for the LEAVE variant of the trigger-box receiver. BCS-Y-0165 (kind=global vftable) and BCS-Y-0255 (kind=class) both describe ExecutePushOnLeaveTriggerBoxReceiver at 0x00FDFB04. Same dual-facet pattern.",
+      "recommended_action": "Same as group 7. Keep both with cross-link, or merge into BCS-Y-0255 if the project consolidates to one record per RTTI class."
+    },
+    {
+      "group_index": 9,
+      "va": "0x00bd5cac",
+      "bcs_y_ids": ["BCS-Y-0184", "BCS-Y-0198"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "BCS-Y-0184 is the canonical Control::CharaBase::vftable global. BCS-Y-0198 is a full-slot-inventory record pinned to the same VA. The inventory record substantially extends the original identification (catalogs all 41 primary slots plus 3 secondary inheritance vtables).",
+      "recommended_action": "Keep BCS-Y-0184 as the canonical vftable global; consider promoting the BCS-Y-0198 inventory body to a docs file (docs/control-vftable-inventories.md) and shrinking BCS-Y-0198 to a one-line pointer. Same handling pattern as groups 4 and 6."
+    },
+    {
+      "group_index": 10,
+      "va": "0x00bd5e04",
+      "bcs_y_ids": ["BCS-Y-0185", "BCS-Y-0218"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "BCS-Y-0185 is the canonical Control::PlayerBase::vftable global. BCS-Y-0218 is an EOD-3 combined slot-inventory for both PlayerBase and NpcBase, pinned at the PlayerBase anchor VA. The pinning location is arbitrary - the BCS-Y-0218 record covers BCS-Y-0185 AND BCS-Y-0186 (NpcBase, at 0x00FD647C), but is only address-aliased with PlayerBase.",
+      "recommended_action": "Keep BCS-Y-0185 as the canonical PlayerBase vftable global. Consider splitting BCS-Y-0218 into two records or moving it to a docs file - it currently has a misleading anchor VA because its content also covers NpcBase. If kept as-is, document in the notes that the anchor VA is one of two it logically describes."
+    },
+    {
+      "group_index": 11,
+      "va": "0x00bd4fe4",
+      "bcs_y_ids": ["BCS-Y-0222", "BCS-Y-0234"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "BCS-Y-0222 is the 'Control namespace 11 new classes discovered' summary, anchored to the Control::ActorBase vftable VA. BCS-Y-0234 is the follow-up that gives ActorBase its proper canonical vftable entry (slot 2 = 3-API Lua dispatch FUN_00753C30, and confirms ActorBase as the outermost actor-tier class). Two phase-notes records anchored at the same VA.",
+      "recommended_action": "Promote BCS-Y-0234 to the canonical ActorBase::vftable global (rename to a clean 'Control::ActorBase::vftable' tag like BCS-Y-0184/0185) and move BCS-Y-0222's broad-survey content to the architectural findings as a phase-summary. Currently BCS-Y-0222 occupies the slot of a canonical ActorBase vftable record but its actual content is a multi-class discovery summary."
+    },
+    {
+      "group_index": 12,
+      "va": "0x00359fd0",
+      "bcs_y_ids": ["BCS-Y-0238", "BCS-Y-0252"],
+      "classification": "LEGITIMATE_ALIAS",
+      "rationale": "Both entries correctly describe the same function VA from different perspectives. BCS-Y-0238 confirms this is LuaActorImpl::vftable slot 63 firing _onUpdateDisplayName via the third known call path (slots 62/63 form a paired display-name dispatcher). BCS-Y-0252 gives the full decomp body: it is SendLogReceiver's dispatch_wrapper (construct-apply-destruct pattern), reached only via virtual dispatch through LuaActorImpl::vftable[63]. The slot-63 vtable identity + the SendLogReceiver-dispatch-wrapper identity are simultaneously true - the LuaActorImpl slot-63 entry IS the SendLogReceiver dispatch wrapper.",
+      "recommended_action": "Keep both. Add reciprocal cross-references so the dual identity (vtable-slot view + receiver-dispatch-wrapper view) is explicit in each note. Naming asymmetry is worth flagging: one says '_onUpdateDisplayName' the other says 'SendLogReceiver'. These are not contradictory (the dispatcher fans out to 20 opcodes via the ctor's switch, _onUpdateDisplayName is one of the firer-resolution paths; SendLog is the receiver-class identity)."
+    },
+    {
+      "group_index": 13,
+      "va": "0x00c575ec",
+      "bcs_y_ids": ["BCS-Y-0265", "BCS-Y-0270"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "BCS-Y-0265 is the canonical ExecuteDebugCommandReceiver class/vftable record (client-internal, not inbound). BCS-Y-0270 is the 'zero remaining gap receivers' structural-finding summary, pinned at the same anchor VA because BCS-Y-0265 was the lone holdout being resolved.",
+      "recommended_action": "Keep BCS-Y-0265 as the canonical class record. Move BCS-Y-0270's summary to the architectural findings or a phase-notes manifest; it currently masquerades as a global at a vftable VA but is purely a phase milestone record."
+    },
+    {
+      "group_index": 14,
+      "va": "0x00fdfb2c",
+      "bcs_y_ids": ["BCS-Y-0272", "BCS-Y-0273", "BCS-Y-0274", "BCS-Y-0275", "BCS-Y-0276", "BCS-Y-0277", "BCS-Y-0281", "BCS-Y-0282"],
+      "classification": "METADATA_CLUSTER",
+      "rationale": "Eight Option-2/Option-3 phase-summary records (batch), all pinned at the LuaActorImpl::vftable VA. None of these are real symbols - they are dated phase milestones (methodology calibration, mystery slot resolutions, slot annotations added, full architectural decomposition, direct-dispatch slot counts, pure-native slot counts, candidate promotions, slot-naming completion). The catalog validation report pass's recommended action explicitly calls out this cluster.",
+      "recommended_action": "Move all 8 records out of symbols.json into a dedicated phase-notes manifest. They have no useful function as symbol records - the LuaActorImpl::vftable global is already correctly recorded as BCS-Y-0092 (group 4). Note that this is the same VA-shifted version of group 4 (0x00BDFB2C + 0x00400000 = 0x00FDFB2C), which is why both clusters land on the same conceptual address: BCS-Y-0092 stores the RVA, BCS-Y-0272..0282 store the post-shift VA. Catalog hygiene fix from the catalog validation report pass (+0x00400000 to BCS-Y-0092) plus the phase-notes migration here would consolidate these into a single clean record."
+    },
+    {
+      "group_index": 15,
+      "va": "0x004dc690",
+      "bcs_y_ids": ["BCS-Y-0279", "BCS-Y-0321", "BCS-Y-0385", "BCS-Y-0386", "BCS-Y-0525", "BCS-Y-0526", "BCS-Y-0527"],
+      "classification": "LEGITIMATE_ALIAS",
+      "mixed_with_bugs": true,
+      "rationale": "Compound group with both legitimate aliases and metadata-cluster contamination. (a) BCS-Y-0279 is the central packet dispatcher (FUN_004dc690, 3390 bytes - 's2c central dispatcher' identity from option-2). (b) BCS-Y-0321 names the same function as the Tier-D Zone emitter for MapServerbound c2s 0x00CA (3364-byte body, helper-built). The body-size mismatch (3390 vs 3364) is just decomp-pass measurement variance. These two together are the conventional dispatcher-AND-emit-host alias mentioned in the task prompt's example. (c) BCS-Y-0525, BCS-Y-0526, BCS-Y-0527 are function_case records for cases 0xCA (AddActor), 0xCB (RemoveActor), and the 24-opcode vftable[9] fallthrough INSIDE this dispatcher - all legitimate per-case tags that share the dispatcher's entry VA by convention. (d) BCS-Y-0385 and BCS-Y-0386 are the unmapped s2c opcode worklist pass and the receiver discovery pass PHASE-NOTES records mistakenly pinned at this dispatcher's VA - they are not real globals.",
+      "recommended_action": "Split actions: KEEP BCS-Y-0279, BCS-Y-0321, BCS-Y-0525, BCS-Y-0526, BCS-Y-0527 as legitimate aliases (dispatcher + emit-host + 3 case-handlers, all at the same VA by design). MOVE BCS-Y-0385 and BCS-Y-0386 to a phase-notes manifest - they are worklist/negative-finding bookkeeping records, not function or global symbols. Their kind=global is misleading. The catalog validation report pass itself flagged this exact subset in its 'recommended_actions' note: 'mixes real function records (0279/0321/0525-0527) with metadata globals (0385/0386) that mistakenly share the VA'."
+    },
+    {
+      "group_index": 16,
+      "va": "0x00cd8990",
+      "bcs_y_ids": ["BCS-Y-0401", "BCS-Y-0501"],
+      "classification": "BUG",
+      "rationale": "These two entries describe DIFFERENT things at the same VA, and only one can be correct. BCS-Y-0401 labels FUN_00CD8990 as 'LuaControlLoopFirer' - the engine loop callback firer for the Lua event _onLoop, citing turn6_lua_callbacks.txt and turn12_firer_map.txt. BCS-Y-0501 labels the exact same function as 'LuaEngine_LGEBootstrap' - the Lua Game Engine bootstrap, 1978 bytes, 18 cclosure pushes, embeds a literal Lua wrapper script at .rdata 0x0110e680, installs 13 named globals as C cclosures, sets up the _onLoop userdata metatable with 4 metamethods (__index/__newindex/__eq/__gc), and was resolved via DumpAddrOperandsInFunc.java. The lge bootstrap attribution pass's analysis is far more rigorous (full decomp with literal addresses, defeats decompiler-arg-strip, identifies the exact stdlib overrides, traces the _onLoop metatable installation). The firer-map entry was derived from a CALLBACK HARVEST and likely conflated the bootstrap function with one of its installed metamethods (most plausibly the _onLoop metatable __index/__newindex handler that the bootstrap installs). The BCS-Y-0401 label '_onLoop firer with caller FUN_00CD8990' confuses 'function that installs the _onLoop machinery' (correct - it is the bootstrap) with 'function that fires _onLoop' (incorrect - the actual firer is one of the metamethods FUN_00d08070/FUN_00d085b0/FUN_00d07eb0/FUN_00d08890 installed BY the bootstrap).",
+      "recommended_action": "Treat BCS-Y-0501 as the authoritative record for FUN_00CD8990. RELABEL BCS-Y-0401 - either (a) remove it and let BCS-Y-0501's notes include the cross-reference to turn6_lua_callbacks.txt's firer-map entry as a corrected attribution, or (b) keep BCS-Y-0401 but change its VA to point at the actual _onLoop firer (one of the 4 metamethods listed in BCS-Y-0501) once it has been positively identified. Either way, the current state where two entries at the same VA disagree on the function's identity needs resolution. Re-read turn6_lua_callbacks.txt + turn12_firer_map.txt against BCS-Y-0501's metamethod list to identify the correct firer VA for the _onLoop callback path."
+    }
+  ],
+  "aggregate_stats": {
+    "total_groups": 16,
+    "LEGITIMATE_ALIAS_count": 6,
+    "METADATA_CLUSTER_count": 9,
+    "MERGE_CANDIDATE_count": 0,
+    "BUG_count": 1,
+    "compound_groups": 1,
+    "compound_groups_note": "Group 15 (0x004dc690) is primarily LEGITIMATE_ALIAS but contains 2 metadata-cluster contaminants (BCS-Y-0385, BCS-Y-0386). Counted under LEGITIMATE_ALIAS; the contamination action is captured in its recommended_action."
+  },
+  "by_id_action_summary": {
+    "keep_as_is_or_minor_crosslink": [
+      "BCS-Y-0045", "BCS-Y-0119",
+      "BCS-Y-0047", "BCS-Y-0100",
+      "BCS-Y-0049", "BCS-Y-0116",
+      "BCS-Y-0092",
+      "BCS-Y-0109", "BCS-Y-0161",
+      "BCS-Y-0163",
+      "BCS-Y-0164", "BCS-Y-0253",
+      "BCS-Y-0165", "BCS-Y-0255",
+      "BCS-Y-0184",
+      "BCS-Y-0185",
+      "BCS-Y-0238", "BCS-Y-0252",
+      "BCS-Y-0265",
+      "BCS-Y-0279", "BCS-Y-0321", "BCS-Y-0525", "BCS-Y-0526", "BCS-Y-0527",
+      "BCS-Y-0501"
+    ],
+    "migrate_to_phase_notes_or_docs": [
+      "BCS-Y-0241", "BCS-Y-0271",
+      "BCS-Y-0191", "BCS-Y-0220",
+      "BCS-Y-0264",
+      "BCS-Y-0198",
+      "BCS-Y-0218",
+      "BCS-Y-0222",
+      "BCS-Y-0270",
+      "BCS-Y-0272", "BCS-Y-0273", "BCS-Y-0274", "BCS-Y-0275", "BCS-Y-0276", "BCS-Y-0277", "BCS-Y-0281", "BCS-Y-0282",
+      "BCS-Y-0385", "BCS-Y-0386"
+    ],
+    "promote_or_rename_canonical": [
+      "BCS-Y-0234"
+    ],
+    "relabel_or_remove_bug": [
+      "BCS-Y-0401"
+    ]
+  },
+  "cross_phase_notes": {
+    "phase_50_rva_fix_interaction": "Many of the LEGITIMATE_ALIAS function pairs (groups 1-3, 5, 12) share the same catalog validation report pass +0x00400000 RVA fix. When applying that fix, both members of each pair will move together (e.g., BCS-Y-0045 and BCS-Y-0119 both go to 0x0089C990), preserving the alias relationship. The 16 duplicate-VA groups identified by the catalog validation report pass will continue to appear post-fix with the same membership.",
+    "phase_50_recommendation_alignment": "The catalog validation report pass's recommended_actions (78 metadata records at 0x00000000) and (16 duplicate VA groups) both flag the underlying issue: the symbol catalog mixes real symbols with phase-summary anchored bookkeeping. This manifest's classification supports separating the catalog into (a) symbols.json (real RTTI/function/global records) and (b) a phase-notes manifest (turn/phase milestone summaries pinned to anchor VAs).",
+    "compound_group_handling": "Only group 15 has mixed real+metadata content at a single VA. The recommended split (keep 5, migrate 2) cleanly resolves it without losing information."
+  }
+}

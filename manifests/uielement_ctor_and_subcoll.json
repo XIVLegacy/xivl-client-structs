@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_major_finding",
+  "scope": "Decomp FUN_0091FF40 (sub-collection default ctor inside Sqwt::InputElement::ctor) and FUN_0093C750 (the OTHER caller of Sqwt::InputElement::ctor). Closes the deferred_followups[3,4]. **Side payoff**: FUN_0093C750 is Sqwt::UIElement::ctor and it writes Sqwt::UIElement::vftable to BOTH +0x00 AND +0xB4 - identifying it as the +0xB4 writer referenced in client-architecture 'The Sqwt event-source registry is per-channel'. the deferred_followups[1] (+0xB4 writer hunt) substantially closed.",
+  "method": {
+    "step1": "Decomp 0x0091FF40 + 0x0093C750 via run_c68_subcoll_and_othercaller.bat. Log: tools/ghidra/logs/c68_subcoll_othercaller_decomp.txt.",
+    "step2": "FUN_0091FF40 identified as Sqwt::SharedItemContainer<Sqwt::Input::CommandBinding,Sqwt::Input::CommandBinding>::ctor via the vftable write to *param_1 (Ghidra labels the symbol fully). 97-byte body, 3-dword zero-init, 1 param-store, byte flag merge.",
+    "step3": "FUN_0093C750 identified as Sqwt::UIElement::ctor via: (a) writes Sqwt::UIElement::vftable to *param_1 + param_1[0x2D] (=+0xB4); (b) registers debug name 'UIElement' via FUN_00933290; (c) calls Sqwt::InputElement::ctor as base ctor; (d) embeds Sqwt::RectTemplate<float> at +0x59; (e) ~6 dependency-property registrations via FUN_0093dde0/dbd0/dc40/de70.",
+    "step4": "Resolve Sqwt::UIElement::vftable VAs via FindSymbolByName.java (run_c68_uielement_vftable.bat). 17 matches; 2 vftables at distinct VAs (0x0106C2A4 primary, 0x0106C3CC secondary) confirm MSVC multiple-inheritance. 2 RTTI Complete Object Locators at 0x01179B90 + 0x01179BA4 also confirm.",
+    "step5": "Catalog 5 BCS-Y entries (BCS-Y-1381..1385). Amend BCS-Y-1375 (InputElement::ctor) and BCS-Y-1378 (CommandBindingCollection::vftable)."
+  },
+  "key_findings": [
+    "**+0xB4 WRITER IDENTIFIED**: Sqwt::UIElement::ctor (FUN_0093C750) writes Sqwt::UIElement::vftable_SECONDARY (0x0106C3CC) to object+0xB4 (= param_1[0x2D]). The +0xB4 in client-architecture 'The Sqwt event-source registry is per-channel' is the MSVC multiple-inheritance SECONDARY VTABLE of Sqwt::UIElement. Closes the deferred_followups[1] AHEAD OF SCHEDULE.",
+    "**Sqwt::UIElement is an intermediate UI layer** between InputElement (deep base) and concrete Element classes. Inheritance: Sqwt::UIElement <- Sqwt::InputElement <- ... <- (deeper Sqwt bases TBD).",
+    "**Sqwt::UIElement uses MSVC multiple inheritance** with two vftables: PRIMARY at 0x0106C2A4 (object+0x00) and SECONDARY at 0x0106C3CC (object+0xB4). Two RTTI Complete Object Locators (0x01179B90 + 0x01179BA4) confirm. The primary vtable handles InputElement-style operations; the secondary vtable handles the subscribe/broadcaster role at +0xB4 referenced in client-architecture 'The Sqwt event-source registry is per-channel'.",
+    "**RaptureElement and UIElement are SIBLING branches** sharing Sqwt::InputElement as their common deep base, NOT a UIElement-inherits-from-RaptureElement (or vice-versa) chain. Both BCS-Y-0539 (RaptureElement::ctor) and BCS-Y-1383 (UIElement::ctor) call FUN_0091E090 (InputElement::ctor) as their base ctor. RaptureElement is the Bahamut-side framework element; UIElement is the Sqwt-side base UI element.",
+    "**FUN_0091FF40 is the base-class ctor for embedded CommandBindingCollection**: Sqwt::SharedItemContainer<Sqwt::Input::CommandBinding,Sqwt::Input::CommandBinding>::ctor. This confirms CommandBindingCollection's class hierarchy: it derives from SharedItemContainer<CommandBinding,CommandBinding> (template instance). The InputElement::ctor calls it once for the embedded CommandBindingCollection at InputElement+0x04. The SharedItemContainer vftable (0x01069A50) lives 0x1C bytes before InputElement::vftable (0x01069A6C) in the same linker block - confirming the InputElement -> CommandBindingCollection -> SharedItemContainer layout chain.",
+    "**Sqwt::UIElement embeds Sqwt::RectTemplate<float> at offset +0x59** (param_1[0x59] = RectTemplate vftable; param_1[0x5C..0x5D] = _DAT_0106bcc4 default rect bounds). This is the bounds/layout rectangle field - the visual layout state every UIElement has.",
+    "**Sqwt::UIElement registers ~6 dependency properties** via FUN_0093dde0/FUN_0093dbd0/FUN_0093dc40/FUN_0093de70/FUN_00973ef0 with DAT_013596xx globals as property keys. These are the UIElement's class-level dep-prop slots (Width, Height, IsEnabled, IsVisible, etc.). The lazy-init pattern (DAT_01359370 etc. via FUN_009d1ac3) is property-id assignment.",
+    "**Sqwt::UIElement registers itself in a global UIElement list** via FUN_0098B400(this, &DAT_01359728) under critical-section DAT_01359478 - likely a per-app weak-pointer list for iteration during framework operations."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1381", "name": "Sqwt_SharedItemContainer_CommandBinding_ctor_FUN_0091ff40", "addr": "0x0091FF40", "size_bytes": 97, "role": "Base-class ctor for embedded CommandBindingCollection sub-objects"},
+    {"id": "BCS-Y-1382", "name": "Sqwt_SharedItemContainer_CommandBinding_vftable_DAT_01069a50", "addr": "0x01069A50", "role": "Sqwt::SharedItemContainer<CommandBinding,CommandBinding>::vftable global"},
+    {"id": "BCS-Y-1383", "name": "Sqwt_UIElement_ctor_FUN_0093c750", "addr": "0x0093C750", "size_bytes": 1221, "role": "Sqwt::UIElement::ctor; +0xB4 writer; multi-inheritance vftable layout"},
+    {"id": "BCS-Y-1384", "name": "Sqwt_UIElement_vftable_PRIMARY_DAT_0106c2a4", "addr": "0x0106C2A4", "role": "Sqwt::UIElement primary vftable (object+0x00)"},
+    {"id": "BCS-Y-1385", "name": "Sqwt_UIElement_vftable_SECONDARY_DAT_0106c3cc", "addr": "0x0106C3CC", "role": "Sqwt::UIElement SECONDARY vftable (object+0xB4); THE +0xB4 VFTABLE in client-architecture 'The Sqwt event-source registry is per-channel'"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1375", "addition": "Identified FUN_0091FF40 sub-collection ctor + FUN_0093C750 (Sqwt::UIElement::ctor) as the OTHER caller of InputElement::ctor."},
+    {"id": "BCS-Y-1378", "addition": "Confirmed CommandBindingCollection's base class is SharedItemContainer<CommandBinding,CommandBinding>."}
+  ],
+  "deferred_followups": [
+    "Now narrows to: (a) enumerate all UIElement-derived class ctors that override the secondary vtable at +0xB4 with their own specialized version - FindReferencesToAddress on UIElement's secondary vftable (0x0106C3CC) or on FUN_0093C750 itself; (b) identify the specific secondary base class name via Sqwt::UIElement::RTTI_Base_Class_Array @ 0x01141924.",
+    "Refine client-architecture 'The Sqwt event-source registry is per-channel' with the MSVC multiple-inheritance interpretation: the +0xB4 access is reading the secondary base-class vtable; subscribe-slot calls at +0x28 within that secondary vtable invoke the broadcaster-half interface. The earlier descriptions of the +0xB4 are partially right (it IS an interface vtable in a sense) but the mechanism is multi-inheritance, not a separate per-instance pointer to a runtime-bound interface.",
+    "Refine client-architecture 'Sqwt UI elements follow a uniform heap-factory' to reflect UIElement and RaptureElement being SIBLING branches off InputElement, not a chain.",
+    "Identify upstream caller FUN_0092F640 - it's a ctor for a UIElement-derived class (calls Sqwt::UIElement::ctor as its base ctor).",
+    "Identify all the DAT_013596xx and DAT_0135xxxx globals as dependency-property IDs / property setter chains - bulk catalog opportunity.",
+    "Decomp dependency-property registration helpers FUN_0093dde0, FUN_0093dbd0, FUN_0093dc40, FUN_0093de70, FUN_00973ef0 to surface the dep-prop machinery as a distinct architectural concern."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1370 -> 1375 (+5 BCS-Y entries: 2 functions, 3 data vftables)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1381..1385), 2 amendments (BCS-Y-1375 + 1378)",
+    "manifests/uielement_ctor_and_subcoll.json (NEW, this file)",
+    "tools/ghidra/logs/c68_subcoll_othercaller_decomp.txt (NEW)",
+    "tools/ghidra/logs/c68_uielement_vftable.txt (NEW)"
+  ]
+}

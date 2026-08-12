@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Sample StatusBase's secondary vftable contents (the LGTC-side polymorphic vtable at 0x00FDF8DC) to validate the inferred slot semantics for the LTC/LGTC 6-method dispatcher cluster. Result: the slot-semantic inferences described the DISPATCHERS' callers, not the slot's invariant semantic contract. Each derived class implements its own slot 1-6 semantics. StatusBase implements only slots 1 (clone/factory) + 5 (_onFinalize fire) non-trivially. Vftable extends to >= 25 slots, MUCH larger than the implied 8.",
+  "method": {
+    "step1": "FindSymbolByName 'StatusBase::vftable' to locate the primary vftable (0x00FDF8D4) + secondary vftable (0x00FDF8DC). Layout: primary_meta_ptr (0x00FDF8D0) + primary_slot[0] (0x00FDF8D4) + secondary_meta_ptr (0x00FDF8D8) + secondary_slot[0..N] (0x00FDF8DC..). **Primary vftable has only 1 slot** (dtor) - all other virtual methods are on the secondary chain.",
+    "step2": "DumpMemRange of 0x00FDF8D0..0x00FDF900 (48 bytes covering primary meta + slot + secondary meta + 7 secondary slots) + extension dump 0x00FDF900..0x00FDF940 (64 more bytes for slots 9-24).",
+    "step3": "Bulk decomp of 8 unique slot functions: primary dtor (FUN_00777D80), secondary dtor (FUN_00776350), slot 1 (FUN_007762E0), slot 2 (FUN_00776340), slot 3+4 shared (FUN_00712B40), slot 5 (FUN_006F6900), slot 6 (FUN_006DBE80), slot 7+8 shared (FUN_005B8D90).",
+    "step4": "Identify the 2 non-trivial slot implementations + 3 shared engine-wide stubs. Catalog 6 new BCS-Y entries + 3 amendments."
+  },
+  "key_findings": [
+    "**Primary vftable has only 1 slot**: StatusBase's primary inheritance chain (StatusBase <- ActorBase <- LuaControl <- LuaObject) declares ONLY the destructor as virtual. All other polymorphic behavior lives on the secondary chain.",
+    "**Secondary vftable slot 1 = CLONE/FACTORY method** (FUN_007762E0, 94 bytes): heap-allocates 100 bytes via operator new + calls [[Application_Lua_Script_Client_Control_StatusBase_ctor_FUN_00776200]] (BCS-Y-1395). Cataloged as BCS-Y-1529.",
+    "**Secondary vftable slot 5 = `_onFinalize` Lua callback fire** (FUN_006F6900, 383 bytes): registers + fires the `_onFinalize` Lua callback via FUN_00447260(\"_onFinalize\", DAT_00f67298) (the lua-engine-callback-registry-findings pass's Lua callback registry epoch + the lge-bootstrap-attribution pass's hash registrar) + invokes Lua dispatch via FUN_00cc7a90. **KEY architectural finding** - StatusBase has a Lua-side `_onFinalize` lifecycle hook. Cataloged as BCS-Y-1530.",
+    "**Slots 2, 3, 4, 6 are no-op stubs**: FUN_00712B40 + FUN_006DBE80 - 3-byte `void return;` bodies. Engine-wide shared stubs (BCS-Y-1532/1533).",
+    "**Slots 7+8 paired** = FUN_005B8D90 (4 bytes, returns 0xFFFFFFFF). Engine-wide shared stub (BCS-Y-1534). Default 'no value / error / not implemented' pattern.",
+    "**Vftable extends to >= 25 slots** (extension dump shows continuation through 0x00FDF93C). The 6-method dispatcher cluster only covers slots 1-6; slots 7-24 are reached via other dispatch paths or class-specific extension. **Slot 20 is FUN_00AB7340** = the Lua __newindex read-only blocker from the lge-bootstrap-attribution pass - so the secondary vftable encodes Lua-bridge metatable handlers too.",
+    "**slot-semantic inferences REVISED**: the 'slot 1 = LuaThread helper A, slot 4 = isAlive, slot 5 = 3-param method' described the DISPATCHERS' CALLER contexts (where the dispatcher is invoked from), not the slot's intrinsic semantic role. For StatusBase, slot 1 = clone, slot 5 = _onFinalize Lua fire - matching slots are class-specific virtual implementations. Each LTC/LGTC-derived class implements its own slot 1-6 semantics; the dispatcher callers just route through the validated-this entrypoints.",
+    "**Primary slot 0 dtor delegates to secondary slot 0 dtor**: FUN_00777D80 (8-byte thin thunk) -> FUN_00776350 (BCS-Y-1531, 27-byte vector deleting destructor) -> FUN_00776270 (BCS-Y-1396 StatusBase::dtor). Standard MSVC MI dtor chain entry.",
+    "**Lua-side `_onFinalize` callback discovered for StatusBase**: scripts can register `_onFinalize` handlers to receive finalization events when a StatusBase instance is finalized. This is a new entry in the lua-engine-callback-registry-findings pass's Lua callback registry (slot 5 fire path is one of the call sites). Likely shared by all 11 LTC/LGTC-derived classes that override slot 5 - GroupBase, ItemBase, WidgetHandle, JudgeBase, String, Math, CommandBase, Table, QuestBase, Global all likely have their own slot 5 _onFinalize fire methods (deferred follow-up to verify)."
+  ],
+  "new_bcsy_entries_summary": {
+    "slot_implementations": 3,
+    "engine_wide_stubs": 3,
+    "amendments": 3,
+    "total_bcsy_added": 6,
+    "id_range": "BCS-Y-1529..BCS-Y-1534"
+  },
+  "statusbase_vftable_slot_table": {
+    "primary_vftable_at_0x00FDF8D4": {
+      "slot_0_dtor": "FUN_00777D80 (8-byte thunk -> FUN_00776350 secondary dtor)"
+    },
+    "secondary_vftable_at_0x00FDF8DC": {
+      "slot_0_dtor": "BCS-Y-1531 FUN_00776350 (vector deleting destructor, calls StatusBase::dtor BCS-Y-1396 + free)",
+      "slot_1_clone_factory": "BCS-Y-1529 FUN_007762E0 (heap-allocates new StatusBase)",
+      "slot_2_noop": "FUN_00776340 (3-byte return-only stub)",
+      "slot_3_noop_inferred_init_once": "BCS-Y-1532 FUN_00712B40 (shared engine no-op)",
+      "slot_4_noop_inferred_isAlive": "BCS-Y-1532 FUN_00712B40 (StatusBase always-alive pass-through)",
+      "slot_5_onFinalize_LuaCallback_fire": "BCS-Y-1530 FUN_006F6900 (383 bytes, fires _onFinalize Lua callback)",
+      "slot_6_noop": "BCS-Y-1533 FUN_006DBE80 (alternate empty stub variant)",
+      "slot_7_minus_one": "BCS-Y-1534 FUN_005B8D90 (returns 0xFFFFFFFF)",
+      "slot_8_minus_one": "BCS-Y-1534 FUN_005B8D90 (same)",
+      "slot_9": "FUN_005C5C80 (not yet decompiled)",
+      "slot_10_11_noop": "FUN_00776340 (slot 2's stub)",
+      "slot_12": "FUN_00712A80 (not yet decompiled)",
+      "slot_13": "FUN_00C37620 (high VA, possibly ECS/engine context)",
+      "slot_14": "FUN_006D6F80 (not yet decompiled)",
+      "slot_15_to_19_noop": "BCS-Y-1532 FUN_00712B40 (5 consecutive shared no-op slots)",
+      "slot_20_Lua_newindex_blocker": "FUN_00AB7340 (the lge-bootstrap-attribution pass's read-only __newindex shim)",
+      "slot_21_to_23": "FUN_0053C440 (3 consecutive slots, not decompiled)",
+      "slot_24": "FUN_0071B1E0 (not decompiled)"
+    }
+  },
+  "deferred_followups": [
+    "Decomp the 10 not-yet-cataloged slot impls (FUN_005C5C80 slot 9, FUN_00712A80 slot 12, FUN_00C37620 slot 13, FUN_006D6F80 slot 14, FUN_0053C440 slots 21-23, FUN_0071B1E0 slot 24) to complete StatusBase's polymorphic interface characterization.",
+    "Find where the secondary vftable actually ENDS - extend dump beyond 0x00FDF940 to find the boundary.",
+    "Verify slot 5 _onFinalize fire pattern holds across the 10 other derived classes (GroupBase, ItemBase, WidgetHandle via LTC + 7 others via LGTC). Sample each class's secondary vftable slot 5 to confirm the Lua callback fire pattern.",
+    "Sample 1 LTC-derived class's secondary vftable (e.g., GroupBase at 0x00FD53CC) to compare with StatusBase's LGTC-side - validates whether LTC and LGTC share the same slot semantic contract or diverge.",
+    "Drill FUN_006F6900 (slot 5 _onFinalize fire) to understand the full Lua-side firing mechanism - which Lua callbacks does scripts register at _onFinalize? Cross-reference with the lua-engine-callback-registry-findings pass's callback registry.",
+    "Catalog FUN_00AB7340 as a stable lge-bootstrap-attribution-pass data anchor (it was identified by name but never given a BCS-Y entry).",
+    "Investigate slot 13 FUN_00C37620 - in the higher VA range that's outside the LuaControl-hierarchy region. Possibly an ECS / engine-context plumbing function.",
+    "Sample LTC-using class WidgetHandle's secondary vftable (slot count + non-trivial slots) - this is the UI widget control, may have richer slot implementations than StatusBase."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1518 -> 1524 (+6 BCS-Y: 3 StatusBase slot impls + 3 engine-wide shared stubs)",
+  "files_changed": [
+    "manifests/symbols.json: +6 entries (BCS-Y-1529..1534), 3 amendments (BCS-Y-1398, BCS-Y-1519, BCS-Y-1397)",
+    "manifests/statusbase_slots.json (NEW, this file)",
+    "tools/ghidra/logs/c87_statusbase_vftable_symbols.txt (NEW)",
+    "tools/ghidra/logs/c87_statusbase_vftable_dump.txt (NEW)",
+    "tools/ghidra/logs/c87_vftable_extension.txt (NEW)",
+    "tools/ghidra/logs/c87_slots_decomp.txt (NEW)",
+    "tools/extractors/append_statusbase_slots.py (NEW)"
+  ]
+}

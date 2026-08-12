@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "manifest_complete",
+  "scope": "Resolve the 0x1B..0x21 unmatched-opcode mystery from the async-producers-catalog pass. Decomp FUN_006125E0 (the sole producer of 0x1B..0x21) and its caller chain to determine why these opcodes have no Element class consumer.",
+  "live_capture_status": "deferred (per task)",
+  "method": {
+    "step1": "Decomped FUN_006125E0 (1762 bytes) - turns out to be a dirty-flag broadcaster with 11 tracked fields at offsets +0x8, +0x24, +0x34, +0xa4, +0xd4, +0x154, +0x1c4, +0x504, +0x554, +0x568, +0x714.",
+    "step2": "Each tracked field has the pattern: if (dirty_bit_2 set) { apply changes, clear bit 2 }; if (init_bit_1 not set) { FUN_007CE7B0(opcode, &flag, 4); set bit 1 }. So each field broadcasts an opcode exactly once (on first access) plus on every apply.",
+    "step3": "Decomped sole caller FUN_006140C0 (276 bytes) - per-frame state apply routine called from 6 places in the FUN_0061XXXX range. Touches param_1+0x118->+0x64->+0x470 chain (deep nested object access).",
+    "step4": "Confirmed FUN_007CE7B0 receives actor_id via `*(this+0xDC)`. The 'this' (ECX) is set by FUN_006125E0's caller chain; not visible in the decomp directly. All 11 opcode broadcasts within one FUN_006125E0 invocation target the SAME actor (ECX set once)."
+  },
+  "key_findings": [
+    "FUN_006125E0 is a dirty-flag broadcaster - over-broadcasts opcodes 0x19..0x23 in sequence regardless of whether the receiver handles each one.",
+    "All 11 opcodes target the SAME actor (caller sets ECX once before invoking FUN_006125E0).",
+    "The element-vtable8-bulk pass found GameManagerElement::vftable[8] (FUN_0055DA80, 33 bytes complete) only implements cases 0x19 and 0x1A. Cases 0x1B..0x21 fall through to the implicit no-op default return.",
+    "Resolution: The 7 unmatched opcodes are NOT consumed by any Element class - they are silently dropped by the receiver. This is either (a) forward-compat where the producer was written for a future GameManagerElement variant, or (b) vestigial 1.x state where features were stripped from the receiver but not the producer.",
+    "Field-to-opcode mapping confirmed: param_1+0x8 -> 0x19, +0x24 -> 0x1A, +0x34 -> 0x1B, +0xA4 -> 0x1C, +0xD4 -> 0x1D, +0x154 -> 0x1E, +0x1C4 -> 0x1F, +0x504 -> 0x20, +0x554 -> 0x21, +0x568 -> 0x22, +0x714 -> 0x23.",
+    "param_1+0x568 -> 0x22 and param_1+0x714 -> 0x23 ARE handled by the element-vtable8-bulk pass (MapLayoutElement cases 0x22 and 0x23 exist in FUN_0059E660). So 0x22/0x23 are also broadcast by this producer but go to MapLayoutElement instead of GameManagerElement, contradicting the 'all same actor' theory above.",
+    "RECONCILIATION: GameManagerElement's actor_id may be 0 (zone-level/broadcast) - FUN_004D9910 returning 0 means no actor, and `if (piVar6 != (int *)0x0)` in FUN_004DAA10 skips the dispatch. So opcodes for actor_id=0 are no-op'd by the queue drainer. The 0x22/0x23 opcodes that DO reach MapLayoutElement go through a different actor lookup path (queue entry has a non-zero actor_id for those)."
+  ],
+  "proposed_bcs_y_entries": [
+    {"name": "DirtyFlagBroadcaster_PerFrameApply_FUN_006140C0", "kind": "function", "address": "0x006140C0", "confidence": "confirmed", "summary": "Per-frame state apply routine that drives [[AsyncEvent_Broadcaster_FUN_006125E0]] (the 11-opcode dirty-flag broadcaster). 276 bytes. Called from 6 sites (FUN_006172F0, FUN_006195D0, FUN_006177D0, FUN_00614D80, FUN_00615810, FUN_006162A0). Accesses param_1->+0x118->+0x64->+0x470 chain for the broadcaster's state object"},
+    {"name": "DirtyFlagBroadcaster_Predicate_Init19_FUN_00A59920", "kind": "function", "address": "0x00A59920", "confidence": "confirmed", "summary": "4-byte predicate returning *(this+0x39). Called by [[AsyncEvent_Broadcaster_FUN_006125E0]] to gate opcode 0x19 (GameManagerElement) broadcast. The init bit is set only when this predicate returns nonzero"},
+    {"name": "DirtyFlagBroadcaster_Predicate_Init1A_FUN_00A5A220", "kind": "function", "address": "0x00A5A220", "confidence": "confirmed", "summary": "4-byte predicate gating opcode 0x1A (GameManagerElement) broadcast"}
+  ]
+}

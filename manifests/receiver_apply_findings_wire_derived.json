@@ -1,0 +1,329 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-18",
+  "pass": "receive_side_decomp",
+  "source": [
+    "%BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\helpers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\eec00_decomp.txt"
+  ],
+  "scope": "the 7 receivers from the inbound payload schemas pass with wire-derived BCS-S-0019..0025 struct entries",
+  "summary": "Paired each receiver struct from the inbound payload schemas pass with its Receive() apply method (slot 1 for 6 of 7 receivers; slot 2 for the 5-slot ChangeActorSubStatStatus). Decomped both the Receive and its direct helper. The 7 receivers split into 3 patterns: (1) Direct CharaBase sub-struct writers (0x013D writes CharaBase+0x60[0/0x58/0x59]; 0x0144 writes CharaBase+0xDC+0x18; 0x0145 writes CharaBase+0xDC+0x10 and bit-fires _onChangeNetStat*). (2) Indirect via vtable / lookup (0x0136 SetEventStatus does a vtable[9] call on a looked-up state object; 0x0137 SyncMemory updates a separate sync-cache via FUN_00775A30; 0x0179 ChangeActorSubStatStatus is gated through a 5-slot pattern and routes via FUN_00707D60 at depth 4). (3) Direct field write to known offset (0x017B writes target+0x5d already recorded in data_dependency_catalog from BCS-Y-0278). The header-only-delta hypothesis from the inbound payload schemas pass is CONFIRMED for 0x0179 (wire body all-zero; meaningful state comes from header src + opcode) and 0x017B (wire byte always 0; the write is effectively a 'clear flag' triggered by header).",
+  "newActorWrites": [
+    {
+      "opcode": "0x013d",
+      "receiver": "SetDisplayNameReceiver",
+      "fieldPath": "CharaBase+0x60+0x00",
+      "type": "u32",
+      "semantic": "display name ID (or 0xFFFFFFFF to clear)",
+      "confidence": "high"
+    },
+    {
+      "opcode": "0x013d",
+      "receiver": "SetDisplayNameReceiver",
+      "fieldPath": "CharaBase+0x60+0x58",
+      "type": "u8",
+      "semantic": "display name kind selector",
+      "confidence": "high"
+    },
+    {
+      "opcode": "0x013d",
+      "receiver": "SetDisplayNameReceiver",
+      "fieldPath": "CharaBase+0x60+0x59",
+      "type": "bool",
+      "semantic": "is-unset flag (id == 0xFFFFFFFF)",
+      "confidence": "high"
+    },
+    {
+      "opcode": "0x0144",
+      "receiver": "ChangeActorSubStatModeBorderReceiver",
+      "fieldPath": "CharaBase+0xDC+0x18",
+      "type": "u8",
+      "semantic": "sub-stat mode border value",
+      "confidence": "medium - ECX 'this' at FUN_006EEC00 callsite not Ghidra-inferred but consistent with FUN_006EEC00's CharaBase+0xDC pattern"
+    },
+    {
+      "opcode": "0x0145",
+      "receiver": "ChangeActorExtraStatReceiver",
+      "fieldPath": "CharaBase+0xDC+0x10",
+      "type": "u32",
+      "semantic": "extra-stat / net-stat flags word (bits 8..15 are 'user', bits 16..18 are 'system')",
+      "confidence": "medium - same caveat as 0x0144 about ECX-passed 'this'"
+    },
+    {
+      "opcode": "0x0179",
+      "receiver": "ChangeActorSubStatStatusReceiver",
+      "fieldPath": "CharaBase+0xDC+0x04+[sub_stat_enum*4]",
+      "type": "u32",
+      "semantic": "sub-stat status u32 at dynamic array slot inside CharaBase+0xDC sub-struct; array base ptr lives at sub_struct+0x04, indexed by sub_stat_enum byte",
+      "confidence": "high"
+    },
+    {
+      "opcode": "0x017b",
+      "receiver": "ChangeShadowActorFlagReceiver",
+      "fieldPath": "CharaBase+0x5d",
+      "type": "u8",
+      "semantic": "shadow actor flag",
+      "confidence": "high"
+    }
+  ],
+  "newLuaFirers": [
+    {
+      "opcode": "0x013d",
+      "receiver": "SetDisplayNameReceiver",
+      "luaName": "_onUpdateDisplayName",
+      "fireSite": "FUN_006FAFF0 calls FUN_00447260(\"_onUpdateDisplayName\", ...) + FUN_00CC7A90(...) on the new-name path",
+      "bridgeStatus": "PREVIOUSLY excluded from the bridge as a false-positive (see bridge-state.md). The receiver apply findings pass evidence places it in the SetDisplayNameReceiver (0x013D) apply chain at depth 2 - this is a CORRECT direct binding for 0x013D, not a false positive after all."
+    },
+    {
+      "opcode": "0x0145",
+      "receiver": "ChangeActorExtraStatReceiver",
+      "luaName": "_onChangeNetStatUser",
+      "fireSite": "FUN_006FA980 fires once per changed bit in range 8..15 (8 iterations); arg is bit-index minus 7 (so 1..8)",
+      "bridgeStatus": "NEW direct binding candidate: 0x0145 -> _onChangeNetStatUser"
+    },
+    {
+      "opcode": "0x0145",
+      "receiver": "ChangeActorExtraStatReceiver",
+      "luaName": "_onChangeNetStatSystem",
+      "fireSite": "FUN_006FA980 fires for changes at bit positions 0x10/0x11/0x12 with args 1/2/3 respectively",
+      "bridgeStatus": "NEW direct binding candidate: 0x0145 -> _onChangeNetStatSystem"
+    },
+    {
+      "opcode": "0x0179",
+      "receiver": "ChangeActorSubStatStatusReceiver",
+      "luaName": "_onChangeSubStatStatus",
+      "fireSite": "FUN_00707D60 calls FUN_00447260(\"_onChangeSubStatStatus\", ...) + FUN_00CC7A90(...) when the SubStat array slot u32 changes (gated on param_6 != '\\0')",
+      "bridgeStatus": "NEW direct binding candidate: 0x0179 -> _onChangeSubStatStatus"
+    }
+  ],
+  "findingsByOpcode": {
+    "0x0136": {
+      "receiverName": "SetEventStatusReceiver",
+      "receiveVa": "0x0089D860",
+      "receiveBodyBytes": 58,
+      "vtableShape": "2-slot",
+      "targetActorClass": "NpcBase",
+      "rttiCastVa": "ActorBase -> NpcBase (via FUN_009DA6CC)",
+      "applyHelperVa": "0x006E67C0",
+      "applyHelperBytes": 113,
+      "applyHelperBehavior": "Switch on receiver+0x58 (status kind byte): one of DAT_012c3f7a/b/c selects the lookup helper FUN_0071CA50; the result's vtable slot 9 (offset 0x24) is called with (target, event-id, receiver+0x59-byte). NOT a direct field write - indirection through a vtable[9] call on a looked-up state object.",
+      "actorWrites": [],
+      "luaCallbacksFired": [],
+      "headerOnlyDeltaHypothesis": "n/a (variable payload)",
+      "wireDeltaConfirmed": false
+    },
+    "0x0137": {
+      "receiverName": "SyncMemoryReceiver",
+      "receiveVa": "0x0089E550",
+      "receiveBodyBytes": 133,
+      "vtableShape": "2-slot",
+      "targetActorClass": "(no RTTI cast in Receive)",
+      "applyHelperVa": "0x00775A30",
+      "applyHelperBytes": 410,
+      "applyHelperBehavior": "Complex registry-update logic: looks up an entry at param_1 + 4, conditionally dispatches to FUN_00775180 (apply path) or builds a record via FUN_007870F0 / FUN_00787ED0 / FUN_00786FA0 and stores via FUN_00780BD0 / FUN_0044D350. The receiver appears to maintain a separate sync-memory cache rather than writing directly to actor fields.",
+      "actorWrites": [],
+      "luaCallbacksFired": [],
+      "headerOnlyDeltaHypothesis": "n/a (94-byte active state, indirect apply)",
+      "wireDeltaConfirmed": false
+    },
+    "0x013d": {
+      "receiverName": "SetDisplayNameReceiver",
+      "receiveVa": "0x0089D610",
+      "receiveBodyBytes": 67,
+      "vtableShape": "2-slot",
+      "targetActorClass": "CharaBase",
+      "rttiCastVa": "ActorBase -> CharaBase (gated; only applies on cast success)",
+      "applyHelperVa": "0x006FAFF0",
+      "applyHelperBytes": 646,
+      "applyHelperBehavior": "Direct CharaBase sub-struct write. Resolves the displayName sub-struct pointer at CharaBase+0x60. Writes 3 fields: the name-id u32 at +[0], the kind byte at +[0x58], the is-unset bool at +[0x59]. On the new-name path (id != 0xFFFFFFFF), fires _onUpdateDisplayName Lua callback via FUN_00CC7A90.",
+      "actorWrites": [
+        {
+          "actorClass": "CharaBase",
+          "offsetChain": [
+            "+0x60",
+            "+0x00"
+          ],
+          "type": "u32",
+          "semantic": "display name ID (or 0xFFFFFFFF to clear)",
+          "evidence": "FUN_006FAFF0 line `*piVar2 = param_3` / `*puVar3 = p3`"
+        },
+        {
+          "actorClass": "CharaBase",
+          "offsetChain": [
+            "+0x60",
+            "+0x58"
+          ],
+          "type": "u8",
+          "semantic": "display name kind selector",
+          "evidence": "FUN_006FAFF0 line `*(byte *)(piVar2 + 0x16) = param_5`"
+        },
+        {
+          "actorClass": "CharaBase",
+          "offsetChain": [
+            "+0x60",
+            "+0x59"
+          ],
+          "type": "bool",
+          "semantic": "is-unset flag (id == 0xFFFFFFFF)",
+          "evidence": "FUN_006FAFF0 line `*(bool *)((int)piVar2 + 0x59) = *piVar2 == -1`"
+        }
+      ],
+      "luaCallbacksFired": [
+        {
+          "luaName": "_onUpdateDisplayName",
+          "fireSite": "FUN_006FAFF0 calls FUN_00447260(\"_onUpdateDisplayName\", ...) + FUN_00CC7A90(...) on the new-name path",
+          "bridgeStatus": "PREVIOUSLY excluded from the bridge as a false-positive (see bridge-state.md). The receiver apply findings pass evidence places it in the SetDisplayNameReceiver (0x013D) apply chain at depth 2 - this is a CORRECT direct binding for 0x013D, not a false positive after all."
+        }
+      ],
+      "headerOnlyDeltaHypothesis": "n/a (3-byte active wire payload)",
+      "wireDeltaConfirmed": false
+    },
+    "0x0144": {
+      "receiverName": "ChangeActorSubStatModeBorderReceiver",
+      "receiveVa": "0x008A32C0",
+      "receiveBodyBytes": 46,
+      "vtableShape": "2-slot",
+      "targetActorClass": "CharaBase",
+      "rttiCastVa": "ActorBase -> CharaBase (FUN_009DA6CC)",
+      "applyHelperVa": "0x006EECB0",
+      "applyHelperBytes": 26,
+      "applyHelperBehavior": "FUN_006EECB0(modeByte) calls FUN_006EEC00 (lazy CharaBase sub-struct accessor: returns this+0xDC, allocating a 0x1C-byte sub-struct via FUN_006EEA80 if not yet initialized), then writes the mode byte at result+0x18. Ghidra didn't infer the ECX-passed 'this' pointer at the FUN_006EEC00 callsite; the canonical 1.x CharaBase has a 0x1C-byte sub-stat block at CharaBase+0xDC.",
+      "actorWrites": [
+        {
+          "actorClass": "CharaBase",
+          "offsetChain": [
+            "+0xDC",
+            "+0x18"
+          ],
+          "type": "u8",
+          "semantic": "sub-stat mode border value",
+          "evidence": "FUN_006EECB0 asm: `MOV ESI, ECX` at 0x006eecb1 (preserves CharaBase 'this' across the two FUN_006EEC00 calls), then `MOV [EAX + 0x18], CL` at 0x006eecc3 writes the mode byte at sub_struct+0x18 where EAX is the sub-struct ptr returned by FUN_006EEC00. Caller chain (verified): FUN_008A32C0 RTTI-casts ActorBase to CharaBase via FUN_009DA6CC, then `MOV ECX, EAX` at 0x008a32e3 sets up the helper call with ECX = CharaBase.",
+          "confidence": "high"
+        }
+      ],
+      "luaCallbacksFired": [],
+      "headerOnlyDeltaHypothesis": "no (1 wire byte feeds the mode write)",
+      "wireDeltaConfirmed": false
+    },
+    "0x0145": {
+      "receiverName": "ChangeActorExtraStatReceiver",
+      "receiveVa": "0x0089C990",
+      "receiveBodyBytes": 52,
+      "vtableShape": "2-slot",
+      "targetActorClass": "CharaBase",
+      "rttiCastVa": "ActorBase -> CharaBase (FUN_009DA6CC)",
+      "applyHelperVa": "0x006FA980",
+      "applyHelperBytes": 1255,
+      "applyHelperBehavior": "Bit-by-bit u32 status word update. FUN_006EEC00 returns the CharaBase sub-struct (+0xDC); reads current value at +0x10, compares to new value (param_3). If different, writes the new u32 at +0x10. Then bit-diffs (bits 8..15) firing _onChangeNetStatUser Lua callback for each changed bit (local_ac = bit_index - 7 i.e. 1..8); then 3 specific bit checks at positions 0x10/0x11/0x12 firing _onChangeNetStatSystem with local_ac = 1/2/3.",
+      "actorWrites": [
+        {
+          "actorClass": "CharaBase",
+          "offsetChain": [
+            "+0xDC",
+            "+0x10"
+          ],
+          "type": "u32",
+          "semantic": "extra-stat / net-stat flags word (bits 8..15 are 'user', bits 16..18 are 'system')",
+          "evidence": "FUN_006FA980 asm: `MOV EDI, ECX` at 0x006fa9ad preserves CharaBase 'this'; `MOV ECX, EDI` at 0x006fa9ca restores it for the second FUN_006EEC00 call; `MOV [EAX + 0x10], ESI` at 0x006fa9da writes the new u32 at sub_struct+0x10 where EAX = FUN_006EEC00's return (sub-struct ptr). Caller chain (verified): FUN_0089C990 RTTI-casts ActorBase to CharaBase, then `MOV ECX, EAX` at 0x0089c9b9 sets up the helper call with ECX = CharaBase.",
+          "confidence": "high"
+        }
+      ],
+      "luaCallbacksFired": [
+        {
+          "luaName": "_onChangeNetStatUser",
+          "fireSite": "FUN_006FA980 fires once per changed bit in range 8..15 (8 iterations); arg is bit-index minus 7 (so 1..8)",
+          "bridgeStatus": "NEW direct binding candidate: 0x0145 -> _onChangeNetStatUser"
+        },
+        {
+          "luaName": "_onChangeNetStatSystem",
+          "fireSite": "FUN_006FA980 fires for changes at bit positions 0x10/0x11/0x12 with args 1/2/3 respectively",
+          "bridgeStatus": "NEW direct binding candidate: 0x0145 -> _onChangeNetStatSystem"
+        }
+      ],
+      "headerOnlyDeltaHypothesis": "no (1 wire u32 read at +0x04 feeds the bit-diff)",
+      "wireDeltaConfirmed": false
+    },
+    "0x0179": {
+      "receiverName": "ChangeActorSubStatStatusReceiver",
+      "receiveVa": "0x008A3550",
+      "receiveBodyBytes": 219,
+      "vtableShape": "5-slot (Receive at slot 2; slot 3 is dispatcher)",
+      "targetActorClass": "LuaControl -> {StatusBase | CharaBase}",
+      "rttiCastVa": "Receive (slot 2): LuaControl -> StatusBase; slot 3 dispatcher (FUN_008A3630): LuaControl -> CharaBase",
+      "applyHelperVa": "0x008A3630 (slot 3) -> 0x007084B0 -> FUN_006EEC00 + FUN_00707D60",
+      "applyHelperBytes": 133,
+      "applyHelperBehavior": "Slot 2 (Receive) only does gating and caches a StatusBase pointer at receiver+0x10 via RTTI cast on the secondary actor. Slot 3 (dispatcher FUN_008A3630) reads receiver+0x14 (sub_stat_enum byte) and receiver+0x10 (cached_primary) and calls FUN_007084B0(target, this+0x14-byte, this+0x10-ptr, 1). FUN_007084B0 is a 36-byte thunk that calls FUN_006EEC00 (lazy +0xDC sub-struct accessor) then FUN_00707D60 (588B worker). FUN_00707D60 reads the dynamic SubStat array at sub_struct+0x04 (array_base ptr) / +0x08 (array_end ptr), indexes via sub_stat_enum*4, and if the indexed slot's u32 != new value, writes the new value into that slot AND fires _onChangeSubStatStatus via FUN_00447260 + FUN_00CC7A90. A follow-up decomp to the receiver apply findings pass closes the depth-4 chain.",
+      "actorWrites": [
+        {
+          "actorClass": "CharaBase",
+          "offsetChain": [
+            "+0xDC",
+            "+0x04",
+            "[sub_stat_enum * 4]"
+          ],
+          "type": "u32",
+          "semantic": "sub-stat status u32 at dynamic array slot; sub_stat_enum byte from receiver+0x14 indexes into the SubStat array whose base ptr lives at CharaBase+0xDC+0x04",
+          "evidence": "FUN_00707D60 line `*(int *)(*(int *)(param_1 + 4) + uVar6 * 4) = iVar2` where param_1 = sub-struct (CharaBase+0xDC), uVar6 = (uint)param_3 = sub_stat_enum byte, iVar2 = new u32 value",
+          "confidence": "high"
+        }
+      ],
+      "luaCallbacksFired": [
+        {
+          "luaName": "_onChangeSubStatStatus",
+          "fireSite": "FUN_00707D60 calls FUN_00447260(\"_onChangeSubStatStatus\", ...) + FUN_00CC7A90(...) when the indexed status u32 changes (gated on param_6 != '\\0')",
+          "bridgeStatus": "NEW direct binding candidate: 0x0179 -> _onChangeSubStatStatus. Previously the bridge had no opcode binding for _onChangeSubStatStatus despite the name appearing in lua_api_index (LuaCallbackNameHarvest notes)."
+        }
+      ],
+      "headerOnlyDeltaHypothesis": "CONFIRMED - wire body is all-zero across 30 samples; receiver+0x10 cached_primary is populated by RTTI lookup on secondary-actor at receiver+0x0C (set up by the receiver ctor, NOT from wire bytes); receiver+0x14 sub_stat_enum byte = 0 (from wire offset 0x14 which IS zero)",
+      "wireDeltaConfirmed": true
+    },
+    "0x017b": {
+      "receiverName": "ChangeShadowActorFlagReceiver",
+      "receiveVa": "0x0089CC70",
+      "receiveBodyBytes": 22,
+      "vtableShape": "2-slot",
+      "targetActorClass": "(no RTTI cast - just dereferences vtable)",
+      "applyHelperVa": "0x006DBE50",
+      "applyHelperBytes": 39,
+      "applyHelperBehavior": "Reads current flag at target+0x5d, writes new value (always 0 in corpus since the wire body is all-zero), then if the value changed calls vtable[31] (offset +0x7c) on the target object to fire the on-change side-effect. No Lua callback fires directly here.",
+      "actorWrites": [
+        {
+          "actorClass": "CharaBase",
+          "offsetChain": [
+            "+0x5d"
+          ],
+          "type": "u8",
+          "semantic": "shadow actor flag",
+          "evidence": "FUN_006DBE50 line `*(char *)((int)param_1 + 0x5d) = param_3`. ALREADY recorded in data_dependency_catalog.json receiverWriteIndex CharaBase.0x5d from BCS-Y-0278 (PURE-NATIVE classification)."
+        }
+      ],
+      "luaCallbacksFired": [],
+      "headerOnlyDeltaHypothesis": "CONFIRMED - wire body is all-zero across 30 samples; the byte WRITTEN to target+0x5d is always 0 (effectively a 'clear shadow flag' operation triggered by the opcode itself + actor ID from header)",
+      "wireDeltaConfirmed": true
+    }
+  },
+  "headerOnlyDeltaConfirmedFor": [
+    "0x0179",
+    "0x017b"
+  ],
+  "openQuestions": [],
+  "closedQuestions": [
+    "FUN_006EEC00's ECX-passed 'this' callsite verification - CLOSED. Manual assembly read via Ghidra DumpFunctionListing.java confirms ECX = CharaBase ptr (from RTTI cast in Receive methods) is preserved through both helper functions (FUN_006EECB0 saves via MOV ESI,ECX; FUN_006FA980 saves via MOV EDI,ECX) and used as 'this' by FUN_006EEC00 (which executes MOV EDI,ECX then MOV EAX,[EDI+0xdc] to access the sub-struct). 0x0144 and 0x0145 field-write claims promoted from medium to high confidence.",
+    "FUN_00707D60 (0x0179 depth-4 worker) decomp - CLOSED: write target is the dynamic SubStat array slot at CharaBase+0xDC+0x04+[sub_stat_enum*4]; also fires _onChangeSubStatStatus.",
+    "_onUpdateDisplayName was previously excluded from the bridge as a false positive - CLOSED: build_apply_chain_firers.py admitted it as a direct apply-chain binding."
+  ],
+  "ecxThisClosure": {
+    "closes": "FUN_006EEC00 ECX 'this' verification open question",
+    "verification": "Manual assembly trace through the 0x0144 chain (FUN_008A32C0 -> FUN_006EECB0 -> FUN_006EEC00) and 0x0145 chain (FUN_0089C990 -> FUN_006FA980 -> FUN_006EEC00) via Ghidra DumpFunctionListing.java. Each level explicitly preserves and restores ECX = CharaBase across calls; FUN_006EEC00's prologue uses ECX as 'this' (MOV EDI,ECX then MOV EAX,[EDI+0xdc]). Asm dump: %BCS_GHIDRA_PROJECTS%\\disasm_ecx_check.txt",
+    "confidenceUpgrades": [
+      "0x0144 CharaBase.0xDC.0x18 write: medium -> high",
+      "0x0145 CharaBase.0xDC.0x10 write: medium -> high"
+    ]
+  },
+  "opcode0179Closure": {
+    "closes": "FUN_00707D60 (0x0179 depth-4) decomp open question",
+    "newFinding": "FUN_00707D60 writes a u32 into the dynamic SubStat array inside CharaBase+0xDC sub-struct at slot index sub_stat_enum*4 (array base ptr at sub_struct+0x04). Also fires _onChangeSubStatStatus Lua callback when the slot value changes. Decomp: %BCS_GHIDRA_PROJECTS%\\decomp_00707d60.txt"
+  }
+}

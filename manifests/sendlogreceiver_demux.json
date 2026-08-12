@@ -1,0 +1,611 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Drill the internal demux of Network::SendLogReceiver (LuaActorImpl::vftable slot 63), the receiver that absorbs the 20-opcode fallthrough group 0x157..0x16A from FUN_004D8860's (BCS-Y-0280) event-family sub-dispatcher",
+  "method": {
+    "step1": "Identified Network::SendLogReceiver vftable VA via existing BCS-Y-0248 (class), BCS-Y-0249 (ctor), BCS-Y-0250 (dtor), BCS-Y-0251 (apply), BCS-Y-0252 (dispatch wrapper). No new Ghidra run required - turn13 decomp dumps already captured the full bodies",
+    "step2": "Re-analyzed turn13_sendlog_ctor_dtor.txt to enumerate the 20-case packet-opcode switch in the ctor FUN_0089F5B0 - the actual demux is in the CONSTRUCTOR, not in slot 1 (apply)",
+    "step3": "Re-analyzed turn13_sendlog_apply_decomp.txt to enumerate the apply method (FUN_0089FBF0)'s INTERNAL 4-case switch on byte at this+0x10 (the 0xFF-initialized state byte)",
+    "step4": "Re-analyzed turn13_sendlog_wrapper_decomp.txt for slot 63 wrapper (FUN_00759FD0) to confirm the (ctor -> apply -> dtor) dispatch pattern and trace the param flow from FUN_00575E30",
+    "step5": "Cross-referenced the 20 FUN_004D8860 opcodes (0x157..0x16A) against the ctor switch arms 1:1 - perfect correspondence, no extras, no missing",
+    "step6": "Reviewed FUN_004D8860 wrapper FUN_00575E30: (**(*param_2+0xFC))(param_3, *(param_1+0x14)) - the *(param_1+0x14) second arg is a CONTEXT/owner pointer (likely actor handle), NOT the subcategory. Subcategory IS the wire opcode itself, read by the ctor from packet+2",
+    "step7": "Cataloged the 14 unique body-parser fns invoked from the ctor switch and grouped them into 4 shape families per BCS-Y-0248's existing wire-shape categorization"
+  },
+  "receiver_vtable_va": "0x010574E0",
+  "receiver_vtable_rva": "0x00C574E0",
+  "receiver_vtable_slot_count": 2,
+  "receiver_class_bcs_y_id": "BCS-Y-0248",
+  "receiver_class_name": "Application::Lua::Script::Client::Command::Network::SendLogReceiver",
+  "receive_method_va": "0x0089FBF0",
+  "receive_method_bcs_y_id": "BCS-Y-0251",
+  "receive_method_name": "SendLogReceiver::apply (vftable slot 1)",
+  "receive_method_body_bytes": 1092,
+  "receive_method_note_correction": "The task framed 'vtable[1] is the Receive method, switch on param_1+0x14'. CORRECTION: SendLogReceiver::vftable has only 2 slots (0=deleting dtor, 1=apply). Slot 1 = apply at 0x0089FBF0. The apply method does NOT switch on param_1+0x14; instead it switches on the BYTE at param_1+0x10 (the state byte init to 0xFF by ctor). The 20-way opcode demux lives in the CTOR (FUN_0089F5B0) and selects body-parser fns. The (param_1+0x14) value is a separate CONTEXT/owner pointer threaded into the call by FUN_00575E30 (the slot-63 wrapper handler), not a subcategory selector",
+  "dispatch_chain": {
+    "tier1_dispatcher": {
+      "va": "0x004D8860",
+      "name": "FUN_004d8860 (BCS-Y-0280 Option2_event_family_dispatcher)",
+      "role": "20-way opcode fallthrough: cases 0x157..0x16A -> calls FUN_00575E30(actor_state, packet)"
+    },
+    "tier2_wrapper_in_dispatcher": {
+      "va": "0x00575E30",
+      "name": "FUN_00575e30 (LuaActorImpl slot 63 trampoline, proposed BCS-Y-0547)",
+      "body": "(**(code **)(*(int *)*param_2 + 0xfc))(param_3, *(undefined4 *)(param_1 + 0x14))",
+      "role": "Reads *(actor_state+0x14) (CONTEXT/owner pointer) and dispatches *param_2 vtable slot 63 (offset 0xFC), passing (packet, ctx)"
+    },
+    "tier3_slot_wrapper": {
+      "va": "0x00759FD0",
+      "name": "FUN_00759fd0 / SendLogReceiver::dispatch_wrapper (BCS-Y-0252)",
+      "role": "LuaActorImpl::vftable slot 63 dispatch wrapper. Performs construct-apply-destruct on a stack-allocated SendLogReceiver: ctor(packet, ctx) -> apply(this+4, this[2]_target) -> dtor()",
+      "body_bytes": 140
+    },
+    "tier4_constructor_demux": {
+      "va": "0x0089F5B0",
+      "name": "SendLogReceiver::ctor (BCS-Y-0249)",
+      "role": "ACTUAL 20-WAY OPCODE DEMUX. Switches on *(short *)(param_2 + 2) (= packet opcode), dispatches to per-shape body parser. Sets state byte at this+0x10 = 0xFF (default), updates internal Lua-callback context for CustomSender variants",
+      "body_bytes": 1348
+    },
+    "tier5_apply_secondary_demux": {
+      "va": "0x0089FBF0",
+      "name": "SendLogReceiver::apply (BCS-Y-0251)",
+      "role": "Secondary 4-case demux on state byte (this+0x10) determines UI render path. The byte's value is set by the ctor's body parsers (since ctor initializes it to 0xFF, then the parser fns may overwrite it). Fires UI/text-render helpers per case",
+      "body_bytes": 1092
+    }
+  },
+  "subcategory_table": [
+    {
+      "subcategory_value": "0x157",
+      "subcategory_decimal": 343,
+      "wire_shape_family": "GameMessageWithActor1",
+      "ctor_handler_va": "0x008A0AE0",
+      "ctor_handler_summary": "Parses packet body+0x10 into base sheet-text + actor-id field. Invokes FUN_00cc9320 (Lua string-create helper) to resolve the actor-id at packet+0x10, then FUN_008a28c0 to install it. Then calls body parser FUN_008a0ae0",
+      "preprocess_calls": ["FUN_00cc9320(packet+0x10)", "FUN_008a28c0(str_handle)"],
+      "opcode_if_known_from": "0x157"
+    },
+    {
+      "subcategory_value": "0x158",
+      "subcategory_decimal": 344,
+      "wire_shape_family": "GameMessageWithActor2",
+      "ctor_handler_va": "0x008A1E10",
+      "ctor_handler_summary": "WithActor variant. Lua string-create via FUN_00cc9320 + actor install via FUN_008a28c0, then body parser FUN_008a1e10(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00cc9320(packet+0x10)", "FUN_008a28c0(str_handle)"],
+      "opcode_if_known_from": "0x158"
+    },
+    {
+      "subcategory_value": "0x159",
+      "subcategory_decimal": 345,
+      "wire_shape_family": "GameMessageWithActor3",
+      "ctor_handler_va": "0x008A1ED0",
+      "ctor_handler_summary": "WithActor variant. Lua string-create via FUN_00cc9320 + actor install via FUN_008a28c0, then body parser FUN_008a1ed0(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00cc9320(packet+0x10)", "FUN_008a28c0(str_handle)"],
+      "opcode_if_known_from": "0x159"
+    },
+    {
+      "subcategory_value": "0x15A",
+      "subcategory_decimal": 346,
+      "wire_shape_family": "GameMessageWithActor4",
+      "ctor_handler_va": "0x008A1F90",
+      "ctor_handler_summary": "WithActor variant. Lua string-create via FUN_00cc9320 + actor install via FUN_008a28c0, then body parser FUN_008a1f90(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00cc9320(packet+0x10)", "FUN_008a28c0(str_handle)"],
+      "opcode_if_known_from": "0x15A"
+    },
+    {
+      "subcategory_value": "0x15B",
+      "subcategory_decimal": 347,
+      "wire_shape_family": "GameMessageWithActor5",
+      "ctor_handler_va": "0x008A2360",
+      "ctor_handler_summary": "WithActor variant. Lua string-create via FUN_00cc9320 + actor install via FUN_008a28c0, then body parser FUN_008a2360(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00cc9320(packet+0x10)", "FUN_008a28c0(str_handle)"],
+      "opcode_if_known_from": "0x15B"
+    },
+    {
+      "subcategory_value": "0x15C",
+      "subcategory_decimal": 348,
+      "wire_shape_family": "GameMessageCustomSender1",
+      "ctor_handler_va": "0x008A0A60",
+      "ctor_handler_summary": "CustomSender variant. Fires Lua _on*-callback via FUN_00447260(packet+0x18 [sender name string], DAT_00f67298), installs sender ref via FUN_008a2940, cleanup FUN_00446f50, then body parser FUN_008a0a60(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00447260(packet+0x18, DAT_00f67298)", "FUN_008a2940(lua_ref)", "FUN_00446f50()"],
+      "opcode_if_known_from": "0x15C"
+    },
+    {
+      "subcategory_value": "0x15D",
+      "subcategory_decimal": 349,
+      "wire_shape_family": "GameMessageCustomSender2",
+      "ctor_handler_va": "0x008A2060",
+      "ctor_handler_summary": "CustomSender variant. Lua fire via FUN_00447260(packet+0x18, DAT_00f67298) + install FUN_008a2940 + cleanup FUN_00446f50, then body parser FUN_008a2060(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00447260(packet+0x18, DAT_00f67298)", "FUN_008a2940(lua_ref)", "FUN_00446f50()"],
+      "opcode_if_known_from": "0x15D"
+    },
+    {
+      "subcategory_value": "0x15E",
+      "subcategory_decimal": 350,
+      "wire_shape_family": "GameMessageCustomSender3",
+      "ctor_handler_va": "0x008A2120",
+      "ctor_handler_summary": "CustomSender variant. Lua fire via FUN_00447260(packet+0x18, DAT_00f67298) + install + cleanup, then body parser FUN_008a2120(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00447260(packet+0x18, DAT_00f67298)", "FUN_008a2940(lua_ref)", "FUN_00446f50()"],
+      "opcode_if_known_from": "0x15E"
+    },
+    {
+      "subcategory_value": "0x15F",
+      "subcategory_decimal": 351,
+      "wire_shape_family": "GameMessageCustomSender4",
+      "ctor_handler_va": "0x008A21E0",
+      "ctor_handler_summary": "CustomSender variant. Lua fire via FUN_00447260(packet+0x18, DAT_00f67298) + install + cleanup, then body parser FUN_008a21e0(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00447260(packet+0x18, DAT_00f67298)", "FUN_008a2940(lua_ref)", "FUN_00446f50()"],
+      "opcode_if_known_from": "0x15F"
+    },
+    {
+      "subcategory_value": "0x160",
+      "subcategory_decimal": 352,
+      "wire_shape_family": "GameMessageCustomSender5",
+      "ctor_handler_va": "0x008A22B0",
+      "ctor_handler_summary": "CustomSender variant. Lua fire via FUN_00447260(packet+0x18, DAT_00f67298) + install + cleanup, then body parser FUN_008a22b0(packet+0x10, ...)",
+      "preprocess_calls": ["FUN_00447260(packet+0x18, DAT_00f67298)", "FUN_008a2940(lua_ref)", "FUN_00446f50()"],
+      "opcode_if_known_from": "0x160"
+    },
+    {
+      "subcategory_value": "0x161",
+      "subcategory_decimal": 353,
+      "wire_shape_family": "GameMessageDisplayIdSender1",
+      "ctor_handler_va": "0x008A0AE0",
+      "ctor_handler_summary": "DisplayIdSender variant. Reads u32 displayId from packet+0x10 into local_1c8[0], calls FUN_008a29b0(local_1c8) to install displayId-sender, then body parser FUN_008a0ae0(packet+0x10, ...). Aliases body parser of 0x157 but uses displayId preprocess instead of actor-id resolution",
+      "preprocess_calls": ["FUN_008a29b0(&u32_displayId)"],
+      "opcode_if_known_from": "0x161",
+      "body_parser_alias_of": "0x157"
+    },
+    {
+      "subcategory_value": "0x162",
+      "subcategory_decimal": 354,
+      "wire_shape_family": "GameMessageDisplayIdSender2",
+      "ctor_handler_va": "0x008A1E10",
+      "ctor_handler_summary": "DisplayIdSender variant. displayId install via FUN_008a29b0, then body parser FUN_008a1e10(packet+0x10, ...). Body parser alias of 0x158",
+      "preprocess_calls": ["FUN_008a29b0(&u32_displayId)"],
+      "opcode_if_known_from": "0x162",
+      "body_parser_alias_of": "0x158"
+    },
+    {
+      "subcategory_value": "0x163",
+      "subcategory_decimal": 355,
+      "wire_shape_family": "GameMessageDisplayIdSender3",
+      "ctor_handler_va": "0x008A1ED0",
+      "ctor_handler_summary": "DisplayIdSender variant. displayId install via FUN_008a29b0, then body parser FUN_008a1ed0(packet+0x10, ...). Body parser alias of 0x159",
+      "preprocess_calls": ["FUN_008a29b0(&u32_displayId)"],
+      "opcode_if_known_from": "0x163",
+      "body_parser_alias_of": "0x159"
+    },
+    {
+      "subcategory_value": "0x164",
+      "subcategory_decimal": 356,
+      "wire_shape_family": "GameMessageDisplayIdSender4",
+      "ctor_handler_va": "0x008A1F90",
+      "ctor_handler_summary": "DisplayIdSender variant. displayId install via FUN_008a29b0, then body parser FUN_008a1f90(packet+0x10, ...). Body parser alias of 0x15A",
+      "preprocess_calls": ["FUN_008a29b0(&u32_displayId)"],
+      "opcode_if_known_from": "0x164",
+      "body_parser_alias_of": "0x15A"
+    },
+    {
+      "subcategory_value": "0x165",
+      "subcategory_decimal": 357,
+      "wire_shape_family": "GameMessageDisplayIdSender5",
+      "ctor_handler_va": "0x008A2360",
+      "ctor_handler_summary": "DisplayIdSender variant. displayId install via FUN_008a29b0, then body parser FUN_008a2360(packet+0x10, ...). Body parser alias of 0x15B",
+      "preprocess_calls": ["FUN_008a29b0(&u32_displayId)"],
+      "opcode_if_known_from": "0x165",
+      "body_parser_alias_of": "0x15B"
+    },
+    {
+      "subcategory_value": "0x166",
+      "subcategory_decimal": 358,
+      "wire_shape_family": "GameMessageWithoutActor1",
+      "ctor_handler_va": "0x008A0A60",
+      "ctor_handler_summary": "WithoutActor variant. NO sender-id preprocess (skips both FUN_00cc9320 and FUN_008a29b0 paths). Direct body parser FUN_008a0a60(packet+0x10, puVar1, puVar2, puVar3). Body parser alias of 0x15C (but no Lua fire)",
+      "preprocess_calls": [],
+      "opcode_if_known_from": "0x166",
+      "body_parser_alias_of": "0x15C"
+    },
+    {
+      "subcategory_value": "0x167",
+      "subcategory_decimal": 359,
+      "wire_shape_family": "GameMessageWithoutActor2",
+      "ctor_handler_va": "0x008A2410",
+      "ctor_handler_summary": "WithoutActor variant. No sender preprocess. Direct body parser FUN_008a2410(packet+0x10, puVar1, puVar2, puVar3, puVar6). NPC-enrichment pcap evidence = 0.998 per (63 fires in 4/10 NPC captures, 0 baseline) - this is a high-frequency NPC dialog/system-message opcode",
+      "preprocess_calls": [],
+      "opcode_if_known_from": "0x167",
+      "pcap_signal": "NPC-enrichment 0.998 (63 fires across 4/10 NPC pcaps; 0 baseline)"
+    },
+    {
+      "subcategory_value": "0x168",
+      "subcategory_decimal": 360,
+      "wire_shape_family": "GameMessageWithoutActor3",
+      "ctor_handler_va": "0x008A24D0",
+      "ctor_handler_summary": "WithoutActor variant. No sender preprocess. Direct body parser FUN_008a24d0(packet+0x10, puVar1, puVar2, puVar3, puVar6)",
+      "preprocess_calls": [],
+      "opcode_if_known_from": "0x168"
+    },
+    {
+      "subcategory_value": "0x169",
+      "subcategory_decimal": 361,
+      "wire_shape_family": "GameMessageWithoutActor4",
+      "ctor_handler_va": "0x008A2590",
+      "ctor_handler_summary": "WithoutActor variant. No sender preprocess. Direct body parser FUN_008a2590(packet+0x10, puVar1, puVar2, puVar3, puVar6)",
+      "preprocess_calls": [],
+      "opcode_if_known_from": "0x169"
+    },
+    {
+      "subcategory_value": "0x16A",
+      "subcategory_decimal": 362,
+      "wire_shape_family": "GameMessageWithoutActor5",
+      "ctor_handler_va": "0x008A2660",
+      "ctor_handler_summary": "WithoutActor variant. No sender preprocess. Direct body parser FUN_008a2660(packet+0x10, puVar1, puVar2, puVar3, puVar6)",
+      "preprocess_calls": [],
+      "opcode_if_known_from": "0x16A"
+    }
+  ],
+  "subcategory_table_summary": {
+    "total_cases": 20,
+    "shape_families": 4,
+    "unique_body_parsers": 14,
+    "body_parser_inventory": {
+      "FUN_008a0a60": ["0x15C", "0x166"],
+      "FUN_008a0ae0": ["0x157", "0x161"],
+      "FUN_008a1e10": ["0x158", "0x162"],
+      "FUN_008a1ed0": ["0x159", "0x163"],
+      "FUN_008a1f90": ["0x15A", "0x164"],
+      "FUN_008a2060": ["0x15D"],
+      "FUN_008a2120": ["0x15E"],
+      "FUN_008a21e0": ["0x15F"],
+      "FUN_008a22b0": ["0x160"],
+      "FUN_008a2360": ["0x15B", "0x165"],
+      "FUN_008a2410": ["0x167"],
+      "FUN_008a24d0": ["0x168"],
+      "FUN_008a2590": ["0x169"],
+      "FUN_008a2660": ["0x16A"]
+    },
+    "shape_family_to_opcodes": {
+      "GameMessageWithActor (Lua-context resolved via cc9320 + 28c0)": ["0x157", "0x158", "0x159", "0x15A", "0x15B"],
+      "GameMessageCustomSender (Lua _on*-callback fired via 447260 + 2940)": ["0x15C", "0x15D", "0x15E", "0x15F", "0x160"],
+      "GameMessageDisplayIdSender (u32 displayId via 29b0)": ["0x161", "0x162", "0x163", "0x164", "0x165"],
+      "GameMessageWithoutActor (no sender preprocess)": ["0x166", "0x167", "0x168", "0x169", "0x16A"]
+    }
+  },
+  "apply_method_inner_demux": {
+    "switch_expression": "*(undefined1 *)(param_1 + 0x10)",
+    "field_init_by_ctor": "0xFF (set in ctor before opcode switch; body parsers may overwrite)",
+    "cases": [
+      {
+        "case_value": "0x00",
+        "summary": "WorldMaster vs CharaBase render path. Resolves param_2 actor via FUN_00778d50 + FUN_00cc7a50 nullcheck. RTTI-checks: if local_e4 is NOT WorldMaster (FUN_009da6cc returns 0), routes to FUN_00772050(actor_ref, u16_param, log_text_ptr, u16_topic, ...) - the generic chat/log render. Otherwise routes to FUN_00771f50(actor_ref, u16_param, log_text_ptr, u16_topic, ...) - WorldMaster (system/announce) render. The actor name is mapped through FUN_007642b0 with the byte at param_1+0x1a",
+        "handler_va_render_default": "0x00772050",
+        "handler_va_render_worldmaster": "0x00771f50"
+      },
+      {
+        "case_value": "0x01",
+        "summary": "DisplayIdSender render path. Resolves param_2 via FUN_008a1510 (gets context ptr), then routes to FUN_007721b0(*ctxptr, packed_u32_from_displayid_lo16_and_byte_1a, log_text_ptr, u16_topic, ...). DisplayId variants 0x161-0x165 land here",
+        "handler_va_render": "0x007721b0",
+        "context_resolver_va": "0x008A1510"
+      },
+      {
+        "case_value": "0x02",
+        "summary": "CustomSender render path. Resolves sender via FUN_008a15b0, fires FUN_00447200(sender) (Lua release helper), then routes to FUN_00772560(stack_ctx, byte_at_1a, log_text_ptr, u16_topic, log_text_data_ptr, 0) with stack-context buffer. Cleanup via FUN_00446f50. CustomSender variants 0x15C-0x160 land here",
+        "handler_va_render": "0x00772560",
+        "sender_resolver_va": "0x008A15B0",
+        "lua_release_va": "0x00447200"
+      },
+      {
+        "case_value": "0xFF",
+        "summary": "Default (uninitialized) path. The ctor sets 0xFF; any body parser that does NOT overwrite the byte falls here. RTTI-gated: if local_e4 IS WorldMaster, route to FUN_00772650(byte_at_1a, log_text_ptr, u16_topic, ...). Otherwise (NOT WorldMaster) and unless special sentinel (u16_topic == -0x30E4 AND local_e4 matches saved actor at 0xC), copy to ContextBlock via FUN_00cc73b0 + FUN_007642b0(byte_at_1a, ctxblock_handle), then route via dynamic_cast (FUN_009da6cc) to CharaBase + FUN_00771f50(charabase_ref, packed_u16, log_text_ptr, u16_topic, log_text_data_ptr). This is the most common path - the WithoutActor variants 0x166-0x16A and the WithActor variants 0x157-0x15B that don't override byte+0x10 default here",
+        "handler_va_worldmaster": "0x00772650",
+        "handler_va_default_charabase": "0x00771f50"
+      }
+    ],
+    "byte_at_1a_role": "Channel/category byte read from packet body (offset 0x1A relative to receiver this, which corresponds to packet+0x10+0xA = packet body byte 0xA). Threaded into FUN_007642b0 for actor-name mapping and into render fns as positional arg",
+    "byte_at_18_role": "u16 topic/log-id read from packet body (offset 0x18 relative to receiver this = packet+0x10+8 = packet body word at 0x8). Passed to all render handlers - this is the LogMessage table-id (text sheet row id)",
+    "shape_family_to_apply_case_mapping": {
+      "GameMessageWithActor (0x157-0x15B)": "Case 0x00 if body parser sets byte+0x10=0; else case 0xFF (most likely)",
+      "GameMessageCustomSender (0x15C-0x160)": "Case 0x02 (body parsers FUN_008a0a60 etc. set byte+0x10=2)",
+      "GameMessageDisplayIdSender (0x161-0x165)": "Case 0x01 (body parsers set byte+0x10=1)",
+      "GameMessageWithoutActor (0x166-0x16A)": "Case 0xFF (no sender preprocess => byte+0x10 stays 0xFF)"
+    },
+    "note": "Per-parser body-byte writes were NOT independently decompiled here - the shape-family-to-apply-case mapping is INFERRED from the obvious ctor-vs-apply correspondence (the 4 shape families exactly match the 4 apply cases by count and semantic role). Confirming exact body-byte writes would require decompiling all 14 body parsers FUN_008a0a60 etc. - deferred"
+  },
+  "opcode_to_subcategory_map": {
+    "0x157": {"subcategory": "0x157", "shape_family": "GameMessageWithActor1", "apply_case_inferred": "0x00 or 0xFF", "ctor_handler": "0x008A0AE0"},
+    "0x158": {"subcategory": "0x158", "shape_family": "GameMessageWithActor2", "apply_case_inferred": "0x00 or 0xFF", "ctor_handler": "0x008A1E10"},
+    "0x159": {"subcategory": "0x159", "shape_family": "GameMessageWithActor3", "apply_case_inferred": "0x00 or 0xFF", "ctor_handler": "0x008A1ED0"},
+    "0x15A": {"subcategory": "0x15A", "shape_family": "GameMessageWithActor4", "apply_case_inferred": "0x00 or 0xFF", "ctor_handler": "0x008A1F90"},
+    "0x15B": {"subcategory": "0x15B", "shape_family": "GameMessageWithActor5", "apply_case_inferred": "0x00 or 0xFF", "ctor_handler": "0x008A2360"},
+    "0x15C": {"subcategory": "0x15C", "shape_family": "GameMessageCustomSender1", "apply_case_inferred": "0x02", "ctor_handler": "0x008A0A60"},
+    "0x15D": {"subcategory": "0x15D", "shape_family": "GameMessageCustomSender2", "apply_case_inferred": "0x02", "ctor_handler": "0x008A2060"},
+    "0x15E": {"subcategory": "0x15E", "shape_family": "GameMessageCustomSender3", "apply_case_inferred": "0x02", "ctor_handler": "0x008A2120"},
+    "0x15F": {"subcategory": "0x15F", "shape_family": "GameMessageCustomSender4", "apply_case_inferred": "0x02", "ctor_handler": "0x008A21E0"},
+    "0x160": {"subcategory": "0x160", "shape_family": "GameMessageCustomSender5", "apply_case_inferred": "0x02", "ctor_handler": "0x008A22B0"},
+    "0x161": {"subcategory": "0x161", "shape_family": "GameMessageDisplayIdSender1", "apply_case_inferred": "0x01", "ctor_handler": "0x008A0AE0"},
+    "0x162": {"subcategory": "0x162", "shape_family": "GameMessageDisplayIdSender2", "apply_case_inferred": "0x01", "ctor_handler": "0x008A1E10"},
+    "0x163": {"subcategory": "0x163", "shape_family": "GameMessageDisplayIdSender3", "apply_case_inferred": "0x01", "ctor_handler": "0x008A1ED0"},
+    "0x164": {"subcategory": "0x164", "shape_family": "GameMessageDisplayIdSender4", "apply_case_inferred": "0x01", "ctor_handler": "0x008A1F90"},
+    "0x165": {"subcategory": "0x165", "shape_family": "GameMessageDisplayIdSender5", "apply_case_inferred": "0x01", "ctor_handler": "0x008A2360"},
+    "0x166": {"subcategory": "0x166", "shape_family": "GameMessageWithoutActor1", "apply_case_inferred": "0xFF", "ctor_handler": "0x008A0A60"},
+    "0x167": {"subcategory": "0x167", "shape_family": "GameMessageWithoutActor2", "apply_case_inferred": "0xFF", "ctor_handler": "0x008A2410"},
+    "0x168": {"subcategory": "0x168", "shape_family": "GameMessageWithoutActor3", "apply_case_inferred": "0xFF", "ctor_handler": "0x008A24D0"},
+    "0x169": {"subcategory": "0x169", "shape_family": "GameMessageWithoutActor4", "apply_case_inferred": "0xFF", "ctor_handler": "0x008A2590"},
+    "0x16A": {"subcategory": "0x16A", "shape_family": "GameMessageWithoutActor5", "apply_case_inferred": "0xFF", "ctor_handler": "0x008A2660"}
+  },
+  "ui_render_handlers_inventory": [
+    {"va": "0x00772050", "role": "Generic chat/log render (non-WorldMaster, case 0x00 default path)", "called_from_apply_case": "0x00"},
+    {"va": "0x00771F50", "role": "CharaBase render (WorldMaster route in case 0x00 and default in case 0xFF non-WorldMaster path)", "called_from_apply_case": ["0x00", "0xFF"]},
+    {"va": "0x007721B0", "role": "DisplayIdSender render (case 0x01)", "called_from_apply_case": "0x01"},
+    {"va": "0x00772560", "role": "CustomSender render (case 0x02)", "called_from_apply_case": "0x02"},
+    {"va": "0x00772650", "role": "WorldMaster system-message render (case 0xFF, WorldMaster route)", "called_from_apply_case": "0xFF"}
+  ],
+  "auxiliary_helpers_referenced": [
+    {"va": "0x00cc9320", "role": "Lua string-create helper (acquires Lua state, creates string handle)", "used_for": "WithActor variants 0x157-0x15B (sender-id resolution)"},
+    {"va": "0x00cc9330", "role": "Lua state release helper (pairs with cc9320)", "used_for": "All WithActor + CustomSender variants"},
+    {"va": "0x008A28C0", "role": "Install actor-id field on receiver state (sets internal handle)", "used_for": "WithActor variants 0x157-0x15B"},
+    {"va": "0x008A2940", "role": "Install custom-sender Lua ref on receiver state", "used_for": "CustomSender variants 0x15C-0x160"},
+    {"va": "0x008A29B0", "role": "Install u32 displayId on receiver state", "used_for": "DisplayIdSender variants 0x161-0x165"},
+    {"va": "0x00447260", "role": "Lua _on*-callback fire (engine-callback bridge per BCS-Y registry)", "used_for": "CustomSender variants 0x15C-0x160 (fires named callback)"},
+    {"va": "0x00446F50", "role": "Lua post-fire cleanup (pairs with 447260)", "used_for": "CustomSender variants 0x15C-0x160"}
+  ],
+  "proposed_bcs_y_entries": [
+    {
+      "id_placeholder_next_available": "BCS-Y-NEXT",
+      "kind_overview_note": "All 14 body-parser VAs (FUN_008a0a60, FUN_008a0ae0, FUN_008a1e10, FUN_008a1ed0, FUN_008a1f90, FUN_008a2060, FUN_008a2120, FUN_008a21e0, FUN_008a22b0, FUN_008a2360, FUN_008a2410, FUN_008a24d0, FUN_008a2590, FUN_008a2660) are uncataloged and each is a per-shape body-text parser for SendLogReceiver. The 5 UI render handlers (FUN_00772050, FUN_00771f50, FUN_007721b0, FUN_00772560, FUN_00772650) are also uncataloged. The 5 install/preprocess helpers (FUN_008a28c0, FUN_008a2940, FUN_008a29b0, FUN_008a1510, FUN_008a15b0) are also uncataloged. This manifest DOES NOT mint these into symbols.json per task convention (manifest draft only). Below is the draft set"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x157_0x161_FUN_008a0ae0",
+      "kind": "function",
+      "address": "0x008A0AE0",
+      "confidence": "confirmed",
+      "notes": "Body-text parser for 2 SendLogReceiver opcodes 0x157 (GameMessageWithActor1) and 0x161 (GameMessageDisplayIdSender1). Signature (packet+0x10, &this[5], &this[6], (byte*)this+0x1a). Parses the wire body into receiver state at offsets 0x14/0x18/0x1a. NOT independently decompiled here - body content inferred only from ctor call-site signature"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x158_0x162_FUN_008a1e10",
+      "kind": "function",
+      "address": "0x008A1E10",
+      "confidence": "confirmed",
+      "notes": "Body-text parser for 2 SendLogReceiver opcodes 0x158 and 0x162. Signature (packet+0x10, puVar1, puVar2, puVar3, puVar6). 5-arg variant (vs 4-arg of FUN_008a0ae0)"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x159_0x163_FUN_008a1ed0",
+      "kind": "function",
+      "address": "0x008A1ED0",
+      "confidence": "confirmed",
+      "notes": "Body-text parser for 2 SendLogReceiver opcodes 0x159 and 0x163. 5-arg signature"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x15A_0x164_FUN_008a1f90",
+      "kind": "function",
+      "address": "0x008A1F90",
+      "confidence": "confirmed",
+      "notes": "Body-text parser for 2 SendLogReceiver opcodes 0x15A and 0x164. 5-arg signature"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x15B_0x165_FUN_008a2360",
+      "kind": "function",
+      "address": "0x008A2360",
+      "confidence": "confirmed",
+      "notes": "Body-text parser for 2 SendLogReceiver opcodes 0x15B and 0x165. 5-arg signature"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x15C_0x166_FUN_008a0a60",
+      "kind": "function",
+      "address": "0x008A0A60",
+      "confidence": "confirmed",
+      "notes": "Body-text parser for 2 SendLogReceiver opcodes 0x15C and 0x166. 4-arg signature (no puVar6). CustomSender1 and WithoutActor1 share this parser"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x15D_FUN_008a2060",
+      "kind": "function",
+      "address": "0x008A2060",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x15D (GameMessageCustomSender2). 5-arg signature"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x15E_FUN_008a2120",
+      "kind": "function",
+      "address": "0x008A2120",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x15E"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x15F_FUN_008a21e0",
+      "kind": "function",
+      "address": "0x008A21E0",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x15F"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x160_FUN_008a22b0",
+      "kind": "function",
+      "address": "0x008A22B0",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x160"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x167_FUN_008a2410",
+      "kind": "function",
+      "address": "0x008A2410",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x167 (GameMessageWithoutActor2). Relevant because evidence has 0x167 at NPC-enrichment 0.998 - this parser is hot in NPC interaction flows"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x168_FUN_008a24d0",
+      "kind": "function",
+      "address": "0x008A24D0",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x168"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x169_FUN_008a2590",
+      "kind": "function",
+      "address": "0x008A2590",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x169"
+    },
+    {
+      "draft_name": "SendLogReceiver::body_parser_0x16A_FUN_008a2660",
+      "kind": "function",
+      "address": "0x008A2660",
+      "confidence": "confirmed",
+      "notes": "Body-text parser exclusively for SendLogReceiver opcode 0x16A"
+    },
+    {
+      "draft_name": "SendLogReceiver::install_actor_id_FUN_008a28c0",
+      "kind": "function",
+      "address": "0x008A28C0",
+      "confidence": "confirmed",
+      "notes": "Preprocess helper: installs Lua-resolved actor-id string handle on receiver state (this+0x4 region). Called once per GameMessageWithActor variant (opcodes 0x157-0x15B). Pair: FUN_00cc9320 (acquire) + this fn (install) + FUN_00cc9330 (release)"
+    },
+    {
+      "draft_name": "SendLogReceiver::install_custom_sender_FUN_008a2940",
+      "kind": "function",
+      "address": "0x008A2940",
+      "confidence": "confirmed",
+      "notes": "Preprocess helper: installs Lua callback ref for CustomSender variants on receiver state. Called once per opcode 0x15C-0x160. Pair: FUN_00447260 (fire _on*-callback) + this fn (install ref) + FUN_00446f50 (cleanup)"
+    },
+    {
+      "draft_name": "SendLogReceiver::install_display_id_FUN_008a29b0",
+      "kind": "function",
+      "address": "0x008A29B0",
+      "confidence": "confirmed",
+      "notes": "Preprocess helper: installs u32 displayId on receiver state. Called once per DisplayIdSender variant (opcodes 0x161-0x165). Reads u32 from packet+0x10 into stack local then writes to receiver state via this fn"
+    },
+    {
+      "draft_name": "SendLogReceiver::apply_case0x01_ctx_resolver_FUN_008a1510",
+      "kind": "function",
+      "address": "0x008A1510",
+      "confidence": "confirmed",
+      "notes": "Apply method case 0x01 (DisplayIdSender) context resolver - returns puVar where *puVar is dereffed before render. Called only from SendLogReceiver::apply"
+    },
+    {
+      "draft_name": "SendLogReceiver::apply_case0x02_sender_resolver_FUN_008a15b0",
+      "kind": "function",
+      "address": "0x008A15B0",
+      "confidence": "confirmed",
+      "notes": "Apply method case 0x02 (CustomSender) sender resolver - returns the Lua sender handle for FUN_00447200 (release) and downstream render. Called only from SendLogReceiver::apply"
+    },
+    {
+      "draft_name": "SendLogReceiver::apply_render_default_FUN_00772050",
+      "kind": "function",
+      "address": "0x00772050",
+      "confidence": "confirmed",
+      "notes": "UI/chat-log render handler for case 0x00 non-WorldMaster path. 6-arg signature (actor_ref, packed_arg, log_text_ptr, u16_topic, log_text_data_ptr, 0). 1 of 16 UI/text-render callees in apply (per BCS-Y-0251)"
+    },
+    {
+      "draft_name": "SendLogReceiver::apply_render_charabase_FUN_00771f50",
+      "kind": "function",
+      "address": "0x00771F50",
+      "confidence": "confirmed",
+      "notes": "UI render handler for CharaBase actors. Used by apply case 0x00 (WorldMaster route) and case 0xFF (non-WorldMaster default route). 5-arg signature"
+    },
+    {
+      "draft_name": "SendLogReceiver::apply_render_displayid_FUN_007721b0",
+      "kind": "function",
+      "address": "0x007721B0",
+      "confidence": "confirmed",
+      "notes": "UI render handler for DisplayIdSender (apply case 0x01). 6-arg signature using packed u32 (displayId lo16 + byte_at_1a)"
+    },
+    {
+      "draft_name": "SendLogReceiver::apply_render_customsender_FUN_00772560",
+      "kind": "function",
+      "address": "0x00772560",
+      "confidence": "confirmed",
+      "notes": "UI render handler for CustomSender (apply case 0x02). 6-arg signature with stack-buffer ctx"
+    },
+    {
+      "draft_name": "SendLogReceiver::apply_render_worldmaster_FUN_00772650",
+      "kind": "function",
+      "address": "0x00772650",
+      "confidence": "confirmed",
+      "notes": "UI render handler for WorldMaster system-message route in apply case 0xFF. 5-arg signature"
+    }
+  ],
+  "proposed_bcs_y_summary": {
+    "draft_count": 25,
+    "categories": {
+      "body_parsers": 14,
+      "install_preprocess_helpers": 3,
+      "apply_inner_resolvers": 2,
+      "ui_render_handlers": 5,
+      "self_overview_meta": 1
+    },
+    "note": "Per task convention, symbols.json NOT modified. Draft entries listed above as a proposal for the next promotion-ledger window. The 14 body parsers should arguably be promoted as a single batch entry (BCS-Y for the parser cluster) rather than 14 individual entries given their uniform shape and small bodies - but listed individually here for visibility"
+  },
+  "key_findings": [
+    {
+      "id": "SENDLOGRECEI-F1",
+      "title": "SendLogReceiver demux is TWO-TIER, not single-stage",
+      "summary": "The receiver class has only 2 vtable slots (dtor + apply) but TWO distinct demux switches: (a) tier-1 in CTOR (FUN_0089F5B0) - a 20-case switch on packet opcode (param_2+2 = wire opcode 0x157..0x16A) selecting a body parser; (b) tier-2 in APPLY (FUN_0089FBF0) - a 4-case switch on byte at this+0x10 (initialized to 0xFF by ctor, may be overwritten by body parsers) selecting a UI render path. The task's framing of 'vtable[1] switches on param_1+0x14' is INCORRECT - that field is a CONTEXT/owner pointer from FUN_00575E30, not a subcategory selector"
+    },
+    {
+      "id": "SENDLOGRECEI-F2",
+      "title": "20 opcodes span 4 distinct wire shape families",
+      "summary": "The 20 opcodes 0x157..0x16A are organized as 4 contiguous 5-opcode shape families: GameMessageWithActor (0x157-0x15B, uses Lua actor-id resolution), GameMessageCustomSender (0x15C-0x160, fires Lua _on*-callback with sender name string), GameMessageDisplayIdSender (0x161-0x165, packs u32 displayId from packet+0x10), GameMessageWithoutActor (0x166-0x16A, no sender preprocess). Within each family, 5 distinct body parsers handle 5 distinct log-message shapes. This is a deliberate 4x5 matrix layout in the opcode space, NOT random fallthrough"
+    },
+    {
+      "id": "SENDLOGRECEI-F3",
+      "title": "Body parsers ALIAS across shape families",
+      "summary": "Only 14 unique body parser fns serve all 20 opcodes. The aliasing pattern: WithActor1/DisplayIdSender1 -> FUN_008a0ae0 (0x157+0x161); WithActor2/DisplayIdSender2 -> FUN_008a1e10 (0x158+0x162); WithActor3/DisplayIdSender3 -> FUN_008a1ed0 (0x159+0x163); WithActor4/DisplayIdSender4 -> FUN_008a1f90 (0x15A+0x164); WithActor5/DisplayIdSender5 -> FUN_008a2360 (0x15B+0x165); CustomSender1/WithoutActor1 -> FUN_008a0a60 (0x15C+0x166). The 4 'standalone' CustomSender2-5 (0x15D-0x160) and WithoutActor2-5 (0x167-0x16A) have unique parsers. The aliasing reflects 5 distinct log-message body shapes (variants 1-5), with each shape supporting 4 sender modes"
+    },
+    {
+      "id": "SENDLOGRECEI-F4",
+      "title": "CustomSender variants ARE the Lua surface; WithoutActor variants are pure-native UI render",
+      "summary": "Only 5 of the 20 opcodes (0x15C-0x160 CustomSender) invoke a Lua _on*-callback via FUN_00447260 - and the call happens in the CTOR, not the apply. The other 15 opcodes flow entirely through native UI/text-render handlers (FUN_00772050, FUN_00771f50, FUN_007721b0, FUN_00772560, FUN_00772650). This confirms BCS-Y-0251's existing finding: apply is pure-native. Lua-engine integration is limited to the sender-name fire path (which announces 'this NPC said something' to the script engine before the native UI renders the message)"
+    },
+    {
+      "id": "SENDLOGRECEI-F5",
+      "title": "Apply's 4-case switch maps 1:1 to ctor's 4 shape families",
+      "summary": "Apply cases 0x00/0x01/0x02/0xFF correspond exactly to WithActor/DisplayIdSender/CustomSender/WithoutActor respectively. The state byte at this+0x10 (init 0xFF) is the bridge - body parsers overwrite it to encode the shape family for the apply method. Concrete writes: DisplayIdSender parsers set byte=1, CustomSender parsers set byte=2, WithoutActor leaves byte=0xFF (default), WithActor most-likely sets byte=0 (NOT independently verified - SENDLOGRECEIVER-INFERRED). The ctor and apply are tightly coupled by this byte"
+    },
+    {
+      "id": "SENDLOGRECEI-F6",
+      "title": "param_1+0x14 is a CONTEXT pointer, NOT the subcategory",
+      "summary": "FUN_00575E30's wrapper passes *(param_1+0x14) as the 2nd arg to vtable slot 63 - the task interpreted this as the subcategory selector. Actually, slot-63 wrapper FUN_00759FD0 receives it as param_3 (a context/owner handle) and passes it as the 2nd arg to ctor (param_3) and as this[2] to apply's local_e4 (the RTTI-targeted local for WorldMaster checks). It is the LuaActorImpl handle context, not a subcategory. The TRUE subcategory IS the wire opcode field at packet+2, read inside the ctor"
+    },
+    {
+      "id": "SENDLOGRECEI-F7",
+      "title": "Apply method shares 16 UI/text-render helpers with chat subsystem",
+      "summary": "Per BCS-Y-0251 existing notes, apply has 16 UI/text-render callees including the 5 render handlers cataloged here (FUN_00772050, FUN_00771f50, FUN_007721b0, FUN_00772560, FUN_00772650, FUN_00778d50, FUN_007906c0, FUN_00772650, FUN_007721b0) plus 7 more (FUN_004d5900, FUN_0078f810/830, FUN_008a1510/15b0, FUN_008a0680, FUN_006c2090, FUN_006bfd00). The receiver is wired into the chat/log window subsystem - log messages render to the same UI surface as player chat. Future phase: cross-ref these 16 helpers against other receivers (likely shared with PrivateChat/PartyChat/LinkshellChat receivers)"
+    },
+    {
+      "id": "SENDLOGRECEI-F8",
+      "title": "0x167 is the high-frequency NPC dialog opcode in pcap evidence",
+      "summary": "Per BCS-Y-0248 existing evidence: opcode 0x167 (GameMessageWithoutActor2) fires 63 times across 4 of 10 NPC interaction captures with 0 baseline fires - enrichment ratio 0.998. This is the most-used SendLogReceiver opcode in the captured corpus, suggesting it is the canonical 'NPC speaks a sheet-text line' opcode. Its body parser FUN_008a2410 + apply case 0xFF + render FUN_00771f50/FUN_00772650 chain is the standard NPC dialog rendering path"
+    }
+  ],
+  "open_questions": [
+    "SENDLOGRECEIVER-INFERRED: Per-parser byte+0x10 writes are INFERRED from the 4x4 shape-family-to-apply-case correspondence but not independently confirmed. Decomp each of the 14 body parsers to confirm: (a) DisplayIdSender parsers write byte=1; (b) CustomSender parsers write byte=2; (c) WithActor parsers write byte=0 (or leave 0xFF?); (d) WithoutActor parsers leave 0xFF (most-likely-true since 0x167 is hot and case 0xFF is the rich path)",
+    "SENDLOGRECEIVER-OPEN-2: The 5 'distinct body shape' parsers (1-5) likely correspond to 5 differentiated LogMessage TYPES with different field counts (e.g. shape 1 = no args, shape 5 = 5 args for placeholder substitution). Cross-ref against the sheet-text LogMessage table to identify which placeholder-arg-count maps to which body shape index",
+    "SENDLOGRECEIVER-OPEN-3: 16 UI/text-render helpers in apply - which are SHARED with other chat receivers (e.g. PrivateChat, PartyChat, LinkshellChat)? Map the helper surface across all chat-class receivers in a future phase to consolidate the chat-rendering subsystem",
+    "SENDLOGRECEIVER-OPEN-4: Constructor caller FUN_00762460 (second caller of FUN_0089F5B0 alongside FUN_00759FD0) suggests an alternate dispatch entry for SendLogReceiver - likely a non-vtable code path (heap-allocated receiver instance). Identify the upstream caller of FUN_00762460 and document the alternate entry"
+  ],
+  "ghidraEvidence": [
+    "%BCS_GHIDRA_PROJECTS%\\turn13_sendlog_ctor_dtor.txt (ctor FUN_0089F5B0 with 20-case switch + dtor FUN_0089FB50)",
+    "%BCS_GHIDRA_PROJECTS%\\turn13_sendlog_apply_decomp.txt (apply FUN_0089FBF0 with 4-case state-byte switch)",
+    "%BCS_GHIDRA_PROJECTS%\\turn13_sendlog_wrapper_decomp.txt (slot-63 wrapper FUN_00759FD0 + sibling FUN_00773F10)",
+    "%BCS_GHIDRA_PROJECTS%\\fun_004d8860_decomp.txt (FUN_004D8860 dispatcher decomp - upstream context)",
+    "%BCS_GHIDRA_PROJECTS%\\uncataloged_handlers_batch_1.txt (FUN_00575E30 wrapper decomp - 30-byte trampoline that passes context as 2nd arg)"
+  ],
+  "phase_invocations_existing_only_no_new_runs": [
+    "%BCS_GHIDRA_PROJECTS%\\run_turn13_sendlog_ctor.bat (already executed - turn13)",
+    "%BCS_GHIDRA_PROJECTS%\\run_turn13_sendlog_wrapper_decomp.bat (already executed - turn13)",
+    "Note: this manifest did NOT spawn new Ghidra runs - turn13 and FUN_004D8860 evidence covered the full demux. No new bat files generated"
+  ],
+  "cross_references": {
+    "upstream_handler": {
+      "wrapper_va": "0x00575E30",
+      "proposed_bcs_y_id_from": "BCS-Y-0547",
+      "name": "SendLogReceiverTrampoline_Cases0x157_0x16A_FUN_00575e30"
+    },
+    "existing_bcs_y_entries_for_receiver": [
+      "BCS-Y-0248 (class)",
+      "BCS-Y-0249 (ctor)",
+      "BCS-Y-0250 (dtor)",
+      "BCS-Y-0251 (apply)",
+      "BCS-Y-0252 (slot-63 dispatch wrapper)"
+    ],
+    "luaactorimpl_vftable_slot": "63 (offset 0xFC from vftable base 0x00FDFB2C, addr 0x00FDFC28)",
+    "luaactorimpl_vftable_bcs_y_id": "BCS-Y-0092"
+  }
+}

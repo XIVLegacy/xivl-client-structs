@@ -1,0 +1,74 @@
+{
+  "version": "1",
+  "generated": "2026-05-23",
+  "scope": "Userdata characterization for FUN_00d11400's metatable (cataloged structurally in BCS-Y-0502). Goal: identify the C++ type the userdata wraps and the semantic role it serves. Method: full decomp of all 6 distinct metamethod impls + the wrapping cclosure (_isAlive) + both static callers.",
+  "outcome": "Userdata wraps an Individual Reference handle - a 2-dword (GroupID, IndividualIndex) entity addressing pattern. Constructor `__lge_getIndividualIndex(group, index)` packs the 2 args; the only Lua-side method exposed is `_isAlive()` (calls FUN_00ce19c0 for engine-side alive-check). All 8 arithmetic operators are no-ops (FUN_00d10ef0 returns 1, does nothing) - allowing scripts to do `idx + 1` syntax for iteration without erroring.",
+  "innerStruct": {
+    "size_bytes": 8,
+    "fields": [
+      {"offset": "0x00", "size": "0x04", "name": "group_id", "type": "int32_t", "notes": "First dword. Likely the group identifier in FFXIV's group-scoped addressing (party / linkshell / zone / content). Compared in __eq."},
+      {"offset": "0x04", "size": "0x04", "name": "individual_index", "type": "int32_t", "notes": "Second dword. Likely the per-group entity index. Compared in __eq."}
+    ],
+    "evidenceVa": "0x00d10f60",
+    "evidenceQuote": "(*(int *)*piVar2 != *(int *)*puVar3) || ((int *)*piVar2)[1] != ((int *)*puVar3)[1]"
+  },
+  "luaUserdataLayout": {
+    "outerSize": "implied_by_lua_newuserdata_with_4byte_body",
+    "outerSizeNote": "Lua userdata body holds a single pointer to the 8-byte inner struct (per __gc destructor which calls _free(*puVar4) on the dereferenced pointer)."
+  },
+  "metamethods": {
+    "__index": {
+      "impl": "0x00d110b0",
+      "behavior": "Hard-coded 9-byte string compare against \"_isAlive\". On match: push FUN_00d11010 as cclosure (the alive-check method). On non-match: fall through to security-cookie no-op. This metatable exposes EXACTLY ONE METHOD to Lua scripts."
+    },
+    "__newindex": {
+      "impl": "0x00d10ef0",
+      "behavior": "No-op (security-cookie placeholder). Userdata is effectively read-only."
+    },
+    "__eq": {
+      "impl": "0x00d10f60",
+      "behavior": "Dword-by-dword compare of the 2 inner-struct fields. Two IndividualRef userdata are equal iff both group_id and individual_index match."
+    },
+    "__gc": {
+      "impl": "0x00d112b0",
+      "behavior": "Pool-recycled destructor. Looks up a pool at offset +0x21c of a context structure (probably the LuaState env). If pool has room (< 0x200 entries by computed (end - begin) >> 2), recycle the inner struct back into the pool via FUN_00d1fff0. Otherwise direct _free.",
+      "poolThreshold": "0x200_entries",
+      "poolFieldOffset": "0x21c"
+    },
+    "__len": {"impl": "0x00d10ef0", "behavior": "No-op (returns 1, does nothing)"},
+    "__add": {"impl": "0x00d10ef0", "behavior": "No-op"},
+    "__sub": {"impl": "0x00d10ef0", "behavior": "No-op"},
+    "__mul": {"impl": "0x00d10ef0", "behavior": "No-op"},
+    "__div": {"impl": "0x00d10ef0", "behavior": "No-op"},
+    "__mod": {"impl": "0x00d10ef0", "behavior": "No-op"},
+    "__pow": {"impl": "0x00d10ef0", "behavior": "No-op"},
+    "__unm": {"impl": "0x00d10ef0", "behavior": "No-op"},
+    "__concat": {"impl": "0x00d10ef0", "behavior": "No-op"}
+  },
+  "constructors": [
+    {
+      "name": "__lge_getIndividualIndex",
+      "va": "0x00d098d0",
+      "bcsy": "BCS-Y-0501",
+      "luaSignature": "__lge_getIndividualIndex(group_id:number, individual_index:number) -> IndividualRef userdata",
+      "implNotes": "Takes 2 Lua number args, converts each to int via FUN_009d6600 (double-to-int), creates a new userdata at stack slot 3 via FUN_00cd77d0, then calls FUN_00d11400 to install the metatable + write the 2 dwords. The decompiler's local_10 = uVar1 | iVar2 >> 0x1f expression is the 64-bit packing artifact - the actual stored value is (group_id, individual_index)."
+    },
+    {
+      "name": "FUN_00d2b810",
+      "va": "0x00d2b810",
+      "luaSignature": "internal (no Lua name)",
+      "implNotes": "6-arg internal constructor. Takes a context struct (param_1, accessed at +0x14 and +0x2c), a description (param_2..param_6), then constructs an IndividualRef userdata at param_3's slot via FUN_00d11400. Special-cases DAT_0130d78c and DAT_0130d79c as invalid/wildcard markers (when present, computes iVar2 = -1 instead of *param_5 * iVar5 + *param_6). Used by some engine internal path - not a Lua N-API."
+    }
+  ],
+  "exposedMethods": [
+    {
+      "name": "_isAlive",
+      "impl": "0x00d11010",
+      "luaSignature": "individualRef:_isAlive() -> boolean",
+      "implNotes": "Gets the inner pointer from the userdata (puVar4 = userdata; *puVar4 = inner_struct_ptr), then calls FUN_00ce19c0(state, inner_ptr) and pushes the boolean result. FUN_00ce19c0 is the engine-side alive-check that reads the 2 dwords of the inner struct.",
+      "engineSideAliveCheck": "0x00ce19c0"
+    }
+  ],
+  "ffxiv1xInterpretation": "The (group_id, individual_index) shape matches FFXIV 1.x's well-documented group-scoped entity addressing system. Groups in FFXIV 1.x include: party, linkshell, retainer, area entity table, content groups, etc. The 'Individual' terminology aligns with the binary's `__lge_*` LGE engine namespace and matches the way Lua scripts in client-data reference entities. This userdata is the bridge between Lua scripts and the engine's group/individual addressing scheme. _isAlive returning false probably indicates the entity has been removed from its group (e.g., NPC despawned, player logged out, retainer dismissed).",
+  "evidencePath": "%BCS_GHIDRA_PROJECTS%/d11400_userdata_decomp.txt"
+}

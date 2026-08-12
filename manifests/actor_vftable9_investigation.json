@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "scope": "Pattern B investigation from client-architecture 'S2C dispatch has five architectural patterns' - enumerate actor classes whose vftable[9] handles the Actor cluster opcodes that FUN_004DC690's generic fallthrough case (BCS-Y-0527) dispatches via `actor->vftable[+0x24]`. Started as 'document the per-actor-class taxonomy' but the investigation produced a CORRECTIVE finding: the vftable[9] dispatch is effectively a no-op for the known actor class hierarchies. Pattern B's 'polymorphic per-actor-class' framing was wrong and is corrected here.",
+  "method": {
+    "step1_existing_catalog": "Found 4 Control:: actor classes already cataloged: BCS-Y-0184 Control::CharaBase::vftable (0x00BD5CAC), 0185 Control::PlayerBase::vftable (0x00BD5E04), 0186 Control::NpcBase::vftable (0x00BD647C), 0163 Control::MyPlayer::vftable (0x00BD785C). These are the Lua-binding wrappers in the Application::Lua::Script::Client::Control namespace.",
+    "step2_vftable9_dump": "DumpVtableSlots.java with `CharaBase:0x24, PlayerBase:0x24, NpcBase:0x24, MyPlayer:0x24` - ALL FOUR resolved to the SAME function: FUN_005c5c80.",
+    "step3_decomp_stub": "Decomp of FUN_005c5c80: 3-byte function body `return 0;`. NO callers. A do-nothing stub - the slot exists in the vtable layout but no caller invokes it directly, and no subclass override has been found.",
+    "step4_engine_side_actor_search": "Searched RTTI symbol table for 'Actor::vftable' - found 214 actor classes in various Scene::Actor::* namespaces. Top candidate for the engine-side actor returned by FUN_004d9910: Application::Scene::Actor::Chara::CharaActor at 0x00FC0D34 (the Scene-graph actor, distinct from Lua-side Control::CharaBase).",
+    "step5_charaactor_vftable9": "DumpVtableSlots.java with `CharaActor:0x24` resolved to FUN_00621430.",
+    "step6_decomp_charaactor_slot9": "Decomp of FUN_00621430 (42 bytes): `puVar1 = (undefined4 *)FUN_00406520(); uVar2 = (*(code *)*puVar1)(&DAT_00fb8a00, &DAT_00f54d48, \"rapture\\\\src\\\\ExternalSdk\\\\cdev\\\\include\\\\CDev/Engine/Fw/SceneObject/Actor.h\", 0x19e, \"SQEX::CDev::Engine::Fw::SceneObject::Actor::AddReferenceResourceListener\"); return uVar2 & 0xffffff00;`. This is a Scene-graph resource lifecycle method emitting an assertion-style log message - NOT a packet handler."
+  },
+  "key_findings": [
+    {
+      "title": "Control:: actor classes share a NO-OP vftable[9] stub",
+      "detail": "All 4 cataloged Control:: actor classes (CharaBase, PlayerBase, NpcBase, MyPlayer) share vftable[9] = FUN_005c5c80, a 3-byte `return 0` function with no callers per Ghidra's reference analysis. The slot exists in the vtable layout but is not used by any direct caller and no subclass overrides it.",
+      "implication": "If FUN_004d9910 returns a Control:: actor class, FUN_004DC690's generic fallthrough case (BCS-Y-0527) would invoke a no-op for all 24 Actor cluster opcodes - which contradicts the observation that these packets clearly have effects (MoveActor at 2176 pcap hits, etc.)."
+    },
+    {
+      "title": "Engine-side CharaActor::vftable[9] is a Scene-graph helper, NOT a packet handler",
+      "detail": "Application::Scene::Actor::Chara::CharaActor (the engine-side actor distinct from Lua-side Control::CharaBase) has vftable[9] = FUN_00621430 which is SQEX::CDev::Engine::Fw::SceneObject::Actor::AddReferenceResourceListener - a Scene-graph resource lifecycle method, not anything to do with s2c packet processing.",
+      "implication": "Neither the Lua-side nor the engine-side actor hierarchy I've inspected has a real packet handler at vftable[9]. The 'actor->vftable[+0x24]' dispatch in BCS-Y-0527 is effectively a no-op for currently known actor types."
+    },
+    {
+      "title": "Pattern B's 'polymorphic per actor class' claim is wrong",
+      "detail": "An earlier finding stated that the 24 Actor cluster opcodes (0x0F + 0xCC..0xE5) dispatch via `actor->vftable[9](packet)` and the per-actor-class slot 9 implementation handles them. The actor-vftable9-investigation pass demonstrates this is not the case for any cataloged actor class - all known actor slot 9 implementations are either no-op stubs (Control::*) or unrelated Scene-graph methods (CharaActor). The dispatcher case fires but the dispatched function does nothing related to the packet.",
+      "implication": "Either (a) the actual packet handling lives elsewhere (a different dispatcher, side-effects of FUN_004d9910 lookup, or engine-internal animation/position predictors that subscribe to actor state changes via a different mechanism); or (b) the slot 9 dispatch is genuinely vestigial in 1.23b and the engine processes these packets without acting on them (server-authoritative state is recorded but visual updates use a parallel system); or (c) there's a derived actor class not in the catalog that DOES override slot 9 with a real implementation. Resolving this requires either live capture or finding the actor class that FUN_004d9910 actually returns via inspecting how the actor map at zone+0x17804 is populated."
+    }
+  ],
+  "new_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0528",
+      "name": "Control_ActorHierarchy_NoOpVftable9_FUN_005C5C80",
+      "address": "0x005C5C80",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Shared 3-byte no-op stub at vftable[9] (offset 0x24) of Control::CharaBase, Control::PlayerBase, Control::NpcBase, Control::MyPlayer."
+    },
+    {
+      "id": "BCS-Y-0529",
+      "name": "SceneActor_CharaActor_AddReferenceResourceListener_FUN_00621430",
+      "address": "0x00621430",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "vftable[9] of Application::Scene::Actor::Chara::CharaActor. Resolves to SQEX::CDev::Engine::Fw::SceneObject::Actor::AddReferenceResourceListener (Scene-graph resource lifecycle, not s2c packet handling)."
+    }
+  ],
+  "pattern_b_correction": {
+    "before": "Pattern B: Generic actor `vftable[9]` (the actor-cluster-dispatch-model pass). For 24 opcodes (`0x0F + 0xCC + 0xCD + 0xCE + 0xCF + 0xD0 + 0xD3..0xE5`) the dispatcher does `actor = FUN_004d9910(packet_actor_id); actor->vftable[9](packet)`. The actor's slot 9 is the per-actor-class polymorphic handler that interprets opcode and payload based on actor type.",
+    "after": "Pattern B: Generic actor `vftable[9]` (actor_cluster_dispatch_model.json+actor_vftable9_investigation.json). For 24 opcodes (`0x0F + 0xCC + 0xCD + 0xCE + 0xCF + 0xD0 + 0xD3..0xE5`) the dispatcher does `actor = FUN_004d9910(packet_actor_id); actor->vftable[9](packet)`. **The actor-vftable9-investigation pass finding**: this dispatch appears to be a no-op for known actor class hierarchies - Control:: classes share a 3-byte `return 0` stub at slot 9 (BCS-Y-0528 FUN_005C5C80, 0 callers); engine-side CharaActor's slot 9 is a Scene-graph resource lifecycle method (BCS-Y-0529 FUN_00621430, AddReferenceResourceListener) unrelated to packet processing. The actual processing of MoveActor / SetActorPosition / etc. likely happens elsewhere (alternative dispatcher, side-effects of FUN_004d9910's map lookup, or engine-internal position/animation predictors) - identifying it requires live capture (deferred) or following how the actor map at zone+0x17804 is populated to determine the actual class hierarchy FUN_004d9910 returns. The 'polymorphic per-actor-class' framing from the actor-cluster-dispatch-model pass was inferred from the call shape but does not match observed slot 9 implementations - either some actor subclass not in the catalog overrides slot 9 with a real handler, or the dispatch is genuinely vestigial in 1.23b."
+  }
+}

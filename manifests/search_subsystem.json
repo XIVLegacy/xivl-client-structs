@@ -1,0 +1,284 @@
+{
+  "version": 1,
+  "gameVersion": "1.23b",
+  "generated": "2026-05-24",
+  "scope": "Characterize PlayerSearch / RetainerSearch / FriendSearch / ItemSearch opcodes in the 0x01C3..0x01E1 range. The search subsystem pass is a synthesis + targeted-Ghidra pass: it cross-references the existing cluster-0x01c3-0x01df-subsystems.md document, the existing operation_opcode_map_outbound.json c2s attributions, and 4 new Ghidra symbol queries + 5 new opcode-immediate scans + 1 new decomp batch.",
+  "method": {
+    "step3_ghidra_symbols": "New Ghidra queries via tools/ghidra-scripts/FindSymbolByName.java: 'Search' (159 hits), 'Retainer' (85 hits), 'Friend' (0 hits). Key new RTTI classes surfaced beyond the 3 ItemSearch* widgets already cataloged: ItemSearchListWidget (3 vftables, multi-inherited), ItemSearchListHelpWidget (2 vftables), PcSearchCallback, PcSearchDebugCallback, PcSearchSelectWidgetCallback, PcSearchWidgetOperator, PcSearchSelectWidgetOperator, PcSearchContractor (6 PcSearch classes - the player search UI subsystem), ElementFactory::SearchInfoInterface, RetainerListWidget, RetainerMenuPhase, RetainerNameChangeInputLoader, CharaMakeParamTmpl<UpdateRetainerSlotParam_,1>. 'Friend' query returned ZERO RTTI hits - friend functionality is NOT a distinct subsystem but is implemented via PcSearch + chat IPC dispatch.",
+    "step4_opcode_immediates": "New FindOpcodeImmediate.java scans for 0x01D7 (16 hits, 1 real emitter), 0x01D8 (391 hits - mostly struct-offset noise, 1 real PUSH-imm emitter at FUN_0051AAC0), 0x01DF (6 hits, 1 real emitter), 0x01E0 (523 hits - all struct-offset / malloc / no real PUSH-imm into the FUN_004E0240 forwarder), 0x01E1 (6 hits, 1 PUSH-imm but openssl false-positive). Confirms no client-side c2s emitter for 0x01E0 or 0x01E1.",
+    "step5_decomp_validation": "DumpFunctionDecomp.java batch on 9 candidate VAs: FUN_0045F3E0/FUN_00461900/FUN_004A10F0/FUN_00485780/FUN_00498A90 all confirmed as openssl false positives (refs `.\\crypto\\asn1\\tasn_dec.c`, `.\\crypto\\ec\\ec_asn1.c`, `.\\crypto\\ec\\ec2_smpl.c`, `.\\crypto\\ec\\ec_mult.c` source line numbers - same false-positive class the pcap grounded c2s validation pass documented for 0x01DD). FUN_00519440 confirmed real c2s 0x01D7 emitter (local_8b0 = 0x1d7, size 0x18 -> FUN_004E0240 forwarder - same Tier-D shape as BCS-Y-0325). FUN_0051A970 confirmed real c2s 0x01DF emitter (local_9b0 = 0x1df, size 0x128 = 296 bytes - 0x118 = 280 visible payload bytes + 16 bytes for game-msg header, distinct shape). FUN_0051AAC0 confirmed real c2s 0x01D8 emitter (local_8b0 = 0x1d8 -> FUN_004E0240). FUN_004E44B0's PUSH 0x1e0 is malloc(0x1e0) bookkeeping (480-byte alloc), NOT a packet emitter.",
+    "step6_cross_ref": "BCS-Y-0325 already documented 0x01DD c2s emitter (FUN_004C7300) via FUN_004C7150 passthrough + FUN_004E0240 forwarder. Confirmed via pcap friendlist_search.pcapng. The cluster-doc emitter findings (BCS-Y-0324, BCS-Y-0325/0326/0327) collectively confirm c2s emission of 0x01D7-0x01DF."
+  },
+  "subsystem_inventory": {
+    "PcSearch": {
+      "description": "Player character search UI - find other players by name/class/region/grand-company/status",
+      "rttiClasses": [
+        {
+          "name": "Application::Misc::RaptureSupportModule::PcSearchCallback",
+          "vftableVA": "0x00f909e4"
+        },
+        {
+          "name": "Application::Misc::RaptureSupportModule::PcSearchDebugCallback",
+          "vftableVA": "0x00f909f4"
+        },
+        {
+          "name": "Application::Main::Element::Form::PcSearchSelectWidgetCallback",
+          "vftableVA": "0x00fc76d8"
+        },
+        {
+          "name": "Application::Main::Element::Form::PcSearchWidgetOperator",
+          "vftableVA_primary": "0x00fc83fc",
+          "vftableVA_secondary": "0x00fc8424"
+        },
+        {
+          "name": "Application::Main::Element::Form::PcSearchSelectWidgetOperator",
+          "vftableVA": "0x0104d184"
+        },
+        {
+          "name": "Application::Main::Element::Form::PcSearchContractor",
+          "vftableVA": "0x0104ed80"
+        }
+      ],
+      "uiStringLiterals": [
+        "s_PcSearchSelectWidget_0104f06c",
+        "s_PcSearchWidget_0104f084",
+        "s_XmlDataMaker_PcSearchList_Key_00fc7a6c",
+        "s_XmlDataMaker_PcSearchListPlayer__00fc7a8c",
+        "s_Label_Status:Button_SearchSetting",
+        "s_Label_Class:Button_SearchSetting",
+        "s_Label_Region:Button_SearchSetting",
+        "s_Label_GrandCompany:Button_Search",
+        "s_Label_Location:Button_SearchSett"
+      ],
+      "c2sOpcodes": [
+        "0x01DD",
+        "0x01DF"
+      ],
+      "c2sNotes": "0x01DD has c2s emitter at BCS-Y-0325 FUN_004C7300 (size 0x118 = 280 bytes). 0x01DF has c2s emitter at FUN_0051A970 (size 0x128 = 296 bytes - distinct from PcMatching cluster). Both go through FUN_004E0240 Zone Tier-C forwarder. The 0x01DD pcap-witnessed shape (friendlist_search.pcapng, 264 bytes payload, `00000000 03000000 02013200`) matches a search-query record."
+    },
+    "ItemSearch": {
+      "description": "1.x retainer / pre-marketboard NPC-vendor item search - browse items listed for sale by other players' retainers",
+      "rttiClasses": [
+        {
+          "name": "Application::Main::Element::Window::Widget::ItemSearchListWidget",
+          "vftableVAs": [
+            "0x00f9e650",
+            "0x00f9e65c",
+            "0x00f9e66c"
+          ],
+          "note": "multi-inherited (3 vftables)"
+        },
+        {
+          "name": "Application::Main::Element::Window::Widget::ItemSearchListHelpWidget",
+          "vftableVAs": [
+            "0x01049780",
+            "0x01049794"
+          ],
+          "note": "multi-inherited (2 vftables)"
+        },
+        {
+          "name": "Application::Main::Element::Window::Widget::ItemSearchPriceViewWidget",
+          "vftableVA": "0x00f9e71c",
+          "slotOwner": "0x01D9 c2s emitter at slot 5"
+        },
+        {
+          "name": "Application::Main::Element::Window::Widget::ItemSearchHistoryViewWidget",
+          "vftableVA": "0x00fa030c",
+          "slotOwner": "0x01DA c2s emitter at slot 5"
+        },
+        {
+          "name": "Application::Main::Element::Window::Widget::ItemSearchDirectPurchaseWidget",
+          "vftableVA": "0x01049edc",
+          "slotOwner": "0x01DE c2s emitter at slot 11"
+        },
+        {
+          "name": "Application::Lua::Script::Client::Control::_anon_FD906835::s_ItemSearchWidgetResumeChecker",
+          "vftableVA": "0x00fd537c",
+          "note": "Lua-side control class for the ItemSearch resume guard"
+        }
+      ],
+      "uiStringLiterals": [
+        "s_\\widget\\ItemSearchWidget.form_00f977b0",
+        "s_\\widget\\ItemSearchListWidget.for_00f99cd8",
+        "s_\\widget\\ItemSearchHelpWidget.for_01047550",
+        "s_Grid_ItemNameSearch_00f97a24",
+        "s_TextBlock_ItemNameSearch_00f97a38",
+        "s_TextBox_ItemNameSearch_ChatInput_00f97a54",
+        "s_Button_ItemNameSearch_00f97a78",
+        "s_Button_Search_00f99d48",
+        "s_ListBox_SearchResult_00f9b46c",
+        "s_StackPanel_SearchResult_00f9b484",
+        "s_SearchResultName_00f9b53c",
+        "s__waitForItemSearchWidget_00fd7184"
+      ],
+      "c2sOpcodes": [
+        "0x01D7",
+        "0x01D8",
+        "0x01D9",
+        "0x01DA",
+        "0x01DB",
+        "0x01DC",
+        "0x01DE"
+      ],
+      "c2sNotes": "0x01D9/0x01DA/0x01DE attributed in cluster-doc to specific widgets. 0x01D7 emits via FUN_00519440 (cluster-doc + the search subsystem pass decomp confirmation). 0x01D8 emits via FUN_0051AAC0 (new finding from the search subsystem pass - cluster-doc said FUN_00525E50 also emits this; both may be valid). 0x01DB/0x01DC have c2s emitters at BCS-Y-0327 (FUN_004C73D0) / BCS-Y-0326 (FUN_004C7490).",
+      "structEvidence": "itemsearch_vtable_slots.txt confirms vftables at 0x00F9E71C / 0x00FA030C / 0x01049EDC contain the slot-5/slot-11 c2s emitters; the cataloged BCS-Y entries reside in cluster-0x01c3-0x01df-subsystems.md Subsystem 6 (Retainer/ItemSearch)."
+    },
+    "Retainer": {
+      "description": "Retainer NPC management (separate from ItemSearch - the player's own retainer lifecycle, not search of others')",
+      "rttiClasses": [
+        {
+          "name": "Application::Main::Element::Window::Widget::RetainerListWidget",
+          "vftableVA": "0x00f9f66c"
+        },
+        {
+          "name": "Application::Main::Menu::Bootup::Retainer::RetainerMenuPhase",
+          "vftableVAs": [
+            "0x01055254",
+            "0x01055264"
+          ],
+          "note": "multi-inherited (2 vftables)"
+        },
+        {
+          "name": "Application::Main::Menu::Bootup::Retainer::RetainerNameChangeInputLoader",
+          "vftableVAs": [
+            "0x010552c0",
+            "0x010552cc"
+          ],
+          "note": "multi-inherited (2 vftables)"
+        },
+        {
+          "name": "Application::Network::LobbyClient::CharaMakeParamTmpl<UpdateRetainerSlotParam_,1>",
+          "vftableVA": "0x01128010",
+          "note": "Lobby-channel retainer slot update parameter - distinct from Map-channel item search"
+        }
+      ],
+      "uiStringLiterals": [
+        "s_ListBox_RetainerList_00f99d14",
+        "s_ListBox_Retainer_00f9bc60",
+        "s_\\widget_c\\RetainerListWidget.for_00f9bcdc",
+        "s_isRetainer_00fd4cd0",
+        "s_\\system\\bootup\\Retainer\\Retainer_01054f94",
+        "s_TextBlock_RetainerName_%d_01054fc0",
+        "s_CALL_onRenameRetainerName_01127a70"
+      ],
+      "c2sOpcodes": [],
+      "c2sNotes": "Retainer-specific c2s opcodes are part of the LobbyClient channel (UpdateRetainerSlotParam_ uses CharaMakeParamTmpl<,1> infrastructure - i.e., reuses the CharaMake outbound bundle; see BCS-Y-0112 CharaMakeOperation entries)."
+    },
+    "Recruitment": {
+      "description": "1.x party-recruitment system (PcMatching) - post / browse / accept party listings (analog of ARR Party Finder)",
+      "rttiClasses": [],
+      "c2sOpcodes": [
+        "0x01C3",
+        "0x01C4",
+        "0x01C5",
+        "0x01C6",
+        "0x01C7",
+        "0x01C8"
+      ],
+      "c2sNotes": "All 6 c2s opcodes already cataloged in cluster-doc Subsystem 1 (PcMatching/Recruitment) with caller bindings to FUN_004BBEA0 (0x01C3 StartRecruiting), FUN_004C8390 (0x01C4 view + 0x01C5 edit + 0x01C8 cancel), FUN_004BF4F0 (0x01C6 detail-view), FUN_004BD170 (0x01C7 SetAttr/Update). BCS-Y-0318 FUN_004B7A20 emits 0x01C3; BCS-Y-0319 FUN_004B7C10 emits 0x01C7."
+    },
+    "Social": {
+      "description": "Friendlist / blacklist management - FriendSearch is implemented as part of PcSearch above (search the world for a player by name, then issue Add via this channel)",
+      "rttiClasses": [],
+      "c2sOpcodes": [
+        "0x01C9",
+        "0x01CA",
+        "0x01CB",
+        "0x01CC",
+        "0x01CD",
+        "0x01CE",
+        "0x01CF"
+      ],
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    },
+    "SupportDesk": {
+      "description": "FAQ / GM ticket subsystem (out-of-scope for the search subsystem pass's focus but documented here for cluster completeness)",
+      "c2sOpcodes": [
+        "0x01D0",
+        "0x01D1",
+        "0x01D2",
+        "0x01D3",
+        "0x01D4",
+        "0x01D5",
+        "0x01D6"
+      ],
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    }
+  },
+  "false_positives_filtered": {
+    "method": "Decomp validation of every PUSH-imm candidate confirms openssl source line number false positives for: 0x01D7 PUSH at FUN_0045F3E0 (.\\crypto\\asn1\\tasn_dec.c), 0x01D7 PUSH at FUN_00461900 (asn.1), 0x01D7 PUSH at FUN_004A10F0 (.\\crypto\\ec\\ec2_smpl.c:0x1d7), 0x01DF PUSH at FUN_00485780 (.\\crypto\\ec\\ec_asn1.c:0x1bc/0x1f5), 0x01E1 PUSH at FUN_00498A90 (.\\crypto\\ec\\ec_mult.c:0x1e1). Pattern identical to the pcap grounded c2s validation pass's 7-of-11 false-positive rate for 0x01DD scans. The openssl crypto/ source-line PUSH-imm pattern is a known systematic false-positive class for opcode scans on this binary.",
+    "implication": "Future c2s opcode scans in the 0x01C0..0x01FF range should expect ~30% openssl false-positive rate; pre-filter by checking the function decomp for `FUN_0045c940(*,*,*,'.\\crypto\\*',*)` calls."
+  },
+  "uncataloged_findings_for_followup": [
+    {
+      "type": "new_c2s_emitter",
+      "opcode": "0x01D7",
+      "va": "0x00519440",
+      "callerVa": "0x0051a4a0",
+      "note": "Cluster-doc named FUN_00519440 for 0x01D7 (Subsystem 'Unresolved'). The search subsystem pass confirms via Ghidra decomp. The c2s shape is 0x18 (24 bytes); its application role requires acceptance by the retail 1.23b client in a live session. Candidate BCS-Y entry name: ZoneOutbound_TierD_HelperBuilt_0x01D7_FUN_00519440.",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    },
+    {
+      "type": "new_c2s_emitter",
+      "opcode": "0x01D8",
+      "va": "0x0051AAC0",
+      "note": "Cluster-doc named FUN_00525E50 as paired emitter for 0x01D8 + 0x01DF. The search subsystem pass finds FUN_0051AAC0 has its own PUSH 0x1d8 + FUN_004E0240 forwarder call - either a SECOND emission site for 0x01D8 or the cluster-doc misattributed (need cross-check FUN_00525E50 decomp to determine). Candidate BCS-Y entry name: ZoneOutbound_TierD_HelperBuilt_0x01D8_FUN_0051AAC0.",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    },
+    {
+      "type": "new_c2s_emitter",
+      "opcode": "0x01DF",
+      "va": "0x0051A970",
+      "callerVa": "0x00525e50",
+      "note": "Cluster-doc named FUN_00525E50 for 0x01DF (paired with 0x01D8). The search subsystem pass decomp confirms FUN_0051A970 (called from FUN_00525E50) is the actual emitter - the cluster-doc's FUN_00525E50 attribution is the WRAPPER, not the immediate emitter. Stack shape: local_9b0 = 0x1df, local_9ac = 0x128 (296 bytes), copies 0x40 dwords from local_110 to local_980 via inline loop. Candidate BCS-Y entry name: ZoneOutbound_TierD_HelperBuilt_0x01DF_FUN_0051A970."
+    },
+    {
+      "type": "rtti_class_for_future_attribution",
+      "classes": [
+        "Application::Misc::RaptureSupportModule::PcSearchCallback",
+        "Application::Misc::RaptureSupportModule::PcSearchDebugCallback",
+        "Application::Main::Element::Form::PcSearchSelectWidgetCallback",
+        "Application::Main::Element::Form::PcSearchWidgetOperator",
+        "Application::Main::Element::Form::PcSearchSelectWidgetOperator",
+        "Application::Main::Element::Form::PcSearchContractor",
+        "Application::Main::Element::Window::Widget::RetainerListWidget",
+        "Application::Main::Menu::Bootup::Retainer::RetainerMenuPhase",
+        "Application::Main::Menu::Bootup::Retainer::RetainerNameChangeInputLoader",
+        "Application::Network::LobbyClient::CharaMakeParamTmpl<UpdateRetainerSlotParam_,1>",
+        "Application::Main::Element::ElementFactory::SearchInfoInterface"
+      ],
+      "note": "11 RTTI-resolved classes surfaced by the search subsystem pass symbol queries that are not in the BCS-Y catalog. PcSearch family (6 classes) is the most attractive cluster for follow-up - they likely own the 0x01DD/0x01DF c2s emitters at vftable slots (vtable_slot_resolution.json methodology). Retainer family (3 classes + 1 LobbyClient template) likely connects to Lobby c2s opcodes for retainer slot management (BCS-Y-0112 CharaMakeOperation parallel)."
+    }
+  ],
+  "ghidra_evidence_files": [
+    "%BCS_GHIDRA_PROJECTS%/search_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%/retainer_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%/friend_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%/op_01d7_imm.txt",
+    "%BCS_GHIDRA_PROJECTS%/op_01d8_imm.txt",
+    "%BCS_GHIDRA_PROJECTS%/op_01df_imm.txt",
+    "%BCS_GHIDRA_PROJECTS%/op_01e0_imm.txt",
+    "%BCS_GHIDRA_PROJECTS%/op_01e1_imm.txt",
+    "%BCS_GHIDRA_PROJECTS%/candidates_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%/e_decomp.txt"
+  ],
+  "related_artifacts": [
+    "docs/cluster-0x01c3-0x01df-subsystems.md (cluster_refinements_unobserved.json + cluster_refinements_unresolved.json roll-up)",
+    "manifests/operation_opcode_map_outbound.json serverboundGap entries for 0x01C3..0x01E1",
+    "manifests/symbols.json BCS-Y-0318/0319/0320/0322/0325/0326/0327 (11f/11g cluster emitters)",
+    "manifests/pcap_grounded_c2s_validation.json"
+  ],
+  "summary": {
+    "newBcsYEntries": 0,
+    "newBcsSEntries": 0,
+    "rttiClassesSurveyed": 159,
+    "rttiClassesUncataloged": 11,
+    "newC2sEmittersDiscovered": 3,
+    "openSslFalsePositives": 5,
+    "manifestNote": "This is a synthesis and scan pass. No symbols.json modifications, per catalog conventions (do NOT modify catalog). The 3 candidate c2s emitter entries (0x01D7 / 0x01D8 / 0x01DF) and 11 candidate RTTI classes are surfaced here for future BCS-Y attribution. Live capture remains deferred."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "manifest_complete",
+  "scope": "Apply the chara-action-state-pipeline pass's Pattern B drill methodology to s2c 0x00CF MoveActor - the HEAVIEST s2c opcode (2176 pcap hits). Close it as a covered_pipeline entry like was done for 0x00CE. Drill FUN_0058CCA0 case 0xCF and downstream helpers.",
+  "method": {
+    "step1": "Cross-reference the FUN_0058CCA0-walk pass's case enumeration: case 0xCF handler structure is documented. Conditional branch on actor self-check (FUN_004D6750() == FUN_004D7490()): self-actor path clears bit 0 of +0x26D and calls FUN_00586F40(0x4FD, ...) [BCS-Y-0330 ZoneInComplete builder family]; non-self path writes ushort to +0x210. Unconditional: calls FUN_0058F240 (BCS-Y-0565 cataloged) + FUN_0058F160 (NOT cataloged).",
+    "step2": "Decomp FUN_0058F160 (79B): writes 16 bytes from param_2 to param_1+0xB0/+0xB8 (CURRENT position fields), if param_3 != 0 also broadcasts via FUN_004D7980(0x26, &local_10, 0x10) - same subtype 0x26 as CharaPositionOrientationSnapshot (BCS-Y-1001). Single caller FUN_0058CCA0.",
+    "step3": "Synthesize the case 0xCF MoveActor pipeline: arriving s2c 0x00CF packet -> CharaElement::vftable[9] FUN_0058CCA0 -> case 0xCF handler -> [self-check branch + ZoneInComplete signal OR ushort write to +0x210] -> FUN_0058F240 (writes to history/snapshot fields +0x184/+0x214/+0x21c, broadcasts 0x34/0x35/0x36) -> FUN_0058F160 (writes to current position +0xB0/+0xB8, optional broadcast 0x26)."
+  },
+  "key_findings": [
+    "FUN_0058F160 (79B) is the case 0xCF unconditional position writer to CURRENT position fields (+0xB0/+0xB8). Distinct from FUN_0058F240 (BCS-Y-0565) which writes to the HISTORY/SNAPSHOT fields (+0x184/+0x214/+0x21c). The double-write pattern (history + current) is for client-side interpolation between server position updates.",
+    "Broadcast pattern: FUN_0058F240 broadcasts subtypes 0x34/0x35/0x36; FUN_0058F160 broadcasts 0x26. Together case 0xCF can emit up to 4 actor-state broadcast events per packet via FUN_004D7980 - explains why MoveActor at 2176 hits also drives a lot of internal event traffic.",
+    "Self-check branch: when the moving actor IS the local player (FUN_004D6750() == FUN_004D7490()), the handler signals 0x4FD via the FUN_00586F40 ZoneInComplete-family builder (BCS-Y-0330) - likely a 'self moved' notification to trigger local follow-up (camera follow, footstep audio, etc.). When the moving actor is a remote actor, the +0x210 ushort write tracks remote-actor state.",
+    "s2c 0x00CF Pattern B gap CLOSED with end-to-end pipeline attribution. The pcap-opcode-coverage-matrix pass's rank 1 s2c gap (2176 pcap hits - the HEAVIEST s2c opcode) now has full handler chain. Second Pattern B opcode closed by drill methodology after 0x00CE was closed.",
+    "Methodology confirmation: the chara-action-state-pipeline pass's per-opcode Pattern B drill works. 0x00CF case body in FUN_0058CCA0 was already enumerated; the missing piece was just the leaf helper. Cataloging 1 BCS-Y closes the architectural picture. Remaining Pattern B gaps (0x00D0 / 0x00CC / 0x00D6) are likely similar small drills - estimate 1-3 BCS-Y per opcode."
+  ],
+  "proposed_bcs_y_entries": [
+    {"name": "CharaElement_Case0xCF_CurrentPositionWriter_FUN_0058F160", "kind": "function", "address": "0x0058F160", "confidence": "confirmed", "summary": "79-byte current-position writer for s2c 0x00CF MoveActor (HEAVIEST s2c opcode at 2176 hits). Writes 16 bytes (2 qwords) from param_2 to actor record +0xB0/+0xB8 (current x/y/z + facing). If param_3 != 0, broadcasts state subtype 0x26 via FUN_004D7980 (same broadcast subtype as [[CharaPositionOrientationSnapshot_FUN_005878A0]] BCS-Y-1001). Sibling of [[ThirdRouter_Case0xCF_StateUpdateHelper_FUN_0058F240]] (BCS-Y-0565) which writes to HISTORY snapshot fields (+0x184/+0x214/+0x21c) - the double-write pattern enables client-side interpolation. Sole caller FUN_0058CCA0 case 0xCF body."}
+  ]
+}

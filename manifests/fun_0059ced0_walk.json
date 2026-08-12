@@ -1,0 +1,354 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Full enumeration of FUN_0059CED0 - the smaller of two PARENT dispatchers the pattern d subdispatcher pass identified upstream of FUN_004D8860. 272-byte switch with default fallthrough to FUN_004D8860. Map every case, classify pattern, identify caller geometry, characterize uncataloged callees, locate the vtable home.",
+  "method": {
+    "step1": "Decompile FUN_0059CED0 via DumpFunctionDecomp.java (run_fun_0059ced0_decomp.bat)",
+    "step2": "Enumerate every case label in the switch and record handler shape",
+    "step3": "Batch decompile 3 uncataloged callees (FUN_00560FC0, FUN_00586F40, FUN_004D7340) via run_callees_batch.bat",
+    "step4": "Cross-reference handler VAs against manifests/symbols.json for existing BCS-Y entries",
+    "step5": "Identify caller geometry via FindReferencesToAddresses.java (instruction refs) and FindAllReferences.java (data refs + vtable home)",
+    "step6": "Resolve vtable home via DumpSymbolsAtAddress.java on the data ref site",
+    "step7": "Dump the owning class's secondary base vtable via DumpMemRange.java to determine the slot index and surrounding context",
+    "step8": "Cross-check whether default case falls through to FUN_004D8860 (the pattern d subdispatcher pass's finding)"
+  },
+  "function_metadata": {
+    "va": "0x0059CED0",
+    "name": "FUN_0059ced0",
+    "provisional_id": "BCS-Y-0562 (proposed but not committed - superseded here)",
+    "body_bytes": 272,
+    "switch_key_expr": "*(undefined2 *)(param_2 + 2) (packet opcode at +2)",
+    "this_arg_layout": {
+      "param_1+0x7c": "embedded state pointer passed to FUN_00586F40 (state writer)",
+      "param_1+0x94": "uint shadow of current zone id (compared in case 0x05 fast-path)",
+      "param_1+0x98": "uint copy of *(packet+0x14) - secondary zone arg from case 0x05",
+      "param_1+0xac": "uint - new zone id written in case 0x05",
+      "param_1+0xb0": "uint - first dword field set by case 0x0D",
+      "param_1+0xb4": "uint - second field (byte) set by case 0x0D",
+      "param_1+0xb9": "byte flag - set to 1 by case 0x05 when zone changes",
+      "param_1+0xba": "byte flag - always set to 1 in case 0x05",
+      "param_1+0xbb": "byte flag - always set to 1 in case 0x0D",
+      "param_1+0xbc": "byte gate - if 0 and zone shadow matches, case 0x05 fast-returns",
+      "param_1+0xf0": "uint - byte field set by case 0x10"
+    },
+    "instruction_caller_count": 0,
+    "data_ref_count": 1,
+    "callers": [],
+    "vtable_home": {
+      "data_ref_site": "0x00FAADAC",
+      "nearest_label": "0x00FAAD88",
+      "vftable_label_full": "Application::Main::Element::Map::MapLayoutElement::vftable",
+      "offset_from_label": "0x24",
+      "slot_index_in_second_base": 9,
+      "secondary_base_pattern": "multiple inheritance - MapLayoutElement has TWO ::vftable labels (primary at 0x00FAAC64, secondary at 0x00FAAD88). FUN_0059CED0 occupies slot 9 of the SECONDARY base vtable",
+      "secondary_vtable_full_dump": {
+        "slot0_off0x00": "FUN_0059F590 (likely thiscall adjustor / destructor)",
+        "slot1_off0x04": "FUN_00933190",
+        "slot2_off0x08": "FUN_00933210",
+        "slot3_off0x0C": "FUN_00776340 (shared stub - repeats at slots 4, 7, 10)",
+        "slot4_off0x10": "FUN_00776340",
+        "slot5_off0x14": "FUN_006CE2E0",
+        "slot6_off0x18": "FUN_0059EBA0",
+        "slot7_off0x1C": "FUN_00776340",
+        "slot8_off0x20": "FUN_0059E660",
+        "slot9_off0x24": "FUN_0059CED0 (this dispatcher)",
+        "slot10_off0x28": "FUN_00776340",
+        "slot11_off0x2C": "FUN_004D67B0",
+        "slot12_off0x30": "FUN_004D67C0",
+        "slot13_off0x34": "FUN_004D67D0",
+        "vtable_boundary": "0x00FAADC0 - past this is class layout data and RTTI_Complete_Object_Locator at 0x00FAADC8"
+      }
+    },
+    "existing_bcs_y_id": null
+  },
+  "case_table": [
+    {
+      "opcode_or_case_value": "0x05",
+      "case_body_summary": "Zone-init/zone-change handler. Reads uVar3 = *(packet+0x10) (new zone id). Writes *(this+0x98) = *(packet+0x14) (secondary zone arg). Calls FUN_004D7340 (no-arg getter that reads *(this+0x4cc) - sole effect appears to be triggering a read on the zone state context). Reads cVar2 = *(packet+0x18), defaulting to 1 if 0. Calls FUN_00560FC0(cVar2) (which sends opcode 0x17 with the cVar2 byte via FUN_004D7980). If uVar3 != 0: calls FUN_00586F40(*(this+0x7c), uVar3 | 0x400). If gate *(this+0xbc) == 0 AND shadow *(this+0x94) == uVar3 (same-zone fast-return), returns. Otherwise calls FUN_00586F40(*(this+0x7c), 0x4FF), writes *(this+0xac) = uVar3, sets flag *(this+0xb9) = 1. Always sets flag *(this+0xba) = 1.",
+      "pattern": "C",
+      "primary_callees": [
+        "0x004D7340",
+        "0x00560FC0",
+        "0x00586F40"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0535",
+      "notes": "Largest case (~50 lines). Two distinct state mutations + one c2s emit (FUN_00560FC0 sends opcode 0x17 acknowledging zone-init progress to the server). 0x4FF / 0x800 / 0x4FF magic values to FUN_00586F40 are likely state-machine event tags. BCS-Y-0562 named this 'case 0x05 zone init' - this manifest characterizes the body.",
+      "vtable_slot": null,
+      "receiver_class": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x0D",
+      "case_body_summary": "Sub-zone or region update handler. Reads uVar3 = (uint)*(ushort *)(packet+0x10) (16-bit value), bVar1 = *(byte *)(packet+0x12). Always calls FUN_00586F40(*(this+0x7c), uVar3 | 0x800). If uVar3 != 0: calls FUN_00586F40(*(this+0x7c), 0x8FF), writes *(this+0xb0) = uVar3, *(this+0xb4) = bVar1. Always sets flag *(this+0xbb) = 1.",
+      "pattern": "C",
+      "primary_callees": [
+        "0x00586F40"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0536",
+      "notes": "Parallel shape to case 0x05 with different state offsets. Uses 0x8FF / 0x800 event tags (different value family from 0x05's 0x4FF / 0x400). Suggests opcodes 0x05 and 0x0D share a state-machine substrate where the event-tag high byte encodes the opcode subfamily.",
+      "vtable_slot": null,
+      "receiver_class": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x10",
+      "case_body_summary": "Single-byte flag setter. Writes *(this+0xf0) = (uint)*(byte *)(packet+0x10). No other effects.",
+      "pattern": "C",
+      "primary_callees": [],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0537",
+      "notes": "Smallest case. Likely a mode-byte / enum setter (zone subtype, weather mode, time-of-day, etc.). Field at this+0xf0 is read elsewhere to gate further behaviour.",
+      "vtable_slot": null,
+      "receiver_class": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0xD8",
+      "case_body_summary": "Fallthrough to shared label switchD_0059cef2_caseD_d8 which is just 'return'. No-op handler.",
+      "pattern": "C",
+      "primary_callees": [],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0538",
+      "notes": "Explicit consume-and-ignore. Together with 0xD9 this swallows two opcodes that the dispatcher acknowledges but takes no action on. Either reserved/deprecated opcodes or opcodes whose payloads are accumulated elsewhere (the dispatcher is selectively idle for them).",
+      "is_fallthrough_group": true,
+      "fallthrough_with": [
+        "0xD9"
+      ],
+      "vtable_slot": null,
+      "receiver_class": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0xD9",
+      "case_body_summary": "Fallthrough to shared label switchD_0059cef2_caseD_d8 which is just 'return'. No-op handler.",
+      "pattern": "C",
+      "primary_callees": [],
+      "catalog_status": "uncataloged",
+      "notes": "Paired with 0xD8 via fallthrough into the same label. Same-entry consolidation.",
+      "vtable_slot": null,
+      "receiver_class": null,
+      "existing_bcs_y_id": null,
+      "proposed_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "default",
+      "case_body_summary": "Calls FUN_004d8860(param_2) and returns. The default branch forwards the packet to the larger event-family dispatcher (BCS-Y-0280) so the unmatched opcode can be processed by whichever LuaActorImpl::vftable slot it routes to there.",
+      "pattern": "D",
+      "primary_callees": [
+        "0x004D8860"
+      ],
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0280",
+      "notes": "CONFIRMS finding PATTERNDSUBD-F3 that FUN_0059CED0 sits ABOVE FUN_004D8860 in the dispatch tree. Specifically: cases 0x05/0x0D/0x10/0xD8/0xD9 are handled HERE (5 opcodes); everything else falls through to FUN_004D8860 which handles 0xCC/0xCD/0x12E-0x1A8 etc. (24 cases / 43 opcodes per the pattern d subdispatcher pass's case_table). This is a pre-filter dispatcher tier that intercepts the 5 zone-state opcodes before generic event-family routing.",
+      "vtable_slot": null,
+      "receiver_class": null,
+      "proposed_bcs_y_id": null
+    }
+  ],
+  "uncataloged_callees": [
+    {
+      "va": "0x00560FC0",
+      "name": "FUN_00560fc0",
+      "body_bytes": 25,
+      "caller_count": 1,
+      "callers": [
+        "FUN_0059CED0"
+      ],
+      "callees": [
+        "FUN_004D7980"
+      ],
+      "shape": "Thin c2s emit wrapper: FUN_004D7980(0x17, &param_1, 4) - calls a generic send helper with (opcode=0x17, payload_ptr=address of caller's first arg, payload_size=4)",
+      "role": "Emits opcode 0x17 ack/notify upstream during case 0x05 zone init. The single-byte cVar2 from packet+0x18 becomes the 4-byte payload (caller param_1 occupies a full stack dword).",
+      "proposed_bcs_y_id": "BCS-Y-0539"
+    },
+    {
+      "va": "0x00586F40",
+      "name": "FUN_00586f40",
+      "body_bytes": 111,
+      "caller_count": 3,
+      "callers": [
+        "FUN_0059CED0",
+        "FUN_0058A090",
+        "FUN_0058CCA0"
+      ],
+      "callees": [
+        "__security_check_cookie",
+        "FUN_004D6CF0",
+        "__time64"
+      ],
+      "shape": "Cookie-protected state writer. If global gate DAT_01338D28 == 0: reads __time64, constructs a stack record local_8b0=7, local_8ac=0x18, local_894=param_2, local_898=time, then calls FUN_004D6CF0(&local_8b0, 0, 0) - emits a tagged event with the param_2 value and current time.",
+      "role": "Records timestamped state transitions to the (param_1) state object. The 0x18-byte stack record looks like a stateful event-log entry with type=7. Tag value param_2 is the bitmasked event id (case 0x05 uses 0x400/0x4FF; case 0x0D uses 0x800/0x8FF). Shared with FUN_0058CCA0 (the pattern d subdispatcher pass's larger parent dispatcher) and FUN_0058A090 - this is a cluster-wide state-mutation logger.",
+      "proposed_bcs_y_id": "BCS-Y-0540",
+      "related_bcs_y": "FUN_004D6CF0 appears in BCS-Y-0323's family notes (ZoneOutbound_TierD_GatingThunks_FUN_004D6D10_family) - this state writer likely shares the same outbound emitter family."
+    },
+    {
+      "va": "0x004D7340",
+      "name": "FUN_004d7340",
+      "body_bytes": 7,
+      "caller_count": 15,
+      "callers": [
+        "FUN_006A6E10",
+        "FUN_005614B0",
+        "FUN_0059CED0",
+        "FUN_0058A7F0",
+        "FUN_0058AAE0",
+        "FUN_0058E0C0",
+        "FUN_0075B4C0",
+        "FUN_0058A8E0",
+        "FUN_00563510",
+        "FUN_00563C40",
+        "FUN_0058A090",
+        "FUN_0075B4F0",
+        "FUN_0075B490",
+        "FUN_006A6770",
+        "FUN_006B3210"
+      ],
+      "callees": [],
+      "shape": "Trivial getter: return *(param_1 + 0x4cc)",
+      "role": "Reads a 4-byte field at this+0x4cc - shared across 15 callers in the Map/Zone subsystem (FUN_005XXXXX, FUN_006XXXXX, FUN_007XXXXX clusters). Field 0x4cc on the MapLayoutElement instance likely holds a pointer to an inner zone-state context object that the other callers also need.",
+      "proposed_bcs_y_id": "BCS-Y-0541",
+      "notes": "Too small alone but the 15-caller breadth makes it a discoverability landmark. Worth cataloging for cross-reference in future Map/Zone phases."
+    }
+  ],
+  "sub_sub_dispatchers_found": [],
+  "summary": {
+    "total_cases": 6,
+    "total_distinct_opcodes_handled_locally": 5,
+    "fallthrough_groups": 1,
+    "cataloged": 1,
+    "uncataloged": 5,
+    "pattern_a_count": 0,
+    "pattern_c_count": 5,
+    "pattern_d_count": 1,
+    "handlers_with_existing_bcs_y": 1,
+    "default_falls_through_to_fun_004d8860": "CONFIRMED",
+    "notes": "Single Pattern D (the default fallthrough to FUN_004D8860 = BCS-Y-0280). All 5 handled opcodes (0x05, 0x0D, 0x10, 0xD8, 0xD9) are Pattern C bespoke logic - NO Pattern A vtable trampolines. This is structurally different from FUN_004D8860 (where 23 of 24 cases were Pattern A vtable trampolines into LuaActorImpl::vftable). FUN_0059CED0 is a STATE-WRITER dispatcher, not a vtable-relay dispatcher. The 3 active cases all manipulate fields on the dispatcher's own param_1 object (offsets 0x7c, 0x94, 0x98, 0xac, 0xb0, 0xb4, 0xb9, 0xba, 0xbb, 0xbc, 0xf0), with case 0x05 additionally emitting opcode 0x17 upstream and case 0xD8/0xD9 being explicit no-ops. The 2 no-op cases combined with the small total bound (5 opcodes) suggests this dispatcher is a narrowly-scoped zone-state synchronization filter that intercepts the 'logistics' opcodes before they reach the generic event-family path."
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0535",
+      "name": "MapLayoutElement_DispatcherCase0x05_ZoneInit_FUN_0059CED0",
+      "kind": "function",
+      "address": "0x0059CED0",
+      "confidence": "confirmed",
+      "notes": "Case 0x05 (zone-init) handler within FUN_0059CED0. Writes *(this+0x98) from packet+0x14, calls FUN_004D7340 (zone-state-context getter), invokes FUN_00560FC0 to emit upstream opcode 0x17 with cVar2 (= packet+0x18 byte, defaulting to 1). When new zone id (uVar3 = packet+0x10) is non-zero and not equal to the cached shadow at this+0x94 (or gate this+0xbc is set), calls FUN_00586F40 with state-tag 0x4FF, updates this+0xac = uVar3, and sets flag this+0xb9 = 1. Always sets this+0xba = 1. Largest of the 5 local cases."
+    },
+    {
+      "id": "BCS-Y-0536",
+      "name": "MapLayoutElement_DispatcherCase0x0D_SubZoneUpdate_FUN_0059CED0",
+      "kind": "function",
+      "address": "0x0059CED0",
+      "confidence": "confirmed",
+      "notes": "Case 0x0D handler within FUN_0059CED0. Reads ushort uVar3 = *(packet+0x10), byte bVar1 = *(packet+0x12). Always calls FUN_00586F40(*(this+0x7c), uVar3 | 0x800). When uVar3 != 0, calls FUN_00586F40 with state-tag 0x8FF, writes this+0xb0 = uVar3 and this+0xb4 = bVar1. Always sets flag this+0xbb = 1. Shape parallels case 0x05 but writes a different state region (offsets 0xb0/0xb4/0xbb) with a 0x800 tag family instead of 0x400."
+    },
+    {
+      "id": "BCS-Y-0537",
+      "name": "MapLayoutElement_DispatcherCase0x10_ModeByteSet_FUN_0059CED0",
+      "kind": "function",
+      "address": "0x0059CED0",
+      "confidence": "confirmed",
+      "notes": "Case 0x10 handler within FUN_0059CED0. Single-statement body: *(this+0xf0) = (uint)*(byte *)(packet+0x10). Smallest of the 5 local cases. Field this+0xf0 is read in unrelated MapLayoutElement methods to gate behaviour."
+    },
+    {
+      "id": "BCS-Y-0538",
+      "name": "MapLayoutElement_DispatcherCases0xD8_0xD9_NoOp_FUN_0059CED0",
+      "kind": "function",
+      "address": "0x0059CED0",
+      "confidence": "confirmed",
+      "notes": "Combined case 0xD8 and case 0xD9 handler within FUN_0059CED0. Both opcodes fall through to a single label `switchD_0059cef2_caseD_d8` that returns immediately. This is an explicit consume-and-ignore handler: the dispatcher acknowledges receipt of these two opcodes but takes no action. They are NOT forwarded to FUN_004D8860 (only the default case does that)."
+    },
+    {
+      "id": "BCS-Y-0539",
+      "name": "MapLayoutElement_C2S_Opcode0x17_Emit_FUN_00560FC0",
+      "kind": "function",
+      "address": "0x00560FC0",
+      "confidence": "confirmed",
+      "notes": "25-byte c2s emit helper called only from FUN_0059CED0 case 0x05. Body: `FUN_004D7980(0x17, &param_1, 4)` - posts opcode 0x17 with a 4-byte payload (the caller's stack slot, populated by the zone-init flow byte cVar2 from packet+0x18). Sole caller is FUN_0059CED0. Pattern: thin per-opcode emit wrapper, analogous to the FUN_004C7XXX cluster cataloged across an earlier phase and the pcap grounded c2s validation pass. Opcode 0x17 is a zone-init acknowledgement c2s notification."
+    },
+    {
+      "id": "BCS-Y-0540",
+      "name": "MapLayoutElement_StateTransitionLogger_FUN_00586F40",
+      "kind": "function",
+      "address": "0x00586F40",
+      "confidence": "confirmed",
+      "notes": "111-byte security-cookied state-transition emitter. If global gate DAT_01338D28 == 0, reads current __time64 and constructs a stack record {local_8b0=7 (record type), local_8ac=0x18 (length), local_894=param_2 (event tag), local_898=time}, then calls FUN_004D6CF0(&local_8b0, 0, 0). Called from 3 sites: FUN_0059CED0 (this dispatcher, in cases 0x05 + 0x0D), FUN_0058A090, FUN_0058CCA0 (the larger parent dispatcher the pattern d subdispatcher pass enumerated as PATTERNDSUBD-F3 above FUN_004D8860). Shared-cluster state writer. Receives event-tag patterns like 0x400 / 0x4FF / 0x800 / 0x8FF where the high byte encodes the opcode subfamily and 0xFF tail marks 'commit'. Related to BCS-Y-0323's ZoneOutbound_TierD family via FUN_004D6CF0 (the outbound packet emitter)."
+    },
+    {
+      "id": "BCS-Y-0541",
+      "name": "MapLayoutElement_InnerContextGetter_FUN_004D7340",
+      "kind": "function",
+      "address": "0x004D7340",
+      "confidence": "confirmed",
+      "notes": "7-byte trivial getter: `return *(param_1 + 0x4cc)`. 15 callers spanning the Map/Zone cluster (FUN_005XXXXX, FUN_006XXXXX, FUN_007XXXXX): FUN_006A6E10, FUN_005614B0, FUN_0059CED0, FUN_0058A7F0, FUN_0058AAE0, FUN_0058E0C0, FUN_0075B4C0, FUN_0058A8E0, FUN_00563510, FUN_00563C40, FUN_0058A090, FUN_0075B4F0, FUN_0075B490, FUN_006A6770, FUN_006B3210. Field at MapLayoutElement+0x4cc is an inner context pointer (zone state, scene state, or world state) shared across this cluster. Cataloged for cross-reference value in future Map/Zone phases."
+    },
+    {
+      "id": "BCS-Y-0542",
+      "name": "MapLayoutElement_SecondaryBaseSlot9_ZoneStateDispatcher_FUN_0059CED0",
+      "kind": "function",
+      "address": "0x0059CED0",
+      "confidence": "confirmed",
+      "notes": "STRUCTURAL ATTRIBUTION (supersedes the pattern d subdispatcher pass's provisional BCS-Y-0562). FUN_0059CED0 lives at offset 0x24 (slot 9) of `Application::Main::Element::Map::MapLayoutElement::vftable` SECONDARY base subobject (vftable label at 0x00FAAD88, distinct from the primary base vftable at 0x00FAAC64). MapLayoutElement uses multiple inheritance - two vftable symbols share the class namespace prefix, with the second base spanning slots 0..13 (boundary at 0x00FAADC0, followed by RTTI_Complete_Object_Locator at 0x00FAADC8). Zero direct instruction-level callers per Ghidra refs - reached exclusively via virtual dispatch through MapLayoutElement instances. The secondary base appears to be a packet-receiver mixin (slot 9 = this packet-keyed switch dispatcher). 272-byte function with 5 active opcode cases (0x05, 0x0D, 0x10, 0xD8, 0xD9) + a default fallthrough to FUN_004D8860 (BCS-Y-0280 Option2 event-family dispatcher). All 5 active cases are Pattern C bespoke state mutations on the MapLayoutElement instance (no Pattern A vtable trampolines). CONFIRMS finding PATTERNDSUBD-F3: the default branch forwards to FUN_004D8860, placing FUN_0059CED0 ONE tier above FUN_004D8860 in the dispatch hierarchy."
+    }
+  ],
+  "key_findings": [
+    {
+      "id": "FUN0059CED0W-F1",
+      "title": "FUN_0059CED0 is MapLayoutElement::vftable_secondary_base[9]",
+      "summary": "Single data-only reference site at 0x00FAADAC inside `Application::Main::Element::Map::MapLayoutElement::vftable` (the SECONDARY base of a multiply-inherited MapLayoutElement class - the second of two vftable symbols sharing the class namespace prefix). Offset +0x24 from the secondary vftable label at 0x00FAAD88 = slot 9. The secondary base spans 14 slots (0..13) terminating at 0x00FAADC0 before the RTTI_Complete_Object_Locator at 0x00FAADC8. Slot 9 is the per-opcode packet receiver entry point. This resolves the pattern d subdispatcher pass's open question 'are FUN_0058CCA0 and FUN_0059CED0 themselves slot-1 (Receive) methods on Receiver classes' with a more nuanced answer: FUN_0059CED0 is NOT a Receiver class's slot 1 but a packet handler at slot 9 of a secondary base subobject of MapLayoutElement."
+    },
+    {
+      "id": "FUN0059CED0W-F2",
+      "title": "Default case fallthrough to FUN_004D8860 - the pattern d subdispatcher pass's finding CONFIRMED",
+      "summary": "The pattern d subdispatcher pass noted (and named in BCS-Y-0562) that FUN_0059CED0's default branch forwards to FUN_004D8860. The full decomp body confirms: `default: FUN_004d8860(param_2); return;`. The forward passes only param_2 (the packet), NOT param_1 (the MapLayoutElement this-pointer). This is significant: FUN_004D8860 will receive the packet but its `this` context will be whatever the call-time `ecx` register holds, which on entry to FUN_0059CED0 is the MapLayoutElement instance. If FUN_004D8860 expects a LuaActorImpl as its `this`, there is an implicit type pun here, OR the MapLayoutElement and LuaActorImpl share a layout-compatible head."
+    },
+    {
+      "id": "FUN0059CED0W-F3",
+      "title": "All active cases are Pattern C (state-writer dispatcher, not vtable-relay dispatcher)",
+      "summary": "Zero Pattern A handlers. All 3 active cases (0x05, 0x0D, 0x10) directly mutate fields on the MapLayoutElement instance (offsets 0x7c, 0x94, 0x98, 0xac, 0xb0, 0xb4, 0xb9-0xbc, 0xf0). Two cases (0xD8, 0xD9) are explicit no-ops via shared return label. Case 0x05 additionally emits c2s opcode 0x17 (via FUN_00560FC0 -> FUN_004D7980) and triggers a state-transition log via FUN_00586F40. This is structurally different from FUN_004D8860 where 23 of 24 cases were Pattern A vtable trampolines. FUN_0059CED0 represents the 'pre-filter state-writer' tier of the dispatch tree, while FUN_004D8860 represents the 'vtable-relay' tier."
+    },
+    {
+      "id": "FUN0059CED0W-F4",
+      "title": "Opcode 0x17 c2s emit is the zone-init ack",
+      "summary": "Case 0x05's FUN_00560FC0 wrapper emits c2s opcode 0x17 with a 4-byte payload (the byte cVar2 from packet+0x18, defaulting to 1 if zero). This is a CLIENT->SERVER acknowledgement sent in response to receiving a zone-init opcode 0x05. Opcode 0x17 was previously uncataloged. Future c2s catalog phases should attribute opcode 0x17 to this emit site."
+    },
+    {
+      "id": "FUN0059CED0W-F5",
+      "title": "Three-tier dispatch hierarchy refined",
+      "summary": "Finding PATTERNDSUBD-F3 framed the chain as vtable[1] (Receiver.apply) -> FUN_0058CCA0 / FUN_0059CED0 -> FUN_004D8860. This refines tier 2: FUN_0059CED0 is NOT a Receiver class's slot 1; it is MapLayoutElement secondary-base slot 9. So the chain is more accurately: MapLayoutElement (or sibling class for FUN_0058CCA0) virtual dispatch on secondary-base slot 9 -> opcode pre-filter switch -> default fallthrough to FUN_004D8860 -> Pattern A vtable trampolines into LuaActorImpl::vftable. The two upper tiers belong to different class systems (Map* state objects) than the bottom tier (LuaActorImpl)."
+    },
+    {
+      "id": "FUN0059CED0W-F6",
+      "title": "FUN_00586F40 is a cluster-shared state-transition logger",
+      "summary": "Shared by 3 dispatchers in the cluster: FUN_0059CED0 (here), FUN_0058A090, FUN_0058CCA0 (the pattern d subdispatcher pass's larger parent of FUN_004D8860). Encodes events as record-type-7 timestamped frames passed to FUN_004D6CF0 (related to BCS-Y-0323 ZoneOutbound_TierD outbound emitter family). The event-tag byte patterns (0x400/0x4FF/0x800/0x8FF) suggest opcode-keyed state transitions where the high byte = opcode-subfamily and 0xFF tail = 'commit'. This is a discoverability landmark for cross-cluster state-log mining."
+    }
+  ],
+  "open_questions": [
+    "What is the FULL MapLayoutElement primary base vtable layout (slots 0..N of 0x00FAAC64)? This dumped 15 slots starting at 0x0; need to know the boundary. The 73-slot gap to the secondary base at 0x00FAAD88 suggests a very wide primary base vtable.",
+    "Is FUN_0058CCA0 (the larger pattern d subdispatcher pass parent dispatcher) ALSO at a secondary-base vtable slot of some Map* class? It noted zero direct callers for it too; running FindAllReferences on 0x0058CCA0 would resolve whether it lives in a sibling MapLayoutElement vtable or a different class entirely.",
+    "Why does the default branch pass only param_2 (packet) and not param_1 (the MapLayoutElement)? Either FUN_004D8860 uses ecx-register (this-pointer) directly and the MapLayoutElement is layout-compatible at the offsets FUN_004D8860 reads (0x80/0x88/0x92), or there is a separate this-pointer setup in the calling convention that the decomp obscures.",
+    "What is the relationship between MapLayoutElement::SecondaryBase and the Map/Zone tick architecture? FUN_004E20A0 (the Map tick handler that calls FUN_004DC690 per BCS-Y-0279) presumably drives virtual dispatch through MapLayoutElement instances. A future phase walking FUN_004E20A0 -> MapLayoutElement::vftable would map out the full Map tick dispatch surface."
+  ],
+  "ghidraEvidence": [
+    "%BCS_GHIDRA_PROJECTS%\\fun_0059ced0_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\callees_batch.txt",
+    "%BCS_GHIDRA_PROJECTS%\\parent_refs.txt",
+    "%BCS_GHIDRA_PROJECTS%\\all_refs.txt",
+    "%BCS_GHIDRA_PROJECTS%\\vtable_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%\\vtable_neighbors.txt",
+    "%BCS_GHIDRA_PROJECTS%\\maplayoutelement_vtable.txt",
+    "%BCS_GHIDRA_PROJECTS%\\second_vtable.txt"
+  ],
+  "phase_invocations": [
+    "%BCS_GHIDRA_PROJECTS%\\run_fun_0059ced0_decomp.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_callees_batch.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_parent_refs.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_all_refs.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_vtable_symbol.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_vtable_neighbors.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_vtable_dump.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_second_vtable_dump.bat"
+  ]
+}

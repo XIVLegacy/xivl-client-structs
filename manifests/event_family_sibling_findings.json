@@ -1,0 +1,244 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-19",
+  "workstream": "loop-scope-expansion-option-1",
+  "scope": "8 sibling opcodes named in BCS-Y-0280's event-family dispatcher table FUN_004D8860",
+  "dispatcherVa": "0x004D8860",
+  "dispatcherTargetVtable": {
+    "name": "Application::Lua::Script::Client::LuaActorImpl::vftable",
+    "baseVa": "0x00FDFB2C",
+    "totalSlots": 90,
+    "rttiCompleteObjectLocator": "0x0115FB2C"
+  },
+  "result": "no_chain_key_writes",
+  "summary": "All 8 sibling opcodes dispatch through FUN_004D8860 into the LuaActorImpl vftable, then either bottom out in a 3-byte no-op slot (0x132/0x16C/0x170/0x175) or invoke a receiver wrapper that fires only a Lua callback / maintains non-actor state / performs vtable[9] indirection on a looked-up state object. Zero new chain-key writes; zero new entries to data_dependency_catalog.confirmedIndirectBindings.",
+  "newOpNoOpSlotIdentifications": 4,
+  "newReceiverChainConfirmations": 4,
+  "newChainKeyWrites": 0,
+  "newDeferredLuaNapiMutatorBindings": 0,
+  "siblings": [
+    {
+      "opcode": "0x0132",
+      "dispatcherHandlerVa": "0x00574FC0",
+      "luaActorImplSlot": 49,
+      "luaActorImplSlotOffset": "0xC4",
+      "slotFunctionVa": "0x00759DE0",
+      "slotCategory": "stub_void",
+      "slotBodyBytes": 3,
+      "luaCallbacks": [],
+      "actorWrites": [],
+      "summary": "Terminates in a 3-byte no-op virtual at LuaActorImpl slot 49 (FUN_00759DE0). The opcode produces no observable behavior on the LuaActorImpl dispatch path.",
+      "receiverClass": null,
+      "applyVa": null
+    },
+    {
+      "opcode": "0x0133",
+      "dispatcherHandlerVa": "0x00575060",
+      "luaActorImplSlot": 59,
+      "luaActorImplSlotOffset": "0xEC",
+      "slotFunctionVa": "0x00759E50",
+      "slotCategory": "receiver_wrapper",
+      "slotBodyBytes": 118,
+      "receiverClass": "UserDataReceiver",
+      "applyVa": "0x008A0190",
+      "applyBodyBytes": 478,
+      "luaCallbacks": [
+        "_onReceiveDataPacket",
+        "[servererror]"
+      ],
+      "actorWrites": [],
+      "summary": "Reaches UserDataReceiver via slot 59. Apply (FUN_008A0190) parses a buffer via iterator helpers FUN_0078F810/A60/AB0 then fires _onReceiveDataPacket through FUN_00447260 + FUN_00CC7A90. On parse failure it fires the '[servererror]' message instead. No CharaBase/PlayerBase/NpcBase writes; the wire bytes flow into the Lua callback payload only."
+    },
+    {
+      "opcode": "0x0136",
+      "dispatcherHandlerVa": "0x00574FB0",
+      "luaActorImplSlot": 48,
+      "luaActorImplSlotOffset": "0xC0",
+      "slotFunctionVa": "0x00759D20",
+      "slotCategory": "receiver_wrapper",
+      "slotBodyBytes": 180,
+      "receiverClass": "SetEventStatusReceiver",
+      "applyVa": "0x0089D860",
+      "applyBodyBytes": 113,
+      "luaCallbacks": [],
+      "actorWrites": [],
+      "summary": "Slot 48 wrapper FUN_00759D20 dispatches into SetEventStatusReceiver::Receive (FUN_0089D860). The receiver apply findings pass (BCS-Y findings JSON, opcode 0x0136 entry) confirmed this path does NOT write actor fields directly: the apply helper FUN_006E67C0 switches on receiver+0x58 to select a lookup helper, then calls vtable[9] on the looked-up state object. No chain-key write at any step.",
+      "priorEvidence": "manifests/receiver_apply_findings_wire_derived.json opcode 0x0136 entry: actorWrites=[], wireDeltaConfirmed=false."
+    },
+    {
+      "opcode": "0x0137",
+      "dispatcherHandlerVa": "0x00575070",
+      "luaActorImplSlot": 60,
+      "luaActorImplSlotOffset": "0xF0",
+      "slotFunctionVa": "0x00759ED0",
+      "slotCategory": "receiver_wrapper",
+      "slotBodyBytes": 120,
+      "receiverClass": "SyncMemoryReceiver",
+      "applyVa": "0x0089E550",
+      "applyBodyBytes": 133,
+      "luaCallbacks": [],
+      "actorWrites": [],
+      "summary": "Slot 60 wrapper FUN_00759ED0 dispatches into SyncMemoryReceiver::Receive (FUN_0089E550). The receiver apply findings pass (opcode 0x0137 entry) confirmed this path maintains a separate sync-memory cache via the registry-update logic in FUN_00775A30 (FUN_00775180 / FUN_007870F0 / FUN_00787ED0 / FUN_00786FA0 / FUN_00780BD0 / FUN_0044D350); no per-actor field writes.",
+      "priorEvidence": "manifests/receiver_apply_findings_wire_derived.json opcode 0x0137 entry: actorWrites=[], wireDeltaConfirmed=false."
+    },
+    {
+      "opcode": "0x0138",
+      "dispatcherHandlerVa": "0x005750F0",
+      "luaActorImplSlot": 61,
+      "luaActorImplSlotOffset": "0xF4",
+      "slotFunctionVa": "0x00759F50",
+      "slotCategory": "receiver_wrapper",
+      "slotBodyBytes": 123,
+      "receiverClass": "SetTargetTimeReceiver",
+      "applyVa": "0x008A04B0",
+      "applyBodyBytes": 400,
+      "luaCallbacks": [
+        "_onReceiveTimingPacket"
+      ],
+      "actorWrites": [],
+      "summary": "Slot 61 dispatches into SetTargetTimeReceiver - the same receiver class normally bound to 0xD3 SetTargetTime via the central packet dispatcher FUN_004DC690. The event-family dispatcher FUN_004D8860 routes 0x0138 to the same LuaActorImpl slot, so 0x0138 is an alternate-channel SetTargetTime packet rather than a distinct receiver. Apply (FUN_008A04B0) does timer arithmetic on receiver fields +0x04 (uint), +0x08 (uint), +0x0C (ushort mask) compared to FUN_0075BDA0() (wall-clock helper). On significant delta it calls FUN_008A0700 which stack-allocates a Timer object (writing _anon_EE95E5E4::Timer::vftable to a local). Otherwise it calls FUN_008A0370 which fires _onReceiveTimingPacket via FUN_00447260 + FUN_00CC7A90. No CharaBase/PlayerBase/NpcBase writes; timer state lives on the stack and the Lua callback owns delivery to the Lua side.",
+      "aliasNote": "0xD3 and 0x0138 both reach LuaActorImpl::vftable[61] = SetTargetTimeReceiver. 0xD3 routes via the central packet dispatcher (FUN_004DC690 low-opcode fallthrough -> actor->vftable[9]); 0x0138 routes via the event-family dispatcher (FUN_004D8860 case 0x138 -> FUN_005750F0 -> *param_1->vtable[0xF4])."
+    },
+    {
+      "opcode": "0x016C",
+      "dispatcherHandlerVa": "0x00574FF0",
+      "luaActorImplSlot": 52,
+      "luaActorImplSlotOffset": "0xD0",
+      "slotFunctionVa": "0x00759E10",
+      "slotCategory": "stub_void",
+      "slotBodyBytes": 3,
+      "luaCallbacks": [],
+      "actorWrites": [],
+      "summary": "Terminates in a 3-byte no-op virtual at LuaActorImpl slot 52 (FUN_00759E10). receiver_opcode_map_inbound.json names a SetEmoteEventCondition receiver class for this opcode via direct_token_match, but the event-family dispatcher path does NOT reach that receiver; it bottoms out in the no-op slot.",
+      "receiverClass": null,
+      "applyVa": null
+    },
+    {
+      "opcode": "0x0170",
+      "dispatcherHandlerVa": "0x00575010",
+      "luaActorImplSlot": 54,
+      "luaActorImplSlotOffset": "0xD8",
+      "slotFunctionVa": "0x00759E30",
+      "slotCategory": "stub_void",
+      "slotBodyBytes": 3,
+      "luaCallbacks": [],
+      "actorWrites": [],
+      "summary": "Terminates in a 3-byte no-op virtual at LuaActorImpl slot 54 (FUN_00759E30). Same pattern as 0x016C/0x0175: a SetPushEventConditionWithFan receiver is named in the receiver-opcode map by token match, but the event-family dispatcher path bottoms out in the no-op slot.",
+      "receiverClass": null,
+      "applyVa": null
+    },
+    {
+      "opcode": "0x0175",
+      "dispatcherHandlerVa": "0x00575020",
+      "luaActorImplSlot": 55,
+      "luaActorImplSlotOffset": "0xDC",
+      "slotFunctionVa": "0x00759E40",
+      "slotCategory": "stub_void",
+      "slotBodyBytes": 3,
+      "luaCallbacks": [],
+      "actorWrites": [],
+      "summary": "Terminates in a 3-byte no-op virtual at LuaActorImpl slot 55 (FUN_00759E40). Same pattern as 0x016C/0x0170: a SetPushEventConditionWithTriggerBox receiver is named in the receiver-opcode map by token match, but the event-family dispatcher path bottoms out in the no-op slot.",
+      "receiverClass": null,
+      "applyVa": null
+    }
+  ],
+  "structuralConclusion": "The prior loop's '2-4 new chain-key writes' prediction is structurally falsified for the event-family sibling scope as well as for the original named set. The event-family dispatcher branch does not produce chain-key writes for any of its 28 enumerated opcodes (the 4 originally named, the 8 siblings investigated here, the 0x12F/0x130 KickClientOrder/StartServerOrder handlers already documented as wrapping their own receivers, the multi-opcode fallthrough group, and the remaining handler-bearing cases). The chain-key write pattern from the receiver apply findings pass (CharaBase+0x60, CharaBase+0xDC.+0x10, CharaBase+0xDC.+0x18, CharaBase+0xDC.+0x04[i], CharaBase+0x5D) is specific to a different dispatcher branch (FUN_004DC690's specific-handler cases 0x143/0x144/0x145/0x179/0x17B/0x13D). The chain-key/N-API-reader pairing model is the wrong shape for the event-family branch; its mutations are mediated via Lua-callback dispatch into N-API mutators against global subsystem state (the deferred napi writers pass / WS-H finding).",
+  "scanEvidence": [
+    {
+      "kind": "decomp-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\sibling_handlers_decomp.txt",
+      "functions": [
+        "0x00574FC0",
+        "0x00575060",
+        "0x00574FB0",
+        "0x00575070",
+        "0x005750F0",
+        "0x00574FF0",
+        "0x00575010",
+        "0x00575020"
+      ],
+      "purpose": "The 8 per-opcode handler functions from FUN_004D8860's switch. All 8 are vtable trampolines that dispatch on (*param_1)->vtable[offset], routing through 8 distinct LuaActorImpl slots."
+    },
+    {
+      "kind": "mem-range-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\luaactorimpl_vtable_dump.txt",
+      "range": "0x00FDFC00..0x00FDFD00",
+      "purpose": "LuaActorImpl vftable slots ~52..89 to identify wrapper VAs for slots 52/54/55/59/60/61 reached by the dispatcher handlers."
+    },
+    {
+      "kind": "mem-range-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\luaactorimpl_vtable_lower_dump.txt",
+      "range": "0x00FDFB00..0x00FDFC00",
+      "purpose": "LuaActorImpl vftable slots 0..51 to identify wrapper VAs for slots 48/49 reached by the dispatcher handlers."
+    },
+    {
+      "kind": "decomp-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\receiver_wrappers_decomp.txt",
+      "functions": [
+        "0x00759E50",
+        "0x00759F50"
+      ],
+      "purpose": "UserDataReceiver and SetTargetTimeReceiver wrappers reached by slot 59 / slot 61."
+    },
+    {
+      "kind": "decomp-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\slot_bodies_decomp.txt",
+      "functions": [
+        "0x00759D20",
+        "0x00759DE0",
+        "0x00759E10",
+        "0x00759E30",
+        "0x00759E40"
+      ],
+      "purpose": "Slot 48 wrapper (SetEventStatusReceiver) plus the 4 slot bodies (49/52/54/55) that are independently confirmed as 3-byte no-op virtuals (`void f() { return; }`)."
+    },
+    {
+      "kind": "decomp-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\apply_methods_decomp.txt",
+      "functions": [
+        "0x008A0190",
+        "0x008A04B0",
+        "0x00759ED0"
+      ],
+      "purpose": "UserDataReceiver::Apply, SetTargetTimeReceiver::Apply, and the slot 60 SyncMemoryReceiver wrapper - their bodies establish the Lua-only / timer-only / sync-cache-only mutation shapes."
+    },
+    {
+      "kind": "decomp-dump",
+      "path": "%BCS_GHIDRA_PROJECTS%\\apply_callees_decomp.txt",
+      "functions": [
+        "0x008A0370",
+        "0x008A0700",
+        "0x00790A30"
+      ],
+      "purpose": "SetTargetTime callees (timer-state stack writes + _onReceiveTimingPacket Lua fire) and UserData callee (data-packet decoder); both confirm no actor writes."
+    }
+  ],
+  "noopSlotConfirmation": {
+    "claim": "LuaActorImpl::vftable slots 49, 52, 54, 55 are confirmed 3-byte no-op virtuals.",
+    "evidence": "Direct Ghidra decomp of FUN_00759DE0/E10/E30/E40: each body is `void f(void) { return; }` at 3 bytes. Matches the noop_virtual_b/e/g/h categorisation in xivl-opcodes/data/lua_actor_impl_slot_lua_bindings.json, here independently verified."
+  },
+  "priorMissingSlots": {
+    "note": "lua_actor_impl_slot_lua_bindings.json was missing slots 48 and 60 from its listing (their wrapper VAs were not recorded in any of the four category sections - receiver+lua, receiver-no-lua, direct+lua, direct-no-lua). This recovers them as FUN_00759D20 (slot 48, dispatches into SetEventStatusReceiver - receiver-no-lua category) and FUN_00759ED0 (slot 60, dispatches into SyncMemoryReceiver - receiver-no-lua category).",
+    "filledSlots": [
+      {
+        "slot": 48,
+        "wrapperVa": "0x00759D20",
+        "receiver": "SetEventStatusReceiver",
+        "category": "receiver_no_lua"
+      },
+      {
+        "slot": 60,
+        "wrapperVa": "0x00759ED0",
+        "receiver": "SyncMemoryReceiver",
+        "category": "receiver_no_lua"
+      }
+    ]
+  },
+  "predictionAccounting": {
+    "loopPrediction": "2-4 new chain-key writes across the event-family sibling opcodes",
+    "loopPredictionFalsified": true,
+    "loopPredictionWindow": "The event family sibling findings pass confirms the prediction is false for the event-family branch (0 writes across 12 opcodes investigated to date: 4 named + 8 siblings). No further siblings remain in BCS-Y-0280's enumeration except those in the multi-opcode fallthrough group (which dispatches via actor->vftable[9] in FUN_004DC690, not through the per-opcode handler shape investigated here).",
+    "rootCauseSummary": "Chain-key writes are characteristic of the central packet dispatcher branch (FUN_004DC690's specific-handler cases) where direct CharaBase sub-struct accessors are invoked. The event-family dispatcher (FUN_004D8860) branch's per-opcode handlers route into LuaActorImpl slots that either no-op, fire Lua callbacks, or maintain non-actor state - a structurally different mutation shape that the chain-key/N-API-reader pairing model does not cover by design."
+  }
+}

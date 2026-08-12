@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "scope": "Drill FUN_00537620 (the function called from FUN_004d90c0 in BCS-Y-0525 case 0xCA AddActor path) to identify the actor class hierarchy and find a real vftable[9] implementation that would resolve the actor-vftable9-investigation open question. Outcome: another corrective finding - FUN_00537620 is NOT a class factory at all but a generic indexed function-pointer invoker with result caching (a method-dispatch helper for an OOP system used elsewhere in the engine). FUN_004d90c0 uses it to invoke method[index] on an interface struct held in the zone state. The actor class question is NOT resolved by this manifest but the actor-management call chain is now fully characterized and 5 supporting routines are catalogued. Also: subtle correction to client-architecture 'S2C dispatch has five architectural patterns' Pattern B - the generic fallthrough at FUN_004DC690 line 759 passes `iVar8` (which is `param_3` = the dispatcher's third arg = zone state) to slot 9, NOT the packet.",
+  "method": {
+    "step1_decomp_factory": "DumpFunctionDecomp.java on 0x00537620 + 0x004d9030. FUN_00537620 body 346 bytes; FUN_004d9030 body 80 bytes.",
+    "step2_decomp_other_caller": "DumpFunctionDecomp.java on 0x004d7c10 (the OTHER caller of FUN_00537620 besides FUN_004d90c0), 0x004d9910 (the actor lookup that returns the dispatched pointer for BCS-Y-0527), 0x004d9980 (the case-2 sibling that maintains zone+0x1783c active-actor slot).",
+    "step3_inspect_dispatcher_setup": "Read FUN_004DC690 line 165 to confirm `iVar8 = param_3` (the dispatcher's third arg). This means the slot-9 dispatch in BCS-Y-0527 (line 759 `(**(code **)(*piVar12 + 0x24))(iVar8)`) passes the ZONE STATE as arg, not the packet - a subtle refinement to Pattern B."
+  },
+  "key_findings": [
+    {
+      "title": "FUN_00537620 is a generic indexed method dispatcher with result caching, NOT a class factory",
+      "detail": "346-byte function. Signature inferred as `__thiscall (int param_1, uint param_2, undefined4 param_3..6)`. Body: bounds-checks `param_2` (index) against array at `param_1 + 4 .. param_1 + 8` (computed as `(end - begin) >> 2` for entry count); if in bounds and slot is non-null, calls `(*(int*)(param_1 + 4) + param_2 * 4)(param_3, param_4, param_5, param_6)` (i.e. `method_table[index](args)`); then caches the return value at a struct slot determined by `switch(param_2)`: case 2->+0x18, 3->+0x1c, 4->+0x20, 5->+0x24, 6->+0x10, 7->+0x14, 8->FUN_004e5ca0 special path, 9->+0x34, 0xc->+0x28, 0xd->+0x2c, 0xe->+0x30, 0x11->+0x44. Returns the dispatched callable's result. This is the engine's OOP method-invocation helper - the SAME function used to dispatch arbitrary indexed methods on any object that has a function-pointer table at +4..+8.",
+      "implication": "actor_vftable9_investigation.json and actor_factory_drill.json's original assumption that this would reveal the actor class type was wrong. FUN_00537620 doesn't construct anything; it dispatches a method on a caller-provided interface. The actual actor class is determined by what's IN the method table, which is owned by the caller's `param_1` (= FUN_004d90c0's `param_2`)."
+    },
+    {
+      "title": "FUN_004d90c0 dispatches method[index] on a caller-provided interface to create/initialize an actor",
+      "detail": "FUN_004d90c0 body: `if (FUN_004d9030(param_3)) { piVar2 = FUN_00537620(param_2, param_3, *(param_1 + 0x174f0), param_1, param_1 + 0x510); if (piVar2 != 0) (*piVar2->vtable[5])(); return piVar2; }`. Param semantics: `param_1` = a large struct (zone state, given 0x174f0/0x510 offsets); `param_2` = the interface struct containing the method table at +4..+8 (= FUN_00537620's `param_1`); `param_3` = the method index (= FUN_00537620's `param_2`, validated by FUN_004d9030 as either a registered special id or any non-special id). After the dispatch, calls vtable[5] of the returned object (probably an init/register hook). At the case 0xCA AddActor call site (FUN_004DC690 line 738): `FUN_004d90c0(*(iVar8 + 0x10), param_2)` - passes `*(zone + 0x10)` as the interface and the packet as `param_2`. The decomp shows only 2 visible args at the call site (param_3 not visible) - Ghidra signature inference probably collapsed a 2-arg ABI into 3 args, or param_3 comes via a register/stack location not modelled by the decompiler. Both interpretations leave the index source somewhat opaque, but the dispatch pattern itself is clear.",
+      "implication": "The 'actor factory' is really a method-table dispatch where the actor type is determined by what the interface struct (`*(zone + 0x10)`) registers at the index. This interface is itself an actor-class registry. Enumerating its method table contents would reveal the actor class hierarchy."
+    },
+    {
+      "title": "FUN_004d7c10 (the OTHER caller of FUN_00537620) confirms the dispatch-helper pattern",
+      "detail": "Body: `iVar1 = FUN_00d359c0(); if (iVar1 == DAT_01336b78) iVar1 = -0x40000000; else iVar1 += DAT_00fa123c; piVar2 = FUN_00537620(param_2, iVar1, *(param_1 + 0x174f0), param_1, param_1 + 0x510); if (piVar2 != 0) (*piVar2->vtable[5])();`. Same call shape as FUN_004d90c0 (same 5-arg call to FUN_00537620, same vtable[5] post-call). Differs only in how the index is computed: FUN_004d7c10 uses `FUN_00d359c0()` result (probably a class-allocator that returns an index, or a class id) with a base offset `DAT_00fa123c`; if the allocator returns the sentinel `DAT_01336b78`, the index becomes 0xc0000000 (the 'special id' that fails FUN_004d9030's pattern check and short-circuits FUN_00537620's bounds check, making the call a no-op).",
+      "implication": "FUN_004d90c0 and FUN_004d7c10 are two variants of the same actor-create-via-dispatch primitive. Both target the same interface (`*(zone + 0x10)`, the actor-class registry) but with different ways of computing the class index. Caller count breakdown: FUN_004d7c10 has 7 callers (FUN_005522d0, FUN_006a5f80, FUN_006b3210, FUN_006a8650, FUN_00885dc0, FUN_00679ed0, FUN_0075be10) - the 0x0075XXXX cluster matches the Lua-side actor binding range, suggesting Lua scripts invoke this path."
+    },
+    {
+      "title": "FUN_004d9910 lookup confirmed - returns `*(iter + 0x10)` from STL map at zone+0x17804..+0x17808",
+      "detail": "Body: `FUN_0071d420(&local_8, &stack0x00000004); iVar1 = *(zone + 0x17808); if (zone + 0x17804 != local_8) error; if (iVar1 == local_4) return 0; if (local_8 == 0) error; if (local_4 == *(local_8 + 4)) error; return *(local_4 + 0x10);`. The map is keyed by actor id (passed as first arg, dereferenced via `&stack0x00000004` for the find-call). The returned value at `iterator + 0x10` is the actor pointer. With 44 callers (mostly Lua bindings at 0x0075XXXX), this is THE actor map lookup primitive for the entire engine.",
+      "implication": "The actor map at zone+0x17804..+0x17808 is the authoritative source for 'what type is this actor'. To identify the missing class hierarchy from actor_vftable9_investigation.json, drill the WRITE side of the map (who calls `map.insert` on it - probably the vtable[5] init hook called by FUN_004d90c0 after dispatch)."
+    },
+    {
+      "title": "FUN_004d9030 is a class-id pattern + registry validator",
+      "detail": "Body: `if ((id & 0xe0000000) == 0xc0000000 && (id >> 0x18 & 0xf) < 3) { if (FUN_00d35af0(id & 0xffffff) == 0) return false; } return true;`. Class ids fall into two regimes: 'special pattern' ids with top byte 0xC0..0xDF AND subtype byte (bits 24-27) < 3 - these must be registered in the FUN_00d35af0 lookup (engine-managed registry of named actor classes); 'regular' ids (everything else) trivially pass.",
+      "implication": "The actor class id space has a structured top-byte pattern. The 0xC0..0xDF range identifies engine-managed actor classes (like the Control:: hierarchy from BCS-Y-0184/0185/0186/0163 with vftable VAs in the 0xBD5xxx range). 'Regular' ids are probably runtime-spawned actors with arbitrary numeric ids."
+    },
+    {
+      "title": "Pattern B slot-9 receives ZONE STATE as arg, not the packet (subtle refinement)",
+      "detail": "FUN_004DC690 line 165 sets `iVar8 = param_3` (the dispatcher's third arg, which based on the dispatcher's structure is the zone state). The generic fallthrough at line 759 is `(**(code **)(*piVar12 + 0x24))(iVar8)` - slot 9 receives `iVar8` = `param_3` = zone state, NOT the packet (`param_2`). Previous statements of Pattern B (client-architecture 'S2C dispatch has five architectural patterns' Pattern B as originally written) implied `actor->vftable[9](packet)`, but the actual call is `actor->vftable[9](zone_state)`.",
+      "implication": "A real slot-9 implementation would receive the zone state and read packet data from it (presumably via `zone_state->current_packet` or a similar field). This is consistent with the observation that Control:: and CharaActor classes have no-op or unrelated slot 9 - none of them are wired to read a packet from the zone state. Whatever class HAS a real slot 9 must have been designed to source the packet from the zone state context."
+    }
+  ],
+  "new_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0530",
+      "name": "GenericIndexedMethodInvoker_WithResultCache_FUN_00537620",
+      "address": "0x00537620",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Generic OOP method-dispatch helper. Calls `method_table[index]` on an interface struct (interface.method_table at +4..+8, computed entry count = (end-begin)/4), then caches the return value at a per-index struct slot. Used by FUN_004d90c0 and FUN_004d7c10 (actor create-via-dispatch primitives) to invoke specific methods on the actor-class registry held at zone+0x10."
+    },
+    {
+      "id": "BCS-Y-0531",
+      "name": "ZoneActor_CreateOrGetById_FUN_004d90c0",
+      "address": "0x004d90c0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Actor create-via-dispatch helper. Validates a class id via FUN_004d9030, calls FUN_00537620(interface=arg, index=class_id, zone_helper=*(zone+0x174f0), zone, zone+0x510) to dispatch the class's create-method, then invokes vtable[5] on the returned actor (init/register hook). Called from FUN_004DC690 case 2 (`FUN_004d90c0(8, packet)`) and case 0xCA AddActor (`FUN_004d90c0(*(zone+0x10), packet)`). 4 other callers from Lua-side wrappers."
+    },
+    {
+      "id": "BCS-Y-0532",
+      "name": "ZoneActor_CreateGenericById_FUN_004d7c10",
+      "address": "0x004d7c10",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Sibling of FUN_004d90c0 (BCS-Y-0531) using the same FUN_00537620 dispatch + vtable[5] post-call pattern but a different index source: computes index = FUN_00d359c0() + DAT_00fa123c, or 0xc0000000 sentinel if the allocator returns DAT_01336b78. 7 callers, mostly in the 0x0075XXXX Lua-side range - Lua-script-driven actor creation path."
+    },
+    {
+      "id": "BCS-Y-0533",
+      "name": "ZoneActorClassId_Validate_FUN_004d9030",
+      "address": "0x004d9030",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Class-id validity check. Returns true if id has 'regular' pattern (top byte not in 0xC0..0xDF, OR subtype byte >= 3) - trivially trusted; OR id has 'engine-managed' pattern (top byte 0xC0..0xDF AND subtype < 3) AND the low 24 bits are registered in FUN_00d35af0's engine-class registry. Used by FUN_004d90c0 (BCS-Y-0531) to gate dispatch."
+    },
+    {
+      "id": "BCS-Y-0534",
+      "name": "ZoneActorMap_FindById_FUN_004d9910",
+      "address": "0x004d9910",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "The actor map lookup primitive. Does STL-map find on zone+0x17804..+0x17808 keyed by actor id (passed in arg-1 via stack); returns `*(iter + 0x10)` (the actor pointer stored in the map node's value slot) or 0 if not found. 44 callers spanning the Lua binding cluster (0x0075XXXX), the dispatcher (FUN_004DC690), and core actor helpers (FUN_004d9980, FUN_004daa10, etc.). Implicitly referenced by BCS-Y-0525 / 0527 (FUN_004DC690 case 0xCA + generic fallthrough); promoted here to a first-class catalog entry."
+    }
+  ],
+  "open_questions": [
+    {
+      "q": "What actor class is in the actor map at zone+0x17804?",
+      "approach": "The vtable[5] init hook called by FUN_004d90c0 after dispatch (line `(*piVar2->vtable[5])()`) is what registers the new actor in the map. Decomp that vtable[5] for any cataloged actor class (Control::PlayerBase, etc.) to find the map insertion site and confirm the type written. Candidate work for the actor-vtable9-bulk pass."
+    },
+    {
+      "q": "What's the method table at zone+0x10 (the actor-class registry interface)?",
+      "approach": "Find what writes to `zone + 0x10` and follow to the construction site of the interface struct. The method table at +4..+8 enumerates all class-create methods (one per class index). This would resolve the class hierarchy directly. Candidate work for the actor-vtable9-bulk pass."
+    },
+    {
+      "q": "Why does FUN_004d90c0's case 0xCA call site show only 2 visible args when the function signature has 3?",
+      "approach": "Either Ghidra's signature inference is wrong (real ABI is 2 args + this) and the function reads a register/stack relic for `param_3`; or the call site decomp collapsed a third arg. Disassembly-level inspection of the call bytes (DumpInstructionsAt the case 0xCA call address) would clarify. Low priority - the dispatch shape is already characterized."
+    }
+  ],
+  "phase_assessment": "Partial. Did NOT resolve actor_vftable9_investigation.json's open question about which actor class is dispatched, but produced a corrective architectural reframe (FUN_00537620 is a method dispatcher, not a factory) and characterized 5 supporting routines that establish the actor-management call chain. The deeper question of 'what's in the actor map' has been narrowed to a tractable follow-up for the actor-vtable9-bulk pass: drill the vtable[5] init hook of a known actor class to find the map-insertion site."
+}

@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Scheduler tick trigger walk-up from FUN_004DA680 (sole caller of LuaFrameTick BCS-Y-1701). **DISCOVERY**: the Lua tick is driven by the **Scene system**, not directly by a game loop. Complete chain: Scene manager (vftable-called) -> FUN_00 4B3C50 (Scene tick, 523 bytes, references `Application::Scene::ScenePacket::vftable`) -> FUN_004DAA10 (frame event-processor + frame-tick driver, 310 bytes, Interlocked event queue) -> FUN_004DA680 (frame tick body, 790 bytes) -> FUN_00578970 (LuaFrameTick BCS-Y-1701) -> Lua tick orchestrator -> scheduled Lua dispatch. Catalogs the new class identity `Application::Scene::ScenePacket` plus 4 new ctor/tick BCS-Y entries.",
+  "method": {
+    "step1": "Decomp FUN_004DA680 (790 bytes, sole caller of FUN_00578970 LuaFrameTick BCS-Y-1701). Body: per-frame engine tick - iterates a queue at param_1+0x17808 (vftable slot +0x18 dispatch), iterates a buffer at param_1+0x1782C..+0x17828 (memory operations), conditionally calls LuaFrameTick when bVar4 (from a Lua-tick-skippable predicate). Also calls FUN_00534010 + FUN_00553BE0 (other tick subsystems).",
+    "step2": "Decomp FUN_004DAA10 (310 bytes, sole caller of FUN_004DA680). Body: per-frame **event processor**. Drains a thread-safe event queue via FUN_004DDB50 (sole event-queue dequeue, uses InterlockedExchangeAdd / InterlockedCompareExchange / InterlockedExchange). Each event has a type field (+0x14): type 2 = vftable call on param_1+0x17924, others = FUN_004D9910 handler lookup + vftable slot +0x20 dispatch. After event drain: vftable call on param_1+0x17920 (slot +0x14), then FUN_005527A0, then FUN_004DA680 (frame tick).",
+    "step3": "Decomp FUN_004B3C50 (523 bytes, sole caller of FUN_004DAA10 + has 0 listed callers - likely vftable-invoked). Body: **Scene tick / Scene update method**. References `Application::Scene::ScenePacket::vftable` (writes it to local_d4[0] - constructs a temporary ScenePacket on stack). Polls 3 sub-objects via vftables at param_1+0x40, +0x44, +0x48 (input/render targets?). Calls FUN_004D6570 (some processor), FUN_004DAA10 (frame event-processor), then closes with FUN_00CC6D00.",
+    "step4": "Decomp FUN_004DDB50 (119 bytes) - **event-queue dequeue** with Interlocked atomic operations. Reads index at param_1+8 (current read pointer), checks flag at queue[index] = 1 (event ready), advances index modulo capacity (param_1+4), CAS-updates the index, marks event as 2 (consumed), returns the event pointer at param_1+0x18 + (index * 0x60). Each event is 0x60 (96) bytes.",
+    "step5": "Decomp FUN_004D9910 (95 bytes, 45+ callers) - **event handler lookup**. std::map-like search at param_1+0x17808 (probably std::map<event_id, handler_ptr>). Returns handler pointer at +0x10 of the matched node, or 0 if not found.",
+    "step6": "Catalog 5 new BCS-Y entries: 4 functions in the tick chain + 1 new class identity `Application::Scene::ScenePacket` (referenced from FUN_004B3C50 vftable write). 1 amendment to BCS-Y-1701 (LuaFrameTick) documenting the upstream Scene-tick chain."
+  },
+  "key_findings": [
+    "**The Lua tick is driven by the Scene system, NOT directly by the game loop**. Complete chain identified: Scene manager (vftable-called) -> [[Application_Scene_Scene_tick_FUN_004B3C50]] (BCS-Y-1713 NEW) -> [[Application_FrameEventProcessor_FUN_004DAA10]] (BCS-Y-1712 NEW) -> [[Application_FrameTick_FUN_004DA680]] (BCS-Y-1711 NEW) -> [[LuaFrameTick_FUN_00578970]] (BCS-Y-1701) -> [[LuaTickOrchestrator_FUN_00CC98A0]] (BCS-Y-1694) -> [[LuaSchedulerMaintenance_FUN_00CDA330]] (BCS-Y-1695) -> ms/us scheduled dispatch.",
+    "**`Application::Scene::ScenePacket`** class identity discovered (BCS-Y-1715 NEW) via vftable reference in [[Application_Scene_Scene_tick_FUN_004B3C50]] (BCS-Y-1713 NEW). The class appears as a stack-allocated temporary in the Scene tick - constructed, used briefly for some scene-related operation, then destroyed before return. Provides a new namespace identity in the `Application::Scene::*` hierarchy.",
+    "**Thread-safe event queue** at the frame-event level: [[Application_FrameEventProcessor_FUN_004DAA10]] (BCS-Y-1712 NEW) consumes events via [[Application_EventQueue_dequeue_FUN_004DDB50]] (BCS-Y-1714 NEW, 119 bytes) using Interlocked atomics. Queue is a circular buffer with 0x60-byte (96 bytes) events. Producer-consumer synchronization: producer sets entry flag to 1, consumer CAS-advances index then marks entry as 2. This is the input/event boundary between threads (probably input thread + main thread).",
+    "**Event handler dispatch**: each event has a type at +0x14: type 2 routes to a special handler (vftable on +0x17924, slot +0x18); other types (3..0x103) route via FUN_004D9910 handler-lookup (event-id -> handler_ptr, std::map-like 45+ caller utility), then dispatched via the handler's vftable slot +0x20. Total event payload at +0x20 (after the 0x20 byte header).",
+    "**Scene tick handles ScenePacket construction**: [[Application_Scene_Scene_tick_FUN_004B3C50]] (BCS-Y-1713 NEW) constructs a stack-allocated `Application::Scene::ScenePacket` (BCS-Y-1715 NEW) for some scene-management operation. Suggests ScenePacket is a Command/Message pattern for scene updates - serialized into a packet, dispatched, then discarded."
+  ],
+  "new_bcsy_entries_summary": {
+    "frame_tick_chain_total": 4,
+    "class_identities_total": 1,
+    "amendments": 1,
+    "total_bcsy_added": 5,
+    "id_range": "BCS-Y-1711..BCS-Y-1715",
+    "amendment_targets": [
+      "BCS-Y-1701 (LuaFrameTick FUN_00578970) - documents the full upstream chain: Scene manager -> Scene tick -> frame event processor -> frame tick -> LuaFrameTick"
+    ]
+  },
+  "deferred_followups": [
+    "Identify what calls FUN_004B3C50 (the Scene tick). Currently 0 listed callers - likely vftable-invoked. Search for data references to 0x004B3C50 to find the vftable slot it occupies.",
+    "Decomp FUN_004D9910's caller chain at higher level to understand the event-handler dispatch model fully.",
+    "Decomp FUN_004B4C40, FUN_004D6570 (called by Scene tick) - the other Scene-level helpers.",
+    "Map out the Scene class hierarchy: Application::Scene::ScenePacket (BCS-Y-1715 NEW) is the first cataloged class in the Application::Scene namespace - more class identities are likely discoverable via further vftable walking.",
+    "Cross-reference `Application::Scene::ScenePacket` against any existing receiver/listener classes to see if the Scene namespace overlaps with the Application::Lua::Script::Client receiver hierarchy.",
+    "Identify the event PRODUCER (what writes to the event queue at the param_1+0x17808 buffer with entry status=1). Probably an input/network thread."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1697 -> 1702 (+5 BCS-Y; BCS-Y-1711..1715)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries, 1 amendment",
+    "manifests/scene_tick_chain.json (NEW, this file)",
+    "tools/ghidra/logs/c103_game_loop.txt (NEW - FUN_004DA680 decomp)",
+    "tools/ghidra/logs/c103_loop_up.txt (NEW - FUN_004DAA10 decomp)",
+    "tools/ghidra/logs/c103_loop_top.txt (NEW - FUN_004B3C50 + helpers)",
+    "tools/extractors/append_scene_tick_chain.py (NEW)"
+  ]
+}

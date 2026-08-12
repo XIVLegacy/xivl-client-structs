@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Characterize retainer + bazaar/market opcodes (RetainerSpawn, BazaarList, MarketPrice, etc.) in the 1.23b ffxivgame.exe by running RTTI symbol searches in Ghidra, mapping widgets to existing c2s/s2c catalog entries, and identifying any uncataloged emitters.",
+  "method": {
+    "step2": "Run FindSymbolByName.java against ffxivgame.exe for the substrings Retainer, Bazaar, Market, ItemSearch - enumerate every matching RTTI/vftable label",
+    "step3": "DumpMemRange across discovered vftable VAs to recover slot tables (RetainerListWidget @ 0x00f9f66c, BazaarEditWidget @ 0x00f9da74, RetainerMenuPhase @ 0x01055254/0x01055264 multi-base, RetainerNameChangeInputLoader @ 0x010552c0/0x010552cc, ItemSearchListWidget @ 0x00f9e650 multi-base, ItemSearchDirectPurchaseWidget @ 0x01049edc)",
+    "step4": "DumpFunctionDecomp on candidate slot-4 Init methods, slot-0 dtors, and the 3 small unidentified emitters from the cluster-refinements pass (FUN_00519440 for 0x01D7, FUN_0051AAC0 for 0x01D8, FUN_0051A970 for 0x01DF) to validate whether they bind to Retainer/Bazaar/Market subsystem",
+    "step5": "FindXRefs.java against Button_Bazaar* / ListBox_Retainer* / s_marketItem / s_PrivateAreaMasterMarket strings to confirm UI-control wiring sites and rule out direct emitter wiring for Bazaar",
+    "step6": "DumpFunctionDecomp on already-cataloged emitters (FUN_004C7300/04C7490/04C73D0 for 0x01DD/01DC/01DB via FUN_004C7150 passthrough; FUN_004FA750/00532A40 for 0x01D9/01DA; FUN_0085E1B0 for 0x01DE) to confirm Search/Retainer cluster routing and trace the FUN_008746E0/00874750 callers"
+  },
+  "rttiDiscoveryCounts": {
+    "Retainer": 85,
+    "Bazaar": 13,
+    "Market": 3,
+    "ItemSearch": 55
+  },
+  "newRttiClassesDiscovered": [
+    {
+      "name": "Application::Main::Element::Window::Widget::RetainerListWidget",
+      "vftableVa": "0x00f9f66c",
+      "rttiTypeDescriptorVa": "0x0126c9b0",
+      "slotCount": 41,
+      "scalarDeletingDtorVa": "0x00532020",
+      "slot4InitVa": "0x005107d0",
+      "slot4InitNote": "RetainerListWidget::Init - wires PTR_s_XmlData_0126b07c -> this+0x230, PTR_s_ListBox_Retainer_0126b080 -> this+0x234, PTR_s_TextBlock_Message_0126b084 -> this+0x238. Lists retainer entries (the player-side roster of NPCs owned by the player, NOT a marketplace search). No vtable slot emits a c2s opcode directly - data presumably arrives via lobby RetainerList (0x0017) (existing BCS-Y-0019).",
+      "subsystem": "RetainerOwnerRoster",
+      "wireBinding": "lobby_only"
+    },
+    {
+      "name": "Application::Main::Element::Window::Widget::BazaarEditWidget",
+      "vftableVa": "0x00f9da74",
+      "rttiTypeDescriptorVa": "0x0126be80",
+      "slotCount": 41,
+      "scalarDeletingDtorVa": "0x005314e0",
+      "slot4InitVa": "0x004f5f80",
+      "slot4InitNote": "Generic stub returning 1 (20-byte body, calls FUN_009243d0(1,0,1)). Bazaar UI controls (Button_BazaarRepair / Button_BazaarBuy / Button_BazaarSell / Button_BazaarAbort at 0x00f99e9c..0x00f99ed8 and s_bazaarStatusVisibility at 0x00f973ec) all referenced exclusively by static-data-section initializer FUN_00f0b7a0 - the widget has no runtime button-click handler in this vtable that emits a c2s opcode.",
+      "subsystem": "BazaarUI",
+      "wireBinding": "lua_only",
+      "wireBindingEvidence": "BazaarEditWidget has no vtable slot that emits a dedicated Bazaar opcode; its controls are mounted by the static initializer.",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    },
+    {
+      "name": "Application::Main::Menu::Bootup::Retainer::RetainerMenuPhase",
+      "vftableVaBase1": "0x01055254",
+      "vftableVaBase2": "0x01055264",
+      "rttiTypeDescriptorVa": "0x012d6da8",
+      "subsystem": "RetainerLobbyMenuPhase",
+      "wireBinding": "lobby_only",
+      "wireBindingEvidence": "Multi-base inheritance pattern (2 RTTI_Complete_Object_Locators - the bootup menu phase plus an EventHandler base). Wires retainer creation/rename through the lobby CharaMakeOperation path (BCS-Y-0018, dispatcher case 0x17 -> RetainerListParser FUN_00DA4D80, and the existing CharaMakeParamTmpl<UpdateRetainerSlotParam_,1> vftable at 0x01128010 for retainer slot updates). The c2s side reuses CharacterModify with cmd=6 (RENAME_RETAINER) per BCS-S-0006/structs.json sub-command notes."
+    },
+    {
+      "name": "Application::Main::Menu::Bootup::Retainer::RetainerNameChangeInputLoader",
+      "vftableVaBase1": "0x010552c0",
+      "vftableVaBase2": "0x010552cc",
+      "rttiTypeDescriptorVa": "0x012d6df0",
+      "subsystem": "RetainerLobbyMenuPhase",
+      "wireBinding": "lobby_only",
+      "wireBindingEvidence": "Sqwt::Controls::TextChangedEventHandler base + retainer-rename input. Pairs with RetainerMenuPhase. Resulting rename name is presumably packed by the CharaMakeParamTmpl<UpdateRetainerSlotParam_,1> and sent via the LobbyClient CharaMakeOperation path."
+    },
+    {
+      "name": "Application::Main::Element::Window::Widget::ItemSearchListWidget",
+      "vftableVaBase1": "0x00f9e650",
+      "vftableVaBase2": "0x00f9e65c",
+      "vftableVaBase3": "0x00f9e66c",
+      "rttiTypeDescriptorVa": "0x0126c3b8",
+      "subsystem": "ItemSearchListContainer",
+      "wireBinding": "c2s",
+      "slot4InitVa": "0x00513660",
+      "slot4InitNote": "ItemSearchListWidget::Init (830-byte body) - wires 6 child controls via FUN_00910980 calls, uses format string sprintf_s @%d 0x2975 (the SAME resource string ID that BCS-Y-0347 attributed to ItemSearchPriceViewWidget's slot-4 init, confirming the parent-child UI relationship)",
+      "tickSlotVa": "0x00525e50",
+      "tickSlotNote": "10-case state machine on this+0x1214 dispatching to slot-emit methods including 0x01D8 (case 6 = FUN_0051AAC0), 0x01DF (case 10 = FUN_0051A970), and 0x01D7 via sibling caller FUN_0051A4A0 (case 5 chain)"
+    },
+    {
+      "name": "Application::Main::Element::Window::Widget::ItemSearchListHelpWidget",
+      "vftableVaBase1": "0x0104977c",
+      "vftableVaBase2": "0x01049790",
+      "rttiTypeDescriptorVa": "0x012d1660",
+      "subsystem": "ItemSearchListContainer",
+      "wireBinding": "ui_only",
+      "wireBindingEvidence": "Help-overlay widget - no c2s emit (parallel to ItemSearchHelpWidget)"
+    },
+    {
+      "name": "Application::Lua::Script::Client::Control::_anon_FD906835::s_ItemSearchWidgetResumeChecker",
+      "vftableVa": "0x00fd537c",
+      "rttiTypeDescriptorVa": "0x012c06d0",
+      "subsystem": "ItemSearchListContainer",
+      "wireBinding": "lua_dispatch",
+      "wireBindingEvidence": "Anonymous Lua-side checker class waiting on s__waitForItemSearchWidget_00fd7184 - polls widget state during scripted retainer-search interactions"
+    }
+  ],
+  "rttiClassesAlreadyCataloged": [
+    {
+      "name": "Application::Main::Element::Window::Widget::ItemSearchPriceViewWidget",
+      "vftableVa": "0x00f9e71c",
+      "existingBcsRef": "BCS-Y-0347",
+      "boundOpcodeC2S": "0x01D9",
+      "emitterVa": "0x004FA750",
+      "subsystem": "RetainerItemSearchMarketplace",
+      "purpose": "Request server-side price listings for a specific item across retainers (1.x pre-marketboard price-search query). Slot-5 virtual emit packs a 0x20-byte payload."
+    },
+    {
+      "name": "Application::Main::Element::Window::Widget::ItemSearchHistoryViewWidget",
+      "vftableVa": "0x00fa030c",
+      "existingBcsRef": "BCS-Y-0347",
+      "boundOpcodeC2S": "0x01DA",
+      "emitterVa": "0x00532A40",
+      "subsystem": "RetainerItemSearchMarketplace",
+      "purpose": "Request server-side retainer purchase/sale history for an item or for the player. Slot-5 virtual emit packs a 0x20-byte payload."
+    },
+    {
+      "name": "Application::Main::Element::Window::Widget::ItemSearchDirectPurchaseWidget",
+      "vftableVa": "0x01049edc",
+      "existingBcsRef": "BCS-Y-0347",
+      "boundOpcodeC2S": "0x01DE",
+      "emitterVa": "0x0085E1B0",
+      "subsystem": "RetainerItemSearchMarketplace",
+      "purpose": "Send retainer direct-buy request (full purchase commit). Slot-11 virtual handler dispatched on Button_Search click, builds payload via FUN_0085D160."
+    },
+    {
+      "name": "Application::Network::LobbyClient::CharaMakeParamTmpl<UpdateRetainerSlotParam_,1>",
+      "vftableVa": "0x01128010",
+      "subsystem": "RetainerLobbyMenuPhase",
+      "purpose": "Lobby-side serializer template for retainer slot updates (rename/reserve/etc.). Routed through the LobbyClient CharaMakeOperation pipeline (BCS-Y-0018)."
+    },
+    {
+      "name": "Application::Network::LobbyClient::CharaMakeOperation",
+      "vftableVa": "0x011280BC (approx, see operation_opcode_map_outbound.json)",
+      "existingBcsRef": "BCS-Y-0018",
+      "subsystem": "RetainerLobbyMenuPhase",
+      "purpose": "Lobby operation-step dispatcher. Case 0x17 -> FUN_00DA4D80 RetainerListParser (the lobby RetainerList opcode 0x0017 carrying the 48-byte RetainerListRecord struct, see BCS-S-0008 / BCS-S-0009)."
+    }
+  ],
+  "opcodeMapping": {
+    "summary": "All retainer-marketplace c2s opcodes are already cataloged in existing manifests. Bazaar has no dedicated c2s opcode in 1.23b (handled via Lua event commands on generic event opcodes). 'Market' is a single PrivateAreaMaster zone name (PrivateAreaMasterMarket) plus MarketEntrance NPCs - no Market* opcode exists in 1.23b.",
+    "note": "Opcode 0x01DD c2s side is cataloged via BCS-Y-0325 (FUN_004C7300, RetainerSearchHistory request, 0x118 bytes). The matching s2c receiver class is NOT in client_receivers.json - probably routed via the queue-walk path (parallel to the linkshell-chat finding in docs/packet-dispatch-map.md).",
+    "retainerItemSearchMarketplaceCluster": [
+      {
+        "opcode": "0x01D7",
+        "direction": "c2s",
+        "size": "0x18",
+        "emitterVa": "0x00519440",
+        "existingBcsRef": "BCS-Y-0324 (collective meta entry)",
+        "refinement": "RetainerItemSearchMarketplace - small c2s record (one indexed slot value from caller's array at param_1[0x387]+idx*0x10). Sole caller FUN_0051A4A0. Maps to ItemSearchListWidget's owning hierarchy (sibling to FUN_00525E50 case-5 dispatch). Likely 'open search session' opening request that initiates the result stream subsequently filled by 0x01D8 / 0x01DF bodies.",
+        "subsystem": "RetainerItemSearchMarketplace",
+        "needsReverify": true,
+        "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+      },
+      {
+        "opcode": "0x01D8",
+        "direction": "c2s",
+        "size": "0x28",
+        "emitterVa": "0x0051AAC0",
+        "existingBcsRef": "BCS-Y-0324 (collective meta entry)",
+        "refinement": "RetainerItemSearchMarketplace - ItemSearchListWidget tick handler case 6 emit (called from FUN_00525E50, the 10-case state machine on +0x1214). Reads 5 widget fields (+0x1220, +0x1224, +0x1228, +0x1234, +0x1238) plus per-index value from +0xE28+(+0x1228)*4. Gated on +0x123C == +0x1240 (per-step rate limiter). Sets state to 7 on emit.",
+        "subsystem": "RetainerItemSearchMarketplace"
+      },
+      {
+        "opcode": "0x01D9",
+        "direction": "c2s",
+        "size": "0x20",
+        "emitterVa": "0x004FA750",
+        "existingBcsRef": "BCS-Y-0347",
+        "subsystem": "RetainerItemSearchMarketplace"
+      },
+      {
+        "opcode": "0x01DA",
+        "direction": "c2s",
+        "size": "0x20",
+        "emitterVa": "0x00532A40",
+        "existingBcsRef": "BCS-Y-0347",
+        "subsystem": "RetainerItemSearchMarketplace"
+      },
+      {
+        "opcode": "0x01DB",
+        "direction": "c2s",
+        "size": "0x18",
+        "emitterVa": "0x004C73D0",
+        "existingBcsRef": "BCS-Y-0327",
+        "refinement": "Tier-D Map emitter via FUN_004C7150 passthrough -> FUN_004E0240. Sole caller FUN_00874750(param_1, 0x1E=category=30); takes param_1+0x14 as gate flag. Routed alongside 0x01DC and 0x01DD from the same caller-family (FUN_00874570/00874750/008746E0 share the same 3-arg signature pattern reading param_1+0x14 gate).",
+        "subsystem": "RetainerItemSearchMarketplace"
+      },
+      {
+        "opcode": "0x01DC",
+        "direction": "c2s",
+        "size": "0x238",
+        "emitterVa": "0x004C7490",
+        "existingBcsRef": "BCS-Y-0326",
+        "refinement": "Tier-D Map emitter via FUN_004C7150 passthrough. Sole caller FUN_00874570 (smallest of the family, just 26 bytes, no gate). Carries 0x238-byte body (largest in the cluster - copies 0x89=137 dwords from param_2).",
+        "subsystem": "RetainerItemSearchMarketplace"
+      },
+      {
+        "opcode": "0x01DD",
+        "direction": "c2s",
+        "size": "0x118",
+        "emitterVa": "0x004C7300",
+        "existingBcsRef": "BCS-Y-0325",
+        "refinement": "Tier-D Map emitter via FUN_004C7150 passthrough. Sole caller FUN_008746E0(param_1, 0x1E=category=30). On success sets param_1+0xC=0 and param_1+0x14=0 (transitions to closed state). c2s side carries 264-byte payload starting with 00000000 03000000 02013200 0000... (per friendlist_search.pcapng observation).",
+        "subsystem": "RetainerItemSearchMarketplace"
+      },
+      {
+        "opcode": "0x01DE",
+        "direction": "c2s",
+        "size": "helper-built",
+        "emitterVa": "0x0085E1B0",
+        "existingBcsRef": "BCS-Y-0347 + BCS-Y-0320",
+        "subsystem": "RetainerItemSearchMarketplace"
+      },
+      {
+        "opcode": "0x01DF",
+        "direction": "c2s",
+        "size": "0x128",
+        "emitterVa": "0x0051A970",
+        "existingBcsRef": "BCS-Y-0324 (collective meta entry)",
+        "refinement": "RetainerItemSearchMarketplace - ItemSearchListWidget tick handler case 10 emit (called from FUN_00525E50 case 10). Reads widget field +0x1220, packs a 0x100-byte body block copied from FUN_00445210/004451F0 (string pool source pointer + size, identical to BCS-Y-0316 Chat helper pattern). Combined payload = 296 bytes including 0x40 dwords body. Gated on +0x123C == +0x1240. c2s sends 296-byte search criteria.",
+        "subsystem": "RetainerItemSearchMarketplace"
+      }
+    ]
+  },
+  "bazaarFindings": {
+    "uiControls": [
+      "Button_BazaarRepair @ 0x00f99e9c",
+      "Button_BazaarBuy @ 0x00f99eb0",
+      "Button_BazaarSell @ 0x00f99ec4",
+      "Button_BazaarAbort @ 0x00f99ed8",
+      "s_bazaarStatusVisibility @ 0x00f973ec",
+      "marketItem (x2) @ 0x00f979fc, 0x00f97a0c"
+    ],
+    "uiControlXrefs": "All Button_Bazaar* controls referenced exclusively by FUN_00f0b7a0 (static data-section initializer that builds a control-name table - NOT a runtime click handler). s_bazaarStatusVisibility referenced by FUN_005024a0 (a widget visibility helper). s_marketItem referenced by FUN_0051b8f0 (a stride helper, generic).",
+    "conclusion": "Bazaar does NOT have dedicated c2s opcodes in the 1.23b client static disassembly. The flow uses 3 layers: (1) Bazaar UI widget (BazaarEditWidget at 0x00f9da74) instantiates buttons + status text from static data; (2) Click events are dispatched into Lua via the event system using generic StartEvent/EventOpcode receivers (cluster 0x012E..0x01F5); (3) Server-side Lua handlers (BazaarTradeCommand.lua, BazaarCheckCommand.lua, BazaarDealCommand.lua, BazaarUndealCommand.lua) process the trades and emit standard inventory/gil/state-change s2c opcodes back. This is consistent with the dispatch-dichotomy documented in docs/network_dispatch_dual_paths.md - bazaar trade is queue-walk / event-driven, not per-opcode dispatch."
+  },
+  "marketFindings": {
+    "rttiHits": "Only 3 string-literal hits, none are class names: s_marketItem (x2) and s_PrivateAreaMasterMarket. PrivateAreaMaster is the FFXIV 1.x designation for instanced sub-zones like the Retainer Marketplace area in Limsa Lominsa, Gridania, Ul'dah; not a packet opcode.",
+    "conclusion": "No Market* opcode exists in 1.23b. The 1.x marketplace is a Retainer-Item-Search system, fully covered by opcodes 0x01D7..0x01DF (the RetainerItemSearchMarketplace cluster above).",
+    "needsReverify": true,
+    "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+  },
+  "retainerSpawnFindings": {
+    "rttiHits": "No RetainerSpawn or Retainer* RTTI class for actor spawning. Retainers are spawned as standard NPCs via the Add/SpawnNpc family (Actor cluster opcodes 0x00CA AddActor + 0x00C9 SetActorPosition / 0x00CD SetActorAppearance etc per BCS-Y-0525/0526) and identified server-side as IsRetainer flag (s_isRetainer_00fd4cd0, single reader at FUN_006f8660 - a chara-state check helper).",
+    "lobbySpawn": "Retainer creation/selection occurs in the LOBBY (RetainerMenuPhase + CharaMakeOperation case 0x17 RetainerList per BCS-Y-0018), not the map. Once a retainer is materialized in the map (via the OrdinaryRetainer.lua / RetainerFurniture.lua scripts hosting a populace actor), it's an actor like any other.",
+    "conclusion": "No dedicated RetainerSpawn opcode. Lobby retainer list = 0x0017 (BCS-Y-0019 deserializer FUN_00DA4D80, 48-byte RetainerListRecord per BCS-S-0009). Map-side retainer summoning uses the generic actor-add opcode 0x00CA (BCS-Y-0525) with the IsRetainer flag carried in actor appearance data."
+  },
+  "uncatalogedOpcodes": [],
+  "catalogChanges": {
+    "newBcsYEntries": [],
+    "newBcsSEntries": [],
+    "summary": "DRAFT MANIFEST per these conventions: symbols.json edits deferred. All Retainer/Bazaar/Market widget RTTI classes either (a) already attributed via BCS-Y-0018/0019/0347 + their wire structs at BCS-S-0008/0009, or (b) confirmed to have NO c2s wire binding (Bazaar = Lua event dispatch; BazaarEditWidget + RetainerListWidget have no opcode-emitting vtable slots). The 3 cluster-refinements-pass unidentified opcodes (0x01D7/0x01D8/0x01DF) are now confirmed as ItemSearchListWidget tick-handler dispatches via FUN_00525E50, completing the 1.x Retainer Marketplace c2s cluster mapping."
+  },
+  "evidenceFiles": [
+    "%BCS_GHIDRA_PROJECTS%/retainer_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%/bazaar_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%/market_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%/itemsearch_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%/widget_vtables.txt",
+    "%BCS_GHIDRA_PROJECTS%/candidate_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%/string_xrefs.txt",
+    "%BCS_GHIDRA_PROJECTS%/emitter_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%/caller_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%/parent_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%/run_retainer_symbols.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_bazaar_symbols.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_market_symbols.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_itemsearch_symbols.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_retainer_widget_vtables.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_decomp_candidates.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_xrefs_bazaar.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_decomp_unident.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_decomp_callers.bat",
+    "%BCS_GHIDRA_PROJECTS%/run_decomp_parents.bat"
+  ],
+  "openQuestions": [
+    {
+      "id": "q1",
+      "question": "Where do the s2c RetainerSearch* packets land in the client? client_receivers.json has no Retainer*Receiver / ItemSearch*Receiver. The cluster is likely queue-walk consumed (like linkshell chat in Q9) rather than slot-dispatched. Resolving requires either tracing how ItemSearchListWidget's tick handler at FUN_00525E50 reads incoming search results (look for the buffer feed path), or a live capture live capture of an active marketplace browse session.",
+      "deferral": "live capture deferred per these conventions; queue-walk path tracing is a follow-on phase."
+    },
+    {
+      "id": "q2",
+      "question": "What is the 0x100-byte body block at FUN_00445210/004451F0 that 0x01DF embeds in its payload? Likely a search-query-criteria template (item-filter struct, name-substring buffer, etc.) but the loader is shared infrastructure used by other cluster opcodes (e.g. WorldServerbound 0x00C8 per BCS-Y-0316). Cataloging this loader's body format would tighten the c2s schema for 0x01DF specifically.",
+      "deferral": "Not blocking - the 0x01DF binding is confirmed; the body shape characterization is an opcode-payload-schemas-style follow-on."
+    },
+    {
+      "id": "q3",
+      "question": "Confirm 0x1E (=30) is the cluster category id passed by FUN_008746E0/00874570/00874750 to the Tier-D emitters. Both pass 0x1E as the 2nd or 3rd arg to FUN_004C7300/04C73D0. Is this a category 'Search/Retainer' constant, or an action enum? Cross-referencing with how FUN_004C7150's FUN_004C45B0 gate uses its param_2 would resolve this. Likely a 'send-source category' for the Tier-C gating thunks (BCS-Y-0323) - the value gets passed through to the wire header but I haven't validated this with a packet trace."
+    }
+  ]
+}

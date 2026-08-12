@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Catalog LuaGlobalTentativeControl class artifacts (vftable + 3 ctor/dtor variants + RTTI dispatcher) and verify the +0x60 hypothesis empirically. Dump LuaGlobalTentativeControl's RTTI Base Class Array at 0x0115D8F8 to verify the DIAMOND inheritance hypothesis. Bonus: discover and catalog the sibling class Component::Lua::GameEngine::LuaTentativeControl.",
+  "method": {
+    "step1": "FindSymbolByName 'LuaGlobalTentativeControl' to recover the 8 RTTI anchors (vftable, vftable_meta_ptr, BCDs at offsets 0 and 96, CHD, BCA, COL, TD).",
+    "step2": "DumpMemRange of LuaGlobalTentativeControl's contiguous RTTI block (0x0115D8CC..0x0115D928 = 92 bytes covering BCD-96 + CHD + BCA + BCD-0). CHD says numBaseClasses=4; BCA lists self + 3 BCDs at 0x0115C030/0x0115C0F4/0x0115C110.",
+    "step3": "DumpMemRange of 3 unknown BCDs. TDs at 0x012BF458/0x012BF488/0x012BF4C8 = the same Lge memory-allocator chain (LgeBase + LgeCommonMemoryAllocator + LgeBasicMemoryAllocator) that LuaControl has at offset +4.",
+    "step4": "FindAllReferencesToAddress on vftable VA 0x0110E380 + COL 0x0119E1AC + TD 0x012C0A28. 3 vftable writers (FUN_00cccbf0 + FUN_00cccc00 + FUN_00cccc80) + 1 TD reader (FUN_00cdcba0).",
+    "step5": "Bulk decomp of the 4 functions. FUN_00cccbf0 = 9-byte primary ctor (8 derived-class callers). FUN_00cccc00 = 7-byte subobject/dtor variant (14 callers including 6 Unwind handlers). FUN_00cccc80 = 28-byte vector deleting destructor (no direct callers - vftable[0] dispatch). FUN_00cdcba0 = 924-byte RTTI dispatcher that routes between LuaControl + LuaTentativeControl + LuaGlobalTentativeControl.",
+    "step6": "Cross-reference the 8 FUN_00cccbf0 callers against existing BCS-Y catalog. All 8 map to cataloged ActorBase-derived class ctors.",
+    "step7": "FindSymbolByName 'LuaTentativeControl' to catalog the bonus-discovered sibling class TD.",
+    "step8": "Catalog 6 new BCS-Y entries + amend 12 existing entries with +0x60 anchor identification."
+  },
+  "key_findings": [
+    "**DIAMOND inheritance CONFIRMED**: LuaGlobalTentativeControl's BCA at 0x0115D8F8 has 4 entries: self + LgeBase + LgeCommonMemoryAllocator + LgeBasicMemoryAllocator. Identical to LuaControl's secondary chain. StatusBase therefore reaches LgeBase via TWO paths: via LuaControl (offset 4) AND via LuaGlobalTentativeControl (offset 0x64 within StatusBase). Confirms the DIAMOND hypothesis.",
+    "**+0x60 hypothesis EMPIRICALLY VERIFIED**: 8 derived classes write LuaGlobalTentativeControl::vftable at object offset +0x60 in their ctor body. The 8 are Global, CommandBase, JudgeBase, StatusBase, String, Math, QuestBase, Table. **prediction REFINED**: the earlier prediction was StatusBase + 9 MI ActorBase derivatives (JudgeBase, GroupBase, ItemBase, QuestBase, Table, WidgetHandle, CommandBase, String, Math) = 10 total. Empirical result: 8 actual classes. GroupBase, ItemBase, WidgetHandle are NOT in the caller list (they do NOT have LuaGlobalTentativeControl at +0x60). Global IS in the caller list despite not being explicitly named earlier.",
+    "**3 ctor/dtor variants enumerated**: FUN_00cccbf0 (primary ctor, 9 bytes), FUN_00cccc00 (subobject ctor / SEH-unwind dtor variant, 7 bytes), FUN_00cccc80 (vector deleting destructor, 28 bytes). All 3 write LuaGlobalTentativeControl::vftable to *param_1; the variants differ in additional behaviors (FUN_00cccc80 conditionally frees the object).",
+    "**Sibling class DISCOVERED**: Component::Lua::GameEngine::LuaTentativeControl at TD VA 0x012C0828 - sibling of LuaGlobalTentativeControl. Discovered via the RTTI dispatcher FUN_00cdcba0 which references this TD alongside LuaControl + LuaGlobalTentativeControl. Full RTTI base-class enumeration deferred.",
+    "**3-class tentative-control hierarchy mapped**: LuaControl (base) + LuaTentativeControl (singleton transient) + LuaGlobalTentativeControl (per-class transient) + LuaManyTentativeControlCreator (factory). 'Tentative' is the Japanese game-dev shorthand for transient/draft state during initialization.",
+    "**RTTI dispatcher FUN_00cdcba0 IDENTIFIED**: 924-byte SEH-wrapped helper that uses __RTDynamicCast to discriminate the 3 sibling classes at runtime, routing to per-class registration handlers (FUN_00cd5ca0 for LuaTentativeControl, FUN_00cd5e10 for LuaGlobalTentativeControl, default-path for LuaControl-only). Single caller: FUN_00cc7800. Aligns with the registry-init finding."
+  ],
+  "new_bcsy_entries_summary": {
+    "vftable_anchor": 1,
+    "ctor_dtor_variants": 3,
+    "rtti_dispatcher": 1,
+    "bonus_sibling_td": 1,
+    "amendments": 12,
+    "total_bcsy_added": 6,
+    "id_range": "BCS-Y-1509..BCS-Y-1514"
+  },
+  "lgtc_bca_entries": [
+    "LuaGlobalTentativeControl self BCD @ 0x0115D90C (offset 0)",
+    "LgeBase BCD @ 0x0115C030 (offset 4, BCS-Y-1477 reused)",
+    "LgeCommonMemoryAllocator BCD @ 0x0115C0F4 (offset 4, BCS-Y-1478 reused)",
+    "LgeBasicMemoryAllocator BCD @ 0x0115C110 (offset 4, BCS-Y-1479 reused)"
+  ],
+  "derived_classes_with_lgtc_at_offset_60": [
+    "BCS-Y-1395 StatusBase",
+    "BCS-Y-1460 Global",
+    "BCS-Y-1454 JudgeBase",
+    "BCS-Y-1469 CommandBase",
+    "BCS-Y-1470 String",
+    "BCS-Y-1472 Math",
+    "BCS-Y-1464 QuestBase",
+    "BCS-Y-1465 Table"
+  ],
+  "predicted_but_absent_from_caller_set": [
+    "GroupBase (claimed by the - NOT in caller list)",
+    "ItemBase (claimed by the - NOT in caller list)",
+    "WidgetHandle (claimed by the - NOT in caller list)"
+  ],
+  "uncataloged_subobject_or_dtor_pairs_observed": [
+    "FUN_00776E60 - JudgeBase subobject/dtor (pair of FUN_00776DF0)",
+    "FUN_00777120 - String subobject/dtor (pair of FUN_007770B0)",
+    "FUN_006DDE00 - Math subobject/dtor (pair of FUN_006DDD80)",
+    "FUN_00758930 - CommandBase subobject/dtor (pair of FUN_007588C0)",
+    "FUN_00777280 - Table subobject/dtor (pair of FUN_00777210)",
+    "FUN_00776FC0 - QuestBase subobject/dtor (pair of FUN_00776F50)"
+  ],
+  "deferred_followups": [
+    "Decomp the 6 uncataloged subobject/dtor pairs (FUN_00776E60, FUN_00777120, FUN_006DDE00, FUN_00758930, FUN_00777280, FUN_00776FC0) to verify they are dtor variants of the 6 derived classes (predicted by pair-pattern, not yet confirmed).",
+    "Dump LuaTentativeControl's RTTI Base Class Array at 0x0115D638 to enumerate its base classes (likely matches LuaGlobalTentativeControl structurally per the adjacent vftable layout 0x0110E360 vs 0x0110E380).",
+    "Decomp FUN_00cd5ca0 (LuaTentativeControl registration handler) and FUN_00cd5e10 (LuaGlobalTentativeControl registration handler) to understand the class-instance-registration semantics.",
+    "Investigate FUN_00cc7800 (single caller of the RTTI dispatcher BCS-Y-1513) to find the call-site context that drives the dispatcher.",
+    "Why are GroupBase / ItemBase / WidgetHandle exempt from the +0x60 = LuaGlobalTentativeControl pattern? Examine their ctor bodies - they may have a DIFFERENT secondary vftable at +0x60, or may not be true MI classes.",
+    "Decomp LuaGlobalTentativeControl::vftable slots (read 4-8 slots from 0x0110E380) to identify the virtual methods - particularly slot 0 (dtor) which is the only known polymorphic dispatch path."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1498 -> 1504 (+6 BCS-Y: vftable + 3 ctor/dtor variants + RTTI dispatcher + LuaTentativeControl TD bonus)",
+  "files_changed": [
+    "manifests/symbols.json: +6 entries (BCS-Y-1509..1514), 12 amendments",
+    "manifests/lgtc.json (NEW, this file)",
+    "tools/ghidra/logs/lgtc_symbols.txt (NEW)",
+    "tools/ghidra/logs/lgtc_rtti.txt (NEW)",
+    "tools/ghidra/logs/lgtc_bcds.txt (NEW)",
+    "tools/ghidra/logs/lgtc_all_refs.txt (NEW)",
+    "tools/ghidra/logs/lgtc_ctors_decomp.txt (NEW)",
+    "tools/ghidra/logs/c84_ltc_symbols.txt (NEW)"
+  ]
+}

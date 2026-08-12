@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Complete StatusBase polymorphic interface characterization: decomp 7 originally-targeted remaining slots (9, 12-14, 20, 21-23, 24), extend dump past 0x00FDF940 to find boundary, and decomp newly-discovered extension slots (25-33) + additional MI vftables (4 of them) after the secondary boundary. KEY DISCOVERIES: StatusBase secondary vftable has 34 slots (not 25), the 9 extension slots are shared with GroupBase (only slot 33 class-specific), and StatusBase has 4 ADDITIONAL MI base vftables for 3 NEW INTERFACES (SpreadSheetLoadedDataDisappearListenerInterface, Command::CommandInterface, LuaActorImplInterface).",
+  "method": {
+    "step1": "DumpMemRange extension 0x00FDF940..0x00FDF9C0 (32 dwords/128 bytes) past the dump boundary. Output: c90_statusbase_extension.txt.",
+    "step2": "Bulk decomp the 7 originally-targeted slot impls (FUN_005C5C80, FUN_00712A80, FUN_00C37620, FUN_006D6F80, FUN_0053C440, FUN_0071B1E0, FUN_00AB7340). Output: c90_remaining_slots_decomp.txt.",
+    "step3": "Bulk decomp the 8 newly-found extension slot impls (slots 26-33 except slot 31 which is known no-op) PLUS the 5 first slots of the 4 additional MI vftables (FUN_00776540, FUN_00776500, FUN_007767F0, FUN_00776900, FUN_00776930). Output: c90_extension_decomp.txt.",
+    "step4": "Catalog 18 new BCS-Y entries (2 of original 20 skipped as already-existing: FUN_005C5C80=BCS-Y-0528, FUN_00A72A20=BCS-Y-0792) + 3 amendments to BCS-Y-1398 (boundary + extension slot table), BCS-Y-1397 (StatusBase 5+ MI vftables), BCS-Y-1395 (StatusBase ctor 6-vftable awareness)."
+  },
+  "key_findings": [
+    "**StatusBase secondary vftable boundary at 0x00FDF964**: 34 slots total (0-33), not 25 as the said. the 25-slot count was a dump-truncation artifact - the vftable continued through slot 33.",
+    "**9 'extension slots' (25-33) are shared between LTC and LGTC**: slots 25-32 are identical between StatusBase and GroupBase; only slot 33 differs (StatusBase=FUN_006DBFA0 void stub vs GroupBase=FUN_006DD160 class-specific init). **the 'GroupBase has 9 extra extension slots' hypothesis FALSIFIED**.",
+    "**StatusBase has 4 ADDITIONAL MI base vftables AFTER the secondary** at 0x00FDF964..0x00FDF9C0:",
+    "  - **Vftable A** at 0x00FDF968 (2 slots: dtor FUN_00776540 + cleanup FUN_00776500). Unlabeled base class; the cleanup pattern (nullifying fields at sibling+0xAC/0xAD/0xB0) suggests an event-sink/observer base.",
+    "  - **SpreadSheetLoadedDataDisappearListenerInterface** at 0x00FDF974 (2 slots: writer FUN_007767F0 + __purecall) - **NEW interface discovered**. Spreadsheet/ItemSheet loaded-data lifecycle listener.",
+    "  - **Command::CommandInterface** at 0x00FDF980 (2 slots: writer FUN_00776900 + __purecall) - **NEW interface discovered**. Command-namespace interface; StatusBase straddles 2 sub-namespaces' contracts.",
+    "  - **LuaActorImplInterface** at 0x00FDF98C (13 slots: writer FUN_00776930 + 12 __purecalls) - **NEW interface discovered**. Root-level (no sub-namespace) interface; 12 pure-virtual methods that concrete StatusBase derivatives must implement.",
+    "**Total StatusBase vftable footprint = 6 vftables / 240 bytes** (0x00FDF8D0..0x00FDF9C0): primary (1 slot) + secondary (34 slots) + 4 additional MI base vftables. Consistent with the RTTI finding of 11 base classes (some chain-inherited bases don't add new vftables).",
+    "**Engine-wide stub inventory expanded**: 4 distinct 'void return' variants (BCS-Y-1532 FUN_00712B40, BCS-Y-1533 FUN_006DBE80, pre-existing BCS-Y-0792 FUN_00A72A20, BCS-Y-1569 FUN_006DBFA0) + 3 'return zero' variants (pre-existing BCS-Y-0528 FUN_005C5C80 byte, BCS-Y-1558 FUN_00C37620 dword, BCS-Y-1564 FUN_0060CFC0 dword) + 2 '-1 returner' variants (BCS-Y-1534 FUN_005B8D90, BCS-Y-1560 FUN_0053C440) + 1 'return 1' (BCS-Y-1559 FUN_006D6F80). Compiler emits separate stubs per ABI/signature - 10 stub variants total across the LTC/LGTC interface.",
+    "**Slot 12 reveals a shared instance field at +0x5c**: BCS-Y-1557 (FUN_00712A80, 6-byte getter) reads `*(byte*)(this + 0x5c)`. Appears at slot 12 in BOTH StatusBase and GroupBase (likely all 11). Confirms there's a STANDARDIZED INSTANCE FIELD at offset 0x5c across all LTC/LGTC-derived classes - probably an isAlive or isInited boolean."
+  ],
+  "new_bcsy_entries_summary": {
+    "original_target_slots": 6,
+    "extension_slots": 7,
+    "mi_subobject_slots": 2,
+    "new_interface_vftable_writers": 3,
+    "amendments": 3,
+    "total_bcsy_added": 18,
+    "skipped_preexisting": 2,
+    "id_range": "BCS-Y-1556..BCS-Y-1575 (skipped 1556+1565)",
+    "amendment_targets": ["BCS-Y-1398", "BCS-Y-1397", "BCS-Y-1395"],
+    "preexisting_entries_referenced": ["BCS-Y-0528", "BCS-Y-0792"]
+  },
+  "deferred_followups": [
+    "Decomp the 3 new interfaces' vftables in full (especially LuaActorImplInterface's 13-slot contract with 12 abstracts) to understand the polymorphic contracts they impose on StatusBase derivatives.",
+    "Locate the 3 new interfaces' TDs (Type Descriptors) in the binary and add as RTTI catalog entries with composition mapping.",
+    "Cross-class survey: do all 11 LTC/LGTC-derived classes have the same 4 additional MI base vftables, or does this vary per-class? Sample 2-3 other classes (e.g., GroupBase + JudgeBase + Global) past their secondary vftable boundary.",
+    "Locate the unlabeled 'vftable A' base class (whose dtor is FUN_00776540 + cleanup FUN_00776500). The cleanup pattern (sibling+0xAC/0xAD/0xB0 nullification) hints at an event-sink class - find a labeled vftable in the binary with these same dtor/cleanup VAs to identify the class name.",
+    "Decomp the 12 pure-virtual slots of LuaActorImplInterface's vftable - they're all __purecall in StatusBase, but concrete StatusBase derivatives must implement these. Find a concrete derivative (CommandableStatus, ConditionalStatus, etc.) and dump its LuaActorImplInterface vftable slots.",
+    "Re-decomp StatusBase::ctor (BCS-Y-1395) with the full 6-MI-base awareness to identify where each base's vftable is written during construction."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1545 -> 1563 (+18 BCS-Y; 2 skipped as already-existing at BCS-Y-0528 and BCS-Y-0792)",
+  "files_changed": [
+    "manifests/symbols.json: +18 entries (BCS-Y-1557..1575 with gaps at 1565), 3 amendments (BCS-Y-1398, 1397, 1395)",
+    "manifests/statusbase_complete.json (NEW, this file)",
+    "tools/ghidra/logs/c90_statusbase_extension.txt (NEW)",
+    "tools/ghidra/logs/c90_remaining_slots_decomp.txt (NEW)",
+    "tools/ghidra/logs/c90_extension_decomp.txt (NEW)",
+    "tools/extractors/append_statusbase_complete.py (NEW)"
+  ]
+}

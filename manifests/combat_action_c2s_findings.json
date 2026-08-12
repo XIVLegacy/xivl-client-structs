@@ -1,0 +1,377 @@
+{
+  "generated": "2026-05-20",
+  "scope": "Trace the client-side c2s action-use emission slice through opcode 0x012D, its packet builder, upstream event/command wrappers, and the CharaActionController hypothesis.",
+  "confirmedOpcode": {
+    "opcode": 301,
+    "opcodeHex": "0x012d",
+    "name": "EventStartPacket",
+    "serverboundCatalog": "xivl-opcodes:data/opcodes.json MapServerbound 0x012d",
+    "pcapCorrelation": {
+      "payloadLengths": [
+        216
+      ],
+      "observedCombatCaptures": [
+        "combat_autoattack.pcapng",
+        "combat_skills.pcapng",
+        "party_battle_leve.pcapng"
+      ],
+      "layoutSamples": 60,
+      "mapActionUseSamples": 126
+    }
+  },
+  "builderTrace": [
+    {
+      "name": "MapEventStartPacketBuilder_FUN_00776760",
+      "bcsId": "BCS-Y-0426",
+      "va": "0x00776760",
+      "role": "canonical packet builder",
+      "recordWrites": [
+        {
+          "recordOffset": "0x00",
+          "value": "0x012D",
+          "meaning": "opcode"
+        },
+        {
+          "recordOffset": "0x04",
+          "value": "0xC8",
+          "meaning": "bodySize including game-message prefix"
+        },
+        {
+          "recordOffset": "0x18",
+          "source": "param_2",
+          "meaning": "triggerActorId/selfActorId"
+        },
+        {
+          "recordOffset": "0x1C",
+          "source": "param_3",
+          "meaning": "ownerActorId/targetActorId"
+        },
+        {
+          "recordOffset": "0x20",
+          "source": "param_4",
+          "meaning": "serverCodes/actionOrAbilityId"
+        },
+        {
+          "recordOffset": "0x24",
+          "source": "param_5",
+          "meaning": "unknown/secondary argument"
+        },
+        {
+          "recordOffset": "0x28",
+          "source": "param_6",
+          "meaning": "eventType"
+        },
+        {
+          "recordOffset": "0x29",
+          "source": "param_7[0..3] qwords",
+          "meaning": "eventName prefix/inline data"
+        },
+        {
+          "recordOffset": "0x49",
+          "source": "param_8[0..0x7F]",
+          "meaning": "Lua parameter blob / event tail"
+        }
+      ],
+      "sendsVia": "FUN_004D6D30 -> FUN_004E0240 -> FUN_00DAE010"
+    },
+    {
+      "name": "EventStartServerCallWrapper_FUN_0075E230",
+      "bcsId": "BCS-Y-0427",
+      "va": "0x0075E230",
+      "role": "high-level command/event wrapper",
+      "directCallers": [
+        "FUN_00894630",
+        "FUN_00894800"
+      ]
+    },
+    {
+      "name": "EventStartRawRecordWrapper_FUN_0075E1C0_FUN_0089E0D0",
+      "bcsId": "BCS-Y-0428",
+      "va": "0x0075E1C0;0x0089E0D0",
+      "role": "raw/lower-level EventStart wrapper pair",
+      "directCallers": [
+        "FUN_006E2FB0",
+        "FUN_00893B50",
+        "FUN_006E2E40"
+      ]
+    },
+    {
+      "name": "EventStartRouteWrapper_FUN_0075E3A0",
+      "bcsId": "BCS-Y-0429",
+      "va": "0x0075E3A0",
+      "role": "tag/flag route wrapper",
+      "directCallers": [
+        "FUN_00897310",
+        "FUN_006EE680",
+        "FUN_00895A30"
+      ]
+    },
+    {
+      "name": "EventStartFollowupWrapper_FUN_0075E510",
+      "bcsId": "BCS-Y-0430",
+      "va": "0x0075E510",
+      "role": "event continuation wrapper",
+      "directCallers": [
+        "FUN_00897310",
+        "FUN_00895A30"
+      ]
+    }
+  ],
+  "upstreamTrace": [
+    {
+      "name": "EventStartStateMachine_FUN_00897310_00895A30",
+      "bcsId": "BCS-Y-0432",
+      "summary": "Allocates or advances 0x2C-byte event records and routes to FUN_0075E3A0/FUN_0075E510."
+    },
+    {
+      "name": "ActorDirectorEventStartBridge_FUN_006EE680",
+      "bcsId": "BCS-Y-0433",
+      "summary": "Lua Control ActorBase/DirectorBase bridge; aligns with PlayerBaseClass._onCommandEvent -> _callServerOnCommand_cpp."
+    }
+  ],
+  "charaActionControllerFinding": {
+    "bcsId": "BCS-Y-0434",
+    "rttiEntry": "BCS-Y-0055",
+    "vftable": "0x0103E468",
+    "slots": [
+      {
+        "slot": 0,
+        "va": "0x008462F0",
+        "role": "destructor"
+      },
+      {
+        "slot": 1,
+        "va": "0x008450B0",
+        "role": "reset/clear queues"
+      },
+      {
+        "slot": 2,
+        "va": "0x00844080",
+        "role": "stub"
+      },
+      {
+        "slot": 3,
+        "va": "0x00845430",
+        "role": "queue update/tick"
+      },
+      {
+        "slot": 4,
+        "va": "0x00844090",
+        "role": "stub"
+      }
+    ],
+    "negativeXrefResult": "No direct xrefs from CharaActionController slots to FUN_00776760, FUN_0075E230, FUN_0075E3A0, FUN_0075E510, or FUN_004D6D30.",
+    "interpretation": "CharaActionController is local action/visual playback queue infrastructure for the receive-side echo, not the c2s action sender."
+  },
+  "payloadLayout": {
+    "direction": "c2s",
+    "opcode": 301,
+    "opcodeHex": "0x012d",
+    "name": "EventStartPacket",
+    "aliases": [
+      "MapActionUse",
+      "CommandEvent action-use frame"
+    ],
+    "totalSize": 216,
+    "bodyHeaderSize": 16,
+    "payloadSize": 184,
+    "offsetBasis": "application payload offsets after the 16-byte game-message prefix; packet-builder record data begins at record+0x18; builder record[1]=200 includes the game-message prefix plus this 0xb8 application payload",
+    "dispatchPattern": "event_start_builder_via_zone_thunk",
+    "packetRecordHeader": [
+      {
+        "offset": 0,
+        "size": 4,
+        "type": "u32",
+        "name": "opcode",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt: FUN_00776760 writes *param_1 = 0x12d"
+      },
+      {
+        "offset": 4,
+        "size": 4,
+        "type": "u32",
+        "name": "bodySize",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt: FUN_00776760 writes param_1[1] = 200"
+      }
+    ],
+    "fields": [
+      {
+        "offset": 0,
+        "size": 4,
+        "type": "u32",
+        "name": "triggerActorId_or_selfActorId",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt (FUN_00776760 param_2 -> record+0x18)"
+      },
+      {
+        "offset": 4,
+        "size": 4,
+        "type": "u32",
+        "name": "ownerActorId_or_targetActorId",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt (FUN_00776760 param_3 -> record+0x1C)"
+      },
+      {
+        "offset": 8,
+        "size": 4,
+        "type": "u32",
+        "name": "serverCodes_or_actionOrAbilityId",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt (FUN_00776760 param_4 -> record+0x20)"
+      },
+      {
+        "offset": 12,
+        "size": 4,
+        "type": "u32",
+        "name": "unknown_or_secondaryArgument",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt (FUN_00776760 param_5 -> record+0x24)"
+      },
+      {
+        "offset": 16,
+        "size": 1,
+        "type": "u8",
+        "name": "eventType",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt (FUN_00776760 param_6 -> record+0x28)"
+      },
+      {
+        "offset": 17,
+        "size": 32,
+        "type": "bytes/cstring-prefix",
+        "name": "eventNamePrefix_or_inlineData",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt (four qwords; param_7 -> record+0x29)",
+        "note": "The client builder stages the first 0x20 bytes; a fixed copy."
+      },
+      {
+        "offset": 49,
+        "size": 128,
+        "type": "bytes",
+        "name": "luaParamBlob_or_eventTail",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt (0x20 dwords; param_8 -> record+0x49)"
+      },
+      {
+        "offset": 177,
+        "size": 7,
+        "type": "bytes",
+        "name": "reservedOrAlignmentTail",
+        "evidence": "0xD8 total subpacket - 0x10 game-message prefix = 0xB8 payload; explicit FUN_00776760 copies reach offset 0xB0."
+      }
+    ],
+    "builderVariants": [
+      {
+        "builderVa": "0x00776760",
+        "builderName": "FUN_00776760",
+        "bcsyRef": "BCS-Y-0426",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt",
+        "note": "Canonical builder that writes opcode 0x012D and body size 200."
+      },
+      {
+        "builderVa": "0x0075E230",
+        "builderName": "FUN_0075E230",
+        "bcsyRef": "BCS-Y-0427",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_012d_callers_decomp.txt",
+        "note": "High-level server-call wrapper used by event-object command/start callers."
+      },
+      {
+        "builderVa": "0x0075E3A0",
+        "builderName": "FUN_0075E3A0",
+        "bcsyRef": "BCS-Y-0429",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_012d_callers_decomp.txt",
+        "note": "Route wrapper used by actor/director and event-state paths."
+      },
+      {
+        "builderVa": "0x0075E510",
+        "builderName": "FUN_0075E510",
+        "bcsyRef": "BCS-Y-0430",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_012d_callers_decomp.txt",
+        "note": "Follow-up/continuation EventStart wrapper."
+      },
+      {
+        "builderVa": "0x0076E270",
+        "builderName": "FUN_0076E270",
+        "bcsyRef": "BCS-Y-0431",
+        "evidence": "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt",
+        "note": "Diagnostic Lua-error emitter; same opcode/size but not normal action use."
+      }
+    ],
+    "builderVa": "0x00776760",
+    "evidenceVa": "0x00776760",
+    "bcsyRef": "BCS-Y-0426",
+    "bcssRef": "BCS-S-0034",
+    "sendPath": "FUN_00776760 -> FUN_004D6D30 (BCS-Y-0323) -> FUN_004E0240 -> FUN_00DAE010",
+    "pcapCorrelation": {
+      "observedIn": [
+        "combat_autoattack.pcapng",
+        "combat_skills.pcapng",
+        "party_battle_leve.pcapng"
+      ],
+      "payloadLengths": [
+        216
+      ],
+      "layoutSamples": 60,
+      "legacySamples": 126
+    },
+    "notes": "The combat-action-c2s-findings pass. Confirms c2s 0x012D as EventStartPacket. Combat action-use evidence from the pcap corpus maps to this same fixed-size EventStart frame; decomp shows the packet-builder literal 0x012D and size 200. The CharaActionController family did not xref to this builder and is treated as playback/receive-side queue infrastructure, not the c2s sender."
+  },
+  "newCatalogEntries": {
+    "symbols": [
+      {
+        "id": "BCS-Y-0426",
+        "name": "MapEventStartPacketBuilder_FUN_00776760"
+      },
+      {
+        "id": "BCS-Y-0427",
+        "name": "EventStartServerCallWrapper_FUN_0075E230"
+      },
+      {
+        "id": "BCS-Y-0428",
+        "name": "EventStartRawRecordWrapper_FUN_0075E1C0_FUN_0089E0D0"
+      },
+      {
+        "id": "BCS-Y-0429",
+        "name": "EventStartRouteWrapper_FUN_0075E3A0"
+      },
+      {
+        "id": "BCS-Y-0430",
+        "name": "EventStartFollowupWrapper_FUN_0075E510"
+      },
+      {
+        "id": "BCS-Y-0431",
+        "name": "EventStartDiagnosticEmitter_FUN_0076E270"
+      },
+      {
+        "id": "BCS-Y-0432",
+        "name": "EventStartStateMachine_FUN_00897310_00895A30"
+      },
+      {
+        "id": "BCS-Y-0433",
+        "name": "ActorDirectorEventStartBridge_FUN_006EE680"
+      },
+      {
+        "id": "BCS-Y-0434",
+        "name": "CharaActionControllerUpdateSlot_FUN_00845430"
+      }
+    ],
+    "struct": {
+      "id": "BCS-S-0034",
+      "name": "MapEventStartPayload"
+    },
+    "dataDependencyCatalog": "payloadStructs.c2s_0x012d",
+    "siblingMirror": "xivl-captures/data/payload_layouts.json decompLayouts.c2s.0x012d"
+  },
+  "openQuestions": [
+    "The exact combat semantic split between serverCodes/action id; the Lua param blob remains unresolved; BCS-S-0013 keeps the pcap-only action-use labels; MapEventStartPayload records decomp",
+    "The UI action-bar button path to PlayerBaseClass._onCommandEvent was sampled through Lua script strings but not fully decompiled into a concrete C++ binder in this slice."
+  ],
+  "sourceRefs": [
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_immediates.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_opcode_012d_candidates_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_012d_callers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_012d_upstream_callers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_builder_and_action_refs.txt",
+    "manifests\\combat_action_c2s_findings.json",
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_chara_action_controller_vtable.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_chara_action_controller_slots_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub3a_chara_action_controller_ctor_decomp.txt",
+    "build/lua/729s9/uy9l5s/uy9l5s89r57y9rr.lua:1820",
+    "build/lua/729s9/uy9l5s/uy9l5s89r57y9rr_p.lua:184",
+    "xivl-opcodes:data/opcodes.json",
+    "xivl-opcodes:data/vendor/captures/payload_layouts.json",
+    "xivl-opcodes:captures/*.pcapng"
+  ]
+}

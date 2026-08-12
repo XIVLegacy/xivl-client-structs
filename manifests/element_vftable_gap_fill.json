@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "status": "manifest_complete",
+  "scope": "Promote uncataloged Application::Main::Element::* vftables. The FUN_0058CCA0 caller-tree pass inventoried 25 Element classes using shared FUN_004D8860 as vftable[9]; the element-vtable8-bulk pass cataloged most via the vtable[8] async-tier bulk pass but missed 7 (LuaDebugLog + SqwtElement + WidgetElement + EffectElement + DebugWindow + LuaDebugOut + LuaDebugSelect + DebugInfoElement primary). Bulk-promote these gap-fill entries.",
+  "method": {
+    "step1": "Cross-reference the FUN_0058CCA0 caller-tree pass's `vtable_owner_table_for_004D8860` (25 classes) against current symbols.json entries with notes containing 'Element vtable[8]'.",
+    "step2": "Identify gap: 7 Element classes have NO cataloged vtable entries (primary or secondary). These are predominantly Debug/UI elements (LuaDebug* family, Sqwt, Widget, Effect, DebugWindow).",
+    "step3": "Bulk-promote the 7 primary vftables. Secondary vftables (MI base subobjects) are deferred to a future cleanup pass if needed - the primary is the architecturally significant one (it's what gets routed through FUN_004DC690's generic actor-cluster fallthrough)."
+  },
+  "key_findings": [
+    "The element-vtable8-bulk pass caught approximately 18 of the 25 Element classes from the FUN_004D8860 vtable_owner_table. The 7 gaps are Debug/UI-subsystem classes (LuaDebug family + Sqwt + Widget + Effect + DebugWindow + DebugInfoElement primary). These are infrastructure classes for the in-game Lua debug console and UI windowing system - low-priority for gameplay analysis but useful for completeness.",
+    "Each missing Element class has a primary vftable in .rdata at the listed VA. Naming convention follows the element-vtable8-bulk pass ('<ClassName>_vftable_primary') for consistency.",
+    "DebugInfoElement secondary is cataloged but primary is not - asymmetric gap. Added in this manifest. NOTE (verification): on re-check, BOTH DebugInfoElement vftable_primary (0x00FC6FAC = BCS-Y-0779) AND vftable_secondary (0x00FC70D0 = BCS-Y-0780) were ALREADY cataloged (manifests/element_vtable8_bulk.json line 54). This element-vftable-gap-fill finding was based on a stale catalog check; no actual gap exists. The proposed_bcs_y_entries array correctly does NOT include a DebugInfoElement entry - the element-vftable-gap-fill pass only added the 7 OTHER classes. No catalog correction needed.",
+    "All 7 newly cataloged vtables route their slot 9 through FUN_004D8860 (BCS-Y-0280 shared Element::vftable[9]) which falls through to per-opcode generic handlers. Per the FUN_0058CCA0 caller-tree pass finding, these classes do NOT have bespoke per-class dispatchers (unlike CharaElement at FUN_0058CCA0 or MapLayoutElement at FUN_0059CED0)."
+  ],
+  "proposed_bcs_y_entries": [
+    {"name": "LuaDebugLog_vftable_primary", "kind": "data", "address": "0x00FA9AD8", "confidence": "confirmed", "summary": "Primary vtable of Application::Main::Element::Window::LuaDebug::LuaDebugLog. Slot 9 (+0x24) = FUN_004D8860 shared Element dispatcher (BCS-Y-0280). vtable_owner_table_for_004D8860 entry."},
+    {"name": "SqwtElement_vftable_primary", "kind": "data", "address": "0x00FC2008", "confidence": "confirmed", "summary": "Primary vtable of Application::Main::Element::Window::SqwtElement. Slot 9 (+0x24) = FUN_004D8860 shared Element dispatcher (BCS-Y-0280). vtable_owner_table_for_004D8860 entry."},
+    {"name": "WidgetElement_vftable_primary", "kind": "data", "address": "0x00FC21C8", "confidence": "confirmed", "summary": "Primary vtable of Application::Main::Element::Window::WidgetElement. Slot 9 (+0x24) = FUN_004D8860 shared Element dispatcher (BCS-Y-0280). vtable_owner_table_for_004D8860 entry."},
+    {"name": "EffectElement_vftable_primary", "kind": "data", "address": "0x00FC43D0", "confidence": "confirmed", "summary": "Primary vtable of Application::Main::Element::Effect::EffectElement. Slot 9 (+0x24) = FUN_004D8860 shared Element dispatcher (BCS-Y-0280). vtable_owner_table_for_004D8860 entry."},
+    {"name": "DebugWindow_vftable_primary", "kind": "data", "address": "0x00FC5A68", "confidence": "confirmed", "summary": "Primary vtable of Application::Main::Element::Window::Debug::DebugWindow. Slot 9 (+0x24) = FUN_004D8860 shared Element dispatcher (BCS-Y-0280). vtable_owner_table_for_004D8860 entry."},
+    {"name": "LuaDebugOut_vftable_primary", "kind": "data", "address": "0x00FC60E0", "confidence": "confirmed", "summary": "Primary vtable of Application::Main::Element::Window::LuaDebug::LuaDebugOut. Slot 9 (+0x24) = FUN_004D8860 shared Element dispatcher (BCS-Y-0280). vtable_owner_table_for_004D8860 entry."},
+    {"name": "LuaDebugSelect_vftable_primary", "kind": "data", "address": "0x00FC6690", "confidence": "confirmed", "summary": "Primary vtable of Application::Main::Element::Window::LuaDebug::LuaDebugSelect. Slot 9 (+0x24) = FUN_004D8860 shared Element dispatcher (BCS-Y-0280). vtable_owner_table_for_004D8860 entry."}
+  ]
+}

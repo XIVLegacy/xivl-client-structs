@@ -1,0 +1,78 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "Lua N-API c2s trace",
+  "generated": "2026-05-20",
+  "title": "Lua N-API _setActorExtraStat c2s trace findings",
+  "scope": "Trace whether the CharaBase Lua N-API setter _setActorExtraStat emits a client-to-server packet or rides the generic EventStartPacket path.",
+  "sourceRefs": [
+    "docs\\status-effect-lifecycle.md",
+    "docs\\combat-action-c2s.md",
+    "manifests\\control_class_napi_field_access.json",
+    "manifests\\control_class_napi_field_access_recursive.json",
+    "manifests\\lua_api_index.json",
+    "manifests\\lua_to_opcode.json",
+    "%BCS_GHIDRA_PROJECTS%\\sub3c_substat_readers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\lua_napi_c2s_trace_refs.txt",
+    "%BCS_GHIDRA_PROJECTS%\\lua_napi_c2s_trace_decomp.txt",
+    "build/lua"
+  ],
+  "result": {
+    "status": "no_c2s_emission_found",
+    "summary": "_setActorExtraStat is a local CharaSubStatStorage writer in the observed evidence. It is registered into the Control::CharaBase N-API surface, but the native implementation has no direct code callers, no EventStartPacket builder/send callees, and no shipped Lua script callsite by name. The matching server-visible ExtraStat update remains the server-driven 0x0145 ChangeActorExtraStat receive/apply path."
+  },
+  "nativeTrace": {
+    "registration": {
+      "nativeFunction": "FUN_00754FE0",
+      "registeredName": "_setActorExtraStat",
+      "impl": "FUN_007080F0",
+      "evidence": "FUN_00754FE0 calls FUN_00726510(param_1, FUN_007080F0, ...) and registers the string `_setActorExtraStat` through FUN_00CCCAD0."
+    },
+    "implementation": {
+      "nativeFunction": "FUN_007080F0",
+      "symbolId": "BCS-Y-0442",
+      "callees": [
+        "FUN_006EEC00",
+        "FUN_006FA980",
+        "FUN_005819A0",
+        "FUN_00CD0A30",
+        "FUN_00CD2660",
+        "FUN_00CD2820",
+        "FUN_009D22B4"
+      ],
+      "summary": "Reads one Lua-passed value, gets the CharaSubStatStorage through FUN_006EEC00, preserves upper NetStatUser/NetStatSystem bits at SUBSTRUCT+0x10, and calls FUN_006FA980 with a low-byte ExtraStat replacement."
+    },
+    "mergeWriter": {
+      "nativeFunction": "FUN_006FA980",
+      "symbolId": "BCS-Y-0349",
+      "callers": [
+        "FUN_007080F0 (_setActorExtraStat)",
+        "FUN_0089C990 (0x0145 ChangeActorExtraStat receiver apply)"
+      ],
+      "summary": "Writes SUBSTRUCT+0x10 and fires local Lua callbacks `_onChangeNetStatUser` / `_onChangeNetStatSystem` through FUN_00447260 + FUN_00CC7A90 for changed upper bits. It does not call EventStartPacket builders or the packet send gate."
+    }
+  },
+  "eventStartCrossCheck": {
+    "builder": "FUN_00776760",
+    "sendGate": "FUN_004D6D30",
+    "knownEventStartWrappers": [
+      "FUN_0075E230",
+      "FUN_0075E3A0",
+      "FUN_0075E510",
+      "FUN_0089E0D0"
+    ],
+    "summary": "FindAllReferences kept the EventStartPacket 0x012D builder/send surface separate from _setActorExtraStat. The EventStart builder is referenced by known event-command wrappers; _setActorExtraStat only references FUN_006FA980."
+  },
+  "scriptAndServerCrossCheck": {
+    "luaScriptCallsites": {
+      "_setActorExtraStat": 0,
+      "basis": "Search of build/lua found no `_setActorExtraStat` callsites."
+    }
+  },
+  "conclusion": {
+    "interpretation": "No c2s opcode is assigned for _setActorExtraStat. In the current catalog, the setter is client-local state mutation plus local Lua callback firing; authoritative/server-visible ExtraStat changes are delivered to the client by 0x0145 ChangeActorExtraStat.",
+    "opcode": null,
+    "builder": null
+  },
+  "symbolsAdded": []
+}

@@ -1,0 +1,73 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-19",
+  "workstream": "WS-B",
+  "title": "CharaBase sub-struct accessor sweep",
+  "result": "no_new_substruct_accessors",
+  "confirmedAccessorsRetained": [
+    {
+      "va": "0x006EEC00",
+      "class": "CharaBase",
+      "outerOffset": "0xDC",
+      "classification": "lazy_accessor",
+      "evidence": "FUN_006EEC00 reads CharaBase+0xDC, allocates a 0x1C-byte block with FUN_009D1B35/FUN_006EEA80 when null, stores it back to CharaBase+0xDC, and returns the sub-struct pointer."
+    }
+  ],
+  "rejectedCandidates": [
+    {
+      "va": "0x007487C0",
+      "candidateFor": "CharaBase+0x60 display-name block",
+      "classification": "rejected_not_accessor",
+      "evidence": "Display-name N-API callers dereference CharaBase+0x60 before calling FUN_007487C0. For example FUN_006FA3D0 calls FUN_007487C0(*(param_1+0x60)+4), and FUN_006FA3F0 calls it on *(param_1+0x60)+1 or a temporary localized-name buffer. The helper itself formats/copies the already-selected input through FUN_0073DF70/FUN_00584EE0 and never reads or writes CharaBase+0x60."
+    },
+    {
+      "va": "0x00748920",
+      "candidateFor": "CharaBase+0x60 display-name block",
+      "classification": "rejected_not_accessor",
+      "evidence": "FUN_006FA4C0 reads CharaBase+0x60 directly into puVar1, then uses FUN_00748920 only after resolving the display-name id through FUN_00584F70. FUN_00748920 is part of the same string/value conversion helper family, not an outer-pointer accessor."
+    },
+    {
+      "va": "0x006F3310",
+      "candidateFor": "generic +0x60 lazy-initializer shape",
+      "classification": "rejected_not_charaBase",
+      "evidence": "The 0x60-immediate/operator-new intersection found FUN_006F3310, which lazy-initializes param_1+0x60. Its caller FUN_0089CE70 first dynamic-casts ActorBase to AreaBase and then calls FUN_006F3310 on receiver storage (param_1+8). This is not CharaBase and not the display-name sub-struct."
+    }
+  ],
+  "scanEvidence": [
+    {
+      "kind": "candidate-helper-decomp",
+      "path": "%BCS_GHIDRA_PROJECTS%\\ws_b_candidate_accessors.txt",
+      "functions": [
+        "0x007487C0",
+        "0x00748870",
+        "0x00748920",
+        "0x00748B30",
+        "0x006FA3D0",
+        "0x006FA3F0",
+        "0x006FA4C0"
+      ]
+    },
+    {
+      "kind": "immediate-scan",
+      "path": "%BCS_GHIDRA_PROJECTS%\\ws_b_imm60_scan.txt",
+      "targetImmediate": "0x60",
+      "totalMatches": 7918,
+      "distinctContainingFunctions": 3942,
+      "filteredNonStackOffsetFunctions": 1594
+    },
+    {
+      "kind": "operator-new-intersection",
+      "path": "%BCS_GHIDRA_PROJECTS%\\ws_b_operator_new_refs.txt",
+      "filteredIntersectionCount": 44,
+      "relevantDecompPath": "%BCS_GHIDRA_PROJECTS%\\ws_b_mem60_new_intersection_relevant.txt"
+    }
+  ],
+  "pipelineResult": {
+    "substructAccessorsChanged": false,
+    "confirmedIndirectBindingsAdded": 0,
+    "luaToOpcodeCountsChanged": false,
+    "rerun": "python tools\\extractors\\build_substruct_cross_ref.py -> 0 new indirect bindings",
+    "reason": "No additional CharaBase sub-struct accessor comparable to FUN_006EEC00 was found. Display-name readers use direct CharaBase+0x60 dereferences, so the existing nested_match and substruct_pointer_structural mechanisms remain the correct promotion path for that block."
+  }
+}

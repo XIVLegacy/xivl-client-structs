@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_architectural_finding_promotion",
+  "scope": "Decomp the Sqwt event-source-side mechanism. Closes the manifest deferred_followups[1]. RESULT: 5 new BCS-Y entries (3 registry lookup wrappers + 2 helpers) + client-architecture 'The Sqwt event-source registry is per-channel' promoted (Sqwt event-source registry is a std::map<event_id, FrameworkElement *> with RTTI-typed lookup wrappers).",
+  "method": {
+    "step1": "Identify the 3 candidate lookup functions from the evidence (FUN_0053E580, FUN_0053E480, FUN_0053E7C0) called from BCS-Y-1331 LuaDebugLog::ctor and BCS-Y-1333 LuaDebugSelect::ctor.",
+    "step2": "Ghidra DumpFunctionDecomp on all 3 via run_c63_event_source.bat. Log: tools/ghidra/logs/c63_event_source_lookup_decomp.txt.",
+    "step3": "Identify shape: each is a registry-find with optional RTTI-typed dynamic_cast. All 3 share the same iteration prologue (FUN_00800EC0 = map::find helper) and end-validation epilogue. Differ only in value-extraction: raw vs Sqwt::Window cast vs Sqwt::Controls::ListBox cast.",
+    "step4": "Surface architectural facts: (a) registry container is std::map-like with end sentinel at +4, end iterator at +8, value at iter+0x60; (b) value type is Sqwt::FrameworkElement*; (c) RTTI-typed wrappers use MSVC __RTDynamicCast (FUN_009DA6CC); (d) per-type lookup wrappers parameterized on expected concrete Sqwt widget type.",
+    "step5": "Catalog 5 new BCS-Y entries (BCS-Y-1355..1359) via c63_add_entries.py. Amend BCS-Y-1331 + BCS-Y-1333 with forward-links to the lookup wrappers they use.",
+    "step6": "Promote client-architecture 'The Sqwt event-source registry is per-channel' in the architectural findings - the broadcaster half of the Sqwt event mechanism (client-architecture 'Sqwt UI elements follow a uniform heap-factory' was the subscriber half)."
+  },
+  "key_findings": [
+    "**Client-architecture 'The Sqwt event-source registry is per-channel' PROMOTED**: Sqwt event-source registry is a std::map<event_id, FrameworkElement *> with RTTI-typed lookup wrappers. Each lookup wrapper is parameterized on the expected concrete Sqwt widget type (Sqwt::Window, Sqwt::Controls::ListBox, etc.) and uses MSVC __RTDynamicCast (FUN_009DA6CC) to type-coerce. Returns NULL if cast fails, enabling runtime type-safety for subscriptions.",
+    "**Closes the broadcaster half of client-architecture 'Sqwt UI elements follow a uniform heap-factory' (Sqwt subscription mechanism)**. The owner ctors do `event_source = lookup(&event_id_key)` then `event_source->vtable[+0xB4]->slot[+0x28](event_id, handler)`. The lookup() side is now fully cataloged via BCS-Y-1355..1359. The remaining mystery is the registry container's identity (which global object holds the std::map) - deferred.",
+    "**Registry container layout revealed**: std::map-like structure with end-iterator sentinel at +4 and end at +8. Each map node stores its value (a Sqwt::FrameworkElement *) at iter+0x60. This is consistent with MSVC's std::_Tree std::map node layout where the value is the second half of a std::pair<const Key, T> placed within the node body.",
+    "**Per-type lookup-wrapper pattern**: 3 wrappers cataloged covering 3 target types (Sqwt::Window, Sqwt::Controls::ListBox, raw/untyped). The pattern implies more wrappers exist for other Sqwt widget types (Button, TextBox, ScrollBar, etc.). A future enumeration tier could xref BCS-Y-1359 MSVC_RTDynamicCast with src_type=Sqwt::FrameworkElement to surface the complete set.",
+    "**RTTI-typed lookup is a runtime safety net**: type-mismatched subscriptions silently return NULL rather than dispatching incorrectly. Compare to WPF's compile-time RoutedEvent type-safety - Sqwt's variant achieves similar safety at runtime via dynamic_cast at the lookup boundary. This explains why the +0xB4/+0x28 subscribe call is gated by `if (param_5 != 0)` in client-architecture 'Sqwt UI elements follow a uniform heap-factory' section's evidence - the gate handles the NULL-on-type-mismatch case.",
+    "**Sqwt RTTI type tree surface**: 3 RTTI type descriptors directly referenced earlier decomp output: Sqwt::FrameworkElement (base, used as src in dynamic_cast), Sqwt::Window (one dst), Sqwt::Controls::ListBox (another dst). This is fresh evidence for the Sqwt type hierarchy: FrameworkElement is the registry's universal value type, and concrete widgets like Window and Controls::ListBox derive from it."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1355", "name": "SqwtEventSourceRegistry_Find_FUN_0053E480", "addr": "0x0053E480", "size_bytes": 110, "callers": 19, "role": "Raw registry lookup (no type cast)"},
+    {"id": "BCS-Y-1356", "name": "SqwtEventSourceRegistry_FindAsWindow_FUN_0053E580", "addr": "0x0053E580", "size_bytes": 133, "callers": 7, "role": "RTTI-typed lookup with dynamic_cast<Sqwt::Window *>"},
+    {"id": "BCS-Y-1357", "name": "SqwtEventSourceRegistry_MapFind_FUN_00800EC0", "addr": "0x00800EC0", "size_bytes": "TBD", "role": "Underlying map::find helper, returns 2-field iterator value"},
+    {"id": "BCS-Y-1358", "name": "SqwtEventSourceRegistry_FindAsListBox_FUN_0053E7C0", "addr": "0x0053E7C0", "size_bytes": 133, "callers": 5, "role": "RTTI-typed lookup with dynamic_cast<Sqwt::Controls::ListBox *>"},
+    {"id": "BCS-Y-1359", "name": "MSVC_RTDynamicCast_FUN_009DA6CC", "addr": "0x009DA6CC", "role": "MSVC C++ runtime helper for dynamic_cast (universal)"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1331", "addition": "Forward-links to BCS-Y-1355 (raw Find) and BCS-Y-1356 (FindAsWindow) used by LuaDebugLog::ctor"},
+    {"id": "BCS-Y-1333", "addition": "Forward-link to BCS-Y-1358 (FindAsListBox) used by LuaDebugSelect::ctor"}
+  ],
+  "architectural_finding": {
+    "title": "Sqwt event-source registry is a std::map<event_id, FrameworkElement *> with RTTI-typed lookup wrappers",
+    "scope": "Broadcaster half of the Sqwt event mechanism (subscriber half = client-architecture 'Sqwt UI elements follow a uniform heap-factory')",
+    "evidence_va": ["FUN_0053E480 (BCS-Y-1355)", "FUN_0053E580 (BCS-Y-1356)", "FUN_0053E7C0 (BCS-Y-1358)"],
+    "confidence": "confirmed",
+        "related_findings": ["subscriber half", "vtable dual-shift, since the registry value is a FrameworkElement* with MI layout", "real-impl-no-caller - the lookup wrappers themselves are reached by 19+7+5 = 31 direct callers, NOT zero-caller, so they violate the real-impl-no-caller pattern; this is normal for utility functions"]
+  },
+  "deferred_followups": [
+    "Identify the registry container's global address. The `param_1` argument to BCS-Y-1355/1356/1358 is the std::map instance. Later work could xref the lookup functions, find the typical first-arg pattern, and identify the global static or namespace object that holds the std::map. This would let us enumerate ALL event-source FrameworkElements registered in the Sqwt UI at runtime.",
+    "Enumerate the broader set of typed lookup wrappers. Only 3 are cataloged so far (Sqwt::Window, Sqwt::Controls::ListBox, raw). Other Sqwt widget types likely have analogous wrappers. Methodology: xref BCS-Y-1359 (MSVC_RTDynamicCast) with src_type=Sqwt::FrameworkElement::RTTI_Type_Descriptor - any function matching that pattern is likely another typed lookup wrapper. ~30min, +5-15 BCS-Y entries projected.",
+    "Decomp the Sqwt FrameworkElement event source class itself. The +0xB4 interface vtable pointer field + +0x28 subscribe method are part of FrameworkElement's class layout. Decomping FrameworkElement::ctor (or one of its derived class ctors, e.g. Sqwt::Window) would reveal the secondary interface vtable address, which could be cataloged + its other slots enumerated (likely contains: subscribe, unsubscribe, raise-event, query-subscriber-count, etc.).",
+    "Decomp FUN_00800EC0 (the underlying map::find helper, BCS-Y-1357). The iterator return shape (2 fields: local_8 + local_4) is interesting - looks like an STL-style iterator with separate node-pointer + key-comparison fields. Decomping it would clarify the std::map node structure for BCS-S struct cataloging.",
+    "Cross-validate the +0x60 value offset. The 3 wrappers all read the value at iter+0x60, but this is only the MSVC std::map node layout if the std::pair<Key, FrameworkElement*> is placed at +0x10 of the node and has substantial padding (Key may be a complex string-like type). A struct cataloging tier could formalize the std::map node layout for this registry."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - clean (BCS-Y-1355..1359 wiki-links resolve)"
+  },
+  "symbol_count_delta": "1344 -> 1349 (+5 BCS-Y)",
+  "architectural_findings_delta": "14 -> 15 (+1)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1355..1359), 2 amendments (BCS-Y-1331 + BCS-Y-1333)",
+    "manifests/event_source_registry.json (NEW, this file)",
+    "tools/ghidra/logs/c63_event_source_lookup_decomp.txt (NEW)"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Enumerate the 5 base classes of Component::Lua::GameEngine::LuaControl via RTTI Base Class Array dump. Closes client-architecture 'The LuaControl hierarchy is the runtime surface' section's bottom anchor (Tier-(-1)) opened earlier. The 5 BCDs decompose into a 2-chain multiple-inheritance pattern (primary LuaObject chain + secondary LgeBase memory-allocator chain) that REFUTES the 'single-inheritance with interfaces inline' hypothesis.",
+  "method": {
+    "step1": "Dump LuaControl Base Class Array at 0x0115CAE4 (5 BCDs at offsets 0/0/4/4/4) - already done at the (log: c71_luaclasses_rtti_dump.txt).",
+    "step2": "For each BCD, dump 28+ bytes to extract the Type Descriptor pointer. New dumps: 0x0115C030 (BCD #3), 0x0115C0F4 (BCD #4), 0x0115C110 (BCD #5). Log: c76_luacontrol_bcd_dump.txt.",
+    "step3": "For each TD VA, dump 80-100 bytes to extract the null-terminated mangled name string. TDs at: 0x012BF458, 0x012BF488, 0x012BF4C8 (secondary chain) + already-visible 0x01270B4C (self) and 0x012BFCC8 (LuaObject). Log: c76_secondary_tds.txt.",
+    "step4": "Decode MSVC name mangling (.?AV<Class>@<Namespace>@@) in Python to recover class names. All 5 base classes resolved to Component::Lua::GameEngine namespace.",
+    "step5": "Catalog 5 BCS-Y entries (BCS-Y-1476..1480): 4 LuaControl bases + 1 bonus LuaThreadEndListenerInterface TD (sits adjacent in .data). Amend BCS-Y-1393 with refined inheritance enumeration."
+  },
+  "key_findings": [
+    "**LuaControl's 5 RTTI base classes ENUMERATED**: all in Component::Lua::GameEngine namespace.",
+    "  - **Primary chain (offset 0)**: BCD #1 LuaControl (self) <- BCD #2 LuaObject (depth=3 contained - 3 more ancestors above LuaObject not yet enumerated).",
+    "  - **Secondary chain (offset +4)**: BCD #3 LgeBase <- BCD #4 LgeCommonMemoryAllocator <- BCD #5 LgeBasicMemoryAllocator (3-tier memory-allocator mixin, root at LgeBasicMemoryAllocator with numContainedBases=0).",
+    "**REFUTES the hypothesis** of 'single-inheritance with interfaces handled inline'. LuaControl genuinely has multiple inheritance (2 chains visible in BCA at offsets 0 and +4).",
+    "**'Lge' prefix interpretation**: shorthand for 'Lua Game Engine' subsystem. The memory-allocator chain (LgeBasicMemoryAllocator/LgeCommonMemoryAllocator/LgeBase) provides per-engine allocator hooks via multi-inheritance - one of the 'std::map-like containers' machinery patterns in client-architecture 'The Sqwt event-source registry is per-channel'.",
+    "**Bonus catch**: LuaThreadEndListenerInterface TD at 0x012BFD00 (adjacent in .data to LuaObject TD). First documented catalog anchor for the cross-cutting interface known from the (Global + CutScene implement it)."
+  ],
+  "new_bcsy_entries_summary": {
+    "luacontrol_bases_cataloged": 4,
+    "bonus_td_cataloged": 1,
+    "amendments": 1,
+    "total_bcsy_added": 5,
+    "id_range": "BCS-Y-1476..BCS-Y-1480"
+  },
+  "base_classes": [
+    "Component::Lua::GameEngine::LuaObject (PRIMARY at offset 0, BCS-Y-1476)",
+    "Component::Lua::GameEngine::LgeBase (SECONDARY at offset +4, BCS-Y-1477)",
+    "Component::Lua::GameEngine::LgeCommonMemoryAllocator (transitive at offset +4, BCS-Y-1478)",
+    "Component::Lua::GameEngine::LgeBasicMemoryAllocator (root of secondary chain at offset +4, BCS-Y-1479)",
+    "Component::Lua::GameEngine::LuaThreadEndListenerInterface (BONUS catalog anchor, BCS-Y-1480, sits adjacent in .data)"
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1393", "addition": "Five-base-classes enumeration: LuaObject primary + LgeBase/LgeCommonMemoryAllocator/LgeBasicMemoryAllocator secondary chain at offset +4. The earlier 'single-inheritance with mixins inline' hypothesis REFUTED."}
+  ],
+  "deferred_followups": [
+    "Tier-(-1) further enumeration: LuaObject has 3 contained ancestors (numContainedBases=3 in its BCD) - those represent 3 more classes above LuaObject in the primary chain (likely the Component::Lua::GameEngine root abstraction layer). Needs BCD dump for LuaObject's own RTTI chain.",
+    "Decomp the LgeBase/LgeCommonMemoryAllocator/LgeBasicMemoryAllocator ctors (if they exist as standalone functions). Could surface engine-side memory allocator semantics.",
+    "FindReferencesToAddress on LgeBase TD (0x012BF458) to identify all classes that inherit from LgeBase (not just LuaControl).",
+    "FindReferencesToAddress on LuaThreadEndListenerInterface TD (0x012BFD00) - the core query.",
+    "Confirm the 'LuaControl ctor doesn't write secondary vftable' observation - the secondary vftable might be written by an inline LgeBase ctor that's inlined into LuaControl::ctor by the optimizer."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1465 -> 1470 (+5 BCS-Y: 4 LuaControl bases + 1 bonus LuaThreadEndListenerInterface TD)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1476..1480), 1 amendment (BCS-Y-1393)",
+    "manifests/luacontrol_base_classes.json (NEW, this file)",
+    "tools/ghidra/logs/c76_luacontrol_bcd_dump.txt (NEW)",
+    "tools/ghidra/logs/c76_secondary_tds.txt (NEW)"
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "topic": "combat damage",
+  "generated": "2026-05-20",
+  "scope": "Combat damage display receive path from clientbound battle-result packets into the internal visual result queue.",
+  "status": "decomp_observed",
+  "inputs": [
+    "docs\\packet-dispatch-map.md",
+    "manifests\\unmapped_payload_decoding.json",
+    "xivl-opcodes:data/opcodes.json",
+    "xivl-opcodes:data/vendor/captures/payload_layouts.json",
+    "%BCS_GHIDRA_PROJECTS%\\dispatcher_candidates_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\batch1_unmapped_callees_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\batch1_0139_base_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\batch1_0139_deeper_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\batch3_callees_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\batch3_deeper_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\combat_damage_copy_decomp.txt"
+  ],
+  "conclusion": {
+    "summary": "The receive-side amount/effect path for damage popups is the battle-result packet family, not a SetActorProperty property-id branch in the current evidence slice. The third router dispatches 0x0139, 0x013A, 0x013B, and 0x013C into battle-result stagers. The decoded and pcap-backed carriers are 0x0139 CommandResultX01, 0x013A CommandResultX10/BattleActionX10, and 0x013C CommandResultX00.",
+    "stateMutationBoundary": "SetActorProperty 0x0137 remains the main actor-state mutation path. Damage amount, worldMasterTextId, effectId, param, and hitNum for visual feedback are carried by the CommandResult/BattleAction records decoded here.",
+    "downstreamBoundary": "This path reaches the internal 0x1A0 battle-result queue, resolves the effect-id visual selector mapping, and identifies the concrete Vfx/Rapture consumer boundary (BCS-Y-0425 -> BCS-Y-0420). The final per-selector Rapture*Clip class dispatch remains behind an indirect virtual call and is not required for the selector naming closure."
+  },
+  "opcodeBindings": [
+    {
+      "opcodeHex": "0x0139",
+      "name": "CommandResultX01Packet",
+      "router": "BCS-Y-0404",
+      "wrapper": "BCS-Y-0406",
+      "stager": "BCS-Y-0409",
+      "payloadStructRef": "manifests\\unmapped_payload_decoding.json batches[0].payloadStructs.s2c_0x0139",
+      "visualFields": [
+        "targetId",
+        "amount",
+        "worldMasterTextId",
+        "effectId",
+        "param",
+        "hitNum"
+      ]
+    },
+    {
+      "opcodeHex": "0x013A",
+      "name": "CommandResultX10Packet / BattleActionX10Packet",
+      "router": "BCS-Y-0404",
+      "wrapper": "BCS-Y-0407",
+      "stager": "BCS-Y-0410",
+      "payloadStructRef": "manifests\\unmapped_payload_decoding.json batches[2].payloadStructs.s2c_0x013a",
+      "visualFields": [
+        "targetIds[10]",
+        "amounts[10]",
+        "worldMasterTextIds[10]",
+        "effectIds[10]",
+        "params[10]",
+        "hitNums[10]"
+      ]
+    },
+    {
+      "opcodeHex": "0x013B",
+      "name": "CommandResultX18Packet / BattleActionX18Packet",
+      "router": "BCS-Y-0404",
+      "wrapperVa": "0x0058C990",
+      "payloadStructRef": "not decoded here",
+      "note": "The router case is visible, but opcodes.json has no observed pcaps and the unmapped-payload-decoding pass did not decode the payload."
+    },
+    {
+      "opcodeHex": "0x013C",
+      "name": "CommandResultX00Packet",
+      "router": "BCS-Y-0404",
+      "wrapper": "BCS-Y-0405",
+      "stager": "BCS-Y-0408",
+      "payloadStructRef": "manifests\\unmapped_payload_decoding.json batches[2].payloadStructs.s2c_0x013c",
+      "visualFields": [
+        "sourceActorId",
+        "animationId",
+        "actionCount",
+        "commandId",
+        "flags"
+      ]
+    }
+  ],
+  "functionTrace": [
+    {
+      "order": 1,
+      "bcsyRef": "BCS-Y-0404",
+      "va": "0x0058CCA0",
+      "rva": "0x0018CCA0",
+      "role": "Third-router switch routes battle-result opcodes 0x0139..0x013C to shape-specific wrappers."
+    },
+    {
+      "order": 2,
+      "bcsyRefs": [
+        "BCS-Y-0405",
+        "BCS-Y-0406",
+        "BCS-Y-0407"
+      ],
+      "role": "Shape-specific wrappers allocate a 0x1A0 local staging entry, call the effect visual selector, call the matching stager, then enqueue."
+    },
+    {
+      "order": 3,
+      "bcsyRef": "BCS-Y-0411",
+      "va": "0x00585800",
+      "rva": "0x00185800",
+      "role": "Effect-id visual class selector maps effect/animation categories to compact selectors used by the staged entry."
+    },
+    {
+      "order": 4,
+      "bcsyRefs": [
+        "BCS-Y-0408",
+        "BCS-Y-0409",
+        "BCS-Y-0410"
+      ],
+      "role": "Stagers copy the common header and either zero, one, or up to ten target rows into BCS-S-0031."
+    },
+    {
+      "order": 5,
+      "bcsyRefs": [
+        "BCS-Y-0412",
+        "BCS-Y-0413"
+      ],
+      "role": "Queue push and queue-entry copy confirm a 0x1A0 internal record copied into a ring buffer for downstream action/visual processing."
+    }
+  ],
+  "internalStructs": [
+    {
+      "id": "BCS-S-0031",
+      "name": "BattleResultQueueEntry",
+      "size": "0x1A0",
+      "evidence": "FUN_005901D0 allocates 0x1A0-byte queue slots; FUN_0058EBF0 copies header through +0x36 and 0x5A dwords from +0x38."
+    }
+  ],
+  "openQuestions": [],
+  "closedQuestions": [
+    {
+      "question": "Direct xref from the 0x1A0 queue consumer to RaptureActionDamageCallClip or sibling Rapture*Clip classes is still open.",
+      "closedBy": "BCS-Y-0417 VfxRaptureParameterCtor_FUN_007C7F80 + BCS-Y-0418/0419 vftables + BCS-Y-0420 VfxRaptureClipProcessor_FUN_00812B50",
+      "origin": "the combat-damage-followup-findings pass",
+      "summary": "Queue consumer reaches Rapture clips via a Vfx parameter type. FUN_007C7F80 is the canonical bridge ctor (writes VfxRaptureParameter::vftable, copies the 0x1A0 queue entry's tail via FUN_0058EBF0). FUN_00812B50 is one concrete exemplar caller in the Cut/Clip range that performs a 'vfx\\0' type-tag check and constructs the parameter for a clip cycle."
+    },
+    {
+      "question": "Opcode 0x013B has a visible router case, but no decoded payload here.",
+      "closedBy": "BCS-Y-0415 BattleResultEighteenTargetStager_FUN_005874B0 + BCS-Y-0416 CommandResultX18QueueWrapper_FUN_0058C990",
+      "origin": "the combat-damage-followup-findings pass",
+      "summary": "Decomped wrapper and stager; payload layout recovered (totalSize 328, payloadSize 296). Catalog and sibling-repo mirror entries added under opcode 0x013b."
+    },
+    {
+      "question": "The exact meaning of visual selectors 7..0x11 from FUN_00585800 needs naming against clip ids or effect tables.",
+      "closedBy": "BCS-Y-0422 BattleResultEffectIdSplitter_FUN_00798370 + BCS-Y-0423 EffectResourceCategoryLookup_FUN_007982D0 + BCS-Y-0424 EffectResourceLoadPlanner_FUN_00798470 + BCS-Y-0425 RaptureTargetVfxParameterGate_FUN_00812DB0",
+      "origin": "the selector-mapping-findings pass",
+      "summary": "FUN_00585800 selectors are now named against the exact effect-id split helper, the DAT_00FE32DC resource category table, and the Rapture Vfx consumer path. The selector meanings are closed; exact per-selector Rapture*Clip class bindings remain a documented follow-on behind FUN_00812B50's indirect +0x12F0 virtual consumer."
+    }
+  ],
+  "tier1Closure": {
+    "generated": "2026-05-20",
+    "manifest": "manifests\\combat_damage_followup_findings.json",
+    "extractor": "one-shot dumper, since deleted; output baked into this manifest",
+    "newPayloadStruct": "s2c_0x013b in data_dependency_catalog.json:payloadStructs",
+    "siblingMirror": "xivl-captures/data/payload_layouts.json decompLayouts.s2c.0x013b"
+  },
+  "tier2SelectorMapping": {
+    "generated": "2026-05-20",
+    "manifest": "manifests\\selector_mapping_findings.json",
+    "extractor": "one-shot dumper, since deleted; output baked into this manifest",
+    "newSymbols": [
+      "BattleResultEffectIdSplitter_FUN_00798370",
+      "EffectResourceCategoryLookup_FUN_007982D0",
+      "EffectResourceLoadPlanner_FUN_00798470",
+      "RaptureTargetVfxParameterGate_FUN_00812DB0"
+    ],
+    "updatedSymbols": [
+      "BattleResultEffectVisualClassSelector_FUN_00585800",
+      "VfxRaptureClipProcessor_FUN_00812B50"
+    ]
+  }
+}

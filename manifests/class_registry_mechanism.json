@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "this+0x1bc writer hunt (BCS-Y-1581 closure). Result: NEGATIVE on direct displacement writers, POSITIVE on actual class-registration infrastructure. Found and catalogs the full Lua-class registry mechanism (FUN_0078E3A0 bootstrap -> FUN_00CC71E0/F0 trampolines -> FUN_00CD9BC0/C10 variants -> FUN_00CD8870 table-maintainer) plus a previously-unknown SECOND per-object class-identity field at this+0x220 (read by FUN_00CC7510 -> FUN_00CD7910).",
+  "method": {
+    "step1": "Ran FindOffsetWriters.java with IMPLEMENTATION_OFFSET_QUERY=0x1bc, BAHAMUT_MIN_OFFSET=0x100. Scanned 3,174,303 instructions, found 129 hits in 77 functions.",
+    "step2": "Filtered hits: ALL displacement writes ([reg+0x1bc]) use ESP or EBP as the base (stack-local writes for large stack frames). ZERO writes target [ECX/EAX/EDX/EBX/ESI/EDI + 0x1bc] (any non-stack pointer + 0x1bc).",
+    "step3": "Hypothesis-shift: the this+0x1bc field MUST be set somewhere. Three remaining possibilities: (a) memcpy/memset block init (no displacement match); (b) virtual-inheritance vbtable mechanism where +0x1bc IS the vbtable location and only vbptr at a different offset gets written; (c) static initialization where the value lives in .data/.rdata and the OBJECT base is computed differently.",
+    "step4": "Pivoted to mapping the registration infrastructure as the actual answer to the question (how does the dispatcher route per-class). Decomp'd FUN_0078E3A0 (LuaClassRegistry bootstrap, BCS-Y-0398). Found it registers ~30 classes by name via std::string ctor (FUN_00447260) + FUN_00CC71E0 (BaseClass variant) or FUN_00CC71F0 (LGTC variant).",
+    "step5": "Decomp'd the register chain: FUN_00CC71E0 (7b) -> FUN_00CD9BC0 -> FUN_00CD8870 (table find-or-create); FUN_00CC71F0 (7b) -> FUN_00CD9C10 -> FUN_00CD8870. The two variants differ only by which byte they set (entry+0x7b vs entry+0x7c) - effectively a class-style flag.",
+    "step6": "Decomp'd FUN_00CD8870 (278 body bytes, 18 callers). The actual table-maintenance routine. Operates on a class-table object structure: +0x204 (root), +0x208 (current), +0x20c (count/sentinel), entries linked via +0xc (next) and +0x54 (class ID). Returns the class entry pointer or 0.",
+    "step7": "Decomp'd FUN_00CD7910 (7 body bytes): `return param_1 + 0x220;`. Pure pointer arithmetic. Called only by FUN_00CC7510 (290+ callers across LuaActorImpl-area methods). So FUN_00CC7510() returns `this + 0x220` - a SECOND per-object class-identity field, distinct from the this+0x1bc field read by FUN_00CD7A30.",
+    "step8": "Decomp'd FUN_00CC7510 (7 body bytes): pure trampoline to FUN_00CD7910. The 290+ callers consume FUN_00CC7510's result as a class-identity pointer for various dispatch operations (`*piVar3` = vftable/identity-table at this+0x220, then offsets like +0x4, +0x108 navigate).",
+    "step9": "Catalog 7 new BCS-Y entries: FUN_00CD8870, FUN_00CD9BC0, FUN_00CD9C10, FUN_00CC71E0, FUN_00CC71F0, FUN_00CD7910, FUN_00CC7510. Amend BCS-Y-0398 (real registry mechanism), BCS-Y-0399 (registry-bootstrap cross-link), BCS-Y-1580/1581 (writer-hunt negative finding + +0x220 sibling discovery)."
+  },
+  "key_findings": [
+    "**NEGATIVE WRITER HUNT (question)**: FindOffsetWriters scan over 3.17M instructions found ZERO direct displacement-encoded writes to [reg+0x1bc] anywhere in the binary. All 60+ writes matching the 0x1bc displacement pattern are ESP-relative (stack-local writes inside functions with large stack frames). This is a strong NEGATIVE: the this+0x1bc field is NOT initialized by direct `MOV [ECX+0x1bc], val` or similar instructions. The field's value must come from a non-displacement mechanism.",
+    "**THREE COMPATIBLE EXPLANATIONS for the missing writer**: (a) MEMCPY/MEMSET block init - the LuaControl-derived ctor copies a class template via memcpy, and the +0x1bc field lives in that template; (b) VIRTUAL INHERITANCE vbtable - the +0x1bc field IS the vbtable (a compile-time-static .rdata entry), and only the vbptr (at a different offset) gets written by ctors; (c) STATIC INITIALIZATION - the value is set during global static init via absolute-address MOV (not displacement-encoded). Without more evidence, (b) is the most plausible given MSVC convention and the fact that FUN_00CD7A30 reads through *(this+0x1bc) as a static class identity.",
+    "**LUA CLASS REGISTRY MECHANISM FULLY MAPPED**: Bootstrap = FUN_0078E3A0 (BCS-Y-0398, ~30 classes registered with names and incrementing class IDs 0-29+). The registry uses TWO variants: FUN_00CC71E0 (BaseClass-style, sets entry+0x7b=0) and FUN_00CC71F0 (LGTC-style, sets entry+0x7c=0). Class names registered include Global (0), Debug (1), String (4), Table (5), WorldMaster (6), CutScene (9), CommandDebuggerGM/DEV/TEST (10-12), ActorBaseClass (15), CharaBaseClass (16), PlayerBaseClass (17), NpcBaseClass (18), StatusBaseClass (26), JudgeBaseClass (24), CommandBaseClass (25), QuestBaseClass (27), DirectorBaseClass (28), CommandDebuggerBaseClass (29).",
+    "**ACTUAL TABLE-MAINTENANCE ROUTINE = FUN_00CD8870** (278 body bytes, 18 callers). Operates on a class-table object structure with: +0x204 (root pointer), +0x208 (current node), +0x20c (count/sentinel); entries linked via +0xc (next pointer), keyed by +0x54 (class ID), with type flags at +0x7b/+0x7c. The 18 callers span CD9xxx (class registration) and CC7xxx (dispatch/lookup) clusters.",
+    "**SECOND PER-OBJECT CLASS-IDENTITY FIELD AT this+0x220** (NEW finding): FUN_00CD7910 (7 bytes) returns `this+0x220`. Called only by FUN_00CC7510 trampoline (also 7 bytes). FUN_00CC7510 has 290+ callers across LuaActorImpl-area methods - it is THE getter for the secondary class-identity field. Distinct from the this+0x1bc field that FUN_00CD7A30 reads. Caller usage pattern: `*(int**)(this+0x220)` is a pointer, then navigation through +0x4/+0x108 reaches static class metadata. Distance between the two fields: 0x220 - 0x1BC = 0x64 = 100 bytes.",
+    "**TWO-FIELD CLASS-IDENTITY ARCHITECTURE**: LuaControl/LuaActorImpl-derived objects have at least TWO per-object class-identity pointers: this+0x1bc (used by gate-check + dispatch-route via FUN_00CD7A30) and this+0x220 (used by ~290 callers via FUN_00CC7510). These likely correspond to (a) primary class-identity for runtime type dispatch and (b) script-binding class metadata for callback registration - though the exact distinction requires deeper trace of caller behaviors.",
+    "**ATTRIBUTION REINFORCED**: this work strengthens the finding that BCS-Y-0399 (NOT BCS-Y-0398) is the LuaCallbackDispatcher. FUN_0078E3A0 (BCS-Y-0398) is the registry BOOTSTRAP - it calls FUN_00CC71E0/F0 (registration trampolines) which call the real table-maintainer FUN_00CD8870. The dispatcher (FUN_00CC7A90 at BCS-Y-0399) is a SEPARATE function that USES the registry results via FUN_00CD7A30 (the +0x1bc getter)."
+  ],
+  "new_bcsy_entries_summary": {
+    "registry_infrastructure_new": 5,
+    "secondary_identity_getter_new": 2,
+    "amendments": 4,
+    "total_bcsy_added": 7,
+    "id_range": "BCS-Y-1670..BCS-Y-1676",
+    "amendment_targets": [
+      "BCS-Y-0398 (LuaClassRegistry FUN_0078E3A0 bootstrap - cross-link to real table-maintainer)",
+      "BCS-Y-0399 (LuaCallbackDispatcher FUN_00CC7A90 - registry-bootstrap context)",
+      "BCS-Y-1580 (gate-check FUN_00CC7280 - cross-link to +0x220 sibling)",
+      "BCS-Y-1581 (FUN_00CD7A30 - NEGATIVE writer-hunt result + +0x220 sibling discovery)"
+    ]
+  },
+  "deferred_followups": [
+    "Verify the virtual-inheritance-vbtable hypothesis for this+0x1bc by examining .rdata at LuaControl-derived class layout positions. If +0x1bc holds a vbtable, the static .rdata at that offset (relative to the vftable region for the class) should contain offset constants pointing to virtual bases.",
+    "Decomp some of the 290+ FUN_00CC7510 callers to confirm what this+0x220 actually points to. Hypothesis: a per-class metadata block for Lua-bridge callback registration (the 'class table' in Lua terms).",
+    "Investigate the relationship between class IDs 0-29+ (the FUN_0078E3A0 registry order) and the actual class hierarchy. The registry order suggests classes 0-12 are LGTC-style (Lua global tentative controls) and 13+ are BaseClass-style.",
+    "Map the FUN_00CD8870 class-table structure fully: identify +0x204/0x208/0x20c semantics by examining all 18 callers' usage patterns.",
+    "Cross-reference the registry's class names with the enumerated LTC/LGTC class TDs (`Application::Lua::Script::Client::Control::*`) to verify the 1:1 mapping.",
+    "If the vbtable hypothesis holds, locate the actual vbtables in .rdata (search for sequences of small offsets ~100-500 bytes that look like virtual base offset arrays) and identify which classes they belong to."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1656 -> 1663 (+7 BCS-Y; BCS-Y-1670..1676)",
+  "files_changed": [
+    "manifests/symbols.json: +7 entries, 4 amendments",
+    "manifests/class_registry_mechanism.json (NEW, this file)",
+    "tools/ghidra/logs/c96_offset1bc_refs.txt (NEW - 129-hit displacement scan output)",
+    "tools/ghidra/logs/c96_cd7a30_callers.txt (NEW - 26 callers + ADD-reg-0x1bc functions)",
+    "tools/ghidra/logs/c96_dispatcher_registry.txt (NEW - dispatcher + class registry bootstrap)",
+    "tools/ghidra/logs/c96_class_register.txt (NEW - register trampolines + dispatcher core)",
+    "tools/ghidra/logs/c96_cd8870.txt (NEW - real class-table maintainer + LuaControl trampolines)"
+  ]
+}

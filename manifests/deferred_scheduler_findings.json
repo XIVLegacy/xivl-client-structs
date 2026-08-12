@@ -1,0 +1,238 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "deferred scheduler",
+  "generated": "2026-05-20",
+  "title": "Deferred event-condition scheduler findings",
+  "scope": "Consumer and scheduler side of the deferred Event::Base event-condition paths first surfaced by the event-condition-consumer-findings pass.",
+  "sourceRefs": [
+    "manifests\\event_condition_consumer_findings.json",
+    "manifests\\deferred_napi_writers.json",
+    "%BCS_GHIDRA_PROJECTS%\\event_condition_vtables.txt",
+    "%BCS_GHIDRA_PROJECTS%\\event_vtables_extend.txt",
+    "%BCS_GHIDRA_PROJECTS%\\intermediate_vtables.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6c_scheduler_candidates_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6c_callback_table_nearby_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6c_scheduler_followups_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6c_event_handoff_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6c_event_state_callers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\sub6c_event_queue_core_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_cannot_resume.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_lua_string_attempt_to_yield.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_coroutine_string_refs_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\verify_coroutine_callers_decomp.txt",
+    "manifests\\negatives_verification_findings.json"
+  ],
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0470",
+      "name": "deferred_event_scheduler_model"
+    },
+    {
+      "id": "BCS-Y-0471",
+      "name": "DeferredEventConditionProducer_FUN_006F2B70"
+    },
+    {
+      "id": "BCS-Y-0472",
+      "name": "EventConditionCallbackSlotTable_FUN_00586810_0058B110"
+    },
+    {
+      "id": "BCS-Y-0473",
+      "name": "EventExecutionBlockStateMachine_FUN_00897310"
+    },
+    {
+      "id": "BCS-Y-0474",
+      "name": "EventExecutionNonBlockEnqueue_FUN_00896510"
+    },
+    {
+      "id": "BCS-Y-0475",
+      "name": "EventExecutionDispatchPair_FUN_008962C0_008963F0"
+    },
+    {
+      "id": "BCS-Y-0476",
+      "name": "EventExecutionQueueWalker_FUN_008955C0"
+    },
+    {
+      "id": "BCS-Y-0477",
+      "name": "LuaCoroutineResumeCallsite_FUN_00CF4230"
+    },
+    {
+      "id": "BCS-Y-0478",
+      "name": "LuaCoroutineYieldCallsite_FUN_00CF38D0"
+    }
+  ],
+  "structsAdded": [
+    {
+      "id": "BCS-S-0037",
+      "name": "EventConditionCallbackSlot"
+    },
+    {
+      "id": "BCS-S-0038",
+      "name": "EventExecutionQueueNode"
+    }
+  ],
+  "handoffPipeline": [
+    {
+      "stage": "receiver field handoff",
+      "nativeFunction": "FUN_0089DB00",
+      "summary": "For Push event-condition receivers, forwards the receiver key/shape fields into FUN_006F2B70."
+    },
+    {
+      "stage": "condition payload producer",
+      "nativeFunction": "FUN_006F2B70",
+      "symbolId": "BCS-Y-0471",
+      "summary": "Builds the condition payload, wraps the actor/control pointer, and calls FUN_0075C4A0."
+    },
+    {
+      "stage": "callback slot table append",
+      "nativeFunction": "FUN_0058B110",
+      "symbolId": "BCS-Y-0472",
+      "structId": "BCS-S-0037",
+      "summary": "Writes the resolved two-slot, 0x54-stride callback table entry."
+    }
+  ],
+  "executionPipeline": [
+    {
+      "stage": "block/non-block gate",
+      "nativeFunctions": [
+        "FUN_00898480",
+        "FUN_008985A0",
+        "FUN_00898680"
+      ],
+      "summary": "Call Event::Base virtual slot +0x1c. True selects the block state machine; false selects the non-block enqueue path."
+    },
+    {
+      "stage": "block state machine",
+      "nativeFunction": "FUN_00897310",
+      "symbolId": "BCS-Y-0473",
+      "summary": "Classifies virtual slot +0x20 state and dispatches current/continuation block events."
+    },
+    {
+      "stage": "non-block enqueue",
+      "nativeFunction": "FUN_00896510",
+      "symbolId": "BCS-Y-0474",
+      "structId": "BCS-S-0038",
+      "summary": "Allocates a 0x2c queue node, inserts it into owner+0x14, and dispatches through FUN_008963F0."
+    },
+    {
+      "stage": "event virtual dispatch",
+      "nativeFunctions": [
+        "FUN_008962C0",
+        "FUN_008963F0"
+      ],
+      "symbolId": "BCS-Y-0475",
+      "summary": "Scans 16-byte vector records, handles type 0x04 records through FUN_0089AD10, then reaches Event::Base virtual slot +0x04 and the event-condition-consumer-findings leaf slot +0x28 firers."
+    },
+    {
+      "stage": "execution list walk",
+      "nativeFunction": "FUN_008955C0",
+      "symbolId": "BCS-Y-0476",
+      "summary": "Walks the owner+0x14 list, one-shot invokes each node payload callback behind node+0x25, and maps node+0x28 tail data through FUN_006DE2D0."
+    }
+  ],
+  "eventHierarchy": {
+    "baseCtor": {
+      "nativeFunction": "FUN_00891FB0",
+      "summary": "Installs Application::Lua::Script::Client::Event::Base::vftable, initializes the Lua string/member through FUN_00447200, and writes status byte object+0x58."
+    },
+    "abstractVtables": [
+      {
+        "className": "Notice",
+        "vtable": "0x01056DD8",
+        "blockSlot": "purecall at +0x1c/+0x20/+0x28/+0x2c",
+        "baseCallbacks": "slot +0x0c _onPreEvent, slot +0x10 _onPostEvent"
+      },
+      {
+        "className": "Talk",
+        "vtable": "0x01056E74",
+        "blockSlot": "purecall at +0x1c/+0x20/+0x28/+0x2c",
+        "baseCallbacks": "slot +0x0c _onPreEvent, slot +0x10 _onPostEvent"
+      },
+      {
+        "className": "Push",
+        "vtable": "0x01056EA8",
+        "blockSlot": "purecall at +0x1c/+0x20/+0x28/+0x2c",
+        "baseCallbacks": "slot +0x0c _onPreEvent, slot +0x10 _onPostEvent"
+      }
+    ],
+    "leafVtables": [
+      {
+        "className": "NoticeBlock",
+        "vtable": "0x01056E0C",
+        "slot1c": "FUN_00B73290",
+        "slot28": "FUN_008927E0 noop"
+      },
+      {
+        "className": "NoticeNonBlock",
+        "vtable": "0x01056E40",
+        "slot1c": "FUN_005C5C80",
+        "slot28": "FUN_00892850 noop"
+      },
+      {
+        "className": "TalkBlock",
+        "vtable": "0x01056F44",
+        "slot1c": "FUN_00B73290",
+        "slot28": "FUN_00892D70 _onTalkEvent"
+      },
+      {
+        "className": "TalkNonBlock",
+        "vtable": "0x01056F78",
+        "slot1c": "FUN_005C5C80",
+        "slot28": "FUN_00892E90 _onTalkRequest"
+      },
+      {
+        "className": "PushBlock",
+        "vtable": "0x01056EDC",
+        "slot1c": "FUN_00B73290",
+        "slot28": "FUN_00892A80 _onPushEvent"
+      },
+      {
+        "className": "PushNonBlock",
+        "vtable": "0x01056F10",
+        "slot1c": "FUN_005C5C80",
+        "slot28": "FUN_00892C30 _onPushRequest"
+      }
+    ]
+  },
+  "coroutineSurface": {
+    "confirmedLuaCoroutineApiCalls": [
+      {
+        "symbolId": "BCS-Y-0477",
+        "api": "lua_resume",
+        "clientCallsite": "FUN_00CF4230",
+        "stockBodyCandidate": "FUN_00DCFD30",
+        "summary": "FUN_00CF4230 calls the stripped resume-shaped Lua body FUN_00DCFD30(*param_1, param_2). The body carries the stock `cannot resume` diagnostic and resume-state checks."
+      },
+      {
+        "symbolId": "BCS-Y-0478",
+        "api": "lua_yield",
+        "clientCallsite": "FUN_00CF38D0",
+        "stockBodyCandidate": "FUN_00DCF7D0",
+        "summary": "FUN_00CF38D0 calls the stripped yield-shaped Lua body FUN_00DCF7D0(*param_1, 0). The body carries the stock `attempt to yield across metamethod/C-call boundary` diagnostic and yield status/stack writes."
+      }
+    ],
+    "nativeContinuationCandidates": [
+      "FUN_00897310",
+      "FUN_00897290",
+      "FUN_00896950",
+      "FUN_008955C0"
+    ],
+    "summary": "Follow-up verification found stripped Lua coroutine API callsites elsewhere in the binary, but not in the deferred event-condition scheduler. The recovered 6C continuation behavior is native event-execution state: block events keep current/continuation pointers at owner+0x08/+0x0c, FUN_00897290 installs a continuation object, FUN_00896950 re-dispatches through FUN_008962C0 when its gate passes, and FUN_008955C0 walks the non-block execution list."
+  },
+  "negativeFindings": [
+    {
+      "finding": "No separate heap queue of EventCondition leaf objects was found.",
+      "basis": "Producer-side storage is the two-slot 0x54 callback table. Non-block runtime queuing uses 0x2c EventExecutionQueueNode wrappers around execution payloads."
+    },
+    {
+      "finding": "The deferred event-condition scheduler does not use the recovered Lua coroutine API callsites.",
+      "basis": "Follow-up verification confirmed lua_resume/lua_yield-shaped bodies through stock diagnostic strings and client wrappers at FUN_00CF4230/FUN_00CF38D0. The 6C call graph still exposes native continuation/state-machine helpers and no calls into FUN_00DCFD30 or FUN_00DCF7D0."
+    }
+  ],
+  "priorCatalogLinks": [
+    "BCS-Y-0356",
+    "BCS-Y-0357",
+    "BCS-Y-0358",
+    "BCS-Y-0461"
+  ]
+}

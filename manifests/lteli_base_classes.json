@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Enumerate LuaThreadEndListenerInterface (LTELI) RTTI composition via Base Class Array dump at 0x0115CB60. Closes cross-cutting interface composition opened earlier. Result: LTELI inherits ONLY the Lge memory-allocator chain (3 transitive bases, all already cataloged). Dual-offset placement pattern confirmed: LTELI sits at +0x60 in some implementors, at +0x68 in others.",
+  "method": {
+    "step1": "Dump LTELI BCA at 0x0115CB60 (16 bytes for 3 pointers + sentinel) + 3 BCDs at 0x0115CB74, 0x0115E514, 0x0115EFF8 (each 28 bytes) via run_c83_lteli_bases.bat -> c83_lteli_bcds.txt.",
+    "step2": "Examine BCA structure - 4 entries point to: (1) LTELI self BCD at 0x0115CB74, (2) LgeBase BCD at 0x0115C030, (3) LgeCommonMemoryAllocator BCD at 0x0115C0F4, (4) LgeBasicMemoryAllocator BCD at 0x0115C110. No NEW base classes - LTELI inherits ONLY the engine memory-allocator chain.",
+    "step3": "Examine the 2 'external' LTELI BCDs at 0x0115E514 (offset 96) and 0x0115EFF8 (offset 104). These are NOT part of LTELI's own BCA - they are BCD records that EXTERNAL implementor classes' BCAs reference to indicate LTELI inclusion at object offsets +0x60 or +0x68 respectively. Catalog these as 2 BCS-Y RTTI data anchors.",
+    "step4": "Catalog 2 BCS-Y entries + amend BCS-Y-1480 (LTELI TD) with full composition + dual-offset placement evidence."
+  },
+  "key_findings": [
+    "**LTELI's own RTTI composition**: LTELI's BCA at 0x0115CB60 has only 4 entries (3 + sentinel). Bases:",
+    "  - LTELI self (offset 0): BCS-Y-1480",
+    "  - LgeBase (offset 4): BCS-Y-1477 (REUSED)",
+    "  - LgeCommonMemoryAllocator (offset 4): BCS-Y-1478 (REUSED)",
+    "  - LgeBasicMemoryAllocator (offset 4): BCS-Y-1479 (REUSED)",
+    "**LTELI inherits the SAME Lge memory-allocator chain as LuaControl** (consistent with both being in Component::Lua::GameEngine namespace).",
+    "**No additional bases**: LTELI is a lightweight interface that uses ONLY the memory-allocator mixin as its base. All method contracts live in its single vftable at 0x00FD4F48.",
+    "**Dual-offset placement pattern**: LTELI appears at TWO different offsets in implementor classes:",
+    "  - +0x60 (96): CutScene per evidence (param_1[0x18] = 0x60 = 4*24)",
+    "  - +0x68 (104): Global per evidence (param_1[0x1a] = 0x68 = 4*26)",
+    "  - 2 external BCD anchors cataloged: BCS-Y-1507 (offset 96) and BCS-Y-1508 (offset 104)",
+    "**The 0/96/104 BCDs from the FindSymbolByName output ARE NOT all part of LTELI's own BCA** - only the offset-0 BCD (0x0115CB74) is in LTELI's BCA. The 96 and 104 BCDs are EXTERNAL anchors used by implementors."
+  ],
+  "new_bcsy_entries_summary": {
+    "external_bcd_anchors": 2,
+    "amendments": 1,
+    "total_bcsy_added": 2,
+    "id_range": "BCS-Y-1507..BCS-Y-1508"
+  },
+  "lteli_bca_entries": [
+    "LTELI self BCD @ 0x0115CB74 (offset 0)",
+    "LgeBase BCD @ 0x0115C030 (offset 4, BCS-Y-1477 reused)",
+    "LgeCommonMemoryAllocator BCD @ 0x0115C0F4 (offset 4, BCS-Y-1478 reused)",
+    "LgeBasicMemoryAllocator BCD @ 0x0115C110 (offset 4, BCS-Y-1479 reused)"
+  ],
+  "external_lteli_bcds": [
+    "BCS-Y-1507 @ 0x0115E514 (offset 96 = 0x60) - referenced by implementors that put LTELI at +0x60",
+    "BCS-Y-1508 @ 0x0115EFF8 (offset 104 = 0x68) - referenced by implementors that put LTELI at +0x68"
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1480", "addition": "Full LTELI BCA composition + dual-offset placement pattern (+0x60 vs +0x68)"}
+  ],
+  "deferred_followups": [
+    "Identify which of the 6 implementor classes uses +0x60 vs +0x68 placement. Catalog each implementor's class's BCA to find the specific BCD they reference.",
+    "Investigate whether dual offsets correspond to different MI strategies (e.g., diamond-resolved vs straight MI).",
+    "Decomp LTELI's vftable slots - what are the interface methods? Currently we only know it's the 'thread end listener' contract.",
+    "Compare LTELI's design (lightweight interface + memory-allocator mixin) to potential other cross-cutting interfaces in the Lua-bridge - are there more lightweight interfaces using the same pattern?",
+    "Catalog LTELI's CHD (0x0115CB50) and COL (0x0115CB3C) as RTTI data anchors if not already cataloged."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1496 -> 1498 (+2 BCS-Y RTTI external BCD anchors)",
+  "files_changed": [
+    "manifests/symbols.json: +2 entries (BCS-Y-1507..1508), 1 amendment (BCS-Y-1480)",
+    "manifests/lteli_base_classes.json (NEW, this file)",
+    "tools/ghidra/logs/c83_lteli_bcds.txt (NEW)"
+  ]
+}

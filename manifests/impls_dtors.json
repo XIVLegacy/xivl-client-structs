@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Drill the 6 LuaTentativeControl impl stubs (FUN_00cccaf0..0xcccb40) to confirm method bodies + close the 9 uncataloged subobject/dtor pairs + clarify the +0x60 vftable framing. Verifies the LGTC TD-reader asymmetry (LGTC has no parallel 6-method dispatcher cluster).",
+  "method": {
+    "step1": "Bulk DumpFunctionDecomp of 15 functions: 6 LTC impl stubs + 3 LTC uncataloged subobject/dtor pairs (FUN_006DD070/006DEF60/006DD4D0 - GroupBase/WidgetHandle/ItemBase) + 6 LGTC uncataloged subobject/dtor pairs (FUN_00776E60/00777120/006DDE00/00758930/00777280/00776FC0).",
+    "step2": "Identify the 6 impl stubs as vftable-slot trampolines, NOT method implementations. Each is 7 bytes: `(**(code **)(*param_1 + N))()` where N = 4/8/0xc/0x10/0x14/0x18.",
+    "step3": "Identify all 9 dtor pairs as standard MSVC MI dtors with the consistent pattern: (a) write derived ClassName::vftable to *param_1 AND param_1[0x18] (+0x60), (b) call class-specific cleanup, (c) call LGTC/LTC subobject dtor (BCS-Y-1511 or BCS-Y-1517), (d) call ActorBase dtor companion FUN_006dbbe0.",
+    "step4": "Verify GroupBase has 2 distinct vftables via FindSymbolByName 'GroupBase::vftable' - confirms 2 labels at 0x00FD53AC and 0x00FD53CC (32 bytes apart). Same MI-secondary-vftable pattern likely applies to the 10 other derived classes in the LuaControl hierarchy.",
+    "step5": "Clarify the +0x60 framing: 'derived class writes LTC/LGTC::vftable at +0x60' captures the TRANSIENT construction snapshot when LTC/LGTC::ctor is called with adjusted-this. The FINAL post-construction state at +0x60 is ClassName::secondary_vftable (per-derived-class)."
+  },
+  "key_findings": [
+    "**6 LTC impl stubs CHARACTERIZED**: pure vftable-slot trampolines at FUN_00cccaf0..0xcccb40 (16-byte stride). Each is `(**(code **)(*param_1 + N))();` invoking vftable slots [1..6]. They are NOT LuaTentativeControl-specific method bodies - they are LuaControl base class virtual method invokers that derived classes (the 3 LTC-using + 8 LGTC-using = 11 total) override via their own per-class secondary vftables.",
+    "**Architectural reinterpretation of the BCS-Y-1519 method cluster**: the '6 methods' identified earlier are not LTC-private methods - they are 6 LuaControl base class virtual methods at vftable slots 1-6, polymorphically dispatched through the runtime type's secondary vftable. Slot semantics inferred: slot 1+2 = LuaThread coroutine helpers, slot 3 = init-once with object+0x7e flag (12 callers), slot 4 = isAlive (individualref-userdata-pass Lua N-API impl), slot 5 = 3-param method, slot 6 = derived-pointer getter.",
+    "**LGTC vs LTC method-cluster ASYMMETRY**: LGTC has NO parallel 6-method dispatcher cluster (per the TD scan - only 1 code-level TD reader = the RTTI dispatcher BCS-Y-1513). LTC has 6 public method dispatchers (FUN_00ce18XX..0xce1bXX). **Architectural interpretation**: LTC's 6-method API services the singleton-transient-state interface (called from external sites like Lua _isAlive + LuaThread coroutine helpers + 12 LGE-cluster callers); LGTC's per-class transient state is accessed only via internal registration through the RTTI dispatcher's per-class branch (FUN_00cd5e10) - NOT via public method invokers.",
+    "**9 dtor pairs CONFIRMED with MSVC MI restore pattern**: each writes derived ClassName::vftable to *param_1 AND param_1[0x18] (+0x60), then calls LGTC/LTC subobject dtor (BCS-Y-1511 = LTC dtor for the 3 LTC-derived; BCS-Y-1511 ... wait should be BCS-Y-1511 for LTC vs BCS-Y-1511... see manifest). The 3 LTC-derived dtors (GroupBase, WidgetHandle, ItemBase) call FUN_00cccbe0 (LTC subobject dtor BCS-Y-1517); the 6 LGTC-derived dtors (JudgeBase, String, Math, CommandBase, Table, QuestBase) call FUN_00cccc00 (LGTC subobject dtor BCS-Y-1511). Consistent calling pattern across all 9 confirms the architectural split.",
+    "**Each derived class has 2 vftables via MSVC MI**: GroupBase verified - 2 labels at 0x00FD53AC (primary) and 0x00FD53CC (secondary), 32 bytes apart. Standard MSVC MI emits one secondary vftable per non-primary base subobject. The 32-byte (8 dword) gap likely reflects the LTC/LGTC vftable's slot count (1 dtor + 6 method slots + 1 padding).",
+    "**+0x60 framing CLARIFIED**: 'derived class writes LGTC::vftable / LTC::vftable at +0x60' is a TRANSIENT construction-time snapshot. The FINAL post-construction state at +0x60 is ClassName::secondary_vftable (per-derived-class), which OVERRIDES the LTC/LGTC base vftable. Both framings are operationally correct: the inheritance relationship (which sibling base is at +0x60) is unchanged.",
+    "**ItemBase is heavily destructed** (44 callers of dtor BCS-Y-1522) - broad reach via Unwind handlers + 14 FUN_ callers including FUN_006f71a0/006f7000/006f73b0 (ItemBase-cluster), inventory/equipment pipeline functions. Confirms ItemBase's central role in inventory/equipment subsystems."
+  ],
+  "new_bcsy_entries_summary": {
+    "dtor_pairs": 9,
+    "amendments": 4,
+    "total_bcsy_added": 9,
+    "id_range": "BCS-Y-1520..BCS-Y-1528"
+  },
+  "ltc_impl_stub_to_dispatcher_to_vftable_slot": [
+    "FUN_00cccaf0 -> FUN_00ce1890 dispatcher -> vftable slot 1 (+4) - method A, LuaThread caller",
+    "FUN_00cccb00 -> FUN_00ce1920 dispatcher -> vftable slot 2 (+8) - method B, LuaThread caller",
+    "FUN_00cccb10 -> FUN_00ce1bb0 dispatcher -> vftable slot 3 (+0xc) - init-once, 12 callers",
+    "FUN_00cccb20 -> FUN_00ce19c0 dispatcher -> vftable slot 4 (+0x10) - isAlive, Lua N-API caller",
+    "FUN_00cccb30 -> FUN_00ce1a50 dispatcher -> vftable slot 5 (+0x14) - 3-param method, LGE caller",
+    "FUN_00cccb40 -> FUN_00ce1ae0 dispatcher -> vftable slot 6 (+0x18) - getter, 2 callers"
+  ],
+  "ltc_derived_class_dtors": [
+    "BCS-Y-1520 GroupBase dtor (FUN_006DD070) - 1 caller",
+    "BCS-Y-1521 WidgetHandle dtor (FUN_006DEF60) - 1 caller",
+    "BCS-Y-1522 ItemBase dtor (FUN_006DD4D0) - 44 callers (heavily destructed)"
+  ],
+  "lgtc_derived_class_dtors": [
+    "BCS-Y-1523 JudgeBase dtor (FUN_00776E60)",
+    "BCS-Y-1524 String dtor (FUN_00777120)",
+    "BCS-Y-1525 Math dtor (FUN_006DDE00)",
+    "BCS-Y-1526 CommandBase dtor (FUN_00758930)",
+    "BCS-Y-1527 Table dtor (FUN_00777280)",
+    "BCS-Y-1528 QuestBase dtor (FUN_00776FC0)"
+  ],
+  "deferred_followups": [
+    "Decomp each derived class's secondary vftable contents (8 slots: dtor + 6 method overrides + 1 padding) to identify which class implements which slot semantics. 11 classes total, ~88 vftable slot entries.",
+    "Investigate the 8th and beyond vftable slots in ClassName::secondary_vftable - is there more than 6 methods in the LuaTentativeControl/LuaGlobalTentativeControl polymorphic interface?",
+    "Find FUN_006bfd00 (GroupBase-specific cleanup helper called by BCS-Y-1520 dtor) + FUN_00cc9330 (WidgetHandle-specific cleanup called by BCS-Y-1521) - what do they free?",
+    "Why does ItemBase's dtor have NO class-specific cleanup helper (unlike GroupBase + WidgetHandle)? Look at ItemBase's MEMBER LAYOUT - it may have no destructible members.",
+    "Decomp FUN_00cd8210 (caller of LTC methods A+B, slot 1+2) - is this a LuaThread coroutine helper that uses LuaTentativeControl objects as state carriers?",
+    "Decomp StatusBase's secondary vftable (BCS-Y-1398 @ 0x00FDF8DC) contents - this is the LGTC-side secondary vftable for StatusBase; sample what virtual methods it overrides.",
+    "Catalog the 9 'class-specific cleanup' helpers (1 per dtor - some shared, some unique) - they're the per-class destructible-member chains."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1509 -> 1518 (+9 BCS-Y: 9 derived class dtors)",
+  "files_changed": [
+    "manifests/symbols.json: +9 entries (BCS-Y-1520..1528), 4 amendments",
+    "manifests/impls_dtors.json (NEW, this file)",
+    "tools/ghidra/logs/c86_bulk_decomp.txt (NEW)",
+    "tools/ghidra/logs/c86_groupbase_vftable_check.txt (NEW)",
+    "tools/extractors/append_impls_dtors.py (NEW)"
+  ]
+}

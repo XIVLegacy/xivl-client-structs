@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Catalog the 6 Sqwt event-handler typed-delegate vftables for LuaDebugLog (2) and LuaDebugSelect (4). These are RTTI-confirmed nested template-instantiation classes that bind a Sqwt::EventHandler<T,EventArgs> or specific Sqwt::Input::KeyEventHandler<T> / Sqwt::RoutedEventHandler<T> / Sqwt::Controls::SelectionChangedEventHandler<T> delegate to the LuaDebugLog/LuaDebugSelect parent class as the template parameter T. Out of the element vftable gap fill pass scope (primaries) and scope (MI secondaries); tracked as the followup.",
+  "method": {
+    "step1": "RTTI extraction scan: `manifests/rtti_extraction_OUR.txt` lines 525/526 (LuaDebugLog handlers at 0x00FA9B14/0x00FA9B24) and lines 1173/1174/1177/1178 (LuaDebugSelect handlers at 0x00FC654C/0x00FC655C/0x00FC66CC/0x00FC66DC).",
+    "step2": "Catalog dedup: confirmed none of the 6 target VAs are already cataloged. Parent Element class vftables ARE cataloged: BCS-Y-1011 (LuaDebugLog primary) + BCS-Y-1119 (secondary), BCS-Y-1017 (LuaDebugSelect primary) + BCS-Y-1127 (secondary).",
+    "step3": "Wrote 6 BCS-Y entries (BCS-Y-1138..1143) with kind=data matching the naming convention `<ParentClass>_<DelegateType>_vftable`. Notes carry the literal RTTI FQDN, Type Descriptor RVA, and wiki-link binding to the parent Element class vftables.",
+    "step4": "Validators all clean. No catalog xref bugs introduced."
+  },
+  "new_bcs_y_entries": [
+    {"id": "BCS-Y-1138", "name": "LuaDebugLog_EventHandler_KeyEventArgs_vftable", "address": "0x00FA9B14", "td_rva": "0x0114936C", "fqdn": "Sqwt::EventHandler<LuaDebugLog,Sqwt::Input::KeyEventArgs>", "parent": "LuaDebugLog"},
+    {"id": "BCS-Y-1139", "name": "LuaDebugLog_KeyEventHandler_vftable", "address": "0x00FA9B24", "td_rva": "0x011493C4", "fqdn": "Sqwt::Input::KeyEventHandler<LuaDebugLog>", "parent": "LuaDebugLog"},
+    {"id": "BCS-Y-1140", "name": "LuaDebugSelect_EventHandler_RoutedEventArgs_vftable", "address": "0x00FC654C", "td_rva": "0x011599B0", "fqdn": "Sqwt::EventHandler<LuaDebugSelect,Sqwt::RoutedEventArgs>", "parent": "LuaDebugSelect"},
+    {"id": "BCS-Y-1141", "name": "LuaDebugSelect_EventHandler_SelectionChangedEventArgs_vftable", "address": "0x00FC655C", "td_rva": "0x01159A08", "fqdn": "Sqwt::EventHandler<LuaDebugSelect,Sqwt::Controls::SelectionChangedEventArgs>", "parent": "LuaDebugSelect"},
+    {"id": "BCS-Y-1142", "name": "LuaDebugSelect_RoutedEventHandler_vftable", "address": "0x00FC66CC", "td_rva": "0x01159AD4", "fqdn": "Sqwt::RoutedEventHandler<LuaDebugSelect>", "parent": "LuaDebugSelect"},
+    {"id": "BCS-Y-1143", "name": "LuaDebugSelect_SelectionChangedEventHandler_vftable", "address": "0x00FC66DC", "td_rva": "0x01159B30", "fqdn": "Sqwt::Controls::SelectionChangedEventHandler<LuaDebugSelect>", "parent": "LuaDebugSelect"}
+  ],
+  "key_findings": [
+    "**WPF-style 2-tier delegate convention surfaced**. Sqwt mirrors WPF's delegate naming: for each event, there's both a generic `Sqwt::EventHandler<T,EventArgs>` form AND a more specific `Sqwt::Input::KeyEventHandler<T>` / `Sqwt::RoutedEventHandler<T>` / `Sqwt::Controls::SelectionChangedEventHandler<T>` form. LuaDebugLog has 2 (KeyEvent pair). LuaDebugSelect has 4 (RoutedEvent pair + SelectionChangedEvent pair). The specific forms typically derive from the generic 2-arg EventHandler in WPF; the same is likely true here but not verified at the close (deferred).",
+    "**Cluster footprint preserved for future scope**. The RTTI extraction shows MANY more EventHandler<T> instantiations across the codebase (FormElement, XamlElement, CameraElement, TargetElement, Esrb/ShandaLogoMenu/SqexLogoMenu menu classes, RaptureCandidateList, ErrorDialogBase, LogControl, MessageDialog, WidgetEventHandler, DebugControl, NumberInputBox, etc.). scope is limited to LuaDebugLog/LuaDebugSelect per the original pre-compact plan; the broader EventHandler<T> cataloging is low-EV future hygiene work (these are RTTI-confirmed but rarely block any specific opcode/dispatch question).",
+    "**No vftable slot-layout decomp**. This is a declarative RTTI-cataloging tier - the FQDN + TypeDescriptor evidence is enough to establish each entry. Slot-by-slot decomp (Invoke / Equals / GetHashCode / dtor) would only matter if downstream analysis needs to walk the delegate-dispatch path; deferred."
+  ],
+  "deferred_followups": [
+    "**Broader EventHandler<T> cataloging** for FormElement / XamlElement / Camera/Target/Esrb/ShandaLogoMenu / RaptureCandidateList / ErrorDialogBase / LogControl / MessageDialog / WidgetEventHandler / DebugControl / NumberInputBox classes. Low-EV unless a specific downstream investigation needs to walk these delegate paths.",
+    "**Slot-layout decomp** on the 6 vftables to verify Invoke + Equals + GetHashCode + dtor (the standard typed-delegate slot pattern). Low-EV unless the Lua-side event-dispatch path needs walking.",
+    "**Binder/registration sites** for these delegates - the code that constructs and registers EventHandler<T> instances bound to LuaDebugLog/LuaDebugSelect events. Would require Ghidra FindAllReferences on each of the 6 vftable VAs."
+  ],
+  "validators": {
+    "validate_catalog": "0/0/50 (41 invariants)",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT (unchanged baseline)",
+    "audit_catalog_xref": "0/0 (clean - all wiki-links resolve correctly)"
+  },
+  "symbol_count_delta": "1127 -> 1133 (+6)"
+}

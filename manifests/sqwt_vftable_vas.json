@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_bonus_finding",
+  "scope": "Resolve VAs of the 3 Sqwt vftables deferred from the (Sqwt::InputElement, Sqwt::Input::CommandBindingCollection, Sqwt::Input::InputBindingCollection). Bonus: identified Sqwt::InputBindingCollectionInterface as a STRONG candidate for the +0xB4 interface vftable in client-architecture 'The Sqwt event-source registry is per-channel'.",
+  "method": {
+    "step1": "Build FindSymbolByName.java wrapper run_c67_vftable_lookup.bat with BAHAMUT_SYMBOL_QUERY=Sqwt::Input, BAHAMUT_QUERY_LIMIT=300.",
+    "step2": "Execute via PowerShell. 1109 total matches; 300 displayed. Extract the 3 target vftables + bonus Interface vftable by line-scanning the output.",
+    "step3": "Catalog 4 BCS-Y data entries (BCS-Y-1377/1378/1379/1380). Amend BCS-Y-1375 (InputElement::ctor) with resolved VAs.",
+    "step4": "Run all 5 validators."
+  },
+  "key_findings": [
+    "**3 deferred VAs resolved**: Sqwt::InputElement::vftable @ 0x01069A6C, Sqwt::Input::CommandBindingCollection::vftable @ 0x01069B90, Sqwt::Input::InputBindingCollection::vftable @ 0x00FA2ECC.",
+    "**BONUS: Sqwt::InputBindingCollectionInterface::vftable @ 0x00F90F00 identified**. Different class from Sqwt::Input::InputBindingCollection (lives in Sqwt:: namespace, not Sqwt::Input::). This is a SEPARATE interface class.",
+    "**+0xB4 writer hypothesis**: the MSVC multiple-inheritance pattern fits the evidence. A concrete derived class (e.g. Sqwt::Window, Sqwt::Controls::ListBox) inheriting BOTH Sqwt::InputElement (primary base at +0x00) AND Sqwt::InputBindingCollectionInterface (secondary base at +0xB4) would have its ctor write the Interface vftable at object+0xB4. This explains why InputElement/RaptureElement/XamlElement ctors don't write +0xB4 (they're primary-base-only) - the +0xB4 writer is the derived-class ctor.",
+    "**Closes part of the deferred[1] (+0xB4 hunt) ahead of schedule**: the Interface vftable VA is now known. Next tier will find the derived-class ctors that write it.",
+    "**Memory layout consistency check**: Sqwt::InputElement::vftable (0x01069A6C) and Sqwt::Input::CommandBindingCollection::vftable (0x01069B90) are 0x124 bytes apart - emitted in the same data block by the linker, consistent with the InputElement+CommandBindingCollection composition pattern. InputBindingCollection::vftable (0x00FA2ECC) is 0xC6E08 bytes away - emitted as a separate type (because it's used independently in addition to being embedded)."
+  ],
+  "new_bcsy_entries": [
+    {"id": "BCS-Y-1377", "name": "Sqwt_InputElement_vftable_DAT_01069a6c", "addr": "0x01069A6C", "role": "Sqwt::InputElement primary vftable; written to InputElement+0x00"},
+    {"id": "BCS-Y-1378", "name": "Sqwt_Input_CommandBindingCollection_vftable_DAT_01069b90", "addr": "0x01069B90", "role": "Embedded CommandBindingCollection vftable; written to InputElement+0x04"},
+    {"id": "BCS-Y-1379", "name": "Sqwt_Input_InputBindingCollection_vftable_DAT_00fa2ecc", "addr": "0x00FA2ECC", "role": "Embedded InputBindingCollection vftable; written to InputElement+0x28"},
+    {"id": "BCS-Y-1380", "name": "Sqwt_InputBindingCollectionInterface_vftable_DAT_00f90f00", "addr": "0x00F90F00", "role": "Interface vftable (Sqwt:: namespace); STRONG candidate for the +0xB4 secondary-vftable referenced in client-architecture 'The Sqwt event-source registry is per-channel'"}
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1375", "addition": "Resolved 3 deferred vftable VAs + noted bonus Interface vftable as +0xB4 writer candidate."}
+  ],
+  "deferred_followups": [
+    "Find the derived-class ctors that write the Interface vftable to object+0xB4. Candidates: Sqwt::Window::ctor, Sqwt::Controls::ListBox::ctor, Sqwt::Controls::Primitives::ScrollBar::ctor, Sqwt::Controls::ContentControl::ctor. Method: FindReferencesToAddress on 0x00F90F00, or grep decomp for writes of that constant to [reg+0xB4].",
+    "Refine client-architecture 'Sqwt UI elements follow a uniform heap-factory' with the MSVC multiple-inheritance interpretation (primary base at +0x00, secondary interface base at +0xB4). Deferred until the writer is confirmed."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1366 -> 1370 (+4 BCS-Y data entries)",
+  "files_changed": [
+    "manifests/symbols.json: +4 entries (BCS-Y-1377..1380), 1 amendment (BCS-Y-1375)",
+    "manifests/sqwt_vftable_vas.json (NEW, this file)",
+    "tools/ghidra/logs/c67_vftable_lookup.txt (NEW)"
+  ]
+}

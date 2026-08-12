@@ -1,0 +1,64 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "topic": "Coroutine caller scan l2",
+  "generated": "2026-05-20",
+  "title": "Second-level Lua coroutine caller classifications",
+  "scope": "Resolve or explicitly halt the three unattributed coroutine wrapper callsites left by the parent coroutine caller scan.",
+  "sourceRefs": [
+    "manifests\\coroutine_caller_scan_findings.json",
+    "manifests\\negatives_verification_findings.json",
+    "%BCS_GHIDRA_PROJECTS%\\coroutine_callers_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\coroutine_callers_l2_decomp.txt",
+    "build/lua/97qvs89r57y9rr_p.lua"
+  ],
+  "methodology": {
+    "decompiledSecondLevelCallers": [
+      "FUN_00CE1840",
+      "FUN_00CCEE30",
+      "FUN_00CCECB0",
+      "FUN_00D08000"
+    ],
+    "haltApplied": true,
+    "haltReason": "FUN_00CCFFE0 resolved as a thin generic LuaThreadImpl helper. FUN_00CCEAC0 and FUN_00D04DA0 would require chasing further caller chains without diagnostic strings, so analysis stops after this l2 round per handoff."
+  },
+  "resolutions": [
+    {
+      "nativeFunction": "FUN_00CCFFE0",
+      "symbolId": "BCS-Y-0482",
+      "name": "LuaThreadImpl_CallOrResumeHelper_FUN_00CCFFE0",
+      "classification": "identified_engine_internal_helper",
+      "confidence": "probable",
+      "evidence": "FUN_00CCFFE0 contains the dual dispatch: param_5 == 0 calls FUN_00CF4230(local_10 + 1, &errSlot), while param_5 != 0 calls FUN_00CF4010(local_10 + 1, 0xffffffff, &errSlot). L2 callers FUN_00CCEE30 and FUN_00CCECB0 both compute param_5 from whether the 0x3c-stride continuation vector at this+0xdc..0xe0 is nonempty, and both pass the same param_1+0x11c result slot.",
+      "behavior": "Generic LuaThreadImpl call-or-resume helper used by sibling invoke paths. It is a coroutine wrapper consumer, but not a distinct gameplay or async subsystem.",
+      "callers": [
+        "FUN_00CCEE30",
+        "FUN_00CCECB0"
+      ],
+      "notObserved": "No Component::Lua::GameEngine::LuaThreadImpl::Call diagnostic literal was present in the two l2 callers or the helper body."
+    },
+    {
+      "nativeFunction": "FUN_00CCEAC0",
+      "classification": "unresolved_after_l2_halt",
+      "confidence": "unpromoted",
+      "evidence": "The only l2 caller recovered here is FUN_00CE1840, a 73-byte wrapper. It lazily initializes param_1+0x10 via FUN_00CF1060(param_1, &DAT_01377ee8, 0) and then calls FUN_00CCEAC0(param_1, param_3, param_4). It contains no diagnostic literal, Lua N-API registration name, or class/method string.",
+      "retainedBehavior": "FUN_00CCEAC0 remains a two-argument resume path that pushes a name-binding setup through FUN_00CD7A50 and a normalized 15-bit value ((*param_4 & 0x7fff) / DAT_00f91c48).",
+      "haltReason": "Further classification requires following FUN_00CE1840's caller FUN_00CEF510 or the FUN_00CF1060 object construction path, which is outside the one-round halt condition."
+    },
+    {
+      "nativeFunction": "FUN_00D04DA0",
+      "classification": "unresolved_after_l2_halt",
+      "confidence": "unpromoted",
+      "evidence": "The only l2 caller recovered here is FUN_00D08000, a 109-byte Lua-frame wrapper with no static callers and no embedded strings. It calls FUN_00CF3180(param_1), then FUN_00D04DA0(local_14, cookie), then FUN_00CF31C0().",
+      "retainedBehavior": "FUN_00D04DA0 remains a conditional yield path gated by FUN_00CE1720, FUN_00D04FE0, and FUN_00D19B70; it yields through FUN_00CF38D0 only when the target flags at +0x13c/+0x13d do not indicate completion.",
+      "luaSourceContext": "No native binding string was found tying FUN_00D08000 or FUN_00D04DA0 to a Lua name.",
+      "haltReason": "Further classification would require finding the native N-API registration entry or following dynamic binding data, which is outside the one-round halt condition."
+    }
+  ],
+  "symbolsAdded": [
+    {
+      "id": "BCS-Y-0482",
+      "name": "LuaThreadImpl_CallOrResumeHelper_FUN_00CCFFE0"
+    }
+  ]
+}

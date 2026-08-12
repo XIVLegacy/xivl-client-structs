@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Bulk decomp 22 ActorBase-derived class ctors (callers of FUN_006DBB70 BCS-Y-1408 excluding StatusBase at BCS-Y-1395). Confirms client-architecture 'The LuaControl hierarchy is the runtime surface' section's Tier-1 derivation breadth at the immediate level: 20 named ActorBase-derived classes + 2 special-case helpers + StatusBase (already cataloged) = 23 immediate ActorBase derivatives.",
+  "method": {
+    "step1": "Bulk decomp the 22 callers of FUN_006DBB70 via run_c75_actorbase_derived.bat (single Ghidra invocation, 22 VAs comma-separated). Log: tools/ghidra/logs/c75_actorbase_derived_decomp.txt.",
+    "step2": "Identify class names via vftable writes: 20 cleanly identified ActorBase-derived classes (Application::Lua::Script::Client::Control::* namespace). 2 special-case helpers (FUN_0075F9B0 = aggregate factory, FUN_007185E0 = allocator helper without derived vftable).",
+    "step3": "Catalog 22 BCS-Y entries (BCS-Y-1454..1475). Amend BCS-Y-1408 (ActorBase::ctor) with full enumeration."
+  },
+  "key_findings": [
+    "**20 named ActorBase-derived classes confirmed** (all in Application::Lua::Script::Client::Control namespace):",
+    "  - 10 single-vftable classes: WidgetBase, DebugBase, DirectorBase, Debug, AreaBase, SpreadSheet, CharaBase, WorldMaster, CommandDebuggerBase, plus 1 more (counted in single-vftable below).",
+    "  - 8 multi-inheritance classes (2 vftables at +0x00 + +0x60): JudgeBase, GroupBase, ItemBase, QuestBase, Table, WidgetHandle, CommandBase, String, Math (9 actually). Same MI pattern as StatusBase.",
+    "  - 2 triple-vftable classes (Global + CutScene): write 3 vftables including a Component::Lua::GameEngine::LuaThreadEndListenerInterface secondary at +0x68. These classes implement BOTH ActorBase-chain AND LuaThreadEndListenerInterface - first cross-cutting interface evidence in the Lua-bridge.",
+    "**2 special-case callers**:",
+    "  - FUN_0075F9B0 (7481 bytes) = Lua-control AGGREGATE FACTORY. Calls 14+ different ctors. Likely the LuaControl REGISTRY initializer that creates one instance of each control class at startup. 1 caller (FUN_007634B0).",
+    "  - FUN_007185E0 (94 bytes) = ActorBase-allocator-helper. Allocates 0x60 bytes + calls ActorBase::ctor but doesn't write a derived class vftable in the visible body. Possibly a bare-ActorBase factory or has inlined derived ctor calls.",
+    "**Cross-cutting interface revelation**: 2 of the 20 named classes (Global + CutScene) participate in Component::Lua::GameEngine::LuaThreadEndListenerInterface via multi-inheritance with 3 vftables. Suggests there's a separate Lua-bridge interface for thread-end listening alongside the LuaControl hierarchy. Later work could enumerate other LuaThreadEndListenerInterface implementors.",
+    "**Tier-1 = ~20 direct ActorBase derivatives**. Each of the *Base classes (QuestBase, ItemBase, AreaBase, etc.) is itself a base of probably DOZENS of concrete derived classes. The full Lua-bridge class tree below ActorBase likely has 100s of total classes.",
+    "**Together with the 42 Lua-bridge Receivers + the 4 LuaControl direct derivatives**, the Lua-bridge architecture covers a substantial fraction of the FFXIV client-side game-state machinery."
+  ],
+  "new_bcsy_entries_summary": {
+    "ctors_identified": 20,
+    "special_case_helpers": 2,
+    "amendments": 1,
+    "total_bcsy_added": 22,
+    "id_range": "BCS-Y-1454..BCS-Y-1475"
+  },
+  "named_classes": [
+    "JudgeBase (MI)",
+    "WidgetBase",
+    "DebugBase",
+    "DirectorBase",
+    "GroupBase (MI)",
+    "Debug",
+    "Global (3-vftable MI w/ LuaThreadEndListenerInterface)",
+    "AreaBase",
+    "ItemBase (MI)",
+    "SpreadSheet",
+    "QuestBase (MI)",
+    "Table (MI)",
+    "CharaBase",
+    "WidgetHandle (MI)",
+    "WorldMaster",
+    "CommandBase (MI)",
+    "String (MI)",
+    "CommandDebuggerBase",
+    "Math (MI)",
+    "CutScene (3-vftable MI w/ LuaThreadEndListenerInterface)"
+  ],
+  "amendments": [
+    {"id": "BCS-Y-1408", "addition": "Full enumeration of 22 derived classes (20 named + 2 special-case)."}
+  ],
+  "director_base_hooks": {
+    "source": "xivl-decomp:docs/event/director-base-hooks.md",
+    "vtableRva": "0xbd5d6c",
+    "slotCount": 34,
+    "directorSpecificOverrides": [0, 1, 2, 3, 5, 6, 11, 12],
+    "inheritedSlotCount": 26,
+    "actorBranchSharedSlots": [26, 29],
+    "sizeBytes": 112,
+    "constructor": "FUN_006ecf90",
+    "factory": "FUN_007288f0",
+    "status": "Override set, actor-branch inheritance, and object size are confirmed; Lua hook names remain inferred."
+  },
+  "deferred_followups": [
+    "Catalog vftable VAs for the 20 named classes (+22 BCS-Y data entries). ~15min via FindSymbolByName runs.",
+    "Decomp FUN_007634B0 (the caller of FUN_0075F9B0) to understand the LuaControl registry initialization flow.",
+    "Enumerate other LuaThreadEndListenerInterface implementors. The Global + CutScene case suggests there may be more.",
+    "Bulk decomp the next tier down: each of the *Base classes (QuestBase, ItemBase, etc.) likely has dozens of concrete derived ctors. Would extend the Lua-bridge tree to its full depth.",
+    "Investigate the relationship between the 20 named ActorBase-derived classes and the 42 Lua-bridge Receivers. Likely zero overlap (different role: Receivers handle inbound events, ActorBase-derived are persistent state objects), but the relationship deserves explicit confirmation.",
+    "Identify what specific behavior the LuaThreadEndListenerInterface contract entails - likely a callback method invoked when a Lua coroutine ends. Useful for understanding the LuaControl/coroutine lifecycle."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1443 -> 1465 (+22 BCS-Y: 20 class ctors + 2 special-case helpers)",
+  "files_changed": [
+    "manifests/symbols.json: +22 entries (BCS-Y-1454..1475), 1 amendment (BCS-Y-1408)",
+    "manifests/actorbase_derived_classes.json (NEW, this file)",
+    "tools/ghidra/logs/c75_actorbase_derived_decomp.txt (NEW)"
+  ]
+}

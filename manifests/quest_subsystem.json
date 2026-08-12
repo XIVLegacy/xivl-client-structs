@@ -1,0 +1,444 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Characterize quest opcodes in the 1.23b client. Goal stated as 'QuestProgress, QuestAccept, QuestComplete, QuestObjective, etc.'. Reframing: in 1.x there is NO dedicated 'Quest*' packet family. Quest state flows through the existing Event/Director/GenericData wire layer plus a single dedicated client receiver (JobQuestCompleteTriple s2c 0x01A2). All gameplay-side semantics live in Lua scripts subclassing QuestBase / QuestDirectorBaseClass. This manifest catalogs (a) the wire opcodes that carry quest traffic, (b) the QuestBase / QuestDirectorBaseClass C++ scaffolding and its slot map, (c) the dedicated JobQuestCompleteTriple receiver, and (d) the Lua-callback firers tied to quest lifecycle.",
+  "method": {
+    "rtti_search": {
+      "scope": "Cross-checked Ghidra RTTI strings via existing manifests/symbols.json catalog (524 entries, last id BCS-Y-0534) - no fresh Ghidra invocation needed in this manifest because the reference docs already exhaust the QuestBase / QuestDirectorBase / SimpleQuestBattleBase RTTI surface and the JobQuestCompleteTripleReceiver vtable",
+      "findings": {
+        "concrete_quest_directors": "ZERO RTTI matches for OpeningDirector / ZoneDirector / GuildleveDirector / HarvestDirector / CraftDirector / SimpleContent across the entire binary - per docs/director_quest.md these are Lua-only subclasses of DirectorBase",
+        "scaffolding_classes": [
+          "Application::Lua::Script::Client::Control::QuestBase @ vftable RVA 0xbdfddc (34-slot primary) + RVA 0xbdfdd0 (1-slot RTTI marker leaf at +0x60). sizeof = 0x64 (100 bytes). Multiple-inheritance two-vtable shape.",
+          "Application::Lua::Script::Client::Control::DirectorBase @ vftable RVA 0xbd5d6c (34 slots). Per docs/director_quest.md.",
+          "Application::Lua::Script::Client::Command::Network::JobQuestCompleteTripleReceiver @ vftable RVA 0xc57360 (6 slots) - confirmed in receiver_opcode_map_inbound.json"
+        ]
+      }
+    },
+    "dispatcher_cross_ref": {
+      "central_s2c": "FUN_004DC690 (BCS-Y-0279). 0x01A2 falls in the high-switch multi-opcode fallthrough block (0x199..0x1A2 + 0x1A4..0x1A8) -> per the actor cluster dispatch model `actor = FUN_004d9910(packet); actor->vftable[9](zone_state)`. BUT JobQuestCompleteTripleReceiver actually dispatches via LuaActorImpl::vftable slot 78 (FUN_0076c690) -> the Pattern C 2-step gated dispatcher FUN_00785bf0, NOT through the actor map. The high-opcode fallthrough call at FUN_004DC690 is the polymorphic actor handler that ROUTES 0x01A2 onward to the per-class receive path; LuaActorImpl is the per-class implementation that runs for player actors.",
+      "event_family_s2c": "FUN_004D8860 (BCS-Y-0280). Handles dedicated cases for the Event/Director cluster - 0x012E SetTalkEventCondition, 0x012F KickEvent, 0x0130 RunEventFunction, 0x0131 EndEvent, 0x0133 GenericData (qtdata/qtmap), 0x0136 SetEventStatus, 0x016B SetNoticeEventCondition. These are the wire opcodes that quest traffic actually flows through.",
+      "c2s_emit_central": "FUN_004E0240 (Tier-C forwarder) - all c2s emits including 0x012D EventStart / 0x012E EventUpdate funnel through this"
+    },
+    "catalog_cross_reference": {
+      "scope": "Grepped manifests/symbols.json (524 entries) and xivl-opcodes/data/opcodes.json + observations.json + client_receivers.json + lua_api_index.json for quest/leve/journal/guildleve/JobQuest tokens",
+      "existing_bcs_y_entries_that_touch_quest": [
+        "BCS-Y-0163 MyPlayer::vftable - slot 4 fires _onJobQuestCompleteFirst/Second/Third + _onLoginEvent (firer FUN_0070A350)",
+        "BCS-Y-0195 Control::MyPlayer::vftable_slot5_onCancelJobQuestComplete_fanout_FUN_00706A50 - slot 5 fires _onCancelJobQuestCompleteFirst/Second/Third + _onFinalize (the cancel side of the JobQuestComplete lifecycle)",
+        "BCS-Y-0192 Control::CharaBase::vftable_slot5_onFinalize_FUN_006FA7E0 - base slot 5 _onFinalize (also called from CancelJobQuestComplete path)",
+        "BCS-Y-0211 Control::PlayerBase::vftable_slot2_53API_lua_dispatch_FUN_00753F90 - dispatcher slot 2 with 53 APIs; _isCompletedCutSceneReplayQuest is one of them",
+        "BCS-Y-0231 Control::Global::vftable_slot2_8API_lua_dispatch_FUN_007582E0 - dispatcher slot 2 with 8 APIs; _getQuestActorForCutSceneReplay is one of them",
+        "BCS-Y-0220 MyPlayer_BootupManager_unmapped_slots_pure_backend_negative_finding - slot 2 also indexes _onCancelJobQuestComplete / _onJobQuestComplete",
+        "BCS-Y-0241 LuaActorImpl_cumulative_slot_mapping_45_of_90 - inventory note covering slot 78 = JobQuestCompleteTripleReceiver wrapper",
+        "BCS-Y-0274 22_lua_actor_impl_slot_annotations_added - flags JobQuestCompleteTriple as NOT-annotated in the LuaActorImpl sweep (uses Pattern C dispatch, not standard receiver slot path)",
+        "BCS-Y-0278 step_b_inbound_gap_receivers_pure_native_confirmation - per-receiver decomp summary; 0x01A2 JobQuestCompleteTriple slot 5 FUN_0089E520 (38B) calls FUN_00cc7510 + FUN_006F9520 (the JobQuestObject swapper at MyPlayer+0x110)",
+        "BCS-Y-0279 Option2_central_packet_dispatcher_FUN_004dc690 - 0x01A2 listed in the high-opcode multi-case fallthrough group (0x199..0x1A2 + 0x1A4..0x1A8) routed via the actor vftable[9]",
+        "BCS-Y-0336 validation_napi_vs_cpp_reconciliation - _cancelJobQuestCompleteTriple confirmed as a C++-bound N-API name",
+        "BCS-Y-0371 remaining_Control_corpus_closure - _deleteQuestActorForPreview cataloged at Control slot 2 family",
+        "BCS-Y-0276 18_direct_dispatch_lua_event_dispatcher_slots - notes _onCancelJobQuestComplete* in the cutscene/warp cluster (slots 38/39/41/42)"
+      ],
+      "no_pre_existing_bcs_y_for": [
+        "QuestBase::vftable @ RVA 0xbdfddc - never cataloged in symbols.json (docs/quest_dispatch.md only)",
+        "QuestBase::secondary RTTI vtable @ RVA 0xbdfdd0 - never cataloged",
+        "QuestBase::ctor @ FUN_00776f50 (file 0x376f50) - never cataloged",
+        "QuestBase::factory_New @ FUN_00777030 (slot 1) - never cataloged",
+        "QuestBase::secondary_dtor_thunk @ FUN_00777d70 - never cataloged",
+        "QuestBase::slot28_getQuestData_likely @ FUN_006dcfd0 - never cataloged",
+        "DirectorBase::vftable @ RVA 0xbd5d6c - never cataloged",
+        "JobQuestCompleteTripleReceiver::vftable @ RVA 0xc57360 - listed in client_receivers.json but no BCS-Y class entry in symbols.json",
+        "JobQuestCompleteTripleReceiver::ctor @ FUN_0089d270 (file 0x49d270) - never cataloged",
+        "JobQuestCompleteTripleReceiver::slot1_New @ FUN_0089d350 - mentioned in opcodes.json notes for _0x01A2 but no BCS-Y entry",
+        "JobQuestCompleteTripleReceiver::slot5_apply @ FUN_0089e520 (file 0x49e520) - mentioned in BCS-Y-0278 notes but no dedicated entry",
+        "JobQuestObject_swap_handler @ FUN_002f9520 (file 0x2f9520) - mentioned in BCS-Y-0278 notes but no dedicated entry; this is the function that allocates the 0x24-byte JobQuestObject and swaps it into MyPlayer+0x110",
+        "Pattern_C_dispatcher_FUN_00785bf0 - mentioned in event_job_quest_complete_triple_decomp.md but no BCS-Y entry; this is the 2-step success-gated dispatcher that LuaActorImpl::slot78 routes through",
+        "Pattern_C_gate_byte_globals: DAT_012c41af (gate 1 - 'kick result byte', shared with KickReceiver) and DAT_012c3120 (gate 2 - new, undocumented elsewhere)",
+        "LuaClassDispatcher_FUN_0075f9b0 - 7,481-byte function named in quest_dispatch.md as the master Lua-class instantiation entry point that handles BaseClass.new() requests for ALL 79 class names; never cataloged",
+        "LuaClassRegistration_FUN_0078e3a0 - already cataloged as BCS-Y-0398 LuaClassRegistry_FUN_0078E3A0; the companion runtime dispatcher FUN_0075f9b0 has no BCS-Y"
+      ]
+    }
+  },
+  "key_reframing": [
+    "There is no QuestProgress, QuestAccept, QuestComplete, or QuestObjective wire opcode in 1.23b.",
+    "Quest state in 1.x is driven by SERVER-side scripts using the Event/Director state machine. The client side runs Lua-script subclasses of QuestBase / DirectorBase / QuestDirectorBaseClass; all customization-per-quest lives in those scripts, not in dedicated wire packets.",
+    "The wire surface for quests is multiplexed across the Event family (0x012D..0x0131, 0x0136, 0x016B), GenericData (0x0133), GAM property sync (0x0137 SetActorProperty + 0x017A SynchGroupWorkValues), and the SendLog gameMessage family (0x0157..0x016A, including 0x0167 which is the most-emitted quest-related system message). One dedicated receiver opcode exists: 0x01A2 JobQuestCompleteTriple - and it only fires the 'completion celebration' UI for class-quest completions that don't involve NPC interaction.",
+    "Quest discovery in symbols.json is therefore a polyglot inventory rather than a packet-family characterization: it cuts across LuaActorImpl slot 78 (Pattern C receiver), Control::MyPlayer slots 4+5 (Lua firers), Control::CharaBase slot 5 (_onFinalize chain), the SendDataPacket('qtdata',...) -> GenericDataPacket plumbing, and the master Lua-class instantiation dispatcher FUN_0075f9b0.",
+    "Three Lua-side concepts are load-bearing: (a) DirectorBaseClass.delegateEvent (server invokes named method on client-side director/quest via RunEventFunction 0x0130 + matching client-side method dispatch); (b) directorWork._save / _temp / _sync work-tables (server pushes state via SyncWriter -> SetActorProperty / SynchGroupWorkValues); (c) QuestBase slot 28 = FUN_006dcfd0 (likely getQuestData, the canonical 1.x Lua-side accessor cited in archived community-chat notes)."
+  ],
+  "wire_opcodes_carrying_quest_traffic": [
+    {
+      "opcode": "0x012D",
+      "direction": "c2s",
+      "name": "EventStartPacket",
+      "pcap_evidence": "All 6 quest captures + all 4 leve captures (126 firings, payload 216 bytes)",
+      "role": "Client tells server 'I am starting this event' (talking to NPC, examining quest object, etc.). This is the c2s carrier that initiates quest accept dialogs and journal queries."
+    },
+    {
+      "opcode": "0x012E",
+      "direction": "c2s",
+      "name": "EventUpdatePacket",
+      "pcap_evidence": "8 of 10 quest/leve captures (200 firings, payload 120 bytes)",
+      "role": "Client sends event-update / dialog choice / option-selection. This is the c2s carrier for quest dialog navigation.",
+      "catalog_status": "implemented, no BCS-Y entry"
+    },
+    {
+      "opcode": "0x012E",
+      "direction": "s2c",
+      "name": "SetTalkEventCondition",
+      "pcap_evidence": "party_battle_leve.pcapng",
+      "role": "Server tells client which talk events are currently available on which actors. Used to drive ? / ! / quest-marker visibility above NPC heads.",
+      "catalog_status": "implemented, no BCS-Y entry"
+    },
+    {
+      "opcode": "0x012F",
+      "direction": "s2c",
+      "name": "KickEventPacket",
+      "pcap_evidence": "war_quest_update2.pcapng + gather_wood/harvest (4 firings, payload 144)",
+      "role": "Server initiates an event on the client (the 'kick' = bootstrap an event scene). Used for quest cutscenes, scripted scenes, NPC interactions.",
+      "catalog_status": "Receiver = KickClientOrderEventReceiver (rtti 0xc574b0, slot1 FUN_0089F530). No BCS-Y for the Receiver class itself; supporting slot1 cataloged"
+    },
+    {
+      "opcode": "0x0130",
+      "direction": "s2c",
+      "name": "RunEventFunctionPacket",
+      "pcap_evidence": "8 of 10 quest/leve captures (200 firings, payload 176)",
+      "role": "**The primary RPC carrier for quest scripting.** Server invokes a NAMED METHOD on the client-side director or quest Lua script. This is what executes DirectorBaseClass:delegateEvent + processEventXxx / processTtrXxx names. Every cinematic, dialog step, and quest sequence transition rides on this.",
+      "catalog_status": "Receiver = StartServerOrderEventFunctionReceiver (rtti 0xc574c8, slot1 FUN_0089f430, LuaActorImpl slot 57). No BCS-Y for the receiver class"
+    },
+    {
+      "opcode": "0x0130",
+      "direction": "c2s",
+      "name": "UpdateGroupPacket",
+      "bcs_y_ref": "BCS-Y-0329 (gating thunk) / BCS-Y-0380 / BCS-Y-0382 / BCS-Y-0323",
+      "role": "Lua trigger _updateGroup or _updateMemberAndInformation. Not quest-specific but appears in quest captures because parties / linkshell groups update during quest content."
+    },
+    {
+      "opcode": "0x0131",
+      "direction": "s2c",
+      "name": "EndEventPacket",
+      "pcap_evidence": "9 of 10 quest/leve captures (101 firings, payload 80)",
+      "role": "Server tells client 'this event is over'. Used to close out quest dialogs; cutscenes",
+      "catalog_status": "Receiver = EndClientOrderEventReceiver (rtti 0xc57348, slot1 FUN_0089d180). No BCS-Y for the class."
+    },
+    {
+      "opcode": "0x0133",
+      "direction": "s2c",
+      "name": "GenericDataPacket",
+      "pcap_evidence": "5 captures including accept_quest, quest_journal, party_battle_leve, war_quest_update2 (25 firings, payload 224)",
+      "role": "**The wire carrier for SendDataPacket('requestedData','qtdata',...) and 'qtmap' replies.** Used by RequestQuestJournalCommand.lua to ship a quest's journal info + map markers back to the client (the player:SendDataPacket('requestedData', 'qtdata', quest:GetQuestId(), quest:GetSequence(), unpack(journalInfo)) call). Also carries other generic typed-array payloads.",
+      "catalog_status": "Receiver = UserDataReceiver (BCS-Y-0155; primary vtable 0x010574A4, secondary six-slot MI vtable 0x01057488 at this+8). LuaActorImpl slot 59 FUN_00759E50 dispatches through primary slot 1 FUN_008A0190. This is Pattern A and does not use FUN_00785BF0. Source: xivl-decomp:docs/event/user-data-receiver.md."
+    },
+    {
+      "opcode": "0x0136",
+      "direction": "s2c",
+      "name": "SetEventStatusPacket",
+      "pcap_evidence": "party_battle_leve.pcapng + war_quest_update2.pcapng",
+      "role": "Server sets per-actor event status flags (gated by event id). Used to mark NPCs as 'this quest is now accept-able from this NPC' or 'this NPC is now interactive for this quest sequence'.",
+      "catalog_status": "Receiver = SetEventStatusReceiver (LuaActorImpl slot 48 via BCS-Y-0092). No dedicated class BCS-Y."
+    },
+    {
+      "opcode": "0x016B",
+      "direction": "s2c",
+      "name": "SetNoticeEventCondition",
+      "pcap_evidence": "4 captures: local_leve_complete, party_battle_leve, war_quest_update2/3 (887 firings, payload 72)",
+      "role": "Server tells client when to fire a notice event on an actor (used for quest sequence transitions / journal-update-notice). Per BCS-Y-0196, Notice variants are unique in NOT firing Lua callbacks at slot 10; they have a notification-only lifecycle.",
+      "catalog_status": "Receiver = SetNoticeEventConditionReceiver. No BCS-Y class entry."
+    },
+    {
+      "opcode": "0x00E3",
+      "direction": "s2c",
+      "name": "SetActorQuestGraphicPacket",
+      "bahamut_anchor": "MapServerOpcode::SetActorQuestGraphic / OP_ACTOR_SPECIAL_GRAPHIC",
+      "pcap_evidence": "7 captures including quest_update + war_quest_update1/3 + 4 movement captures (40-byte payload)",
+      "role": "**The closest thing to a dedicated 'Quest' opcode.** Server tells client to show a quest-marker graphic above a specific actor (the floating ? / ! / yellow exclamation marks). Falls in the actor-cluster opcode range 0xCC..0xE5 routed via the actor cluster dispatch model's actor vftable[9] generic dispatch.",
+      "catalog_status": "Routed via the actor cluster dispatch model's dispatcher; no per-actor-class slot 9 implementation cataloged."
+    },
+    {
+      "opcode": "0x0167",
+      "direction": "s2c",
+      "name": "_0x0167 / GameMessageWithoutActor2 / OP_TEXT_SHEET_NO_ACTOR_X38",
+      "pcap_evidence": "All 6 quest captures + all 4 leve captures + gather_wood/harvest (78 firings, payload 56)",
+      "role": "Most-emitted quest-time system text message variant. Routed through SendLogReceiver (LuaActorImpl slot 63) per the sendlogreceiver demux pass as case in the 0x0157..0x016A 20-opcode fallthrough.",
+      "catalog_status": "BCS-Y-0248 SendLogReceiver class + BCS-Y-0249 ctor + BCS-Y-0251 apply (the sendlogreceiver demux manifest characterizes the 20-way ctor demux)."
+    },
+    {
+      "opcode": "0x01A2",
+      "direction": "s2c",
+      "name": "_0x01A2 / JobQuestCompleteTriple",
+      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x01A2 JobQuestCompleteTriple",
+      "pcap_evidence": "NONE in the 54-capture corpus - quest completion ceremonies are not captured",
+      "role": "The single dedicated Quest opcode. It fires the onJobQuestComplete series for a quest id and displays the completion window. First 4 bytes = uint32 questId. Will error/crash client with improper quest id.",
+      "catalog_status": "Receiver = JobQuestCompleteTripleReceiver (rtti 0xc57360). NO BCS-Y class entry. Mentioned in BCS-Y-0278 / BCS-Y-0279 / BCS-Y-0274 notes only.",
+      "needsReverify": true,
+      "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
+    },
+    {
+      "opcode": "0x018E",
+      "direction": "s2c",
+      "name": "_0x018E / Set Retainer Star (ChangeSystemStat)",
+      "role": "NOT quest. This is the retainer-star UI flag, not a quest opcode. Included here because the original prompt's QuestProgress/Objective framing could be confused with this.",
+      "catalog_status": "Routed through ChangeSystemStatReceiver (LuaActorImpl slot 64)."
+    }
+  ],
+  "scaffolding_classes": [
+    {
+      "name": "Application::Lua::Script::Client::Control::QuestBase",
+      "kind": "rtti+vtable_cluster",
+      "primary_vtable_va_image_base_0x400000_assumed": "0x00FDFDDC",
+      "primary_vtable_rva": "0xbdfddc",
+      "primary_vtable_slot_count": 34,
+      "secondary_vtable_va": "0x00FDFDD0",
+      "secondary_vtable_rva": "0xbdfdd0",
+      "secondary_vtable_slot_count": 1,
+      "object_size_bytes": 100,
+      "secondary_offset_in_object": "0x60",
+      "ctor_va_file": "0x00776f50",
+      "factory_slot1_va_file": "0x00777030",
+      "secondary_dtor_thunk_va_file": "0x00777d70",
+      "quest_specific_lua_hook_slot28_va_file": "0x006dcfd0",
+      "quest_specific_lua_hook_slot28_role_hypothesis": "getQuestData (canonical 1.x Lua accessor per archived community-chat context); slot 28 inline JMP target FUN_00cc7170 is a thin virtual-dispatch trampoline",
+      "no_existing_bcs_y_for_any_of_these": true,
+      "proposed_bcs_y_ids_if_promoted": {
+        "QuestBase_primary_vtable": "BCS-Y-0535",
+        "QuestBase_secondary_vtable_marker": "BCS-Y-0536",
+        "QuestBase_ctor_FUN_00776F50": "BCS-Y-0537",
+        "QuestBase_factory_slot1_FUN_00777030": "BCS-Y-0538",
+        "QuestBase_secondary_dtor_thunk_FUN_00777D70": "BCS-Y-0539",
+        "QuestBase_slot28_getQuestData_FUN_006DCFD0": "BCS-Y-0540"
+      }
+    },
+    {
+      "name": "Application::Lua::Script::Client::Control::DirectorBase",
+      "kind": "rtti+vtable_cluster",
+      "vtable_va_image_base_0x400000_assumed": "0x00FD5D6C",
+      "vtable_rva": "0xbd5d6c",
+      "vtable_slot_count": 34,
+      "shared_with": "All Lua-side OpeningDirector / ZoneDirector / WeatherDirector / AfterQuestWarpDirector / GuildleveDirector / HarvestDirector / CraftDirector subclasses (they exist only as Lua scripts subclassing this base class)",
+      "no_existing_bcs_y": true,
+      "proposed_bcs_y_id_if_promoted": "BCS-Y-0541"
+    },
+    {
+      "name": "Lua-side classes that ALL inherit from these C++ bases (no RTTI in client; live in .prog Lua bytecode delivered via LpbLoader)",
+      "kind": "lua_class_inventory",
+      "examples": {
+        "DirectorBaseClass": "412-line base API (delegateEvent, processUIInit, processFinalize, processMapOpenMessage, initWork, updateSyncWork, _onFinalize, _resetFade, recordRequestInformation, etc.)",
+        "QuestDirectorBaseClass": "85-line subclass of DirectorBase; adds questDirectorWork._temp (16B) + _sync (32B), getOwnClientQuestId() abstract, getUseContentsCommand() (gates combat commands during content)",
+        "SimpleQuestBattleBaseClass": "43-line base for ~60 class-quest combat tutorials; adds eventContentGiveUp + getOwnClientQuestIdAsSimple()",
+        "QuestDirectorMan0g001..030": "8-line per-quest stubs; just class registration, no method overrides (man0g0 main-scenario combat tutorial)",
+        "QuestDirectorCom0l601 / Gcu30101 / etc": "17-line per-quest stubs; only override getOwnClientQuestIdAsSimple to return the quest ID literal",
+        "Guildleve/GuildleveBaseClass": "Sibling base under /Director/Guildleve/ with ~32 leve subclasses",
+        "AfterQuestWarpDirector": "Empty 15-line wrapper - all behaviour from DirectorBaseClass + server events"
+      }
+    }
+  ],
+  "dedicated_quest_receiver": {
+    "opcode": "0x01A2",
+    "name": "JobQuestCompleteTripleReceiver",
+    "namespace": "Application::Lua::Script::Client::Command::Network",
+    "rtti_rva": "0xc57360",
+    "vtable_slot_count": 6,
+    "dispatch_pattern": "Pattern C (stack-built receiver dispatched through a 2-step success-gated helper)",
+    "dispatch_chain_va_file_offsets": {
+      "lua_actor_impl_slot78_wrapper": "0x0076c690",
+      "ctor": "0x00776f50_NOTE_THIS_IS_QUESTBASE_CTOR - actual JobQuest receiver ctor is FUN_0089d270 at file 0x49d270",
+      "ctor_corrected_file_va": "0x0049d270",
+      "stack_temp_dtor_file_va": "0x0049d2f0",
+      "two_step_gated_dispatcher_file_va": "0x00385bf0",
+      "two_step_gated_dispatcher_va_image_base": "0x00785bf0",
+      "slot5_real_handler_file_va": "0x0049e520",
+      "job_quest_object_swapper_file_va": "0x002f9520",
+      "job_quest_object_swapper_va_image_base": "0x006f9520"
+    },
+    "vtable_slot_inventory": [
+      {
+        "slot": 0,
+        "file_va": "0x004a1120",
+        "size_bytes": 96,
+        "role": "scalar deleting dtor"
+      },
+      {
+        "slot": 1,
+        "file_va": "0x0049d350",
+        "size_bytes": 112,
+        "role": "New() factory: operator new(0x20) -> ctor"
+      },
+      {
+        "slot": 2,
+        "file_va": "0x0049d3c0",
+        "size_bytes": 13,
+        "role": "sync receive - return success byte (*out = [0x012c41af]; RET 8)"
+      },
+      {
+        "slot": 3,
+        "file_va": "0x0049d3d0",
+        "size_bytes": 17,
+        "role": "trampoline to slot 5 via vtable[5]"
+      },
+      {
+        "slot": 4,
+        "file_va": "0x0049d3f0",
+        "size_bytes": 3,
+        "role": "return true predicate (MOV AL,1; RET)"
+      },
+      {
+        "slot": 5,
+        "file_va": "0x0049e520",
+        "size_bytes": 48,
+        "role": "real handler - navigates LuaEngine context root, hands off to FUN_002f9520 swapper"
+      }
+    ],
+    "object_layout_hypothesis": "36-byte JobQuestObject = 3 x 12-byte entries (jobId u32, questId u32, completionFlags u32) - the '3 most recent completed job quests' UI cache. Stored at LuaEngine[+0x110] (per slot 5 decomp). Per-update lifecycle: alloc 36B -> swap into MyPlayer+0x110 -> free old.",
+    "no_pcap_evidence": "0x01A2 is not in the 54-capture corpus. The only way to capture it would be to time a capture across a class-quest completion that doesn't involve NPC interaction.",
+    "no_existing_bcs_y": true,
+    "proposed_bcs_y_ids_if_promoted": {
+      "vtable": "BCS-Y-0542",
+      "ctor_FUN_0049D270": "BCS-Y-0543",
+      "stack_temp_dtor_FUN_0049D2F0": "BCS-Y-0544",
+      "slot1_factory_FUN_0049D350": "BCS-Y-0545",
+      "slot5_real_handler_FUN_0049E520": "BCS-Y-0546",
+      "lua_actor_impl_slot78_wrapper_FUN_0076C690": "BCS-Y-0547",
+      "two_step_gated_dispatcher_FUN_00785BF0_pattern_C": "BCS-Y-0548",
+      "job_quest_object_swapper_FUN_006F9520": "BCS-Y-0549"
+    }
+  },
+  "lua_callback_firers_tied_to_quests": [
+    {
+      "callback_name": "_onJobQuestComplete",
+      "callback_variants": [
+        "_onJobQuestCompleteFirst",
+        "_onJobQuestCompleteSecond",
+        "_onJobQuestCompleteThird"
+      ],
+      "firer_va": "0x0070A350",
+      "firer_class_slot": "Control::MyPlayer::vftable slot 4",
+      "fanout_size": "3 named variants for the triple",
+      "existing_bcs_y": "BCS-Y-0163"
+    },
+    {
+      "callback_name": "_onCancelJobQuestComplete",
+      "callback_variants": [
+        "_onCancelJobQuestCompleteFirst",
+        "_onCancelJobQuestCompleteSecond",
+        "_onCancelJobQuestCompleteThird"
+      ],
+      "firer_va": "0x00706A50",
+      "firer_class_slot": "Control::MyPlayer::vftable slot 5",
+      "additional_fires": "_onFinalize (via FUN_006F6900)",
+      "existing_bcs_y": "BCS-Y-0195"
+    },
+    {
+      "callback_name": "_cancelJobQuestCompleteTriple",
+      "kind": "Lua-callable C++ N-API method (not _on* callback fire)",
+      "existing_bcs_y": "BCS-Y-0336"
+    },
+    {
+      "callback_name": "_getQuestActorForCutSceneReplay",
+      "kind": "Lua-callable C++ N-API method",
+      "firer_class_slot": "Control::Global::vftable slot 2 (one of 8 APIs)",
+      "existing_bcs_y": "BCS-Y-0231"
+    },
+    {
+      "callback_name": "_isCompletedCutSceneReplayQuest",
+      "kind": "Lua-callable C++ N-API method",
+      "firer_class_slot": "Control::PlayerBase::vftable slot 2 (one of 53 APIs)",
+      "existing_bcs_y": "BCS-Y-0211"
+    },
+    {
+      "callback_name": "_deleteQuestActorForPreview",
+      "kind": "Lua-callable C++ N-API method",
+      "existing_bcs_y": "BCS-Y-0371"
+    }
+  ],
+  "uncataloged_supporting_machinery": [
+    {
+      "name": "LuaClassRuntimeDispatcher_FUN_0075F9B0",
+      "size_bytes": 7481,
+      "role": "Master Lua-class instantiation entry point. Body contains 79 PUSH-immediate string references covering ALL known Lua class names (ActorBaseClass, CharaBaseClass, PlayerBaseClass, NpcBaseClass, WidgetBaseClass, DirectorBaseClass, AreaBaseClass, PrivateAreaBaseClass, QuestBaseClass, DebugBaseClass, +49 more). When server emits 'instantiate this class' (e.g. as part of accept-quest flow), this function walks the inheritance chain and dispatches to slot 1 (the factory) of the matched vtable. Runtime companion to BCS-Y-0398 LuaClassRegistry_FUN_0078E3A0 (registration time).",
+      "proposed_bcs_y_id_if_promoted": "BCS-Y-0550"
+    },
+    {
+      "name": "Pattern_C_2step_gated_dispatcher_FUN_00785BF0",
+      "size_bytes": 238,
+      "role": "2-step success-gated dispatcher used by JobQuestCompleteTripleReceiver. Gate 1 checks DAT_012c41af (the kick-result byte from KickReceiver). Gate 2 checks DAT_012c3120 (new, undocumented). Real work runs only when both gates pass.",
+      "proposed_bcs_y_id_if_promoted": "BCS-Y-0548"
+    },
+    {
+      "name": "Pattern_C_gate2_byte_DAT_012C3120",
+      "kind": "global byte",
+      "role": "Second success-gate sentinel for Pattern C receivers. Not yet correlated to any other receiver, lifecycle, or write site.",
+      "proposed_bcs_y_id_if_promoted": "BCS-Y-0551"
+    }
+  ],
+  "key_findings": [
+    "No QuestProgress / QuestAccept / QuestComplete / QuestObjective wire opcode exists in 1.23b. Quest state is multiplexed across the Event/Director family (0x012D, 0x012E, 0x012F, 0x0130, 0x0131, 0x0136, 0x016B), GenericData (0x0133), GAM property sync (0x0137 / 0x017A), SendLog gameMessage (0x0167 most prominent), and the single dedicated Quest receiver (0x01A2 JobQuestCompleteTriple).",
+    "0x01A2 JobQuestCompleteTriple is the ONLY dedicated quest opcode in the binary. It is 6-slot Pattern C receiver with a fully-decompiled chain (LuaActorImpl slot 78 -> ctor -> 2-step gated dispatcher FUN_00785BF0 -> slot 5 -> FUN_006F9520 JobQuestObject swapper at MyPlayer+0x110).",
+    "QuestBase is a 34-slot multi-inheritance C++ class at vtable RVA 0xbdfddc + secondary RTTI marker at 0xbdfdd0. sizeof = 0x64. Slot 1 is the universal Lua New() factory FUN_00777030; slot 28 (FUN_006dcfd0) is the Quest-specific Lua hook (likely getQuestData). NO BCS-Y entries for ANY QuestBase artifact",
+    "All concrete Director/Quest types (OpeningDirector, ZoneDirector, WeatherDirector, GuildleveDirector, HarvestDirector, CraftDirector, QuestDirectorMan0g001..030, SimpleQuestBattle subclasses, Guildleve subclasses, etc.) live ONLY as Lua scripts subclassing DirectorBase / QuestDirectorBaseClass / SimpleQuestBattleBaseClass / GuildleveBaseClass. RTTI scan returns zero matches for any of these names - the C++ binary only has the base classes.",
+    "The 'qtdata' / 'qtmap' RPC pattern (RequestQuestJournalCommand.lua + Player.SendDataPacket) rides on GenericDataPacket (s2c 0x0133). UserDataReceiver dispatches through LuaActorImpl slot 59 and its primary two-slot vtable (Pattern A); its secondary six-slot vtable is an MI scaffold, not Pattern C.",
+    "Server-driven quest behavior runs through DirectorBaseClass:delegateEvent which wire-rides on s2c 0x0130 RunEventFunctionPacket. delegateEvent invokes a NAMED method (processEventXxx, processTtrXxx, onTalk, onPush, onNotice, onKillBNpc, onNpcLs, onUpdate) on the client-side director or quest Lua instance. All per-quest customization is server-side and routed through this single opcode.",
+    "Two LuaActorImpl::vftable slots are tied to JobQuest lifecycle: slot 78 (FUN_0076C690) = JobQuestCompleteTriple receiver wrapper (Pattern C dispatch); MyPlayer::vftable slot 4 (FUN_0070A350) = _onJobQuestCompleteFirst/Second/Third fire; MyPlayer::vftable slot 5 (FUN_00706A50) = _onCancelJobQuestCompleteFirst/Second/Third + _onFinalize fire.",
+    "The MyPlayer+0x110 storage location for the 36-byte JobQuestObject (3 x 12B entries = 'last 3 completed job quests') is a CONFIRMED per-player state field. Server pushes new entries via 0x01A2; client side reads via Lua. No existing struct entry in structs.json for JobQuestObject layout.",
+    "No new BCS-Y entries written to symbols.json - manifest is draft-only per workspace rules. 14 proposed BCS-Y IDs (BCS-Y-0535..0549 with one reservation for Pattern C dispatcher at 0548) would close the entire quest subsystem if promoted in a follow-up writer phase. The IDs are CONTINGENT - any concurrent phase that lands BCS-Y entries between now and a promotion phase will require re-numbering. Last existing id at audit time: BCS-Y-0534.",
+    "JobQuestCompleteTripleReceiver and its two-step dispatcher FUN_00785BF0 use Pattern C. UserDataReceiver does not: LuaActorImpl slot 59 reaches primary slot 1 FUN_008A0190 through Pattern A.",
+    "Lua-side surface for quests in lua_api_index.json: 17 names match quest/leve/journal/guildleve. Five are _on* fires (_onJobQuestCompleteFirst/Second/Third, _onCancelJobQuestComplete*). One is the C++ N-API method _cancelJobQuestCompleteTriple. Three are accessor APIs (_getQuestActorForCutSceneReplay, _isCompletedCutSceneReplayQuest, _deleteQuestActorForPreview)."
+  ],
+  "open_questions": [
+    "Is QuestBase slot 28 (FUN_006dcfd0 -> tail-jmp via FUN_00cc7170 -> +0x13f69) actually getQuestData? archived community-chat notes. Confirming requires following the JMP target +0x13f69 from 0x00cc7170 (resolves to 0x00ce0ad9 ish, needs lookup) and reading the body for the get-named-field pattern. Worth a focused decomp.",
+    "Where do server-side AddQuest / CompleteQuest / RemoveQuest commands actually surface on the wire?...); _0x02Packet (s2c 0x0002; 48 bytes). 0x0002 is NOT in the pcap quest captures; either 0x0002 is consumed before reaching the captured stream Worth checking the 0x0002 dispatcher.",
+    "0x0133 GenericDataPacket in quest captures has payload 224 bytes consistently. The 'qtdata' RequestQuestJournalCommand emits a variadic LuaParam list - 224 bytes is the marshalled payload after the param-pack serializer. Decoding the 224-byte shape would expose the qtdata / qtmap variant tags and the per-quest journal fields.",
+    "Three Lua-side quest journal callback names; processTtrNomal003; etc.) are dispatched; 0x0130 RunEventFunctionPacket; the per-name decode of which method on which director is purely a server-side construction. Symbolically attributing 'this RunEventFunction call drives method X' from a pcap requires payload disassembly of the 176-byte 0x0130 frame.",
+    "Pattern C gate 1 byte DAT_012C41AF is shared with KickReceiver - is it a global 'last receiver result' or is it owned by a specific subsystem and shared opportunistically? Gate 2 DAT_012C3120 has zero documented users besides Pattern C dispatcher - finding write sites would name its subsystem.",
+    "The master Lua-class dispatcher FUN_0075F9B0 (7,481 B, 79 class-name PUSH-immediates) is uncataloged. Walking the per-name routing would let us correlate every Lua class name to its slot-1 factory address - including QuestBaseClass -> FUN_00777030 (already known) and the 78 other entries. This is a single-phase deliverable worth picking up.",
+    "Is 0x00E3 SetActorQuestGraphicPacket actually the only graphic-marker opcode for quests, or are there sibling opcodes in the actor cluster 0xCC..0xE5 that also carry quest visual state? The actor cluster dispatch model's generic-actor-vftable[9] dispatch makes them invisible to receiver maps.",
+    "Quest abandonment is NOT in the pcap corpus (per the xivl-captures capture catalog). The c2s opcode for player-initiated quest abandon is therefore unknown from corpus evidence - it likely flows through EventUpdate 0x012E with a specific selector byte but the exact selector is undecoded.",
+    "This survey found ZERO existing BCS-Y entries for the QuestBase scaffolding; ZERO for DirectorBase This is a systematic catalog gap Worth a meta-discussion on how doc-derived knowledge should be promoted."
+  ],
+  "deliverables": {
+    "wire_opcodes_documented": 13,
+    "scaffolding_classes_documented": 2,
+    "lua_class_inventory_documented": 7,
+    "dedicated_receivers_documented": 1,
+    "lua_callback_firers_cross_referenced": 6,
+    "uncataloged_supporting_functions_proposed": 3,
+    "new_bcs_y_entries_written": 0,
+    "new_bcs_s_entries_written": 0,
+    "symbols_json_modified": false,
+    "structs_json_modified": false,
+    "proposed_bcs_y_ids_if_promoted_count": 14,
+    "key_findings_count": 11,
+    "open_questions_count": 10
+  },
+  "cross_references": {
+    "docs": [
+      "docs/packet-dispatch-map.md (no quest section currently)",
+      "docs/lua-class-system.md (consolidation - QuestBaseClass is one of the 24 BaseClass entries in the static registry)",
+      "docs/lua-engine-callback-registry.md (the _on* firer pattern QuestBase / MyPlayer / CharaBase use)",
+      "docs/pcap-correlation-ledger.md (no quest section currently)"
+    ],
+    "manifests": [
+      "manifests/symbols.json (524 entries, none for the QuestBase / DirectorBase / JobQuestCompleteTriple class cluster)",
+      "manifests/structs.json (no JobQuestObject struct entry)",
+      "manifests/receiver_opcode_map_inbound.json (entry #JobQuestCompleteTripleReceiver with bcsRefs: {} - empty)",
+      "manifests/operation_opcode_map_outbound.json (no quest entries)",
+      "manifests/lua_api_index.json (17 quest/leve/journal names; QuestBase slot 28 getQuestData not present)",
+      "manifests/actor_cluster_dispatch_model.json (the central s2c dispatcher that routes 0x01A2 via the high-opcode fallthrough)",
+      "manifests/pattern_d_subdispatcher.json (event-family sub-dispatcher FUN_004D8860 - hosts 0x012E..0x0131 + 0x0136 + 0x016B that carry quest traffic)",
+      "manifests/sendlogreceiver_demux.json (SendLogReceiver 20-way demux - hosts 0x0167 quest system messages)"
+    ],
+    "bahamut_opcodes": [
+      "xivl-opcodes:data/opcodes.json (catalog for the 13 wire opcodes documented here)",
+      "xivl-captures:data/observations.json (pcap evidence)",
+      "xivl-opcodes:data/client_receivers.json (43-entry receiver inventory; JobQuestCompleteTripleReceiver is one)"
+    ]
+  },
+  "conventions_compliance": {
+    "ascii_only": true,
+    "no_em_dashes": true,
+    "no_push_commit": true,
+    "no_symbols_json_edits": true,
+    "no_structs_json_edits": true,
+    "draft_manifest_only": true,
+    "no_appender_generated": true,
+    "live_capture_deferred": true,
+    "repo_relative_paths_used_where_possible": true
+  }
+}

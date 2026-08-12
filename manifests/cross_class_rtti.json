@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Cross-class RTTI survey of 10 LTC/LGTC-derived classes (StatusBase already cataloged at BCS-Y-1497). KEY FINDING: 10 of 11 classes share BYTE-IDENTICAL 11-BCD inheritance footprint at 4 vftable positions (offsets 0/+4/+96/+100); only the +96 BCD varies (LuaTentativeControl for 3 LTC classes vs LuaGlobalTentativeControl for 7 LGTC classes). Global is the OUTLIER with 15 BCDs and 6 vftable positions due to LTELI MI base at +0x68. This uniformity provides strong confirmation that the correction of the was right: StatusBase has the SAME 4-vftable-position layout as 9 other classes, not the 6-vftable layout previously claimed.",
+  "method": {
+    "step1": "FindSymbolByName for each of the 10 classes' 'Control::<ClassName>::RTTI' substring. 10 sequential Ghidra invocations producing 6-7 RTTI structure addresses per class. Output: c93_<class>.txt (10 files).",
+    "step2": "Single DumpMemRange batch covering all 11 class CHDs + BCAs in one Ghidra invocation. Output: c93_all_bcas.txt.",
+    "step3": "Text-parse the BCA contents to extract per-class numBaseClasses + BCD addresses + (offset, pdisp, vdisp, attr) tuples. 10 of 11 classes match the StatusBase pattern byte-for-byte (modulo own BCD + +96 BCD).",
+    "step4": "Catalog 10 new RTTI entries (BCS-Y-1588..1597) + 3 amendments to BCS-Y-1497 (StatusBase RTTI cross-class link), BCS-Y-1498 (LGTC derived-class enumeration), BCS-Y-1514 (LTC derived-class enumeration)."
+  },
+  "key_findings": [
+    "**11-BCD uniformity across LTC/LGTC classes**: 10 of 11 LTC/LGTC-derived classes have BYTE-IDENTICAL BCA composition - 11 BCD pointers at 4 distinct subobject offsets (0/+4/+96/+100). The only structural variation is which BCD is at offset +96 (LuaTentativeControl for 3 LTC classes, LuaGlobalTentativeControl for 7 LGTC classes). Even the BCD addresses (0x0115CD24, 0x0115CAB8, 0x0115CAFC, 0x0115C6F8, 0x0115C714, 0x0115C730, 0x0115D668, 0x0115D684, 0x0115D6A0) are SHARED - the same BCD instance is reused across multiple classes' BCAs.",
+    "**4 vftable positions per class** (offsets 0/+4/+96/+100), confirming the correction of the '6 MI vftables' claim. the 4 'additional MI base vftables' at 0x00FDF968..0x00FDF98C were standalone classes, NOT StatusBase MI sub-vftables. Verified by showing all 11 LTC/LGTC classes follow the same 4-position layout - not a StatusBase-specific anomaly.",
+    "**Global is the OUTLIER**: 15 BCDs (vs standard 11), 6 vftable positions (vs standard 4), CHD attributes=0x05 MI+AMBIGUOUS (vs standard 0x01 MI). The extra 4 BCDs are the LTELI (LuaThreadEndListenerInterface BCS-Y-1480) chain at offset +0x68: 1 LTELI BCD (BCS-Y-1480) + 3 Lge chain DIAMOND repeats. This matches the finding 'Global writes 3 vftables in its ctor' - primary at +0, LGTC at +0x60, LTELI at +0x68. Global is the only ActorBase derivative that BOTH inherits LGTC AND implements LTELI.",
+    "**LTC vs LGTC partition confirmed via BCA**: 3 LTC classes (GroupBase BCS-Y-1588, ItemBase BCS-Y-1589, WidgetHandle BCS-Y-1590) share BCD 0x0115D60C at offset +96 (-> LTC TD 0x012C0828). 8 LGTC classes (Math BCS-Y-1591, CommandBase BCS-Y-1593, JudgeBase BCS-Y-1594, QuestBase BCS-Y-1595, String BCS-Y-1596, Table BCS-Y-1597, plus pre-existing StatusBase BCS-Y-1497, plus Global BCS-Y-1592 outlier) share BCD 0x0115D8CC at offset +96 (-> LGTC TD 0x012C0A28). The 3/8 split exactly matches the empirical attribution.",
+    "**CHD attributes inconsistency**: most classes have CHD attributes=0x01 (MI only), but CommandBase (BCS-Y-1593) and Global (BCS-Y-1592) have attributes=0x05 (MI + AMBIGUOUS) DESPITE having identical (or near-identical for Global) BCA composition. For CommandBase the ambiguity flag is unexplained - possibly compiler emitted it because CommandBase code uses base methods ambiguously somewhere. For Global the ambiguity makes sense given the triple-diamond Lge chain (via LuaControl + LGTC + LTELI).",
+    "**MSVC RTTI sharing optimization**: the same BCD instances (e.g., 0x0115CD24, 0x0115C6F8) are reused across all 11 classes' BCAs. MSVC deduplicates BCDs for identical base classes, leading to memory savings. This is why the xref scan on LGTC TD found only ~8 distinct BCDs even though 8 classes inherit from LGTC - they share the same +96 BCD address."
+  ],
+  "new_bcsy_entries_summary": {
+    "ltc_class_rtti": 3,
+    "lgtc_class_rtti": 7,
+    "amendments": 3,
+    "total_bcsy_added": 10,
+    "id_range": "BCS-Y-1588..BCS-Y-1597",
+    "amendment_targets": [
+      "BCS-Y-1497 (StatusBase RTTI - cross-class link to 9 LTC/LGTC peers)",
+      "BCS-Y-1498 (LGTC TD - 8 derived class enumeration)",
+      "BCS-Y-1514 (LTC TD - 3 derived class enumeration)"
+    ]
+  },
+  "deferred_followups": [
+    "Identify each class's PRIMARY VFTABLE address (vftable_meta_ptr) via xref scan on each COL address. We have COL addresses but not vftable VAs.",
+    "Look for adjacent standalone classes in each class's .data RTTI region (like StatusBase). The 10 classes' RTTI structures cluster in 0x0115Dxxx-0x0115Fxxx range; the gaps between class structures may contain additional standalone class RTTI.",
+    "Investigate CommandBase's CHD attributes=0x05 - why does it carry the AMBIGUOUS flag when its BCA matches the other 6 LGTC classes (which have attributes=0x01)?",
+    "Decomp the 10 newly-cataloged classes' ctors to verify the vftable writes match the BCA-inferred MI structure (4 vftable positions for 10 classes; 6 positions for Global).",
+    "only enumerates the 11 LTC/LGTC classes; ActorBase has 23 derivatives total per - what is the inheritance pattern of the other 12 ActorBase derivatives? (NilControl, CommandEventRelationControlBase, CutScene, etc.)",
+    "The BCD 0x0115CD24/CAB8/CAFC point to TDs (LuaControl chain) - decode their names to fully label StatusBase's BCD #1/2/3 in the primary chain (deferred)."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1574 -> 1584 (+10 BCS-Y; BCS-Y-1588..1597)",
+  "files_changed": [
+    "manifests/symbols.json: +10 entries (BCS-Y-1588..1597), 3 amendments (BCS-Y-1497, 1498, 1514)",
+    "manifests/cross_class_rtti.json (NEW, this file)",
+    "tools/ghidra/logs/c93_groupbase.txt (NEW)",
+    "tools/ghidra/logs/c93_itembase.txt (NEW)",
+    "tools/ghidra/logs/c93_widgethandle.txt (NEW)",
+    "tools/ghidra/logs/c93_math.txt (NEW)",
+    "tools/ghidra/logs/c93_global.txt (NEW)",
+    "tools/ghidra/logs/c93_commandbase.txt (NEW)",
+    "tools/ghidra/logs/c93_judgebase.txt (NEW)",
+    "tools/ghidra/logs/c93_questbase.txt (NEW)",
+    "tools/ghidra/logs/c93_string.txt (NEW)",
+    "tools/ghidra/logs/c93_table.txt (NEW)",
+    "tools/ghidra/logs/c93_all_bcas.txt (NEW)",
+    "tools/extractors/append_cross_class_rtti.py (NEW)"
+  ]
+}

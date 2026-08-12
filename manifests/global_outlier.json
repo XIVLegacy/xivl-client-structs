@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Closes the Global-outlier question. Global is the only LTC/LGTC class with 15 BCDs (vs 11) + CHD attr=0x05 MI+AMBIGUOUS + 3 COLs (vs 2). Global has 4 extra LTELI-chain BCDs by TD-name decoding, identifies the 3 vftable VAs via COL xref scan + COL.offset decode, decomps the Global ctor's finalizer call, and characterizes WHY Global needs the LTELI subobject. **KEY FINDING**: Global has TRIPLE Lge memory-allocator scope (extending the dual-scope finding to 3 scopes for Global only) - one Lge subobject per major Lua-bridge ancestor: actor-side (via ActorBase chain), tentative-control (via LGTC chain, the 'diamond repeat'), and listener (via LTELI chain, NEW).",
+  "method": {
+    "step1": "Dump Global's BCA (15 BCDs = 60 bytes from 0x0115EF9C) + the 4 LTELI-chain BCDs (28 bytes each = 112 bytes from 0x0115EFF8). Ghidra DumpMemRange. Output: c102_global_lteli_bcds.txt. Decode TD pointers - first dword of each BCD = TD ptr. Identified 4 LTELI-chain TDs: 0x012BFD00 (LTELI - matches BCS-Y-1480), 0x012BF458 (LgeBase - matches BCS-Y-1477), 0x012BF488 (LgeCMA - matches BCS-Y-1478), 0x012BF4C8 (LgeBMA - matches BCS-Y-1479). The 3 Lge TDs are the SAME instances as the LuaControl-chain Lge TDs - MSVC RTTI sharing optimization (per finding).",
+    "step2": "FindAllReferencesToAddress on Global's 3 COL VAs (0x0115EF78, 0x0115F068, 0x0115F07C). Each COL has exactly 1 data ref at vftable_VA - 4 (= vftable_meta_ptr slot). Output: c102_global_vftables.txt. Vftable VAs identified: 0x00FD60AC (refs primary COL 0x0115EF78), 0x00FD60A4 (refs COL 0x0115F068), 0x00FD6090 (refs COL 0x0115F07C).",
+    "step3": "DumpFunctionDecomp of FUN_00725FE0 (the final call in Global ctor body, 86 bytes) + FUN_006EF040 (Global secondary ctor, 138 bytes) for parallel comparison. Output: c102_global_finalizer.txt. FUN_00725FE0 calls FUN_006D1370(&local_11, &local_11) - likely a std::string initialization helper for a 1-byte member field. The secondary ctor confirms the same 3-vftable pattern as primary.",
+    "step4": "Dump COL contents (5 dwords each) to read the `offset` field at +4. Output: c102_global_cols_vftables.txt. Results: COL 0x0115EF78 offset=0 (primary), COL 0x0115F068 offset=0x60 (LGTC subobject), COL 0x0115F07C offset=0x68 (LTELI subobject). Also dumped vftable 0x00FD6090 (4 slots: FUN_007254C0, FUN_006DCFB0, FUN_006ED840, FUN_006DCFC0 - LTELI's 4 methods overridden) + vftable 0x00FD60A4 (1 slot: FUN_007254B0 - LGTC's single method overridden).",
+    "step5": "Catalog 5 new BCS-Y entries: 3 vftable VAs + Global ctor finalizer + LTELI slot 0 override. Amend 5 existing entries: BCS-Y-1592 (Global TD), BCS-Y-1460 (Global primary ctor), BCS-Y-1485 (Global secondary ctor), BCS-Y-1543 (Global 'tertiary' slot 0 dtor convention correction), BCS-Y-1544 (Global 'tertiary' slot 1 clone factory convention correction). BCS-Y-1543/1544 'tertiary' label is per-memory-order (3rd in .rdata) but the vftable is actually the PRIMARY per COL offset=0."
+  },
+  "key_findings": [
+    "**4 LTELI-chain BCDs decoded - all using SHARED Lge TDs**. BCD #12 at 0x0115EFF8: TD=0x012BFD00 (LTELI BCS-Y-1480) at mdisp=0x68, attr=0x40 HASPCHD, numContainedBases=3. BCD #13 at 0x0115F014: TD=0x012BF458 (LgeBase BCS-Y-1477) at mdisp=0x6C, attr=0x42 HASPCHD|AMBIGUOUS, numContainedBases=2. BCD #14 at 0x0115F030: TD=0x012BF488 (LgeCMA BCS-Y-1478) at mdisp=0x6C, attr=0x42, numContainedBases=1. BCD #15 at 0x0115F04C: TD=0x012BF4C8 (LgeBMA BCS-Y-1479) at mdisp=0x6C, attr=0x42, numContainedBases=0. The 3 Lge TDs are the SAME instances as the LuaControl-chain Lge TDs (MSVC RTTI sharing) - confirms LTELI inherits the SAME Lge chain as LuaControl.",
+    "**Global has TRIPLE Lge memory-allocator scope** - extending the dual-scope finding. Each major Lua-bridge ancestor contributes its own independent Lge subobject: (1) **actor-side allocator** at offset +4 (from ActorBase -> LuaControl -> LgeBase chain), (2) **tentative-control allocator** at offset +100 (from LGTC -> LgeBase chain, the 'diamond repeat'), (3) **listener allocator** at offset +108 (from LTELI -> LgeBase chain, NEW). This is why Global's CHD has attr=0x05 (MI + AMBIGUOUS) - the 3 Lge subobjects ARE ambiguous (3 paths from Global to LgeBase). All 3 are NON-VIRTUAL inheritance (attr bit 0x10 = VIRTUAL is NOT set in any BCD).",
+    "**Global's 3 vftable VAs identified by COL.offset decode**: PRIMARY at **0x00FD60AC** (refs COL 0x0115EF78, offset=0; many slots starting FUN_007277F0=BCS-Y-1543 dtor, FUN_00728950=BCS-Y-1544 clone, FUN_007582E0...), LGTC-OVERRIDE at **0x00FD60A4** (refs COL 0x0115F068, offset=0x60; 1 slot only = FUN_007254B0), LTELI-OVERRIDE at **0x00FD6090** (refs COL 0x0115F07C, offset=0x68; 4 slots = FUN_007254C0, FUN_006DCFB0, FUN_006ED840, FUN_006DCFC0).",
+    "**'tertiary_vftable' convention drift**. BCS-Y-1543/1544 were named 'tertiary' but the vftable they belong to is actually the PRIMARY per COL.offset=0. The 'tertiary' label was per-memory-order (3rd in .rdata: 0x00FD60AC is the HIGHEST VA of Global's 3 vftables, hence 3rd in dump order). In MSVC, vftables are laid out in REVERSE order of subobject offset - so primary (offset 0) ends up LAST in memory. Convention correction documented as amendments to BCS-Y-1543/1544. The actual 'tertiary' (3rd by COL = LTELI-override at +0x68) is at LOWEST VA 0x00FD6090.",
+    "**LTELI-override vftable size matches LTELI interface methods**. Global's LTELI-override vftable at 0x00FD6090 has 4 slots, matching LTELI's expected method count (vector deleting dtor + clone + onThreadEnd + 1 other - the 4 listener-interface methods). The LGTC-override at 0x00FD60A4 has only 1 slot, matching LGTC's expected single overridable method (typical 1-method engine-side interface). This is consistent with the identification of LTELI as a 'cross-cutting interface' with a defined contract.",
+    "**Architectural significance: Global is the GLOBAL SCRIPT STATE class**. Among 6 LTELI implementors (: Global, CutScene, FormManager, PlayerManager, s_CutScenePreviewThreadEndListner, ClientItemSpreadSheetBinderContainer), Global is the ONLY one that also inherits from the LTC/LGTC family. This explains why Global is the outlier in the 11-class LTC/LGTC survey. Architectural interpretation: Global needs to participate in BOTH (a) the Lua-managed control lifecycle (LTC/LGTC) AND (b) the Lua-thread-end notification protocol (LTELI) because it holds GLOBAL state that must be cleaned up when ANY Lua coroutine ends, not just when its own LGTC owner is destroyed.",
+    "**Global ctor body confirmed** (from c75_actorbase_derived_decomp.txt lines 273-295): FUN_006F15A0 (136 bytes) sequence: (1) call ActorBase ctor FUN_006DBB70 (BCS-Y-1408) - establishes ActorBase chain vftables including LuaControl at +0x60 transient; (2) call LGTC primary ctor FUN_00CCCBF0 (BCS-Y-1510) - writes LGTC vftable at +0x60; (3) write LTELI vftable at +0x68 (transient); (4) OVERRIDE all 3 with Global vftables (primary at +0, LGTC-override at +0x60, LTELI-override at +0x68); (5) call FUN_00725FE0 finalizer (BCS-Y-1719 NEW) - probably initializes a std::string field via FUN_006D1370. This is the canonical MSVC most-derived ctor pattern with 3-level vftable transient-overwrite."
+  ],
+  "new_bcsy_entries_summary": {
+    "vftable_vas": 3,
+    "ctor_helpers": 1,
+    "lteli_override_methods": 1,
+    "total_bcsy_added": 5,
+    "id_range": "BCS-Y-1716..BCS-Y-1720",
+    "amendment_targets": [
+      "BCS-Y-1592 (Global TD): document 3 vftable VAs + triple Lge allocator chain explanation",
+      "BCS-Y-1460 (Global primary ctor FUN_006F15A0): document FUN_00725FE0 finalizer + 3 vftable VAs",
+      "BCS-Y-1485 (Global secondary ctor FUN_006EF040): cross-link to LTELI-override vftable VA",
+      "BCS-Y-1543 (Global 'tertiary' slot 0 dtor FUN_007277F0): convention correction - it's actually primary vftable slot 0",
+      "BCS-Y-1544 (Global 'tertiary' slot 1 clone factory FUN_00728950): convention correction - it's actually primary vftable slot 1",
+      "BCS-Y-1480 (LTELI TD): cross-link to Global's LTELI-override vftable VA"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp the 4 functions in Global's LTELI-override vftable at 0x00FD6090 (FUN_007254C0, FUN_006DCFB0, FUN_006ED840, FUN_006DCFC0) to characterize Global's Lua-thread-end notification logic.",
+    "Decomp FUN_007254B0 (Global's single LGTC-override at 0x00FD60A4 slot 0) to characterize what LGTC behavior Global overrides.",
+    "Apply the same methodology to the other 5 LTELI implementors (CutScene, FormManager, PlayerManager, s_CutScenePreviewThreadEndListner, ClientItemSpreadSheetBinderContainer) - verify they each have a 4-slot LTELI-override vftable. CutScene is the most natural next target (also has secondary ctor BCS-Y-1484, similar BC pattern to Global).",
+    "FUN_00725FE0 calls FUN_006D1370(&local_11, &local_11) - 2 byte-pointer args. Likely std::string construction or similar 1-byte-init helper. Worth a short decomp of FUN_006D1370 to confirm.",
+    "Cross-link Global's primary vftable contents (the many slots starting at 0x00FD60AC) to identify ActorBase/LuaControl/LuaObject method overrides specific to Global."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1702 -> 1707 (+5 BCS-Y; BCS-Y-1716..1720)",
+  "files_changed": [
+    "manifests/symbols.json: +5 entries (BCS-Y-1716..1720), 6 amendments",
+    "manifests/global_outlier.json (NEW, this file)",
+    "tools/ghidra/logs/c102_global_lteli_bcds.txt (NEW - 15 BCDs + 4 LTELI-chain BCD contents)",
+    "tools/ghidra/logs/c102_global_vftables.txt (NEW - 3 COL xref scan)",
+    "tools/ghidra/logs/c102_global_finalizer.txt (NEW - FUN_00725FE0 + FUN_006EF040 decomp)",
+    "tools/ghidra/logs/c102_global_cols_vftables.txt (NEW - 3 COL contents + 2 vftable slot dumps)",
+    "tools/extractors/append_global_outlier.py (NEW)"
+  ]
+}

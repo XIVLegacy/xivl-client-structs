@@ -1,0 +1,718 @@
+{
+  "version": 1,
+  "generated": "2026-05-24",
+  "gameVersion": "1.23b",
+  "scope": "Full enumeration of FUN_004D8860 (Pattern D event-family sub-dispatcher from docs/client-architecture.md, 'S2C dispatch has five architectural patterns')",
+  "method": {
+    "step1": "Decompile FUN_004D8860 via DumpFunctionDecomp.java (run_fun_004d8860_decomp.bat)",
+    "step2": "Enumerate every case label in the switch; record handler VA and any fallthrough groups",
+    "step3": "Identify caller pattern via DumpFunctionCallers.java (run_fun_004d8860_callers.bat) and parent callers via run_parent_callers.bat",
+    "step4": "Cross-reference every handler VA against manifests/symbols.json for existing BCS-Y entries",
+    "step5": "Batch-decompile all 27 unique callee VAs via run_uncataloged_handlers_batch_1.bat to verify Pattern A vtable-trampoline shape",
+    "step6": "Map every vtable offset to BCS-Y-0092 (LuaActorImpl::vftable) slot inventory to attribute the Receiver class behind each opcode",
+    "step7": "Look for switch-on-opcode bodies in handlers (Pattern D recursion) - none found"
+  },
+  "function_metadata": {
+    "va": "0x004D8860",
+    "name": "FUN_004d8860",
+    "existing_bcs_y_id": "BCS-Y-0280",
+    "existing_bcs_y_name": "Option2_event_family_dispatcher_FUN_004d8860",
+    "body_bytes": 864,
+    "switch_key_expr": "*(undefined2 *)(param_2 + 2) (packet opcode at +2)",
+    "entry_guard": "if (param_1+0x92 == 0 OR param_1+0x80 == 0 OR FUN_00574aa0() returns 0) { switch... } else if (opcode == 0xCC) { FUN_00575860 (alt 0xCC path) }",
+    "this_arg_layout": {
+      "param_1+0x80": "primary actor/state pointer (gates all cases)",
+      "param_1+0x88": "secondary state pointer (passed as first arg to 0xCC/0xCD/0x137 handlers)",
+      "param_1+0x92": "byte flag - reset by 0xCC case, gates entry guard"
+    },
+    "caller_count": 2,
+    "caller_refs_total": 27,
+    "callers": [
+      {
+        "va": "0x0058CCA0",
+        "name": "FUN_0058cca0",
+        "shape": "switch dispatcher (sibling pattern); FUN_004D8860 is the default branch",
+        "body_bytes_estimated": "2300+ lines (very large)",
+        "catalog_status": "uncataloged",
+        "indirect_caller_pattern": "0 instruction-level callers per Ghidra refs - reached via vtable/function-pointer dispatch",
+        "note": "Likely a Receiver Apply method on some class. Cases handled directly: 0xF, 0xCC (cond on packet+0x14), 0xCE, 0xCF, 0xD0, 0xD3..0xE5, 0x134, 0x135, 0x137, 0x144, 0x145, 0x177, 0x179, 0x194, 0x197, 0x199, etc. Default falls to FUN_004D8860"
+      },
+      {
+        "va": "0x0059CED0",
+        "name": "FUN_0059ced0",
+        "shape": "small switch dispatcher; FUN_004D8860 is the default branch",
+        "body_bytes": 272,
+        "catalog_status": "uncataloged",
+        "indirect_caller_pattern": "0 instruction-level callers per Ghidra refs - reached via vtable/function-pointer dispatch",
+        "note": "Cases handled directly: 0x05 (zone init), 0x0D, 0x10 (set state byte), 0xD8, 0xD9. Default falls to FUN_004D8860"
+      }
+    ],
+    "note_on_architectural_findings": "An earlier finding framed FUN_004D8860 as reachable from FUN_004DC690 cases, but Ghidra cross-ref shows the actual call sites are inside FUN_0058CCA0 and FUN_0059CED0, themselves vtable-stored Apply methods. The full chain is: vtable[1](apply) on a Receiver class -> FUN_0058CCA0 / FUN_0059CED0 -> FUN_004D8860 fallback. This nests 2 levels of Pattern D above FUN_004D8860, not 1."
+  },
+  "case_table": [
+    {
+      "opcode_or_case_value": "0xCC",
+      "case_body_summary": "Entry-guard branch: clear flag *(this+0x92)=0, then if (*(this+0x80) != 0) call FUN_00574780(*(this+0x88), packet+0x10) - which performs an RTTI cast (LuaActorImplInterface -> LuaActorImpl/NullActorImpl) and conditionally calls FUN_00774ad0. Alt path (entry guard else-branch): call FUN_00575860(*(this+0x88), packet+0x10) via FUN_00cc9320/9500 + FUN_00758e80 + FUN_00764630, then clear flag",
+      "pattern": "C",
+      "handler_function": "0x00574780",
+      "alt_handler_function": "0x00575860",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0535",
+      "notes": "Special-cased opcode 0xCC: handles two cases - normal (RTTI-checked actor swap via FUN_00574780) and alt (active-state alternate path FUN_00575860). The 0xCC opcode is the only one in FUN_004D8860 that has bespoke (non-vtable-trampoline) logic",
+      "vtable_slot": null,
+      "receiver_class": null,
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0xCD",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00574a60(*(this+0x88)) - which guards 0x5ff80001/0x5ff80002 sentinels then dispatches via *(*param_1+0x14)() (LuaActorImpl vtable slot 5)",
+      "pattern": "A",
+      "handler_function": "0x00574a60",
+      "vtable_slot": 5,
+      "vtable_offset": "0x14",
+      "receiver_class": "LuaActorImpl::vftable[5] (lower-half slot, likely stateless/getter per BCS-Y-0092 categorization)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0536",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x12E",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00574fd0(packet+0x10) - thin vtable trampoline (*(*param_1+0xc8))(); BCS-Y-0280 names this Network::SendLogReceiver path",
+      "pattern": "A",
+      "handler_function": "0x00574fd0",
+      "vtable_slot": 50,
+      "vtable_offset": "0xC8",
+      "receiver_class": "LuaActorImpl::vftable[50] (per BCS-Y-0092 slot 50 not explicitly listed but is in 1..52 stateless-wrapper range)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0537",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x12F",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575030(packet+0x10) - thin vtable trampoline (*(*param_1+0xe0))()",
+      "pattern": "A",
+      "handler_function": "0x00575030",
+      "vtable_slot": 56,
+      "vtable_offset": "0xE0",
+      "receiver_class": "Network::KickClientOrderEventReceiver (per BCS-Y-0092 slot 56 = FUN_0076C0D0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0538",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x130",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575040(packet+0x10) - thin vtable trampoline (*(*param_1+0xe4))()",
+      "pattern": "A",
+      "handler_function": "0x00575040",
+      "vtable_slot": 57,
+      "vtable_offset": "0xE4",
+      "receiver_class": "Network::StartServerOrderEventFunctionReceiver (per BCS-Y-0092 slot 57 = FUN_0076C220)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0539",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x131",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575050(packet+0x10) - thin vtable trampoline (*(*param_1+0xe8))()",
+      "pattern": "A",
+      "handler_function": "0x00575050",
+      "vtable_slot": 58,
+      "vtable_offset": "0xE8",
+      "receiver_class": "Network::EndClientOrderEventReceiver (per BCS-Y-0092 slot 58 = FUN_0076C3B0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0540",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x132",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00574fc0(packet+0x10) - thin vtable trampoline (*(*param_1+0xc4))()",
+      "pattern": "A",
+      "handler_function": "0x00574fc0",
+      "vtable_slot": 49,
+      "vtable_offset": "0xC4",
+      "receiver_class": "noop_virtual_b (per BCS-Y-0092 slot 49 = FUN_00759DE0, 3-byte no-op virtual)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0541",
+      "ref": "BCS-Y-0362 already confirmed slot 49 = no-op",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x133",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575060(packet+0x10) - thin vtable trampoline (*(*param_1+0xec))()",
+      "pattern": "A",
+      "handler_function": "0x00575060",
+      "vtable_slot": 59,
+      "vtable_offset": "0xEC",
+      "receiver_class": "Network::UserDataReceiver (per BCS-Y-0092 slot 59 = FUN_00759E50)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0542",
+      "ref": "BCS-Y-0362 already deep-analyzed slot 59 -> _onReceiveDataPacket via FUN_008A0190",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x136",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00574fb0(packet+0x10) - thin vtable trampoline (*(*param_1+0xc0))()",
+      "pattern": "A",
+      "handler_function": "0x00574fb0",
+      "vtable_slot": 48,
+      "vtable_offset": "0xC0",
+      "receiver_class": "Network::SetEventStatusReceiver (per BCS-Y-0092 slot 48 = FUN_00759D20)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0543",
+      "ref": "BCS-Y-0362 confirmed slot 48 -> FUN_006E67C0 SetEventStatus apply, no actor writes",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x137",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575070 - non-trivial 113-byte wrapper that pre-converts param_2 via FUN_00cc9320 before dispatching (*(*param_1+0xf0))(uVar3, param_3) with actor-state arg",
+      "pattern": "A",
+      "handler_function": "0x00575070",
+      "vtable_slot": 60,
+      "vtable_offset": "0xF0",
+      "receiver_class": "Network::SyncMemoryReceiver (per BCS-Y-0092 slot 60 = FUN_00759ED0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0544",
+      "ref": "BCS-Y-0362 confirmed slot 60 -> FUN_00775A30 SyncMemory apply, maintains sync-memory cache",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x138",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_005750f0(packet+0x10) - thin vtable trampoline (*(*param_1+0xf4))()",
+      "pattern": "A",
+      "handler_function": "0x005750f0",
+      "vtable_slot": 61,
+      "vtable_offset": "0xF4",
+      "receiver_class": "Network::SetTargetTimeReceiver (per BCS-Y-0092 slot 61 = FUN_00759F50)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0545",
+      "ref": "BCS-Y-0362 confirmed slot 61 -> FUN_008A04B0 SetTargetTime, fires _onReceiveTimingPacket via FUN_008A0370. 0x138 ALIASES 0xD3 SetTargetTime",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x13D",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575100(packet+0x10) - thin vtable trampoline (*(*param_1+0xf8))()",
+      "pattern": "A",
+      "handler_function": "0x00575100",
+      "vtable_slot": 62,
+      "vtable_offset": "0xF8",
+      "receiver_class": "Network::SetDisplayNameReceiver (per BCS-Y-0092 slot 62 = FUN_0076C4D0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0546",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x157..0x16A",
+      "case_body_summary": "20-way fallthrough (cases 0x157 through 0x16A inclusive): if (*(this+0x80) != 0) call FUN_00575e30(*(this+0x80), packet) - 30-byte wrapper (*(*param_2+0xfc))(param_3, *(param_1+0x14)) carrying the packet+0x14 as 2nd arg. SLOT 63 RECEIVES MULTIPLE OPCODES.",
+      "pattern": "A",
+      "handler_function": "0x00575e30",
+      "vtable_slot": 63,
+      "vtable_offset": "0xFC",
+      "receiver_class": "Network::SendLogReceiver (per BCS-Y-0092 slot 63 = FUN_00759FD0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0547",
+      "is_fallthrough_group": true,
+      "fallthrough_count": 20,
+      "fallthrough_opcodes": [
+        "0x157",
+        "0x158",
+        "0x159",
+        "0x15A",
+        "0x15B",
+        "0x15C",
+        "0x15D",
+        "0x15E",
+        "0x15F",
+        "0x160",
+        "0x161",
+        "0x162",
+        "0x163",
+        "0x164",
+        "0x165",
+        "0x166",
+        "0x167",
+        "0x168",
+        "0x169",
+        "0x16A"
+      ],
+      "notes": "20 opcodes (0x157-0x16A) collapse to the SendLogReceiver. Suggests these are log-categorized notifications (log channel, system message, etc.). FUN_00575e30 differs from other trampolines - it passes param_1+0x14 (likely a 4-byte field like an actor id or log subcategory) as second arg to the vtable call",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x16B",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00574fe0(packet+0x10) - thin vtable trampoline (*(*param_1+0xcc))()",
+      "pattern": "A",
+      "handler_function": "0x00574fe0",
+      "vtable_slot": 51,
+      "vtable_offset": "0xCC",
+      "receiver_class": "LuaActorImpl::vftable[51] (per BCS-Y-0092 slot 51 not explicitly listed, in stateless-wrapper range)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0548",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x16C",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00574ff0(packet+0x10) - thin vtable trampoline (*(*param_1+0xd0))()",
+      "pattern": "A",
+      "handler_function": "0x00574ff0",
+      "vtable_slot": 52,
+      "vtable_offset": "0xD0",
+      "receiver_class": "noop_virtual (per BCS-Y-0092 slot 52 = FUN_00759E10, no-op stub)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0549",
+      "ref": "BCS-Y-0362 confirmed slot 52 = 3-byte no-op virtual",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x16F",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575000(packet+0x10) - thin vtable trampoline (*(*param_1+0xd4))()",
+      "pattern": "A",
+      "handler_function": "0x00575000",
+      "vtable_slot": 53,
+      "vtable_offset": "0xD4",
+      "receiver_class": "null-stub (per BCS-Y-0092 slot 53 = FUN_00759E20 null-stub)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0550",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x170",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575010(packet+0x10) - thin vtable trampoline (*(*param_1+0xd8))()",
+      "pattern": "A",
+      "handler_function": "0x00575010",
+      "vtable_slot": 54,
+      "vtable_offset": "0xD8",
+      "receiver_class": "noop_virtual (per BCS-Y-0092 slot 54 = FUN_00759E30, no-op stub)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0551",
+      "ref": "BCS-Y-0362 confirmed slot 54 = 3-byte no-op virtual",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x175",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575020(packet+0x10) - thin vtable trampoline (*(*param_1+0xdc))()",
+      "pattern": "A",
+      "handler_function": "0x00575020",
+      "vtable_slot": 55,
+      "vtable_offset": "0xDC",
+      "receiver_class": "noop_virtual (per BCS-Y-0092 slot 55 = FUN_00759E40, no-op stub)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0552",
+      "ref": "BCS-Y-0362 confirmed slot 55 = 3-byte no-op virtual",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x17B",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_005752b0(*(byte *)(packet+0x10)) - thin vtable trampoline (*(*param_1+0x164))() taking a byte-extracted arg",
+      "pattern": "A",
+      "handler_function": "0x005752b0",
+      "vtable_slot": 89,
+      "vtable_offset": "0x164",
+      "receiver_class": "Network::ChangeShadowActorFlagReceiver (per BCS-Y-0092 slot 89 = FUN_0075AAA0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0553",
+      "secondary_callers": [
+        "FUN_004DC690"
+      ],
+      "notes": "Note: FUN_005752b0 is ALSO called from FUN_004DC690 - so 0x17B has BOTH a central-dispatcher path AND an event-family path, suggesting it can be dispatched via either route",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x18E",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575120(packet+0x10) - thin vtable trampoline (*(*param_1+0x100))()",
+      "pattern": "A",
+      "handler_function": "0x00575120",
+      "vtable_slot": 64,
+      "vtable_offset": "0x100",
+      "receiver_class": "Network::ChangeSystemStatReceiver (per BCS-Y-0092 slot 64 = FUN_0075A060)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0554",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x192",
+      "case_body_summary": "GATED CASE: iVar3 = FUN_004b68a0() (reads *(this+0x20)); if ((iVar3 == 4 OR iVar3 == 5) AND *(this+0x80) != 0) call FUN_00575130(packet+0x10) - thin vtable trampoline (*(*param_1+0x104))()",
+      "pattern": "A",
+      "handler_function": "0x00575130",
+      "vtable_slot": 65,
+      "vtable_offset": "0x104",
+      "receiver_class": "Network::AddictLoginTimeKindReceiver (per BCS-Y-0092 slot 65 = FUN_0075A0E0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0555",
+      "gate_function_va": "0x004b68a0",
+      "gate_condition": "FUN_004b68a0 returns *(param_1+0x20) - dispatch only when this state value is 4 or 5",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x195",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575140(packet+0x10) - thin vtable trampoline (*(*param_1+0x108))()",
+      "pattern": "A",
+      "handler_function": "0x00575140",
+      "vtable_slot": 66,
+      "vtable_offset": "0x108",
+      "receiver_class": "Network::HateStatusReceiver (per BCS-Y-0092 slot 66 = FUN_0075A160 lifecycle BCS-Y-0042/0043/0088/0089/0090)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0556",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x1A6",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575240(packet+0x10) - thin vtable trampoline (*(*param_1+0x148))()",
+      "pattern": "A",
+      "handler_function": "0x00575240",
+      "vtable_slot": 82,
+      "vtable_offset": "0x148",
+      "receiver_class": "Network::HamletSupplyRankingReceiver (per BCS-Y-0092 slot 82 = FUN_0075A7C0)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0557",
+      "existing_bcs_y_id": null
+    },
+    {
+      "opcode_or_case_value": "0x1A8",
+      "case_body_summary": "if (*(this+0x80) != 0) call FUN_00575250(packet+0x10) - thin vtable trampoline (*(*param_1+0x14c))()",
+      "pattern": "A",
+      "handler_function": "0x00575250",
+      "vtable_slot": 83,
+      "vtable_offset": "0x14C",
+      "receiver_class": "Network::HamletDefenseScoreReceiver (per BCS-Y-0092 slot 83 = FUN_0075A870)",
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0558",
+      "existing_bcs_y_id": null
+    }
+  ],
+  "auxiliary_helpers": [
+    {
+      "va": "0x00574AA0",
+      "name": "FUN_00574aa0",
+      "role": "entry guard helper - returns byte via *(*param_1+8) virtual dispatch; gates whether the main switch executes vs the 0xCC alt path",
+      "shared_with": [
+        "FUN_004d8830",
+        "FUN_004d87f0",
+        "FUN_004daf00"
+      ],
+      "catalog_status": "uncataloged",
+      "proposed_bcs_y_id": "BCS-Y-0559",
+      "notes": "Common per-actor predicate used by 4 functions in the active-state cluster. Vtable slot 2 (offset 8) of LuaActorImpl returns a 'is in safe state' bool (per BCS-Y-0092 slot 2 = return_true)"
+    },
+    {
+      "va": "0x004B68A0",
+      "name": "FUN_004b68a0",
+      "role": "Generic 4-byte getter - returns *(param_1+0x20). 19 callers across the binary; in FUN_004D8860 it gates 0x192 case to specific state values (4 or 5)",
+      "shared_with": "19 distinct callers (see decomp)",
+      "catalog_status": "uncataloged",
+      "notes": "Too generic for a dedicated BCS-Y entry; reference only. Reads a state field; the 4/5 constants in FUN_004D8860's 0x192 gate suggest game phase/session state enumeration",
+      "proposed_bcs_y_id": null
+    }
+  ],
+  "sub_sub_dispatchers_found": [
+    {
+      "va": "0x0058CCA0",
+      "case_in_d8860": "PARENT - FUN_004D8860 is called from FUN_0058CCA0's default branch",
+      "note": "Sibling sub-dispatcher upstream of FUN_004D8860. 2300+-line switch handling 0xCC/0xCE-0xE5/0x134/0x135/0x137/0x144/0x145/0x177/0x179/0x194/0x197/0x199+ etc directly, then falls through to FUN_004D8860 for unmatched cases. Reached via vtable dispatch (zero direct callers in Ghidra refs). Pattern D recursion ABOVE FUN_004D8860, not below"
+    },
+    {
+      "va": "0x0059CED0",
+      "case_in_d8860": "PARENT - FUN_004D8860 is called from FUN_0059CED0's default branch",
+      "note": "Smaller sibling sub-dispatcher upstream of FUN_004D8860. 272-byte switch handling 0x05/0x0D/0x10/0xD8/0xD9 directly, then falls through to FUN_004D8860. Reached via vtable dispatch (zero direct callers in Ghidra refs). Pattern D recursion ABOVE FUN_004D8860"
+    }
+  ],
+  "summary": {
+    "total_cases": 24,
+    "total_distinct_opcodes": 43,
+    "fallthrough_groups": 1,
+    "cataloged": 0,
+    "uncataloged": 24,
+    "pattern_a_count": 23,
+    "pattern_c_count": 1,
+    "pattern_d_count_within_handlers": 0,
+    "pattern_d_count_above_dispatcher": 2,
+    "handlers_with_existing_bcs_y": 0,
+    "handlers_referenced_by_existing_bcs_y_notes": 8,
+    "notes": "Total distinct opcodes = 43 = 22 individual opcodes + 20 in fallthrough group + 1 alt path for 0xCC. All 23 vtable-trampoline handlers fit Pattern A (LuaActorImpl::vftable indirect dispatch). 0xCC is Pattern C (bespoke RTTI-gated logic). No sub-sub-dispatcher (Pattern D recursion) within FUN_004D8860's handler bodies, but TWO sub-dispatchers EXIST ABOVE FUN_004D8860 (FUN_0058CCA0 and FUN_0059CED0). BCS-Y-0362 already analyzed 8 of these handlers (0x132/0x133/0x136/0x137/0x138/0x16C/0x170/0x175) and confirmed they produce 0 chain-key writes via the LuaActorImpl receiver path. The cumulative finding: FUN_004D8860 is a thin opcode-to-vtable-slot mapper for the LuaActorImpl receiver surface; it adds zero new receiver classes but reveals the dispatch geometry of slots 5/48-66/82-83/89 on the LuaActorImpl::vftable"
+  },
+  "proposed_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0535",
+      "name": "EventFamilyDispatcher_Case0xCC_FUN_00574780",
+      "kind": "function",
+      "address": "0x00574780",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0xCC primary handler. RTTI-gated actor-impl switch: calls FUN_009da6cc to verify *param_1 is a LuaActorImpl (via LuaActorImplInterface dyn_cast); if not, dyn_casts to NullActorImpl then calls FUN_00774ad0(converted_arg, param_3, param_1) via FUN_00cc9320 (Lua-state acquire). 165-byte Pattern C handler. Body uses Application::Lua::Script::Client::LuaActorImpl/LuaActorImplInterface/NullActorImpl RTTI symbols. Single caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0536",
+      "name": "LuaActorImpl_Slot5Trampoline_Case0xCD_FUN_00574a60",
+      "kind": "function",
+      "address": "0x00574a60",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0xCD handler. 34-byte sentinel-guarded vtable trampoline: if param_2 is neither 0x5FF80001 nor 0x5FF80002 AND *param_1 is non-null, calls (*(*param_1+0x14))() = LuaActorImpl::vftable[5]. Pattern A. Callers: FUN_004D8860 (this dispatch), FUN_0058E860 (other)"
+    },
+    {
+      "id": "BCS-Y-0537",
+      "name": "LuaActorImpl_Slot50Trampoline_Case0x12E_FUN_00574fd0",
+      "kind": "function",
+      "address": "0x00574fd0",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x12E (opcode 302) handler. 12-byte vtable trampoline (*(*param_1+0xC8))() = LuaActorImpl::vftable[50]. Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0538",
+      "name": "KickClientOrderEventReceiverTrampoline_Case0x12F_FUN_00575030",
+      "kind": "function",
+      "address": "0x00575030",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x12F (opcode 303) handler. 12-byte vtable trampoline (*(*param_1+0xE0))() = LuaActorImpl::vftable[56] = Network::KickClientOrderEventReceiver (per BCS-Y-0092). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0539",
+      "name": "StartServerOrderEventFunctionReceiverTrampoline_Case0x130_FUN_00575040",
+      "kind": "function",
+      "address": "0x00575040",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x130 (opcode 304) handler. 12-byte vtable trampoline (*(*param_1+0xE4))() = LuaActorImpl::vftable[57] = Network::StartServerOrderEventFunctionReceiver (per BCS-Y-0092). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0540",
+      "name": "EndClientOrderEventReceiverTrampoline_Case0x131_FUN_00575050",
+      "kind": "function",
+      "address": "0x00575050",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x131 (opcode 305) handler. 12-byte vtable trampoline (*(*param_1+0xE8))() = LuaActorImpl::vftable[58] = Network::EndClientOrderEventReceiver (per BCS-Y-0092). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0541",
+      "name": "LuaActorImplNoopVB_Trampoline_Case0x132_FUN_00574fc0",
+      "kind": "function",
+      "address": "0x00574fc0",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x132 (opcode 306) handler. 12-byte vtable trampoline (*(*param_1+0xC4))() = LuaActorImpl::vftable[49] = noop_virtual_b (FUN_00759DE0, 3-byte no-op per BCS-Y-0092 + BCS-Y-0362). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0542",
+      "name": "UserDataReceiverTrampoline_Case0x133_FUN_00575060",
+      "kind": "function",
+      "address": "0x00575060",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x133 (opcode 307) handler. 12-byte vtable trampoline (*(*param_1+0xEC))() = LuaActorImpl::vftable[59] = Network::UserDataReceiver (per BCS-Y-0092 + BCS-Y-0362 confirmed _onReceiveDataPacket fire via FUN_008A0190). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0543",
+      "name": "SetEventStatusReceiverTrampoline_Case0x136_FUN_00574fb0",
+      "kind": "function",
+      "address": "0x00574fb0",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x136 (opcode 310) handler. 12-byte vtable trampoline (*(*param_1+0xC0))() = LuaActorImpl::vftable[48] = Network::SetEventStatusReceiver (per BCS-Y-0092 + BCS-Y-0362 confirmed FUN_006E67C0 apply, no actor writes). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0544",
+      "name": "SyncMemoryReceiverTrampoline_Case0x137_FUN_00575070",
+      "kind": "function",
+      "address": "0x00575070",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x137 (opcode 311) handler. 113-byte non-trivial vtable wrapper: pre-converts *param_2 via FUN_00cc9320 (Lua-state acquire), then calls (*(*param_1+0xF0))(uVar3, param_3) = LuaActorImpl::vftable[60] = Network::SyncMemoryReceiver (per BCS-Y-0092 + BCS-Y-0362 confirmed FUN_00775A30 SyncMemory apply, maintains separate sync-memory cache). Pattern A with Lua-bridge arg conversion. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0545",
+      "name": "SetTargetTimeReceiverTrampoline_Case0x138_FUN_005750f0",
+      "kind": "function",
+      "address": "0x005750f0",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x138 (opcode 312) handler. 12-byte vtable trampoline (*(*param_1+0xF4))() = LuaActorImpl::vftable[61] = Network::SetTargetTimeReceiver (per BCS-Y-0092 + BCS-Y-0362). 0x138 ALIASES 0xD3 SetTargetTime - both reach slot 61 but via different dispatchers (FUN_004D8860 event-family vs FUN_004DC690 central low-opcode fallthrough). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0546",
+      "name": "SetDisplayNameReceiverTrampoline_Case0x13D_FUN_00575100",
+      "kind": "function",
+      "address": "0x00575100",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x13D (opcode 317) handler. 12-byte vtable trampoline (*(*param_1+0xF8))() = LuaActorImpl::vftable[62] = Network::SetDisplayNameReceiver (per BCS-Y-0092). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0547",
+      "name": "SendLogReceiverTrampoline_Cases0x157_0x16A_FUN_00575e30",
+      "kind": "function",
+      "address": "0x00575e30",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 cases 0x157..0x16A (20-opcode fallthrough group, opcodes 343..362) handler. 30-byte wrapper passing param_1+0x14 as 2nd arg: (*(*param_2+0xFC))(param_3, *(param_1+0x14)) = LuaActorImpl::vftable[63] = Network::SendLogReceiver (per BCS-Y-0092 slot 63 = FUN_00759FD0). Pattern A with embedded subcategory selector. 20 distinct log-related opcodes funnel into the same receiver - suggests log category enumeration in payload or the receiver demuxes via vtable arg. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0548",
+      "name": "LuaActorImpl_Slot51Trampoline_Case0x16B_FUN_00574fe0",
+      "kind": "function",
+      "address": "0x00574fe0",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x16B (opcode 363) handler. 12-byte vtable trampoline (*(*param_1+0xCC))() = LuaActorImpl::vftable[51]. Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0549",
+      "name": "LuaActorImplNoopE_Trampoline_Case0x16C_FUN_00574ff0",
+      "kind": "function",
+      "address": "0x00574ff0",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x16C (opcode 364) handler. 12-byte vtable trampoline (*(*param_1+0xD0))() = LuaActorImpl::vftable[52] = no-op stub FUN_00759E10 (per BCS-Y-0092 + BCS-Y-0362 confirmed 3-byte no-op). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0550",
+      "name": "LuaActorImplNullStub53_Trampoline_Case0x16F_FUN_00575000",
+      "kind": "function",
+      "address": "0x00575000",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x16F (opcode 367) handler. 12-byte vtable trampoline (*(*param_1+0xD4))() = LuaActorImpl::vftable[53] = null-stub FUN_00759E20 (per BCS-Y-0092). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0551",
+      "name": "LuaActorImplNoopG_Trampoline_Case0x170_FUN_00575010",
+      "kind": "function",
+      "address": "0x00575010",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x170 (opcode 368) handler. 12-byte vtable trampoline (*(*param_1+0xD8))() = LuaActorImpl::vftable[54] = no-op stub FUN_00759E30 (per BCS-Y-0092 + BCS-Y-0362 confirmed 3-byte no-op). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0552",
+      "name": "LuaActorImplNoopH_Trampoline_Case0x175_FUN_00575020",
+      "kind": "function",
+      "address": "0x00575020",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x175 (opcode 373) handler. 12-byte vtable trampoline (*(*param_1+0xDC))() = LuaActorImpl::vftable[55] = no-op stub FUN_00759E40 (per BCS-Y-0092 + BCS-Y-0362 confirmed 3-byte no-op). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0553",
+      "name": "ChangeShadowActorFlagReceiverTrampoline_Case0x17B_FUN_005752b0",
+      "kind": "function",
+      "address": "0x005752b0",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x17B (opcode 379) handler. 24-byte vtable trampoline (*(*param_1+0x164))() = LuaActorImpl::vftable[89] = Network::ChangeShadowActorFlagReceiver (per BCS-Y-0092 slot 89 = FUN_0075AAA0). Takes byte-extracted arg from *(byte *)(packet+0x10). Pattern A. Dual caller: FUN_004D8860 (this dispatch) AND FUN_004DC690 - so 0x17B can route via either the event-family or central dispatcher path"
+    },
+    {
+      "id": "BCS-Y-0554",
+      "name": "ChangeSystemStatReceiverTrampoline_Case0x18E_FUN_00575120",
+      "kind": "function",
+      "address": "0x00575120",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x18E (opcode 398) handler. 12-byte vtable trampoline (*(*param_1+0x100))() = LuaActorImpl::vftable[64] = Network::ChangeSystemStatReceiver (per BCS-Y-0092 slot 64 = FUN_0075A060). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0555",
+      "name": "AddictLoginTimeKindReceiverTrampoline_Case0x192_FUN_00575130",
+      "kind": "function",
+      "address": "0x00575130",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x192 (opcode 402) handler. STATE-GATED: only dispatches when FUN_004b68a0() (reads *(this+0x20)) returns 4 OR 5. 12-byte vtable trampoline (*(*param_1+0x104))() = LuaActorImpl::vftable[65] = Network::AddictLoginTimeKindReceiver (per BCS-Y-0092 slot 65 = FUN_0075A0E0). Pattern A. Sole caller FUN_004D8860. The 4/5 state gate suggests game-phase enumeration (login flow stage)"
+    },
+    {
+      "id": "BCS-Y-0556",
+      "name": "HateStatusReceiverTrampoline_Case0x195_FUN_00575140",
+      "kind": "function",
+      "address": "0x00575140",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x195 (opcode 405) handler. 12-byte vtable trampoline (*(*param_1+0x108))() = LuaActorImpl::vftable[66] = Network::HateStatusReceiver (per BCS-Y-0092 slot 66 = FUN_0075A160; lifecycle classes BCS-Y-0042/0043/0088/0089/0090). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0557",
+      "name": "HamletSupplyRankingReceiverTrampoline_Case0x1A6_FUN_00575240",
+      "kind": "function",
+      "address": "0x00575240",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x1A6 (opcode 422) handler. 12-byte vtable trampoline (*(*param_1+0x148))() = LuaActorImpl::vftable[82] = Network::HamletSupplyRankingReceiver (per BCS-Y-0092 slot 82 = FUN_0075A7C0). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0558",
+      "name": "HamletDefenseScoreReceiverTrampoline_Case0x1A8_FUN_00575250",
+      "kind": "function",
+      "address": "0x00575250",
+      "confidence": "confirmed",
+      "notes": "FUN_004D8860 case 0x1A8 (opcode 424) handler. 12-byte vtable trampoline (*(*param_1+0x14C))() = LuaActorImpl::vftable[83] = Network::HamletDefenseScoreReceiver (per BCS-Y-0092 slot 83 = FUN_0075A870). Pattern A. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0559",
+      "name": "EventFamilyDispatcher_EntryGuardHelper_FUN_00574aa0",
+      "kind": "function",
+      "address": "0x00574aa0",
+      "confidence": "confirmed",
+      "notes": "Entry-guard predicate used by FUN_004D8860 (and 3 sibling dispatchers FUN_004d8830, FUN_004d87f0, FUN_004daf00). 16-byte vtable indirect: if *param_1 == 0 returns 0 in low byte; else returns (*(*param_1+8))() = LuaActorImpl::vftable[2] (per BCS-Y-0092 slot 2 = return_true predicate). Decides FUN_004D8860's switch path (false -> main switch, true AND opcode==0xCC -> alt 0xCC path via FUN_00575860). Pattern A predicate helper"
+    },
+    {
+      "id": "BCS-Y-0560",
+      "name": "EventFamilyDispatcher_Case0xCCAlt_FUN_00575860",
+      "kind": "function",
+      "address": "0x00575860",
+      "confidence": "confirmed",
+      "notes": "Alt path for FUN_004D8860 case 0xCC, taken when entry-guard predicate FUN_00574aa0 returns true. 156-byte handler: calls FUN_00758e80(param_2) (preprocess), then acquires Lua state via FUN_00cc9320, gets reference via FUN_00cc9500, calls FUN_00764630 (Receiver apply?), releases via FUN_00cc77f0 + FUN_00cc9330. Pattern C bespoke logic. Sole caller FUN_004D8860"
+    },
+    {
+      "id": "BCS-Y-0561",
+      "name": "EventFamilyDispatcher_Parent_FUN_0058cca0",
+      "kind": "function",
+      "address": "0x0058cca0",
+      "confidence": "confirmed",
+      "notes": "Pattern D sub-sub-dispatcher ABOVE FUN_004D8860. Large (~2300-line) switch handling 0xF/0xCC-0xE5/0x134/0x135/0x137/0x144/0x145/0x177/0x179/0x194/0x197/0x199-0x1A2 directly (with dedicated handlers like FUN_00585e80, FUN_00586fb0, FUN_0058b2a0, FUN_00587e70, etc), default branch falls through to FUN_004D8860 (the next-tier event-family dispatcher). Reached via vtable dispatch (zero direct instruction-level callers per Ghidra refs). Position in dispatch tier: tier 2 of the Receiver Apply chain. Future phase: enumerate its full case set and map handlers (estimated 30+ cases)"
+    },
+    {
+      "id": "BCS-Y-0562",
+      "name": "EventFamilyDispatcher_Parent_FUN_0059ced0",
+      "kind": "function",
+      "address": "0x0059ced0",
+      "confidence": "confirmed",
+      "notes": "Smaller Pattern D sub-sub-dispatcher ABOVE FUN_004D8860. 272-byte switch handling 0x05 (init+set state byte 0x98), 0x0D (set state offsets 0xB0/0xB4), 0x10 (set state offset 0xF0), 0xD8/0xD9 directly, default branch falls through to FUN_004D8860. Reached via vtable dispatch (zero direct instruction-level callers per Ghidra refs). Position in dispatch tier: tier 2 of the Receiver Apply chain, parallel to FUN_0058CCA0"
+    }
+  ],
+  "key_findings": [
+    {
+      "id": "PATTERNDSUBD-F1",
+      "title": "FUN_004D8860 is a thin LuaActorImpl::vftable mapper",
+      "summary": "Every numbered opcode in FUN_004D8860's switch (23 of 24 cases) translates directly into a vtable trampoline call on the LuaActorImpl instance. The vtable slots used (5, 48-66, 82, 83, 89) span both the lower-half stateless/getter range and the upper-half Receiver-class range documented in BCS-Y-0092. No handler does Pattern D sub-dispatch internally"
+    },
+    {
+      "id": "PATTERNDSUBD-F2",
+      "title": "20-opcode fallthrough into single SendLog receiver",
+      "summary": "Cases 0x157-0x16A (20 opcodes) all dispatch to LuaActorImpl::vftable[63] = Network::SendLogReceiver. This is the largest fallthrough group in the entire FFXIV 1.x dispatcher graph documented so far. The wrapper passes param_1+0x14 (likely a log subcategory id) as the receiver's second arg, so the Receiver demultiplexes the 20 opcodes via that arg rather than via per-opcode dispatch"
+    },
+    {
+      "id": "PATTERNDSUBD-F3",
+      "title": "Pattern D recursion is ABOVE FUN_004D8860, not below",
+      "summary": "docs/client-architecture.md, 'S2C dispatch has five architectural patterns' framed FUN_004D8860 as reachable from FUN_004DC690 cases, suggesting one tier of Pattern D below the central dispatcher. The actual reachability chain is two tiers: vtable[1] (Receiver.apply) -> FUN_0058CCA0 / FUN_0059CED0 (tier 2 sub-dispatcher) -> FUN_004D8860 (tier 3 sub-dispatcher). The parents FUN_0058CCA0 and FUN_0059CED0 themselves have ZERO direct instruction-level callers in Ghidra refs - they are vtable-stored Apply methods, consistent with the Receiver class pattern. This nests Pattern D one level deeper than client-architecture 'S2C dispatch has five architectural patterns' describes"
+    },
+    {
+      "id": "PATTERNDSUBD-F4",
+      "title": "0x17B has dual dispatch paths",
+      "summary": "Opcode 0x17B (Network::ChangeShadowActorFlagReceiver, slot 89) is handled BOTH by FUN_004D8860 (event-family path, via FUN_005752B0) AND directly by FUN_004DC690's case 0x17B (per BCS-Y-0279 catalog). FUN_005752B0 is the unique handler with two callers in the entire chain. This proves that some opcodes have redundant dispatch wiring across the dispatcher hierarchy"
+    },
+    {
+      "id": "PATTERNDSUBD-F5",
+      "title": "0xCC is the only Pattern C case in FUN_004D8860",
+      "summary": "23 of 24 cases are Pattern A (vtable trampoline). The single Pattern C case is 0xCC, which has two distinct handlers (FUN_00574780 primary, FUN_00575860 alt) selected by the entry-guard predicate FUN_00574AA0. Both handlers perform actor-impl swapping with RTTI checks (LuaActorImpl vs NullActorImpl) and Lua-state acquisition - this is the actor (re)initialization opcode and warrants special handling outside the vtable-mapper pattern"
+    },
+    {
+      "id": "PATTERNDSUBD-F6",
+      "title": "0x192 is state-gated",
+      "summary": "Only case in FUN_004D8860 with a non-trivial gate beyond *(this+0x80) != 0. Calls FUN_004B68A0 (returns *(this+0x20)) and only dispatches if the value is 4 OR 5. AddictLoginTimeKindReceiver is therefore active only in specific game phases - likely login/character-select transition states. The 0x192 = AddictLoginTimeKindReceiver association from BCS-Y-0092 corroborates this (login-time-tracking system is only relevant during login flow)"
+    },
+    {
+      "id": "PATTERNDSUBD-F7",
+      "title": "BCS-Y-0362 findings already invalidated chain-key extraction for this dispatcher",
+      "summary": "BCS-Y-0362 already proved that 8 of these handlers produce 0 chain-key writes via the LuaActorImpl receiver path. The pattern-d-subdispatcher pass's enumeration confirms the rest follow the same Pattern A vtable-trampoline shape - so the structural conclusion extends to all 23 vtable-trampoline cases. The event-family branch produces zero chain-key indirect bindings architecturally. Future phases targeting receiver_write_chain_key gap-fill should NOT walk FUN_004D8860"
+    }
+  ],
+  "open_questions": [
+    "What is the full case table of FUN_0058CCA0 (~2300 lines)? Worth a dedicated future phase to enumerate, since its default falls through to FUN_004D8860 - the dispatchers form a triple-layer routing system (vtable[1] -> FUN_0058CCA0/FUN_0059CED0 -> FUN_004D8860)",
+    "Are FUN_0058CCA0 and FUN_0059CED0 themselves slot-1 (Receive) methods on two distinct Receiver classes, or are they the same class with conditional dispatch? Dumping the LuaActorImpl::vftable slot 1 (BCS-Y-0092 categorizes slot 1 as return_true) doesn't help; need to search data section for *0x0058CCA0 / *0x0059CED0 references to find vtable home(s)",
+    "FUN_00574AA0 (entry-guard helper) is also called by FUN_004D8830, FUN_004D87F0, FUN_004DAF00 - this suggests a cluster of 4 sibling event-family dispatchers (FUN_004D8830/FUN_004D87F0/FUN_004D8860/FUN_004DAF00). Future phase: enumerate all 4 to find whether they handle different actor classes or different opcode ranges",
+    "20-opcode SendLog fallthrough (0x157-0x16A): the Receiver's actual demux logic (FUN_00759FD0 apply) was not enumerated in this manifest. Future phase: decomp slot 63's apply to identify how 20 opcodes are distinguished inside the receiver"
+  ],
+  "ghidraEvidence": [
+    "%BCS_GHIDRA_PROJECTS%\\fun_004d8860_decomp.txt",
+    "%BCS_GHIDRA_PROJECTS%\\fun_004d8860_callers.txt",
+    "%BCS_GHIDRA_PROJECTS%\\uncataloged_handlers_batch_1.txt",
+    "%BCS_GHIDRA_PROJECTS%\\parent_callers.txt",
+    "%BCS_GHIDRA_PROJECTS%\\parent_refs.txt",
+    "%BCS_GHIDRA_PROJECTS%\\parent_symbols.txt",
+    "%BCS_GHIDRA_PROJECTS%\\dispatcher_candidates_decomp.txt"
+  ],
+  "phase_invocations": [
+    "%BCS_GHIDRA_PROJECTS%\\run_fun_004d8860_decomp.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_fun_004d8860_callers.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_uncataloged_handlers_batch_1.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_parent_callers.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_parent_refs.bat",
+    "%BCS_GHIDRA_PROJECTS%\\run_parent_symbols.bat"
+  ]
+}

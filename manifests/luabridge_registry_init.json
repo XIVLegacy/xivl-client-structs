@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Decomp FUN_007634B0 (single caller of the aggregate factory FUN_0075F9B0 / BCS-Y-1474) to identify the Lua-bridge class REGISTRY INITIALIZATION flow. Closes the deferred follow-up [1]. Major architectural insight: 7 core Lua classes (Global, Debug, Math, String, Table, ActorBaseClass, OnProgFunc) have their Lua-side definitions as EMBEDDED BYTECODE BLOBS in .data, registered via /prog/<Name> paths.",
+  "method": {
+    "step1": "Single-function decomp of FUN_007634B0 via `run_c78_registry_init.bat`. Log: `c78_registry_init_decomp.txt`. 2310-byte body, 29 callees including FUN_0075F9B0.",
+    "step2": "FindReferencesToAddresses on FUN_007634B0 to confirm single caller. Log: `c78_registry_init_callers.txt`. Result: FUN_0057A3C0 (startup function, deferred).",
+    "step3": "Catalog 3 BCS-Y entries (BCS-Y-1481..1483): the registry init + dual-mode flag + metadata-register helper. Amend 3 existing entries (BCS-Y-1474, BCS-Y-0910, BCS-Y-1393)."
+  },
+  "key_findings": [
+    "**Lua-bridge class registry init flow IDENTIFIED**: FUN_007634B0 is the function that (a) calls the aggregate factory FUN_0075F9B0 to instantiate ~14 LuaControl-derived objects, then (b) registers those instances into a name-keyed table via /prog/<ClassName> paths.",
+    "**7 core Lua classes with embedded BYTECODE blobs**: Global, Debug, Math, String, Table, ActorBaseClass, OnProgFunc each have a Lua bytecode blob in .data (sizes 0x887, 0xdf2, 0xc93, 0x6d7, 0x2a9, 0x221, 0x1fd bytes). These are the Lua-side method definitions that complement the C++ LuaControl-derived implementations (already cataloged).",
+    "**Dual configuration sets**: 2 sets of metadata blob pointers (debug-set at DAT_00fdaa10/fd8e20/fdbb20/fdd450/fde200/fd89d0/fde760 vs release-set at DAT_00fdf2ac/fdb298/fd9c18/fdc7b8/fddb28/fde4b0/fd8bf8/fde960) selected by [[startup_dual_mode_flag_DAT_0134b368]]. Likely a DEBUG/RELEASE or LOCAL-GAME/NETWORK-GAME build-config split.",
+    "**FUN_0075F9B0 interpretation resolved**: BCS-Y-0910's 'LuaClassRuntimeDispatcher' label SUPERSEDED. BCS-Y-1474's 'aggregate factory' interpretation CONFIRMED. The function is mid-flow in the registry init: instance-creation pass before name-binding pass.",
+    "**Additional registrations** (post /prog/* block): WidgetBaseClass, DesktopWidgetBaseClass, DesktopWidget, DesktopUtil (4 classes via FUN_00cc71e0/FUN_00cc71f0) + 6 file paths (CutScene.prog, CutScene, WidgetBaseClass.prog, WidgetBaseClass, DesktopWidget.prog, DesktopWidget) via FUN_00cc9770. Suggests Lua-bridge registry has separate paths for /prog/* (class definitions), /Widget/* (widget templates), and /GameData/* (cutscene definitions).",
+    "**FUN_00447260 already cataloged**: BCS-Y-0311 std_string_ctor - the calls to FUN_00447260(name) are std::string copies, not interns."
+  ],
+  "new_bcsy_entries_summary": {
+    "registry_init_function": 1,
+    "globals": 1,
+    "registry_helpers": 1,
+    "amendments": 3,
+    "total_bcsy_added": 3,
+    "id_range": "BCS-Y-1481..BCS-Y-1483"
+  },
+  "amendments": [
+    {"id": "BCS-Y-1474", "addition": "Single caller is BCS-Y-1481 registry init; mid-flow position confirmed (instance-creation pass)"},
+    {"id": "BCS-Y-0910", "addition": "Interpretation SUPERSEDED by BCS-Y-1474 (aggregate factory, not RuntimeDispatcher)"},
+    {"id": "BCS-Y-1393", "addition": "Registry init flow CLARIFIED; 7-class /prog/* registration with embedded bytecode blobs"}
+  ],
+  "deferred_followups": [
+    "Decomp FUN_0057A3C0 (single caller of FUN_007634B0) - the startup function. Likely the application-init pipeline that bootstraps the Lua-bridge subsystem.",
+    "Decomp FUN_00cc97c0 (the metadata-register helper) - understand the registration target table and key-value association mechanism.",
+    "Decomp FUN_00cc71e0/FUN_00cc71f0/FUN_00cc9770 - the 3 variants of registration helper (used for /Widget/* and /GameData/* registrations).",
+    "Catalog the 14 .data bytecode blob anchors (DAT_00fdaa10 et al + DAT_00fdf2ac et al) as BCS-Y data entries. Each one is a Lua bytecode definition for one of the 7 core classes.",
+    "Investigate whether the 'dual configuration sets' is debug-vs-release or local-vs-network. May require finding writers of DAT_0134B368.",
+    "Decomp FUN_0075D9E0 + FUN_0075E060 (called immediately after aggregate factory) - the 'wiring' pass between instance creation and name registration.",
+    "Compare the 7 core /prog/* class names against the 20 ActorBase-derived classes: Global, Debug, Math, String, Table all appear in BOTH lists. ActorBase appears as 'ActorBaseClass' (with suffix) in the registry. OnProgFunc is new (not earlier list)."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_matrix_drift": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1470 -> 1473 (+3 BCS-Y: registry init function + dual-mode flag + metadata-register helper)",
+  "files_changed": [
+    "manifests/symbols.json: +3 entries (BCS-Y-1481..1483), 3 amendments (BCS-Y-1474, BCS-Y-0910, BCS-Y-1393)",
+    "manifests/luabridge_registry_init.json (NEW, this file)",
+    "tools/ghidra/logs/c78_registry_init_decomp.txt (NEW)",
+    "tools/ghidra/logs/c78_registry_init_callers.txt (NEW)"
+  ]
+}

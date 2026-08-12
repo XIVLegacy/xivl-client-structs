@@ -1,0 +1,205 @@
+{
+  "version": "1",
+  "gameVersion": "1.23b",
+  "generated": "2026-05-19",
+  "pass": "deferred_napi_writer_attribution",
+  "source": [
+    "%BCS_GHIDRA_PROJECTS%\\lua_handler_napi_impls.txt",
+    "%BCS_GHIDRA_PROJECTS%\\playerbase_lock_slots.txt",
+    "%BCS_GHIDRA_PROJECTS%\\playerbase_lock_impls.txt",
+    "%BCS_GHIDRA_PROJECTS%\\myplayer_lock_slots.txt",
+    "%BCS_GHIDRA_PROJECTS%\\myplayer_lock_impls.txt",
+    "%BCS_GHIDRA_PROJECTS%\\actual_lock_impls.txt",
+    "build/lua/729s9/uy9l5s/uy9l5s89r57y9rr.lua",
+    "build/lua/729s9/wu7/wu789r57y9rr.lua"
+  ],
+  "scope": "Follow up on the prior negative finding into the Lua side. If the C++ receive chain has no chain-key writes, then the deferred-Lua handlers must call N-API methods that DO mutate state. Identify those N-API methods and trace their C++ impls to find the actual write sites.",
+  "summary": "The deferred-Lua handlers for the 6 firers (_onPreEvent / _onPostEvent / _onTalkEvent / _onTalkRequest / _onPushEvent / _onPushRequest) call N-API mutator methods on PlayerBase/MyPlayer that ULTIMATELY mutate global control state (player input lock, lockon lock, target cursor lock) - not per-actor canonical fields. The mutation chain is 10+ levels deep: Receive -> apply-helper -> ctor -> EventCondition vtable slot -> FUN_00447260(luaName) -> Lua handler on PlayerBaseClass/NpcBaseClass -> N-API method (e.g. _lockPlayerControl) -> N-API stub FUN_006DEnnn -> PlayerBase::vftable[+0x110+] (NOOPs) -> MyPlayer override -> wrapper FUN_006Ennnn -> FUN_0075Bnnn -> global control-state manager virtual at FUN_004D7580 singleton. The state mutated is global subsystem state (PlayerControlLock, LockonControlLock), not CharaBase / PlayerBase / NpcBase canonical fields. This does NOT fit the data_dependency_catalog's chain-key indirect-binding model (which pairs N-API READERS with opcode WRITERS via shared per-actor fields), but it IS the answer to 'where do the deferred patterns ultimately touch state'.",
+  "luaHandlersFound": {
+    "PlayerBaseClass::_onPreEvent": {
+      "source": "build/lua/729s9/uy9l5s/uy9l5s89r57y9rr.lua:2081-2105",
+      "fires_from_opcodes": ["0x012e", "0x016b", "0x016f"],
+      "napi_calls": [
+        "desktopWidget.cancelDesktopWidgetMode(16)",
+        "desktopWidget.closeAllEventModeWidget()",
+        "desktopWidget._unlockTargetCursorControl()",
+        "A0_2._unlockLockonControl() (on PlayerBase 'self')",
+        "A0_2._unlockPlayerControl() (on PlayerBase 'self')"
+      ]
+    },
+    "PlayerBaseClass::_onPostEvent": {
+      "source": "build/lua/729s9/uy9l5s/uy9l5s89r57y9rr.lua:2107-2129",
+      "fires_from_opcodes": ["0x012e", "0x016b", "0x016f"],
+      "guard": "A1_2 == 'commandJudgeMode' or A1_2 == 'commandContent'",
+      "napi_calls": [
+        "A0_2._lockPlayerControl()",
+        "A0_2._lockLockonControl()",
+        "desktopWidget._lockTargetCursorControl()",
+        "desktopWidget.orderDesktopWidgetMode(32)"
+      ]
+    },
+    "NpcBaseClass::_onTalkEvent": {
+      "source": "build/lua/729s9/wu7/wu789r57y9rr.lua:446-456",
+      "fires_from_opcodes": ["0x012e"],
+      "napi_calls": [
+        "A0_2._doServerOnTalk(A1_2, A2_2) (server RPC, not a local mutator)"
+      ]
+    },
+    "NpcBaseClass::_onTalkRequest": {
+      "source": "build/lua/729s9/wu7/wu789r57y9rr.lua:458-485",
+      "fires_from_opcodes": ["0x012e"],
+      "napi_calls": [
+        "A0_2._callServerOnEmote(A1_2, A2_2) (server RPC)",
+        "desktopWidget.isEventLockonCameraEnable() (reader)",
+        "..."
+      ]
+    },
+    "NpcBaseClass::_onPushEvent": {
+      "source": "build/lua/729s9/wu7/wu789r57y9rr.lua:525-557",
+      "fires_from_opcodes": ["0x016f"],
+      "napi_calls": [
+        "A0_2.getPushCommandVariation()",
+        "A1_2.setPlaceDrivenCommandVariation(...) (N-API MUTATOR)"
+      ]
+    },
+    "NpcBaseClass::_onPushRequest": {
+      "source": "build/lua/729s9/wu7/wu789r57y9rr.lua:562-574",
+      "fires_from_opcodes": ["0x016f"],
+      "napi_calls": [
+        "A2_2._callFunction(A3_2, A1_2, A0_2, ...) (generic delegated call)"
+      ]
+    }
+  },
+  "napiMutatorTrace": {
+    "description": "10-level trace for the simplest case (_onPostEvent -> _lockPlayerControl) to confirm the writer chain.",
+    "levels": [
+      {"level": 1, "site": "FUN_0089DF60 (SetTalkEventConditionReceiver::Receive)", "action": "constructs TalkBlock at receiver+4"},
+      {"level": 2, "site": "FUN_006F29B0 (apply helper)", "action": "routes to FUN_00892D00 (TalkBlock ctor) or FUN_00892E30 (TalkNonBlock ctor)"},
+      {"level": 3, "site": "FUN_00892D00 (TalkBlock ctor)", "action": "sets TalkBlock::vftable, copies marker byte"},
+      {"level": 4, "site": "Consumer (queue drainer, not identified directly)", "action": "calls slot 0x04 of TalkBlock vtable via polymorphic dispatch on receiver+4 pointer"},
+      {"level": 5, "site": "FUN_00897570 (EventCondition base slot 0x04)", "action": "sets up Lua args, dispatches slot 0x28 (per-class execute) AND slot 0x10 (_onPostEvent fire)"},
+      {"level": 6, "site": "FUN_008977b0 (base slot 0x10)", "action": "FUN_00447260(\"_onPostEvent\") + FUN_00CC7A90(args)"},
+      {"level": 7, "site": "Lua handler PlayerBaseClass::_onPostEvent", "action": "if guard matches, calls self._lockPlayerControl()"},
+      {"level": 8, "site": "FUN_006DE7E0 (_lockPlayerControl N-API stub)", "action": "tail-calls (*self.vftable+0x110)()"},
+      {"level": 9, "site": "PlayerBase::vftable[+0x110] = FUN_006DEA00 (base impl)", "action": "NOOP (just `return;`); overridden in MyPlayer"},
+      {"level": 9, "site": "MyPlayer::vftable[+0x110] = FUN_006E3340 (override)", "action": "FUN_00CC7510() + FUN_0075B240()"},
+      {"level": 10, "site": "FUN_0075B240", "action": "calls FUN_004D7580 singleton getter then (*singleton.vftable+0x04)()"},
+      {"level": 11, "site": "FUN_004D7580-returned-vftable[+0x04]", "action": "actual state mutation on PlayerControl/Lockon global state manager (not decomped here - WS-H follow-on)"}
+    ]
+  },
+  "napiMutatorMap": {
+    "description": "All 6 control-state mutator N-API methods reachable from the deferred Lua handlers, with their C++ stub + override chain.",
+    "methods": {
+      "_lockPlayerControl": {
+        "napiStubVa": "0x006DE7E0",
+        "playerBaseVtableSlot": "0x110",
+        "playerBaseImpl": "0x006DEA00 (NOOP)",
+        "myPlayerOverride": "0x006E3340",
+        "myPlayerWrapper": "0x0075B240",
+        "globalSingletonGetter": "0x004D7580",
+        "singletonVtableSlot": "0x04"
+      },
+      "_unlockPlayerControl": {
+        "napiStubVa": "0x006DE7F0",
+        "playerBaseVtableSlot": "0x114",
+        "playerBaseImpl": "0x006DEA10 (NOOP)",
+        "myPlayerOverride": "0x006E3360",
+        "myPlayerWrapper": "0x0075B250",
+        "globalSingletonGetter": "0x004D7580",
+        "singletonVtableSlot": "0x08"
+      },
+      "_isPlayerControlEnabled": {
+        "napiStubVa": "0x006DE800",
+        "playerBaseVtableSlot": "0x118",
+        "playerBaseImpl": "0x006DEA20 (NOOP)",
+        "myPlayerOverride": "0x00705130",
+        "myPlayerWrapper": "0x0075B260",
+        "globalSingletonGetter": "0x004D7580",
+        "singletonVtableSlot": "0x0C",
+        "isReader": true
+      },
+      "_lockLockonControl": {
+        "napiStubVa": "0x006DE810",
+        "playerBaseVtableSlot": "0x11C",
+        "playerBaseImpl": "0x006DEA30 (NOOP)",
+        "myPlayerOverride": "0x006E3380",
+        "myPlayerWrapper": "0x0075B2A0",
+        "globalSingletonGetter": "0x004D7580",
+        "singletonVtableSlot": "0x1C"
+      },
+      "_unlockLockonControl": {
+        "napiStubVa": "0x006DE820",
+        "playerBaseVtableSlot": "0x120",
+        "playerBaseImpl": "0x006DEA40 (NOOP)",
+        "myPlayerOverride": "0x006E33A0",
+        "myPlayerWrapper": "0x0075B2B0",
+        "globalSingletonGetter": "0x004D7580",
+        "singletonVtableSlot": "0x20"
+      },
+      "_isLockonControlEnabled": {
+        "napiStubVa": "0x006DE830",
+        "playerBaseVtableSlot": "0x124",
+        "playerBaseImpl": "0x006DEA50 (NOOP)",
+        "myPlayerOverride": "0x00705170",
+        "myPlayerWrapper": "0x0075B2C0",
+        "globalSingletonGetter": "0x004D7580",
+        "singletonVtableSlot": "0x24",
+        "isReader": true
+      }
+    }
+  },
+  "modelMismatchNote": {
+    "expected": "User goal expected '2-4 new chain-key writes' in data_dependency_catalog.json. Chain-key writes pair an N-API READER with an opcode receiver's per-actor field WRITE via a shared CharaBase / PlayerBase / NpcBase offset.",
+    "actual": "The deferred-event-condition pattern mutates global SUBSYSTEM state (PlayerControl lock counter, LockonControl lock counter, TargetCursorControl lock) via N-API MUTATOR calls. The state targets are not per-actor canonical fields but global manager singletons reached through FUN_004D7580.",
+    "implication": "These mutations don't fit the existing chain-key indirect-binding schema. Extending the catalog to track 'deferred Lua -> N-API mutator -> global subsystem' calls would require a NEW binding category. The deferred napi writers pass does not add to data_dependency_catalog but does add a complete trace from opcode -> Lua handler -> N-API mutator -> singleton slot for the 6 documented mutators."
+  },
+  "deferredNapiBindings": [
+    {
+      "opcodes": ["0x012e", "0x016b", "0x016f"],
+      "viaLuaEvent": "_onPreEvent",
+      "luaHandler": "PlayerBaseClass::_onPreEvent",
+      "napiMutators": ["_unlockLockonControl", "_unlockPlayerControl"],
+      "uiSideMutators": ["desktopWidget.cancelDesktopWidgetMode(16)", "desktopWidget.closeAllEventModeWidget()", "desktopWidget._unlockTargetCursorControl()"],
+      "actorStateTouched": "global PlayerControl + LockonControl lock counters via FUN_004D7580 singleton; cleared (unlocked) on event entry"
+    },
+    {
+      "opcodes": ["0x012e", "0x016b", "0x016f"],
+      "viaLuaEvent": "_onPostEvent",
+      "luaHandler": "PlayerBaseClass::_onPostEvent",
+      "guard": "A1_2 == 'commandJudgeMode' or A1_2 == 'commandContent'",
+      "napiMutators": ["_lockPlayerControl", "_lockLockonControl"],
+      "uiSideMutators": ["desktopWidget._lockTargetCursorControl()", "desktopWidget.orderDesktopWidgetMode(32)"],
+      "actorStateTouched": "global PlayerControl + LockonControl lock counters via FUN_004D7580 singleton; set (locked) on event exit when in command mode"
+    },
+    {
+      "opcodes": ["0x012e"],
+      "viaLuaEvent": "_onTalkEvent",
+      "luaHandler": "NpcBaseClass::_onTalkEvent",
+      "napiMutators": ["_doServerOnTalk (server-RPC, not local mutator)"],
+      "actorStateTouched": "none locally; triggers a server-side state change via RPC"
+    },
+    {
+      "opcodes": ["0x012e"],
+      "viaLuaEvent": "_onTalkRequest",
+      "luaHandler": "NpcBaseClass::_onTalkRequest",
+      "napiMutators": ["_callServerOnEmote (server-RPC)"],
+      "actorStateTouched": "none locally; server-side state via RPC"
+    },
+    {
+      "opcodes": ["0x016f"],
+      "viaLuaEvent": "_onPushEvent",
+      "luaHandler": "NpcBaseClass::_onPushEvent",
+      "guard": "A2_2 == 'pushCommandIn'",
+      "napiMutators": ["A1_2.setPlaceDrivenCommandVariation(...) - N-API mutator on PlaceDriven object"],
+      "actorStateTouched": "PlaceDriven object's command variation field (not a CharaBase chain key; subsystem object)"
+    },
+    {
+      "opcodes": ["0x016f"],
+      "viaLuaEvent": "_onPushRequest",
+      "luaHandler": "NpcBaseClass::_onPushRequest",
+      "napiMutators": ["A2_2._callFunction(...) - generic delegated dispatch"],
+      "actorStateTouched": "varies by dispatch target; not statically determinable"
+    }
+  ],
+  "structuralConclusion": "The deferred napi writers pass closes the 'where does the deferred state mutation happen' question. The answer is: in N-API MUTATOR methods called from Lua event handlers, with mutations targeting global subsystem state (player input lock, lockon lock, place-driven command variation) rather than per-actor canonical fields. This is a STRUCTURALLY DIFFERENT MUTATION PATTERN from the direct-write receivers documented in the receiver apply findings pass. The data_dependency_catalog's chain-key indirect-binding model doesn't capture this kind of subsystem mutation; tracking it would require a new schema category (deferred_napi_mutator). The 6 mutator N-API methods + their full call chains are documented in this file as the canonical evidence."
+}

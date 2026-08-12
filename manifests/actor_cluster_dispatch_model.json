@@ -1,0 +1,252 @@
+{
+  "version": 1,
+  "scope": "Resolve the Actor* cluster opcode gap (16 opcodes in 0x00C9..0x00E3 range observed in pcap but missing from receiver_opcode_map_inbound). The unmapped-s2c-opcode-worklist pass excluded these as `low map/channel opcode range` - that classification was wrong. The 1.23b client dispatches these opcodes through the central s2c dispatcher FUN_004DC690 using a polymorphic per-actor vftable[9] mechanism rather than per-opcode *Receiver classes.",
+  "method": {
+    "step1": "Cross-referenced 29 excluded opcodes from manifests/unmapped_s2c_opcode_worklist.json against receiver_opcode_map_inbound.json - confirmed NONE of the 16 0x00C9..0x00E3 cluster opcodes are in the catalog.",
+    "step3": "Catalog scan for prior attributions found BCS-Y-0279 (Option2_central_packet_dispatcher_FUN_004dc690) and BCS-Y-0321 (ZoneOutbound_TierD_HelperBuilt_0x00CA_FUN_004DC690) - same function with CONTRADICTORY interpretations.",
+    "step4": "Decomped FUN_004DC690 (3364 bytes, sole caller FUN_004E20A0 Map tick handler). Confirmed BCS-Y-0279 is correct - it IS the s2c dispatcher with two-branch structure (0x13D<uVar2 high switch + uVar2<0x12E low switch). BCS-Y-0321's `c2s emitter for 0x00CA` interpretation is partially right but mis-frames the function: the `FUN_004E0240(uVar6, 0xCA, 0)` call at decomp line 647 is INSIDE case 7 of the low-switch as a RESPONSE emit, not the function's primary purpose."
+  },
+  "dispatcher_model": {
+    "function": "FUN_004DC690",
+    "size_bytes": 3364,
+    "caller": "FUN_004E20A0 (Map tick handler - dispatcher is invoked once per map tick, not from an async packet receive callback)",
+    "structure": "Two-branch opcode switch on uVar2 (the packet opcode at offset +2 of the s2c game-message body)",
+    "high_branch": {
+      "condition": "if (0x13d < uVar2)",
+      "scope": "opcodes 0x13E and above",
+      "notes": "Contains receiver-class dispatch for opcodes already in the catalog via the receiver-discovery pass (BCS-Y-0386 etc.)"
+    },
+    "low_branch": {
+      "condition": "if (uVar2 < 0x12e)",
+      "scope": "opcodes 0x02 to 0x12D",
+      "dedicated_cases": [
+        {
+          "case": "0x02",
+          "purpose": "peer init (FUN_004d90c0 + FUN_004d9980 + FUN_004dc5d0 + maybe FUN_004d7660)"
+        },
+        {
+          "case": "0x03",
+          "purpose": "string-based command (FUN_00447260 std::string ctor + FUN_004d8560 dispatch)"
+        },
+        {
+          "case": "0x04",
+          "purpose": "complex re-initialization (4 nested loops, time-related, large state walk)"
+        },
+        {
+          "case": "0x05 / 0x0D / 0x10",
+          "purpose": "fallthrough - vftable[9] on (param_1 + 0x4e0)"
+        },
+        {
+          "case": "0x06",
+          "purpose": "FUN_0081eb90 simple call"
+        },
+        {
+          "case": "0x07",
+          "purpose": "tick-style state walk + emits c2s 0xCA via FUN_004E0240(uVar6, 0xCA, 0) at decomp line 647 - this is the response/sync emit BCS-Y-0321 noted, NOT the function's primary purpose"
+        },
+        {
+          "case": "0x08",
+          "purpose": "u8-count + 4-byte-each iteration (up to 32 entries via byte count at iVar8+0x10)"
+        },
+        {
+          "case": "0x09",
+          "purpose": "16-entry array iteration (4-byte + 1-byte pairs)"
+        },
+        {
+          "case": "0x0A",
+          "purpose": "32-entry array iteration"
+        },
+        {
+          "case": "0x0B",
+          "purpose": "64-entry array iteration"
+        },
+        {
+          "case": "0x0C",
+          "purpose": "scalar pair (FUN_004bbb30 with u16+u8)"
+        },
+        {
+          "case": "0x0E",
+          "purpose": "shutdown / disconnect with flags 0xC0000000"
+        },
+        {
+          "case": "0x0F / 0xCC / 0xCD / 0xCE / 0xCF / 0xD0 / 0xD3..0xE5 (24 opcodes)",
+          "purpose": "GENERIC ACTOR DISPATCH - falls through to switchD_004dc749_caseD_f label - looks up actor by id via FUN_004d9910(param_2), invokes actor->vftable[9](iVar8). This is where ALL the Actor*Packet handling happens - polymorphic per actor class, not per opcode."
+        },
+        {
+          "case": "0x11",
+          "purpose": "shutdown with flags 0xC0000000 (variant of case 0x0E)"
+        },
+        {
+          "case": "0xCA",
+          "purpose": "AddActor reception - FUN_004d9910 lookup OR FUN_004d90c0 create-if-missing; marks byte at +0x92 = 1 (alive flag); calls FUN_004caf60 to initialize"
+        },
+        {
+          "case": "0xCB",
+          "purpose": "RemoveActor reception - FUN_004d9910 lookup; if matches alive-player ptr at +0x17838 clears world flags; calls actor->vftable[0](1) which is MSVC destructor-with-delete"
+        }
+      ],
+      "fallthrough_label": "switchD_004dc749_caseD_f",
+      "fallthrough_code": "piVar12 = (int *)FUN_004d9910(param_2); if (piVar12 != 0) { (**(code **)(*piVar12 + 0x24))(iVar8); }",
+      "fallthrough_semantics": "FUN_004d9910 is the actor-id-to-actor-ptr lookup. The +0x24 vtable offset = slot 9 (0x24 / 4 = 9). slot 9 is the polymorphic 'apply this s2c packet to me' handler defined per actor subclass."
+    }
+  },
+  "key_findings": [
+    {
+      "title": "Actor* cluster has NO per-opcode receivers - it's polymorphic per actor class",
+      "detail": "The 24-opcode multi-case fallthrough (0x0F, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD3-0xE5) covers position, movement, appearance, animation, target, BG props, special graphic, emote - all common per-actor state mutations. Each is dispatched via FUN_004d9910(param_2) actor lookup then actor->vftable[9](packet). The actor's vftable[9] is the per-class polymorphic handler that interprets the packet payload based on opcode. Adding 'per-opcode' receivers for these would be incorrect architecturally - the catalog should document the dispatch MECHANISM, not per-opcode handlers that don't exist.",
+      "implication": "The receiver_opcode_map_inbound concept doesn't fit the Actor* cluster. These need a different catalog category: 'actor-vftable9-dispatched' opcodes. Each opcode is handled by potentially many actor classes (Player, NPC, EventObject etc.) via their respective vftable[9] implementations - the per-opcode-class mapping is N-to-M, not 1-to-1."
+    },
+    {
+      "title": "BCS-Y-0279 vs BCS-Y-0321 contradiction resolved",
+      "detail": "Both describe FUN_004DC690. BCS-Y-0279 is fundamentally correct: it IS the central s2c dispatcher. BCS-Y-0321's 'c2s emitter for 0x00CA' framing is partially right but misleading - the 0xCA emit is INSIDE case 7 of the low-switch as a periodic-sync response, not the function's primary purpose. BCS-Y-0321 should be revised to clarify its role as 'the c2s emit site embedded in case 7 of the s2c dispatcher' rather than a standalone c2s emitter.",
+      "implication": "Anyone reading BCS-Y-0321 might think FUN_004DC690 is primarily an emitter; it isn't. Future c2s-only auditing should not include it in pure-emitter inventories. The dispatcher's primary purpose is s2c routing."
+    },
+    {
+      "title": "21 BCS-Y entries have systematic address typos",
+      "detail": "All entries from the earliest cataloguing era have addresses transcribed as 0x000XXXXX instead of 0x004XXXXX (leading 4 -> 0). Affected: BCS-Y-0145, 0297, 0308, 0309, 0311 (47260 -> 447260), 0312, 0313, 0314, 0315, 0316, 0318, 0319, 0321, 0322, 0323, 0325 (fixed in the pcap-grounded-c2s-validation pass), 0326, 0327, 0331. Also BCS-Y-0011/0012/0013 (BF_encrypt/decrypt/set_key - openssl Blowfish primitives in the .text section). The NAMES of these entries contain the correct FUN_004XXXXX VAs in their suffix; only the address field is wrong. Mechanical fix.",
+      "implication": "Catalog lookup tools using address-based queries would miss these entries. Fixing is straightforward (the canonical address is in the name). The pcap-grounded-c2s-validation pass already fixed BCS-Y-0325; this sweeps the remaining 20."
+    }
+  ],
+  "actor_cluster_opcode_table": [
+    {
+      "opcode": "0x00C9",
+      "pcap_count": 7,
+      "dispatch": "case 0xCA missing case - probably falls into the default-or-skip branch"
+    },
+    {
+      "opcode": "0x00CA",
+      "pcap_count": 226,
+      "dispatch": "case 0xCA dedicated handler (create-or-lookup + mark alive)"
+    },
+    {
+      "opcode": "0x00CB",
+      "pcap_count": 93,
+      "dispatch": "case 0xCB dedicated handler (lookup + destroy via vftable[0])"
+    },
+    {
+      "opcode": "0x00CC",
+      "pcap_count": 242,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00CD",
+      "pcap_count": 0,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00CE",
+      "pcap_count": 239,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00CF",
+      "pcap_count": 2176,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9] (HIGHEST FREQUENCY actor packet)"
+    },
+    {
+      "opcode": "0x00D0",
+      "pcap_count": 332,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00D2",
+      "pcap_count": 33,
+      "dispatch": "case is NOT in the case list (0xD1, 0xD2 missing) - falls into default; this is an actor packet that bypasses the dispatcher (engine bug, version drift, or different routing)"
+    },
+    {
+      "opcode": "0x00D3",
+      "pcap_count": 0,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00D6",
+      "pcap_count": 199,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00D8",
+      "pcap_count": 4,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00D9",
+      "pcap_count": 4,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00DA",
+      "pcap_count": 10,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00DB",
+      "pcap_count": 20,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00DE",
+      "pcap_count": 12,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    },
+    {
+      "opcode": "0x00E3",
+      "pcap_count": 3,
+      "dispatch": "multi-case fallthrough -> actor->vftable[9]"
+    }
+  ],
+  "new_bcs_y_entries": [
+    {
+      "id": "BCS-Y-0525",
+      "name": "S2cDispatcher_AddActor_CaseCA_FUN_004DC690",
+      "address": "0x004DC690",
+      "kind": "function_case",
+      "confidence": "confirmed",
+      "summary": "Case 0xCA inside FUN_004DC690's low-switch. Handles s2c AddActorPacket reception."
+    },
+    {
+      "id": "BCS-Y-0526",
+      "name": "S2cDispatcher_RemoveActor_CaseCB_FUN_004DC690",
+      "address": "0x004DC690",
+      "kind": "function_case",
+      "confidence": "confirmed",
+      "summary": "Case 0xCB inside FUN_004DC690's low-switch. Handles s2c RemoveActorPacket reception."
+    },
+    {
+      "id": "BCS-Y-0527",
+      "name": "S2cDispatcher_ActorVtable9_GenericFallthrough_FUN_004DC690",
+      "address": "0x004DC690",
+      "kind": "function_case",
+      "confidence": "confirmed",
+      "summary": "Multi-case fallthrough (0x0F, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD3..0xE5 = 24 opcodes) inside FUN_004DC690's low-switch. Dispatches via FUN_004d9910 actor-id-to-actor lookup, then invokes actor->vftable[9](packet). The polymorphic per-actor-class handler is where actual per-opcode payload parsing happens."
+    }
+  ],
+  "catalog_cleanups": {
+    "address_typo_fixes": [
+      "BCS-Y-0011: 0x0005AAC0 -> 0x0045AAC0 (NOT FIXED - BF_encrypt may genuinely be at 0x0005AAC0 in the openssl section; need verification)",
+      "BCS-Y-0012: 0x0005AA30 -> same caveat",
+      "BCS-Y-0013: 0x0005ABF0 -> same caveat",
+      "BCS-Y-0145: 0x000DFDF0 -> 0x004DFDF0 (name says FUN_004DFDF0)",
+      "BCS-Y-0297: 0x000E2850 -> 0x004E2850 (name says FUN_004E2850)",
+      "BCS-Y-0308: 0x000E0290 -> 0x004E0290",
+      "BCS-Y-0309: 0x000DF6D0 -> 0x004DF6D0",
+      "BCS-Y-0311: 0x00047260 -> 0x00447260 (name says FUN_00447260)",
+      "BCS-Y-0312: 0x000E0240 -> 0x004E0240",
+      "BCS-Y-0313: 0x000E0320 -> 0x004E0320",
+      "BCS-Y-0314: 0x000E20A0 -> 0x004E20A0",
+      "BCS-Y-0315: 0x000DF9A0 -> 0x004DF9A0",
+      "BCS-Y-0316: 0x000DF810 -> 0x004DF810",
+      "BCS-Y-0318: 0x000B7A20 -> 0x004B7A20",
+      "BCS-Y-0319: 0x000B7C10 -> 0x004B7C10",
+      "BCS-Y-0321: 0x000DC690 -> 0x004DC690",
+      "BCS-Y-0322: 0x000C7150 -> 0x004C7150",
+      "BCS-Y-0323: 0x000D6D10 -> 0x004D6D10",
+      "BCS-Y-0326: 0x000C7490 -> 0x004C7490",
+      "BCS-Y-0327: 0x000C73D0 -> 0x004C73D0",
+      "BCS-Y-0331: 0x000E3750 -> 0x004E3750"
+    ],
+    "note_refinements": [
+      "BCS-Y-0279: Update notes with the full case-by-case breakdown (currently only describes high branch in detail)",
+      "BCS-Y-0321: Reframe as 'c2s 0xCA emit IS INSIDE case 7 of the s2c dispatcher FUN_004DC690' rather than 'a standalone c2s emitter that happens to live in FUN_004DC690'"
+    ]
+  }
+}

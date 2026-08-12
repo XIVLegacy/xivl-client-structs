@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "generated": "2026-05-28",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Chases 'what advances the actor-list owner's +0x16C state to 10' (the follow-up / join point between the spawn-burst and the Lua dismiss cascade). FUN_007663D0 (BCS-Y-1799) is the per-record bind state machine: state 10 requires the '/Area/' resource to load AND the record id + its +0x170 paired handle to both equal the MyPlayer/local-control SID 0xC0000024. Client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline' added. Live decomp via the port-8081 GhidraMCP bridge.",
+  "method": {
+    "step_a": "Disassembled LuaFrameTick FUN_00578970 (BCS-Y-1701): the actorListInstaller's owner = *(tick_ctx+0x8) (MOV ECX,[ESI+8]; CALL 0x00766f00). The tick ctx is a subsystem container.",
+    "step_b": "Decompiled FUN_007663D0 (called from FUN_00766F00) = the +0x16C state machine; full 0->10 switch recovered. Decompiled FUN_004DA680 (Application_FrameTick) for context (handle-class check confirms 0xc0000000 = control SID class).",
+    "step_c": "Resolved the case-7/8/9 gates: FUN_00712BB0 (std::string comparator, the '/Area/' gate on record+0x2b); FUN_00CC9320 (scoped SID-handle ctor; cases 8/9 compare record id and +0x170 against the wrapped MyPlayer SID 0xC0000024).",
+    "step_d": "get_xrefs_to FUN_007663D0: 2 callers, both in FUN_00766F00 - the install pass is the sole driver.",
+    "step_e": "Promoted the 3 keystones (BCS-Y-1799 state machine, 1800 /Area/ gate, 1801 SID-handle ctor); archived to tools/ghidra/logs/actor_16c_bind_state_machine.txt; wrote client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline'."
+  },
+  "key_findings": [
+    "**FUN_007663D0 is the +0x16C per-record bind state machine**, driven per-frame by FUN_00766F00 (BCS-Y-0135) via LuaFrameTick (BCS-Y-1701). Advances a control-record 0->10: register Debug/WorldMaster/CommandDebugger classes (0-5), load '/Area/' resource (7->8), record id == 0xC0000024 (8->9), +0x170 handle == 0xC0000024 (9->10 terminal).",
+    "**State 10 is the precondition for Lua-binding**: only at +0x16C==10 does FUN_00766F00 set actor+0x5C=1 + install the LuaActorImpl (client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline'). So the dismiss chain (spawn -> bind-to-10 -> +0x5C -> _onPostWarp -> _fadeOut) hinges on the MyPlayer-control record reaching state 10.",
+    "**Two concrete checkable blocker gates**: (1) the '/Area/' resource must load (case 7, keyed off record+0x2b); (2) the record id AND its +0x170 paired handle must both reconcile to the MyPlayer-control SID 0xC0000024 (cases 8,9). The latter ties to the original handoff's actor-ID concern - if the spawn-burst's MyPlayer is not reconcilable to SID 0xC0000024 client-side, the bind stalls and the overlay never dismisses.",
+    "**0xC0000024 is a client-internal control-class SID** (the 0xc0000000-class, per the handle-class check in Application_FrameTick BCS-Y-1711). The server's MyPlayer spawn must drive the client to create/assign the local control at that SID - the next client-side layer to map."
+  ],
+  "new_bcsy_entries_summary": {
+    "bind_state_machine_keystones": 3,
+    "total_bcsy_added": 3,
+    "id_range": "BCS-Y-1799..BCS-Y-1801",
+    "kinds": "3 function",
+    "already_cataloged_cited": [
+      "BCS-Y-0135 LuaActorImpl::actorListInstaller (sole driver of the state machine; sets +0x5C at state 10)",
+      "BCS-Y-1701 LuaFrameTick / BCS-Y-1711 Application_FrameTick (per-frame trigger chain)",
+      "BCS-Y-1797 LuaBoundObject_HandleResolver (the SID-resolve peer of the new SID-handle ctor)"
+    ]
+  },
+  "deferred_followups": [
+    "PRIMARY next layer: what creates the MyPlayer control at SID 0xC0000024 and populates record+0x170, and from which spawn-burst opcode - the remaining client-side link between the wire spawn and the bind state machine.",
+    "Decompile FUN_0075BBF0 (case-2 gate) and FUN_00765410 (the tail re-arm gate) if the bind progression needs full per-case grounding.",
+    "Part (a): bahamut-side spawn-burst structural check (still open)."
+  ],
+  "validators_post": {
+    "validate_json": "to_run"
+  },
+  "symbol_count_delta": "1785 -> 1788 (+3 BCS-Y; BCS-Y-1799..1801)",
+  "files_changed": [
+    "manifests/symbols.json: +3 entries (BCS-Y-1799..1801)",
+    "manifests/actor_16c_bind_state_machine.json (NEW)",
+    "tools/ghidra/logs/actor_16c_bind_state_machine.txt (NEW)"
+  ]
+}

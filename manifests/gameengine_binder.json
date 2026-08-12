@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "generated": "2026-05-27",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "GameEngine post-construction binder hunt - closes the deferred follow-up 'Identify the WRITER of GameEngine+0x1BC field (post-construction)'. Traced the binder chain 6 layers deep: FUN_0057A3C0 (application init, sole caller of GameEngine factory) -> FUN_007634B0 (LuaClassRegistry init, BCS-Y-1521) -> FUN_0075F9B0 (mass class registry, BCS-Y-1738) -> FUN_00CC9700/FUN_00CC9760 (per-class registration trampolines) -> FUN_00CD9F30 (BaseClass-style registration core) / FUN_00CDA610 (LGTC-style registration core) -> FUN_00CD5620 (class-table maintainer entry) -> FUN_00CD8870 (LuaClassTable_find_or_create, BCS-Y-1670). The exact `engine[0x6f] = <class table entry>` MOV is in the FUN_00CD5620 chain - deepest layer deferred. **Architectural CLOSURE**: the full binder chain is now mapped end-to-end; only the exact MOV site remains unidentified within the FUN_00CD5620 sub-chain.",
+  "method": {
+    "step_a": "FindAllReferencesToAddress on FUN_00CC9540 (GameEngine factory) and FUN_00CD7A30 (the +0x1BC reader). Result: FUN_00CC9540 has ONLY 1 caller (FUN_0057A3C0). FUN_00CD7A30 has 23 callers all in the cc7000 cluster. Output: c115_gameengine_factory_xrefs.txt.",
+    "step_b": "DumpFunctionDecomp on FUN_0057A3C0 (1909 bytes). KEY FINDINGS: (1) Signature is `__thiscall(undefined4 *param_1, ...)` - param_1 is a SERVICE CONTAINER (the application root object); (2) line 126 creates GameEngine via FUN_00CC9540, stores at *param_1 (service [0]); (3) lines 138-432 allocate 14+ MORE services as param_1[1]..param_1[0xd]; (4) line 455 calls FUN_007634B0 (LuaClassRegistry init BCS-Y-1521) with GameEngine + 2 service pointers on stack. This is the application init function. Output: c115_singleton_creator_decomp.txt.",
+    "step_c": "DumpFunctionDecomp on the per-class registration trampolines FUN_00CC9700 (96 bytes, BaseClass-style) and FUN_00CC9760 (7 bytes, LGTC-style). Both are TRAMPOLINES delegating to FUN_00CD9F30 / FUN_00CDA610 respectively. Output: c115_perclass_register_decomp.txt.",
+    "step_d": "DumpFunctionDecomp on the registration CORES FUN_00CD9F30 (354 bytes, BaseClass) and FUN_00CDA610 (LGTC). BaseClass core calls FUN_00CED300, FUN_00CD5620 (class-table maintainer), FUN_009D1B35 (alloc), FUN_00CD9160, FUN_00CEDE40, FUN_00CD7970. **The +0x1BC bind is transitively via FUN_00CD5620 chain** which is one more layer deep (FUN_00CD5620 -> FUN_00CD8870 LuaClassTable_find_or_create BCS-Y-1670). Exact write site is in FUN_00CD5620 - deferred. Output: c115_register_core_decomp.txt.",
+    "step_e": "Catalog 3 new BCS-Y entries (FUN_0057A3C0 app init + FUN_00CD9F30 BaseClass register core + FUN_00CDA610 LGTC register core) + 4 amendments documenting the binder chain on key existing entries (BCS-Y-1691 GameEngine ctor, BCS-Y-1692 GameEngine factory, BCS-Y-1521 LuaClassRegistry init, BCS-Y-1581 +0x1BC reader)."
+  },
+  "key_findings": [
+    "**Application init identified**: FUN_0057A3C0 (1909 bytes) is the SOLE creator of the GameEngine singleton. It is a `__thiscall` method on a SERVICE CONTAINER object (param_1) that holds GameEngine as its first service (`*param_1`) plus 14+ more services as `param_1[1..0xD]`. 3 upstream callers (FUN_004DAF00, FUN_004DC690, FUN_004D7A60) represent different app-mode entries (new game / load / reload).",
+    "**6-layer binder chain mapped**: application init -> LuaClassRegistry init (BCS-Y-1521) -> mass class registry (BCS-Y-1738) -> per-class trampolines (FUN_00CC9700 / FUN_00CC9760) -> registration cores (FUN_00CD9F30 / FUN_00CDA610) -> class-table maintainer (FUN_00CD5620) -> LuaClassTable_find_or_create (BCS-Y-1670). The +0x1BC write happens within the FUN_00CD5620 chain (deepest layer not yet decompiled).",
+    "**Init order enforced**: GameEngine is created BEFORE the LuaClassRegistry init runs. So by the time any cc7000 cluster caller fires (the 23 consumers of FUN_00CD7A30 the +0x1BC reader), the binder has already populated +0x1BC. This explains why no race condition / null check is needed at the consumer side.",
+    "**GameEngine is a true singleton**: FUN_00CC9540 (the factory) has ONLY 1 caller, FUN_0057A3C0. There is no path to create multiple GameEngine instances; the engine lifecycle is bound to the application's service container lifecycle.",
+    "**Registration cores are bifurcated** (BaseClass-style vs LGTC-style) per the classification of the 36 classes (24 BaseClass + 12 LGTC). Each class goes through ONE of the two cores depending on its inheritance pattern - the LGTC core is for classes with the LGTC inheritance chain ( narratives)."
+  ],
+  "new_bcsy_entries_summary": {
+    "application_init_entries": 1,
+    "registration_core_entries": 2,
+    "total_bcsy_added": 3,
+    "id_range": "BCS-Y-1775..BCS-Y-1777",
+    "amendments": 4,
+    "amendment_targets": [
+      "BCS-Y-1691 (GameEngine ctor): full call chain identified app init -> ctor",
+      "BCS-Y-1692 (GameEngine factory): sole caller = FUN_0057A3C0 confirmed",
+      "BCS-Y-1521 (LuaClassRegistry init): GameEngine binding context added",
+      "BCS-Y-1581 (+0x1BC reader): full binder chain documented (exact MOV in FUN_00CD5620 chain deferred)"
+    ]
+  },
+  "deferred_followups": [
+    "Decomp FUN_00CD5620 (the class-table maintainer entry) to find the exact `engine[0x6f] = <class table entry>` MOV instruction. This closes the deepest layer of the binder chain.",
+    "Decomp FUN_00CDA610 (LGTC-style registration core) in full to verify it has the same callee pattern as the BaseClass core.",
+    "Decomp the 3 upstream callers of FUN_0057A3C0 (FUN_004DAF00, FUN_004DC690, FUN_004D7A60) to confirm app-mode classification (new game / load / reload)."
+  ],
+  "validators_post": {
+    "validate_catalog": "to_run",
+    "audit_catalog_xref": "to_run"
+  },
+  "symbol_count_delta": "1761 -> 1764 (+3 BCS-Y; BCS-Y-1775..1777)",
+  "files_changed": [
+    "manifests/symbols.json: +3 entries (BCS-Y-1775..1777), 4 amendments",
+    "manifests/gameengine_binder.json (NEW)",
+    "tools/ghidra/logs/c115_gameengine_factory_xrefs.txt (NEW)",
+    "tools/ghidra/logs/c115_singleton_creator_decomp.txt (NEW)",
+    "tools/ghidra/logs/c115_perclass_register_decomp.txt (NEW)",
+    "tools/ghidra/logs/c115_register_core_decomp.txt (NEW)",
+    "tools/extractors/append_c115.py (NEW)"
+  ]
+}

@@ -1,0 +1,357 @@
+{
+  "version": 1,
+  "scope": "Drill vtable[5] (offset 0x14) of cataloged actor classes to find the zone+0x17804 actor-map insertion site and identify the actor type actually stored. This drill was framed as the natural follow-up to the actor vtable9 bulk pass's negative finding on vtable[9]: if vtable[9] is a no-op for cataloged classes, perhaps the post-construction init hook (vtable[5], called by FUN_004d90c0/BCS-Y-0531 right after the dispatched constructor returns) is what registers the new actor into the zone's actor map at zone+0x17804..+0x17808 - in which case decomp would reveal both the map.insert call site and the authoritative actor type. Outcome: ANOTHER corrective finding (the third in a row across the actor-cluster drill sequence). Slot 5 of every cataloged actor class is NOT the zone-actor-map insert hook. It is a class-internal LIFECYCLE/CONTAINER hook that operates on a DIFFERENT std::map embedded in the actor's own struct (at `actor + 0xc..+0x10`), not the zone-side map at `zone + 0x17804..+0x17808`. The zone+0x17804 map insert site is still unidentified, but this drill has bounded the search space significantly: it is not in any of the 5 cataloged actor classes' slot 5 implementations, nor in the std::map clear/erase cluster (FUN_004de280/540/900/a70), nor in the zone-tick handler (FUN_004daf00) which is read-only over the map. The insert must happen either via the constructor dispatched by FUN_00537620 (BCS-Y-0530) BEFORE slot 5 runs, or in a sibling helper at FUN_004d9xxx not yet drilled.",
+  "method": {
+    "step1_vtable5_dump": "DumpVtableSlots.java on 5 cataloged actor classes at offset 0x14 (slot 5 in MS x86 vtables). All 5 vftables resolved successfully. Symbol-table verification via DumpSymbolsAtAddress confirmed the resolved VAs map to the expected Control:: hierarchy + CharaActor classes (vftable VAs differ from the actor vftable9 investigation pass's record by a 4->0 typo: it noted 0x00BD5CAC etc., actual is 0x00FD5CAC etc., matching the mass typo pattern from the actor cluster dispatch model pass).",
+    "step2_distinct_slot5_decomp": "DumpFunctionDecomp.java on the 3 distinct slot 5 implementations (CharaBase/PlayerBase/NpcBase share FUN_006fa7e0; MyPlayer = FUN_00706a50 wraps it; CharaActor = FUN_00620700 is a delegate).",
+    "step3_callee_inspection": "DumpFunctionDecomp.java on FUN_006fa7e0's 5 callees (FUN_00cc7510, FUN_0076f010, FUN_00766b30, FUN_006f6900, FUN_006f9040) plus FUN_006f7cd0 (MyPlayer-specific prefatory cleanup) to characterize what slot 5 actually does. Critical discovery in FUN_00766b30: it does an STL map find via FUN_0071d420 at `param_1 + 0x8..+0xc` (this+0x8 is the map's _Myhead, this+0xc is _Mysize) - explicitly NOT zone+0x17804.",
+    "step4_map_writer_hunt": "Took the 131 callers of FUN_0071d420 (the STL map _Lower_bound helper used by FUN_004d9910 BCS-Y-0534), filtered to those in the 0x004d9XXX / 0x004dXXXX cluster (most likely actor-management context), and decompiled FUN_004d9680, FUN_004d97a0, FUN_004d9ca0, FUN_004dac20, FUN_004d9110, FUN_004d9d70, FUN_004daa10, FUN_004daf00, FUN_004d7c10, FUN_004da280/300/380. All are READ-side operations (lookup, iterate, slot-id allocate) or full-tree clear/erase (FUN_004dac20 destroys an actor entry; calls FUN_004de280).",
+    "step5_stl_cluster": "Decompiled the FUN_004de2XX / 004de5XX / 004de8XX / 004de9XX cluster which contains the std::map STL primitives (FUN_004de190 = find on a DIFFERENT map at param_1+0x38..+0x3c; FUN_004de280 = _Erase_node with full red-black-tree rebalance; FUN_004de540 = recursive range-erase used by destructors FUN_004de900/4dea70). No insert primitive found among these.",
+    "step6_zone_tick_inspection": "Decompiled FUN_004daf00 (1708 bytes, called by FUN_004db5b0 and FUN_004dc690 the dispatcher) - it does 3 read-only passes over zone+0x17804 map plus a wider-scope read over actors-with-property-set-at-offset-0x80, finalizing via FUN_00547340/0054cc50/0057a3c0. Confirmed FUN_004daf00 is the zone-CHANGE or zone-CLEAR handler, not the map populator."
+  },
+  "vtable5_per_class": {
+    "CharaBase": {
+      "vftable_va": "0x00FD5CAC",
+      "slot_va": "0x00FD5CC0",
+      "slot5_fn_va": "0x006FA7E0",
+      "fn_name": "FUN_006fa7e0",
+      "fn_body_bytes": 83
+    },
+    "PlayerBase": {
+      "vftable_va": "0x00FD5E04",
+      "slot_va": "0x00FD5E18",
+      "slot5_fn_va": "0x006FA7E0",
+      "fn_name": "FUN_006fa7e0",
+      "fn_body_bytes": 83
+    },
+    "NpcBase": {
+      "vftable_va": "0x00FD647C",
+      "slot_va": "0x00FD6490",
+      "slot5_fn_va": "0x006FA7E0",
+      "fn_name": "FUN_006fa7e0",
+      "fn_body_bytes": 83
+    },
+    "MyPlayer": {
+      "vftable_va": "0x00FD785C",
+      "slot_va": "0x00FD7870",
+      "slot5_fn_va": "0x00706A50",
+      "fn_name": "FUN_00706a50",
+      "fn_body_bytes": 76
+    },
+    "CharaActor": {
+      "vftable_va": "0x00FC0D34",
+      "slot_va": "0x00FC0D48",
+      "slot5_fn_va": "0x00620700",
+      "fn_name": "FUN_00620700",
+      "fn_body_bytes": 197
+    }
+  },
+  "vftable_va_corrections": {
+    "note": "The actor vftable9 investigation pass's recorded vftable VAs were typoed in the BCS-Y entries with leading 4->0 (same pattern as the actor cluster dispatch model pass corrected for 21 other entries). This drill's dump confirms actual VAs.",
+    "corrections": [
+      {"bcs_y": "BCS-Y-0184", "name": "Control::CharaBase::vftable", "recorded": "0x00BD5CAC", "actual": "0x00FD5CAC"},
+      {"bcs_y": "BCS-Y-0185", "name": "Control::PlayerBase::vftable", "recorded": "0x00BD5E04", "actual": "0x00FD5E04"},
+      {"bcs_y": "BCS-Y-0186", "name": "Control::NpcBase::vftable", "recorded": "0x00BD647C", "actual": "0x00FD647C"},
+      {"bcs_y": "BCS-Y-0163", "name": "Control::MyPlayer::vftable", "recorded": "0x00BD785C", "actual": "0x00FD785C"},
+      {"bcs_y": "(not yet cataloged)", "name": "Application::Scene::Actor::Chara::CharaActor::vftable", "recorded": "0x00FC0D34", "actual": "0x00FC0D34", "note": "this one was already correct"}
+    ]
+  },
+  "distinct_slot5_functions": [
+    {
+      "va": "0x006FA7E0",
+      "name": "FUN_006fa7e0",
+      "body_bytes": 83,
+      "classes_using": ["CharaBase", "PlayerBase", "NpcBase"],
+      "indirect_users_via_wrapper": ["MyPlayer (via FUN_00706a50)"],
+      "callees": ["FUN_00cc7510", "FUN_0076f010", "FUN_00766b30", "FUN_006f6900", "FUN_006f9040 (conditional on *(this+0xd8))"],
+      "decomp_summary": "Lua-side LIFECYCLE / FINALIZE hook for the Control:: actor binding. Calls FUN_0076f010 (Lua-side hash registration filtered by !engine-managed pattern), FUN_00766b30 (THE smoking gun: STL map find+erase at `this+0x8..+0xc` - a DIFFERENT map embedded in the actor struct, NOT zone+0x17804), FUN_006f6900 (calls _onFinalize Lua N-API registry handler at DAT_00f67298), FUN_006f9040 (resource cleanup, frees *(this+0x20), sets *(this+0x60)=0). The map at this+0x8..+0xc is the actor's INTERNAL child/dependent map (probably a registry of subobjects owned by this actor); slot 5 cleans it up.",
+      "calls_map_insert": false,
+      "map_insert_into_zone_17804": false,
+      "map_insert_into_anything": false,
+      "note": "FUN_00766b30 does a map FIND followed by ERASE (calls _free on the value at +0x10 and FUN_007802e0 which is likely STL map _Erase_node) - this is REMOVAL from an internal map, not insertion into zone+0x17804.",
+      "type_inserted": "N/A - this function does not insert into the zone map"
+    },
+    {
+      "va": "0x00706A50",
+      "name": "FUN_00706a50",
+      "body_bytes": 76,
+      "classes_using": ["MyPlayer"],
+      "callees": ["FUN_006f7cd0 (calls _onCancelJobQuestCompleteFirst/Second/Third Lua N-APIs)", "_free", "FUN_006fa7e0 (the shared CharaBase slot 5)"],
+      "decomp_summary": "MyPlayer's slot 5 wraps the shared CharaBase slot 5 with PREFATORY cleanup: if `*(this+0x110) != 0` (a heap-allocated subobject), tags `*(this+0x110) + 0xc = 4` (probably a state byte to 'cancelled'), calls FUN_006f7cd0 which dispatches _onCancelJobQuestComplete{First,Second,Third} Lua N-APIs based on a state at +0xc (so the cleanup is the MyPlayer-specific job-quest-complete cancellation path), then _free's the subobject. Then delegates to FUN_006fa7e0 (the shared CharaBase slot 5 which does the rest).",
+      "calls_map_insert": false,
+      "map_insert_into_zone_17804": false,
+      "map_insert_into_anything": false,
+      "type_inserted": "N/A"
+    },
+    {
+      "va": "0x00620700",
+      "name": "FUN_00620700",
+      "body_bytes": 197,
+      "classes_using": ["CharaActor"],
+      "callees": ["__snprintf_s", "_strcat_s", "FUN_00406330 (vtable[13] of *param_1 - some accessor)", "(via vtable) PTR_FUN_012651b4 (a debug log sink)"],
+      "decomp_summary": "CharaActor's slot 5 is a DELEGATE pattern: if `param_1[2] != 0` (the wrapped subobject), forwards by calling `param_1[2]->vtable[5](param_2, param_3, param_4, param_5)` (i.e. invokes the WRAPPED object's slot 5). If `param_1[2] == 0` (no wrapped object), formats an error string via __snprintf_s using a debug fmt at &DAT_00fb8660 plus `(**(code **)(*param_1 + 0x34))()` (vtable[13] of self - probably a class-name string getter), appends `\\n`, calls PTR_FUN_012651b4(buf, 3) which is the engine's tagged debug-print sink. Returns 0 in that branch. So CharaActor::vtable[5] is structurally a thin trampoline whose work is done by the wrapped object - confirming the actor vftable9 investigation pass's finding that the engine-side Scene::Actor::Chara::CharaActor is a wrapper, not a leaf class.",
+      "calls_map_insert": false,
+      "map_insert_into_zone_17804": false,
+      "map_insert_into_anything": false,
+      "type_inserted": "N/A"
+    }
+  ],
+  "actor_type_actually_inserted": "UNKNOWN - this drill did NOT identify the zone+0x17804 actor-map insert site. The most likely candidate is the actor CONSTRUCTOR dispatched by FUN_00537620 (BCS-Y-0530) via the method table at `interface+4..+8`, which runs BEFORE FUN_004d90c0's slot-5 post-construct call. Drilling that constructor requires either: (a) finding what interface struct is held at zone+0x10 and what classes are in its method table (the actor factory drill pass's unresolved follow-up), or (b) finding a function that writes to zone+0x17808 (the _Mysize field) - that function inserts. Neither was completed in this drill.",
+  "resolves_question": "no - this drill was framed as an alternative attack on the actor vtable9 bulk pass's standing question (where do Actor cluster opcodes get processed if the per-class vtable[9] is a no-op?). This drill did NOT find the map insert site, so the actor TYPE stored in the zone map remains unidentified. The question is still open. However this drill produced negative-finding value: slot 5 is NOT the answer, narrowing the search space.",
+  "key_findings": [
+    {
+      "title": "Slot 5 is a Lua-side LIFECYCLE/CONTAINER hook, not the zone-actor-map insert hook",
+      "detail": "All 5 cataloged actor classes' slot 5 implementations operate on a class-internal map at `this + 0x8..+0xc` (the actor's own struct, NOT the zone state's map at +0x17804). FUN_00766b30 does a map ERASE here (find + free value + erase node). FUN_006f6900 dispatches a Lua _onFinalize registry callback. FUN_006f9040 frees subobjects. Slot 5 is a CLEANUP hook fired when an actor is being torn down (or transitions state), not a registration hook fired when one is created. The 'post-construction init hook' framing in the task brief was a hypothesis disproven by the decomp.",
+      "implication": "The FUN_004d90c0 dispatch chain ('FUN_00537620 then vtable[5]') is therefore not a 'construct then register' sequence as previously assumed. It is more likely 'construct (or fetch from cache) then notify' - slot 5 being a transition/notification hook fires both on creation AND on destruction, with the function body branching on `*(this+0xd8)`, `*(this+0x110)`, etc. to do different work depending on state."
+    },
+    {
+      "title": "All 4 Control:: classes share slot 5 implementation; MyPlayer wraps it; CharaActor delegates",
+      "detail": "CharaBase, PlayerBase, NpcBase all point slot 5 at FUN_006fa7e0 (shared implementation). MyPlayer points slot 5 at FUN_00706a50 which wraps FUN_006fa7e0 with extra MyPlayer-specific cancellation logic. CharaActor (engine-side) points slot 5 at FUN_00620700 which is a delegate that forwards to the WRAPPED object's slot 5. Same inheritance shape as the actor vtable9 bulk pass's slot-9 result (3 distinct implementations for 5 classes).",
+      "implication": "Slot 5 of the Control:: hierarchy is BASE-CLASS work, not specialized per actor type. The 'specialization point' for per-actor-class init work is elsewhere - probably in the constructor invoked via FUN_00537620's method table, OR in a different vtable slot."
+    },
+    {
+      "title": "FUN_004de280/540/900/a70 are the std::map clear/erase primitives, not insert",
+      "detail": "Drilling the FUN_0071d420-caller cluster surfaced an STL std::map manipulation sub-cluster: FUN_004de280 (693 bytes, full MSVC _Erase_node with red-black-tree rebalance via FUN_0096fd70 _Lmost / FUN_0081e910 _Rmost / FUN_006ceef0 _Lrotate / FUN_00b9f240 _Rrotate); FUN_004de540 (200 bytes, recursive range-erase by calling FUN_004de280 in a loop); FUN_004de900 and FUN_004dea70 (full-tree clear by passing the whole tree to FUN_004de540). These are CLEAR/ERASE/DESTROY primitives, NOT insert. The insert primitive for the engine's actor map is therefore in a different function not yet drilled.",
+      "implication": "Future work to find the insert can grep the disassembly for functions that call FUN_0071d420 with the zone+0x17804 base AND increment a size field at zone+0x17808. None of the 11 candidates drilled here do this."
+    },
+    {
+      "title": "FUN_004d9ca0 is a slot-id allocator over the zone actor map",
+      "detail": "FUN_004d9ca0(zone, param_2_lo, param_3_hi) iterates ids in [lo..hi) via FUN_0071d420 lower_bound on zone+0x17804..+0x17808, returning the lowest id with an empty slot (i.e. `*(iter+0x10) == 0`). Returns 0xc0000000 if no free slot found in range. So this is the engine's 'pick a free actor id' helper - presumably called by the create-actor path right before the actual insert. Sole caller: FUN_006ac9f0 (Lua-side wrapper at 0x006acXXX).",
+      "implication": "FUN_006ac9f0 (caller of FUN_004d9ca0) is a promising drill target - it allocates an id and then must do something with it. If FUN_006ac9f0 also writes to zone+0x17804, the insert is there. Worth a low switch remaining cases follow-up."
+    },
+    {
+      "title": "FUN_004dac20 is the actor map REMOVE/destroy primitive",
+      "detail": "FUN_004dac20(zone, actor*) calls actor->vtable[11] (offset 0x2c, probably a 'destroy' or 'detach' method), checks `zone + 0xb4 / 0x4c0 / 0x4c8` for active-actor references, calls FUN_005374d0 (some kind of de-init), FUN_0071d420(&iter, &actor->id_at_0x88) for the map find, then either calls FUN_004de280 (erase node) directly if `*(zone+0x17820) == 0` (probably a 'safe to immediately remove' flag), OR zeros the entry and frees memory if not safe. Also conditionally unregisters from the engine-managed class registry via FUN_00d35b30 when the actor id is in the 0xC0..0xDF range (matches the BCS-Y-0533 class-id pattern).",
+      "implication": "FUN_004dac20 is the COUNTERPART of the map insert: if I know the remove signature, the insert signature must be the inverse - it allocates the id (via FUN_004d9ca0), writes the actor to the new node's +0x10 slot, possibly registers via FUN_00d35b30 if engine-managed, and links the node. Drilling FUN_004dac20's callers (FUN_004db6a0, FUN_0068dd10) may show the inverse-symmetric insert function in the same cluster."
+    },
+    {
+      "title": "Two distinct std::map sub-systems in the actor cluster",
+      "detail": "This drill incidentally revealed there are AT LEAST TWO maps managed by the FUN_004dXXXX cluster: (1) the zone-actor map at `zone + 0x17804..+0x17808` accessed by FUN_004d9910 / FUN_004d9680 / FUN_004d97a0 / FUN_004d9ca0 / FUN_004daf00 / FUN_004dac20 / FUN_004db170; (2) a smaller registry map at `zone? + 0x38..+0x3c` accessed by FUN_004de190 (probably the 'currently-active' set or the runtime-spawned class table). They are NOT the same map; their primitives are separate.",
+      "implication": "Future work mapping the zone struct should distinguish these two maps as two separate fields. The actor factory drill pass's finding 'zone+0x17804..+0x17808 is the actor map' is correct for map #1, but a future BCS-S struct entry for the zone state should also document map #2 at +0x38."
+    },
+    {
+      "title": "FUN_004d9110 is a static-actor batch creator (engine startup or zone load)",
+      "detail": "FUN_004d9110 (322 bytes, called by FUN_004d9260) calls FUN_004d90c0 with 11 different (interface_index, class_id) pairs: `(2, 0xc0000004), (1, 0xc0000003), (3, 0xc0000005), (7, 0xc0000007), (4, 0xc0000006), (0xc, 0xc000000c), (0xd, 0xc000000d), (0xe, 0xc000000e), (0x15, 0xc0000001), (9, 0xc000001e), (6, 0xc0000009)`. All class IDs are in the 0xC0000000..0xC0000FF range (engine-managed pattern from BCS-Y-0533). This is the zone-init batch that creates the core actor set (camera, player, npc base, etc.). Note: FUN_004d90c0's `param_1` is the dispatcher's `this` (ECX register), and the visible args are `param_2 = interface_index` and `param_3 = class_id` - this differs from the case-0xCA AddActor invocation in FUN_004DC690 which is `FUN_004d90c0(*(zone+0x10), packet)` - so the call shape is `FUN_004d90c0(interface, class_id_or_packet_with_id_in_it)`.",
+      "implication": "FUN_004d9110 confirms FUN_004d90c0 is dispatched for EVERY actor creation - both the static zone-load actors AND the dynamic packet-driven AddActor cases. The 11 hardcoded class IDs in FUN_004d9110 are the engine-managed class set; these are the IDs registered in FUN_00d35af0 (BCS-Y-0533's registry). Useful catalog entry: enumerate the engine-managed class id space."
+    },
+    {
+      "title": "FUN_004daa10 calls slot 8 (offset 0x20) of looked-up actors with sync events",
+      "detail": "FUN_004daa10 is a sync-queue processor that calls FUN_004ddb50 (atomic-queue dequeue via InterlockedCompareExchange on zone+0x1793c) to pull a sync event, then either calls `zone->slot17924->vtable[6](-1, ..)` for type-2 events (probably a UI/HUD update), or for other types calls `actor = FUN_004d9910(*(event+0x10)); actor->vtable[8](uVar5, event+0x20, uVar2)` where slot 8 is the per-actor sync event handler.",
+      "implication": "This is the Pattern B question from the actor cluster dispatch model pass and the actor vtable9 bulk pass viewed from a different angle - the per-actor polymorphic dispatch IS used by the engine, but at slot 8 (offset 0x20), not slot 9 (offset 0x24). Worth a low switch remaining cases follow-up: dump slot 8 (offset 0x20) for the same 5 cataloged actor classes and see if THAT is the real polymorphic actor event handler that the actor vtable9 bulk pass was looking for but missed by checking slot 9 instead."
+    }
+  ],
+  "proposed_bcs_y_entries": [
+    {
+      "id_proposed": "BCS-Y-0535",
+      "name": "ControlActor_CharaBase_FinalizeLifecycleHook_FUN_006fa7e0",
+      "address": "0x006FA7E0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "vtable[5] (slot offset 0x14) of Control::CharaBase, Control::PlayerBase, Control::NpcBase. Lua-side lifecycle/finalize hook called by FUN_004d90c0 (BCS-Y-0531) after the dispatched constructor returns AND from other lifecycle contexts. Body: (1) FUN_00cc7510 stack-cookie helper; (2) FUN_0076f010(child_id) - skip-if-engine-managed Lua hash dereg; (3) FUN_00766b30(this, child_id) - STL-map find+erase on the actor's INTERNAL child map at this+0x8..+0xc (NOT zone+0x17804); (4) FUN_006f6900(this, child_id, &context) - dispatches Lua _onFinalize N-API; (5) if `*(this+0xd8) != 0` (a flag), FUN_006f9040(this, child_id, &context) - resource cleanup (frees *(this+0x20), zeros *(this+0x60)). Operates on the actor's own internal data, not the zone-side actor map.",
+      "notes": "This drill's entry. The original task hypothesis was that this slot 5 was the zone-actor-map insert hook; the decomp refutes that. This is a class-internal lifecycle/finalize hook."
+    },
+    {
+      "id_proposed": "BCS-Y-0536",
+      "name": "ControlActor_MyPlayer_FinalizeLifecycleHook_FUN_00706a50",
+      "address": "0x00706A50",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "vtable[5] of Control::MyPlayer. Wraps the shared CharaBase slot 5 (FUN_006fa7e0 = BCS-Y-0535) with MyPlayer-specific prefatory cleanup: if `*(this+0x110) != 0`, tags `*(this+0x110)+0xc = 4` (state byte to 'cancelled' value), calls FUN_006f7cd0 which dispatches `_onCancelJobQuestCompleteFirst`/`Second`/`Third` Lua N-APIs (selected by a state at +0xc of the subobject), then _free's it. Then delegates to FUN_006fa7e0."
+    },
+    {
+      "id_proposed": "BCS-Y-0537",
+      "name": "CharaActor_DelegateSlot5_FUN_00620700",
+      "address": "0x00620700",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "vtable[5] of Application::Scene::Actor::Chara::CharaActor (engine-side, NOT Lua-side Control:: hierarchy). DELEGATE pattern: if `param_1[2] != 0` (the wrapped subobject), forwards via `param_1[2]->vtable[5](param_2, param_3, param_4, param_5)` (invokes the wrapped object's slot 5). Otherwise formats an error string via __snprintf_s with format at &DAT_00fb8660 plus the result of `(**(code **)(*param_1 + 0x34))()` (vtable[13] of self - probably class-name string getter), appends '\\n', calls `(*PTR_FUN_012651b4)(buf, 3)` which is the engine's tagged debug-print sink. CharaActor is a wrapper; the real work is in the wrapped object's slot 5, NOT here. Confirms the actor vftable9 investigation pass's finding that the engine-side CharaActor is a wrapper class."
+    },
+    {
+      "id_proposed": "BCS-Y-0538",
+      "name": "ZoneActorMap_FreeSlotIdAlloc_FUN_004d9ca0",
+      "address": "0x004D9CA0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Allocates the lowest unused actor id in [param_2..param_3) by probing the zone actor map at zone+0x17804..+0x17808. Iterates `uVar3 = param_2; uVar3 < param_3`, calling FUN_0071d420(&local_10, &uVar3) (STL map lower_bound) and checking if the slot is occupied (`*(local_c + 0x10) == 0` = free) - returns `uVar3` for the first hit. Returns 0xC0000000 if no free slot found. Sole caller: FUN_006ac9f0 (Lua-side allocator wrapper).",
+      "notes": "This drill's entry. This is a READ-only helper that anchors the actor-id allocation half of the create-actor path. The companion INSERT primitive (which actually writes to zone+0x17804..+0x17808) was NOT identified in this drill but is the natural next-phase target."
+    },
+    {
+      "id_proposed": "BCS-Y-0539",
+      "name": "ZoneActorMap_DestroyEntry_FUN_004dac20",
+      "address": "0x004DAC20",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Destroys an actor entry from the zone actor map at zone+0x17804..+0x17808. Body: (1) `actor->vtable[11]()` (offset 0x2c - per-actor destroy method); (2) if zone+0xb4 is non-null and not actor itself, call its vtable[21] (offset 0x54) with `actor->vtable[11]()` result (some UI update); (3) FUN_00563920(actor) if zone+0x4c0 differs from null and from actor (probably 'remove from active list'); (4) FUN_005374d0(actor[0x22]) - per-id de-init; (5) FUN_0071d420 lower_bound on zone+0x17804 with actor[0x22] = id; (6) if zone+0x17820 byte is 0 (safe-to-erase flag), call FUN_004de280(iter) for full STL map erase + if id has engine-managed pattern (top byte 0xC0..0xDF, subtype < 3) call FUN_00d35b30(id & 0xffffff) to deregister from FUN_00d35af0's engine-class registry; (7) if zone+0x17820 != 0 (deferred-remove mode), zero the slot's *(iter+0x10)=0 and call FUN_00813050(iter+0xc) for a node-only free; (8) if zone+0x17834 == actor, clear `actor->parent_zone[0x1f][0x17834]` (probably 'currently-controlled' actor); (9) if zone+0x17838 == actor, call FUN_004d9980(0xc0000000) (BCS-Y-0501 active-actor switcher). Callers: FUN_004db6a0, FUN_0068dd10."
+    },
+    {
+      "id_proposed": "BCS-Y-0540",
+      "name": "StlMap_EraseNode_FUN_004de280",
+      "address": "0x004DE280",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "MSVC STL `_Tree::_Erase_node` for the engine's actor maps. 693 bytes; full red-black-tree rebalance. Verifies the iterator is not the sentinel (`*(iter+0x15) != 0` would throw 'invalid map/set<T> iterator' via __CxxThrowException with type info at DAT_011aa734). Updates parent/left/right pointers (`*piVar5` and `piVar5[2]`), rebalances colors via FUN_0096fd70 (_Lmost), FUN_0081e910 (_Rmost), FUN_006ceef0 (_Lrotate), FUN_00b9f240 (_Rrotate). Final: FUN_0044d350(node, 0x18, 0x20) frees the 24-byte node (size 0x18, alignment 0x20). Decrements `*(this+8)` (the _Mysize field). Note: at VA 0x004DE4D0 there's a DUPLICATE/Aliased entry pointing to the same function body (Ghidra labels it FUN_004de280 - same name, same body)."
+    },
+    {
+      "id_proposed": "BCS-Y-0541",
+      "name": "StlMap_RangeErase_FUN_004de540",
+      "address": "0x004DE540",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "MSVC STL range-erase: calls FUN_004de280 (BCS-Y-0540) in a loop for each node in the range. Special-case for full-clear: if both [first, last) span the whole tree, does FUN_004ddad0 on the header node, resets all 4 sentinel pointers in one shot. Callers: FUN_004de900 (full-clear from unwinds), FUN_004dea00 (clear from FUN_004da680), FUN_004dea70 (full-clear from FUN_004deb50 and FUN_004dbaf0 and 2 unwinds)."
+    },
+    {
+      "id_proposed": "BCS-Y-0542",
+      "name": "ZoneActor_BatchCreateStaticActors_FUN_004d9110",
+      "address": "0x004D9110",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Zone-load batch actor creator. Calls FUN_004d90c0 (BCS-Y-0531) with 11 hardcoded (interface_index, class_id) pairs: (2,0xc0000004), (1,0xc0000003), (3,0xc0000005), (7,0xc0000007), (4,0xc0000006), (0xc,0xc000000c), (0xd,0xc000000d), (0xe,0xc000000e), (0x15,0xc0000001), (9,0xc000001e), (6,0xc0000009). Conditional branches gate creation by `param_2 != 0` (re-init flag) and by FUN_00443e40(2,8,0) (game-mode/zone-type query). For mode in {2,3,4,5,6,7,8}, also creates index 6 with class 0xc0000009 and calls FUN_004d7ea0 then FUN_00565aa0. All 11 class_ids are in the 0xC0000000..0xC000001E range - the engine-managed class id space documented in BCS-Y-0533. Sole caller: FUN_004d9260 (a zone-load entrypoint).",
+      "notes": "First direct evidence of the engine-managed class id space's actual contents: 11 of the ~30 possible IDs in 0xC000000X are enumerated here as static zone actors."
+    },
+    {
+      "id_proposed": "BCS-Y-0543",
+      "name": "ZoneActor_SyncEventQueueProcessor_FUN_004daa10",
+      "address": "0x004DAA10",
+      "kind": "function",
+      "confidence": "confirmed",
+      "summary": "Drains the zone's sync event queue (at zone+0x17938..+0x1793c, atomically synchronized via Interlocked* family) and dispatches each event polymorphically. Per event: if event_type (event+0x14) == 2, calls `zone->slot17924->vtable[6](-1, scaled_value)` (UI/HUD update path with sVar1 = event+0x20 scaled into 0..5 + percentage); for other types, calls `actor = FUN_004d9910(event+0x10); actor->vtable[8](event_subtype-3, event+0x20, event+0x18)` - SLOT 8 (offset 0x20) of the per-actor vtable. After dispatch, atomically clears the queue slot (InterlockedExchange to 0) and decrements the count (InterlockedDecrement on zone+0x17938). After the queue drains, calls `zone->slot17920->vtable[5](->slot+0x14)` (offset 0x14 - probably a 'sync complete' notification). Sole caller: FUN_004b3c50."
+    }
+  ],
+  "open_questions": [
+    {
+      "q": "Where is the actual zone+0x17804 actor map INSERT site? What function writes a new (actor_id, actor_ptr) pair into this map?",
+      "approach_a": "Drill FUN_004dac20 (BCS-Y-0539 candidate) and its callers FUN_004db6a0 + FUN_0068dd10. By symmetry the insert should be a sibling at similar VA. The FUN_004db6a0 function may pair with FUN_004db5b0 (caller of FUN_004daf00) as 'insert before clear' or 'transactional swap'.",
+      "approach_b": "Drill FUN_006ac9f0 - sole caller of FUN_004d9ca0 (BCS-Y-0538). It allocates a free id; whatever it does NEXT with that id is the insert.",
+      "approach_c": "Write a Ghidra script that scans .text for `MOV [reg+0x17808], reg` (size increment) instructions and lists containing functions. The insert MUST do this. Most direct path.",
+      "approach_d": "Take FUN_00537620 (BCS-Y-0530)'s method-table dispatch: enumerate the method table at zone+0x10's `+4..+8` range to find the 'create' method indices. The constructor method (likely index 5 - 'create actor of class X') runs the actual `new ClassX()` allocation; whether THAT writes the result to zone+0x17804 is the missing piece. Requires finding what writes to zone+0x10."
+    },
+    {
+      "q": "What is the actor TYPE actually stored in the zone+0x17804 map at +0x10 of each node?",
+      "approach": "Once the insert site is found (above), the type is whatever pointer it writes to the new node's +0x10 slot. This drill SHOULD have answered this but couldn't because the insert site eluded it. This drill has bounded the answer: NOT the Control:: hierarchy (those are Lua-side bindings; slot 5 doesn't touch the zone map), NOT directly CharaActor (it's a wrapper), but possibly one of CharaActor's wrapped subtypes or a yet-uncataloged class."
+    },
+    {
+      "q": "Is slot 8 (offset 0x20) of cataloged actor classes the REAL polymorphic actor event handler that the actor vtable9 bulk pass was looking for at slot 9?",
+      "approach": "FUN_004daa10 (BCS-Y-0543) dispatches `actor->vtable[8](sync_subtype, packet_payload, packet_meta)` - slot 8 looks like an actor-specific sync/state-change handler. The actor vtable9 bulk pass checked slot 9 (offset 0x24) and found a no-op stub. Low switch remaining cases candidate: dump slot 8 (offset 0x20) for the same 5 cataloged actor classes via DumpVtableSlots, then decomp the distinct implementations. If slot 8 turns out to be a real per-actor-class implementation that takes packet-like data, it answers the Pattern B polymorphic dispatch question from a DIFFERENT slot than the actor vtable9 bulk pass assumed."
+    },
+    {
+      "q": "Does FUN_004dac20's branch on zone+0x17820 (the byte that selects 'immediate erase' vs 'deferred erase') correspond to a known per-zone state? When is the deferred path taken?",
+      "approach": "FUN_004dac20 has the branch `if (*(zone + 0x17820) == 0) { FUN_004de280(...); maybe FUN_00d35b30(id&0xffffff); } else { iter->actor_ptr = 0; FUN_00813050(iter+0xc); }`. The deferred path zeros the slot but doesn't erase the node - useful during iteration to avoid invalidating iterators. Identifying when zone+0x17820 is set/cleared would clarify the actor map's iteration safety model."
+    },
+    {
+      "q": "How do the BCS-Y-0184/0185/0186/0163 vftable VAs differ from those this drill dumped? The actor vftable9 investigation pass recorded 0x00BD5CAC etc., this drill found 0x00FD5CAC etc.",
+      "approach": "Cross-check symbols.json for the recorded VAs of these 4 BCS-Y entries. If they say 0x00BD..., they're typos (same 4->0 pattern as the 21 entries the actor cluster dispatch model pass corrected). This drill didn't propose corrections directly per the workspace rule 'do NOT modify symbols.json directly'; the corrections are documented above in vftable_va_corrections and should be applied via a future appender-style tool with manual review."
+    }
+  ],
+  "promotion_rederivation_2026_08_10": {
+    "binary": {
+      "name": "ffxivgame.exe",
+      "version": "1.23b",
+      "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+    },
+    "analysis_environment": {
+      "ghidra": "12.1",
+      "jdk": "Temurin 21.0.12+8",
+      "project_state": "Fresh binary import with stock Ghidra analyzers only; no name-applying script ran against the project.",
+      "result": "The Windows x86 PE RTTI analyzer completed before the overall 900-second headless analysis timeout. The import saved successfully and the evidence exports ran read-only."
+    },
+    "tool": {
+      "path": "tools/ghidra/ExtractRtti.java",
+      "mode": "read-only",
+      "full_index_sha256": "62e09d0b7177556829f426a99fb4a61243c025c4b782ae7802a2969955a26623",
+      "targeted_details_sha256": "d2a9dc5a6b1e5cef96940cc0804ed04397c198fd01004177c6cd17b45d9d1d07"
+    },
+    "observations": [
+      {
+        "subject": "Application::Scene::Actor::CDevActor",
+        "mangled_rtti": ".?AVCDevActor@Actor@Scene@Application@@",
+        "vftable_va": "0x00FBC03C",
+        "complete_object_locator_va": "0x01155B80",
+        "type_descriptor_va": "0x012B7AB4",
+        "class_hierarchy_descriptor_va": "0x01154C4C",
+        "constructor_vftable_write_va": "0x00632A24",
+        "constructor_va": "0x006329C0",
+        "slot_count": 164,
+        "base_class_order": [
+          "Application::Scene::Actor::CDevActor",
+          "Application::Scene::RaptureActor",
+          "SQEX::CDev::Engine::Fw::SceneObject::Actor"
+        ],
+        "observation": "The RTTI base array places RaptureActor below CDevActor, and the constructor writes the CDevActor vftable.",
+        "evidence_class": "Direct client or decomp evidence"
+      },
+      {
+        "subject": "Application::Scene::Actor::Chara::CharaActor",
+        "mangled_rtti": ".?AVCharaActor@Chara@Actor@Scene@Application@@",
+        "vftable_va": "0x00FC0D34",
+        "complete_object_locator_va": "0x011581C8",
+        "type_descriptor_va": "0x012B7810",
+        "class_hierarchy_descriptor_va": "0x011581DC",
+        "constructor_vftable_write_va": "0x0065F1FD",
+        "constructor_va": "0x0065F180",
+        "slot_count": 188,
+        "base_class_order": [
+          "Application::Scene::Actor::Chara::CharaActor",
+          "Application::Scene::Actor::CDevActor",
+          "Application::Scene::RaptureActor",
+          "SQEX::CDev::Engine::Fw::SceneObject::Actor"
+        ],
+        "observation": "The RTTI base array places CDevActor immediately below CharaActor, and the constructor writes the CharaActor vftable.",
+        "evidence_class": "Direct client or decomp evidence"
+      }
+    ],
+    "imported_fact_disposition": [
+      {
+        "fact": "Class identity and constructor address",
+        "status": "re-derived",
+        "evidence_class": "Direct client or decomp evidence",
+        "basis": "Clean RTTI identifies CharaActor, and the instruction at 0x0065F1FD writes its vftable inside FUN_0065F180."
+      },
+      {
+        "fact": "Object size 11184",
+        "status": "narrowed",
+        "evidence_class": "Repository relationship evidence",
+        "basis": "No BCS-S row, generated header, or promoted symbol claims a complete CharaActor object size. Vftable and constructor agreement do not establish it."
+      },
+      {
+        "fact": "Vftable address and 188-slot count",
+        "status": "re-derived",
+        "evidence_class": "Direct client or decomp evidence",
+        "basis": "The clean RTTI detail export reads the vftable address and counts consecutive executable entries from the retail image."
+      },
+      {
+        "fact": "Promoted field offsets, types, and meanings",
+        "status": "narrowed",
+        "evidence_class": "Direct client or decomp evidence plus repository relationship evidence",
+        "basis": "This repository promotes only individual per-function offset observations. It does not promote the imported field set or treat agreement as proof of a field type or meaning. The overlapping byte at CharaActor+0x169 is independently observed as a companion latch, not retained under the imported semantic name."
+      },
+      {
+        "fact": "Subobject offsets and constructor relationships",
+        "status": "narrowed",
+        "evidence_class": "Repository relationship evidence",
+        "basis": "No BCS-S row, generated header, or promoted symbol consumes the imported subobject table."
+      },
+      {
+        "fact": "CDevActor vftable, slot count, TypeDescriptor, and position between RaptureActor and CharaActor",
+        "status": "re-derived",
+        "evidence_class": "Direct client or decomp evidence",
+        "basis": "Clean CDevActor and CharaActor RTTI base arrays establish both sides of the hierarchy relation, and the CDevActor row directly yields the vftable, slot count, and TypeDescriptor."
+      }
+    ],
+    "promotion_decision": "BCS-Y-1854 requires only the re-derived CDevActor RTTI and hierarchy facts. It does not require an imported CharaActor layout, field table, object size, or subobject table."
+  },
+  "phase_assessment": "Negative finding with significant search-space narrowing. This drill was framed as the third sequential drill on the actor-cluster polymorphic-dispatch question (after the actor vftable9 investigation pass dumped slot 9 and the actor vtable9 bulk pass batched slot 9 for 100+ classes). This drill disproved the working hypothesis (slot 5 is the map-insert hook), but mapped out 11 supporting functions in the FUN_004d9XXX / FUN_004dAXXX / FUN_004dBXXX / FUN_004dEXXX clusters in detail. Most importantly, this drill surfaced TWO new high-value drill candidates: (1) slot 8 (offset 0x20) of the same actor classes which FUN_004daa10 dispatches with sync event payloads - a strong candidate for the actually-real polymorphic actor handler that the actor vtable9 bulk pass missed by checking slot 9; (2) FUN_006ac9f0 / FUN_004db6a0 / FUN_0068dd10 as drill targets for the map insert site. The actor vtable9 bulk pass's standing question (where do Actor cluster opcodes get processed?) remains open but has a new attack vector (slot 8) that previous phases did not consider.",
+  "ghidra_evidence": {
+    "vtable5_dump.txt": "Slot 5 dump for 5 cataloged actor classes (CharaBase, PlayerBase, NpcBase, MyPlayer, CharaActor) at offset 0x14",
+    "vftable_symbols.txt": "DumpSymbolsAtAddress confirming the resolved vftable VAs map to the expected Control:: + CharaActor names",
+    "slot5_decomp.txt": "Decomp of the 3 distinct slot 5 functions: FUN_006fa7e0 (shared CharaBase/PlayerBase/NpcBase), FUN_00706a50 (MyPlayer), FUN_00620700 (CharaActor)",
+    "slot5_callees_decomp.txt": "Decomp of FUN_006fa7e0's 6 callees (FUN_00cc7510, FUN_0076f010, FUN_00766b30, FUN_006f6900, FUN_006f9040, FUN_006f7cd0) confirming slot 5 operates on a class-internal map at this+0x8..+0xc",
+    "004d90c0_decomp.txt": "Re-decomp of FUN_004d90c0 (BCS-Y-0531), FUN_00537620 (BCS-Y-0530), FUN_004d9910 (BCS-Y-0534), FUN_004d9980 (active-actor switcher) for context",
+    "0071d420_callers.txt": "131 unique callers of FUN_0071d420 (STL map _Lower_bound), filtered to actor cluster",
+    "004d9_siblings_decomp.txt": "Decomp of 9 sibling functions in the 0x004d9XXX range: FUN_004d9110 (BCS-Y-0542 candidate batch-create), FUN_004d9d70 (zone event handler), FUN_004daa10 (BCS-Y-0543 candidate sync queue), FUN_004dac20 (BCS-Y-0539 candidate destroy), FUN_004d7c10 (Lua actor create), FUN_004da280/300/380 (active-actor variants), FUN_004daf00 (zone-clear)",
+    "map_writer_candidates.txt": "Decomp of FUN_004d9680/97a0/9ca0/dac20 confirming none of these is the map insert - they are iterator, allocator, and destroy respectively",
+    "004de_cluster_decomp.txt": "Decomp of FUN_004de190 (different-map find), FUN_004de280 (STL erase_node), FUN_004ddb50 (queue dequeue), FUN_004de800 (vector grow), FUN_004ddcf0 (struct init), FUN_004de4d0 (duplicate of FUN_004de280)",
+    "de540_callers.txt": "Callers of FUN_004de540 (3 unique) and FUN_004de800 (6 unique)",
+    "de540_etc_decomp.txt": "Decomp of FUN_004de540 (BCS-Y-0541 candidate STL range-erase), FUN_004de900 / 004dea00 / 004dea70 (full-tree-clear wrappers)",
+    "db_cluster_decomp.txt": "Decomp of FUN_004db5b0, FUN_004db6a0, FUN_004db170 (= FUN_004daf00), FUN_004dbaf0, FUN_004deb50 - confirms FUN_004daf00 is the zone-CLEAR handler, not insert; FUN_004db6a0 is one of FUN_004dac20's callers"
+  }
+}

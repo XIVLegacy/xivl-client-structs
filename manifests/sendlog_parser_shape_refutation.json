@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete_with_hypothesis_refuted",
+  "scope": "Independently decomp all 14 SendLogReceiver body parsers (BCS-Y-0956..0969) to confirm or refute the sendlogreceiver-demux pass's inferred byte+0x10 per-parser writes. Promote BCS-Y-0956 confidence probable -> confirmed once independent decomp evidence exists (had demoted; the closure provides the evidence).",
+  "method": {
+    "step1": "Ghidra DumpFunctionDecomp on all 14 parsers (BCS-Y-0956..0969 VAs in 0x008A0AE0..0x008A2660). Log: tools/ghidra/logs/e_body_parsers_decomp.txt (781 lines).",
+    "step2": "Scan each parser's body for memory writes. Categorize by output arg pattern (4-arg vs 5-arg) and by per-shape payload pattern (none / variable byte memcpy / 16B fixed / 32B fixed / 64B fixed).",
+    "step3": "Cross-correlate with existing BCS-Y-0956 signature note `(packet+0x10, &this[5], &this[6], (byte*)this+0x1a)`: params 2/3/4 map to receiver fields at this+0x14/0x18/0x1a. None of the params is this+0x10.",
+    "step4": "Per-parser notes append with refutation evidence + shape classification. BCS-Y-0956 confidence promote probable -> confirmed."
+  },
+  "key_findings": [
+    "**The sendlogreceiver-demux pass byte+0x10 hypothesis REFUTED.** None of the 14 parsers write to byte+0x10 of any argument. The sendlogreceiver_demux.json inference about per-parser byte+0x10 writes was incorrect.",
+    "**The sendlogreceiver-demux pass's 4-shape-family hypothesis was off by one - actual factorization is 5 payload-write patterns x 4 sender-type families = 20 opcodes** covering the SendLog range 0x157..0x16A. Clean 5x4 factorization (rather than 4x5 or other partition).",
+    "**Common shape across all 14 parsers**: reads source header (offset +4 dword, +8 u16, +0xA byte) and writes those values via params 2/3/4 to receiver fields at this+0x14/0x18/0x1a respectively. The 4-arg parsers (Shape A: BCS-Y-0956/0961) do only this; the 12 5-arg parsers add a per-shape payload write via param_5 (which is a vector container: *(param_5+4) is the data pointer, FUN_006D5AF0 is the capacity-grow helper, FUN_009D22B4 is a bounds-check assertion).",
+    "**The actual discriminator is the FUN_006D5AF0 capacity argument**: 0x10 for Shape C (16B), 0x20 for Shape D (32B), 0x40 for Shape E (64B), and a runtime byte-read from the source header for Shape B (variable byte memcpy). Not a byte+0x10 sentinel; the shape is statically baked into each parser as a constant arg.",
+    "**BCS-Y-0956 confidence promoted probable -> confirmed**. An earlier hygiene pass had demoted it because of the explicit 'NOT independently decompiled in the sendlogreceiver-demux pass' note. the independent decomp resolves that condition."
+  ],
+  "shape_classification": [
+    {
+      "shape": "A",
+      "param_count": 4,
+      "payload": "header-only (no param_5)",
+      "payload_size_bytes": 0,
+      "members": [
+        {
+          "bcs_y": "BCS-Y-0956",
+          "va": "0x008A0AE0",
+          "opcodes": [
+            "0x157",
+            "0x161"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0961",
+          "va": "0x008A0A60",
+          "opcodes": [
+            "0x15C",
+            "0x166"
+          ]
+        }
+      ]
+    },
+    {
+      "shape": "B",
+      "param_count": 5,
+      "payload": "variable-byte memcpy",
+      "payload_size_bytes": "variable from header byte",
+      "discriminator_call": "FUN_006D5AF0(*<input+offset>, 0)",
+      "members": [
+        {
+          "bcs_y": "BCS-Y-0957",
+          "va": "0x008A1E10",
+          "opcodes": [
+            "0x158",
+            "0x162"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0962",
+          "va": "0x008A2060",
+          "opcodes": [
+            "0x15D"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0966",
+          "va": "0x008A2410",
+          "opcodes": [
+            "0x167"
+          ]
+        }
+      ]
+    },
+    {
+      "shape": "C",
+      "param_count": 5,
+      "payload": "2 qwords (16B fixed)",
+      "payload_size_bytes": 16,
+      "discriminator_call": "FUN_006D5AF0(0x10, 0)",
+      "members": [
+        {
+          "bcs_y": "BCS-Y-0958",
+          "va": "0x008A1ED0",
+          "opcodes": [
+            "0x159",
+            "0x163"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0963",
+          "va": "0x008A2120",
+          "opcodes": [
+            "0x15E"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0967",
+          "va": "0x008A24D0",
+          "opcodes": [
+            "0x168"
+          ]
+        }
+      ]
+    },
+    {
+      "shape": "D",
+      "param_count": 5,
+      "payload": "4 qwords (32B fixed)",
+      "payload_size_bytes": 32,
+      "discriminator_call": "FUN_006D5AF0(0x20, 0)",
+      "members": [
+        {
+          "bcs_y": "BCS-Y-0959",
+          "va": "0x008A1F90",
+          "opcodes": [
+            "0x15A",
+            "0x164"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0964",
+          "va": "0x008A21E0",
+          "opcodes": [
+            "0x15F"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0968",
+          "va": "0x008A2590",
+          "opcodes": [
+            "0x169"
+          ]
+        }
+      ]
+    },
+    {
+      "shape": "E",
+      "param_count": 5,
+      "payload": "16 dwords (64B fixed) via copy loop",
+      "payload_size_bytes": 64,
+      "discriminator_call": "FUN_006D5AF0(0x40, 0)",
+      "members": [
+        {
+          "bcs_y": "BCS-Y-0960",
+          "va": "0x008A2360",
+          "opcodes": [
+            "0x15B",
+            "0x165"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0965",
+          "va": "0x008A22B0",
+          "opcodes": [
+            "0x160"
+          ]
+        },
+        {
+          "bcs_y": "BCS-Y-0969",
+          "va": "0x008A2660",
+          "opcodes": [
+            "0x16A"
+          ]
+        }
+      ]
+    }
+  ],
+  "deferred_followups": [
+    "The sendlogreceiver-demux pass originally hypothesized 4 shapes based on sender-type-family suffix (1/2 for With/WithoutActor, etc.); the actual 5 shapes are determined by payload size. Naming correspondence is a low-EV cleanup if any future opcode work needs structural attribution.",
+    "Verify the FUN_006D5AF0 (vector-grow helper) signature and FUN_009D22B4 (bounds assertion) - the std::vector-like growth pattern across 12 parsers suggests these are standard MSVC STL helpers; could be cataloged for future C++ STL pattern recognition. Low-EV."
+  ],
+  "validators": {
+    "validate_catalog": "0/0/50 (41 invariants)",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT (unchanged baseline)",
+    "audit_catalog_xref": "0/0 (clean)"
+  },
+  "symbol_count_delta": "1133 -> 1133 (zero; notes-only tier)",
+  "confidence_promotions": [
+    {
+      "id": "BCS-Y-0956",
+      "before": "probable",
+      "after": "confirmed",
+      "reason": "had demoted due to lack of independent decomp; the decomp provides that evidence"
+    }
+  ]
+}

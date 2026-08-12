@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Thin lifecycle attribution for the 3 Pattern A receivers flagged as having only trampoline-level attribution: AchievementIdReceiver (s2c 0x019E), AchievementAchievedCountReceiver (s2c 0x019F), VehicleGradeReceiver (s2c 0x01A1). Brings each from trampoline-only (BCS-Y-0651/0652/0654) to the same depth as the s2c 0x019D template (BCS-Y-0036/0037/0082/0083/0093 for AchievementTitleReceiver): ctor + dtor + deleting_dtor + apply (apply was already cataloged for the 2 Achievement* receivers as BCS-Y-0039/0041; only VehicleGrade needed an apply entry).",
+  "method": {
+    "step1": "Catalog scan: identify gaps. AchievementId/AchievementAchievedCount/VehicleGrade each had RTTI vtable, LuaActorImpl slot wrapper, and trampoline cataloged. Apply method present for the 2 Achievement* (BCS-Y-0039/0041) but absent for VehicleGrade. ctor + dtor + deleting_dtor absent for all 3.",
+    "step2": "Ghidra FindAllReferences on the 3 vftable VAs (0x010572C4 / 0x010572D0 / 0x010575BC) - each vftable has exactly 3 writer xrefs from MSVC pattern: ctor (low VA), dtor (next VA), deleting_dtor (in 0x008A0xxx / 0x008A4xxx cluster).",
+    "step3": "Ghidra DumpFunctionDecomp on all 10 candidates (9 lifecycle + 1 VehicleGrade apply at the FUN_008A31E0 documented inline in BCS-Y-0180's slot-1 layout note).",
+    "step4": "Confirmed shape matches template (base->derived ctor vtable writes; derived->base dtor; SEH-wrapped conditional-_free deleting_dtor). Class names resolved in decomp (Ghidra had already labeled vftables with FQDNs).",
+    "step5": "Wrote 10 BCS-Y entries (1128..1137) following the template AchievementTitleReceiver shape (BCS-Y-0082/0083/0093/0037).",
+    "step6": "audit_catalog_xref.py surfaced 1 legitimate MISMATCH: BCS-Y-0179 notes inline-paired `(BCS-Y-0180) at FUN_008A31E0` where the audit reads this as 'BCS-Y-0180 lives at FUN_008A31E0' (false: BCS-Y-0180 is the vftable at 0x010575BC). Rewrote BCS-Y-0179 + BCS-Y-0180 prose to cite the new BCS-Y-1136/1137 entries via wiki-link convention. Audit clean after fix."
+  },
+  "new_bcs_y_entries": [
+    {"id": "BCS-Y-1128", "name": "AchievementIdReceiver::ctor_FUN_0089C620", "address": "0x0089C620", "body_bytes": 92, "thiscall_args": "this, achievementId", "instance_size": "8B (vtable + 1 dword)"},
+    {"id": "BCS-Y-1129", "name": "AchievementIdReceiver::dtor_FUN_0089C680", "address": "0x0089C680", "body_bytes": 73},
+    {"id": "BCS-Y-1130", "name": "AchievementIdReceiver::deleting_dtor_FUN_008A0C40", "address": "0x008A0C40", "body_bytes": 94},
+    {"id": "BCS-Y-1131", "name": "AchievementAchievedCountReceiver::ctor_FUN_0089C700", "address": "0x0089C700", "body_bytes": 106, "thiscall_args": "this, arg2, arg3, arg4", "instance_size": "16B (vtable + 3 dwords) - LARGER than template; ctor takes 3 payload args"},
+    {"id": "BCS-Y-1132", "name": "AchievementAchievedCountReceiver::dtor_FUN_0089C770", "address": "0x0089C770", "body_bytes": 73},
+    {"id": "BCS-Y-1133", "name": "AchievementAchievedCountReceiver::deleting_dtor_FUN_008A0CB0", "address": "0x008A0CB0", "body_bytes": 94},
+    {"id": "BCS-Y-1134", "name": "VehicleGradeReceiver::ctor_FUN_008A3130", "address": "0x008A3130", "body_bytes": 92, "thiscall_args": "this, grade_byte", "instance_size": "5B (vtable + 1 byte) - SMALLEST in the cluster"},
+    {"id": "BCS-Y-1135", "name": "VehicleGradeReceiver::dtor_FUN_008A3190", "address": "0x008A3190", "body_bytes": 73},
+    {"id": "BCS-Y-1136", "name": "VehicleGradeReceiver::deleting_dtor_FUN_008A4ED0", "address": "0x008A4ED0", "body_bytes": 94},
+    {"id": "BCS-Y-1137", "name": "VehicleGradeReceiver::apply_FUN_008A31E0", "address": "0x008A31E0", "body_bytes": 46, "apply_shape": "RTDynamicCast(ActorBase->MyPlayer) then FUN_006F8350 fires _onGetGoobbue"}
+  ],
+  "notes_amendments": [
+    {"id": "BCS-Y-0179", "change": "Inline `(BCS-Y-0180) at FUN_008A31E0 -> firer FUN_006F8350` replaced with wiki-linked `(BCS-Y-0180) - the slot-1 apply method is [[VehicleGradeReceiver::apply_FUN_008A31E0]] (BCS-Y-1137) -> firer FUN_006F8350`. Closes 1 audit_catalog_xref.py MISMATCH."},
+    {"id": "BCS-Y-0180", "change": "Inline slot-layout sentence `Slot 0 = FUN_008A4ED0 (scalar deleting dtor). Slot 1 = FUN_008A31E0 (apply method)` replaced with wiki-linked `Slot 0 = [[VehicleGradeReceiver::deleting_dtor_FUN_008A4ED0]] (BCS-Y-1136). Slot 1 = [[VehicleGradeReceiver::apply_FUN_008A31E0]] (BCS-Y-1137)`. Opportunistic refresh - not strictly required for audit cleanliness but maintains catalog hygiene."}
+  ],
+  "key_findings": [
+    "**Structural variation surfaced**: receiver instance sizes vary in the 0x019D..0x01A1 cluster. AchievementTitle (template 0x019D) and AchievementId (0x019E) are 8B (vtable + 1 field). AchievementAchievedCount (0x019F) is 16B (vtable + 3 fields, ctor takes 3 args) - the only known multi-field receiver in this Achievement cluster, suggesting it carries achievement_id + count + threshold or similar tuple. VehicleGrade (0x01A1) is 5B (vtable + 1 byte) - the only known byte-sized payload in the cluster.",
+    "**Apply pattern uniform**: VehicleGrade's apply method matches the template structurally: `__RTDynamicCast(ActorBase->MyPlayer)` followed by an event firer (FUN_006F8350 for `_onGetGoobbue`). Same shape as AchievementTitleReceiver::apply (BCS-Y-0037) which fires `_onReceiveAchievementTitle`. Consistent with the client-architecture 'The C++/Lua bridge dispatch chain is a single 6-layer pipeline' single-layer dispatch convention for Pattern A receivers.",
+    "**Heap-allocation factories exist for the cluster**: ctor xref scan surfaced FUN_007627A0 (factory for AchievementIdReceiver, parallel to BCS-Y-1023 SendLogReceiver_HeapFactory_FUN_00762460) and FUN_0076CDD0 (factory for VehicleGradeReceiver). Not cataloged earlier scope - could be a follow-up tier if heap-allocation paths matter for any future analysis.",
+    "**No new opcode bindings, no matrix changes**: 0x019E/019F/01A1 remain pcap-unobserved (per finding), so no pcap-opcode-coverage-matrix row updates needed."
+  ],
+  "deferred_followups": [
+    "Heap-allocation factory cataloging: FUN_007627A0 (AchievementIdReceiver), FUN_0076CDD0 (VehicleGradeReceiver). Parallel to BCS-Y-1023 for SendLogReceiver. Low-EV unless later work needs to walk heap-alloc paths.",
+    "AchievementAchievedCountReceiver 3-field instance: the structural anomaly (3 dwords vs 1) suggests a richer payload than other Achievement* receivers. Worth investigating if pcap evidence ever surfaces for 0x019F."
+  ],
+  "validators": {
+    "validate_catalog": "0/0/50 (41 invariants)",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT (unchanged baseline)",
+    "audit_catalog_xref": "0/0 (after notes-amendment to BCS-Y-0179 + BCS-Y-0180)"
+  },
+  "symbol_count_delta": "1117 -> 1127 (+10)",
+  "ghidra_log_paths": [
+    "tools/ghidra/logs/c51_vftable_xrefs.txt",
+    "tools/ghidra/logs/c51_decomp.txt"
+  ]
+}

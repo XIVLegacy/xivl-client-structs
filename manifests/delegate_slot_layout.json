@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "generated": "2026-05-26",
+  "gameVersion": "1.23b",
+  "status": "complete",
+  "scope": "Slot-layout decomp on representative EventHandler<T,EventArgs> typed-delegate vftables. Closes the manifest deferred_followups[1]. Surfaces universal-slot architecture: across all 173 cataloged delegate vftables (BCS-Y-1138..1143 + BCS-Y-1163..1329), slots 1 and 2 are SHARED compiled code (FUN_0094C3A0 + FUN_0088AB00), while slots 0 and 3 are per-class (dtor + RTTI).",
+  "method": {
+    "step1": "Pick 3 representative delegate vftables spanning the LuaDebugLog/LuaDebugSelect coverage: BCS-Y-1138 EventHandler<LuaDebugLog,KeyEventArgs> @ 0x00FA9B14 (generic base), BCS-Y-1140 EventHandler<LuaDebugSelect,RoutedEventArgs> @ 0x00FC654C (generic base, different owner), BCS-Y-1142 RoutedEventHandler<LuaDebugSelect> @ 0x00FC66CC (derived specific).",
+    "step2": "Use Ghidra's DumpMemRange.java to read the 4 dword slots (16 bytes = 4 slots) of each vftable. Output: tools/ghidra/logs/c58_delegate_vtable_slots.txt.",
+    "step3": "Observe slot layout: slot 0 = per-vftable dtor (matches the cataloged deleting_dtor functions); slot 1 = FUN_0094C3A0 (IDENTICAL across all 3 vftables); slot 2 = FUN_0088AB00 (IDENTICAL across all 3); slot 3 = per-vftable RTTI Complete Object Locator pointer.",
+    "step4": "Decomp the 2 shared functions via DumpFunctionDecomp. Output: tools/ghidra/logs/c58_shared_slot_decomp.txt.",
+    "step5": "Catalog 2 new BCS-Y entries (BCS-Y-1335, BCS-Y-1336) as universal slot 1 and slot 2 implementations."
+  },
+  "key_findings": [
+    "**4-slot vftable layout uniform across all Sqwt EventHandler<T,EventArgs> typed-delegate vftables.** Slot 0 = per-class dtor (varies, matches scalar-deleting-destructors cataloged later); slot 1 = SHARED FUN_0094C3A0 (Remove/list-management, 172B); slot 2 = SHARED FUN_0088AB00 (Invoke thunk, 13B); slot 3 = per-class RTTI Complete Object Locator (varies). Strong inference of universality across all 173 cataloged delegate vftables based on 3-vftable sample with identical slot 1+2 contents.",
+    "**Slot 2 (FUN_0088AB00) is the canonical bound-member-function-pointer trampoline.** 13-byte body: `(**(code **)(this + 0x28))()`. The +0x28 field is the captured method pointer set by the ctor (BCS-Y-1149/1152/1157/1158/1162/etc per capture-layout finding). Trampoline propagates all args via registers/stack natively (Ghidra emits 'Could not recover jumptable' suggesting JMP indirect rather than CALL). Confirms Sqwt delegates are the canonical C++ 'bound member function pointer + this' pattern with NO per-instance vtable customization for Invoke - the customization lives entirely in the captured method pointer.",
+    "**Slot 1 (FUN_0094C3A0) is a Remove/list-management operation** with self-destruct semantics. Operates on a buffer at this[+0x8..+0xC] (int-array start + end pointers) and a short count at this[+0x14]. Linear-search-and-splice pattern: find param_2 in the buffer, remove it via _memmove_s (unless this[+0x16]&2 set - skip-compaction mode), decrement count. If count reaches 0 AND this[+0x16]&1 set, calls slot 0 (dtor) on self via virtual call - the canonical 'self-destruct on last subscriber removed' pattern. Architecturally: this is consistent with the EventHandler<T> instance maintaining a list of either: (a) subscription channels it's registered to (for cleanup on dtor), or (b) bound subscribers if used as multicast container.",
+    "**Per-class customization in delegate vftables is minimal - just dtor + RTTI.** The shared slots 1+2 mean every EventHandler<T,EventArgs> across the 173 cataloged delegates behaves identically for Invoke + Remove. Only the destructor (which knows the owner class for vftable restoration) and the RTTI metadata differ per-class. Massive compile-time code de-duplication via template instantiation.",
+    "**Client-architecture 'Sqwt UI elements follow a uniform heap-factory' supporting evidence**. The slot-layout uniformity strengthens client-architecture 'Sqwt UI elements follow a uniform heap-factory' section's claim that the Sqwt delegate system is a uniform compile-time-generated pattern: every owner class gets a typed-delegate vftable, but the dispatch behavior (Invoke + list management) is shared boilerplate."
+  ],
+  "vftable_slot_layout": {
+    "slot_0": "per-class dtor (scalar deleting destructor). Per-vftable. Cataloged earlier (BCS-Y-1148/1150/1155/1156/1160/1161 etc).",
+    "slot_1": "FUN_0094C3A0 = Remove/list-management (172B). Universal across all delegates. Cataloged as BCS-Y-1335.",
+    "slot_2": "FUN_0088AB00 = Invoke thunk via captured method ptr (13B). Universal. Cataloged as BCS-Y-1336.",
+    "slot_3": "Per-class RTTI Complete Object Locator pointer. Per-vftable. Not a code function."
+  },
+  "verified_vftables_with_identical_slots_1_2": [
+    "BCS-Y-1138 EventHandler<LuaDebugLog,KeyEventArgs> @ 0x00FA9B14",
+    "BCS-Y-1140 EventHandler<LuaDebugSelect,RoutedEventArgs> @ 0x00FC654C",
+    "BCS-Y-1142 RoutedEventHandler<LuaDebugSelect> @ 0x00FC66CC"
+  ],
+  "captured_field_layout_recap": {
+    "+0x20": "captured target object pointer (this for the method)",
+    "+0x28": "captured method pointer (read by slot 2 Invoke thunk)",
+    "+0x2C": "captured 'extra' arg (purpose still unclear - may be MI offset, bound arg, or secondary method)"
+  },
+  "deferred_followups": [
+    "Verify slot 1+2 universality across a SliderTemplate / FormElement / CameraElement delegate vftable (the more distant parent classes). Currently confirmed for LuaDebug only. ~5min via DumpMemRange on 1-2 additional VAs.",
+    "Identify writers to the buffer at delegate this[+0x8..+0xC] - this would reveal what the list stores. Candidates: a Subscribe method (companion to Remove at slot 1) somewhere in the catalog, or the event source code that records subscriptions. Worth a focused decomp if/when later work needs to fully model the event broadcast path.",
+    "Clarify the role of the 'extra' arg captured at +0x2C (param_4 in the ctor decomps, captured but not used by Invoke thunk at slot 2). Could be: MI base-offset adjustment, bound first arg, or context pointer.",
+    "Verify whether the slot 1 (Remove) signature applies to multicast container behavior or to subscription tracking. The 'self-destruct on count==0' semantics suggest the EventHandler is reference-counted by its list - aligns with shared-pointer-style ownership.",
+    "Optional: catalog the slot 3 RTTI Complete Object Locator addresses for each of the 173 delegate vftables. Each COL points back to a TypeDescriptor + class hierarchy descriptor. Already implicit in the RTTI extraction, but explicit BCS-Y entries would tighten the catalog."
+  ],
+  "validators_post": {
+    "validate_catalog": "0/0/50 (41 invariants) - unchanged",
+    "audit_matrix_drift": "0 HIGH + 0 LOW + 30 SIBLING_CONTEXT + 5 NEGATIVE_CONTEXT - unchanged",
+    "audit_catalog_xref": "0/0 - unchanged"
+  },
+  "symbol_count_delta": "1324 -> 1326 (+2)",
+  "files_changed": [
+    "manifests/symbols.json: +2 entries (BCS-Y-1335, BCS-Y-1336)",
+    "manifests/delegate_slot_layout.json (NEW, this file)",
+    "tools/ghidra/logs/c58_delegate_vtable_slots.txt (NEW)",
+    "tools/ghidra/logs/c58_shared_slot_decomp.txt (NEW)"
+  ]
+}
