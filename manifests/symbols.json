@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 1844,
+  "symbolCount": 1850,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -20674,9 +20674,10 @@
         "tools/ghidra/logs/c103_game_loop.txt",
         "tools/ghidra/logs/c103_loop_up.txt",
         "tools/ghidra/logs/c103_loop_top.txt",
-        "manifests/scene_tick_chain.json"
+        "manifests/scene_tick_chain.json",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[scene-tick-chain-mapped] **Scene tick / Application::Scene update method** (523 body bytes, 0 listed callers - likely vftable-invoked via a Scene-manager pointer). References [[Application_Scene_ScenePacket_class_vftable]] (BCS-Y-1715 NEW) - constructs a temporary `Application::Scene::ScenePacket` on stack for some scene-update operation. Polls 3 sub-objects at param_1+0x40, +0x44, +0x48 via their vftables (slots +0x8, +0xC, +0x10, +0x14 - getter/lock/data/unlock pattern). Calls FUN_004D6570 (data combiner), [[Application_FrameEventProcessor_FUN_004DAA10]] (BCS-Y-1712 NEW), FUN_004EC080 + vftable call on param_1+0x5C (probably scene-graph publisher), FUN_00CC6D00 (cleanup). **Architectural significance**: this confirms the Lua tick is driven by the **Scene system**, not directly by a game loop. The Scene class is the parent of the per-frame Lua callback chain. NEW namespace identity: `Application::Scene::*` (sibling to `Application::Lua::Script::Client::*` already cataloged extensively).\n\n[sqwt-element-class-subscription-pattern-+-followups AMENDMENT - SCENE MANAGER IDENTIFIED + DISPATCH SLOT CONFIRMED] FUN_004B3C50 (Scene tick) has **EXACTLY 1 DATA reference** at 0x00F8CC20, which is **[[Application_Scene_ScenePacket_class_vftable]] (BCS-Y-1715, now resolved to 0x00F8CC14) slot 3 (offset +0x0C = 0x00F8CC20)**. So this Scene tick is the SLOT 3 virtual method of ScenePacket. The Scene MANAGER (the function/object that vftable-invokes this method) is **[[Sqex_Thread_Queue_ScenePacket_vftable]] (BCS-Y-1733 NEW)** - a thread-safe Queue<T> instantiation parameterized on ScenePacket. The architecture: ScenePackets are constructed (e.g., as the stack-allocated temporary in this very function) and enqueued into the Queue<ScenePacket>; the queue-drain loop calls each packet's slot 3 (this Scene tick) for processing. RESOLVES the deferred follow-up 'Identify what calls FUN_004B3C50 (the Scene tick)'."
+      "notes": "[scene-tick-chain-mapped; S6 correction 2026-08-12] Application::Scene update function with no static instruction-level caller. It constructs a temporary ScenePacket with FUN_004EC080 and posts record id 3 through SceneModuleInterface slot 3 at this+0x5C. It also polls three subobjects at +0x40/+0x44/+0x48, calls the main-thread actor-message drain FUN_004DAA10, and performs Lua/scene maintenance. FUN_004B3C50 is a ScenePacket producer; it is not a ScenePacket virtual method and is not invoked by the ScenePacket queue drain."
     },
     {
       "id": "BCS-Y-1714",
@@ -20703,9 +20704,10 @@
         "tools/ghidra/logs/c103_loop_up.txt",
         "tools/ghidra/logs/c103_loop_top.txt",
         "manifests/scene_tick_chain.json",
-        "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt"
+        "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[scene-tick-chain-mapped] **`Application::Scene::ScenePacket` class identity** - discovered via vftable reference in [[Application_Scene_Scene_tick_FUN_004B3C50]] (BCS-Y-1713 NEW) where `local_d4[0] = Application::Scene::ScenePacket::vftable;` constructs a stack-allocated temporary ScenePacket. The class appears to follow a Command/Message pattern: instantiated on stack, used briefly for some scene-update operation, then destroyed before return. **First cataloged class in the `Application::Scene::*` namespace** - this is a new top-level hierarchy sibling to the extensively-cataloged `Application::Lua::Script::Client::*` namespace. The vftable address is DEFERRED - need to grep symbol table or memory for the actual `Application_Scene_ScenePacket_vftable` location (the Ghidra decomp shows the symbolic reference but not the resolved VA). Likely candidates are in the data section near other Application namespace vftables.\n\n[sqwt-element-class-subscription-pattern-+-followups AMENDMENT - ADDRESS RESOLVED + SCENE MANAGER IDENTIFIED] vftable address resolved from 'deferred' to **0x00F8CC14** via FindSymbolByName.java for 'ScenePacket'. Full RTTI quartet identified: vftable_meta_ptr 0x00F8CC10, vftable 0x00F8CC14, COL 0x01140AD4, CHD 0x01140AE8, BCA 0x01140AF8, BCD-self 0x01140B00, TD 0x01269594 (now cataloged as [[Application_Scene_ScenePacket_TypeDescriptor]] BCS-Y-1732 NEW). **BONUS DISCOVERY**: the SCENE MANAGER class identified as [[Sqex_Thread_Queue_ScenePacket_vftable]] (BCS-Y-1733 NEW) at 0x00F931C0 - a thread-safe Queue<T> instantiation. The Queue<ScenePacket> drain loop calls each packet's vftable slot 3 (the [[Application_Scene_Scene_tick_FUN_004B3C50]] BCS-Y-1713 Scene tick), which is the deferred 'Scene manager' question. [setdalamud-0x0010-resolved AMENDMENT - REFUTED] ScenePacket does NOT dispatch virtually and FUN_004B3C50 is NOT one of its vtable slots. Read live: the ScenePacket vftable at 0x00F8CC14 (address confirmed from the ctor's own disassembly, `MOV dword ptr [ESI],0xf8cc14` at 0x004EC098) has EXACTLY ONE slot - 0x00F8CC14 -> FUN_004EBDA0, the scalar deleting dtor. 0x00F8CC18 is an RTTI_Complete_Object_Locator, i.e. the start of the NEXT class's metadata, and 0x00F8CC1C begins an unrelated vftable whose slot 0 is FUN_004B2DF0 (the application boot/init routine) and slot 1 is FUN_004B3C50. The earlier 'slot 3 = 0x00F8CC14 + 0x0C' arithmetic assumed a contiguous multi-slot table that does not exist. FUN_004B3C50 is a PRODUCER: it builds a stack ScenePacket via FUN_004EC080(0,3,0,0) and posts record id 3 through slot 3 of the sink at `this+0x5c`. Its sibling FUN_004B39D0 does the same with id 6 via `this+0x60`. Actual dispatch shape: `(**(code **)(**(int **)(owner + OFF) + 0xc))(packet)` - slot 3 of a separate SINK object, held at RaptureElement+0x84 (set by ctor FUN_004DAB50). The sink class is NOT Queue<ScenePacket> either: vftable 0x00F931C0 likewise has exactly one slot (FUN_004EB930, dtor). The sink remains unidentified - see open-questions-register 'Scene record 0x93 render-side consumer'."
+      "notes": "[scene-tick-chain-mapped; S6 correction 2026-08-12] Vftable for Application::Scene::ScenePacket at 0x00F8CC14. The constructor FUN_004EC080 writes this value and confirms the packet layout: payload at +0x10, actor id at +0x90, u16 record type at +0x94, and u16 payload size at +0x96. The vftable has one executable slot, FUN_004EBDA0, the scalar deleting destructor. ScenePacket records are dispatched by [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] (BCS-Y-1843), not through a packet virtual slot."
     },
     {
       "id": "BCS-Y-1716",
@@ -20969,9 +20971,10 @@
         "tools/ghidra/logs/c57_getname_symbols.txt",
         "tools/ghidra/logs/c57_misc_xrefs.txt",
         "manifests/cross_class_followups.json",
-        "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt"
+        "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[sqwt-element-class-subscription-pattern-+-followups] **vftable for `Sqex::Thread::Queue<Application::Scene::ScenePacket>`** - the SCENE MANAGER (the thread-safe queue that drives the Scene tick). vftable_meta_ptr at 0x00F931BC. Pairs with [[Sqex_Thread_Queue_ScenePacket_TypeDescriptor]] (BCS-Y-1734 NEW) at 0x0126A7E0. **Architectural significance**: this RESOLVES the deferred follow-up 'Identify what vftable-invokes the Scene tick'. The Scene tick FUN_004B3C50 is at ScenePacket vftable slot 3 (offset +0x0C from 0x00F8CC14 = 0x00F8CC20, the ONLY data ref to FUN_004B3C50). The drain loop on a Queue<ScenePacket> instance dispatches each packet's slot 3 (the tick method). So the SCENE MANAGER is not a SceneManager class but a Queue<ScenePacket> instance - the Sqex::Thread::Queue<T> generic thread-safe queue parameterized on ScenePacket. **First cataloged class in the `Sqex::Thread::*` namespace** - a new top-level hierarchy exposing thread-safe message-passing primitives. Likely siblings exist for other packet types (deferred follow-up to enumerate via Queue<T> symbol search).\n\n[sqex AMENDMENT - PARENT HOLDER CLASS IDENTIFIED] **The Queue<ScenePacket> is EMBEDDED in [[Application_Scene_SceneThreadImpl_vftable]] (BCS-Y-1752 NEW) at offset +0x370** (per SceneThreadImpl dtor FUN_004E93A0 decomp: `param_1[0xdc] = Queue<ScenePacket>::vftable` where 0xdc*4 = 0x370). The followups statement that 'the SCENE MANAGER is Queue<ScenePacket>' was slightly imprecise - **the queue is the message channel; the MANAGER (the class that runs the drain loop and owns the Scene thread) is `Application::Scene::SceneThreadImpl`** which embeds the queue as a subobject. SceneThreadImpl's drain loop (a method on the class) iterates the queue and dispatches each ScenePacket's vftable slot 3 (the [[Application_Scene_Scene_tick_FUN_004B3C50]] BCS-Y-1713 Scene tick). the full enumeration also reveals 5 sibling Queue<T> template instantiations (each with its own holder class) plus 4 Sqex::Thread primitive classes (Mutex/Thread/ThreadManager/ReadWriteLock). [setdalamud-0x0010-resolved AMENDMENT - REFUTED] ScenePacket does NOT dispatch virtually and FUN_004B3C50 is NOT one of its vtable slots. Read live: the ScenePacket vftable at 0x00F8CC14 (address confirmed from the ctor's own disassembly, `MOV dword ptr [ESI],0xf8cc14` at 0x004EC098) has EXACTLY ONE slot - 0x00F8CC14 -> FUN_004EBDA0, the scalar deleting dtor. 0x00F8CC18 is an RTTI_Complete_Object_Locator, i.e. the start of the NEXT class's metadata, and 0x00F8CC1C begins an unrelated vftable whose slot 0 is FUN_004B2DF0 (the application boot/init routine) and slot 1 is FUN_004B3C50. The earlier 'slot 3 = 0x00F8CC14 + 0x0C' arithmetic assumed a contiguous multi-slot table that does not exist. FUN_004B3C50 is a PRODUCER: it builds a stack ScenePacket via FUN_004EC080(0,3,0,0) and posts record id 3 through slot 3 of the sink at `this+0x5c`. Its sibling FUN_004B39D0 does the same with id 6 via `this+0x60`. Actual dispatch shape: `(**(code **)(**(int **)(owner + OFF) + 0xc))(packet)` - slot 3 of a separate SINK object, held at RaptureElement+0x84 (set by ctor FUN_004DAB50). The sink class is NOT Queue<ScenePacket> either: vftable 0x00F931C0 likewise has exactly one slot (FUN_004EB930, dtor). The sink remains unidentified - see open-questions-register 'Scene record 0x93 render-side consumer'."
+      "notes": "[sqex; S6 correction 2026-08-12] Vftable for Sqex::Thread::Queue<Application::Scene::ScenePacket> at 0x00F931C0; the queue is embedded in SceneThreadImpl at +0x370 and is the 0xA0-stride thread-crossing message channel. Its sole executable vtable slot is the destructor FUN_004EB930. [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] (BCS-Y-1843) drains it explicitly via [[ScenePacketQueue_TryClaim_FUN_004EB800]]; neither the queue nor ScenePacket virtually invokes FUN_004B3C50."
     },
     {
       "id": "BCS-Y-1734",
@@ -20985,7 +20988,7 @@
         "tools/ghidra/logs/c57_misc_xrefs.txt",
         "manifests/cross_class_followups.json"
       ],
-      "notes": "[sqwt-element-class-subscription-pattern-+-followups] RTTI Type Descriptor for **`Sqex::Thread::Queue<Application::Scene::ScenePacket>`**. Full RTTI quartet: TD 0x0126A7E0, COL 0x01142548, CHD 0x0114255C, BCA 0x0114256C, vftable 0x00F931C0. **numBaseClasses=1** (single-class hierarchy - just self per the RTTI_Base_Class_Descriptor_at_(0,-1,0,64) entry at 0x01142574). Pairs with [[Sqex_Thread_Queue_ScenePacket_vftable]] (BCS-Y-1733 NEW). **This is the SCENE MANAGER class** - drives the Scene tick via Queue<ScenePacket> drain loop. **First cataloged TD in the `Sqex::Thread::*` namespace**. The Queue<T> template instantiation pattern suggests other Queue<T> classes exist for different packet types - deferred enumeration follow-up.\n\n[sqex AMENDMENT - CLOSES DEFERRED FOLLOWUPS] The followups deferred follow-up 'Enumerate other Sqex::Thread::Queue<T> template instantiations' is now CLOSED: all 6 Queue<T> instantiations enumerated (5 new besides Queue<ScenePacket>): Queue<Application::Misc::AsyncWorkTaskInterface*> ([[Sqex_Thread_Queue_AsyncWorkTaskInterface_ptr_vftable]] BCS-Y-1748 NEW), Queue<Application::Main::MainPacket> ([[Sqex_Thread_Queue_MainPacket_vftable]] BCS-Y-1749 NEW), Queue<Component::Resource::Resource*> ([[Sqex_Thread_Queue_Resource_ptr_vftable]] BCS-Y-1750 NEW), Queue<Component::Install::InstallWriter::WriteEntry*> ([[Sqex_Thread_Queue_InstallWriter_WriteEntry_ptr_vftable]] BCS-Y-1751 NEW), Queue<Sqex::Http::Event*> ([[Sqex_Thread_Queue_Http_Event_ptr_vftable]] BCS-Y-1751b NEW - note ID counted in sequence). The full Sqex::Thread namespace contains 70 symbols total: 4 primitives (Mutex, Thread, ThreadManager, ReadWriteLock) + 6 Queue<T> instantiations with full RTTI quartets each."
+      "notes": "[sqwt-element-class-subscription-pattern-+-followups; S6 correction 2026-08-12] RTTI Type Descriptor for Sqex::Thread::Queue<Application::Scene::ScenePacket>. Full RTTI quartet: TD 0x0126A7E0, COL 0x01142548, CHD 0x0114255C, BCA 0x0114256C, and vftable 0x00F931C0. The queue is embedded in SceneThreadImpl at +0x370 and is drained explicitly by [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] (BCS-Y-1843) through [[ScenePacketQueue_TryClaim_FUN_004EB800]] (BCS-Y-1859); neither Queue<ScenePacket> nor ScenePacket virtually invokes FUN_004B3C50. The completed Sqex::Thread inventory contains six Queue<T> instantiations plus Mutex, Thread, ThreadManager, and ReadWriteLock."
     },
     {
       "id": "BCS-Y-1735",
@@ -21243,7 +21246,7 @@
         "tools/ghidra/logs/c110_appmain_symbols.txt",
         "manifests/sqex_thread_namespace.json"
       ],
-      "notes": "[sqex] vftable for **`Sqex::Thread::Queue<Application::Main::MainPacket>`** - the MAIN THREAD message queue. vftable_meta_ptr at 0x00F90FD8. Full RTTI quartet: vftable 0x00F90FDC, COL 0x011413E4, CHD 0x011413F8, BCA 0x01141408, TD 0x01269BC0. 4 vftable writers. **HOLDER class is [[Application_Main_MainModule_vftable]]** (BCS-Y-1754 NEW) - queue embedded at MainModule+0x17928. Pairs with [[Application_Main_MainPacket_vftable]] (BCS-Y-1755 NEW). Architectural role: any thread can enqueue a MainPacket; the main thread's MainModule drains the queue and dispatches each packet's vftable slot 3 (the 'process this on main thread' handler) - same pattern as Queue<ScenePacket>."
+      "notes": "[sqex; S6 correction 2026-08-12] Vftable for Sqex::Thread::Queue<Application::Main::MainPacket> at 0x00F90FDC. Full RTTI quartet: COL 0x011413E4, CHD 0x011413F8, BCA 0x01141408, and TD 0x01269BC0. The queue is embedded in [[Application_Main_MainModule_vftable]] (BCS-Y-1755) at +0x17928. MainModule drains Queue<MainPacket> explicitly; MainPacket has a destructor-only vftable, so no packet slot-3 dispatch is claimed."
     },
     {
       "id": "BCS-Y-1750",
@@ -21305,9 +21308,10 @@
         "tools/ghidra/logs/c110_queue_ctors_decomp.txt",
         "tools/ghidra/logs/c110_scenethread_symbols.txt",
         "tools/ghidra/logs/c110_appmain_symbols.txt",
-        "manifests/sqex_thread_namespace.json"
+        "manifests/sqex_thread_namespace.json",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[sqex] **vftable for `Application::Scene::SceneThreadImpl`** - **THE SCENE DRIVER**, the holder class for [[Sqex_Thread_Queue_ScenePacket_vftable]] (BCS-Y-1733). vftable_meta_ptr at 0x00F931D0. Full RTTI quartet: vftable 0x00F931D4, COL 0x011425D8, CHD 0x011425EC, BCA 0x011425FC, BCD-self 0x0114260C, TD 0x0126A84C ([[Application_Scene_SceneThreadImpl_TypeDescriptor]] BCS-Y-1753 NEW). **Architecture**: SceneThreadImpl embeds Queue<ScenePacket> at offset +0x370 (per dtor decomp `param_1[0xdc] = Queue<ScenePacket>::vftable`, where 0xdc*4 = 0x370). The Scene-thread main loop is a method on SceneThreadImpl that drains Queue<ScenePacket> and calls each packet's vftable slot 3 (the [[Application_Scene_Scene_tick_FUN_004B3C50]] BCS-Y-1713 Scene tick). **RESOLVES the followups deferred 'Scene driver' question** definitively - the Scene MANAGER is not Queue<ScenePacket> itself but the wrapping SceneThreadImpl class. Also owns 8 R-B tree / std::list sentinel head nodes at +0x110, +0x11A, +0x124, +0x12E, +0x138, +0x142, +0x14C, +0x156 (per dtor decomp) - these are likely Scene-state organization structures (active actors, event queues, etc.). Dtor is FUN_004E93A0 (507 bytes). Other vftable writers (3 of them) are ctor + variants."
+      "notes": "[sqex; S6 consumer correction 2026-08-12] Vftable for Application::Scene::SceneThreadImpl, the Scene driver and holder of [[Sqex_Thread_Queue_ScenePacket_vftable]] (BCS-Y-1733). Full RTTI quartet: vftable 0x00F931D4, COL 0x011425D8, CHD 0x011425EC, BCA 0x011425FC, BCD-self 0x0114260C, TD 0x0126A84C ([[Application_Scene_SceneThreadImpl_TypeDescriptor]] BCS-Y-1754). SceneThreadImpl embeds Queue<ScenePacket> at +0x370. [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] (BCS-Y-1843) drains that ring with [[ScenePacketQueue_TryClaim_FUN_004EB800]], handles types 3..6 inline, and sends other admitted records through the scene-actor dispatcher. ScenePacket itself has only a destructor vtable slot; FUN_004B3C50 is a producer, not a ScenePacket virtual method. The class also owns eight tree/list sentinel heads at +0x440, +0x468, +0x490, +0x4B8, +0x4E0, +0x508, +0x530, and +0x558."
     },
     {
       "id": "BCS-Y-1754",
@@ -21321,9 +21325,10 @@
         "tools/ghidra/logs/c110_queue_ctors_decomp.txt",
         "tools/ghidra/logs/c110_scenethread_symbols.txt",
         "tools/ghidra/logs/c110_appmain_symbols.txt",
-        "manifests/sqex_thread_namespace.json"
+        "manifests/sqex_thread_namespace.json",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[sqex] RTTI Type Descriptor for **`Application::Scene::SceneThreadImpl`** - the Scene driver class. Pairs with [[Application_Scene_SceneThreadImpl_vftable]] (BCS-Y-1752 NEW). Full RTTI quartet: TD 0x0126A84C, COL 0x011425D8, CHD 0x011425EC, BCA 0x011425FC, BCD-self 0x0114260C. **numBaseClasses=1** (single-class hierarchy - just self per the BCD-self at 0x0114260C with `RTTI_Base_Class_Descriptor_at_(0,-1,0,64)` naming). Second cataloged class in `Application::Scene::*` namespace (sibling of [[Application_Scene_ScenePacket_TypeDescriptor]] BCS-Y-1732)."
+      "notes": "[sqex] RTTI Type Descriptor for Application::Scene::SceneThreadImpl at 0x0126A84C. Pairs with [[Application_Scene_SceneThreadImpl_vftable]] (BCS-Y-1753). Full RTTI quartet: TD 0x0126A84C, vftable 0x00F931D4, COL 0x011425D8, CHD 0x011425EC, BCA 0x011425FC, and BCD-self 0x0114260C."
     },
     {
       "id": "BCS-Y-1755",
@@ -21339,7 +21344,7 @@
         "tools/ghidra/logs/c110_appmain_symbols.txt",
         "manifests/sqex_thread_namespace.json"
       ],
-      "notes": "[sqex] **vftable for `Application::Main::MainModule`** - the MAIN MODULE / MAIN THREAD DRIVER. vftable_meta_ptr at 0x00F91428. **HOLDER for [[Sqex_Thread_Queue_MainPacket_vftable]] (BCS-Y-1749 NEW)** - Queue<MainPacket> embedded at MainModule+0x17928 (per dtor FUN_004DBE10 decomp `param_1[0x5e4a] = Queue<MainPacket>::vftable`, where 0x5e4a*4 = 0x17928 = 96552 bytes). **MainModule instance is at least 96KB** - this matches the role of being the singleton root for the entire Application::Main::* tree (4112 cataloged symbols including the full Rapture UI widget tree). Architectural role: the main-thread message loop is a method on MainModule that drains Queue<MainPacket> and dispatches each packet's vftable slot 3. **First cataloged class in the `Application::Main::*` namespace** - a fifth new top-level namespace this batch (Application::Scene::* + Sqex::Thread::* + Sqex::Misc::AnyType::* + Application::Main::*). Dtor is FUN_004DBE10 (215 bytes). RTTI quartet enumeration deferred (Application::Main::* is huge)."
+      "notes": "[sqex; S6 correction 2026-08-12] Vftable for Application::Main::MainModule at 0x00F9142C, the main-thread driver and holder of [[Sqex_Thread_Queue_MainPacket_vftable]] (BCS-Y-1749). Queue<MainPacket> is embedded at MainModule+0x17928, as shown by dtor FUN_004DBE10. MainModule drains this queue explicitly; [[Application_Main_MainPacket_vftable]] (BCS-Y-1756) is destructor-only, so no packet slot-3 dispatch is claimed."
     },
     {
       "id": "BCS-Y-1756",
@@ -21355,7 +21360,7 @@
         "tools/ghidra/logs/c110_appmain_symbols.txt",
         "manifests/sqex_thread_namespace.json"
       ],
-      "notes": "[sqex] vftable for **`Application::Main::MainPacket`** - the message type that flows through [[Sqex_Thread_Queue_MainPacket_vftable]] (BCS-Y-1749 NEW) to [[Application_Main_MainModule_vftable]] (BCS-Y-1754 NEW) for main-thread processing. vftable_meta_ptr at 0x00F90EF4. **Sibling architectural role to ScenePacket** ([[Application_Scene_ScenePacket_class_vftable]] BCS-Y-1715) for scene-thread processing. Each *Packet class's vftable slot 3 is presumably the 'process this message on the target thread' handler. The dual {MainPacket, ScenePacket} pair represents the two principal inter-thread message types in the engine's threading model. RTTI quartet enumeration deferred."
+      "notes": "[sqex; S6 correction 2026-08-12] Vftable for Application::Main::MainPacket at 0x00F90EF8, the message type carried by [[Sqex_Thread_Queue_MainPacket_vftable]] (BCS-Y-1749). It is the main-thread sibling of ScenePacket, but its vftable has only the destructor slot FUN_004DDC20; processing is performed by the explicit queue drain rather than a presumed packet slot 3. Full RTTI is cataloged by [[Application_Main_MainPacket_TypeDescriptor]] (BCS-Y-1774)."
     },
     {
       "id": "BCS-Y-1757",
@@ -22205,9 +22210,11 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt",
-        "architectural-findings-register"
+        "architectural-findings-register",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-7.txt"
       ],
-      "notes": "[setdalamud-0x0010-resolved] THE CONSUMER of MapLayoutElement+0xf0 (the SetDalamud s2c 0x0010 level; see [[MapLayoutElement_DispatcherCase0x10_ModeByteSet_FUN_0059CED0]] BCS-Y-0661). Sole caller is [[MapLayoutElement_Tick_Vftable6_FUN_0059EBA0]] at 0x0059ECAC (exactly 1 xref). Body: if ((int)this+0xf0 >= 0 && *(char*)(this+0xbc) == 0) { for i in 0..7: FUN_004D7980(0x7e, {u32 index=i, u8 enabled=(i == this+0xf0)}, 8); } then this+0xf0 = 0xFFFFFFFF. So the received byte selects 1 of 8 MUTUALLY-EXCLUSIVE scene states: exactly one index enabled, the other seven explicitly disabled. Scene record id = posted type + 0x15 (FUN_004D7980 -> FUN_004EC080), so type 0x7E = record id 0x93. Three semantics follow from the body: (a) ONE-SHOT - the level is consumed and the -1 sentinel restored, so a client that never receives 0x0010 never emits record 0x93 at all; (b) valid domain 0-7 - the gate is a SIGNED >=0 compare against a zero-extended byte, so 8-255 pass the gate but match no index and DISABLE ALL EIGHT; (c) the +0xbc gate (same flag SetMap case 5 checks) holds a mid-zone-transition level in +0xf0 until the transition completes, so an early packet is not lost. Ctor FUN_0059EE50 initialises +0xf0 to 0xFFFFFFFF (param_1[0x3c]), inside the env block (+0xec, then vec3s at +0xf8/+0x108/+0x118). NOT YET RESOLVED; the scene-thread consumer of record 0x93; see open-questions-register; the 'eight Dalamud growth stages' reading is inference; the 8-way shape; not decompiled fact. Cf docs/client-architecture.md, 'SetDalamud s2c 0x0010 is a server knob'. [setdalamud-0x0010-resolved AMENDMENT - PHASE SEMANTICS] The index->visual direction, which this function's decomp cannot supply on its own, was settled by observation: **index 0 is the LARGEST Dalamud**, the grown end-state, NOT an off/baseline state. Basis: live level sweep on client 2012.09.19.0001 (Limsa Lominsa at night, each level sent from the server by GM command and confirmed as s2c 0x0010 in the server packet log) - level 0 showed the era Dalamud, large/red/cracked, with the normal moon still above it; levels 1-7 and 255 showed nothing. Consistent with retail's phase 0 in 12/12 capture samples; u8` default annotated `0 // Largest Dalamud!!`. Practical consequence: a server wanting NO visible Dalamud should send an out-of-range value (8-255, the decomp-guaranteed disable-all path), never 0. Indices 1-7 produced no visual in the one zone tested and remain unmapped.",
+      "notes": "[setdalamud-0x0010-resolved] THE CONSUMER of MapLayoutElement+0xf0 (the SetDalamud s2c 0x0010 level; see [[MapLayoutElement_DispatcherCase0x10_ModeByteSet_FUN_0059CED0]] BCS-Y-0661). Sole caller is [[MapLayoutElement_Tick_Vftable6_FUN_0059EBA0]] at 0x0059ECAC (exactly 1 xref). Body: if ((int)this+0xf0 >= 0 && *(char*)(this+0xbc) == 0) { for i in 0..7: FUN_004D7980(0x7e, {u32 index=i, u8 enabled=(i == this+0xf0)}, 8); } then this+0xf0 = 0xFFFFFFFF. So the received byte selects 1 of 8 MUTUALLY-EXCLUSIVE scene states: exactly one index enabled, the other seven explicitly disabled. Scene record id = posted type + 0x15 (FUN_004D7980 -> FUN_004EC080), so type 0x7E = record id 0x93. Three semantics follow from the body: (a) ONE-SHOT - the level is consumed and the -1 sentinel restored, so a client that never receives 0x0010 never emits record 0x93 at all; (b) valid domain 0-7 - the gate is a SIGNED >=0 compare against a zero-extended byte, so 8-255 pass the gate but match no index and DISABLE ALL EIGHT; (c) the +0xbc gate (same flag SetMap case 5 checks) holds a mid-zone-transition level in +0xf0 until the transition completes, so an early packet is not lost. Ctor FUN_0059EE50 initialises +0xf0 to 0xFFFFFFFF (param_1[0x3c]), inside the env block (+0xec, then vec3s at +0xf8/+0x108/+0x118). [S6 2026-08-12] The scene-thread consumer is resolved: record 0x93 becomes MapLayoutActor op 0x7E and reaches [[MapLayoutActor_MeteorGroupBitSetter_FUN_0062B7B0]] (BCS-Y-1861), followed by [[MapLayoutActor_MeteorGroupApply_FUN_0062AEB0]] (BCS-Y-1862). Retail data names the eight groups sgrp_meteor and sgrp_meteor117..123; distinct growth-stage visuals remain unproven. Cf docs/client-architecture.md, 'SetDalamud s2c 0x0010 is a server knob'. [setdalamud-0x0010-resolved AMENDMENT - PHASE SEMANTICS] The index->visual direction, which this function's decomp cannot supply on its own, was settled by observation: **index 0 is the LARGEST Dalamud**, the grown end-state, NOT an off/baseline state. Basis: live level sweep on client 2012.09.19.0001 (Limsa Lominsa at night, each level sent from the server by GM command and confirmed as s2c 0x0010 in the server packet log) - level 0 showed the era Dalamud, large/red/cracked, with the normal moon still above it; levels 1-7 and 255 showed nothing. Consistent with retail's phase 0 in 12/12 capture samples; u8` default annotated `0 // Largest Dalamud!!`. Practical consequence: a server wanting NO visible Dalamud should send an out-of-range value (8-255, the decomp-guaranteed disable-all path), never 0. Indices 1-7 produced no visual in the one zone tested and remain unmapped.",
       "id": "BCS-Y-1824"
     },
     {
@@ -22265,9 +22272,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt",
-        "open-questions-register"
+        "open-questions-register",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[setdalamud-0x0010-resolved] vftable of `Application::Scene::SceneModule` (TD 0x0126A5F8, COL 0x01142220), the concrete implementation of [[Application_Scene_SceneModuleInterface_vftable]]. Six slots: 0 = FUN_004E8330 (scalar deleting dtor -> FUN_004E8140); 1 = FUN_004E8220 (ring init, FUN_00D35050(this+4,0)); 2 = FUN_004E8240 (ring teardown); 3 = [[Application_Scene_SceneModule_PostScenePacket_FUN_004E8390]] (the post override); 4 = FUN_004E8250 (readiness check reading *(this+0x3c)+0x38c and this+0x14); 5 = FUN_004E8290 -> FUN_004E8540. The class is PURELY the producer-side facade - it contains no drain. Object layout: lock-free ring embedded at +4 (capacity +0x04, head +0x0C, count +0x10, per-slot state-flag array +0x14), SceneThreadImpl backpointer at +0x3C.",
+      "notes": "[setdalamud-0x0010-resolved; S6 correction 2026-08-12] Vftable of Application::Scene::SceneModule (TD 0x0126A5F8, COL 0x01142220), the concrete SceneModuleInterface implementation. Slots: 0 FUN_004E8330 deleting dtor; 1 FUN_004E8220 auxiliary-subobject initialization at +4; 2 FUN_004E8240 teardown; 3 [[Application_Scene_SceneModule_PostScenePacket_FUN_004E8390]]; 4 FUN_004E8250 readiness check; 5 FUN_004E8290 -> FUN_004E8540. SceneThreadImpl is stored at +0x3C. The post override redirects to that object's Queue<ScenePacket> at +0x370; the former claim that SceneModule+4 was itself the packet ring was incorrect.",
       "id": "BCS-Y-1829"
     },
     {
@@ -22277,9 +22285,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt",
-        "open-questions-register"
+        "open-questions-register",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[setdalamud-0x0010-resolved] SceneModule vftable slot 3 - the concrete 'post a ScenePacket' override of the SceneModuleInterface pure virtual. Every ScenePacket producer reaches this: FUN_004D7980 / FUN_004D6780 (element posts, incl. the dalamud selector [[MapLayoutElement_DalamudStateSelector_FUN_0059CA60]] posting type 0x7E = record id 0x93) and FUN_004B3C50 / FUN_004B39D0 (scene posts). Body: FUN_004E8350, which is `while (!FUN_004E82A0(pkt)) SwitchToThread();` - a BLOCKING enqueue, so a producer SPINS rather than dropping a packet when the ring is full. FUN_004E82A0 is the lock-free ring enqueue on SceneModule+4: read head, require slot flag == 0, InterlockedCompareExchange head -> (head+1) % capacity, FUN_004EC1D0 copies the packet body into the slot, InterlockedExchange slot flag = 1, InterlockedIncrement count. The 0/1/2 flag protocol matches the actor-message ring drained by [[QueuedActorMessageDispatcher_FUN_004DAA10]] (BCS-Y-0537), where the consumer sets 2 and a cleanup resets to 0 and decrements - so FUN_004DAA10 is the structural template for the ScenePacket drain, which is still unlocated (see open-questions-register).",
+      "notes": "[setdalamud-0x0010-resolved; S6 consumer correction 2026-08-12] SceneModule vftable slot 3, the concrete 'post a ScenePacket' override of the SceneModuleInterface pure virtual. The wrapper selects SceneThreadImpl+0x370, then FUN_004E8350 repeatedly calls [[ScenePacketQueue_TryEnqueue_FUN_004E82A0]] until it publishes the packet. The queue uses 0/1/2 slot states: producer 0 -> 1; consumer claim 1 -> 2; [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] (BCS-Y-1843) cleanup 2 -> 0 plus count decrement. This supersedes the former 'drain unlocated' note.",
       "id": "BCS-Y-1830"
     },
     {
@@ -22303,7 +22312,7 @@
         "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt",
         "open-questions-register"
       ],
-      "notes": "[setdalamud-0x0010-resolved] vftable of `Application::Scene::RaptureWorld` (TD 0x012B671C, COL 0x0115410C) - the SCENE-THREAD-SIDE world object, counterpart to the main-thread `Application::Main::RaptureElementContainer`. Constructed by [[Application_Scene_RaptureWorld_Ctor_FUN_0060C2C0]]; the instance is allocated (0xE0) and stored at SceneThreadImpl+0x428 by FUN_004E8560. Slots 0-7: FUN_0060DE80, FUN_00A29AA0, FUN_007143E0, FUN_00CB1C80, FUN_0060DE60, FUN_00C4BAE0, FUN_0060D4C0 (getter: slot1()->slot7() then +0x20), FUN_0060DE70. Named entry points recoverable from its own profiler strings passed to FUN_009FE250: `RaptureWorld::UpdateDeltaTime` (0x00FB6574) = FUN_0060C170; `RaptureWorld::DrawCDev` (0x00FB6594), `RaptureWorld::Draw` (0x00FB65AC), `RaptureWorld::DrawDebug` (0x00FB65C0) not yet resolved to functions. UpdateDeltaTime's two callees are both NOT the ScenePacket drain: FUN_0060B8D0 is a 7-state screen fade/gamma state machine on +0xBC/+0xC0, and FUN_007C9000 -> FUN_007D1D10 is an actor LOD / draw-priority pass over a 0x400-entry table.",
+      "notes": "[setdalamud-0x0010-resolved; S4/S6 correction 2026-08-12] Vftable of Application::Scene::RaptureWorld (TD 0x012B671C, COL 0x0115410C), constructed by [[Application_Scene_RaptureWorld_Ctor_FUN_0060C2C0]]. The instance is allocated as 0xE0 bytes and stored at SceneThreadImpl+0x428 by FUN_004E8560. Profiler-string wrappers were resolved as DrawCDev FUN_0060C1F0 -> FUN_007C9040 -> FUN_007D3190, Draw FUN_0060C220 -> FUN_007C9050 -> FUN_007D3110, and DrawDebug FUN_0060C280 -> FUN_007C9070. Those workers traverse actor draw/LOD state and are not the ScenePacket drain. The drain is [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] (BCS-Y-1843).",
       "id": "BCS-Y-1832"
     },
     {
@@ -22424,9 +22433,10 @@
       "address": "0x004E9700",
       "confidence": "confirmed",
       "sourceRefs": [
-        "tools/ghidra/logs/c135_autorun_cancel_path.txt"
+        "tools/ghidra/logs/c135_autorun_cancel_path.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
-      "notes": "[auto-run-is-client-only-state] 773-byte scene-thread pump, identified by the profiler label string \"SceneThreadImpl::UpdateAI::Packet\" at 0x00F92298 (single xref 0x004E97BE). Drains the `Sqex::Thread::Queue<Application::Scene::ScenePacket>` ring (vftable 0x00F931C0, 0xA0-byte entries) via FUN_004EB800 until empty. **ScenePacket layout confirmed here**: actor id at packet+0x90, u16 type at packet+0x94, u16 payload size at packet+0x96, payload inline at packet+0x10 when size < 0x79 and heap-indirect otherwise. Cases 3/4/5/6 are handled inline (frame pacing, resource gates); everything else falls to the default arm `[[SceneOpTypeFilter_FUN_0060C140]](type, actorId, payload, size)`. This is the thread boundary between the Element layer (which posts through [[SharedScenePacketBroadcaster_FUN_004D7980]], BCS-Y-1083) and the Scene layer. See client-architecture 'Auto-run is client-only movement state'.",
+      "notes": "[auto-run-is-client-only-state] 773-byte scene-thread pump, identified by the profiler label string \"SceneThreadImpl::UpdateAI::Packet\" at 0x00F92298 (single xref 0x004E97BE). Drains the `Sqex::Thread::Queue<Application::Scene::ScenePacket>` ring (vftable 0x00F931C0, 0xA0-byte entries) via FUN_004EB800 until empty. **ScenePacket layout confirmed here**: actor id at packet+0x90, u16 type at packet+0x94, u16 payload size at packet+0x96, payload inline at packet+0x10 when size < 0x79 and heap-indirect otherwise. Cases 3/4/5/6 are handled inline (frame pacing, resource gates); everything else falls to the default arm `[[SceneOpTypeFilter_FUN_0060C140]](type, actorId, payload, size)`. This is the thread boundary between the Element layer (which posts through [[SharedScenePacketBroadcaster_FUN_004D7980]], BCS-Y-1083) and the Scene layer. See client-architecture 'Auto-run is client-only movement state'. [S6 2026-08-12] Consumer claim is now cataloged as [[ScenePacketQueue_TryClaim_FUN_004EB800]]; record id 0x93 follows the default arm to the MapLayoutActor meteor-group path.",
       "id": "BCS-Y-1843"
     },
     {
@@ -22435,7 +22445,8 @@
       "address": "0x0060C140",
       "confidence": "confirmed",
       "sourceRefs": [
-        "tools/ghidra/logs/c135_autorun_cancel_path.txt"
+        "tools/ghidra/logs/c135_autorun_cancel_path.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
       ],
       "notes": "[auto-run-is-client-only-state] 40-byte range gate between [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] and [[SceneActor_OpVtableDispatch_FUN_007C93C0]]: forwards only when `(8 <= type <= 0xB) || (type - 0xC) <= 0x10A`, i.e. types 8..0x116, and drops everything else silently. Because [[SharedScenePacketBroadcaster_FUN_004D7980]] (BCS-Y-1083) stores `op + 0x15` as the type, this admits ops 0x00..0x101 plus the low block. See client-architecture 'Auto-run is client-only movement state'.",
       "id": "BCS-Y-1844"
@@ -22446,9 +22457,12 @@
       "address": "0x007C93C0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "tools/ghidra/logs/c135_autorun_cancel_path.txt"
+        "tools/ghidra/logs/c135_autorun_cancel_path.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt",
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:config/ffxivgame.vtable_method_names.json"
       ],
-      "notes": "[auto-run-is-client-only-state] 863-byte scene-side actor resolver and dispatcher. Looks the packet's actor id up in two std::map-shaped registries (this+0xC4 first, then this+0x84) via FUN_0071D420 and takes the actor pointer from node+0x10. Types 9, 10 and 0xD are handled directly (actor create / destroy / spawn-with-payload); for everything else, when `type - 0x15 < 0x101`, it calls **`sceneActor->vftable[+0x274](type - 0x15, payload, size)`** - so the wire-side op id is recovered by subtracting the same 0x15 that [[SharedScenePacketBroadcaster_FUN_004D7980]] (BCS-Y-1083) added. Types 0xE..0x14 have bespoke cases. For a Chara this lands on [[CharaActor_SceneOpDispatcher_FUN_00662D30]] (BCS-Y-0838) through [[Application_Scene_Actor_Chara_CharaActor_vftable]]. See client-architecture 'Auto-run is client-only movement state'.",
+      "notes": "[auto-run-is-client-only-state] 863-byte scene-side actor resolver and dispatcher. Looks the packet's actor id up in two std::map-shaped registries (this+0xC4 first, then this+0x84) via FUN_0071D420 and takes the actor pointer from node+0x10. Types 9, 10 and 0xD are handled directly (actor create / destroy / spawn-with-payload); for everything else, when `type - 0x15 < 0x101`, it calls **`sceneActor->vftable[+0x274](type - 0x15, payload, size)`** - so the wire-side op id is recovered by subtracting the same 0x15 that [[SharedScenePacketBroadcaster_FUN_004D7980]] (BCS-Y-1083) added. Types 0xE..0x14 have bespoke cases. For a Chara this lands on [[CharaActor_SceneOpDispatcher_FUN_00662D30]] (BCS-Y-0838) through [[Application_Scene_Actor_Chara_CharaActor_vftable]]. See client-architecture 'Auto-run is client-only movement state'. [S6 2026-08-12] For MapLayoutActor vftable 0x00FBAE3C, slot +0x274 resolves to [[MapLayoutActor_SceneOpDispatcher_FUN_0062CDA0]]; record id 0x93 becomes op 0x7E and reaches the meteor-group bit and visibility handlers.",
       "id": "BCS-Y-1845"
     },
     {
@@ -22584,6 +22598,83 @@
       ],
       "notes": "PrivateAreaBase destructor candidate listed by the tracked class-metadata sweep; no function-body semantics are promoted.",
       "id": "BCS-Y-1857"
+    },
+    {
+      "name": "ScenePacketQueue_TryEnqueue_FUN_004E82A0",
+      "kind": "function",
+      "address": "0x004E82A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
+      ],
+      "notes": "[S6 2026-08-12] Producer-side lock-free enqueue for a 0xA0-byte ScenePacket ring. Claims an empty slot only when its state is 0, copies the packet with FUN_004EC1D0, publishes state 1, and increments the queue count. FUN_004E8350 retries this operation with SwitchToThread until it succeeds.",
+      "id": "BCS-Y-1858"
+    },
+    {
+      "name": "ScenePacketQueue_TryClaim_FUN_004EB800",
+      "kind": "function",
+      "address": "0x004EB800",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
+      ],
+      "notes": "[S6 2026-08-12] Consumer-side lock-free claim for the SceneThreadImpl Queue<ScenePacket> at +0x370. When the current slot state is 1, advances the read cursor, changes the state to 2, returns the slot index, and returns the 0xA0-byte slot. Sole archived caller [[SceneThreadImpl_UpdateAI_PacketDrain_FUN_004E9700]] (BCS-Y-1843) resets state 2 to 0 and decrements the count after dispatch.",
+      "id": "BCS-Y-1859"
+    },
+    {
+      "name": "MapLayoutActor_SceneOpDispatcher_FUN_0062CDA0",
+      "kind": "function",
+      "address": "0x0062CDA0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-7.txt",
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:config/ffxivgame.vtable_method_names.json"
+      ],
+      "notes": "[S6 2026-08-12] MapLayoutActor scene-operation dispatcher reached through [[Application_Scene_Actor_Map_MapLayoutActor_vftable]] (BCS-Y-1863) slot 157 (+0x274), as independently read in the retail data archive. Case 0x7E loads dwords at payload+0 and payload+4, then calls [[MapLayoutActor_MeteorGroupBitSetter_FUN_0062B7B0]], whose byte-sized parameters use only the low byte of each value: index is masked with 0x1F and enabled is compared with zero. Since [[SceneActor_OpVtableDispatch_FUN_007C93C0]] (BCS-Y-1845) subtracts 0x15 before this call, ScenePacket record id 0x93 selects this case.",
+      "id": "BCS-Y-1860"
+    },
+    {
+      "name": "MapLayoutActor_MeteorGroupBitSetter_FUN_0062B7B0",
+      "kind": "function",
+      "address": "0x0062B7B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-7.txt",
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:config/ffxivgame.vtable_method_names.json"
+      ],
+      "notes": "[S6 2026-08-12] Applies the record-0x93 payload to MapLayoutActor+0x358: sets or clears bit (1 << (index & 31)) according to the enabled byte, then calls [[MapLayoutActor_MeteorGroupApply_FUN_0062AEB0]]. The consumer table covers indices 0..7, so this path controls the eight named meteor scene groups.",
+      "id": "BCS-Y-1861"
+    },
+    {
+      "name": "MapLayoutActor_MeteorGroupApply_FUN_0062AEB0",
+      "kind": "function",
+      "address": "0x0062AEB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-7.txt",
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:config/ffxivgame.vtable_method_names.json"
+      ],
+      "notes": "[S6 2026-08-12] Recomputes visibility for eight entries under the sky_celestial layout group. For indices 0..7 it selects the retail table at 0x012B82BC, whose strings are sgrp_meteor and sgrp_meteor117 through sgrp_meteor123, resolves each layout object, and applies a boolean derived from the actor bitfields at +0x358/+0x35C/+0x360. This identifies the record-0x93 consumer as an eight-group meteor visibility path; it does not prove that all eight are distinct growth-stage visuals.",
+      "id": "BCS-Y-1862"
+    },
+    {
+      "name": "Application_Scene_Actor_Map_MapLayoutActor_vftable",
+      "kind": "rtti",
+      "address": "0x00FBAE3C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:config/ffxivgame.vtable_method_names.json",
+        "tools/ghidra/logs/s6_scene-module-drain-7.txt"
+      ],
+      "notes": "[S6 2026-08-12] RTTI-confirmed 160-slot vftable for Application::Scene::Actor::Map::MapLayoutActor. The tracked decomp RTTI index maps RVA 0x00BBAE3C to this class, and its vtable-method index maps slot 157 (+0x274) to [[MapLayoutActor_SceneOpDispatcher_FUN_0062CDA0]] (BCS-Y-1860). The read-only retail data archive independently reads 0x0062CDA0 from that slot.",
+      "id": "BCS-Y-1863"
     }
   ]
 }
