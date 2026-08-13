@@ -976,34 +976,37 @@
       "id": "BCS-Y-0104",
       "name": "ZoneProtoDownCallbackInterface::Dispatch",
       "kind": "function",
-      "address": "0x009BFD10",
+      "address": "0x00DBFD10",
       "confidence": "confirmed",
       "sourceRefs": [
-        "xivl-opcodes:data/zone_dispatch_map.json"
+        "xivl-opcodes:data/zone_dispatch_map.json",
+        "tools/ghidra/logs/s2_00d2-offswitch-reconciliation.txt"
       ],
-      "notes": "Slot 1 of ZoneProtoDownCallbackInterface vtable (primary vtable at RVA 0x0072979C). Reads u16 dispatch key from inner packet descriptor offset +2, bounds-checks against 0x1F5, byte-table indexed (RVA 0x009C1274, 502 entries) -> dword-jump-table (RVA 0x009C0F5C, 198 entries) -> this->vtable[case + 2]. Decoded 197 dedicated dispatch slots + 1 catchall (case 197 = no-op return at RVA 0x009C0F56). However: the ONLY direct caller (BCS-Y-0107) sets up the interface vtable on a stack object whose slots 2..198 are no-op `ret 0xc` thunks; the dispatcher returns without doing any per-opcode work, and the caller post-checks the opcode field for connection-state events. The actual per-opcode game packet handlers route through ReceiverApplyWrapperTable (RVA 0x007DFC00), NOT through this vtable dispatch. | [hygiene systematic-rva-not-va-address-shift-edge] Stored address is canonical. The \"RVA 0x007DFC00 / RVA 0x009C1274 / RVA 0x009C0F5C\" reference in notes describes addresses of DIFFERENT entities (ReceiverApplyWrapperTable and the byte/dword jump tables this dispatcher references), NOT this dispatch function. Stored 0x009BFD10 is the dispatch function VA and is canonical. The systematic-rva-not-va-address-shift pass heuristic flagged this as evidence_disagrees because the address token in notes is not the entry's own VA, but no shift is required."
+      "notes": "Slot 1 of ZoneProtoDownCallbackInterface vtable 0x0112979C. Reads the u16 dispatch key at inner packet descriptor +2, bounds-checks it against 0x1F5, maps opcode-1 through the 502-byte table at 0x00DC1274, then selects one of 198 thunk bodies through the dword table at 0x00DC0F5C and calls this->vtable[case+2]. The sole direct caller is [[ZoneConnectionStateMachineDispatchFrame_FUN_00DAE520]] (BCS-Y-0107), which installs DummyCallback vtable 0x01128B4C; its opcode slots are no-op ret 0xC thunks. Fresh C19 evidence corrected the former 0x009BFD10 address collision: 0x009BFD10 is an unrelated connection-state helper, while the dispatcher is 0x00DBFD10."
     },
     {
       "id": "BCS-Y-0105",
       "name": "ZoneProtoDownDispatchByteTable",
       "kind": "global",
-      "address": "0x009C1274",
+      "address": "0x00DC1274",
       "confidence": "confirmed",
       "sourceRefs": [
-        "xivl-opcodes:data/zone_dispatch_map.json"
+        "xivl-opcodes:data/zone_dispatch_map.json",
+        "tools/ghidra/logs/s2_00d2-offswitch-reconciliation.txt"
       ],
-      "notes": ".text inline table after BCS-Y-0104 (502 bytes, one per opcode 0x0001..0x01F6). byte_table[opcode-1] = case index (0..197). 197 distinct cases each map to a unique vtable slot (2..198). Case 197 is the catchall - 305 opcodes route to it."
+      "notes": "Inline 502-byte opcode-to-case table used only by [[ZoneProtoDownCallbackInterface::Dispatch]] (BCS-Y-0104): byte_table[opcode-1] is a case index 0..197. Cases 0..196 select dedicated callback slots; case 197 is the catchall. Fresh C19 evidence corrected the former 0x009C1274 RVA-as-VA address."
     },
     {
       "id": "BCS-Y-0106",
       "name": "ZoneProtoDownDispatchDwordTable",
       "kind": "global",
-      "address": "0x009C0F5C",
+      "address": "0x00DC0F5C",
       "confidence": "confirmed",
       "sourceRefs": [
-        "xivl-opcodes:data/zone_dispatch_map.json"
+        "xivl-opcodes:data/zone_dispatch_map.json",
+        "tools/ghidra/logs/s2_00d2-offswitch-reconciliation.txt"
       ],
-      "notes": ".text inline dword jump table (198 entries, 792 bytes). dword_table[case] = handler-body VA. Cases 0..196 each point to a 21-byte thunk that calls this->vtable[case + 2] with 3 args (payload, packet_ref, packet_ref). Case 197 -> 0x009C0F56 (no-op `pop esi; ret 8`)."
+      "notes": "Inline dword jump table used only by [[ZoneProtoDownCallbackInterface::Dispatch]] (BCS-Y-0104), with 198 entries over 792 bytes. Cases 0..196 select thunks that call this->vtable[case+2] with three arguments; case 197 selects the catchall at 0x00DC0F56. Fresh C19 evidence corrected the former 0x009C0F5C RVA-as-VA address."
     },
     {
       "id": "BCS-Y-0107",
@@ -1012,9 +1015,10 @@
       "address": "0x00DAE520",
       "confidence": "confirmed",
       "sourceRefs": [
-        "xivl-opcodes:data/zone_dispatch_map.json"
+        "xivl-opcodes:data/zone_dispatch_map.json",
+        "tools/ghidra/logs/s2_00d2-offswitch-reconciliation.txt"
       ],
-      "notes": "Sole direct caller of BCS-Y-0104. Drives the zone connection state machine. 181-byte body. Tries to read a packet from queue via FUN_009B1960 (validity check); on success, constructs ZoneProtoDownCallbackInterface on a stack object (vptr installed by FUN_009BFD00 at RVA 0x009BFD00 = sole ZoneProtoDownCallbackInterface ctor in code), calls dispatcher (which executes no-op stubs), then post-checks the dispatched packet's opcode at packet+2: if opcode == 2 (lobby Error), sets *(state+0x8C) = 3. Re-installs the secondary vtable view via FUN_009BFCF0 (RVA 0x009BFCF0) and returns 1 if a packet was processed, 0 if queue was empty. Sole caller: FUN_004E20A0 (RVA 0x004E20A0), a game-loop polling function that loops this until the queue drains, switching on opcodes 1/2/0xE/0x11 for connection-state transitions (ping timing / error / zone boundary signals). [apply-log fix] Address shifted from 0x009AE520 to 0x00DAE520 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "Sole direct caller of [[ZoneProtoDownCallbackInterface::Dispatch]] (BCS-Y-0104). Drives the zone connection state machine. It reads a queued packet, installs DummyCallback vtable 0x01128B4C on a stack object, calls the dispatcher, then post-checks the opcode at packet+2 for connection-state events. The callback slots are no-op ret 0xC thunks, so this known wrapper performs structural dispatch without per-opcode game logic. Fresh C19 evidence corrected related RVA-as-VA references: dispatcher 0x00DBFD10, ctor 0x00DBFD00, and secondary vtable installer 0x00DBFCF0. Its sole caller is FUN_004E20A0, the map-channel state-machine tick."
     },
     {
       "id": "BCS-Y-0108",
