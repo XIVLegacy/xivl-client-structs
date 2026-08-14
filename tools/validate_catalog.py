@@ -47,7 +47,9 @@ BATTLE_RESULT_PATH = REPO / "manifests" / "battle_result_field_semantics.json"
 LUA_RESOURCE_INVENTORY_PATH = REPO / "manifests" / "preserved_lua_resource_inventory.json"
 LUA_RESOURCE_PATH_PATH = REPO / "manifests" / "lua_resource_path_decoding.json"
 LUA_CALLBACK_CONTRACT_PATH = REPO / "manifests" / "lua_callback_contract.json"
+LUA_API_CONTRACT_PATH = REPO / "manifests" / "lua_api_contract.json"
 CAST_CHANT_PRESENTATION_PATH = REPO / "manifests" / "cast_chant_presentation.json"
+COMBAT_COMMAND_EMISSION_PATH = REPO / "manifests" / "combat_command_emission.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -464,13 +466,21 @@ def check_lua_callback_contract(doc: dict[str, Any]) -> list[Finding]:
             "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
     }:
         findings.append(Finding("ERROR", "lua-callback-contract.sources", "callback source snapshot drifted"))
+    relationship = doc.get("relationshipToCompleteContract", {})
+    if relationship != {
+            "status": "narrower_earlier_pass",
+            "supersededBy": "manifests/lua_api_contract.json",
+            "retainedPurpose": "Compact callback-only view with per-script positional shapes.",
+    }:
+        findings.append(Finding("ERROR", "lua-callback-contract.relationship",
+                                "complete-contract relationship drifted"))
     boundary = doc.get("nativeTraceBoundary", {})
-    if boundary.get("status") != "blocked_missing_exporters" or boundary.get("missing") != [
-            "FindAsciiString.java", "FindAllReferencesToAddress.java"]:
-        findings.append(Finding("ERROR", "lua-callback-contract.boundary",
-                                "native trace prerequisite boundary drifted"))
-    if boundary.get("effect") != ("No native callback registrar, string xref, or native function attribution "
-                                  "is inferred from this script-only contract."):
+    if boundary != {
+            "status": "bounded_sample_succeeded_complete_attribution_blocked",
+            "functionalEquivalents": ["DumpStrings.java", "FindCallers.java", "exported asm corpus"],
+            "missingCapability": "A reproducible string-name -> string-address -> all data/code references -> registrar/implementation mapping for every callback name.",
+            "effect": "The bounded native sample is recorded in lua_api_contract.json. This callback-only manifest does not infer native callback targets.",
+    }:
         findings.append(Finding("ERROR", "lua-callback-contract.boundary", "native trace effect drifted"))
     scripts = doc.get("scripts", {})
     if not isinstance(scripts, dict):
@@ -538,8 +548,440 @@ def check_lua_callback_contract(doc: dict[str, Any]) -> list[Finding]:
     if doc.get("sourceRefs") != [
             "xivl-client-scripts:lua/registry.json",
             "xivl-client-scripts:lua/scripts/**/*.lua",
-            "xivl-client-scripts:manifests/scripts.json"]:
+            "xivl-client-scripts:manifests/scripts.json",
+            "manifests/lua_api_contract.json"]:
         findings.append(Finding("ERROR", "lua-callback-contract.refs", "callback provenance references drifted"))
+    return findings
+
+
+def check_combat_command_emission(doc: dict[str, Any]) -> list[Finding]:
+    """Validate the resolved EventStart owner-ID relationship and boundaries."""
+    findings: list[Finding] = []
+    relationship = doc.get("commandIdRelationship", {})
+    if relationship.get("status") != "resolved_owner_static_actor_identity":
+        findings.append(Finding("ERROR", "combat-command.owner-id", "owner-ID relationship is not resolved"))
+        return findings
+    derivation = relationship.get("derivation", {})
+    if derivation != {
+            "direction": "serverbound",
+            "service": "Map (client decomp attribution)",
+            "opcodeHex": "0x012d",
+            "framing": "216-byte wire subpacket -> 200-byte retained body -> 16-byte game-message prefix -> 184-byte application payload",
+            "ownerOffset": "retained body +0x14 = application payload +0x04",
+            "ownerDecode": "little-endian u32",
+            "staticActorTest": "(ownerActorId & 0xffff0000) == 0xa0f00000",
+            "rowDecode": "ownerActorId & 0x0000ffff",
+    }:
+        findings.append(Finding("ERROR", "combat-command.derivation", "owner-ID byte derivation drifted"))
+    distribution = relationship.get("distribution", {})
+    owner_rows = distribution.get("ownerIds", [])
+    block_rows = distribution.get("upper16Blocks", [])
+    if distribution.get("totalOccurrences") != 126:
+        findings.append(Finding("ERROR", "combat-command.distribution", "occurrence total drifted"))
+    if (sum(row.get("count", 0) for row in owner_rows) != 126
+            or len(owner_rows) != 41
+            or sum(row.get("count", 0) for row in block_rows) != 126
+            or len(block_rows) != 9):
+        findings.append(Finding("ERROR", "combat-command.distribution", "owner-ID distribution does not reconcile"))
+    if {row.get("value"): row.get("count") for row in block_rows} != {
+            "0x44b0": 2, "0x44b8": 1, "0x44c0": 1, "0x44d8": 9,
+            "0x4510": 3, "0x4560": 6, "0x4670": 2, "0x47a0": 2,
+            "0xa0f0": 100,
+    }:
+        findings.append(Finding("ERROR", "combat-command.blocks", "owner upper-16 block distribution drifted"))
+    expected_owner_ids = {
+        "0x44b00005": 2, "0x44b8000a": 1, "0x44c00012": 1,
+        "0x44d80009": 1, "0x44d8000a": 1, "0x44d80026": 2,
+        "0x44d8002d": 1, "0x44d8002f": 4, "0x4510000c": 1,
+        "0x45100d5b": 2, "0x45600029": 2, "0x45606e22": 2,
+        "0x45606e23": 2, "0x46700082": 2, "0x47a00007": 1,
+        "0x47a0000c": 1, "0xa0f02ee5": 1, "0xa0f02ee9": 7,
+        "0xa0f02eea": 2, "0xa0f02eee": 2, "0xa0f02eef": 3,
+        "0xa0f02ef1": 1, "0xa0f05209": 12, "0xa0f0520a": 12,
+        "0xa0f055f1": 1, "0xa0f055f3": 1, "0xa0f055f7": 2,
+        "0xa0f05e26": 2, "0xa0f05e8b": 1, "0xa0f05e93": 2,
+        "0xa0f05e9c": 4, "0xa0f05eed": 3, "0xa0f069dc": 3,
+        "0xa0f06a2e": 2, "0xa0f06a36": 12, "0xa0f06a37": 8,
+        "0xa0f06a39": 3, "0xa0f06a3e": 3, "0xa0f06a7c": 5,
+        "0xa0f06a80": 6, "0xa0f06ad2": 2,
+    }
+    if {row.get("value"): row.get("count") for row in owner_rows} != expected_owner_ids:
+        findings.append(Finding("ERROR", "combat-command.owner-ids", "full owner-ID distribution drifted"))
+    retained = distribution.get("retainedSampleCap", {})
+    if (retained.get("sampleCount") != 60
+            or sum(row.get("count", 0) for row in retained.get("ownerIds", [])) != 60):
+        findings.append(Finding("ERROR", "combat-command.retained", "retained sample cap drifted"))
+    joins = relationship.get("joins", {})
+    expected_join_counts = {
+        "eligibleStaticActorSamples": 100,
+        "eligibleUniqueOwnerIds": 25,
+        "staticActorHits": 100,
+        "staticActorMisses": 0,
+        "commandPathHits": 100,
+        "nonCommandStaticActorHits": 0,
+        "gameCommandHits": 88,
+        "gameCommandMisses": 12,
+    }
+    if any(joins.get(key) != value for key, value in expected_join_counts.items()):
+        findings.append(Finding("ERROR", "combat-command.joins", "owner-ID join totals drifted"))
+    join_rows = joins.get("rows", [])
+    if (len(join_rows) != 25
+            or sum(row.get("count", 0) for row in join_rows) != 100
+            or sum(row.get("count", 0) for row in join_rows if row.get("gameCommandHit")) != 88
+            or any(not str(row.get("staticActorClassPath", "")).startswith("/Command/") for row in join_rows)):
+        findings.append(Finding("ERROR", "combat-command.join-rows", "owner-ID join rows do not reconcile"))
+    expected_join_rows = {
+        (owner, owner & 0xFFFF, count, path, game_hit)
+        for owner, count, path, game_hit in (
+            (0xA0F02EE5, 1, "/Command/Game/BonusPointCommand", True),
+            (0xA0F02EE9, 7, "/Command/EquipCommand", True),
+            (0xA0F02EEA, 2, "/Command/EquipAbilityCommand", True),
+            (0xA0F02EEE, 2, "/Command/Game/Prog/ChocoboRideCommand", True),
+            (0xA0F02EEF, 3, "/Command/Game/Prog/ChocoboRideCommand", True),
+            (0xA0F02EF1, 1, "/Command/ChangeJobCommand", True),
+            (0xA0F05209, 12, "/Command/Game/ActivateCommand", True),
+            (0xA0F0520A, 12, "/Command/Game/ActivateCommand", True),
+            (0xA0F055F1, 1, "/Command/Game/CraftCommand", True),
+            (0xA0F055F3, 1, "/Command/Game/DummyCommand", True),
+            (0xA0F055F7, 2, "/Command/Game/DummyCommand", True),
+            (0xA0F05E26, 2, "/Command/System/EmoteStandardCommand", False),
+            (0xA0F05E8B, 1, "/Command/System/PartyInviteCommand", False),
+            (0xA0F05E93, 2, "/Command/System/RequestQuestJournalCommand", False),
+            (0xA0F05E9C, 4, "/Command/System/TeleportCommand", False),
+            (0xA0F05EED, 3, "/Command/System/PlaceDrivenCommand", False),
+            (0xA0F069DC, 3, "/Command/Game/Ability/Ability", True),
+            (0xA0F06A2E, 2, "/Command/Game/Ability/Ability", True),
+            (0xA0F06A36, 12, "/Command/Game/WeaponSkill/AttackWeaponSkill", True),
+            (0xA0F06A37, 8, "/Command/Game/WeaponSkill/AttackWeaponSkill", True),
+            (0xA0F06A39, 3, "/Command/Game/WeaponSkill/AttackWeaponSkill", True),
+            (0xA0F06A3E, 3, "/Command/Game/WeaponSkill/AttackWeaponSkill", True),
+            (0xA0F06A7C, 5, "/Command/Game/Ability/Ability", True),
+            (0xA0F06A80, 6, "/Command/Game/Ability/Ability", True),
+            (0xA0F06AD2, 2, "/Command/Game/Magic/CureMagic", True),
+        )
+    }
+    actual_join_rows = {
+        (int(row.get("ownerActorId", "0"), 16), row.get("low16RowId"),
+         row.get("count"), row.get("staticActorClassPath"), row.get("gameCommandHit"))
+        for row in join_rows
+    }
+    if actual_join_rows != expected_join_rows:
+        findings.append(Finding("ERROR", "combat-command.join-values", "owner-ID join values drifted"))
+    scenarios = relationship.get("scenarioComparison", {})
+    combat = scenarios.get("combatExamples", {})
+    noncombat = scenarios.get("noncombatExamples", {})
+    if (combat.get("sampleCount"), combat.get("staticActorBlockCount"),
+            combat.get("outsideStaticActorBlockCount")) != (64, 61, 3):
+        findings.append(Finding("ERROR", "combat-command.combat", "combat example distribution drifted"))
+    if (noncombat.get("sampleCount"), noncombat.get("staticActorBlockCount"),
+            noncombat.get("outsideStaticActorBlockCount")) != (62, 39, 23):
+        findings.append(Finding("ERROR", "combat-command.noncombat", "noncombat example distribution drifted"))
+    if set(combat.get("captures", [])) != {
+            "combat_autoattack.pcapng", "combat_skills.pcapng", "party_battle_leve.pcapng"}:
+        findings.append(Finding("ERROR", "combat-command.combat", "combat capture split drifted"))
+    event_rows = {
+        row.get("eventName"): (
+            row.get("count"), row.get("staticActorHits"), row.get("gameCommandHits"),
+            row.get("outsideStaticActorBlock"))
+        for row in relationship.get("eventNameComparison", [])
+    }
+    if event_rows != {
+            "caution": (3, 0, 0, 3),
+            "commandContent": (4, 4, 0, 0),
+            "commandDefault": (44, 44, 44, 0),
+            "commandForced": (28, 28, 28, 0),
+            "commandJudgeMode": (5, 5, 5, 0),
+            "commandRequest": (19, 19, 11, 0),
+            "exit": (3, 0, 0, 3),
+            "noticeEvent": (2, 0, 0, 2),
+            "regionChange": (1, 0, 0, 1),
+            "talkDefault": (17, 0, 0, 17),
+    }:
+        findings.append(Finding("ERROR", "combat-command.events", "event-name owner partition drifted"))
+    mask = relationship.get("maskWidth", {})
+    if (mask.get("verdict"), mask.get("observedMaximumRowId"),
+            mask.get("commandStaticActorMaximumRowId"), mask.get("gameCommandMaximumRowId"),
+            mask.get("observedOverflowCount"), mask.get("commandStaticActorOverflowCount"),
+            mask.get("gameCommandOverflowCount")) != (
+            "supports_16_bit_command_static_actor_row_id", 27346, 30101, 30101, 0, 0, 0):
+        findings.append(Finding("ERROR", "combat-command.mask", "16-bit command-row boundary drifted"))
+    sweep = {row.get("bits"): (row.get("staticActorHits"), row.get("gameCommandHits"))
+             for row in mask.get("maskSweep", [])}
+    retained_sweep = {
+        row.get("bits"): (row.get("staticActorHits"), row.get("gameCommandHits"))
+        for row in mask.get("retainedMaskSweep", [])
+    }
+    if (sweep.get(13), sweep.get(14), sweep.get(15), sweep.get(16), sweep.get(20), sweep.get(21)) != (
+            (0, 0), (16, 16), (100, 88), (100, 88), (100, 88), (0, 0)):
+        findings.append(Finding("ERROR", "combat-command.mask-sweep", "full mask sweep drifted"))
+    if (retained_sweep.get(13), retained_sweep.get(14), retained_sweep.get(15),
+            retained_sweep.get(16), retained_sweep.get(20), retained_sweep.get(21)) != (
+            (0, 0), (14, 14), (41, 29), (41, 29), (41, 29), (0, 0)):
+        findings.append(Finding("ERROR", "combat-command.mask-sweep", "retained mask sweep drifted"))
+    script_route = relationship.get("scriptRoute", {})
+    if script_route != {
+            "status": "command_object_supplied_as_event_owner",
+            "evidence": "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua:1823-1840",
+            "finding": "PlayerBaseClass._onCommandEvent obtains getCommandId() from A2_2 and passes the same A2_2 command object to _callServerOnCommand. The native bridge preserves an object-owner route; this script fact does not by itself prove the actor-ID packing.",
+    }:
+        findings.append(Finding("ERROR", "combat-command.script-route", "script owner route drifted"))
+    snapshots = relationship.get("sourceSnapshots", {})
+    expected_snapshots = {
+        "captures": {
+            "repository": "XIVLegacy/xivl-captures",
+            "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4",
+            "rawCorpusArtifact": "sources/pcap-1.23b/manifest.yaml#members",
+            "rawCorpusManifestSha256": "1D281B26CED720E433AA2354BD036B2E932EBEE084DE11CD201F9431C646AFF4",
+            "extractorArtifact": "tools/extractors/extract_content_samples.py:73-144",
+            "extractorSha256": "3843EDEE0E52FF73B703812AF8355C03A767CCBE052A2F8D6F78CA9391E6A691",
+            "retainedSampleArtifact": "derived/payload_samples.json#samples.c2s.0x012d",
+            "retainedSampleSha256": "3D08A4ED4407738C02CE13B0FE853B6E8DBA6340930E59DC94734055F8B8DA38",
+        },
+        "clientData": {
+            "repository": "XIVLegacy/xivl-client-data",
+            "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6",
+            "staticActorArtifact": "manifests/staticactor_class_paths.json#records",
+            "staticActorSha256": "D612438827E5997422AB6F64A807E567DDF1B953C532E8A319D67B93C53C9DB0",
+            "gameCommandArtifact": "csv/gameCommand.csv column 0",
+            "gameCommandSha256": "775AA8062AEBC9F394C97CB634B3A75D687FF03063C849B95333A6BCE8032811",
+        },
+    }
+    if snapshots != expected_snapshots:
+        findings.append(Finding("ERROR", "combat-command.sources", "source snapshot drifted"))
+    capture_boundary = doc.get("captureBoundary", {})
+    if (capture_boundary.get("totalOccurrences"), capture_boundary.get("retainedSamples"),
+            capture_boundary.get("subpacketSizes"), set(capture_boundary.get("combatExamples", []))) != (
+            126, 60, [216], {
+                "combat_autoattack.pcapng", "combat_skills.pcapng", "party_battle_leve.pcapng"}):
+        findings.append(Finding("ERROR", "combat-command.capture-boundary", "capture boundary drifted"))
+    required_refs = {
+        "xivl-captures:sources/pcap-1.23b/manifest.yaml#members",
+        "xivl-captures:tools/extractors/extract_content_samples.py:73-144",
+        "xivl-client-data:manifests/staticactor_class_paths.json#records",
+        "xivl-client-data:csv/gameCommand.csv",
+        "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.calls.json",
+        "tools/extractors/analyze_event_start_owner_ids.py",
+    }
+    if not required_refs.issubset(set(doc.get("sourceRefs", []))):
+        findings.append(Finding("ERROR", "combat-command.refs", "required evidence references missing"))
+    if len(relationship.get("rejectedValues", [])) != 4:
+        findings.append(Finding("ERROR", "combat-command.rejections", "imported-value fence drifted"))
+    return findings
+
+
+def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
+    """Validate the complete Lua declaration and N-API reference contract."""
+    findings: list[Finding] = []
+    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("extraction")) != (
+            1, "2026-08-14", "1.23b", "2012.09.19.0001"):
+        findings.append(Finding("ERROR", "lua-api-contract.metadata", "API contract metadata drifted"))
+    expected_totals = {
+        "corpusScripts": 2671,
+        "classBearingScripts": 2650,
+        "scriptsWithoutClassSignal": 21,
+        "scriptsWithMethods": 1492,
+        "methodAssignments": 13782,
+        "callbackAssignments": 209,
+        "scriptEventAssignments": 43,
+        "ordinaryMethodAssignments": 13530,
+        "napiNames": 433,
+        "scriptsWithNapiReferences": 2639,
+        "napiApiScriptReferences": 5930,
+        "napiReferenceLines": 17049,
+    }
+    if doc.get("totals") != expected_totals:
+        findings.append(Finding("ERROR", "lua-api-contract.totals", "API contract totals drifted"))
+    expected_sources = {
+        "scripts": {
+            "repository": "XIVLegacy/xivl-client-scripts",
+            "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
+            "registry": {"path": "lua/registry.json", "sha256": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F"},
+            "napiIndex": {"path": "lua/napi_index.json", "sha256": "9E63DDCDA1C3E25DBDEA65082023C4CB23FE950FD53CFC7C57D5B76DCA1234EF"},
+            "scriptManifest": {"path": "manifests/scripts.json", "sha256": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300"},
+            "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
+        },
+        "apiCatalog": {
+            "path": "manifests/lua_api_index.json",
+            "sha256": "25DF1FFFE1EB17376CE5D09E5F55ADD76E9A8FE5D1F56A467A68DD0D881DAA8C",
+        },
+    }
+    if doc.get("sourceSnapshots") != expected_sources:
+        findings.append(Finding("ERROR", "lua-api-contract.sources", "API source snapshot drifted"))
+    tier_names = [row.get("tier") for row in doc.get("tierCriteria", [])]
+    if tier_names != [
+            "napi_surface", "script_callback", "script_event_handler", "ordinary_script_method"]:
+        findings.append(Finding("ERROR", "lua-api-contract.tiers", "API tier criteria drifted"))
+
+    scripts = doc.get("scriptDeclarations", [])
+    if not isinstance(scripts, list) or len(scripts) != 1492:
+        findings.append(Finding("ERROR", "lua-api-contract.scripts", "script declaration table drifted"))
+        scripts = []
+    seen_scripts: set[str] = set()
+    method_count = callback_count = event_count = ordinary_count = 0
+    for script in scripts:
+        decoded = script.get("script")
+        if not isinstance(decoded, str) or not decoded or decoded in seen_scripts:
+            findings.append(Finding("ERROR", "lua-api-contract.scripts", "script identity is missing or duplicated"))
+            continue
+        seen_scripts.add(decoded)
+        if script.get("receiverReason") not in {"registry_unique_class", "no_class_signal"}:
+            findings.append(Finding("ERROR", f"lua-api-contract.{decoded}", "receiver reason is invalid"))
+        if (script.get("receiverReason") == "registry_unique_class") != isinstance(script.get("receiverClass"), str):
+            findings.append(Finding("ERROR", f"lua-api-contract.{decoded}", "receiver class boundary drifted"))
+        collections = [
+            ("callbacks", True, False),
+            ("scriptEventHandlers", False, True),
+            ("ordinaryMethods", False, False),
+        ]
+        for key, is_callback, is_event in collections:
+            rows = script.get(key, [])
+            if not isinstance(rows, list):
+                findings.append(Finding("ERROR", f"lua-api-contract.{decoded}", f"{key} must be an array"))
+                continue
+            for row in rows:
+                params = row.get("params")
+                name = row.get("name", "")
+                if (not isinstance(params, list)
+                        or row.get("arity") != sum(param != "..." for param in params)
+                        or row.get("variadic") != ("..." in params)
+                        or row.get("callsiteCount") is not None
+                        or not isinstance(row.get("functionLine"), int)
+                        or not isinstance(row.get("sourceLine"), int)
+                        or row.get("sourceLine", 0) <= row.get("functionLine", 0)):
+                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
+                                            "script method shape drifted"))
+                if is_callback and not str(name).startswith("_on"):
+                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
+                                            "callback tier contains an ordinary method"))
+                if is_event and name not in {
+                        "onJobQuestCompleteFirst", "onJobQuestCompleteSecond", "onJobQuestCompleteThird"}:
+                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
+                                            "script-event tier contains an unexpected name"))
+                if not is_callback and not is_event and (
+                        str(name).startswith("_on") or name in {
+                            "onJobQuestCompleteFirst", "onJobQuestCompleteSecond", "onJobQuestCompleteThird"}):
+                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
+                                            "ordinary tier contains a callback"))
+            method_count += len(rows)
+            callback_count += len(rows) if is_callback else 0
+            event_count += len(rows) if is_event else 0
+            ordinary_count += len(rows) if not is_callback and not is_event else 0
+    if (method_count, callback_count, event_count, ordinary_count) != (13782, 209, 43, 13530):
+        findings.append(Finding("ERROR", "lua-api-contract.methods", "row-derived method totals drifted"))
+
+    surfaces = doc.get("napiSurfaces", [])
+    if not isinstance(surfaces, list) or len(surfaces) != 433:
+        findings.append(Finding("ERROR", "lua-api-contract.napi", "N-API surface table drifted"))
+        surfaces = []
+    seen_names: set[str] = set()
+    reference_lines = 0
+    for surface in surfaces:
+        name = surface.get("name")
+        if not isinstance(name, str) or not name or name in seen_names:
+            findings.append(Finding("ERROR", "lua-api-contract.napi", "N-API name is missing or duplicated"))
+            continue
+        seen_names.add(name)
+        if (surface.get("arity") is not None or surface.get("variadic") is not None
+                or not surface.get("catalogRefs")):
+            findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
+                                    "N-API unknown-signature or catalog-link boundary drifted"))
+        receiver_total = 0
+        for receiver in surface.get("receivers", []):
+            if receiver.get("arity") is not None or receiver.get("variadic") is not None:
+                findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
+                                        "receiver inferred an unsupported native signature"))
+            script_total = sum(row.get("referenceLineCount", 0) for row in receiver.get("scripts", []))
+            if script_total != receiver.get("referenceLineCount"):
+                findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
+                                        "receiver reference counts do not reconcile"))
+            receiver_total += script_total
+        if receiver_total != surface.get("referenceLineCount"):
+            findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
+                                    "surface reference counts do not reconcile"))
+        reference_lines += receiver_total
+    if reference_lines != 17049:
+        findings.append(Finding("ERROR", "lua-api-contract.napi", "N-API reference total drifted"))
+
+    subsystem_expected = {
+        "chara/player": (1052, 1620, 68, 0, 1552, 1044, 1749, 180, 3048),
+        "director": (299, 412, 10, 0, 402, 299, 375, 31, 413),
+        "quest": (629, 6435, 8, 43, 6384, 629, 1593, 74, 7353),
+        "command": (165, 498, 7, 0, 491, 164, 475, 164, 1216),
+        "widget": (202, 3878, 22, 0, 3856, 200, 1094, 190, 3675),
+        "status": (158, 185, 2, 0, 183, 158, 166, 10, 177),
+        "group": (26, 113, 43, 0, 70, 24, 142, 29, 362),
+        "other": (140, 641, 49, 0, 592, 121, 336, 113, 805),
+    }
+    actual_subsystems = {
+        row.get("name"): (
+            row.get("scriptCount"), row.get("methodAssignments"), row.get("callbackAssignments"),
+            row.get("scriptEventAssignments"), row.get("ordinaryMethodAssignments"),
+            row.get("scriptsWithNapiReferences"), row.get("napiApiScriptReferences"),
+            row.get("distinctNapiNames"), row.get("napiReferenceLines"))
+        for row in doc.get("subsystems", [])
+    }
+    if actual_subsystems != subsystem_expected:
+        findings.append(Finding("ERROR", "lua-api-contract.subsystems", "subsystem totals drifted"))
+
+    rendered = json.dumps(
+        {"scriptDeclarations": doc.get("scriptDeclarations", []),
+         "napiSurfaces": doc.get("napiSurfaces", [])},
+        sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+    ).encode("utf-8")
+    actual_digest = hashlib.sha256(rendered).hexdigest().upper()
+    if doc.get("contractSha256") != actual_digest:
+        findings.append(Finding("ERROR", "lua-api-contract.digest", "API contract digest drifted"))
+    native = doc.get("nativeAttributionRetest", {})
+    if (native.get("status"), native.get("sampleSize"),
+            {row.get("name") for row in native.get("directAttributions", [])},
+            native.get("sourceSnapshot", {}).get("commit")) != (
+            "bounded_sample_succeeded_complete_attribution_blocked", 10,
+            {"_globalSave", "_globalTemp", "_memberSave"},
+            "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"):
+        findings.append(Finding("ERROR", "lua-api-contract.native", "native retest verdict drifted"))
+    expected_native_snapshot = {
+        "repository": "XIVLegacy/xivl-decomp",
+        "commit": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64",
+        "strings": {
+            "path": "config/ffxivgame.strings.json",
+            "sha256": "0401A3D88C3F29B53E7820682E551CC8B1A141A12E1300042E415F5BE0D18FF5",
+        },
+        "dumpStrings": {
+            "path": "tools/ghidra_scripts/DumpStrings.java",
+            "sha256": "0A70112572773A199912862C5E7AF0EFC63580C2CAF8AD9F586D3935DFE1C3DF",
+        },
+        "findCallers": {
+            "path": "tools/ghidra_scripts/FindCallers.java",
+            "sha256": "0D9565C031559228D2C3B5C6F0EC137B622453D397A1A9685A645DBF09B3029C",
+        },
+    }
+    if native.get("sourceSnapshot") != expected_native_snapshot:
+        findings.append(Finding("ERROR", "lua-api-contract.native-sources",
+                                "native source snapshot drifted"))
+    assessment = native.get("existingExporterAssessment", {})
+    if assessment.get("missingCapability") != (
+            "A reproducible string-name -> string-address -> all data/code references -> "
+            "registrar/implementation mapping for every N-API name."):
+        findings.append(Finding("ERROR", "lua-api-contract.native-boundary",
+                                "native attribution blocker drifted"))
+    expected_refs = [
+        "xivl-client-scripts:lua/registry.json",
+        "xivl-client-scripts:lua/napi_index.json",
+        "xivl-client-scripts:lua/scripts/**/*.calls.json",
+        "xivl-client-scripts:manifests/scripts.json",
+        "manifests/lua_api_index.json",
+        "xivl-decomp:config/ffxivgame.strings.json:7892-7894",
+        "xivl-decomp:asm/ffxivgame/002da450_FUN_006da450.s:21-23",
+        "xivl-decomp:asm/ffxivgame/002da4c0_FUN_006da4c0.s:21-23",
+        "xivl-decomp:asm/ffxivgame/002da530_FUN_006da530.s:21-23",
+        "xivl-decomp:tools/ghidra_scripts/DumpStrings.java:53-72",
+        "xivl-decomp:tools/ghidra_scripts/FindCallers.java:25-47",
+    ]
+    if doc.get("sourceRefs") != expected_refs:
+        findings.append(Finding("ERROR", "lua-api-contract.sourceRefs",
+                                "API evidence citations drifted"))
+    if len(doc.get("boundaries", [])) != 5:
+        findings.append(Finding("ERROR", "lua-api-contract.boundaries", "API claim boundaries drifted"))
     return findings
 
 CONFIDENCE_VALUES: frozenset[str] = frozenset({
@@ -1307,7 +1749,9 @@ BATTLE_RESULT_CHECK_COUNT = 1
 LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
 LUA_RESOURCE_PATH_CHECK_COUNT = 1
 LUA_CALLBACK_CONTRACT_CHECK_COUNT = 1
+LUA_API_CONTRACT_CHECK_COUNT = 1
 CAST_CHANT_PRESENTATION_CHECK_COUNT = 1
+COMBAT_COMMAND_EMISSION_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -1352,9 +1796,19 @@ def main() -> int:
         print(f"FATAL: failed to load {LUA_CALLBACK_CONTRACT_PATH}: {e}", file=sys.stderr)
         return 2
     try:
+        lua_api_contract_doc = _load_json(LUA_API_CONTRACT_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {LUA_API_CONTRACT_PATH}: {e}", file=sys.stderr)
+        return 2
+    try:
         cast_chant_presentation_doc = _load_json(CAST_CHANT_PRESENTATION_PATH)
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {CAST_CHANT_PRESENTATION_PATH}: {e}", file=sys.stderr)
+        return 2
+    try:
+        combat_command_emission_doc = _load_json(COMBAT_COMMAND_EMISSION_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {COMBAT_COMMAND_EMISSION_PATH}: {e}", file=sys.stderr)
         return 2
 
     print("=" * 72)
@@ -1383,8 +1837,12 @@ def main() -> int:
                       check_lua_resource_paths(lua_resource_path_doc)),
         SectionResult("Lua callback contract", LUA_CALLBACK_CONTRACT_CHECK_COUNT,
                       check_lua_callback_contract(lua_callback_contract_doc)),
+        SectionResult("complete Lua API contract", LUA_API_CONTRACT_CHECK_COUNT,
+                      check_lua_api_contract(lua_api_contract_doc)),
         SectionResult("cast and chant presentation", CAST_CHANT_PRESENTATION_CHECK_COUNT,
                       check_cast_chant_presentation(cast_chant_presentation_doc)),
+        SectionResult("combat command emission", COMBAT_COMMAND_EMISSION_CHECK_COUNT,
+                      check_combat_command_emission(combat_command_emission_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]
