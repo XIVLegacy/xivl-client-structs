@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "generated": "2026-08-14",
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "2012.09.19.0001",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "scope": "Client-side generic PlayerBase command-event emission through the Map EventStart envelope, with combat use established by capture co-occurrence. This does not prove that every skill, weaponskill, ability, or item follows the route, and records client pre-checks and routing only rather than server validation behavior.",
+  "verdict": {
+    "opcodeHex": "0x012d",
+    "name": "EventStartPacket",
+    "direction": "serverbound",
+    "builder": "FUN_00776760",
+    "builderVa": "0x00776760",
+    "confidence": "decomp_routed",
+    "summary": "The preserved PlayerBase command path can reach the generic 0x012d EventStart builder. Combat captures contain this fixed-size envelope, but the envelope is also used by noncombat events. Static evidence does not expose a separate per-skill opcode or a stable scalar command-sheet id field."
+  },
+  "commandPath": [
+    {
+      "step": 1,
+      "component": "PlayerBaseClass command script",
+      "evidence": "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.calls.json",
+      "facts": [
+        "command calls canCommand before _executeCommand",
+        "_onCommandEvent calls _callServerOnCommand when the command-specific fire path does not finish locally",
+        "_onCommandRequest falls back to _doServerOnCommand"
+      ]
+    },
+    {
+      "step": 2,
+      "component": "PlayerBase/MyPlayer N-API bridge",
+      "evidence": "manifests/control_class_napi_field_access_recursive.json",
+      "facts": [
+        "_executeCommand uses PlayerBase vtable slot 42; MyPlayer resolves it to FUN_0070A010",
+        "_callServerOnCommand uses PlayerBase vtable slot 45; MyPlayer resolves it to FUN_006E8B30",
+        "_doServerOnCommand uses PlayerBase vtable slot 46; MyPlayer resolves it to FUN_006E8C90"
+      ]
+    },
+    {
+      "step": 3,
+      "component": "Actor/director event bridge",
+      "function": "FUN_006EE680",
+      "va": "0x006EE680",
+      "evidence": "xivl-decomp:asm/ffxivgame/002ee680_FUN_006ee680.s",
+      "facts": [
+        "dispatches event-tag variants through FUN_0075E3A0",
+        "uses runtime object and RTTI checks before the normal route",
+        "does not expose a scalar gameCommand row id"
+      ]
+    },
+    {
+      "step": 4,
+      "component": "EventStart route wrapper",
+      "function": "FUN_0075E3A0",
+      "va": "0x0075E3A0",
+      "evidence": "xivl-decomp:asm/ffxivgame/0035e3a0_FUN_0075e3a0.s",
+      "facts": [
+        "stages the 128-byte event tail and 32-byte inline name/data area",
+        "calls FUN_00776760 at 0x0075E4AA",
+        "passes the completed record to FUN_004D6D30 at 0x0075E4BC"
+      ]
+    },
+    {
+      "step": 5,
+      "component": "EventStart packet builder",
+      "function": "FUN_00776760",
+      "va": "0x00776760",
+      "evidence": "manifests/combat_action_c2s_findings.json#builderTrace",
+      "facts": [
+        "writes opcode 0x012d at 0x00776786",
+        "writes record size 0xc8",
+        "builds a 0xb8-byte application payload inside a 216-byte total subpacket"
+      ]
+    },
+    {
+      "step": 6,
+      "component": "Zone send gates",
+      "function": "FUN_004D6D30 -> FUN_004E0240 -> FUN_00DAE010",
+      "evidence": "xivl-decomp:asm/ffxivgame/000d6d30_FUN_004d6d30.s; xivl-decomp:asm/ffxivgame/000e0240_FUN_004e0240.s",
+      "facts": [
+        "FUN_004D6D30 requires this+0x174ec to be non-null",
+        "FUN_004E0240 requires this+0x234 and the nested +0x70 pointer to be non-null",
+        "FUN_00DAE010 is the terminal client send boundary"
+      ]
+    }
+  ],
+  "wireLayout": {
+    "recordSize": 200,
+    "totalSubpacketSize": 216,
+    "applicationPayloadSize": 184,
+    "offsetBasis": "application payload after the 16-byte game-message prefix",
+    "fields": [
+      {"offset": "0x00", "width": 4, "source": "builder param_2", "name": "triggerActorId_or_selfActorId"},
+      {"offset": "0x04", "width": 4, "source": "builder param_3", "name": "ownerActorId_or_targetActorId"},
+      {"offset": "0x08", "width": 4, "source": "builder param_4", "name": "eventArgument0_unresolved"},
+      {"offset": "0x0c", "width": 4, "source": "builder param_5", "name": "eventArgument1_unresolved"},
+      {"offset": "0x10", "width": 1, "source": "builder param_6", "name": "eventType"},
+      {"offset": "0x11", "width": 32, "source": "builder param_7", "name": "eventName_or_inlineData"},
+      {"offset": "0x31", "width": 128, "source": "builder param_8", "name": "luaParameterBlob_or_eventTail"},
+      {"offset": "0xb1", "width": 7, "source": "size remainder", "name": "reserved_or_alignment_tail"}
+    ]
+  },
+  "clientPrechecks": [
+    {
+      "order": 1,
+      "check": "combined byte length of the first two string arguments",
+      "comparison": "length <= 50",
+      "source": "preserved PlayerBaseClass.command",
+      "classification": "client-side script pre-check"
+    },
+    {
+      "order": 2,
+      "check": "command burst blocker",
+      "comparison": "playerWork.commandBurstBlocker must be nil except command ids 12017 and 12009",
+      "source": "preserved PlayerBaseClass.canCommand",
+      "classification": "client-side script pre-check"
+    },
+    {
+      "order": 3,
+      "check": "native command-name gate",
+      "comparison": "_canExecuteCommand(commandName) must succeed unless commandName is commandRequest",
+      "source": "preserved PlayerBaseClass.canCommand",
+      "classification": "client-side script pre-check"
+    },
+    {
+      "order": 4,
+      "check": "command-specific eligibility",
+      "comparison": "command.canFire(player, args...) must succeed",
+      "source": "preserved PlayerBaseClass.canCommand",
+      "classification": "client-side indirect boundary",
+      "unresolvedBoundary": "The command object's canFire implementation is selected dynamically. No common static range, distance, resource, recast, or mode constant can be assigned to all skills from this call site."
+    },
+    {
+      "order": 5,
+      "check": "actor/director bridge route",
+      "comparison": "runtime object, readiness byte, event-tag, and RTTI branches in FUN_006EE680",
+      "source": "0x006EE6AD..0x006EE969",
+      "classification": "client-side native route checks"
+    },
+    {
+      "order": 6,
+      "check": "zone client availability",
+      "comparison": "this+0x174ec != null",
+      "source": "FUN_004D6D30 at 0x004D6D30..0x004D6D3F",
+      "classification": "client-side send gate"
+    },
+    {
+      "order": 7,
+      "check": "network endpoint availability",
+      "comparison": "this+0x234 != null and nested +0x70 != null",
+      "source": "FUN_004E0240 at 0x004E0240..0x004E0252",
+      "classification": "client-side send gate"
+    }
+  ],
+  "commandIdRelationship": {
+    "status": "unresolved",
+    "staticClientData": "gameCommand-derived command ids are stable client-data row keys, and the preserved command object exposes getCommandId().",
+    "wireFinding": "No scalar field in FUN_00776760 or the normal route is proven to carry that row key unchanged, offset, or table-mapped. Combat samples do not provide a stable direct gameCommand id at application offset 0x08 or elsewhere. BCS-S-0034 retains the earlier pcap-derived serverCodes_or_actionOrAbilityId alias for offset 0x08; that label is a bounded hypothesis, not proof of a gameCommand id.",
+    "boundary": "The conversion from command object/event arguments into eventName_or_inlineData and luaParameterBlob_or_eventTail remains upstream of FUN_0075E3A0 or behind command-specific script/native dispatch.",
+    "rejectedValues": [
+      "opcode 0x012d is not command id 301",
+      "isolated little-endian matches inside opaque event bytes are not field joins",
+      "client-data command names, costs, magnitudes, ranges, and statuses are not wire or server semantics without a field-level join"
+    ]
+  },
+  "captureBoundary": {
+    "totalOccurrences": 126,
+    "retainedSamples": 60,
+    "subpacketSizes": [216],
+    "combatExamples": ["combat_autoattack.pcapng", "combat_skills.pcapng", "party_battle_leve.pcapng"],
+    "warning": "The same opcode occurs in many noncombat scenarios. Scenario co-occurrence proves use of the generic envelope, not a dedicated combat payload schema or a stable command-id field."
+  },
+  "excludedSameNumberedFamily": {
+    "range": "0x01c3..0x01df",
+    "reason": "Those serverbound emitters belong to recruitment, social, mail, topic/call, and market/search paths. Their same-era static grouping and same-numbered clientbound dummy callbacks are not combat-command evidence.",
+    "source": "manifests/c2s_emit_sites.json; manifests/zone_dummy_callback_cluster.json"
+  },
+  "sourceRefs": [
+    "manifests/combat_action_c2s_findings.json",
+    "manifests/action_skill_subsystem.json",
+    "manifests/control_class_napi_field_access_recursive.json",
+    "manifests/vtable_resolved_evidence.json",
+    "manifests/c2s_emit_sites.json",
+    "xivl-decomp:asm/ffxivgame/002ee680_FUN_006ee680.s",
+    "xivl-decomp:asm/ffxivgame/0035e3a0_FUN_0075e3a0.s",
+    "xivl-decomp:asm/ffxivgame/000d6d30_FUN_004d6d30.s",
+    "xivl-decomp:asm/ffxivgame/000e0240_FUN_004e0240.s",
+    "xivl-client-scripts:manifests/scripts.json#lua/scripts/chara/player/playerbaseclass.lua",
+    "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.calls.json",
+    "xivl-captures:derived/observations.json#inner_opcodes.c2s.0x012d",
+    "xivl-captures:derived/payload_layouts.json#c2s.0x012d",
+    "xivl-captures:derived/payload_samples.json#c2s.0x012d",
+    "xivl-client-data:derived/command_battle_params.csv"
+  ]
+}

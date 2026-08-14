@@ -301,7 +301,7 @@
       ],
       "mapActionUseSamples": 126
     },
-    "architecturalNote": "Per docs/client-architecture.md, '1.x combat is asymmetric'. The c2s intent side rides this generic EventStart 0x012D frame with combat semantics carried by eventName + luaParams. The s2c display side uses dedicated CommandResult* opcodes (0x0139..0x013C). CharaActionController is NOT the c2s sender (BCS-Y-0434 verified no xrefs to FUN_00776760 or any sibling builder); it is receive-side playback infrastructure."
+    "architecturalNote": "Per docs/client-architecture.md, '1.x combat is asymmetric'. The evidenced command-event path rides the generic EventStart 0x012D frame, and combat captures contain that envelope. The static route does not prove that every action kind uses it or expose a stable scalar gameCommand id; command-specific meaning remains in the event arguments, inline bytes, and Lua tail behind dynamic dispatch. The s2c display side uses dedicated CommandResult* opcodes (0x0139..0x013C). CharaActionController is NOT the c2s sender (BCS-Y-0434 verified no xrefs to FUN_00776760 or any sibling builder); it is receive-side playback infrastructure."
   },
   "action_animation_chain_summary": {
     "overview": "The receive-side animation chain has TWO complementary paths in 1.23b: (1) the BATTLE-RESULT path that carries numeric/visual feedback (damage popups, hit/miss text) via CommandResult opcodes 0x0139..0x013C, fully cataloged; (2) the ACTOR-ANIMATION path that triggers skeletal animations on actors via PlayAnimationOnActor 0x00DA + the App::Scene::Actor::Chara::CharaAction* class family, partially cataloged via RTTI but with the s2c packet -> CharaActionController wiring not yet demonstrated.",
@@ -360,9 +360,9 @@
       "implication": "The action-skill-subsystem pass produces 0 new BCS-Y catalog entries proper. The 3 proposed entries (0539 synthesis, 0540/0541 open questions) are all knowledge-organization entries rather than new code attributions."
     },
     {
-      "title": "c2s 0x012D EventStart is the universal combat-intent carrier (client-architecture '1.x combat is asymmetric' confirmed and re-validated)",
-      "detail": "All combat actions (auto-attack, weaponskill, ability cast, item use) ride the same c2s 0x012D EventStart frame with intent encoded in eventName + luaParams. The builder FUN_00776760 (BCS-Y-0426) is reached via 5 distinct wrappers (BCS-Y-0427..0431), each serving a different upstream Lua call site - the most common path for combat is PlayerBaseClass._onCommandEvent -> _callServerOnCommand_cpp -> FUN_006EE680 (BCS-Y-0433) -> FUN_0075E3A0 -> FUN_00776760. PCAP corpus (126 hits) confirms the opcode dominates combat captures.",
-      "implication": "The action-skill-subsystem pass re-validates client-architecture '1.x combat is asymmetric' with no contradiction. Future server-side combat implementation must parse eventName/luaParams to extract command semantics, NOT expect opcode-per-action."
+      "title": "c2s 0x012D EventStart is the evidenced generic command-event carrier",
+      "detail": "Combat scenarios contain the 0x012D EventStart frame, and the preserved PlayerBaseClass._onCommandEvent path reaches _callServerOnCommand_cpp -> FUN_006EE680 (BCS-Y-0433) -> FUN_0075E3A0 -> FUN_00776760. The same opcode also occurs in many noncombat scenarios. Static evidence therefore proves the generic command-event route, not that every auto-attack, weaponskill, ability, and item use shares one fully decoded scalar schema.",
+      "implication": "Do not expect an opcode-per-action model, but also do not claim a stable gameCommand id field. The exact command mapping remains behind event arguments, inline bytes, the Lua parameter tail, and command-specific dynamic dispatch."
     },
     {
       "title": "s2c CommandResult/BattleAction family has 4 size variants for 0/1/10/18 target rows",
