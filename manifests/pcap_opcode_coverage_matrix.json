@@ -20,7 +20,7 @@
     "B": "Generic actor vftable[9]: dispatcher casts to actor via FUN_004d9910 then calls slot 9 (24 opcodes 0x0F + 0xCC..0xE5)",
     "C": "Dedicated case handler: bespoke logic in FUN_004DC690 low-switch (cases 0x02..0x0E, 0x11, 0xCA, 0xCB)",
     "D": "Sub-dispatcher: routes through FUN_004D8860 event-family or other sub-routers",
-    "E": "Unrouted observed opcode: no case in any documented dispatcher (live capture candidate)",
+    "E": "Unrouted observed opcode: no case in any documented dispatcher (runtime-only distinctions are evidence ceilings)",
     "C2S-Builder": "c2s emitter via Tier-D builder + FUN_004E0240/FUN_00DAE010 chain",
     "C2S-Operation": "c2s emitter via LobbyClient::*Operation vftable",
     "C2S-Embedded": "c2s emitter embedded in s2c dispatcher case (e.g. 0x00CA in FUN_004DC690 case 7)",
@@ -47,7 +47,7 @@
     {"opcode": "0x00ce", "opcodeInt": 206, "pcapCount": 940, "pattern": "B", "bcsYIds": ["BCS-Y-0617 ThirdRouter_Case0xCE_ActionAnimationSubDispatcher_FUN_0058B2A0", "BCS-Y-0999 CharaActionStateSetter_FUN_0058ADC0", "BCS-Y-1000 CharaActionStateTickProcessor_FUN_0058A090", "BCS-Y-1001 CharaPositionOrientationSnapshot_FUN_005878A0", "BCS-Y-1002 CharaPositionHistoryRingBuffer_FUN_005886B0"], "catalogStatus": "covered_pipeline", "notes": "Actor cluster case 0xCE -> CharaElement::vftable[9] (FUN_0058CCA0) -> third-router case 0xCE -> ActionAnimationSubDispatcher FUN_0058B2A0 -> CharaActionStateSetter FUN_0058ADC0. The chara-action-state pass attributed the full downstream pipeline including tick processor (which emits c2s 0x00CA, explaining 70x freq ratio). Carries action-state changes for actors."},
     {"opcode": "0x00cf", "opcodeInt": 207, "pcapCount": 15100, "pattern": "B", "bcsYIds": ["BCS-Y-0565 ThirdRouter_Case0xCF_StateUpdateHelper_FUN_0058F240", "BCS-Y-1018 CharaElement_Case0xCF_CurrentPositionWriter_FUN_0058F160"], "catalogStatus": "covered_pipeline", "notes": "MoveActor - HEAVIEST s2c opcode. Closed by the moveactor-pipeline pass. Case 0xCF in CharaElement::vftable[9] FUN_0058CCA0: self-check branch + ZoneInComplete signal 0x4FD or +0x210 ushort write -> FUN_0058F240 (history snapshot +0x184/+0x214/+0x21c, broadcasts 0x34/0x35/0x36) -> FUN_0058F160 (current position +0xB0/+0xB8, broadcast 0x26). Double-write history+current enables client-side interpolation between server updates."},
     {"opcode": "0x00d0", "opcodeInt": 208, "pcapCount": 1247, "pattern": "B", "bcsYIds": ["BCS-Y-0540", "BCS-Y-0619"], "catalogStatus": "covered_pipeline", "notes": "CharaElement::vftable[9] FUN_0058CCA0 case 0xD0 -> 16-slot (dword+ushort) state table at this+0x188 with 0xffff terminators; FUN_0058ECB0 32-record secondary init; FUN_004D7980(0x88,...) broadcast. End-to-end attributed via the state-table-pipeline synthesis."},
-    {"opcode": "0x00d2", "opcodeInt": 210, "pcapCount": 121, "pattern": "E", "bcsYIds": [], "catalogStatus": "gap", "notes": "NOT in FUN_004DC690 low-switch case list. Per client-architecture 'S2C dispatch has five architectural patterns' Pattern E: unrouted - engine bug, version drift, or different routing. live capture candidate"},
+    {"opcode": "0x00d2", "opcodeInt": 210, "pcapCount": 121, "pattern": "E", "bcsYIds": [], "catalogStatus": "gap", "notes": "NOT in FUN_004DC690 low-switch case list. Per client-architecture 'S2C dispatch has five architectural patterns' Pattern E: unrouted - engine bug, version drift, or different routing. Runtime-only distinction is an evidence ceiling under the complete preserved corpus."},
     {"opcode": "0x00d3", "opcodeInt": 211, "pcapCount": 167, "pattern": "B", "bcsYIds": ["BCS-Y-0048 SetTargetTimeReceiver", "BCS-Y-0049 slot1"], "catalogStatus": "covered_receiver", "notes": "Actor cluster case 0xD3 -> actor->vftable[9]. SetTargetTimeReceiver. SetActorTargetAnimatedPacket Wire name: SetTargetTime (per BCS-Y-0048)."},
     {"opcode": "0x00d6", "opcodeInt": 214, "pcapCount": 760, "pattern": "B", "bcsYIds": ["BCS-Y-0540", "BCS-Y-0622", "BCS-Y-1021", "BCS-Y-1022"], "catalogStatus": "covered_pipeline", "notes": "CharaElement::vftable[9] FUN_0058CCA0 cases 0xD6/0xD7 fallthrough -> FUN_00586870 loop (BCS-Y-0622) populates actor+0xaac+i*4 table -> FUN_0058EBD0 (sets bit 1 of state word +0xb1c, dirty +0xb20) -> FUN_004D7980(0x46) broadcast -> FUN_0058EBB0 (sets bit 0 of state word +0xb1c, dirty +0xb20). End-to-end attributed via the state-flag-pipeline work. Per-opcode diff: 0x00D7 reads count from packet+0x90; 0x00D6 reads from packet+0x110."},
     {"opcode": "0x00d8", "opcodeInt": 216, "pcapCount": 15, "pattern": "B", "bcsYIds": ["BCS-Y-0540", "BCS-Y-0623", "BCS-Y-0662", "BCS-Y-1080", "BCS-Y-1081"], "catalogStatus": "covered_pipeline_hybrid", "notes": "Actor cluster case 0xD8 -> actor->vftable[9]. SetActorBGProperties. Pipeline: FUN_004DC690 case 0xF fallthrough (BCS-Y-1079) -> FUN_0058CCA0 (BCS-Y-0540) -> case 0xD8 lazy-init wrapper FUN_0058BF60 (BCS-Y-0623) -> MapObjectForChara ctor FUN_00590230 (BCS-Y-1080) + state-bit writer FUN_005868A0 (BCS-Y-1081). Hybrid alt-path: MapLayoutElement::vftable[9] FUN_0059CED0 case 0xD8 is a no-op consume (BCS-Y-0662)."},
@@ -75,7 +75,7 @@
     {"opcode": "0x0144", "opcodeInt": 324, "pcapCount": 992, "pattern": "B", "bcsYIds": ["BCS-Y-0121 ctor", "BCS-Y-0122 apply", "BCS-Y-0123 dtor"], "catalogStatus": "covered_receiver", "notes": "ChangeActorSubStatModeBorderReceiver / SetActorSubStatePacket. FUN_004DC690 high-switch case 0x144 -> actor->vftable[9]. Bridge opcode confirmed"},
     {"opcode": "0x0145", "opcodeInt": 325, "pcapCount": 832, "pattern": "B", "bcsYIds": ["BCS-Y-0044 RTTI", "BCS-Y-0045 slot1", "BCS-Y-0118 ctor", "BCS-Y-0119 apply", "BCS-Y-0120 dtor"], "catalogStatus": "covered_receiver", "notes": "ChangeActorExtraStatReceiver / SetActorIconPacket. Case 0x145 in high-switch -> vftable[9] Wire name: ChangeActorExtraStat (per BCS-Y-0044)."},
     {"opcode": "0x0146", "opcodeInt": 326, "pcapCount": 158, "pattern": "C", "bcsYIds": ["BCS-Y-0703 EquipmentDispatcher_Opcode0x0146_FUN_005764C0 (preferred)", "BCS-Y-0544 S2cDispatcher_HighSwitch_Case146_FUN_005764C0 (alt-name)"], "catalogStatus": "covered_pattern", "notes": "FUN_004DC690 high-switch case 0x146: dedicated handler FUN_005764C0 (InventorySetBegin). Two BCS-Y entries at this address (legitimate alias; same function from dispatcher-case view + EquipmentDispatcher subsystem view; cross-ref notes added by a hygiene pass)."},
-    {"opcode": "0x0147", "opcodeInt": 327, "pcapCount": 158, "pattern": "E", "bcsYIds": [], "catalogStatus": "gap", "notes": "worklist priority 5. NOT in FUN_004DC690 case list. Pattern E: unrouted - InventorySetEndPacket per client-architecture 'S2C dispatch has five architectural patterns'. live capture candidate"},
+    {"opcode": "0x0147", "opcodeInt": 327, "pcapCount": 158, "pattern": "E", "bcsYIds": [], "catalogStatus": "gap", "notes": "worklist priority 5. NOT in FUN_004DC690 case list. Pattern E: unrouted - InventorySetEndPacket per client-architecture 'S2C dispatch has five architectural patterns'. Runtime-only distinction is an evidence ceiling under the complete preserved corpus."},
     {"opcode": "0x0148", "opcodeInt": 328, "pcapCount": 54, "pattern": "C", "bcsYIds": ["BCS-Y-0704 EquipmentDispatcher_Opcode0x0148_FUN_00576560 (preferred)", "BCS-Y-0545 S2cDispatcher_HighSwitch_Case148_FUN_00576560 (alt-name)"], "catalogStatus": "covered_pattern", "notes": "FUN_004DC690 high-switch case 0x148: dedicated handler FUN_00576560 (InventoryListX01). Two BCS-Y entries at this address (legitimate alias; same function from dispatcher-case view + EquipmentDispatcher subsystem view; cross-ref notes added by a hygiene pass)."},
     {"opcode": "0x0149", "opcodeInt": 329, "pcapCount": 43, "pattern": "C", "bcsYIds": ["BCS-Y-0705 EquipmentDispatcher_Opcode0x0149_FUN_005765D0 (preferred)", "BCS-Y-0546 S2cDispatcher_HighSwitch_Case149_FUN_005765D0 (alt-name)"], "catalogStatus": "covered_pattern", "notes": "FUN_004DC690 high-switch case 0x149: dedicated handler FUN_005765D0 (InventoryListX08). Two BCS-Y entries at this address (legitimate alias; same function from dispatcher-case view + EquipmentDispatcher subsystem view; cross-ref notes added by a hygiene pass)."},
     {"opcode": "0x014a", "opcodeInt": 330, "pcapCount": 12, "pattern": "C", "bcsYIds": ["BCS-Y-0709 EquipmentDispatcher_Opcode0x014A_FUN_00576640 (preferred, structural)", "BCS-Y-0547 S2cDispatcher_HighSwitch_Case14A_FUN_00576640 (alt-name)"], "catalogStatus": "covered_pattern", "notes": "FUN_004DC690 high-switch case 0x14A: dedicated handler FUN_00576640 (InventoryListX16; deep handler not yet decomp-confirmed). Two BCS-Y entries at this address (legitimate alias; same function from dispatcher-case view + EquipmentDispatcher subsystem view; cross-ref notes added by a hygiene pass)."},
@@ -218,7 +218,7 @@
       "pcapCount": 158,
       "pattern": "E",
       "status": "gap_static_exhausted",
-      "notes": "InventorySetEndPacket. Static methodology exhausted across both static tiers (sync FUN_004DC690 negative, sub-dispatcher FUN_004D8860 negative, ReceiverApplyWrapperTable negative, async FUN_00DB5300 std::map registry negative + wide opcode immediate scan with 5 positive controls). Best-current explanation: vestigial server-emitted pair-end marker silently dropped by client. Only live capture / DLL injection remains."
+      "notes": "InventorySetEndPacket. Static methodology exhausted across both static tiers (sync FUN_004DC690 negative, sub-dispatcher FUN_004D8860 negative, ReceiverApplyWrapperTable negative, async FUN_00DB5300 std::map registry negative + wide opcode immediate scan with 5 positive controls). Best-current explanation: vestigial server-emitted pair-end marker silently dropped by client. The remaining runtime-only distinction is a permanent evidence ceiling."
     },
     {
       "rank": 2,
@@ -226,7 +226,7 @@
       "pcapCount": 121,
       "pattern": "E",
       "status": "gap_static_exhausted",
-      "notes": "Unnamed in any internal reference. Ran 5 hypothesis paths (H1 FUN_004DC690 + H2 FUN_004D8860 + H3 BCS-Y-1055 table + H4 wide immediate scan + H5 RTTI Receiver scan); all NEGATIVE. Best-current explanation: vestigial silently-dropped opcode. live capture only."
+      "notes": "Unnamed in any internal reference. Ran 5 hypothesis paths (H1 FUN_004DC690 + H2 FUN_004D8860 + H3 BCS-Y-1055 table + H4 wide immediate scan + H5 RTTI Receiver scan); all NEGATIVE. Best-current explanation: vestigial silently-dropped opcode. The remaining runtime-only distinction is a permanent evidence ceiling."
     },
     {
       "rank": 3,
@@ -234,7 +234,7 @@
       "pcapCount": 26,
       "pattern": "Unknown",
       "status": "gap_off_corpus",
-      "notes": "PartyChatMessagePacket. WorldServerbound channel (off-corpus for our Map-channel-focused analysis). Different routing infrastructure. live capture candidate (would require World-channel pcap traces)."
+      "notes": "PartyChatMessagePacket. WorldServerbound channel (off-corpus for our Map-channel-focused analysis). Different routing infrastructure; the missing World-channel retail trace is a permanent corpus limitation."
     },
     {
       "rank": 4,
@@ -242,7 +242,7 @@
       "pcapCount": 1,
       "pattern": "E",
       "status": "gap_pattern_e",
-      "notes": "worklist priority 39. Single-hit. BlacklistRequest s2c is the inbound interpretation (the c2s-side BlacklistRequest emitter is BCS-Y-1071 from an earlier hygiene pass). s2c-side Pattern E unrouted. live capture candidate."
+      "notes": "worklist priority 39. Single-hit. BlacklistRequest s2c is the inbound interpretation (the c2s-side BlacklistRequest emitter is BCS-Y-1071 from an earlier hygiene pass). s2c-side Pattern E unrouted; the remaining runtime-only distinction is a permanent evidence ceiling."
     }
   ],
   "topUncoveredC2sGaps": [
@@ -258,9 +258,9 @@
   "recommendations": [
     {
       "priority": 1,
-      "target": "live capture candidates (deferred indefinitely per project direction)",
-      "rationale": "Unchanged. Remaining static-methodology-exhausted opcodes that require live capture / DLL injection. 4 s2c entries: 0x0147 (confirmed unresolved), 0x00D2 (confirmed unresolved), 0x01CB single-hit BlacklistRequest s2c-side, 0x00C9 PartyChat (off-corpus World channel). 1 c2s entry: 0x00CE Opaque0xCE (0 hits in binary scan). NOTE: c2s 0x00C9 PartyChat was removed from this list - BCS-Y-0309 is its confirmed WorldServerbound emitter, so the c2s side is covered_emitter (see c2sOpcodeTable); only the s2c 0x00C9 side remains a live-capture candidate. Plus 22 mapped-but-not-observed Pattern A receiver classes outside the 1.23b corpus scope. The zone+0x4d8 writer hunt completed without a zone-owned writer or pointer assignment; lifecycle and semantic name remain unresolved. Plus the 3 uncataloged grandparents from the (FUN_0076c220, FUN_00792060, FUN_0089e260) if they become load-bearing.",
-      "approach": "live capture deferred. Re-evaluation requires explicit project direction.",
+      "target": "finite-corpus evidence ceilings",
+      "rationale": "Static-methodology-exhausted rows under the complete preserved corpus: 4 s2c entries (0x0147, 0x00D2, 0x01CB, and off-corpus World-channel 0x00C9) plus c2s 0x00CE. Runtime-only distinctions cannot be revisited through new retail capture or injection. Re-evaluate only if static client evidence, an existing capture, preserved server source, or another already-preserved artifact supplies new evidence. The 22 mapped-but-not-observed Pattern A receiver classes remain outside corpus coverage; the zone+0x4d8 lifecycle and 3 uncataloged grandparents remain static follow-ups only if new preserved evidence makes them load-bearing.",
+      "approach": "Preserve bounded unresolved status; use only existing static and captured evidence.",
       "expectedYield": "0 (no static-methodology path remaining)."
     }
   ],
