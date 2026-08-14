@@ -2,10 +2,11 @@
 """Gate the vendored evidence under data/vendor/ against its PROVENANCE.
 
 Every vendor subdirectory declares its files in a PROVENANCE.json whose
-entries carry the source repository, the source path and
-the sha256 of the copied bytes. This gate re-hashes each file and fails on any
-mismatch, any undeclared file, and any entry whose file is missing, so vendored
-evidence cannot drift away from the revision it claims to be.
+entries carry the source repository, source path, source license, canonical
+license URL, and sha256 of the copied bytes. This gate re-hashes each file and
+fails on incomplete provenance, any mismatch, any undeclared file, and any
+entry whose file is missing, so vendored evidence cannot drift away from the
+revision and licensing terms it claims to represent.
 
 Exit 0 if everything matches, 1 (with a report on stderr) otherwise. Invoked by
 validate-json.ps1. Also runnable directly: python tools/validate_vendor.py
@@ -45,7 +46,14 @@ def check_entry(directory: Path, entry: object, errors: list[str]) -> str | None
         errors.append(f"{label}: {name} must be a plain file name in this directory")
         return None
 
-    for field in ("sourceRepo", "sourcePath", "evidenceTier", "transformation"):
+    for field in (
+        "sourceRepo",
+        "sourcePath",
+        "sourceLicense",
+        "sourceLicenseUrl",
+        "evidenceTier",
+        "transformation",
+    ):
         if not isinstance(entry.get(field), str) or not entry[field]:
             errors.append(f"{label}: {name} is missing {field}")
 

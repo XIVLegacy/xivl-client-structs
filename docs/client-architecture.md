@@ -361,13 +361,25 @@ match no index, so they disable all eight ("hide everything"). Weather
 -> `FUN_0059E4D0` -> scene record `0x21`, never touching `+0xf0` - no
 weather id can drive the eight-state selector.
 
+The scene thread drains these records in `FUN_004E9700` (BCS-Y-1843).
+Record `0x93` passes through `FUN_0060C140` (BCS-Y-1844) and
+`FUN_007C93C0` (BCS-Y-1845), which subtracts `0x15` and calls scene actor
+vtable slot `+0x274`. For `MapLayoutActor` (BCS-Y-1863), that slot is
+`FUN_0062CDA0` (BCS-Y-1860). Case `0x7E` changes the selected bit at
+`MapLayoutActor+0x358` through `FUN_0062B7B0` (BCS-Y-1861), then
+`FUN_0062AEB0` (BCS-Y-1862) recomputes visibility for
+`sgrp_meteor` and `sgrp_meteor117` through `sgrp_meteor123` under
+`sky_celestial`. The client identifies eight meteor scene groups. It does
+not prove that all eight contain distinct growth stage visuals.
+
 `_getHydaelynMoon` (registrar `FUN_00752F30`, impl `FUN_00707C00`) is a
 separate path: its body is a pure `(clock / 0x1068 & 0x1f) + 4 >> 2` time-derived
 8-phase value feeding `MoonPhaseIconControl`, unrelated to `+0xf0`.
 
 Refs: [xivl-captures:derived/payload_layouts.json](https://github.com/XIVLegacy/xivl-captures/blob/main/derived/payload_layouts.json) (s2c 0x0010).
 Vftable: `Application::Main::Element::Map::MapLayoutElement::vftable` at
-0x00FAAD88. BCS-Y-0279, BCS-Y-0541, BCS-Y-0661.
+0x00FAAD88. BCS-Y-0279, BCS-Y-0541, BCS-Y-0661, BCS-Y-1843..1845,
+BCS-Y-1860..1863.
 
 ### Auto-run is client-only movement state, cancelled by per-frame geometry only
 
