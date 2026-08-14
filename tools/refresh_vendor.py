@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Refresh the vendored evidence under data/vendor/ from its declared source.
 
-Each PROVENANCE.json entry names the source repository, path and the sha256 of
-the copied bytes. The sha256 is the identity of the promoted snapshot: this
-tool re-fetches the bytes from the named source checkout and restamps the
-entry, so a drifted or corrupted vendor file can be restored to the recorded
-content (this repo's own history holds the fixture) and a newer source state
-can be promoted through the same path.
+Each PROVENANCE.json entry names the source repository, path, license,
+canonical license URL, and sha256 of the copied bytes. The sha256 is the
+identity of the promoted snapshot: this tool re-fetches the bytes from the
+named source checkout and restamps the entry, so a drifted or corrupted vendor
+file can be restored to the recorded content (this repo's own history holds
+the fixture) and a newer source state can be promoted through the same path.
 
 The source path is tracked in the first-party source repository. Bytes come
 from `git show HEAD:<path>` in that checkout, so the promotion reflects its
