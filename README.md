@@ -43,5 +43,6 @@ Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before you op
 <a href="LICENSE-DATA"><img src="https://i.creativecommons.org/l/by/4.0/88x31.png" alt="Creative Commons Attribution 4.0 International license"></a>
 
 Source code uses the [MIT License](LICENSE). Catalog data and research findings
-use [CC BY 4.0](LICENSE-DATA). This project is unaffiliated with and unendorsed
-by the publisher. All trademarks belong to their respective owners.
+use [CC BY 4.0](LICENSE-DATA). Vendored evidence retains the source license
+recorded in its provenance file. This project is unaffiliated with and
+unendorsed by the publisher. All trademarks belong to their respective owners.
