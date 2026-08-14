@@ -47,6 +47,7 @@ BATTLE_RESULT_PATH = REPO / "manifests" / "battle_result_field_semantics.json"
 LUA_RESOURCE_INVENTORY_PATH = REPO / "manifests" / "preserved_lua_resource_inventory.json"
 LUA_RESOURCE_PATH_PATH = REPO / "manifests" / "lua_resource_path_decoding.json"
 LUA_CALLBACK_CONTRACT_PATH = REPO / "manifests" / "lua_callback_contract.json"
+CAST_CHANT_PRESENTATION_PATH = REPO / "manifests" / "cast_chant_presentation.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -154,6 +155,147 @@ def check_battle_result_fields(doc: dict[str, Any], structs_doc: dict[str, Any])
     }
     if target.get("size") != "0x14" or target_fields != expected_target_fields:
         findings.append(Finding("ERROR", "structs.json:BCS-S-0051", "target-row layout drifted"))
+    return findings
+
+
+def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
+    """Keep the four cast/chant presentation surfaces distinct."""
+    findings: list[Finding] = []
+    if not isinstance(doc, dict):
+        return [Finding("ERROR", "cast-chant", "manifest must be an object")]
+    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
+        1, "2026-08-14", "1.23b", "bounded_static_and_capture_closure"
+    ):
+        findings.append(Finding("ERROR", "cast-chant.metadata", "snapshot metadata drifted"))
+
+    expected_snapshots = {
+        "captures": {"repository": "XIVLegacy/xivl-captures", "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4"},
+        "clientData": {"repository": "XIVLegacy/xivl-client-data", "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6"},
+        "clientScripts": {"repository": "XIVLegacy/xivl-client-scripts", "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b"},
+        "decomp": {"repository": "XIVLegacy/xivl-decomp", "commit": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"},
+    }
+    if doc.get("sourceSnapshots") != expected_snapshots:
+        findings.append(Finding("ERROR", "cast-chant.sourceSnapshots", "source snapshot drifted"))
+
+    gauge = doc.get("activeCastGauge", {})
+    if not isinstance(gauge, dict):
+        return findings + [Finding("ERROR", "cast-chant.activeCastGauge", "must be an object")]
+    carrier = gauge.get("wireCarrier", {})
+    if not isinstance(carrier, dict):
+        return findings + [Finding("ERROR", "cast-chant.carrier", "must be an object")]
+    if (carrier.get("opcodeHex"), carrier.get("subpacketSize"),
+            carrier.get("observedPackets"), carrier.get("observedScenarios"),
+            carrier.get("applicationPayloadSize")) != ("0x0137", 168, 1992, 36, 136):
+        findings.append(Finding("ERROR", "cast-chant.carrier", "0x0137 capture tuple drifted"))
+    expected_framing = ("168-byte subpacket = 16-byte outer subevent framing + 152-byte game message; "
+                        "the game message is a 16-byte prefix plus the 136-byte application payload.")
+    if carrier.get("framing") != expected_framing:
+        findings.append(Finding("ERROR", "cast-chant.framing", "0x0137 framing drifted"))
+
+    property_rows = gauge.get("properties", [])
+    if not isinstance(property_rows, list):
+        return findings + [Finding("ERROR", "cast-chant.properties", "must be an array")]
+    properties = {
+        row.get("name"): (
+            row.get("idHex"), row.get("valueType"), row.get("observedRecords"),
+            row.get("observedCaptures"), row.get("observedValuesHex")
+        )
+        for row in property_rows if isinstance(row, dict)
+    }
+    expected_properties = {
+        "playerWork.castCommandClient": ("0xf683a451", "u32", 3, 1,
+                                          ["d26a0000", "00000000"]),
+        "playerWork.castEndClient": ("0x59c40d5d", "u32", 2, 1,
+                                      ["dc1be150", "c21de150"]),
+        "charaWork.battleTemp.castGauge_speed[0]": ("0x573fe04c", "float32", 11, 8,
+                                                     ["0000803f"]),
+        "charaWork.battleTemp.castGauge_speed[1]": ("0xbb9cc775", "float32", 11, 8,
+                                                     ["0000803e"]),
+    }
+    if properties != expected_properties:
+        findings.append(Finding("ERROR", "cast-chant.properties", "cast property contract drifted"))
+
+    expected_route = [
+        "FUN_004D8860", "FUN_00575070", "FUN_00759ED0", "FUN_0089E550",
+        "FUN_00775A30", "FUN_00775180", "property-entry indirect call at 0x00775652",
+        "FUN_00774220", "FUN_00773F10", "FUN_00CC7A90 _onUpdateWork",
+    ]
+    if gauge.get("propertyRoute") != expected_route:
+        findings.append(Finding("ERROR", "cast-chant.propertyRoute", "native route drifted"))
+
+    cross_check = gauge.get("captureCrossCheck", {})
+    if not isinstance(cross_check, dict) or (
+        cross_check.get("scenario"), cross_check.get("target"),
+        cross_check.get("observedCommandId")
+    ) != ("party_battle_leve.pcapng", "playerWork/castState", 27346):
+        findings.append(Finding("ERROR", "cast-chant.cross-check", "Cure same-id cross-check drifted"))
+    duration = gauge.get("uiDuration", {})
+    expected_formula = ("remaining = player.getCastEndTime() - worldMaster._getServerTime(); "
+                        "if remaining <= 0 then remaining = 1; progressRate = 1 / remaining")
+    if not isinstance(duration, dict) or (
+        duration.get("formula"), duration.get("widget"), duration.get("storyboard"),
+        duration.get("units")
+    ) != (expected_formula, "ProgressBar_MagicCast_Main", "UILuaCommands.StartCastGauge", "unresolved"):
+        findings.append(Finding("ERROR", "cast-chant.uiDuration", "gauge formula drifted"))
+    sheet = doc.get("localCommandCastTime", {})
+    if not isinstance(sheet, dict):
+        return findings + [Finding("ERROR", "cast-chant.sheet", "must be an object")]
+    sheet_example = sheet.get("example", {})
+    if not isinstance(sheet_example, dict):
+        return findings + [Finding("ERROR", "cast-chant.sheet.example", "must be an object")]
+    if (sheet.get("sheet"), sheet.get("column"), sheet.get("fieldName"),
+            sheet.get("units"), sheet_example.get("rawCastTime")) != (
+        "gameCommandBasic.csv", 76, "cast_time", "unresolved", 2
+    ):
+        findings.append(Finding("ERROR", "cast-chant.sheet", "raw cast-time contract drifted"))
+
+    cast_vfx = doc.get("castReadyVfx", {})
+    if not isinstance(cast_vfx, dict):
+        return findings + [Finding("ERROR", "cast-chant.vfx", "must be an object")]
+    vfx = cast_vfx.get("mapping", {})
+    if not isinstance(vfx, dict):
+        return findings + [Finding("ERROR", "cast-chant.vfx.mapping", "must be an object")]
+    if (vfx.get("effectCategoryHighByte"), vfx.get("visualResultClass"), vfx.get("name")) != (
+        "0x6f", 8, "CastOrReadyPreAction"
+    ):
+        findings.append(Finding("ERROR", "cast-chant.vfx", "cast-ready selector drifted"))
+
+    chant = doc.get("chantStatusBoundary", {})
+    if not isinstance(chant, dict):
+        return findings + [Finding("ERROR", "cast-chant.chant", "must be an object")]
+    if (chant.get("ingress"), chant.get("reader"), chant.get("bits")) != (
+        "s2c 0x0179 SetActorStatusAll -> FUN_00707D60",
+        "BCS-Y-0438 SubStat_getChantImpl_FUN_006F9EC0",
+        "8..15; kind 1 reads bits 12..15 and kind 2 reads bits 8..11",
+    ):
+        findings.append(Finding("ERROR", "cast-chant.chant", "SubStat Chant boundary drifted"))
+    rejected = doc.get("rejectedImports", [])
+    unresolved = doc.get("unresolved", [])
+    if not isinstance(rejected, list) or not isinstance(unresolved, list):
+        findings.append(Finding("ERROR", "cast-chant.boundaries", "boundary sets must be arrays"))
+    elif len(rejected) != 6 or len(unresolved) != 6:
+        findings.append(Finding("ERROR", "cast-chant.boundaries",
+                                "rejected-import or unresolved boundary set drifted"))
+    source_refs = doc.get("sourceRefs", [])
+    required_refs = {
+        "manifests/gam_hash_names.json",
+        "manifests/data_dependency_catalog.json#s2c_0x0137",
+        "manifests/receiver_opcode_map_inbound.json",
+        "manifests/selector_mapping_findings.json",
+        "manifests/status_effect_findings.json",
+        "xivl-captures:derived/property_targets.json",
+        "xivl-client-data:docs/command-battle-params.md",
+        "xivl-client-scripts:manifests/scripts.json",
+        "xivl-client-scripts:lua/scripts/widget/actiongaugewidget.lua",
+        "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
+        "xivl-decomp:asm/ffxivgame/00373f10_FUN_00773f10.s",
+    }
+    if not isinstance(source_refs, list) or not all(isinstance(ref, str) for ref in source_refs):
+        findings.append(Finding("ERROR", "cast-chant.sourceRefs", "sourceRefs must be strings"))
+    elif not required_refs.issubset(source_refs):
+        findings.append(Finding("ERROR", "cast-chant.sourceRefs", "required evidence citation missing"))
+    elif any("agent-islands" in ref or "agent-config" in ref for ref in source_refs):
+        findings.append(Finding("ERROR", "cast-chant.sourceRefs", "private island citation found"))
     return findings
 
 
@@ -1165,6 +1307,7 @@ BATTLE_RESULT_CHECK_COUNT = 1
 LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
 LUA_RESOURCE_PATH_CHECK_COUNT = 1
 LUA_CALLBACK_CONTRACT_CHECK_COUNT = 1
+CAST_CHANT_PRESENTATION_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -1208,6 +1351,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {LUA_CALLBACK_CONTRACT_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        cast_chant_presentation_doc = _load_json(CAST_CHANT_PRESENTATION_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {CAST_CHANT_PRESENTATION_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -1235,6 +1383,8 @@ def main() -> int:
                       check_lua_resource_paths(lua_resource_path_doc)),
         SectionResult("Lua callback contract", LUA_CALLBACK_CONTRACT_CHECK_COUNT,
                       check_lua_callback_contract(lua_callback_contract_doc)),
+        SectionResult("cast and chant presentation", CAST_CHANT_PRESENTATION_CHECK_COUNT,
+                      check_cast_chant_presentation(cast_chant_presentation_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]
