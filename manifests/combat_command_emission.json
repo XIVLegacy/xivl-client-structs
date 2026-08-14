@@ -91,14 +91,54 @@
     "applicationPayloadSize": 184,
     "offsetBasis": "application payload after the 16-byte game-message prefix",
     "fields": [
-      {"offset": "0x00", "width": 4, "source": "builder param_2", "name": "triggerActorId_or_selfActorId"},
-      {"offset": "0x04", "width": 4, "source": "builder param_3", "name": "ownerActorId_or_targetActorId"},
-      {"offset": "0x08", "width": 4, "source": "builder param_4", "name": "eventArgument0_unresolved"},
-      {"offset": "0x0c", "width": 4, "source": "builder param_5", "name": "eventArgument1_unresolved"},
-      {"offset": "0x10", "width": 1, "source": "builder param_6", "name": "eventType"},
-      {"offset": "0x11", "width": 32, "source": "builder param_7", "name": "eventName_or_inlineData"},
-      {"offset": "0x31", "width": 128, "source": "builder param_8", "name": "luaParameterBlob_or_eventTail"},
-      {"offset": "0xb1", "width": 7, "source": "size remainder", "name": "reserved_or_alignment_tail"}
+      {
+        "offset": "0x00",
+        "width": 4,
+        "source": "builder param_2",
+        "name": "triggerActorId_or_selfActorId"
+      },
+      {
+        "offset": "0x04",
+        "width": 4,
+        "source": "builder param_3",
+        "name": "ownerActorId_or_targetActorId"
+      },
+      {
+        "offset": "0x08",
+        "width": 4,
+        "source": "builder param_4",
+        "name": "eventArgument0_unresolved"
+      },
+      {
+        "offset": "0x0c",
+        "width": 4,
+        "source": "builder param_5",
+        "name": "eventArgument1_unresolved"
+      },
+      {
+        "offset": "0x10",
+        "width": 1,
+        "source": "builder param_6",
+        "name": "eventType"
+      },
+      {
+        "offset": "0x11",
+        "width": 32,
+        "source": "builder param_7",
+        "name": "eventName_or_inlineData"
+      },
+      {
+        "offset": "0x31",
+        "width": 128,
+        "source": "builder param_8",
+        "name": "luaParameterBlob_or_eventTail"
+      },
+      {
+        "offset": "0xb1",
+        "width": 7,
+        "source": "size remainder",
+        "name": "reserved_or_alignment_tail"
+      }
     ]
   },
   "clientPrechecks": [
@@ -154,21 +194,1358 @@
     }
   ],
   "commandIdRelationship": {
-    "status": "unresolved",
-    "staticClientData": "gameCommand-derived command ids are stable client-data row keys, and the preserved command object exposes getCommandId().",
-    "wireFinding": "No scalar field in FUN_00776760 or the normal route is proven to carry that row key unchanged, offset, or table-mapped. Combat samples do not provide a stable direct gameCommand id at application offset 0x08 or elsewhere. BCS-S-0034 retains the earlier pcap-derived serverCodes_or_actionOrAbilityId alias for offset 0x08; that label is a bounded hypothesis, not proof of a gameCommand id.",
-    "boundary": "The conversion from command object/event arguments into eventName_or_inlineData and luaParameterBlob_or_eventTail remains upstream of FUN_0075E3A0 or behind command-specific script/native dispatch.",
+    "status": "resolved_owner_static_actor_identity",
+    "summary": "For owner IDs in the 0xa0f00000 static-actor block, application payload offset 0x04 carries a command static-actor identity in the low 16 bits. This relationship is general to EventStart, not combat-specific. Owners outside that block remain event-owner actor IDs and do not support the mask.",
+    "unresolvedBoundary": "The conditional owner static-actor identity is resolved. Direct propagation of a gameCommand sheet row, including the separate application offset 0x08 field, remains unproven; 12 static command-owner occurrences have no gameCommand row.",
+    "sourceSnapshots": {
+      "captures": {
+        "repository": "XIVLegacy/xivl-captures",
+        "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4",
+        "rawCorpusArtifact": "sources/pcap-1.23b/manifest.yaml#members",
+        "rawCorpusManifestSha256": "1D281B26CED720E433AA2354BD036B2E932EBEE084DE11CD201F9431C646AFF4",
+        "extractorArtifact": "tools/extractors/extract_content_samples.py:73-144",
+        "extractorSha256": "3843EDEE0E52FF73B703812AF8355C03A767CCBE052A2F8D6F78CA9391E6A691",
+        "retainedSampleArtifact": "derived/payload_samples.json#samples.c2s.0x012d",
+        "retainedSampleSha256": "3D08A4ED4407738C02CE13B0FE853B6E8DBA6340930E59DC94734055F8B8DA38"
+      },
+      "clientData": {
+        "repository": "XIVLegacy/xivl-client-data",
+        "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6",
+        "staticActorArtifact": "manifests/staticactor_class_paths.json#records",
+        "staticActorSha256": "D612438827E5997422AB6F64A807E567DDF1B953C532E8A319D67B93C53C9DB0",
+        "gameCommandArtifact": "csv/gameCommand.csv column 0",
+        "gameCommandSha256": "775AA8062AEBC9F394C97CB634B3A75D687FF03063C849B95333A6BCE8032811"
+      }
+    },
+    "derivation": {
+      "direction": "serverbound",
+      "service": "Map (client decomp attribution)",
+      "opcodeHex": "0x012d",
+      "framing": "216-byte wire subpacket -> 200-byte retained body -> 16-byte game-message prefix -> 184-byte application payload",
+      "ownerOffset": "retained body +0x14 = application payload +0x04",
+      "ownerDecode": "little-endian u32",
+      "staticActorTest": "(ownerActorId & 0xffff0000) == 0xa0f00000",
+      "rowDecode": "ownerActorId & 0x0000ffff"
+    },
+    "distribution": {
+      "totalOccurrences": 126,
+      "ownerIds": [
+        {
+          "value": "0x44b00005",
+          "count": 2
+        },
+        {
+          "value": "0x44b8000a",
+          "count": 1
+        },
+        {
+          "value": "0x44c00012",
+          "count": 1
+        },
+        {
+          "value": "0x44d80009",
+          "count": 1
+        },
+        {
+          "value": "0x44d8000a",
+          "count": 1
+        },
+        {
+          "value": "0x44d80026",
+          "count": 2
+        },
+        {
+          "value": "0x44d8002d",
+          "count": 1
+        },
+        {
+          "value": "0x44d8002f",
+          "count": 4
+        },
+        {
+          "value": "0x4510000c",
+          "count": 1
+        },
+        {
+          "value": "0x45100d5b",
+          "count": 2
+        },
+        {
+          "value": "0x45600029",
+          "count": 2
+        },
+        {
+          "value": "0x45606e22",
+          "count": 2
+        },
+        {
+          "value": "0x45606e23",
+          "count": 2
+        },
+        {
+          "value": "0x46700082",
+          "count": 2
+        },
+        {
+          "value": "0x47a00007",
+          "count": 1
+        },
+        {
+          "value": "0x47a0000c",
+          "count": 1
+        },
+        {
+          "value": "0xa0f02ee5",
+          "count": 1
+        },
+        {
+          "value": "0xa0f02ee9",
+          "count": 7
+        },
+        {
+          "value": "0xa0f02eea",
+          "count": 2
+        },
+        {
+          "value": "0xa0f02eee",
+          "count": 2
+        },
+        {
+          "value": "0xa0f02eef",
+          "count": 3
+        },
+        {
+          "value": "0xa0f02ef1",
+          "count": 1
+        },
+        {
+          "value": "0xa0f05209",
+          "count": 12
+        },
+        {
+          "value": "0xa0f0520a",
+          "count": 12
+        },
+        {
+          "value": "0xa0f055f1",
+          "count": 1
+        },
+        {
+          "value": "0xa0f055f3",
+          "count": 1
+        },
+        {
+          "value": "0xa0f055f7",
+          "count": 2
+        },
+        {
+          "value": "0xa0f05e26",
+          "count": 2
+        },
+        {
+          "value": "0xa0f05e8b",
+          "count": 1
+        },
+        {
+          "value": "0xa0f05e93",
+          "count": 2
+        },
+        {
+          "value": "0xa0f05e9c",
+          "count": 4
+        },
+        {
+          "value": "0xa0f05eed",
+          "count": 3
+        },
+        {
+          "value": "0xa0f069dc",
+          "count": 3
+        },
+        {
+          "value": "0xa0f06a2e",
+          "count": 2
+        },
+        {
+          "value": "0xa0f06a36",
+          "count": 12
+        },
+        {
+          "value": "0xa0f06a37",
+          "count": 8
+        },
+        {
+          "value": "0xa0f06a39",
+          "count": 3
+        },
+        {
+          "value": "0xa0f06a3e",
+          "count": 3
+        },
+        {
+          "value": "0xa0f06a7c",
+          "count": 5
+        },
+        {
+          "value": "0xa0f06a80",
+          "count": 6
+        },
+        {
+          "value": "0xa0f06ad2",
+          "count": 2
+        }
+      ],
+      "upper16Blocks": [
+        {
+          "value": "0x44b0",
+          "count": 2
+        },
+        {
+          "value": "0x44b8",
+          "count": 1
+        },
+        {
+          "value": "0x44c0",
+          "count": 1
+        },
+        {
+          "value": "0x44d8",
+          "count": 9
+        },
+        {
+          "value": "0x4510",
+          "count": 3
+        },
+        {
+          "value": "0x4560",
+          "count": 6
+        },
+        {
+          "value": "0x4670",
+          "count": 2
+        },
+        {
+          "value": "0x47a0",
+          "count": 2
+        },
+        {
+          "value": "0xa0f0",
+          "count": 100
+        }
+      ],
+      "retainedSampleCap": {
+        "sampleCount": 60,
+        "ownerIds": [
+          {
+            "value": "0x44b00005",
+            "count": 2
+          },
+          {
+            "value": "0x44b8000a",
+            "count": 1
+          },
+          {
+            "value": "0x44c00012",
+            "count": 1
+          },
+          {
+            "value": "0x44d80009",
+            "count": 1
+          },
+          {
+            "value": "0x44d8000a",
+            "count": 1
+          },
+          {
+            "value": "0x44d80026",
+            "count": 2
+          },
+          {
+            "value": "0x44d8002d",
+            "count": 1
+          },
+          {
+            "value": "0x44d8002f",
+            "count": 4
+          },
+          {
+            "value": "0x4510000c",
+            "count": 1
+          },
+          {
+            "value": "0x45600029",
+            "count": 1
+          },
+          {
+            "value": "0x46700082",
+            "count": 2
+          },
+          {
+            "value": "0x47a00007",
+            "count": 1
+          },
+          {
+            "value": "0x47a0000c",
+            "count": 1
+          },
+          {
+            "value": "0xa0f02ee5",
+            "count": 1
+          },
+          {
+            "value": "0xa0f02ee9",
+            "count": 7
+          },
+          {
+            "value": "0xa0f02eea",
+            "count": 2
+          },
+          {
+            "value": "0xa0f02eee",
+            "count": 2
+          },
+          {
+            "value": "0xa0f02eef",
+            "count": 1
+          },
+          {
+            "value": "0xa0f02ef1",
+            "count": 1
+          },
+          {
+            "value": "0xa0f05209",
+            "count": 4
+          },
+          {
+            "value": "0xa0f0520a",
+            "count": 2
+          },
+          {
+            "value": "0xa0f055f1",
+            "count": 1
+          },
+          {
+            "value": "0xa0f055f3",
+            "count": 1
+          },
+          {
+            "value": "0xa0f055f7",
+            "count": 2
+          },
+          {
+            "value": "0xa0f05e26",
+            "count": 2
+          },
+          {
+            "value": "0xa0f05e8b",
+            "count": 1
+          },
+          {
+            "value": "0xa0f05e93",
+            "count": 2
+          },
+          {
+            "value": "0xa0f05e9c",
+            "count": 4
+          },
+          {
+            "value": "0xa0f05eed",
+            "count": 3
+          },
+          {
+            "value": "0xa0f06a36",
+            "count": 2
+          },
+          {
+            "value": "0xa0f06a7c",
+            "count": 2
+          },
+          {
+            "value": "0xa0f06a80",
+            "count": 1
+          }
+        ],
+        "upper16Blocks": [
+          {
+            "value": "0x44b0",
+            "count": 2
+          },
+          {
+            "value": "0x44b8",
+            "count": 1
+          },
+          {
+            "value": "0x44c0",
+            "count": 1
+          },
+          {
+            "value": "0x44d8",
+            "count": 9
+          },
+          {
+            "value": "0x4510",
+            "count": 1
+          },
+          {
+            "value": "0x4560",
+            "count": 1
+          },
+          {
+            "value": "0x4670",
+            "count": 2
+          },
+          {
+            "value": "0x47a0",
+            "count": 2
+          },
+          {
+            "value": "0xa0f0",
+            "count": 41
+          }
+        ]
+      }
+    },
+    "scenarioComparison": {
+      "combatExamples": {
+        "captures": [
+          "combat_autoattack.pcapng",
+          "combat_skills.pcapng",
+          "party_battle_leve.pcapng"
+        ],
+        "sampleCount": 64,
+        "staticActorBlockCount": 61,
+        "outsideStaticActorBlockCount": 3,
+        "ownerIdDistribution": [
+          {
+            "value": "0x4510000c",
+            "count": 1
+          },
+          {
+            "value": "0x45100d5b",
+            "count": 2
+          },
+          {
+            "value": "0xa0f05209",
+            "count": 9
+          },
+          {
+            "value": "0xa0f0520a",
+            "count": 9
+          },
+          {
+            "value": "0xa0f069dc",
+            "count": 2
+          },
+          {
+            "value": "0xa0f06a2e",
+            "count": 2
+          },
+          {
+            "value": "0xa0f06a36",
+            "count": 12
+          },
+          {
+            "value": "0xa0f06a37",
+            "count": 8
+          },
+          {
+            "value": "0xa0f06a39",
+            "count": 3
+          },
+          {
+            "value": "0xa0f06a3e",
+            "count": 3
+          },
+          {
+            "value": "0xa0f06a7c",
+            "count": 5
+          },
+          {
+            "value": "0xa0f06a80",
+            "count": 6
+          },
+          {
+            "value": "0xa0f06ad2",
+            "count": 2
+          }
+        ],
+        "retainedSampleCap": {
+          "sampleCount": 10,
+          "staticActorBlockCount": 9,
+          "outsideStaticActorBlockCount": 1,
+          "ownerIdDistribution": [
+            {
+              "value": "0x4510000c",
+              "count": 1
+            },
+            {
+              "value": "0xa0f05209",
+              "count": 3
+            },
+            {
+              "value": "0xa0f0520a",
+              "count": 1
+            },
+            {
+              "value": "0xa0f06a36",
+              "count": 2
+            },
+            {
+              "value": "0xa0f06a7c",
+              "count": 2
+            },
+            {
+              "value": "0xa0f06a80",
+              "count": 1
+            }
+          ]
+        }
+      },
+      "noncombatExamples": {
+        "captures": [
+          "accept_leve.pcapng",
+          "accept_local_leve.pcapng",
+          "accept_quest.pcapng",
+          "action_and_traits.pcapng",
+          "add_str.pcapng",
+          "battle_mode_passive_mode.pcapng",
+          "buy_square_maple_shield.pcapng",
+          "change_bodyarmor.pcapng",
+          "change_helm.pcapng",
+          "change_to_botanist.pcapng",
+          "checkbed.pcapng",
+          "emote_dance.pcapng",
+          "emote_kneel.pcapng",
+          "from_gridania_to_blackshroud.pcapng",
+          "gather_wood.pcapng",
+          "gear_changesoul.pcapng",
+          "gear_changeweapon.pcapng",
+          "gridania_to_coerthas.pcapng",
+          "harvest.pcapng",
+          "invite_join_party.pcapng",
+          "local_leve_complete.pcapng",
+          "mount_unmount_chocobo.pcapng",
+          "move_out_of_room.pcapng",
+          "quest_journal.pcapng",
+          "quest_update.pcapng",
+          "repair_items.pcapng",
+          "return_to_inn.pcapng",
+          "sell_item.pcapng",
+          "small_talk_louisoix.pcapng",
+          "switch_to_weaver.pcapng",
+          "teleport_to_camp_nine_ivies.pcapng",
+          "teleport_to_camp_tranquil.pcapng",
+          "teleport_to_gridania.pcapng",
+          "war_quest_update1.pcapng",
+          "war_quest_update2.pcapng",
+          "war_quest_update3.pcapng"
+        ],
+        "sampleCount": 62,
+        "staticActorBlockCount": 39,
+        "outsideStaticActorBlockCount": 23,
+        "ownerIdDistribution": [
+          {
+            "value": "0x44b00005",
+            "count": 2
+          },
+          {
+            "value": "0x44b8000a",
+            "count": 1
+          },
+          {
+            "value": "0x44c00012",
+            "count": 1
+          },
+          {
+            "value": "0x44d80009",
+            "count": 1
+          },
+          {
+            "value": "0x44d8000a",
+            "count": 1
+          },
+          {
+            "value": "0x44d80026",
+            "count": 2
+          },
+          {
+            "value": "0x44d8002d",
+            "count": 1
+          },
+          {
+            "value": "0x44d8002f",
+            "count": 4
+          },
+          {
+            "value": "0x45600029",
+            "count": 2
+          },
+          {
+            "value": "0x45606e22",
+            "count": 2
+          },
+          {
+            "value": "0x45606e23",
+            "count": 2
+          },
+          {
+            "value": "0x46700082",
+            "count": 2
+          },
+          {
+            "value": "0x47a00007",
+            "count": 1
+          },
+          {
+            "value": "0x47a0000c",
+            "count": 1
+          },
+          {
+            "value": "0xa0f02ee5",
+            "count": 1
+          },
+          {
+            "value": "0xa0f02ee9",
+            "count": 7
+          },
+          {
+            "value": "0xa0f02eea",
+            "count": 2
+          },
+          {
+            "value": "0xa0f02eee",
+            "count": 2
+          },
+          {
+            "value": "0xa0f02eef",
+            "count": 3
+          },
+          {
+            "value": "0xa0f02ef1",
+            "count": 1
+          },
+          {
+            "value": "0xa0f05209",
+            "count": 3
+          },
+          {
+            "value": "0xa0f0520a",
+            "count": 3
+          },
+          {
+            "value": "0xa0f055f1",
+            "count": 1
+          },
+          {
+            "value": "0xa0f055f3",
+            "count": 1
+          },
+          {
+            "value": "0xa0f055f7",
+            "count": 2
+          },
+          {
+            "value": "0xa0f05e26",
+            "count": 2
+          },
+          {
+            "value": "0xa0f05e8b",
+            "count": 1
+          },
+          {
+            "value": "0xa0f05e93",
+            "count": 2
+          },
+          {
+            "value": "0xa0f05e9c",
+            "count": 4
+          },
+          {
+            "value": "0xa0f05eed",
+            "count": 3
+          },
+          {
+            "value": "0xa0f069dc",
+            "count": 1
+          }
+        ],
+        "retainedSampleCap": {
+          "sampleCount": 50,
+          "staticActorBlockCount": 32,
+          "outsideStaticActorBlockCount": 18,
+          "ownerIdDistribution": [
+            {
+              "value": "0x44b00005",
+              "count": 2
+            },
+            {
+              "value": "0x44b8000a",
+              "count": 1
+            },
+            {
+              "value": "0x44c00012",
+              "count": 1
+            },
+            {
+              "value": "0x44d80009",
+              "count": 1
+            },
+            {
+              "value": "0x44d8000a",
+              "count": 1
+            },
+            {
+              "value": "0x44d80026",
+              "count": 2
+            },
+            {
+              "value": "0x44d8002d",
+              "count": 1
+            },
+            {
+              "value": "0x44d8002f",
+              "count": 4
+            },
+            {
+              "value": "0x45600029",
+              "count": 1
+            },
+            {
+              "value": "0x46700082",
+              "count": 2
+            },
+            {
+              "value": "0x47a00007",
+              "count": 1
+            },
+            {
+              "value": "0x47a0000c",
+              "count": 1
+            },
+            {
+              "value": "0xa0f02ee5",
+              "count": 1
+            },
+            {
+              "value": "0xa0f02ee9",
+              "count": 7
+            },
+            {
+              "value": "0xa0f02eea",
+              "count": 2
+            },
+            {
+              "value": "0xa0f02eee",
+              "count": 2
+            },
+            {
+              "value": "0xa0f02eef",
+              "count": 1
+            },
+            {
+              "value": "0xa0f02ef1",
+              "count": 1
+            },
+            {
+              "value": "0xa0f05209",
+              "count": 1
+            },
+            {
+              "value": "0xa0f0520a",
+              "count": 1
+            },
+            {
+              "value": "0xa0f055f1",
+              "count": 1
+            },
+            {
+              "value": "0xa0f055f3",
+              "count": 1
+            },
+            {
+              "value": "0xa0f055f7",
+              "count": 2
+            },
+            {
+              "value": "0xa0f05e26",
+              "count": 2
+            },
+            {
+              "value": "0xa0f05e8b",
+              "count": 1
+            },
+            {
+              "value": "0xa0f05e93",
+              "count": 2
+            },
+            {
+              "value": "0xa0f05e9c",
+              "count": 4
+            },
+            {
+              "value": "0xa0f05eed",
+              "count": 3
+            }
+          ]
+        }
+      }
+    },
+    "eventNameComparison": [
+      {
+        "eventName": "caution",
+        "count": 3,
+        "staticActorHits": 0,
+        "gameCommandHits": 0,
+        "outsideStaticActorBlock": 3
+      },
+      {
+        "eventName": "commandContent",
+        "count": 4,
+        "staticActorHits": 4,
+        "gameCommandHits": 0,
+        "outsideStaticActorBlock": 0
+      },
+      {
+        "eventName": "commandDefault",
+        "count": 44,
+        "staticActorHits": 44,
+        "gameCommandHits": 44,
+        "outsideStaticActorBlock": 0
+      },
+      {
+        "eventName": "commandForced",
+        "count": 28,
+        "staticActorHits": 28,
+        "gameCommandHits": 28,
+        "outsideStaticActorBlock": 0
+      },
+      {
+        "eventName": "commandJudgeMode",
+        "count": 5,
+        "staticActorHits": 5,
+        "gameCommandHits": 5,
+        "outsideStaticActorBlock": 0
+      },
+      {
+        "eventName": "commandRequest",
+        "count": 19,
+        "staticActorHits": 19,
+        "gameCommandHits": 11,
+        "outsideStaticActorBlock": 0
+      },
+      {
+        "eventName": "exit",
+        "count": 3,
+        "staticActorHits": 0,
+        "gameCommandHits": 0,
+        "outsideStaticActorBlock": 3
+      },
+      {
+        "eventName": "noticeEvent",
+        "count": 2,
+        "staticActorHits": 0,
+        "gameCommandHits": 0,
+        "outsideStaticActorBlock": 2
+      },
+      {
+        "eventName": "regionChange",
+        "count": 1,
+        "staticActorHits": 0,
+        "gameCommandHits": 0,
+        "outsideStaticActorBlock": 1
+      },
+      {
+        "eventName": "talkDefault",
+        "count": 17,
+        "staticActorHits": 0,
+        "gameCommandHits": 0,
+        "outsideStaticActorBlock": 17
+      }
+    ],
+    "joins": {
+      "eligibleStaticActorSamples": 100,
+      "eligibleUniqueOwnerIds": 25,
+      "staticActorHits": 100,
+      "staticActorMisses": 0,
+      "commandPathHits": 100,
+      "nonCommandStaticActorHits": 0,
+      "gameCommandHits": 88,
+      "gameCommandMisses": 12,
+      "sampleHitRates": {
+        "staticActor": "100/100",
+        "commandPath": "100/100",
+        "gameCommand": "88/100"
+      },
+      "rows": [
+        {
+          "ownerActorId": "0xa0f02ee5",
+          "low16RowId": 12005,
+          "count": 1,
+          "staticActorClassPath": "/Command/Game/BonusPointCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f02ee9",
+          "low16RowId": 12009,
+          "count": 7,
+          "staticActorClassPath": "/Command/EquipCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f02eea",
+          "low16RowId": 12010,
+          "count": 2,
+          "staticActorClassPath": "/Command/EquipAbilityCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f02eee",
+          "low16RowId": 12014,
+          "count": 2,
+          "staticActorClassPath": "/Command/Game/Prog/ChocoboRideCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f02eef",
+          "low16RowId": 12015,
+          "count": 3,
+          "staticActorClassPath": "/Command/Game/Prog/ChocoboRideCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f02ef1",
+          "low16RowId": 12017,
+          "count": 1,
+          "staticActorClassPath": "/Command/ChangeJobCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f05209",
+          "low16RowId": 21001,
+          "count": 12,
+          "staticActorClassPath": "/Command/Game/ActivateCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f0520a",
+          "low16RowId": 21002,
+          "count": 12,
+          "staticActorClassPath": "/Command/Game/ActivateCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f055f1",
+          "low16RowId": 22001,
+          "count": 1,
+          "staticActorClassPath": "/Command/Game/CraftCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f055f3",
+          "low16RowId": 22003,
+          "count": 1,
+          "staticActorClassPath": "/Command/Game/DummyCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f055f7",
+          "low16RowId": 22007,
+          "count": 2,
+          "staticActorClassPath": "/Command/Game/DummyCommand",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f05e26",
+          "low16RowId": 24102,
+          "count": 2,
+          "staticActorClassPath": "/Command/System/EmoteStandardCommand",
+          "gameCommandHit": false
+        },
+        {
+          "ownerActorId": "0xa0f05e8b",
+          "low16RowId": 24203,
+          "count": 1,
+          "staticActorClassPath": "/Command/System/PartyInviteCommand",
+          "gameCommandHit": false
+        },
+        {
+          "ownerActorId": "0xa0f05e93",
+          "low16RowId": 24211,
+          "count": 2,
+          "staticActorClassPath": "/Command/System/RequestQuestJournalCommand",
+          "gameCommandHit": false
+        },
+        {
+          "ownerActorId": "0xa0f05e9c",
+          "low16RowId": 24220,
+          "count": 4,
+          "staticActorClassPath": "/Command/System/TeleportCommand",
+          "gameCommandHit": false
+        },
+        {
+          "ownerActorId": "0xa0f05eed",
+          "low16RowId": 24301,
+          "count": 3,
+          "staticActorClassPath": "/Command/System/PlaceDrivenCommand",
+          "gameCommandHit": false
+        },
+        {
+          "ownerActorId": "0xa0f069dc",
+          "low16RowId": 27100,
+          "count": 3,
+          "staticActorClassPath": "/Command/Game/Ability/Ability",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06a2e",
+          "low16RowId": 27182,
+          "count": 2,
+          "staticActorClassPath": "/Command/Game/Ability/Ability",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06a36",
+          "low16RowId": 27190,
+          "count": 12,
+          "staticActorClassPath": "/Command/Game/WeaponSkill/AttackWeaponSkill",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06a37",
+          "low16RowId": 27191,
+          "count": 8,
+          "staticActorClassPath": "/Command/Game/WeaponSkill/AttackWeaponSkill",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06a39",
+          "low16RowId": 27193,
+          "count": 3,
+          "staticActorClassPath": "/Command/Game/WeaponSkill/AttackWeaponSkill",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06a3e",
+          "low16RowId": 27198,
+          "count": 3,
+          "staticActorClassPath": "/Command/Game/WeaponSkill/AttackWeaponSkill",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06a7c",
+          "low16RowId": 27260,
+          "count": 5,
+          "staticActorClassPath": "/Command/Game/Ability/Ability",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06a80",
+          "low16RowId": 27264,
+          "count": 6,
+          "staticActorClassPath": "/Command/Game/Ability/Ability",
+          "gameCommandHit": true
+        },
+        {
+          "ownerActorId": "0xa0f06ad2",
+          "low16RowId": 27346,
+          "count": 2,
+          "staticActorClassPath": "/Command/Game/Magic/CureMagic",
+          "gameCommandHit": true
+        }
+      ],
+      "retainedSampleCap": {
+        "eligibleStaticActorSamples": 41,
+        "staticActorHits": 41,
+        "gameCommandHits": 29
+      }
+    },
+    "maskWidth": {
+      "verdict": "supports_16_bit_command_static_actor_row_id",
+      "observedMaximumRowId": 27346,
+      "commandStaticActorMaximumRowId": 30101,
+      "gameCommandMaximumRowId": 30101,
+      "observedOverflowCount": 0,
+      "commandStaticActorOverflowCount": 0,
+      "gameCommandOverflowCount": 0,
+      "maskSweep": [
+        {
+          "bits": 8,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 9,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 10,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 11,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 12,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 13,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 14,
+          "staticActorHits": 16,
+          "gameCommandHits": 16
+        },
+        {
+          "bits": 15,
+          "staticActorHits": 100,
+          "gameCommandHits": 88
+        },
+        {
+          "bits": 16,
+          "staticActorHits": 100,
+          "gameCommandHits": 88
+        },
+        {
+          "bits": 17,
+          "staticActorHits": 100,
+          "gameCommandHits": 88
+        },
+        {
+          "bits": 18,
+          "staticActorHits": 100,
+          "gameCommandHits": 88
+        },
+        {
+          "bits": 19,
+          "staticActorHits": 100,
+          "gameCommandHits": 88
+        },
+        {
+          "bits": 20,
+          "staticActorHits": 100,
+          "gameCommandHits": 88
+        },
+        {
+          "bits": 21,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 22,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 23,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 24,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 25,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 26,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 27,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 28,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 29,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 30,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 31,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 32,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        }
+      ],
+      "retainedMaskSweep": [
+        {
+          "bits": 8,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 9,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 10,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 11,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 12,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 13,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 14,
+          "staticActorHits": 14,
+          "gameCommandHits": 14
+        },
+        {
+          "bits": 15,
+          "staticActorHits": 41,
+          "gameCommandHits": 29
+        },
+        {
+          "bits": 16,
+          "staticActorHits": 41,
+          "gameCommandHits": 29
+        },
+        {
+          "bits": 17,
+          "staticActorHits": 41,
+          "gameCommandHits": 29
+        },
+        {
+          "bits": 18,
+          "staticActorHits": 41,
+          "gameCommandHits": 29
+        },
+        {
+          "bits": 19,
+          "staticActorHits": 41,
+          "gameCommandHits": 29
+        },
+        {
+          "bits": 20,
+          "staticActorHits": 41,
+          "gameCommandHits": 29
+        },
+        {
+          "bits": 21,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 22,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 23,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 24,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 25,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 26,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 27,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 28,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 29,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 30,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 31,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        },
+        {
+          "bits": 32,
+          "staticActorHits": 0,
+          "gameCommandHits": 0
+        }
+      ],
+      "boundary": "The u32 owner field remains an actor ID. The 16-bit conclusion applies only after the 0xa0f00000 prefix test and does not truncate other actor IDs."
+    },
+    "scriptRoute": {
+      "status": "command_object_supplied_as_event_owner",
+      "evidence": "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua:1823-1840",
+      "finding": "PlayerBaseClass._onCommandEvent obtains getCommandId() from A2_2 and passes the same A2_2 command object to _callServerOnCommand. The native bridge preserves an object-owner route; this script fact does not by itself prove the actor-ID packing."
+    },
     "rejectedValues": [
-      "opcode 0x012d is not command id 301",
-      "isolated little-endian matches inside opaque event bytes are not field joins",
-      "client-data command names, costs, magnitudes, ranges, and statuses are not wire or server semantics without a field-level join"
+      "The 0xa0f00000 prefix is a tested partition, not evidence imported from a server reimplementation.",
+      "Owners outside the 0xa0f00000 block are not masked into command rows.",
+      "A staticactor /Command join does not imply that the row exists in gameCommand; 12 static command-owner occurrences use actors absent from that sheet.",
+      "Client-data command names and parameters remain client-side metadata, not server validation semantics."
     ]
   },
   "captureBoundary": {
     "totalOccurrences": 126,
     "retainedSamples": 60,
-    "subpacketSizes": [216],
-    "combatExamples": ["combat_autoattack.pcapng", "combat_skills.pcapng", "party_battle_leve.pcapng"],
+    "subpacketSizes": [
+      216
+    ],
+    "combatExamples": [
+      "combat_autoattack.pcapng",
+      "combat_skills.pcapng",
+      "party_battle_leve.pcapng"
+    ],
     "warning": "The same opcode occurs in many noncombat scenarios. Scenario co-occurrence proves use of the generic envelope, not a dedicated combat payload schema or a stable command-id field."
   },
   "excludedSameNumberedFamily": {
@@ -191,6 +1568,11 @@
     "xivl-captures:derived/observations.json#inner_opcodes.c2s.0x012d",
     "xivl-captures:derived/payload_layouts.json#c2s.0x012d",
     "xivl-captures:derived/payload_samples.json#c2s.0x012d",
-    "xivl-client-data:derived/command_battle_params.csv"
+    "xivl-captures:sources/pcap-1.23b/manifest.yaml#members",
+    "xivl-captures:tools/extractors/extract_content_samples.py:73-144",
+    "xivl-client-data:derived/command_battle_params.csv",
+    "xivl-client-data:manifests/staticactor_class_paths.json#records",
+    "xivl-client-data:csv/gameCommand.csv",
+    "tools/extractors/analyze_event_start_owner_ids.py"
   ]
 }
