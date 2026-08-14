@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "generated": "2026-08-14",
+  "gameVersion": "1.23b",
+  "scope": "Client Lua wrapper, physical filename, logical require-path, and numeric resource-path resolution. The layers are independent and must not be collapsed into one hash scheme.",
+  "sourceSnapshots": {
+    "xivl-client-scripts": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
+    "xivl-decomp": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"
+  },
+  "layers": [
+    {
+      "name": "LPB payload wrapper",
+      "kind": "fixed byte transform",
+      "algorithm": {
+        "rlu_0b": "strip the 8-byte header and retain the remaining Lua 5.1 bytecode",
+        "rle_0c": "decode data[13:16] XOR 0x73 followed by data[16:] XOR 0x73",
+        "decodedMagic": "1B 4C 75 61 51",
+        "compression": "none; the rle name does not represent run-length decoding"
+      },
+      "observedCounts": {"rlu_0b": 1, "rle_0c": 2670},
+      "reversible": true,
+      "implementation": "tools/decode_lpb.py:decode_lpb",
+      "verification": "python tools/test_decode_lpb.py"
+    },
+    {
+      "name": "physical script filename",
+      "kind": "case-folded substitution cipher",
+      "algorithm": {
+        "inputNormalization": "ASCII letters are lowercased; path separators and punctuation pass through",
+        "sourceAlphabet": "abcdefghijklmnopqrstuvwxyz0123456789",
+        "mappedAlphabet": "9876543210zyxwvutsrqponmlkjihgfedcba",
+        "segmentRule": "apply the table independently to every path segment and preserve hierarchy",
+        "inverse": "the same substitution table",
+        "caseBoundary": "original uppercase spelling is not recoverable after case folding"
+      },
+      "reversibleForCanonicalLowercasePaths": true,
+      "retailFunction": null,
+      "retailFunctionBoundary": "No runtime decoder is present or required by the recovered client route. This is a pack/build-time physical-name transform recovered from the corpus, not a path hash.",
+      "implementations": [
+        "tools/decode_lpb.py:encode_filename/decode_filename",
+        "xivl-client-scripts:tools/_corpus.py:decode_filename_segment/decode_path"
+      ],
+      "knownVectors": [
+        {"decoded": "zonemoveprogtest", "ciphered": "kvw5xvo5usv3q5rq"},
+        {"decoded": "man0g0", "ciphered": "x9wj3j"},
+        {"decoded": "chara/player/playerbaseclass.lua", "ciphered": "729s9/uy9l5s/uy9l5s89r57y9rr.lua"}
+      ]
+    },
+    {
+      "name": "logical Lua require path",
+      "kind": "runtime clear-string resolver",
+      "entry": {"function": "FUN_00D08A10", "va": "0x00D08A10", "bcs": "BCS-Y-1809"},
+      "resolver": {"function": "FUN_00D0CFB0", "va": "0x00D0CFB0", "bcs": "BCS-Y-1811"},
+      "steps": [
+        {"vaRange": "0x00D0D09C..0x00D0D0A2", "action": "concatenate LpbLoader+0x08 base directory and caller-supplied clear filename"},
+        {"vaRange": "0x00D0D0DD..0x00D0D0E6", "action": "test path existence through FUN_004531C0"},
+        {"vaRange": "0x00D0D0EE..0x00D0D127", "action": "on miss append the .lpb suffix through FUN_00447550"},
+        {"vaRange": "0x00D0D151..0x00D0D163", "action": "retry the existence test"},
+        {"vaRange": "0x00D0D172..0x00D0D21D", "action": "report not found and return status 2"},
+        {"vaRange": "0x00D0D227..function end", "action": "allocate a 0x78-byte resume checker and queue asynchronous fetch"}
+      ],
+      "loaderTail": "FUN_00D08180 (BCS-Y-1810) obtains decoded bytes and reaches luaL_loadbuffer FUN_00CF4680 (BCS-Y-1812)",
+      "hash": null,
+      "boundary": "The resolver consumes a clear logical Lua path. It does not apply the physical filename substitution or derive a numeric resource id."
+    },
+    {
+      "name": "numeric resource-id DAT path",
+      "kind": "byte formatting",
+      "function": "FUN_0044B3A0",
+      "va": "0x0044B3A0",
+      "modeGate": "DAT_01266B64",
+      "format": "\\data\\%02X\\%02X\\%02X\\%02X.DAT",
+      "byteOrder": "resource-id bytes from most significant to least significant",
+      "example": {"resourceId": "0x12345678", "path": "\\data\\12\\34\\56\\78.DAT"},
+      "evidence": [
+        {"vaRange": "0x0044B3D8..0x0044B3FC", "fact": "shift and mask the four input bytes"},
+        {"va": "0x0044B408", "fact": "push format string at 0x00F672BC"},
+        {"va": "0x0044B40E", "fact": "call formatting helper FUN_00447620"}
+      ],
+      "directCallers": ["FUN_0044B610", "FUN_006A7B40", "FUN_0079A500", "FUN_0090FFF0", "FUN_00C99130"],
+      "hash": null,
+      "boundary": "The u32 resource id is an input. Its build-time origin is not recovered here, and no client string-path-to-id hash is claimed."
+    }
+  ],
+  "rejectedConflations": [
+    "The physical script filename substitution is not executed by FUN_00D0CFB0.",
+    "The Lua logical require path is not a numeric SqPack resource id.",
+    "FUN_0044B3A0 formats an existing resource id and does not hash a clear path.",
+    "The Murmur2 routine used by SetActorProperty is unrelated to Lua/resource path resolution.",
+    "Later FFXIV ARR CRC32 path schemes are not evidence for the 1.23b client."
+  ],
+  "sourceRefs": [
+    "tools/decode_lpb.py",
+    "tools/test_decode_lpb.py",
+    "xivl-client-scripts:tools/_corpus.py",
+    "xivl-client-scripts:lua/registry.json",
+    "xivl-decomp:asm/ffxivgame/0090cfb0_FUN_00d0cfb0.s",
+    "xivl-decomp:asm/ffxivgame/0004b3a0_FUN_0044b3a0.s",
+    "xivl-decomp:docs/script/lpb-format.md",
+    "xivl-decomp:docs/resource/sqpack.md",
+    "xivl-decomp:tools/sqpack_path.py",
+    "manifests/client_class_registry.json",
+    "manifests/symbols.json#BCS-Y-1809..BCS-Y-1813"
+  ]
+}
