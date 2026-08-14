@@ -44,6 +44,7 @@ MATRIX_PATH = REPO / "manifests" / "pcap_opcode_coverage_matrix.json"
 ROLE_REFINEMENTS_PATH = REPO / "manifests" / "role_refinements.json"
 BATTLE_RESULT_PATH = REPO / "manifests" / "battle_result_field_semantics.json"
 LUA_RESOURCE_INVENTORY_PATH = REPO / "manifests" / "preserved_lua_resource_inventory.json"
+LUA_RESOURCE_PATH_PATH = REPO / "manifests" / "lua_resource_path_decoding.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -211,6 +212,65 @@ def check_lua_resource_inventory(doc: dict[str, Any]) -> list[Finding]:
     if prog.get("logicalCount") != 2 or "distinct from" not in prog.get("status", ""):
         findings.append(Finding("ERROR", "lua-resource-inventory.on-prog-func",
                                 "OnProgFunc .rdata chunks must remain distinct from core .data anchors"))
+    return findings
+
+
+def check_lua_resource_paths(doc: dict[str, Any]) -> list[Finding]:
+    """Keep filename, logical require, and numeric DAT path layers separate."""
+    findings: list[Finding] = []
+    layer_rows = doc.get("layers", [])
+    layers = {row.get("name"): row for row in layer_rows}
+    expected_layer_names = {
+        "LPB payload wrapper", "physical script filename",
+        "logical Lua require path", "numeric resource-id DAT path",
+    }
+    if len(layer_rows) != 4 or set(layers) != expected_layer_names:
+        findings.append(Finding("ERROR", "lua-resource-paths.layers",
+                                "expected exactly four unique path layers"))
+    if doc.get("sourceSnapshots") != {
+        "xivl-client-scripts": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
+        "xivl-decomp": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64",
+    }:
+        findings.append(Finding("ERROR", "lua-resource-paths.sources", "source commit pins drifted"))
+    wrapper = layers.get("LPB payload wrapper", {})
+    if wrapper.get("observedCounts") != {"rlu_0b": 1, "rle_0c": 2670}:
+        findings.append(Finding("ERROR", "lua-resource-paths.wrapper", "LPB wrapper counts drifted"))
+    if wrapper.get("algorithm", {}).get("decodedMagic") != "1B 4C 75 61 51" or wrapper.get("reversible") is not True:
+        findings.append(Finding("ERROR", "lua-resource-paths.wrapper", "LPB byte-transform contract drifted"))
+    filename = layers.get("physical script filename", {})
+    algorithm = filename.get("algorithm", {})
+    if algorithm.get("mappedAlphabet") != "9876543210zyxwvutsrqponmlkjihgfedcba":
+        findings.append(Finding("ERROR", "lua-resource-paths.filename", "filename substitution table drifted"))
+    if filename.get("retailFunction") is not None or filename.get("reversibleForCanonicalLowercasePaths") is not True:
+        findings.append(Finding("ERROR", "lua-resource-paths.filename", "filename cipher boundary drifted"))
+    expected_vectors = {
+        ("zonemoveprogtest", "kvw5xvo5usv3q5rq"),
+        ("man0g0", "x9wj3j"),
+        ("chara/player/playerbaseclass.lua", "729s9/uy9l5s/uy9l5s89r57y9rr.lua"),
+    }
+    vectors = {(row.get("decoded"), row.get("ciphered")) for row in filename.get("knownVectors", [])}
+    if vectors != expected_vectors:
+        findings.append(Finding("ERROR", "lua-resource-paths.filename", "known cipher vectors drifted"))
+    require = layers.get("logical Lua require path", {})
+    if require.get("entry", {}).get("function") != "FUN_00D08A10" or require.get("resolver", {}).get("function") != "FUN_00D0CFB0":
+        findings.append(Finding("ERROR", "lua-resource-paths.require", "Lua require resolver chain drifted"))
+    dat = layers.get("numeric resource-id DAT path", {})
+    if (dat.get("function"), dat.get("format"), dat.get("hash")) != (
+            "FUN_0044B3A0", "\\data\\%02X\\%02X\\%02X\\%02X.DAT", None):
+        findings.append(Finding("ERROR", "lua-resource-paths.dat", "numeric DAT path contract drifted"))
+    if dat.get("example") != {"resourceId": "0x12345678", "path": "\\data\\12\\34\\56\\78.DAT"}:
+        findings.append(Finding("ERROR", "lua-resource-paths.dat", "numeric DAT path example drifted"))
+    required_refs = {
+        "tools/decode_lpb.py",
+        "xivl-client-scripts:tools/_corpus.py",
+        "xivl-decomp:asm/ffxivgame/0090cfb0_FUN_00d0cfb0.s",
+        "xivl-decomp:asm/ffxivgame/0004b3a0_FUN_0044b3a0.s",
+        "xivl-decomp:docs/resource/sqpack.md",
+    }
+    if not required_refs.issubset(set(doc.get("sourceRefs", []))):
+        findings.append(Finding("ERROR", "lua-resource-paths.sources", "required source references missing"))
+    if len(doc.get("rejectedConflations", [])) != 5:
+        findings.append(Finding("ERROR", "lua-resource-paths.boundaries", "rejected-conflation fence drifted"))
     return findings
 
 CONFIDENCE_VALUES: frozenset[str] = frozenset({
@@ -976,6 +1036,7 @@ CROSS_CHECK_COUNT = 2
 ROLE_CHECK_COUNT = 1
 BATTLE_RESULT_CHECK_COUNT = 1
 LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
+LUA_RESOURCE_PATH_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -1009,6 +1070,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {LUA_RESOURCE_INVENTORY_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        lua_resource_path_doc = _load_json(LUA_RESOURCE_PATH_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {LUA_RESOURCE_PATH_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -1032,6 +1098,8 @@ def main() -> int:
                       check_battle_result_fields(battle_result_doc, structs_doc)),
         SectionResult("preserved Lua resources", LUA_RESOURCE_INVENTORY_CHECK_COUNT,
                       check_lua_resource_inventory(lua_resource_inventory_doc)),
+        SectionResult("Lua resource paths", LUA_RESOURCE_PATH_CHECK_COUNT,
+                      check_lua_resource_paths(lua_resource_path_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]
