@@ -29,6 +29,7 @@ Pure stdlib (json, re, pathlib, sys, collections, dataclasses, typing).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 import re
@@ -45,6 +46,7 @@ ROLE_REFINEMENTS_PATH = REPO / "manifests" / "role_refinements.json"
 BATTLE_RESULT_PATH = REPO / "manifests" / "battle_result_field_semantics.json"
 LUA_RESOURCE_INVENTORY_PATH = REPO / "manifests" / "preserved_lua_resource_inventory.json"
 LUA_RESOURCE_PATH_PATH = REPO / "manifests" / "lua_resource_path_decoding.json"
+LUA_CALLBACK_CONTRACT_PATH = REPO / "manifests" / "lua_callback_contract.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -271,6 +273,131 @@ def check_lua_resource_paths(doc: dict[str, Any]) -> list[Finding]:
         findings.append(Finding("ERROR", "lua-resource-paths.sources", "required source references missing"))
     if len(doc.get("rejectedConflations", [])) != 5:
         findings.append(Finding("ERROR", "lua-resource-paths.boundaries", "rejected-conflation fence drifted"))
+    return findings
+
+
+def check_lua_callback_contract(doc: dict[str, Any]) -> list[Finding]:
+    """Validate the frozen, script-only callback contract and its claim fence."""
+    findings: list[Finding] = []
+    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("extraction")) != (
+            1, "2026-08-14", "1.23b", "2012.09.19.0001"):
+        findings.append(Finding("ERROR", "lua-callback-contract.metadata", "callback snapshot metadata drifted"))
+    expected_totals = {
+        "corpusScripts": 2671,
+        "contractScriptCount": 88,
+        "callbackScriptCount": 73,
+        "callbackAssignments": 209,
+        "distinctCallbacks": 81,
+        "parsedParameterLists": 209,
+        "fixedCallbacks": 185,
+        "variadicCallbacks": 24,
+        "scriptEventHandlerScripts": 15,
+        "scriptEventHandlerAssignments": 43,
+    }
+    if doc.get("totals") != expected_totals:
+        findings.append(Finding("ERROR", "lua-callback-contract.totals", "callback totals drifted"))
+    if doc.get("scope") != ("Decoded script-declared client callback and script-event contracts. "
+                            "Parameter names are decompiler slots, not semantic types. No native registrar, "
+                            "xref, packet, or server behavior is claimed."):
+        findings.append(Finding("ERROR", "lua-callback-contract.scope", "callback claim fence drifted"))
+    rendered_scripts = json.dumps(doc.get("scripts", {}), sort_keys=True, separators=(",", ":"),
+                                  ensure_ascii=True).encode("utf-8")
+    actual_contract_sha256 = hashlib.sha256(rendered_scripts).hexdigest().upper()
+    if (doc.get("contractSha256"), actual_contract_sha256) != (
+            "6BB26B1490FF0BA2F7410639C2FD015D07ACD4DF546BA5ABA3AEF03263BDF663",
+            "6BB26B1490FF0BA2F7410639C2FD015D07ACD4DF546BA5ABA3AEF03263BDF663"):
+        findings.append(Finding("ERROR", "lua-callback-contract.digest", "callback contract table drifted"))
+    source = doc.get("sourceSnapshot", {})
+    if source != {
+            "repository": "XIVLegacy/xivl-client-scripts",
+            "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
+            "registry": {
+                "path": "lua/registry.json",
+                "sha256": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F",
+            },
+            "scriptManifest": {
+                "path": "manifests/scripts.json",
+                "sha256": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300",
+            },
+            "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
+    }:
+        findings.append(Finding("ERROR", "lua-callback-contract.sources", "callback source snapshot drifted"))
+    boundary = doc.get("nativeTraceBoundary", {})
+    if boundary.get("status") != "blocked_missing_exporters" or boundary.get("missing") != [
+            "FindAsciiString.java", "FindAllReferencesToAddress.java"]:
+        findings.append(Finding("ERROR", "lua-callback-contract.boundary",
+                                "native trace prerequisite boundary drifted"))
+    if boundary.get("effect") != ("No native callback registrar, string xref, or native function attribution "
+                                  "is inferred from this script-only contract."):
+        findings.append(Finding("ERROR", "lua-callback-contract.boundary", "native trace effect drifted"))
+    scripts = doc.get("scripts", {})
+    if not isinstance(scripts, dict):
+        findings.append(Finding("ERROR", "lua-callback-contract.scripts", "scripts must be an object"))
+        return findings
+    callback_names: set[str] = set()
+    callback_count = event_count = fixed_count = variadic_count = 0
+    for decoded, script in scripts.items():
+        if not isinstance(script, dict):
+            findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "script row must be an object"))
+            continue
+        if (not decoded or not script.get("ciphered") or not script.get("class")
+                or not isinstance(script.get("lineCount"), int) or script.get("lineCount", 0) < 1
+                or not re.fullmatch(r"[0-9A-F]{64}", script.get("scriptSha256", ""))):
+            findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "script identity is incomplete"))
+        callbacks = script.get("callbacks", [])
+        event_handlers = script.get("scriptEventHandlers", [])
+        if not isinstance(callbacks, list) or not isinstance(event_handlers, list):
+            findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}",
+                                    "callback collections must be arrays"))
+            continue
+        for row in callbacks:
+            if not isinstance(row, dict):
+                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}",
+                                        "callback row must be an object"))
+                continue
+            callback_count += 1
+            callback_names.add(row.get("name", ""))
+            fixed_count += not row.get("variadic", False)
+            variadic_count += bool(row.get("variadic", False))
+            params = row.get("params")
+            if (not isinstance(params, list) or not all(isinstance(param, str) and param for param in params)
+                    or not row.get("name", "").startswith("_on")
+                    or row.get("arity") != sum(param != "..." for param in params)
+                    or row.get("variadic") != ("..." in params)
+                    or not isinstance(row.get("functionLine"), int)
+                    or not isinstance(row.get("sourceLine"), int)
+                    or row.get("functionLine", 0) < 1
+                    or row.get("sourceLine", 0) <= row.get("functionLine", 0)):
+                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "callback shape drifted"))
+        for row in event_handlers:
+            if not isinstance(row, dict):
+                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}",
+                                        "script event row must be an object"))
+                continue
+            event_count += 1
+            params = row.get("params")
+            if (row.get("name") not in {
+                    "onJobQuestCompleteFirst", "onJobQuestCompleteSecond", "onJobQuestCompleteThird"}
+                    or not isinstance(params, list)
+                    or row.get("arity") != sum(param != "..." for param in params)
+                    or row.get("variadic") != ("..." in params)
+                    or not isinstance(row.get("functionLine"), int)
+                    or not isinstance(row.get("sourceLine"), int)
+                    or row.get("sourceLine", 0) <= row.get("functionLine", 0)):
+                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "unexpected script event handler"))
+    if (len(scripts), callback_count, len(callback_names), fixed_count, variadic_count, event_count) != (88, 209, 81, 185, 24, 43):
+        findings.append(Finding("ERROR", "lua-callback-contract.rows", "row-derived totals drifted"))
+    player = scripts.get("chara/player/playerbaseclass", {})
+    command = next((row for row in player.get("callbacks", []) if row.get("name") == "_onCommandEvent"), {})
+    if (command.get("arity"), command.get("variadic"), command.get("functionLine"), command.get("sourceLine")) != (3, True, 1820, 1881):
+        findings.append(Finding("ERROR", "lua-callback-contract.playerbase", "_onCommandEvent contract drifted"))
+    if "FUN_" in json.dumps(doc):
+        findings.append(Finding("ERROR", "lua-callback-contract.scope", "script-only contract must not claim native functions"))
+    if doc.get("sourceRefs") != [
+            "xivl-client-scripts:lua/registry.json",
+            "xivl-client-scripts:lua/scripts/**/*.lua",
+            "xivl-client-scripts:manifests/scripts.json"]:
+        findings.append(Finding("ERROR", "lua-callback-contract.refs", "callback provenance references drifted"))
     return findings
 
 CONFIDENCE_VALUES: frozenset[str] = frozenset({
@@ -1037,6 +1164,7 @@ ROLE_CHECK_COUNT = 1
 BATTLE_RESULT_CHECK_COUNT = 1
 LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
 LUA_RESOURCE_PATH_CHECK_COUNT = 1
+LUA_CALLBACK_CONTRACT_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -1075,6 +1203,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {LUA_RESOURCE_PATH_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        lua_callback_contract_doc = _load_json(LUA_CALLBACK_CONTRACT_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {LUA_CALLBACK_CONTRACT_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -1100,6 +1233,8 @@ def main() -> int:
                       check_lua_resource_inventory(lua_resource_inventory_doc)),
         SectionResult("Lua resource paths", LUA_RESOURCE_PATH_CHECK_COUNT,
                       check_lua_resource_paths(lua_resource_path_doc)),
+        SectionResult("Lua callback contract", LUA_CALLBACK_CONTRACT_CHECK_COUNT,
+                      check_lua_callback_contract(lua_callback_contract_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]
