@@ -61,7 +61,7 @@
       "wireSize": "c2s 0x78 / s2c 0x48",
       "catalogStatus": "s2c-covered-via-receiver",
       "dispatchChainS2C": "FUN_004D8860 case 0x12E -> FUN_00574FD0 trampoline -> LuaActorImpl::vftable[50] (FUN_00759FE0 cataloged? slot 50 not explicitly in BCS-Y-0092) -> ... -> SetTalkEventConditionReceiver::Receive (slot1Fn FUN_0089df60) -> __RTDynamicCast(ActorBase->NpcBase) -> install talk condition. ATTENTION: receiver_opcode_map maps 0x012E to SetTalkEventConditionReceiver, but the pattern-d-subdispatcher pass maps case 0x12E to LuaActorImpl slot 50, which is in the noop/stateless range per BCS-Y-0092. The actual receiver dispatch may use a different mechanism than this case path; a follow-up walk is required.",
-      "dispatchChainC2S": "Lua menu/dialog response -> _doServerOn[Talk/...] family -> reuses the 0x012D EventStart emit chain? Or a separate builder? OPEN QUESTION - the c2s EventUpdate emitter has NOT been identified statically (the combat action c2s findings pass focused on 0x012D).",
+      "dispatchChainC2S": "Lua/event update wrappers -> FUN_00894090 -> FUN_0075E670, which writes opcode 0x012E and body size 0x68 before FUN_004D6D30. This is separate from the c2s 0x012D EventStart builder FUN_00776760.",
       "bcsYRefs": [],
       "luaCallbacks": [
         "_onTalkEvent",
@@ -567,14 +567,14 @@
       "id": "EVENTDIALOGS-F8",
       "title": "5/6-slot receiver classes' slot1Fn is misleading - real Receive method is at slot 2",
       "summary": "Per docs/receiver_classes_inventory.md and the project's local memory ledger reference-receiver-vtable-layouts.md: client_receivers.json's slot1_fn field is misleading for 5-slot and 6-slot receivers. The 5-slot variants (KickClientOrderEvent, StartServerOrderEventFunction, ChangeActorSubStatStatus) have a New() factory at slot 1 and the real Receive method at slot 2. This manifest documents it by proposing distinct BCS-Y entries for the slot-2 Receive (BCS-Y-0680 KickEvent::Receive, BCS-Y-0683 StartServerOrderEvent::Receive). Note: EndClientOrderEvent is 5-slot but its slot1Fn IS the Receive (FUN_0089D180) - the factory pattern is specific to Kick/StartServerOrder. The 6-slot JobQuestCompleteTripleReceiver dispatches via 'Pattern C' instead per."
+    },
+    {
+      "id": "EVENTDIALOGS-F9",
+      "title": "No static EventStart ETYPE allowlist exists in the 0x012D or 0x012E paths",
+      "summary": "The c2s EventStart builder FUN_00776760 copies the caller-supplied u8 eventType into record +0x28 at VA 0x00776774..0x0077677F and performs no immediate comparison or value dispatch. The s2c 0x012E branch through FUN_004DC690 at VA 0x004DCFFF performs an actor lookup and an indirect actor vtable +0x24 call; it exposes no ETYPE decode, and its receiver identity remains unresolved because the alternate receiver map disagrees with this route. The c2s 0x012E builder FUN_0075E670 is EventUpdate, not EventStart. Therefore no client-accepted numeric EventStart ETYPE domain or value-to-branch table can be recovered from the requested chain. Adjacent EndEvent opcode 0x0131 has its own bounded dispatcher and must not be imported as an EventStart allowlist. Evidence: xivl-decomp/asm/ffxivgame/00376760_FUN_00776760.s:6-33; xivl-decomp/asm/ffxivgame/000dc690_FUN_004dc690.s:642-652; xivl-decomp/asm/ffxivgame/0035e670_FUN_0075e670.s:35-59."
     }
   ],
   "open_questions": [
-    {
-      "id": "EVENTDIALOGS-Q1",
-      "question": "Where is the c2s EventUpdate 0x012E emitter? the combat action c2s findings pass focused only on 0x012D. The c2s EventUpdate builder is not cataloged.",
-      "next_step": "Run FindOpcodeImmediate.java on 0x012E in Ghidra and decomp candidates to identify the builder. Likely shares some helper functions with the 0x012D builder family (FUN_00776760 sibling)"
-    },
     {
       "id": "EVENTDIALOGS-Q2",
       "question": "What is the real wire opcode for SetCommandEventCondition? Finding F4 disproves the 0x0166 claim in receiver_opcode_map. The receiver class itself does exist (RTTI 0xc5737c). Where is its actual dispatch case?",

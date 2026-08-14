@@ -555,8 +555,8 @@
     },
     {
       "id": "SENDLOGRECEI-F5",
-      "title": "Apply's 4-case switch maps 1:1 to ctor's 4 shape families",
-      "summary": "Apply cases 0x00/0x01/0x02/0xFF correspond exactly to WithActor/DisplayIdSender/CustomSender/WithoutActor respectively. The state byte at this+0x10 (init 0xFF) is the bridge - body parsers overwrite it to encode the shape family for the apply method. Concrete writes: DisplayIdSender parsers set byte=1, CustomSender parsers set byte=2, WithoutActor leaves byte=0xFF (default), WithActor most-likely sets byte=0 (NOT independently verified - SENDLOGRECEIVER-INFERRED). The ctor and apply are tightly coupled by this byte"
+      "title": "Apply's 4-case state byte is not written by the body parsers",
+      "summary": "FUN_0089FBF0 switches on receiver byte this+0x10, initialized to 0xFF by the constructor, but the independent 14-parser pass proved that none of the body parsers writes that receiver field. The earlier inferred 1:1 mapping from apply cases 0x00/0x01/0x02/0xFF to sender families was unsupported. The producer of non-0xFF apply states remains unresolved; packet payload offset +0x10 is a separate parser input and must not be conflated with receiver this+0x10. Evidence: manifests/sendlog_parser_shape_refutation.json."
     },
     {
       "id": "SENDLOGRECEI-F6",
@@ -572,10 +572,14 @@
       "id": "SENDLOGRECEI-F8",
       "title": "0x167 is the high-frequency NPC dialog opcode in pcap evidence",
       "summary": "Per BCS-Y-0248 existing evidence: opcode 0x167 (GameMessageWithoutActor2) fires 63 times across 4 of 10 NPC interaction captures with 0 baseline fires - enrichment ratio 0.998. This is the most-used SendLogReceiver opcode in the captured corpus, suggesting it is the canonical 'NPC speaks a sheet-text line' opcode. Its body parser FUN_008a2410 + apply case 0xFF + render FUN_00771f50/FUN_00772650 chain is the standard NPC dialog rendering path"
+    },
+    {
+      "id": "SENDLOGRECEI-F9",
+      "title": "0x0167 has a byte length at payload +0x10 and no source-actor sentinel",
+      "summary": "The 0x0167 constructor arm calls FUN_008A2410 at VA 0x0089FA94 with the application payload. FUN_008A2410 reads payload +0x10 as a u8 count, grows a vector by that count, and copies count bytes from payload +0x08; it does not read a u32 marker or compare the value 8. No 0x5FF80001 or 0x5FF80002 literal occurs in the 0x0167 constructor, parser, or apply chain. Those sentinels belong to the unrelated Pattern-D helper FUN_00574A60 at VA 0x00574A64..0x00574A70. The proposed u32 value-8 marker and 0x5FF80001 source actor id are therefore refuted for this client route; their broader server-side meaning is not established. Evidence: xivl-decomp/asm/ffxivgame/0049f5b0_FUN_0089f5b0.s:377-391; xivl-decomp/asm/ffxivgame/004a2410_FUN_008a2410.s:17-54; xivl-decomp/asm/ffxivgame/00174a60_FUN_00574a60.s:6-16; manifests/sendlog_parser_shape_refutation.json."
     }
   ],
   "open_questions": [
-    "SENDLOGRECEIVER-INFERRED: Per-parser byte+0x10 writes are INFERRED from the 4x4 shape-family-to-apply-case correspondence but not independently confirmed. Decomp each of the 14 body parsers to confirm: (a) DisplayIdSender parsers write byte=1; (b) CustomSender parsers write byte=2; (c) WithActor parsers write byte=0 (or leave 0xFF?); (d) WithoutActor parsers leave 0xFF (most-likely-true since 0x167 is hot and case 0xFF is the rich path)",
     "SENDLOGRECEIVER-OPEN-2: The 5 'distinct body shape' parsers (1-5) likely correspond to 5 differentiated LogMessage TYPES with different field counts (e.g. shape 1 = no args, shape 5 = 5 args for placeholder substitution). Cross-ref against the sheet-text LogMessage table to identify which placeholder-arg-count maps to which body shape index",
     "SENDLOGRECEIVER-OPEN-3: Which of the 16 UI/text-render helpers in apply are shared with PrivateChat, PartyChat, or LinkshellChat receivers?",
     "SENDLOGRECEIVER-OPEN-4: Constructor caller FUN_00762460 (second caller of FUN_0089F5B0 alongside FUN_00759FD0) suggests an alternate dispatch entry for SendLogReceiver - likely a non-vtable code path (heap-allocated receiver instance). Identify the upstream caller of FUN_00762460 and document the alternate entry"
