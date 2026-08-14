@@ -1,0 +1,162 @@
+{
+  "study": "autotranslate-wire-format",
+  "date": "2026-08-13",
+  "status": "not-found",
+  "scope": "Static client search for a fixedPhrase selection-to-wire encoder or wire-to-fixedPhrase decoder. Map and World chat paths were investigated separately. The retained retail capture corpus is closed; no new retail-service evidence is expected.",
+  "verdict": "The available static evidence does not connect a fixedPhrase row lookup to a chat byte encoder or decoder. No token framing, tag byte, length rule, field order, ID width, byte order, escaping rule, row-key serialization, category serialization, malformed-token behavior, or forwarding behavior is established. Implementing a decoder from the candidate constants below would be speculative.",
+  "sender_search": {
+    "map_chain": [
+      "FUN_006E91F0 branches on five string keys and reaches FUN_0075BEF0, FUN_0075BFD0, or FUN_0075C0B0.",
+      "The three wrappers call FUN_004D8160 at VAs 0x0075BFA0, 0x0075C080, and 0x0075C160 with context markers 1, 2, and 0x19.",
+      "FUN_004D8160 casts Application::Main::RaptureElement to Application::Main::Element::RelativeElement through FUN_009DA6CC, prepares caller-owned state, and calls FUN_004E0320 at VA 0x004D8279.",
+      "FUN_004E0320 is the sole Map c2s 0x0003 emitter. It writes opcode 0x0003 and record size 0x230, copies a caller-supplied 0x200-byte source buffer through FUN_00447BC0, FUN_004451F0, FUN_00445210, and FUN_009D4600, then sends through FUN_00DAE010.",
+      "No fixedPhrase lookup, table identity, phrase ID, or token-byte write is present in this chain."
+    ],
+    "world_chain": [
+      "FUN_004DF6D0 builds World c2s 0x00C9 at size 0x218 and sends through FUN_00DB3E30.",
+      "FUN_004DF810 calls FUN_004E3750, which builds World c2s 0x00C8 at size 0x230 before FUN_00DB3E30.",
+      "Both World paths copy caller-supplied string buffers through the same generic string begin/end helpers. Neither reaches FUN_004E0320 or a fixedPhrase lookup."
+    ],
+    "searched_functions": [
+      "FUN_006E91F0",
+      "FUN_0075BEF0",
+      "FUN_0075BFD0",
+      "FUN_0075C0B0",
+      "FUN_004D8160",
+      "FUN_004E0320",
+      "FUN_00447BC0",
+      "FUN_004451F0",
+      "FUN_00445210",
+      "FUN_009D4600",
+      "FUN_00DAE010",
+      "FUN_004DF6D0",
+      "FUN_004DF810",
+      "FUN_004E3750",
+      "FUN_00DB3E30",
+      "FUN_004CE760",
+      "FUN_00C99E40",
+      "FUN_009DA6CC"
+    ],
+    "evidence": [
+      "xivl-decomp/asm/ffxivgame/002e91f0_FUN_006e91f0.s",
+      "xivl-decomp/asm/ffxivgame/0035bef0_FUN_0075bef0.s",
+      "xivl-decomp/asm/ffxivgame/0035bfd0_FUN_0075bfd0.s",
+      "xivl-decomp/asm/ffxivgame/0035c0b0_FUN_0075c0b0.s",
+      "xivl-decomp/asm/ffxivgame/000d8160_FUN_004d8160.s",
+      "xivl-decomp/asm/ffxivgame/000e0320_FUN_004e0320.s",
+      "manifests/c2s_coverage_synthesis.json",
+      "manifests/operation_opcode_map_outbound.json",
+      "manifests/symbols.json"
+    ]
+  },
+  "receiver_search": {
+    "parser": "FUN_007906C0 at VA 0x007906C0 is an 800-byte generic render-control byte-stream parser. Its direct callers are FUN_0089FBF0, FUN_0089EB40, FUN_0089E320, FUN_00790AA0, FUN_00790B20, FUN_00790A30, and FUN_00790BA0. The cases dispatch through a renderer interface, but no caller reaches a fixedPhrase table lookup.",
+    "fixed_phrase_path": "The independent static table path is FUN_004DAA10 -> FUN_004DA680 -> FUN_00447260(\"xtx/_fixedPhrase\", string VA 0x00F90D70) -> FUN_00C9D550. FUN_00C9D550 has null/state failure returns and branches on leading bytes 0x40 and 0x23, but no edge joins it to a Map or World chat sender, receiver, or FUN_007906C0. Those bytes are therefore not established wire tags.",
+    "other_negative": "FUN_004D9D70 references the unrelated string \"//shortcut %d <t>\" at VA 0x00F90D84 and calls FUN_0056DD20. It has no fixedPhrase or chat-parser edge.",
+    "evidence": [
+      "xivl-decomp/asm/ffxivgame/003906c0_FUN_007906c0.s",
+      "xivl-decomp/asm/ffxivgame/000da680_FUN_004da680.s",
+      "xivl-decomp/asm/ffxivgame/0089d550_FUN_00c9d550.s",
+      "xivl-decomp/asm/ffxivgame/000d9d70_FUN_004d9d70.s",
+      "manifests/chat_render_helper_consolidation.json",
+      "manifests/chat_render_cross_opcode_resolution.json"
+    ]
+  },
+  "table_evidence": {
+    "identity": {
+      "name": "xtx/_fixedPhrase",
+      "decimal": 189073638,
+      "hex": "0x0B4508E6",
+      "classification": "table identity only",
+      "source": "xivl-client-data/manifests/sheet_inventory.csv:742"
+    },
+    "corpus": "The authenticated xivl-client-data csv/xtx__fixedPhrase.csv has 758 data rows and SHA256 A9CE38B0B4CA33E1C03BF22BC854E054BB46DB1CEF9EDFB4E9C55C5D0516A16. Its CSV row key is stored separately from field 0. Row 974 has field 0 value 9 and localized Map text; row 1255 has field 0 value 10 and localized /map text. Neither value is joined to wire bytes.",
+    "category_fence": "The separate xtx_logCategory table maps display-category row keys such as 1 Say, 2 Shout, 3 Tell, 4 Party, 28 Urgent Information, 29 General Information, 32 System Messages, and 33 System Error Messages. It does not prove that those row keys occur in a SendLog or chat wire field.",
+    "evidence": [
+      "xivl-client-data/manifests/tables.json:5947-5952",
+      "xivl-client-data/tools/_csv_reader.py:24-50",
+      "xivl-client-data/csv/xtx__fixedPhrase.csv:281",
+      "xivl-client-data/csv/xtx__fixedPhrase.csv:439",
+      "xivl-client-data/csv/xtx_logCategory.csv:4-7",
+      "xivl-client-data/csv/xtx_logCategory.csv:31-36"
+    ]
+  },
+  "capture_evidence": {
+    "retail_corpus": "The owner-attested 1.23b retail corpus is fixed at 54 capture files. It contains two Map c2s 0x0003 messages with 576-byte sub-events in chat_say and chat_shout, and eleven World c2s 0x00C9 messages with 552-byte sub-events in party_battle_leve and war_quest_update2. The derived samples do not independently identify an auto-translate selection, CSV row, locale, or rendered phrase.",
+    "evidence": [
+      "xivl-captures/sources/pcap-1.23b/manifest.yaml",
+      "xivl-captures/derived/observations.json:4002-4013",
+      "xivl-captures/derived/observations.json:4103-4116",
+      "xivl-captures/derived/lane_observations.json:2493-2518"
+    ]
+  },
+  "rejected_imported_values": [
+    {
+      "candidate": "0x200 and the 0x230/0x218 record sizes",
+      "reason": "buffer and transport sizes, not token framing"
+    },
+    {
+      "candidate": "FUN_007906C0 case bytes and FUN_00C9D550 bytes 0x40/0x23",
+      "reason": "generic renderer/table controls without a fixedPhrase-to-chat edge"
+    },
+    {
+      "candidate": "SendLog receiver 0xFF state and parser/install helper bytes",
+      "reason": "receiver/context state, not a proven token marker"
+    },
+    {
+      "candidate": "fixedPhrase row keys 974 and 1255",
+      "reason": "dictionary keys with no serialization evidence"
+    },
+    {
+      "candidate": "fixedPhrase field 0 values 9 and 10",
+      "reason": "table categories with no wire-field evidence"
+    },
+    {
+      "candidate": "xtx_logCategory row keys",
+      "reason": "localized UI category identities, not proven SendLog/chat fields"
+    },
+    {
+      "candidate": "resource identity 189073638 / 0x0B4508E6",
+      "reason": "table identity only"
+    }
+  ],
+  "missing_links": [
+    "fixedPhrase selection or lookup -> token encoder",
+    "token encoder -> caller-owned 0x200-byte Map or World chat source buffer",
+    "received Map or World chat bytes -> token decoder",
+    "token decoder -> fixedPhrase row lookup",
+    "wire field -> CSV row key versus field 0/category",
+    "malformed or unknown token -> fallback behavior",
+    "decoded token bytes -> render versus forwarding behavior"
+  ],
+  "controlled_local_capture_plan": {
+    "scope": "Optional preserved-client test against a local server stack. It cannot replace retail evidence and must be labeled non-retail corroboration. No new retail-service capture is possible or expected.",
+    "pinning": [
+      "Record hashes for the preserved client executable, local server binaries/configuration, table CSV, and capture/hook tooling.",
+      "Keep full raw packet objects and the exact command/script used to decode them."
+    ],
+    "messages": [
+      "At least four independently attested fixedPhrase selections spanning low and high sparse row keys and more than one field 0/category.",
+      "For each selection, send a token-only message and a literal-token-literal message.",
+      "Repeat every message enough times to distinguish stable token bytes from counters, timestamps, and session state.",
+      "Exercise Map and World paths separately where the preserved client and local server support them."
+    ],
+    "record_per_message": [
+      "run and session identifier",
+      "client locale",
+      "exact fixedPhrase CSV row key and field 0 value selected in the UI",
+      "channel, direction, and opcode",
+      "full raw message-field bytes before transport framing",
+      "full hash-pinned packet capture",
+      "raw parser/renderer token bytes",
+      "independently observed rendered phrase"
+    ],
+    "hook_points": [
+      "Map sender FUN_004E0320 and World sender FUN_004DF6D0 to snapshot caller-owned source bytes",
+      "SendLog constructor FUN_0089F5B0 and parser family cataloged by manifests/sendlog_parser_shape_refutation.json",
+      "shared renderer FUN_007906C0",
+      "fixedPhrase table path FUN_004DA680 -> FUN_00C9D550"
+    ],
+    "acceptance": "Promote a wire model only if raw bytes distinguish row-key serialization from field 0/category serialization, prove framing and length semantics across repeated low/high sparse rows, and reproduce literal-token-literal interleaving. A rendered-text match alone is insufficient."
+  }
+}
