@@ -42,6 +42,7 @@ SYMBOLS_PATH = REPO / "manifests" / "symbols.json"
 STRUCTS_PATH = REPO / "manifests" / "structs.json"
 MATRIX_PATH = REPO / "manifests" / "pcap_opcode_coverage_matrix.json"
 ROLE_REFINEMENTS_PATH = REPO / "manifests" / "role_refinements.json"
+BATTLE_RESULT_PATH = REPO / "manifests" / "battle_result_field_semantics.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -97,6 +98,59 @@ SIZE_CANONICAL_NONHEX_RES: tuple[re.Pattern[str], ...] = (
 )
 
 OPCODE_RE = re.compile(r"^0x[0-9a-f]{4}$")
+
+
+def check_battle_result_fields(doc: dict[str, Any], structs_doc: dict[str, Any]) -> list[Finding]:
+    """Lock the reviewed 0x0139..0x013C normalized queue contract."""
+    findings: list[Finding] = []
+    route = doc.get("route", {})
+    expected_wrappers = {
+        "0x0139": "FUN_0058C880",
+        "0x013A": "FUN_0058C930",
+        "0x013B": "FUN_0058C990",
+        "0x013C": "FUN_0058C7D0",
+    }
+    if route.get("wrappers") != expected_wrappers:
+        findings.append(Finding("ERROR", "battle-result.route", "wrapper map drifted"))
+
+    queue = doc.get("queueEntry", {})
+    dimensions = (
+        queue.get("size"), queue.get("rowCapacity"), queue.get("rowOffset"), queue.get("rowStride")
+    )
+    if dimensions != (416, 18, 56, 20):
+        findings.append(Finding("ERROR", "battle-result.queue", f"dimensions are {dimensions!r}"))
+
+    variants = {
+        row.get("opcodeHex"): (
+            row.get("rowCapacity"), row.get("subpacketSize"), row.get("observedOccurrences"),
+            row.get("captureCount"), row.get("retainedSamples"), row.get("status"),
+        )
+        for row in doc.get("wireVariants", [])
+    }
+    expected_variants = {
+        "0x0139": (1, 88, 438, 21, 50, None),
+        "0x013A": (10, 216, 66, 6, 14, None),
+        "0x013B": (18, 328, 0, 0, 0, "static_shape_only_no_capture"),
+        "0x013C": (0, 72, 27, 6, 18, None),
+    }
+    if variants != expected_variants:
+        findings.append(Finding("ERROR", "battle-result.variants", "capture/static tuples drifted"))
+
+    structs = {row.get("id"): row for row in structs_doc.get("structs", [])}
+    entry = structs.get("BCS-S-0031", {})
+    target = structs.get("BCS-S-0051", {})
+    entry_fields = {field.get("offset"): (field.get("size"), field.get("name"), field.get("type")) for field in entry.get("fields", [])}
+    if entry.get("size") != "0x1A0" or entry_fields.get("0x38") != ("0x168", "targetRows", "BattleResultTargetRow[18]"):
+        findings.append(Finding("ERROR", "structs.json:BCS-S-0031", "18-row queue layout drifted"))
+    target_fields = {field.get("offset"): field.get("name") for field in target.get("fields", [])}
+    expected_target_fields = {
+        "0x00": "targetActorId", "0x04": "numericValue", "0x08": "effectId",
+        "0x0C": "worldMasterTextId", "0x0E": "textParam",
+        "0x0F": "rowOrdinalOrFilter", "0x10": "reserved",
+    }
+    if target.get("size") != "0x14" or target_fields != expected_target_fields:
+        findings.append(Finding("ERROR", "structs.json:BCS-S-0051", "target-row layout drifted"))
+    return findings
 
 CONFIDENCE_VALUES: frozenset[str] = frozenset({
     "confirmed",
@@ -859,6 +913,7 @@ STRUCT_CHECK_COUNT = 14
 MATRIX_CHECK_COUNT = 14
 CROSS_CHECK_COUNT = 2
 ROLE_CHECK_COUNT = 1
+BATTLE_RESULT_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -882,6 +937,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {ROLE_REFINEMENTS_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        battle_result_doc = _load_json(BATTLE_RESULT_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {BATTLE_RESULT_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -901,6 +961,8 @@ def main() -> int:
         SectionResult("coverage matrix", MATRIX_CHECK_COUNT, matrix_findings),
         SectionResult("role refinements", ROLE_CHECK_COUNT,
                       check_role_refinements(role_doc)),
+        SectionResult("battle-result fields", BATTLE_RESULT_CHECK_COUNT,
+                      check_battle_result_fields(battle_result_doc, structs_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]
