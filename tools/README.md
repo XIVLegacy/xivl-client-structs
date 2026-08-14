@@ -19,6 +19,7 @@ are internal implementation modules.
 | Build complete Lua API contract | `python tools\extractors\build_lua_api_contract.py --scripts-repo PATH --decomp-repo PATH [--check]` | Requires explicit script and decomp checkouts; script bodies remain local-only |
 | Build deferred Lua callsite context | `python tools\extractors\build_lua_callsite_context.py --scripts-repo PATH [--check]` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only for the 19 fixed binding names |
 | Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
+| Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit tracked decomp assembly inputs and emits the bounded Group-family static manifest |
 | Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
 | Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |
 | Query callers and callees | `python tools\callers.py TARGET` | Requires `build\callgraph.json`; generate it first with the documented `DumpCallGraph.java` -> `build_callgraph.py` pipeline |
