@@ -167,19 +167,24 @@ BCS-Y-1834..BCS-Y-1837.
 ### 1.x combat is asymmetric between s2c display and c2s intent
 
 The s2c display side uses dedicated `CommandResult*` opcodes (`0x0139..0x013C`,
-four shape variants for 0/1/10/18 targets). The c2s intent side rides the
-generic `EventStartPacket` `0x012D` frame, with combat semantics carried by
-`eventName` and `luaParams` rather than a dedicated combat opcode. The
+four shape variants for 0/1/10/18 targets). The evidenced c2s command-event
+path rides the generic `EventStartPacket` `0x012D` frame. Combat captures use
+that envelope, but so do many noncombat scenarios; no separate per-skill
+opcode or stable scalar `gameCommand` row id is proven. The command-specific
+meaning remains in the event arguments, inline name/data, and Lua parameter
+tail behind an upstream dynamic boundary. The
 `CharaActionController` RTTI (BCS-Y-0055) is a receive-side
 playback/queue class, not a c2s emitter. The `0x012D` builder is
 `FUN_00776760` (BCS-Y-0426); its payload layout is BCS-S-0034
 `MapEventStartPayload`. Send chain: `FUN_0075E230`/`FUN_0075E1C0`+`FUN_0089E0D0`
 -> `FUN_00776760` -> `FUN_004D6D30` (zone gate) -> `FUN_004E0240` (forwarder)
--> `FUN_00DAE010` (terminal). Any combat-side server work should expect to
-extract command semantics from the EventStart payload's `eventName`/`luaParams`
-rather than looking for a per-action opcode.
+-> `FUN_00DAE010` (terminal). The preserved script gates command execution on
+a 50-byte combined string limit, a burst blocker, `_canExecuteCommand`, and the
+dynamic `command.canFire` call. Range, resource, recast, and mode checks remain
+command-specific behind that indirect boundary and are not server behavior.
 
-Refs: `manifests/combat_action_c2s_findings.json`.
+Refs: `manifests/combat_command_emission.json`,
+`manifests/combat_action_c2s_findings.json`.
 BCS-Y-0426..BCS-Y-0434; BCS-S-0034.
 
 ### Surveyed Lua N-API setters remain client-local
