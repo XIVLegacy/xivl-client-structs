@@ -16,6 +16,8 @@ are internal implementation modules.
 | Validate the PCAP bridge | `python tools\validate_pcap_bridge.py --captures-dir PATH [--write]` | Explicit capture corpus. `--write` deliberately regenerates the sidecar |
 | Decode and decompile LPB scripts | `python tools\lpb_pipeline.py [INSTALL_ROOT] [options]` | `unluac.jar` and Java are required for decompilation |
 | Build decoded Lua callback contract | `python tools\extractors\build_lua_callback_contract.py --scripts-repo PATH` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only |
+| Build complete Lua API contract | `python tools\extractors\build_lua_api_contract.py --scripts-repo PATH --decomp-repo PATH [--check]` | Requires explicit script and decomp checkouts; script bodies remain local-only |
+| Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
 | Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
 | Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |
 | Query callers and callees | `python tools\callers.py TARGET` | Requires `build\callgraph.json`; generate it first with the documented `DumpCallGraph.java` -> `build_callgraph.py` pipeline |

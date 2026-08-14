@@ -158,16 +158,23 @@ def build(scripts_repo: Path) -> dict:
             "scriptEventHandlerAssignments": event_count,
         },
         "contractSha256": _json_sha256(output_scripts),
+        "relationshipToCompleteContract": {
+            "status": "narrower_earlier_pass",
+            "supersededBy": "manifests/lua_api_contract.json",
+            "retainedPurpose": "Compact callback-only view with per-script positional shapes.",
+        },
         "nativeTraceBoundary": {
-            "status": "blocked_missing_exporters",
-            "missing": ["FindAsciiString.java", "FindAllReferencesToAddress.java"],
-            "effect": "No native callback registrar, string xref, or native function attribution is inferred from this script-only contract."
+            "status": "bounded_sample_succeeded_complete_attribution_blocked",
+            "functionalEquivalents": ["DumpStrings.java", "FindCallers.java", "exported asm corpus"],
+            "missingCapability": "A reproducible string-name -> string-address -> all data/code references -> registrar/implementation mapping for every callback name.",
+            "effect": "The bounded native sample is recorded in lua_api_contract.json. This callback-only manifest does not infer native callback targets."
         },
         "scripts": output_scripts,
         "sourceRefs": [
             "xivl-client-scripts:lua/registry.json",
             "xivl-client-scripts:lua/scripts/**/*.lua",
             "xivl-client-scripts:manifests/scripts.json",
+            "manifests/lua_api_contract.json",
         ],
     }
 
