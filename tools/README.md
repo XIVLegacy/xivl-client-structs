@@ -23,6 +23,7 @@ below are implementation modules.
 | Decode and decompile LPB scripts | `python tools\lpb_pipeline.py [INSTALL_ROOT] [options]` | `unluac.jar` and Java are required for decompilation |
 | Build decoded Lua callback contract | `python tools\extractors\build_lua_callback_contract.py --scripts-repo PATH` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only |
 | Build complete Lua API contract | `python tools\extractors\build_lua_api_contract.py --scripts-repo PATH --decomp-repo PATH [--check]` | Requires explicit script and decomp checkouts; script bodies remain local-only |
+| Build deferred Lua callsite context | `python tools\extractors\build_lua_callsite_context.py --scripts-repo PATH [--check]` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only for the 19 fixed binding names |
 | Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
 | Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
 | Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |
@@ -64,6 +65,15 @@ powershell -ExecutionPolicy Bypass -File tools\validate-json.ps1
 ### Bridge build pipeline
 
 - `extract_lua_api_index.py`: harvests Lua API names from `symbols.json` (backtick-quoted prose + `_slotN_<name>_FUN_` patterns in symbol names). Emits `manifests\lua_api_index.json`; `--check` writes nothing and fails on drift.
+- `extractors\build_lua_callsite_context.py`: scans the explicit local Lua
+  corpus, registry, and per-script call sidecars for the fixed 19-name deferred
+  binding set. It separates registry declarations, sidecar references, lexical
+  identifier/string references, and identifier-plus-parentheses calls. For
+  that bounded call form it records simple same-line dot/colon receivers and
+  delimiter-balanced written arguments without semantic promotion; Lua sugar,
+  bracket-index calls, parenthesized callees, and nested function bodies remain
+  lexical or bounded-parser cases. `--check` writes nothing and fails on drift
+  in `manifests\lua_callsite_context.json`.
 - `extract_receiver_opcode_map.py`: normalizes the vendored `data\vendor\opcodes\client_receivers.json` fixture into BCS-Y-cross-referenced inbound + client-internal + strong / candidate buckets, then deterministically merges the curated `manifests\receiver_opcode_map_overlay.json` layer. Emits `manifests\receiver_opcode_map_inbound.json`; `--check` writes nothing and fails on drift.
 - `extract_operation_opcode_map.py`: scaffolds the outbound side by inventorying the vendored `data\vendor\opcodes\opcodes.json` fixture's `retail_class_name` Operation classes, then deterministically merges the curated `manifests\operation_opcode_map_overlay.json` layer. Emits `manifests\operation_opcode_map_outbound.json`; `--check` writes nothing and fails on drift.
 - `build_lua_to_opcode.py`: joins the bridge inputs into `manifests\lua_to_opcode.json`; `--check` writes nothing and fails on drift.
