@@ -43,6 +43,7 @@ STRUCTS_PATH = REPO / "manifests" / "structs.json"
 MATRIX_PATH = REPO / "manifests" / "pcap_opcode_coverage_matrix.json"
 ROLE_REFINEMENTS_PATH = REPO / "manifests" / "role_refinements.json"
 BATTLE_RESULT_PATH = REPO / "manifests" / "battle_result_field_semantics.json"
+LUA_RESOURCE_INVENTORY_PATH = REPO / "manifests" / "preserved_lua_resource_inventory.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -150,6 +151,66 @@ def check_battle_result_fields(doc: dict[str, Any], structs_doc: dict[str, Any])
     }
     if target.get("size") != "0x14" or target_fields != expected_target_fields:
         findings.append(Finding("ERROR", "structs.json:BCS-S-0051", "target-row layout drifted"))
+    return findings
+
+
+def check_lua_resource_inventory(doc: dict[str, Any]) -> list[Finding]:
+    """Lock the reviewed preserved-script inventory and evidence boundaries."""
+    findings: list[Finding] = []
+    corpus = doc.get("canonicalCorpus", {})
+    expected_counts = {
+        "scriptCount": 2671,
+        "totalCanonicalBytes": 13971401,
+        "totalLineCount": 645709,
+        "sidecarCount": 2671,
+        "scriptsWithClassNames": 2650,
+        "scriptsWithoutClassNames": 21,
+        "scriptsWithMethods": 1492,
+        "methodAssignments": 13782,
+        "scriptsWithRequires": 2585,
+        "requireReferences": 2602,
+        "napiApiCount": 433,
+        "napiCallsites": 17049,
+    }
+    for key, expected in expected_counts.items():
+        if corpus.get(key) != expected:
+            findings.append(Finding("ERROR", f"lua-resource-inventory.{key}",
+                                    f"expected {expected}, got {corpus.get(key)!r}"))
+    expected_top_level = {
+        "root": 3, "area": 60, "chara": 1052, "command": 160,
+        "commanddebugger": 5, "debug": 5, "director": 299, "gamedata": 6,
+        "group": 26, "item": 26, "judge": 23, "quest": 629, "status": 158,
+        "system": 10, "widget": 202, "world": 7,
+    }
+    if corpus.get("topLevelCounts") != expected_top_level:
+        findings.append(Finding("ERROR", "lua-resource-inventory.topLevelCounts",
+                                "top-level script counts drifted"))
+    expected_hashes = {
+        "scriptManifest": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300",
+        "registry": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F",
+        "napiIndex": "9E63DDCDA1C3E25DBDEA65082023C4CB23FE950FD53CFC7C57D5B76DCA1234EF",
+    }
+    for key, expected in expected_hashes.items():
+        if corpus.get(key, {}).get("sha256") != expected:
+            findings.append(Finding("ERROR", f"lua-resource-inventory.{key}",
+                                    "source snapshot hash drifted"))
+    resources = {row.get("kind"): row for row in doc.get("otherScriptLikeResources", [])}
+    core = resources.get("embedded core Lua bytecode", {})
+    if core.get("logicalCount") != 7 or core.get("blobAnchorCount") != 14:
+        findings.append(Finding("ERROR", "lua-resource-inventory.embedded-core",
+                                "embedded core inventory must remain 7 logical resources / 14 anchors"))
+    if resources.get("runtime .lcb support", {}).get("logicalCount") != 0:
+        findings.append(Finding("ERROR", "lua-resource-inventory.lcb",
+                                "no captured .lcb payload may be claimed"))
+    bootstrap = resources.get("embedded LGE bootstrap Lua text", {})
+    if (bootstrap.get("logicalCount"), bootstrap.get("address"), bootstrap.get("bytes"),
+            bootstrap.get("lineCount")) != (1, "0x0110E680", 327, 14):
+        findings.append(Finding("ERROR", "lua-resource-inventory.bootstrap",
+                                "embedded bootstrap metadata drifted"))
+    prog = resources.get("embedded OnProgFunc chunks", {})
+    if prog.get("logicalCount") != 2 or "distinct from" not in prog.get("status", ""):
+        findings.append(Finding("ERROR", "lua-resource-inventory.on-prog-func",
+                                "OnProgFunc .rdata chunks must remain distinct from core .data anchors"))
     return findings
 
 CONFIDENCE_VALUES: frozenset[str] = frozenset({
@@ -914,6 +975,7 @@ MATRIX_CHECK_COUNT = 14
 CROSS_CHECK_COUNT = 2
 ROLE_CHECK_COUNT = 1
 BATTLE_RESULT_CHECK_COUNT = 1
+LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -942,6 +1004,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {BATTLE_RESULT_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        lua_resource_inventory_doc = _load_json(LUA_RESOURCE_INVENTORY_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {LUA_RESOURCE_INVENTORY_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -963,6 +1030,8 @@ def main() -> int:
                       check_role_refinements(role_doc)),
         SectionResult("battle-result fields", BATTLE_RESULT_CHECK_COUNT,
                       check_battle_result_fields(battle_result_doc, structs_doc)),
+        SectionResult("preserved Lua resources", LUA_RESOURCE_INVENTORY_CHECK_COUNT,
+                      check_lua_resource_inventory(lua_resource_inventory_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]
