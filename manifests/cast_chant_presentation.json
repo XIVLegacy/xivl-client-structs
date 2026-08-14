@@ -1,0 +1,195 @@
+{
+  "version": 1,
+  "generated": "2026-08-14",
+  "gameVersion": "1.23b",
+  "status": "bounded_static_and_capture_closure",
+  "scope": "Separates active cast-gauge timing, local command cast-time data, cast-ready battle-result VFX selection, and SubStat Chant state. It does not infer live server behavior, packet-to-action causality, or a shared cast/chant type enum.",
+  "dependencies": {
+    "package1": "manifests/battle_result_field_semantics.json",
+    "package2": "manifests/combat_command_emission.json",
+    "package3": "manifests/lua_callback_contract.json"
+  },
+  "sourceSnapshots": {
+    "captures": {
+      "repository": "XIVLegacy/xivl-captures",
+      "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4"
+    },
+    "clientData": {
+      "repository": "XIVLegacy/xivl-client-data",
+      "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6"
+    },
+    "clientScripts": {
+      "repository": "XIVLegacy/xivl-client-scripts",
+      "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b"
+    },
+    "decomp": {
+      "repository": "XIVLegacy/xivl-decomp",
+      "commit": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"
+    }
+  },
+  "activeCastGauge": {
+    "wireCarrier": {
+      "direction": "s2c",
+      "opcodeHex": "0x0137",
+      "name": "SetActorPropertyPacket",
+      "subpacketSize": 168,
+      "observedPackets": 1992,
+      "observedScenarios": 36,
+      "applicationPayloadSize": 136,
+      "framing": "168-byte subpacket = 16-byte outer subevent framing + 152-byte game message; the game message is a 16-byte prefix plus the 136-byte application payload.",
+      "shape": "payload +0 is a running-byte total; payload +1..+135 is a typed variable property stream. Property hashes are record identities, not fixed packet offsets."
+    },
+    "propertyRoute": [
+      "FUN_004D8860",
+      "FUN_00575070",
+      "FUN_00759ED0",
+      "FUN_0089E550",
+      "FUN_00775A30",
+      "FUN_00775180",
+      "property-entry indirect call at 0x00775652",
+      "FUN_00774220",
+      "FUN_00773F10",
+      "FUN_00CC7A90 _onUpdateWork"
+    ],
+    "firstNativeBoundary": "FUN_00775180 resolves a property registry entry, then calls the function pointer at propertyEntry+4. The retained native evidence does not identify fixed CharaBase or PlayerBase offsets for these four property names.",
+    "properties": [
+      {
+        "name": "playerWork.castCommandClient",
+        "idHex": "0xf683a451",
+        "valueType": "u32",
+        "observedRecords": 3,
+        "observedCaptures": 1,
+        "observedValuesHex": ["d26a0000", "00000000"],
+        "observedValuesU32": [27346, 0],
+        "consumer": "PlayerBaseClass.getCastCommand; ActionMenuWidget.updateCastInfo uses the nonzero value to locate a custom command and start ActionGaugeWidget."
+      },
+      {
+        "name": "playerWork.castEndClient",
+        "idHex": "0x59c40d5d",
+        "valueType": "u32",
+        "observedRecords": 2,
+        "observedCaptures": 1,
+        "observedValuesHex": ["dc1be150", "c21de150"],
+        "consumer": "PlayerBaseClass.getCastEndTime; ActionGaugeWidget subtracts worldMaster._getServerTime."
+      },
+      {
+        "name": "charaWork.battleTemp.castGauge_speed[0]",
+        "idHex": "0x573fe04c",
+        "valueType": "float32",
+        "observedRecords": 11,
+        "observedCaptures": 8,
+        "observedValuesHex": ["0000803f"],
+        "observedValuesFloat": [1.0],
+        "consumer": "CharaBaseClass.getCastSpeed(index); no direct ActionGaugeWidget read was found in the retained decoded script route."
+      },
+      {
+        "name": "charaWork.battleTemp.castGauge_speed[1]",
+        "idHex": "0xbb9cc775",
+        "valueType": "float32",
+        "observedRecords": 11,
+        "observedCaptures": 8,
+        "observedValuesHex": ["0000803e"],
+        "observedValuesFloat": [0.25],
+        "consumer": "CharaBaseClass.getCastSpeed(index); no direct ActionGaugeWidget read was found in the retained decoded script route."
+      }
+    ],
+    "uiDuration": {
+      "script": "lua/scripts/widget/actiongaugewidget.lua",
+      "formula": "remaining = player.getCastEndTime() - worldMaster._getServerTime(); if remaining <= 0 then remaining = 1; progressRate = 1 / remaining",
+      "widget": "ProgressBar_MagicCast_Main",
+      "storyboard": "UILuaCommands.StartCastGauge",
+      "units": "unresolved",
+      "conclusion": "The active gauge duration comes from the property-stream deadline relative to client server-time state, not directly from gameCommandBasic cast_time."
+    },
+    "captureCrossCheck": {
+      "scenario": "party_battle_leve.pcapng",
+      "target": "playerWork/castState",
+      "observedCommandId": 27346,
+      "staticLookup": "client-data row 27346 is Cure; staticactor row 27346 is /Command/Game/Magic/CureMagic",
+      "boundary": "This is an exact same-integer lookup, not proof that a particular 0x012D command or 0x0139..0x013C result in the capture was Cure."
+    }
+  },
+  "localCommandCastTime": {
+    "sheet": "gameCommandBasic.csv",
+    "column": 76,
+    "fieldName": "cast_time",
+    "getter": "GameCommandBaseClass.getCastTime",
+    "getterBehavior": "Reads column 76, then may replace it with a nonzero getForceCastTimeForCaster override or multiply it by a nonzero returned modifier.",
+    "units": "unresolved",
+    "example": {
+      "rowId": 27346,
+      "name": "Cure",
+      "rawCastTime": 2
+    },
+    "boundary": "Column 76 is local command metadata used before or around command execution. It is not the active cast-gauge deadline and no sheet column was proven to select a chant or cast presentation type."
+  },
+  "castReadyVfx": {
+    "sourceFamily": "s2c 0x0139..0x013C battle-result payload +0x04 effectOrAnimationId",
+    "route": [
+      "FUN_00585800",
+      "FUN_00798370",
+      "FUN_007982D0",
+      "BCS-S-0031 visualResultClass +0x04",
+      "FUN_007C7F80",
+      "FUN_00812DB0",
+      "FUN_00812B50",
+      "indirect object +0x12F0 vtable slot +8"
+    ],
+    "mapping": {
+      "effectCategoryHighByte": "0x6f",
+      "visualResultClass": 8,
+      "name": "CastOrReadyPreAction"
+    },
+    "boundary": "This is a native cast-ready VFX selector, not a command-sheet cast type or active gauge duration. The exact selector-to-Rapture clip class remains behind the final indirect call."
+  },
+  "chantStatusBoundary": {
+    "storage": "BCS-S-0035 CharaSubStatStorage status u32 array",
+    "ingress": "s2c 0x0179 SetActorStatusAll -> FUN_00707D60",
+    "reader": "BCS-Y-0438 SubStat_getChantImpl_FUN_006F9EC0",
+    "bits": "8..15; kind 1 reads bits 12..15 and kind 2 reads bits 8..11",
+    "modePacketFence": "The s2c 0x0144 payload has a historical byte +1 chantId label, but its retained apply route writes only CharaSubStatStorage+0x18 ModeBorder and fires _onChangeSubStatMode. It does not establish an action cast-type field.",
+    "durationFence": "Status display durations use separate charaWork.statusShownTime property-stream fields; no C++ countdown or command-sheet duration join is proven here.",
+    "conclusion": "SubStat Chant is status-state metadata and must not be merged with the action cast gauge, gameCommandBasic cast_time, or the battle-result CastOrReadyPreAction selector."
+  },
+  "package2Boundary": "The c2s 0x012D EventStart path carries generic eventName and Lua parameter data. It does not expose a stable scalar gameCommand id or the active cast-gauge deadline.",
+  "unresolved": [
+    "The time unit and epoch used by castEndClient and worldMaster._getServerTime.",
+    "The property-entry function that maps each 0x0137 hash to a concrete native storage offset.",
+    "The semantics of the getForceCastTimeForCaster override and multiplier values.",
+    "A universal packet-level castCommandClient-to-command causality join beyond the one captured same-integer cross-check.",
+    "The final selector-to-Rapture clip class behind FUN_00812B50's indirect call.",
+    "The concrete enum identities behind the two SubStat Chant nibbles."
+  ],
+  "rejectedImports": [
+    "Do not treat gameCommandBasic column 76 as the active cast-gauge deadline or assign it a time unit.",
+    "Do not use gameCommandBasic column 36 as a cast type or as a staticactor class-path key.",
+    "Do not treat effect category 0x6f or visual selector 8 as a command-sheet column.",
+    "Do not infer a stable command id from c2s 0x012D payload +0x08 or from its opaque eventName/Lua blob.",
+    "Do not treat s2c 0x0144's historical chantId label as action-cast presentation state.",
+    "Do not claim RaptureCastResultClip or RaptureChantSyncClip is the active cast-bar consumer."
+  ],
+  "sourceRefs": [
+    "manifests/gam_hash_names.json",
+    "manifests/data_dependency_catalog.json#s2c_0x0137",
+    "manifests/receiver_opcode_map_inbound.json",
+    "manifests/selector_mapping_findings.json",
+    "manifests/battle_result_field_semantics.json",
+    "manifests/combat_command_emission.json",
+    "manifests/status_effect_findings.json",
+    "manifests/status_effect_subsystem.json",
+    "manifests/structs.json#BCS-S-0035",
+    "xivl-captures:derived/observations.json",
+    "xivl-captures:derived/property_targets.json",
+    "xivl-client-data:docs/command-battle-params.md",
+    "xivl-client-data:csv/gameCommandBasic.csv",
+    "xivl-client-data:manifests/staticactor_class_paths.json",
+    "xivl-client-scripts:manifests/scripts.json",
+    "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua",
+    "xivl-client-scripts:lua/scripts/chara/charabaseclass_battle.lua",
+    "xivl-client-scripts:lua/scripts/command/game/gamecommandbaseclass.lua",
+    "xivl-client-scripts:lua/scripts/widget/actionmenuwidget.lua",
+    "xivl-client-scripts:lua/scripts/widget/actiongaugewidget.lua",
+    "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
+    "xivl-decomp:asm/ffxivgame/00373f10_FUN_00773f10.s"
+  ]
+}
