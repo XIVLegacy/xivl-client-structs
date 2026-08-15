@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "generated": "2026-08-15",
+  "gameVersion": "1.23b",
+  "scope": "Static worldMaster text routing and parameter binding for clientbound CommandResultX01/X10/X18/X00 battle-result records.",
+  "evidenceClass": "retail-binary-static-plus-closed-capture-corpus",
+  "consumerReachability": {
+    "dispatcher": "FUN_0058CA80",
+    "textConsumer": "FUN_0058C220",
+    "directCallers": [
+      {
+        "caller": "FUN_0058DA10",
+        "callsite": "0x0058DB21",
+        "mode": "header_only",
+        "evidence": "Passes param2=1 and param3=0, selecting FUN_0058C220's early return after header rendering."
+      },
+      {
+        "caller": "FUN_0058DBE0",
+        "callsite": "0x0058DD67",
+        "mode": "row_loop_reachable",
+        "evidence": "Passes param2=0 and param3=1."
+      },
+      {
+        "caller": "FUN_0058DE90",
+        "callsite": "0x0058DF64",
+        "mode": "row_loop_reachable",
+        "evidence": "Passes param2=0 and a nonnull param3 that the caller dereferences."
+      }
+    ]
+  },
+  "selectionContract": {
+    "rowWorldMasterTextId": {
+      "status": "PROVEN",
+      "decisionOwner": "server",
+      "behavior": "A zero value skips the row text path. A nonzero value is passed unchanged as the worldMaster row ID to the common renderer. The client does not derive a replacement outcome row from numericValue, effectId, commandId, or actor identity."
+    },
+    "headerControlValue": {
+      "status": "PROVEN",
+      "decisionOwner": "server",
+      "behavior": "A nonzero value is rendered once through FUN_005759A0 in the same worldMaster ID argument position with row-specific arguments zeroed, then cleared. It is a separate header-level text selection, not a modifier of per-row routing."
+    },
+    "commandId": {
+      "status": "PROVEN_AS_PARAMETER_ONLY",
+      "behavior": "It is supplied to the template parameter builder but does not select the worldMaster row. Client-data joins establish table identity only."
+    },
+    "presentationAndRenderContext": {
+      "status": "INSUFFICIENT_DATA",
+      "behavior": "The header flags and render-context fields feed category and formatting state, but no static branch shows them replacing the server-carried worldMaster ID."
+    }
+  },
+  "rowAdmission": {
+    "requirements": [
+      "The caller must select a row-loop mode.",
+      "rowCount must be nonzero.",
+      "worldMasterTextId must be nonzero.",
+      "rowOrdinalOrFilter must satisfy the consumer's current filter.",
+      "FUN_005859F0 must admit the target/text-ID pair."
+    ],
+    "admissionCeiling": "FUN_005859F0 scans a 30-entry u16 table and has explicit handling for 0x8475 and 0x846E, but the complete semantic purpose of this gate is unresolved."
+  },
+  "defaultRenderPipeline": [
+    {
+      "function": "FUN_0058C220",
+      "role": "Loads the server-carried text ID and row/header arguments."
+    },
+    {
+      "function": "FUN_005759A0",
+      "role": "Resolves actor context, computes the battle-log category through FUN_007641D0, builds template arguments through FUN_007705A0, and submits sheet 0x5FF80001 plus the low 16-bit worldMaster row ID to FUN_00771F50."
+    },
+    {
+      "function": "FUN_00771F50",
+      "role": "Creates the asynchronous text-expansion/logger object through FUN_0076B3D0 and installs the display-name resolver listener through FUN_00789CD0."
+    }
+  ],
+  "fetchRenderCeiling": "The worldMaster sheet selector, row ID, typed parameter vector, actor-name resolver, and async expansion submission are statically proven. The lower sheet-row fetch is behind the text engine's asynchronous resolver and is not assigned a direct static callee by this pass.",
+  "parameterBindings": [
+    {
+      "input": "sourceActorId/context",
+      "templateToken": "e908",
+      "status": "SUPPORTED",
+      "meaning": "Source actor display-name/context substitution; the actor resolver is proven, but the complete queue +0x0C to resolver-object link is not closed."
+    },
+    {
+      "input": "targetActorId",
+      "templateToken": "e909",
+      "status": "PROVEN",
+      "meaning": "Target actor display-name substitution."
+    },
+    {
+      "input": "commandId",
+      "templateToken": "e802",
+      "parameterSlot": 2,
+      "status": "SUPPORTED",
+      "meaning": "Sheet-backed command/action/effect name; the literal template determines the referenced sheet family."
+    },
+    {
+      "input": "numericValue",
+      "templateToken": "e80b",
+      "parameterSlot": 11,
+      "status": "PROVEN",
+      "meaning": "Generic numeric substitution used by damage, recovery, experience, chain, and other templates."
+    },
+    {
+      "input": "effectId",
+      "templateToken": "e80c",
+      "parameterSlot": 12,
+      "status": "PROVEN_AS_BINDING",
+      "meaning": "The row value is masked to 24 bits before insertion. Its displayed interpretation is template-specific."
+    },
+    {
+      "input": "textParam",
+      "templateToken": "e80d",
+      "parameterSlot": 13,
+      "status": "SUPPORTED",
+      "meaning": "Template-specific auxiliary value, observed in grammar, skill/body-part name, hit-count, and EXP-chain timer positions. It has no single global semantic."
+    },
+    {
+      "input": "rowOrdinalOrFilter",
+      "templateToken": null,
+      "status": "PROVEN_NOT_A_RENDER_ARGUMENT",
+      "meaning": "Consumed as a row filter/ordinal after rendering; it is not inserted into the template parameter vector."
+    }
+  ],
+  "specialBranches": [
+    {
+      "worldMasterTextIds": [30129],
+      "hexIds": ["0x75B1"],
+      "status": "PROVEN",
+      "behavior": "When target lookup and source-membership checks pass, calls FUN_00796F80(textParam), then continues through the default renderer. This is an actor-state side effect, not text suppression or alternate formatting."
+    },
+    {
+      "worldMasterTextIds": [30132],
+      "hexIds": ["0x75B4"],
+      "status": "PROVEN",
+      "behavior": "Uses the same target lookup and source-membership gate and calls FUN_00796F80(0), then continues through the default renderer. The English table row contains asterisks, but the consumer does not suppress it."
+    },
+    {
+      "worldMasterTextIds": [33919],
+      "hexIds": ["0x847F"],
+      "status": "PROVEN",
+      "behavior": "For the local target, supplies numericValue and textParam to PlayerProfileWidget and numericValue to ChainBonusEffectWidget, then continues through the default renderer. The widgets are additional progression UI, not a replacement text path."
+    },
+    {
+      "worldMasterTextIds": [33934, 33935, 33936, 33937, 33938, 33940, 33941, 33945, 33946, 33947, 33948, 33949, 33950, 33951, 33952, 33953, 33954, 33955],
+      "hexIds": ["0x848E-0x8492", "0x8494-0x8495", "0x8499-0x84A3"],
+      "status": "PROVEN",
+      "behavior": "When target lookup succeeds, calls FUN_007975C0 on the target's +0xE4C component with numericValue and (textParam != 0), then continues through the default renderer. This is an experience/progression side effect. IDs 0x8493 and 0x8496-0x8498 are not members of this special set."
+    }
+  ],
+  "corpusSummary": {
+    "status": "closed-frozen",
+    "packets": 531,
+    "rows": 622,
+    "nonzeroTextIdRows": 502,
+    "zeroTextIdRows": 120,
+    "distinctNonzeroTextIds": 29,
+    "opcodeRows": {
+      "0x0139": 438,
+      "0x013A": 184,
+      "0x013B": 0,
+      "0x013C": 0
+    },
+    "inventoryRef": "xivl-captures:studies/battle-result-backfit/derived/world-master-message-contexts.json"
+  },
+  "unresolvedBoundaries": [
+    "Actor types cannot be inferred from the closed capture rows; only numeric actor IDs are retained.",
+    "The exact global semantics of textParam and rowOrdinalOrFilter do not exist as one proven enum; they are template-specific and filter-specific respectively.",
+    "0x013B has a complete static shape but no retained packet or row.",
+    "The lower asynchronous text-engine sheet fetch remains indirect below FUN_00771F50."
+  ],
+  "sourceRefs": [
+    "xivl-client-structs:tools/ghidra/logs/c303_worldmaster-combat-text-routing.txt",
+    "xivl-decomp:asm/ffxivgame/0018c220_FUN_0058c220.s",
+    "xivl-decomp:asm/ffxivgame/001759a0_FUN_005759a0.s",
+    "xivl-decomp:asm/ffxivgame/003705a0_FUN_007705a0.s",
+    "xivl-client-data:csv/worldMaster.csv",
+    "xivl-captures:studies/battle-result-backfit/derived/battle-result-rows.csv",
+    "xivl-captures:studies/battle-result-backfit/derived/world-master-message-contexts.json"
+  ]
+}
