@@ -38,6 +38,8 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from verify_murmur2 import murmur2_backward
+
 REPO = pathlib.Path(__file__).resolve().parents[1]
 SYMBOLS_PATH = REPO / "manifests" / "symbols.json"
 STRUCTS_PATH = REPO / "manifests" / "structs.json"
@@ -50,6 +52,7 @@ LUA_CALLBACK_CONTRACT_PATH = REPO / "manifests" / "lua_callback_contract.json"
 LUA_API_CONTRACT_PATH = REPO / "manifests" / "lua_api_contract.json"
 CAST_CHANT_PRESENTATION_PATH = REPO / "manifests" / "cast_chant_presentation.json"
 COMBAT_COMMAND_EMISSION_PATH = REPO / "manifests" / "combat_command_emission.json"
+GAM_HASH_NAMES_PATH = REPO / "manifests" / "gam_hash_names.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -1748,10 +1751,59 @@ ROLE_CHECK_COUNT = 1
 BATTLE_RESULT_CHECK_COUNT = 1
 LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
 LUA_RESOURCE_PATH_CHECK_COUNT = 1
+def check_gam_hash_names(doc: dict[str, Any]) -> list[Finding]:
+    findings: list[Finding] = []
+    resolved = doc.get("resolved", [])
+    unresolved = doc.get("unresolved", [])
+    coverage = doc.get("coverage", {})
+    if (len(resolved), len(unresolved)) != (263, 0):
+        findings.append(Finding("ERROR", "gam-hash.coverage", "resolved/unresolved hash counts drifted"))
+    if (coverage.get("distinctHashes"), coverage.get("totalOccurrences"),
+            coverage.get("resolvedOccurrences"), coverage.get("unresolvedOccurrences")) != (263, 8918, 8918, 0):
+        findings.append(Finding("ERROR", "gam-hash.coverage", "occurrence-weighted coverage drifted"))
+    total = 0
+    expected_consumers = {
+        "playerWork.castCommandClient": ["ActionMenuWidget.updateCastInfo", "PlayerBaseClass.getCastCommand"],
+        "playerWork.castEndClient": ["ActionGaugeWidget.update", "PlayerBaseClass.getCastEndTime"],
+        "charaWork.battleTemp.castGauge_speed[0]": ["CharaBaseClass.getCastSpeed"],
+        "charaWork.battleTemp.castGauge_speed[1]": ["CharaBaseClass.getCastSpeed"],
+    }
+    for row in resolved:
+        expected = int(row.get("idHex", "0"), 16)
+        names = row.get("names", [])
+        if not names or any(murmur2_backward(name.encode("ascii")) != expected for name in names):
+            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "exact name hash mismatch"))
+        profile = row.get("observedProfile", {})
+        if profile.get("occurrences") != row.get("count") or profile.get("widths") != row.get("sizes"):
+            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "observed profile drifted"))
+        if row.get("resolutionEvidence", {}).get("method") != "exact_backward_murmurhash2_seed_0":
+            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "resolution method missing"))
+        widths = {int(key) for key in row.get("sizes", {})}
+        expected_type = {frozenset({1}): "u8_bits", frozenset({2}): "u16_le_bits",
+                         frozenset({4}): "u32_or_f32_le_bits"}.get(
+            frozenset(widths), "opaque_variable_width")
+        if row.get("wireValueType") != expected_type:
+            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "wire value type drifted"))
+        consumers = sorted({consumer for name in names for consumer in expected_consumers.get(name, [])})
+        if row.get("consumingScriptGetters") != consumers:
+            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "consumer context drifted"))
+        total += row.get("count", 0)
+    if total != 8918:
+        findings.append(Finding("ERROR", "gam-hash.occurrences", "resolved occurrence sum drifted"))
+    profile_source = doc.get("provenance", {}).get("fullCorpusProfile", {})
+    if (profile_source.get("commit") != "54a24c87faa4e3cebde808b74d80b6f1bee4b013" or
+            not re.fullmatch(r"[0-9a-f]{64}", profile_source.get("sha256", ""))):
+        findings.append(Finding("ERROR", "gam-hash.provenance", "full-corpus source pin drifted"))
+    if len(doc.get("provenance", {}).get("consumerContextRefs", [])) != 5:
+        findings.append(Finding("ERROR", "gam-hash.provenance", "consumer source refs drifted"))
+    return findings
+
+
 LUA_CALLBACK_CONTRACT_CHECK_COUNT = 1
 LUA_API_CONTRACT_CHECK_COUNT = 1
 CAST_CHANT_PRESENTATION_CHECK_COUNT = 1
 COMBAT_COMMAND_EMISSION_CHECK_COUNT = 1
+GAM_HASH_NAMES_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -1810,6 +1862,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {COMBAT_COMMAND_EMISSION_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        gam_hash_names_doc = _load_json(GAM_HASH_NAMES_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {GAM_HASH_NAMES_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -1843,6 +1900,8 @@ def main() -> int:
                       check_cast_chant_presentation(cast_chant_presentation_doc)),
         SectionResult("combat command emission", COMBAT_COMMAND_EMISSION_CHECK_COUNT,
                       check_combat_command_emission(combat_command_emission_doc)),
+        SectionResult("property stream hash catalog", GAM_HASH_NAMES_CHECK_COUNT,
+                      check_gam_hash_names(gam_hash_names_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]
