@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 50,
+  "structCount": 51,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -1606,6 +1606,7 @@
       "confidence": "probable",
       "sourceRefs": [
         "manifests/combat_damage_findings.json",
+        "manifests/battle_result_field_semantics.json",
         "BCS-Y-0408",
         "BCS-Y-0409",
         "BCS-Y-0410",
@@ -1644,30 +1645,30 @@
         {
           "offset": "0x10",
           "size": "0x04",
-          "name": "animationId",
+          "name": "effectOrAnimationId",
           "type": "uint32_t",
-          "notes": "Copied from battle-result payload+0x04."
+          "notes": "Copied from battle-result payload+0x04. FUN_00585800 classifies it and FUN_0058C220 later forwards it to FUN_005785D0; a narrower semantic name is not proven."
         },
         {
           "offset": "0x14",
           "size": "0x1C",
-          "name": "preActionBlock",
+          "name": "renderContextBlock",
           "type": "byte[28]",
-          "notes": "Shared middle block copied from payload+0x08..0x23."
+          "notes": "Fields derived from payload+0x08..0x1f plus a float inserted from DAT_00F54F70. FUN_0058C220 consumes several values during text and visual rendering; exact subfield semantics remain unresolved and are itemized in manifests/battle_result_field_semantics.json."
         },
         {
           "offset": "0x30",
           "size": "0x02",
-          "name": "actionCountLow",
+          "name": "rowCount",
           "type": "uint16_t",
-          "notes": "Low halfword of payload+0x20 actionCount. The ten-target stager uses this as the row loop bound."
+          "notes": "Copied from payload+0x20. The X01, X10, and X18 stagers and FUN_0058C220 use this word as the 0x14-byte target-row loop bound."
         },
         {
           "offset": "0x32",
           "size": "0x02",
-          "name": "actionCountHigh",
+          "name": "headerControlValue",
           "type": "uint16_t",
-          "notes": "High halfword of payload+0x20 actionCount. The base stager has a nonzero side path."
+          "notes": "Copied from payload+0x22. FUN_0058C220 passes a nonzero value into a distinct header-side render path and then clears it. This disproves the former actionCountHigh label, but does not prove that it uses the per-row worldMasterTextId namespace."
         },
         {
           "offset": "0x34",
@@ -1679,26 +1680,19 @@
         {
           "offset": "0x36",
           "size": "0x02",
-          "name": "flags",
+          "name": "presentationFlags",
           "type": "uint16_t",
           "notes": "Masked copy of payload+0x26. Both the base stager and copy routine preserve this through bit masks rather than a plain u16 assignment."
         },
         {
           "offset": "0x38",
-          "size": "0xC8",
+          "size": "0x168",
           "name": "targetRows",
-          "type": "BattleResultTargetRow[10]",
-          "notes": "Each 0x14-byte row is {targetId u32, amount widened to u32, effectId u32, worldMasterTextId u16, param u8, hitNum u8, trailing bytes}. X01 fills row 0; X10 transposes sparse arrays into up to ten rows."
-        },
-        {
-          "offset": "0x100",
-          "size": "0xA0",
-          "name": "tail",
-          "type": "byte[160]",
-          "notes": "Copied by FUN_0058EBF0 as part of the 0x5A-dword tail region, but not decoded here."
+          "type": "BattleResultTargetRow[18]",
+          "notes": "Each 0x14-byte row is BCS-S-0051. X01 fills row 0, X10 transposes up to ten rows, and X18 transposes up to eighteen. FUN_0058EBF0 copies 0x5A dwords from +0x38 through +0x19f, so the former targetRows[10]+opaque-tail split was incorrect."
         }
       ],
-      "notes": "Internal receive-side staging record for battle result and damage-feedback packets. FUN_005901D0 allocates queue slots at exactly 0x1A0 bytes, while FUN_0058EBF0 copies header fields through +0x36 then 0x5A dwords from +0x38. The record bridges clientbound CommandResult/BattleAction packets to later action-result visual processing."
+      "notes": "Internal receive-side staging record for battle result and damage-feedback packets. FUN_005901D0 allocates queue slots at exactly 0x1A0 bytes, while FUN_0058EBF0 copies header fields through +0x36 then all eighteen 0x14-byte rows from +0x38. The record bridges clientbound CommandResult/BattleAction packets to later action-result text and visual processing."
     },
     {
       "name": "PlayerInventoryStorageContainer",
@@ -2936,6 +2930,71 @@
         }
       ],
       "notes": "The 0xCC=204-byte Receiver state cache used as the fast-path target by 16-of-18 Receiver hybrid factories (the sibling cluster). Lazy-initialized by [[ReceiverStateCache_LazyGet_FUN_0076A3F0]] (BCS-Y-1337) via heap alloc + [[ReceiverStateCache_ctor_FUN_00767730]] (BCS-Y-1354). Stored at container[+0x48]. Holds inline state mirrors for ~14 known Receiver state fields (VehicleGrade, AchievementPoint, AchievementTitle, JobChange, ChangeActorExtraStat, ChangeActorSubStatModeBorder) + ~10 TBD-class slots (BCS-Y-1338/1339/1340/1341/1345/1350). The ctor calls 2 zero-arg helper functions (FUN_00CC9310, FUN_006BF420) but neither writes to cache fields - both are global-state initializers. The 5 contiguous-gap dwords at offsets 0x04/0x14/0x24/0x34/0x4C are NOT initialized by the ctor, plus a 92-byte mid-buffer at 0x54-0xAF; these gaps likely hold either heap-allocator-default state or Receiver state slots not surfaced earlier. The Receiver-state field layout was reverse-engineered by cross-referencing the per-factory fast-path write offsets earlier against the per-field zero-init in the ctor decomp - 14 of 18 Receiver state slots are now mapped to identified factories. Closes the manifest deferred_followups[1]. | [10-uncataloged-receiver-ctors-+-apply] **8 of 17 previously-unmapped fields now resolved** via the 10-ctor decomp: 0xB7 = chocobo_grade ([[ChocoboGradeReceiver_ctor_FUN_008A2F70]] BCS-Y-1361), 0xB9/0xBC/0xC0 = chocobo state tuple ([[ChocoboReceiver_ctor_FUN_008A2E70]] BCS-Y-1360), 0xC1 = goobbue_state ([[GoobbueReceiver_ctor_FUN_008A3050]] BCS-Y-1362), 0xC2..0xC5 = grand_company_state ([[GrandCompanyReceiver_ctor_FUN_0089CC90]] BCS-Y-1363), 0xC9 = shadow_actor_flag ([[ChangeShadowActorFlagReceiver_ctor_FUN_0089CBC0]] BCS-Y-1364). **Plus 5 NEW fields discovered** in the SetDisplayName apply helper [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369): 0x54 = display_name_id (int32 with -1 sentinel), 0xAC = display_name_set_byte, 0xAD = display_name_is_unnamed (bool), 0xB0 = display_name_alloc_ptr (was _zero_init_b0; now known to hold a 0x60 name-block heap pointer), 0xB4 = display_name_set_flag (was _byte_b4_TBD; now known to hold the apply-set flag). Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365). 13 of 18 expected Receiver state slots are now mapped to identified factories and class names."
+    },
+    {
+      "id": "BCS-S-0051",
+      "name": "BattleResultTargetRow",
+      "namespace": "FFXIV.Client.Scene.Combat",
+      "size": "0x14",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/battle_result_field_semantics.json",
+        "BCS-Y-0409",
+        "BCS-Y-0410",
+        "BCS-Y-0415"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "targetActorId",
+          "type": "uint32_t",
+          "notes": "Copied from the X01 scalar target or the X10/X18 target-id arrays and used by actor lookup paths."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "numericValue",
+          "type": "uint32_t",
+          "notes": "Widened from a wire uint16_t and supplied to the text/render path. A damage-only name is not justified because the same family carries system and experience messages."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "effectId",
+          "type": "uint32_t",
+          "notes": "Copied from the scalar or sparse effect-id column and consumed by the result visual path."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x02",
+          "name": "worldMasterTextId",
+          "type": "uint16_t",
+          "notes": "Zero rows are skipped. Nonzero values feed FUN_004D7470 and join by row ID to the client-data worldMaster table."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x01",
+          "name": "textParam",
+          "type": "uint8_t",
+          "notes": "Forwarded into the render path; exact semantics remain unresolved."
+        },
+        {
+          "offset": "0x0F",
+          "size": "0x01",
+          "name": "rowOrdinalOrFilter",
+          "type": "uint8_t",
+          "notes": "Compared across rows by FUN_0058C220. Captured X01/X10 samples use ordinal values, but the complete filter semantics remain unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "reserved",
+          "type": "uint32_t",
+          "notes": "The X01, X10, and X18 row stagers write only offsets +0x00 through +0x0F."
+        }
+      ],
+      "notes": "One target row in BCS-S-0031 BattleResultQueueEntry. The X01, X10, and X18 wire variants normalize scalar or sparse-SoA fields into this 0x14-byte layout."
     }
   ]
 }
