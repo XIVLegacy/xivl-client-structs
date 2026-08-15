@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 1850,
+  "symbolCount": 1855,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -6118,9 +6118,10 @@
       "address": "0x004d9910",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_factory_drill.json"
+        "manifests/actor_factory_drill.json",
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt"
       ],
-      "notes": "The zone-wide actor map lookup primitive. Body: `FUN_0071d420(&local_8, &stack0x00000004)` does an STL-map find on zone+0x17804..+0x17808 keyed by the 4-byte actor id; if the iterator equals end (`*(zone+0x17808) == iter`) returns 0, otherwise returns `*(iter + 0x10)` (the actor pointer stored at the map node's value slot). 44 callers spanning the Lua binding cluster (FUN_0075XXXX), the s2c dispatcher (FUN_004DC690 - this is the `FUN_004d9910` referenced in BCS-Y-0525 case 0xCA lookup and BCS-Y-0527 generic fallthrough), and core actor helpers (FUN_004d9980, FUN_004daa10, FUN_004d9d70, etc.). **The actor-factory-drill pass refinement to BCS-Y-0527**: the slot-9 dispatch arg at FUN_004DC690 line 759 is `iVar8` = `param_3` (the dispatcher's 3rd arg, set at line 165 `iVar8 = param_3`) = the zone state; NOT the packet. A real slot-9 implementation would source the packet from the zone state context, not receive it directly."
+      "notes": "The zone-wide actor map lookup primitive. Body: `FUN_0071d420(&local_8, &stack0x00000004)` does an STL-map find on zone+0x17804..+0x17808 keyed by the 4-byte actor id; if the iterator equals end (`*(zone+0x17808) == iter`) returns 0, otherwise returns `*(iter + 0x10)` (the Element pointer stored at the map node's value slot). Callers span the Lua binding cluster, the synchronous s2c dispatcher, and the internal MainPacket event bus. [Tier C302 2026-08-15] Re-read of FUN_004DC690 proves its slot-9 argument is the packet pointer: the dispatcher assigns `iVar8 = param_3`, reads the opcode from `iVar8+2`, and passes the same `iVar8` to `actor->vtable[9]`. The older zone-state interpretation was incorrect."
     },
     {
       "id": "BCS-Y-0535",
@@ -6132,9 +6133,10 @@
         "manifests/map_tick_handler.json",
         "manifests/fun_0058cca0_caller_tree.json",
         "manifests/actor_map_writers.json",
-        "manifests/fun_004d9910_callers_map.json"
+        "manifests/fun_004d9910_callers_map.json",
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt"
       ],
-      "notes": "Top of the per-frame Scene+Map tick chain. NO static instruction-level callers (the fun-0058cca0-caller-tree pass) - it is invoked from the engine's main loop via function-pointer or vtable indirection. Per the map-tick-handler pass/60 it calls [[QueuedActorMessageDispatcher_FUN_004DAA10]] FIRST (drains the async queue and dispatches via actor->vtable[8]), then [[MapChannelStateMachinePump_FUN_004E30A0]] (which pumps the s2c packet queue). This explains why Actor cluster opcode EFFECTS are visible in the game without any synchronous Pattern B handler doing the work: the FUN_004DC690 case bodies enqueue events for THIS function's first child to drain on the next frame."
+      "notes": "Top of the per-frame Scene+Map tick chain. No static instruction-level callers are present; it is reached through an engine callback boundary. It calls [[QueuedActorMessageDispatcher_FUN_004DAA10]] first to drain the internal MainPacket event bus through Element vtable slot 8, then calls [[MapChannelStateMachinePump_FUN_004E30A0]] to pump the synchronous s2c path. [Tier C302 2026-08-15] These are independent producers and consumers: FUN_004DC690 handles Actor-cluster packets through slot 9 and does not enqueue them into the MainPacket bus."
     },
     {
       "id": "BCS-Y-0536",
@@ -6160,9 +6162,10 @@
         "manifests/map_tick_handler.json",
         "manifests/fun_0058cca0_caller_tree.json",
         "manifests/actor_map_writers.json",
-        "manifests/fun_004d9910_callers_map.json"
+        "manifests/fun_004d9910_callers_map.json",
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt"
       ],
-      "notes": "**The vtable[8] async dispatcher** - resolves a long-standing open question (the actor-vftable9-investigation pass/46/47/54). Walks a lock-free ring buffer at zone+0x14..+0x18 (0x60-byte entries, Interlocked* primitives via [[Sqex_Thread_Queue_MainPacket_Dequeue_FUN_004DDB50]]). For each ready entry: looks up the actor via [[ZoneActorMap_FindById_FUN_004d9910]] (BCS-Y-0534), then invokes `actor->vtable[+0x20]` (slot 8) with arguments (event_type-3, payload+0x20, payload+0x18). The subtract-3 maps event_type back to opcode_subtype. Sole caller is [[FrameTick_SceneAndMap_TopOfChain_FUN_004B3C50]]. The actor-vtable9-bulk pass looked at slot 9 (correctly found no-op for cataloged actor RTTI); the REAL polymorphic handler is at slot 8 of the Element subclass hierarchy. Combined with the fun-0058cca0-caller-tree pass's synchronous Pattern B finding (vtable[9] of Application::Main::Element::* subclasses via FUN_0058CCA0/FUN_0059CED0/FUN_004D8860), this gives a full picture: FUN_004DC690 case handlers either dispatch sync via actor->vtable[9] OR enqueue an event for THIS function to drain async on the next frame via actor->vtable[8]. Independently confirmed by the fun-004d9910-callers-map pass's 43-caller survey of FUN_004d9910."
+      "notes": "Internal MainPacket event-bus drain. It dequeues 0x60-byte MainPacket records, handles event type 2 through a separate channel object, otherwise looks up the Element by actor id, subtracts 3 from event_type, and calls `element->vtable[8](event_type-3, payload, length)`. Sole direct caller is [[FrameTick_SceneAndMap_TopOfChain_FUN_004B3C50]]. [Tier C302 2026-08-15] The bus is populated by internal game-logic producers, not by FUN_004DC690. It is therefore separate from synchronous s2c Element slot-9 dispatch and from the CharaElement-local battle-effect queue used by s2c 0x00DA."
     },
     {
       "id": "BCS-Y-0538",
@@ -6174,9 +6177,10 @@
         "manifests/map_tick_handler.json",
         "manifests/fun_0058cca0_caller_tree.json",
         "manifests/actor_map_writers.json",
-        "manifests/fun_004d9910_callers_map.json"
+        "manifests/fun_004d9910_callers_map.json",
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt"
       ],
-      "notes": "`Application::Main::RaptureElement::vftable` (primary base) at 0x00F91014; secondary base vtable at 0x00F91138 for the multiple-inheritance virtual base (RelativeElement). RTTI confirmed by the actor-map-writers pass via dynamic_cast checks against both `RaptureElement::RTTI_Type_Descriptor` and `Element::RelativeElement::RTTI_Type_Descriptor` in FUN_004daf00. **This is the actor map's value type** at zone+0x17804..+0x17808 - what BCS-Y-0534 (FUN_004d9910) actually returns. The actor-vtable9-bulk pass missed this hierarchy because it searched RTTI for 'Actor' substring; the real classes are under `Application::Main::Element::*` with 22 derived subclasses (the 22 callers of [[RaptureElement_Ctor_FUN_004dab50]] insert chain). Per the fun-0058cca0-caller-tree pass: 27 Element subclasses total participate in vtable[9] Pattern B sync dispatch (FUN_0058CCA0 for CharaElement, FUN_0059CED0 for MapLayoutElement, FUN_004D8860 shared by 25 others)."
+      "notes": "`Application::Main::RaptureElement::vftable` (primary base) at 0x00F91014; secondary base vtable at 0x00F91138. RTTI and dynamic-cast evidence establish RaptureElement as the value type returned from the actor map at zone+0x17804..+0x17808. The hierarchy contains 23 classes: one base and 22 derived Element classes. CharaElement and MapLayoutElement have dedicated slot-9 handlers; the remaining derived classes use the shared event-family handler. The older 27-class count conflated multiple-inheritance secondary vtables with distinct classes."
     },
     {
       "id": "BCS-Y-0539",
@@ -11597,9 +11601,10 @@
       "address": "0x0058DA10",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/battle_effect_queue_consumer.json"
+        "manifests/battle_effect_queue_consumer.json",
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt"
       ],
-      "notes": "[battle-effect-queue-consumer battle-effect queue consumer] 412-byte battle-effect QUEUE CONSUMER. Per-frame called from [[CharaElement_PerActorFrameTick_FUN_0058DF90]]. Drains one entry per call from circular buffer at actor+0xa84 (array base) +0xa88 (capacity) +0xa8c (head cursor) +0xa90 (count). Returns early if queue empty. Switches on entry+4 byte (entry type 0..0x19): cases 0-2 simple broadcast (subtype 3/4); cases 3-0xb ANIMATION TRIGGER PATH via FUN_007C5600 + FUN_0058CA80 + FUN_0058A010 (this is the consumer side of CharaActionController.enqueue per the 0x00da-playanimationonactor-pipeline-synthesis pass); cases 0xc-0x19 variant broadcasts. All cases call FUN_005901D0 (BCS-Y-0412 per-entry apply, dual-role with the producer path). Resolves the 0x00da-playanimationonactor-pipeline-synthesis pass deferred consumer-side question.",
+      "notes": "Per-frame CharaElement battle-effect queue drain. It reads the circular buffer at actor+0xa84 (array), +0xa88 (capacity), +0xa8c (head), and +0xa90 (count), switches on entry+4 type 0..0x19, and advances one entry per call. Types 3..0xb reach FUN_007C5600, FUN_0058CA80, and FUN_0058A010 after FUN_005901D0 reprocessing. [Tier C302 2026-08-15] This is a CharaElement-local queue/poll path, not a proven CharaActionController enqueue. No direct edge from this drain reaches FUN_007C7F80, FUN_00812B50, CharaActionController, or CharaActionQue; those systems remain separated by indirect dispatch.",
       "id": "BCS-Y-1025"
     },
     {
@@ -22679,6 +22684,66 @@
       ],
       "notes": "[S6 2026-08-12] RTTI-confirmed 160-slot vftable for Application::Scene::Actor::Map::MapLayoutActor. The tracked decomp RTTI index maps RVA 0x00BBAE3C to this class, and its vtable-method index maps slot 157 (+0x274) to [[MapLayoutActor_SceneOpDispatcher_FUN_0062CDA0]] (BCS-Y-1860). The read-only retail data archive independently reads 0x0062CDA0 from that slot.",
       "id": "BCS-Y-1863"
+    },
+    {
+      "name": "CharaElement_BattleEffectVisualClassDispatch_FUN_0058CA80",
+      "kind": "function",
+      "address": "0x0058CA80",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "BCS-Y-1025"
+      ],
+      "notes": "[Tier C302 2026-08-15] Type-gated battle-effect visual dispatch used by the per-frame queue drain. After FUN_00588E70 admits the record, visual class 5 routes to FUN_00585AF0 and classes 6..10 route to FUN_0058C220. Callers are FUN_0058DA10, FUN_0058DBE0, and FUN_0058DE90. This function does not call the Rapture VFX constructor or a CharaAction queue method.",
+      "id": "BCS-Y-1864"
+    },
+    {
+      "name": "CharaElement_BattleEffectRecordAdapter_FUN_0058A010",
+      "kind": "function",
+      "address": "0x0058A010",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "BCS-Y-1025"
+      ],
+      "notes": "[Tier C302 2026-08-15] Sole-caller adapter from FUN_0058DA10. It copies the first two dwords of a battle-effect entry into a zeroed 0x44-byte local record, masks the local flag word with 0xff800000, and passes the local record to FUN_00589E00. It has no direct VFX or CharaAction edge.",
+      "id": "BCS-Y-1865"
+    },
+    {
+      "name": "CharaActionQue_GenericActionResolve_vfunc8_FUN_00844330",
+      "kind": "function",
+      "address": "0x00844330",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "manifests/action_skill_subsystem.json"
+      ],
+      "notes": "[Tier C302 2026-08-15] Primary CharaActionQue vtable slot 8. It marks entry flags at +0x0c, resolves a hashed action name through FUN_0080E070, stores the returned action object at entry+0x10, and invokes that object's vtable slot +0xec with entry+8. No direct callers are present because invocation is virtual; no packet or battle-effect producer is statically tied to this slot.",
+      "id": "BCS-Y-1866"
+    },
+    {
+      "name": "CharaActionQue_IdleActionResolve_vfunc7_FUN_00844660",
+      "kind": "function",
+      "address": "0x00844660",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "manifests/action_skill_subsystem.json"
+      ],
+      "notes": "[Tier C302 2026-08-15] Primary CharaActionQue vtable slot 7. It normalizes the @0/@1/@2 idle aliases to initf_idle, initb_idle, or initp_idle variants, marks entry flags at +0x0c, resolves an action object, and stores it at entry+0x10. No direct callers are present because invocation is virtual; the exact producer-side call site remains unresolved.",
+      "id": "BCS-Y-1867"
+    },
+    {
+      "name": "CharaActionQueueEntry_AllocateAndInsert_FUN_00845E80",
+      "kind": "function",
+      "address": "0x00845E80",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "manifests/action_skill_subsystem.json"
+      ],
+      "notes": "[Tier C302 2026-08-15] Non-virtual CharaAction queue insertion path. After state gates, it allocates 0x1c bytes, constructs the queue entry through FUN_00843B50, applies type-specific initialization for types 5..9, and inserts the resulting pointer through FUN_005692F0 into the controller bucket selected by `entry_type * 0x14 + 4`. Direct wrappers are FUN_00846050 and FUN_00846080. This refutes the narrower prior model in which primary CharaActionQue slot 7 or 8 itself performed container insertion.",
+      "id": "BCS-Y-1868"
     }
   ]
 }
