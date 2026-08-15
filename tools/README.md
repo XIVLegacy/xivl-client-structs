@@ -105,6 +105,10 @@ representation. Reader's guide: `..\docs\ir-schema.md`.
 ### Verification
 
 - `verify_murmur2.py`: cross-checks backward-walking MurmurHash2 against the first-party `manifests\gam_hash_names.json` dataset and the vendored `data\vendor\captures\payload_samples.json` fixture. Fails loudly (exit 2) if either input is missing. 6/6 test vectors, 263/263 resolved (id, name) pairs, 60/60 s2c 0x0137 payload property ids.
+- `build_property_stream_hash_catalog.py`: enriches the canonical hash-name
+  manifest from an explicit full-corpus accounting input, re-verifies every
+  name with seed-0 backward MurmurHash2, and records occurrence-weighted
+  coverage and conservative wire profiles.
 
 ### Headless Ghidra
 
