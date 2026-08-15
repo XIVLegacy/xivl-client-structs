@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "1.23b",
+    "build": "2012.09.19.0001",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "addressConvention": "Function and call-site addresses are image-base-normalized RVAs used by xivl-decomp. Add image base 0x00400000 for the loaded VA.",
+  "scope": "Retail controller, keyboard, and mouse input routing relevant to an XInput-only runtime hook.",
+  "verdict": {
+    "classification": "proven",
+    "claim": "XInput and DirectInput are both live controller backends. DirectInput8 enumerates every game-controller record; WMI classification routes each record to XInput or DirectInput state polling. Mixed records are polled in the same Application::Rapture update, so an XInput-only hook cannot observe or control DirectInput-routed gamepads. Keyboard and mouse use ordinary window messages and USER32 state/cursor APIs, not DirectInput or Raw Input."
+  },
+  "imports": {
+    "classification": "proven",
+    "xinput": {
+      "dll": "XINPUT1_3.dll",
+      "entryPoints": [
+        {
+          "ordinal": 2,
+          "resolvedName": "XInputGetState",
+          "iatRva": "0x00F3E5F0",
+          "thunkRva": "0x009CD3F2",
+          "soleDirectCallSite": "0x0093385B"
+        },
+        {
+          "ordinal": 3,
+          "resolvedName": "XInputSetState",
+          "iatRva": "0x00F3E5E8",
+          "thunkRva": "0x009CD3E6",
+          "soleDirectCallSite": "0x0093255A"
+        },
+        {
+          "ordinal": 5,
+          "resolvedName": "XInputEnable",
+          "iatRva": "0x00F3E5EC",
+          "thunkRva": "0x009CD3EC",
+          "soleDirectCallSite": "0x00933642"
+        }
+      ]
+    },
+    "directInput": {
+      "dll": "DINPUT8.dll",
+      "entryPoint": "DirectInput8Create",
+      "iatRva": "0x00F3E054",
+      "thunkRva": "0x009CD3E0",
+      "soleDirectCallSite": "0x00942A93"
+    },
+    "windowInput": {
+      "dll": "USER32.dll",
+      "entryPoints": [
+        "GetActiveWindow",
+        "GetKeyboardState",
+        "ToAscii",
+        "GetCursorPos",
+        "ScreenToClient",
+        "SetCapture",
+        "ReleaseCapture"
+      ],
+      "subclassEntryPoints": [
+        "COMCTL32 ordinal 410: SetWindowSubclass",
+        "COMCTL32 ordinal 412: RemoveWindowSubclass",
+        "COMCTL32 ordinal 413: DefSubclassProc"
+      ]
+    },
+    "rawInput": {
+      "classification": "supported",
+      "boundedAbsence": "The PE import table contains no RegisterRawInputDevices, GetRawInputData, GetRawInputBuffer, GetRawInputDeviceInfo, or GetRawInputDeviceList entry. The frozen exact-string inventory contains none of those names."
+    },
+    "otherControllerApis": {
+      "classification": "supported",
+      "boundedAbsence": "The PE has no HID import and no WINMM joyGetPos, joyGetPosEx, joyGetDevCaps, or joyGetNumDevs import."
+    }
+  },
+  "dynamicLoadAudit": {
+    "classification": "supported",
+    "claim": "No alternate input DLL or input entry point is named for LoadLibrary/GetProcAddress resolution. The only frozen input-DLL/API strings are the normal import-descriptor names DINPUT8.dll, XINPUT1_3.dll, and DirectInput8Create; the PE has no delay-import directory.",
+    "ceiling": "INSUFFICIENT-DATA for an input API name assembled, decrypted, or received only at runtime. Generic LoadLibrary and GetProcAddress imports exist for unrelated subsystems."
+  },
+  "initialization": {
+    "classification": "proven",
+    "application": {
+      "function": "FUN_004B2DF0",
+      "rva": "0x000B2DF0",
+      "vtable": "Application::Rapture slot 0",
+      "behavior": "Constructs PadDevice, MouseDevice, and KeyboardDevice at object offsets +0x40, +0x44, and +0x48."
+    },
+    "directInput": {
+      "function": "FUN_00D42A40",
+      "rva": "0x00942A40",
+      "callSite": "0x00942A93",
+      "behavior": "Calls DirectInput8Create with version 0x0800 and IID bf798030-483a-4da2-aa99-5d64ed369700 (IDirectInput8A), then stores the shared interface at global RVA 0x01378680."
+    },
+    "controllerEnumeration": {
+      "function": "FUN_00D33630",
+      "rva": "0x00933630",
+      "behavior": "Calls XInputEnable(TRUE), then IDirectInput8A::EnumDevices with device class 4 (DI8DEVCLASS_GAMECTRL), callback FUN_00D33180, and flags 1."
+    }
+  },
+  "controllerRouting": {
+    "classification": "proven",
+    "enumerationCallback": {
+      "function": "FUN_00D33180",
+      "rva": "0x00933180",
+      "behavior": "Creates or queries every DirectInput-enumerated game-controller device, calls FUN_00D32100 with the product GUID Data1, and stores one exclusive backend flag per controller record."
+    },
+    "classifier": {
+      "function": "FUN_00D32100",
+      "rva": "0x00932100",
+      "behavior": "Queries WMI namespace \\\\.\\root\\cimv2 and class Win32_PNPEntity, reads DeviceID, requires an IG_ marker, parses VID_ and PID_, combines PID << 16 | VID, and compares that value with the DirectInput product GUID Data1 at 0x0093230E.",
+      "xinputResult": "A matching IG_ record is marked XInput and its temporary DirectInput device is released after metadata collection.",
+      "directInputResult": "A nonmatching record, or a WMI setup/query/match failure, is routed to DirectInput. The client calls SetCooperativeLevel at 0x0093338F with flags 9 (exclusive, background), SetDataFormat at 0x009333AE, EnumObjects at 0x009333D1, and Acquire at 0x009335E7."
+    },
+    "selectionModel": "Backend selection is mutually exclusive per device record but concurrent across records. It is capability/identity classification, not a first-failure fallback order.",
+    "noXinputFallback": {
+      "classification": "proven",
+      "claim": "An XInputGetState failure clears that record's state. The poll function contains no edge from that failure to DirectInput Poll/GetDeviceState for the same record."
+    }
+  },
+  "polling": {
+    "classification": "proven",
+    "applicationUpdate": {
+      "function": "FUN_004B3C50",
+      "rva": "0x000B3C50",
+      "vtable": "Application::Rapture slot 1",
+      "calls": [
+        "PadDevice slot 2 at 0x000B3CD1 -> FUN_00D337A0",
+        "MouseDevice slot 2 at 0x000B3D34 -> FUN_00D31DE0",
+        "KeyboardDevice slot 2 at 0x000B3D89 -> FUN_00D31A60"
+      ]
+    },
+    "padUpdate": {
+      "function": "FUN_00D337A0",
+      "rva": "0x009337A0",
+      "behavior": "Iterates all enumerated records during one call. A marked record calls XInputGetState at 0x0093385B. Every unmarked live record optionally calls IDirectInputDevice8A::Poll at 0x00933D86 and calls GetDeviceState with size 0x94 at 0x00933D9E.",
+      "coexistence": "A mixed XInput and DirectInput record set therefore invokes both state APIs in the same Application::Rapture update and on the same invoking thread."
+    },
+    "cadence": {
+      "classification": "supported",
+      "claim": "Application::Rapture slot 1 is the common application update and is the retail per-frame poll candidate.",
+      "ceiling": "INSUFFICIENT-DATA for an exact one-call-per-rendered-frame guarantee or measured poll frequency from statics alone."
+    }
+  },
+  "deviceClasses": {
+    "controllers": {
+      "classification": "proven",
+      "path": "DirectInput8 game-controller enumeration followed by per-record XInput or DirectInput polling."
+    },
+    "keyboard": {
+      "classification": "proven",
+      "messageCallback": "FUN_00D317E0 at RVA 0x009317E0",
+      "update": "FUN_00D31A60 at RVA 0x00931A60",
+      "path": "Window-subclass keyboard messages plus GetKeyboardState and ToAscii. DirectInput is not used."
+    },
+    "mouse": {
+      "classification": "proven",
+      "messageCallback": "FUN_00D31C30 at RVA 0x00931C30",
+      "update": "FUN_00D31DE0 at RVA 0x00931DE0",
+      "path": "Window-subclass mouse messages plus capture, cursor-position, and screen-to-client USER32 calls. DirectInput is not used."
+    },
+    "rawInput": {
+      "classification": "supported",
+      "path": "No imported, named dynamic, or inspected input-callback WM_INPUT route was found."
+    }
+  },
+  "focusAndDeviceChange": {
+    "focus": {
+      "classification": "proven",
+      "controllerBehavior": "FUN_00D337A0 compares GetActiveWindow with the game HWND before polling unless object +0xA4 permits background input. The inactive path clears normalized controller state and skips both XInput and DirectInput polling; it does not switch backends.",
+      "keyboardMouseBehavior": "The subclass callbacks clear state on deactivation and menu or size-move entry. Mouse position polling also requires the active game window."
+    },
+    "reenumeration": {
+      "classification": "proven",
+      "behavior": "FUN_00D337A0 calls FUN_00D33630 after 0x96 update cycles when no record succeeds or the selected-index field remains zero. FUN_00D34410 also exposes an explicit reconfiguration path."
+    },
+    "deviceMessages": {
+      "classification": "supported",
+      "boundedAbsence": "The inspected keyboard and mouse subclass callbacks contain no WM_DEVICECHANGE or WM_INPUT case, and the input import/name inventory exposes no registration route for either mechanism."
+    },
+    "switching": {
+      "classification": "proven",
+      "claim": "Focus loss clears or suppresses state; it never changes the stored per-record XInput/DirectInput selection. Re-enumeration can rebuild and reclassify records."
+    }
+  },
+  "threadAffinity": {
+    "sharedPollContext": {
+      "classification": "proven",
+      "claim": "Pad, mouse, and keyboard slot-2 updates are synchronous calls from one FUN_004B3C50 invocation. XInput and DirectInput record polls therefore share that invocation's thread."
+    },
+    "osThreadIdentity": {
+      "classification": "INSUFFICIENT-DATA",
+      "stoppingPoint": "Application::Rapture::vftable slot 1 -> FUN_004B3C50. Its upper caller is polymorphic framework dispatch and is not resolved by the direct static call graph.",
+      "residue": "Record OS thread IDs at FUN_004B3C50, XInputGetState, DirectInput Poll/GetDeviceState, and the window-subclass callbacks in a real-client run."
+    }
+  },
+  "launcherHookDisposition": {
+    "classification": "proven",
+    "answer": "No. An XInput-only runtime hook is complete only when every active controller record is classified as IG_ XInput. Any non-IG_ game controller bypasses the hook through IDirectInputDevice8A::Poll/GetDeviceState. A WMI classification failure also selects the DirectInput route. Mixed records can exercise both routes in the same update.",
+    "minimumCoverage": "Hook both XInputGetState and the DirectInput device Poll/GetDeviceState route, or hook the post-normalization PadDevice state after FUN_00D337A0 has merged either backend."
+  },
+  "residualCeilings": [
+    "The upper virtual caller and exact OS thread identity of Application::Rapture slot 1 are unresolved.",
+    "Exact render-frame coupling and measured input-poll cadence require runtime instrumentation.",
+    "Hotplug behavior while another record remains healthy is not fixed by the observed counter condition alone.",
+    "Runtime-generated API names and platform translation layers remain outside the bounded PE import/string audit.",
+    "Windows, Wine, and Steam Input can present different device identities or shims and require the owner's real-client matrix."
+  ],
+  "sourceRefs": [
+    "xivl-decomp:config/ffxivgame.vtable_slots.jsonl#Application::Rapture",
+    "xivl-decomp:config/ffxivgame.vtable_slots.jsonl#Sqex::Input::PadDevice",
+    "xivl-decomp:config/ffxivgame.vtable_slots.jsonl#Sqex::Input::KeyboardDevice",
+    "xivl-decomp:config/ffxivgame.vtable_slots.jsonl#Sqex::Input::MouseDevice",
+    "xivl-decomp:config/ffxivgame.strings.json#DINPUT8.dll-XINPUT1_3.dll-import-names",
+    "xivl-decomp:asm/ffxivgame/000b3c50_FUN_004b3c50.s",
+    "xivl-decomp:asm/ffxivgame/00932100_FUN_00d32100.s",
+    "xivl-decomp:asm/ffxivgame/00933180_FUN_00d33180.s",
+    "xivl-decomp:asm/ffxivgame/009337a0_FUN_00d337a0.s",
+    "xivl-decomp:asm/ffxivgame/00942a40_FUN_00d42a40.s",
+    "xivl-decomp:asm/ffxivgame/009317e0_FUN_00d317e0.s",
+    "xivl-decomp:asm/ffxivgame/00931c30_FUN_00d31c30.s"
+  ]
+}
