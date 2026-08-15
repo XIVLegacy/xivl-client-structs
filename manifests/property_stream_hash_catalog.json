@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "generated": "2026-08-14",
+  "gameVersion": "1.23b",
+  "status": "grammar_and_carrier_scope_complete",
+  "scope": "Client-side grammar and carrier closure for the typed actor-property stream. Names and values describe client/capture evidence only and do not claim server behavior.",
+  "sourceSnapshots": {
+    "clientStructs": {
+      "repository": "XIVLegacy/xivl-client-structs",
+      "commit": "ca8f1ed17fad83aa2360425fbbc17ebb9d928f8a"
+    },
+    "captures": {
+      "repository": "XIVLegacy/xivl-captures",
+      "commit": "4fd5f6db51cf0ecc8574724c14a7c47b50d8cb5a"
+    },
+    "decomp": {
+      "repository": "XIVLegacy/xivl-decomp",
+      "commit": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"
+    }
+  },
+  "grammar": {
+    "applicationPayloadBytes": 136,
+    "streamOffset": 0,
+    "runningByteTotal": "u8 at application +0; parsing is bounded to min(136, 1 + runningByteTotal)",
+    "termination": "A zero lead byte terminates the stream; the declared running-byte bound is an independent hard stop.",
+    "propertyRecord": {
+      "shape": "u8 valueWidth, u32 propertyHash little-endian, valueWidth raw value bytes",
+      "observedWidths": [1, 2, 4, 11, 95],
+      "typeBoundary": "The lead byte proves payload width. Width 1/2/4 is compatible with scalar storage, but the wire alone does not distinguish signedness or int32 from float32. Width 11/95 remains an opaque buffer.",
+      "hashIdentity": "The u32 hash identifies the complete property path. Array indices are ASCII bracket suffixes inside the hashed candidate string, not separate wire fields; for example castGauge_speed[0] and castGauge_speed[1] hash independently."
+    },
+    "targetMarker": {
+      "shape": "u8 marker followed by the marker-family decoded number of printable ASCII bytes; it changes the active target for following property records",
+      "ranges": "0x60..0x9f and 0xa4..0xe3 are marker families decoded by the retained corpus parser; decoded length is marker-0x60 below 0x82, marker-0x82 from 0x82..0x9f, or marker-0xa4 from 0xa4..0xe3.",
+      "boundary": "Target strings are capture-observed stream context. They do not alter the property hash or encode an array index."
+    },
+    "derivation": [
+      "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s:0x00775264-0x00775679 - client parser consumes one lead byte, branches across marker ranges, advances by decoded marker length, and applies registry records.",
+      "xivl-captures:tools/extractors/extract_gam_keys.py:parse_property_block - deterministic corpus grammar and width/hash/value extraction.",
+      "xivl-captures:tools/extractors/extract_property_targets.py:parse_property_block_with_targets - active-target association.",
+      "manifests/gam_hash_names.json and tools/verify_murmur2.py - exact backward MurmurHash2 matches, including indexed names."
+    ]
+  },
+  "carriers": [
+    {
+      "direction": "s2c",
+      "opcodeHex": "0x0137",
+      "name": "SetActorPropertyPacket",
+      "identicalStreamFormat": true,
+      "subpacketBytes": 168,
+      "applicationPayloadBytes": 136,
+      "applyRoute": [
+        "FUN_004D8860",
+        "FUN_00575070",
+        "FUN_00759ED0",
+        "FUN_0089E550",
+        "FUN_00775A30",
+        "FUN_00775180"
+      ],
+      "derivation": "The mapped 0x0137 dispatcher reaches SyncMemoryReceiver apply FUN_0089E550, which calls FUN_00775A30 and then FUN_00775180."
+    }
+  ],
+  "carrierClosure": {
+    "dispatcherCasesInRetainedRoute": 1,
+    "identicalWireCarriers": ["s2c:0x0137"],
+    "nonCarrierCallers": [
+      "FUN_00775890 reaches FUN_00775180 from client-local registry/state iteration; its callers FUN_006E17E0 and FUN_006E1F70 are not packet dispatcher cases."
+    ],
+    "conclusion": "No second dispatcher opcode feeding the identical typed stream was found in the retained client route. The catalog therefore covers s2c 0x0137 only.",
+    "evidence": [
+      "xivl-decomp:asm/ffxivgame/00375a30_FUN_00775a30.s:0x00775abb",
+      "xivl-decomp:asm/ffxivgame/00375890_FUN_00775890.s:0x007759f2",
+      "manifests/receiver_opcode_map_inbound.json",
+      "manifests/event_family_sibling_findings.json"
+    ]
+  },
+  "catalog": {
+    "home": "manifests/gam_hash_names.json",
+    "status": "Stage 4 enrichment pending"
+  },
+  "sourceRefs": [
+    "manifests/cast_chant_presentation.json",
+    "manifests/gam_hash_names.json",
+    "manifests/receiver_opcode_map_inbound.json",
+    "xivl-captures:derived/property_targets.json",
+    "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
+    "xivl-decomp:asm/ffxivgame/00375a30_FUN_00775a30.s",
+    "xivl-decomp:asm/ffxivgame/00375890_FUN_00775890.s"
+  ]
+}
