@@ -1,0 +1,382 @@
+{
+  "schemaVersion": 1,
+  "campaign": "M8",
+  "gameVersion": "1.23b",
+  "generated": "2026-08-15",
+  "status": "decomp_and_pcap_cross_checked",
+  "binary": {
+    "name": "ffxivgame.exe",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "scope": "Bundled small client receiver contracts for s2c 0x00D8, 0x01A3, 0x013D, and 0x0131, plus the conditional c2s 0x012F tail and s2c 0x0132 command-number cross-check.",
+  "sourceRevisions": {
+    "xivlClientStructs": "10645e4ce5ea5719edbd2b18055ca6c41ed8816b",
+    "xivlDecomp": "752e8783dff7c52dc1eac7546748c86e94be76cd",
+    "xivlCaptures": "41f5899e0f51c213cbcda95ebc364cdf2b8cb0d4",
+    "xivlOpcodes": "71fa93bf299af1cf309e444981f3914d2646b048"
+  },
+  "decompEvidence": {
+    "artifacts": [
+      "manifests/symbols.json",
+      "manifests/data_dependency_catalog.json",
+      "manifests/event_block_execution_state.json",
+      "xivl-decomp:config/ffxivgame.protocol_evidence.json",
+      "xivl-decomp:docs/event/end-order-event-receiver.md"
+    ],
+    "limitation": "The retained promoted artifacts were used. A fresh headless archive was not produced because the required local Ghidra project and Java environment variables were unavailable."
+  },
+  "captureEvidence": {
+    "artifact": "xivl-captures:sources/pcap-1.23b/objects",
+    "contentSha256": "3e39bfbffdf5a7efa0f42fc221f42dc2d1d28af8f19378d28921a3b903c0c7ee",
+    "observationsArtifact": "xivl-captures:derived/observations.json",
+    "observationsSha256": "2963dace91b5a98ede2a3ab47c01b4291e44034ca7c0e7272f805efa0330f19b",
+    "payloadLayoutsArtifact": "xivl-captures:derived/payload_layouts.json",
+    "payloadLayoutsSha256": "068cf0f13e9abfe43b465716d3ab9399635fcd83b7c5a9c72fe19e9dc83996f7",
+    "method": "The committed capture extractor reconstructed the closed canonical corpus. Counts are bounded observations, not exhaustive retail behavior claims."
+  },
+  "receivers": {
+    "s2c_0x00d8": {
+      "name": "SetActorBGPropertiesPacket",
+      "verdict": "resolved",
+      "routing": "FUN_004DC690 -> actor vftable[9] FUN_0058CCA0 -> FUN_0058BF60",
+      "wire": {
+        "subpacketSize": 40,
+        "gameMessageBodySize": 24,
+        "applicationPayloadSize": 8,
+        "observedCount": 15,
+        "fields": [
+          {
+            "offset": 0,
+            "size": 4,
+            "type": "u32",
+            "name": "value"
+          },
+          {
+            "offset": 4,
+            "size": 2,
+            "type": "s16",
+            "name": "typeCode"
+          },
+          {
+            "offset": 6,
+            "size": 2,
+            "type": "bytes",
+            "name": "reserved",
+            "clientRead": false
+          }
+        ]
+      },
+      "applySemantics": "FUN_0058BF60 returns when actor+0xB2C is already nonzero. The first packet allocates and installs MapObjectForChara, forwards the u32 then s16 unchanged, and initializes the actor BG-property state. Later packets are ignored, so this path does not overwrite, widen, or append on repeated arrival.",
+      "sourceRefs": [
+        "manifests/symbols.json#BCS-Y-0540",
+        "manifests/symbols.json#BCS-Y-0623",
+        "manifests/symbols.json#BCS-Y-1080",
+        "manifests/symbols.json#BCS-Y-1081",
+        "xivl-captures:derived/observations.json#s2c-0x00d8"
+      ]
+    },
+    "s2c_0x01a3": {
+      "name": "SetCutsceneBookPacket",
+      "verdict": "resolved",
+      "routing": "FUN_004DC690 -> FUN_00576140 -> FUN_00767370",
+      "wire": {
+        "subpacketSize": 336,
+        "gameMessageBodySize": 320,
+        "applicationPayloadSize": 304,
+        "observedCount": 1,
+        "fields": [
+          {
+            "offset": 0,
+            "size": 4,
+            "type": "u32",
+            "name": "controlFlags"
+          },
+          {
+            "offset": 4,
+            "size": 2,
+            "type": "s16",
+            "name": "snpcActorIdOffset"
+          },
+          {
+            "offset": 6,
+            "size": 1,
+            "type": "u8",
+            "name": "snpcSkin"
+          },
+          {
+            "offset": 7,
+            "size": 1,
+            "type": "u8",
+            "name": "snpcPersonality"
+          },
+          {
+            "offset": 8,
+            "size": 257,
+            "type": "bytes",
+            "name": "cutsceneFlagsBitset"
+          },
+          {
+            "offset": 265,
+            "size": 32,
+            "type": "char[32]",
+            "name": "snpcName"
+          },
+          {
+            "offset": 297,
+            "size": 7,
+            "type": "bytes",
+            "name": "reserved",
+            "clientRead": false
+          }
+        ]
+      },
+      "applySemantics": "The receiver walks bitset bytes and bits in ascending order and inserts discovered cutscene keys through FUN_007213F0. This accumulates idempotent ordered-tree entries rather than widening or replacing a raw bitset. It then inserts control-flag and bitset[0] special keys in fixed order and overwrites the SNPC name, actor-id offset, skin, and personality destination fields.",
+      "sourceRefs": [
+        "manifests/data_dependency_catalog.json#payloadStructs.s2c_0x01a3",
+        "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x01a3",
+        "manifests/symbols.json#BCS-Y-0587",
+        "xivl-decomp:config/ffxivgame.protocol_evidence.json#s2c-0x01a3",
+        "xivl-captures:derived/observations.json#s2c-0x01a3"
+      ]
+    },
+    "s2c_0x013d": {
+      "name": "SetActorNamePacket",
+      "verdict": "resolved",
+      "routing": "FUN_004D8860 -> FUN_00575100 -> LuaActorImpl vftable[62] FUN_0076C4D0 -> FUN_0089D610 -> FUN_006FAFF0",
+      "wire": {
+        "subpacketSize": 72,
+        "gameMessageBodySize": 56,
+        "applicationPayloadSize": 40,
+        "observedCount": 821,
+        "fields": [
+          {
+            "offset": 0,
+            "size": 4,
+            "type": "u32",
+            "name": "displayNameId"
+          },
+          {
+            "offset": 4,
+            "size": 32,
+            "type": "char[32]",
+            "name": "customName"
+          },
+          {
+            "offset": 36,
+            "size": 1,
+            "type": "u8",
+            "name": "displayNameKindOrIsSexMale"
+          },
+          {
+            "offset": 37,
+            "size": 3,
+            "type": "bytes",
+            "name": "reserved"
+          }
+        ]
+      },
+      "applySemantics": "The raw low byte at payload+0x24 is passed through the receiver and stored unchanged at CharaBase+0x60+0x58. It is not a constant and is not derived from displayNameId. The evidence names the source isSexMale but also describes the destination as a display-name kind selector, so the payload plumbing is proven while the narrow semantic label remains unresolved.",
+      "sourceRefs": [
+        "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x013d",
+        "manifests/receiver_apply_findings_wire_derived.json#SetDisplayNameReceiver",
+        "manifests/event_dialog_subsystem.json#s2c-0x013d",
+        "xivl-captures:derived/observations.json#s2c-0x013d"
+      ]
+    },
+    "s2c_0x0131": {
+      "name": "EndEventPacket",
+      "verdict": "resolved",
+      "routing": "FUN_0076C3B0 -> FUN_0089D070 -> FUN_00785AA0 -> FUN_0089E2D0 -> FUN_008A13A0",
+      "wire": {
+        "subpacketSize": 80,
+        "gameMessageBodySize": 64,
+        "applicationPayloadSize": 48,
+        "observedCount": 101,
+        "fields": [
+          {
+            "offset": 0,
+            "size": 4,
+            "type": "u32",
+            "name": "actorId"
+          },
+          {
+            "offset": 4,
+            "size": 1,
+            "type": "u8",
+            "name": "teardownSelector"
+          },
+          {
+            "offset": 5,
+            "size": 3,
+            "type": "bytes",
+            "name": "reserved"
+          },
+          {
+            "offset": 8,
+            "size": 1,
+            "type": "u8",
+            "name": "eventType"
+          },
+          {
+            "offset": 9,
+            "size": 39,
+            "type": "char[39]",
+            "name": "eventName"
+          }
+        ]
+      },
+      "eventTypeDispatch": {
+        "key": "eventType",
+        "byteTableVa": "0x008A149C",
+        "dwordTableVa": "0x008A1464",
+        "arms": [
+          {
+            "keys": "0..5",
+            "action": "Invoke FUN_008A09E0 with the teardown selector."
+          },
+          {
+            "keys": "50..55",
+            "action": "Call FUN_008A10C0 cleanup; method types 2 and 3 tail-call FUN_008A0640 and FUN_008A0660, while 0, 1, 4, and 5 return."
+          },
+          {
+            "keys": "6..49,56..101 and values above 101",
+            "action": "Return without teardown work."
+          }
+        ]
+      },
+      "selectorDispatch": {
+        "key": "teardownSelector",
+        "function": "FUN_008A09E0",
+        "jumpTableVa": "0x008A0A3C",
+        "arms": [
+          {
+            "selector": 0,
+            "action": "Require event-name match; cancel pending call with 0, latch +0x1C, and close the scene without freeing the event slot."
+          },
+          {
+            "selector": 1,
+            "action": "Require event-name match; cancel pending call with 1, latch +0x1D, and close the scene without freeing the event slot."
+          },
+          {
+            "selector": "2,3",
+            "action": "Return without work."
+          },
+          {
+            "selector": 4,
+            "action": "Require event-name match and the context +0x20 gate; notify without freeing the event slot."
+          },
+          {
+            "selector": 5,
+            "action": "Do not require an event-name match; clear secondary context and latches, notify, and conditionally delete and null the active event. This is the only selector that can free the event slot."
+          },
+          {
+            "selector": ">5",
+            "action": "Return without work."
+          }
+        ]
+      },
+      "sourceRefs": [
+        "manifests/event_block_execution_state.json#endEvent_0x0131",
+        "manifests/event_condition_consumer_findings.json#EndClientOrderEventReceiver",
+        "xivl-decomp:docs/event/end-order-event-receiver.md",
+        "xivl-captures:derived/observations.json#s2c-0x0131"
+      ]
+    }
+  },
+  "conditionalFollowup": {
+    "c2s_0x012f": {
+      "name": "WorkStateUpdatePacket",
+      "verdict": "negative_recorded",
+      "writer": "FUN_0075E770 (BCS-Y-0986) writes opcode 0x012F and body size 0x38, copies a leading request-id dword and 32 staging bytes, then sends through FUN_004D6D30.",
+      "captureResult": "The closed corpus contains 44 packets of subpacket size 72. The final four application bytes have eight observed sequences: 00000000 (31), 0000f102 (3), a006d128 (3), b023dc28 (3), 75d09200 (1), 5055d528 (1), 05000000 (1), and 00000001 (1).",
+      "ceiling": "The writer is located, but retained static evidence does not assign the final four bytes. Their nonconstant wire values rule out a universal zero tail but do not prove a semantic field name. WorkStateUpdatePacket remains tentative; ParameterDataRequestPacket and ActorWorkUpdatePacket remain lineage conflicts.",
+      "sourceRefs": [
+        "manifests/symbols.json#BCS-Y-0986",
+        "manifests/c2s_remaining_emitters.json",
+        "manifests/opcode_proposed_field_layouts.json#c2s-0x012f",
+        "xivl-captures:derived/observations.json#c2s-0x012f",
+        "xivl-captures:derived/payload_layouts.json#c2s-0x012f"
+      ]
+    },
+    "s2c_0x0132": {
+      "name": "_0x132Packet",
+      "verdict": "negative_recorded",
+      "wire": {
+        "subpacketSize": 72,
+        "gameMessageBodySize": 56,
+        "applicationPayloadSize": 40,
+        "observedCount": 88,
+        "fields": [
+          {
+            "offset": 0,
+            "size": 2,
+            "type": "u16",
+            "name": "number"
+          },
+          {
+            "offset": 2,
+            "size": 32,
+            "type": "char[32]",
+            "name": "function"
+          },
+          {
+            "offset": 34,
+            "size": 6,
+            "type": "bytes",
+            "name": "reserved"
+          }
+        ]
+      },
+      "observedMappings": [
+        {
+          "number": "0x0004",
+          "function": "commandContent",
+          "count": 11
+        },
+        {
+          "number": "0x0006",
+          "function": "commandWeak",
+          "count": 11
+        },
+        {
+          "number": "0x0006",
+          "function": "commandJudgeMode",
+          "count": 11
+        },
+        {
+          "number": "0x000A",
+          "function": "commandDefault",
+          "count": 11
+        },
+        {
+          "number": "0x000B",
+          "function": "commandForced",
+          "count": 11
+        },
+        {
+          "number": "0x0100",
+          "function": "commandRequest",
+          "count": 11
+        },
+        {
+          "number": "0x0100",
+          "function": "widgetCreate",
+          "count": 11
+        },
+        {
+          "number": "0x0100",
+          "function": "macroRequest",
+          "count": 11
+        }
+      ],
+      "ceiling": "All eight mappings occur in each of the eight contributing captures, with multiplicity determined by repeated transition sequences. No tracked client dispatch table maps the five observed number values to behavior, so the value-to-function wire table is resolved only for the closed corpus.",
+      "sourceRefs": [
+        "manifests/unmapped_payload_decoding.json#payloadStructs.s2c_0x0132",
+        "manifests/data_dependency_catalog.json#payloadStructs.s2c_0x0132",
+        "xivl-captures:derived/observations.json#s2c-0x0132",
+        "xivl-captures:sources/pcap-1.23b/manifest.yaml"
+      ]
+    }
+  },
+  "routingDisposition": "The current xivl-opcodes directions, routing, and lengths match the client and capture evidence. No routing update is required. The c2s 0x012F semantic name remains tentative. The s2c 0x0132 observation count note was stale and is corrected separately from 96 to the canonical 88."
+}
