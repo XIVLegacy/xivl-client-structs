@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "1.23b",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "scope": "Retail disposition of the SERVER_UTC launch argument and the launcher PE patch at RVA 0x009A15E3.",
+  "verdict": "The values are timestamps from two independent client paths, not two checks or two encodings of one client mechanism. SERVER_UTC feeds only title-screen copyright-year formatting. The PE patch replaces a live _time64 call whose result is sent as a lobby client number and included in MD5-derived Blowfish key material.",
+  "values": [
+    {
+      "decimal": 1356916742,
+      "hex": "0x50E0E806",
+      "utc": "2012-12-31T01:19:02Z",
+      "owner": "encoded launch argument",
+      "classification": "proven",
+      "disposition": "Preserve as the launch argument value; document that the retail consumer is presentation-only copyright-year selection."
+    },
+    {
+      "decimal": 1356916754,
+      "hex": "0x50E0E812",
+      "utc": "2012-12-31T01:19:14Z",
+      "owner": "launcher replacement instruction",
+      "classification": "proven",
+      "disposition": "Rename as a fixed lobby client number or fixed lobby handshake time, not SERVER_UTC. The unpatched executable computes this field dynamically."
+    }
+  ],
+  "launchArgumentPath": {
+    "classification": "proven",
+    "decoder": {
+      "function": "FUN_00450CC0",
+      "behavior": "Validates the sqex wrapper, derives the tick-based Blowfish key, decodes the payload, and passes plaintext key/value tokens to FUN_00450340."
+    },
+    "consumer": {
+      "startupFunction": "FUN_00403640",
+      "lookup": "SERVER_UTC lookup at VA 0x004037F4",
+      "parse": "FUN_0044FAF0 at VA 0x00403864 parses unsigned decimal to 64 bits",
+      "store": "FUN_0044CB50 stores the value at 0x0132CEC0/0x0132CEC4",
+      "soleReader": "FUN_00886120 at VA 0x0088616F/0x00886174",
+      "computation": "CRT time conversion -> tm_year + 1900 -> comparisons with 2011 and 2010 -> title copyright text",
+      "soleDirectCaller": "FUN_00886900 at VA 0x008873F2"
+    },
+    "negativeClaims": [
+      "No version comparison",
+      "No time-window or expiry comparison",
+      "No lobby handshake or cryptographic use",
+      "No other direct reader of the stored 64-bit value"
+    ]
+  },
+  "pePatchPath": {
+    "classification": "proven",
+    "site": {
+      "rva": "0x009A15E3",
+      "va": "0x00DA15E3",
+      "unpatchedBytes": "E8 3D 41 C3 FF",
+      "unpatchedInstruction": "CALL 0x009D5725 (_time64) after PUSH 0",
+      "patchedBytes": "B8 12 E8 E0 50",
+      "patchedInstruction": "MOV EAX,0x50E0E812"
+    },
+    "writer": {
+      "function": "FUN_00DA1590",
+      "vtable": "LobbyCryptEngine::vftable slot 1",
+      "behavior": "When object+0x08 is zero, caches _time64(NULL) there; writes it to InitialSessionData+0x74."
+    },
+    "downstream": {
+      "function": "FUN_00DA1670",
+      "vtable": "LobbyCryptEngine::vftable slot 4",
+      "behavior": "Includes object+0x08 in the 0x2C-byte MD5 input at object+0x04; the 16-byte digest initializes Blowfish and decrypts the 0x280-byte secure-session body."
+    },
+    "comparison": "No client comparison. The value is transmitted handshake and key-derivation input.",
+    "staticStoppingPoint": "The generic connection framework invokes the LobbyCryptEngine overrides through CryptEngineInterface virtual dispatch. The client binary contains no remote acceptance comparison."
+  },
+  "wireCorroboration": {
+    "classification": "proven",
+    "capture": "login.pcapng",
+    "captureSha256": "28e06b54fe559870031f077f8549b9244caafa7e5177dbca08a7feae6c2b1b62",
+    "firstConnection": [
+      "packet 824 s2c payload+0x24 = 12 e8 e0 50",
+      "packet 833 c2s payload+0x84 = 12 e8 e0 50; InitialSessionData+0x74"
+    ],
+    "repeatConnection": [
+      "packet 853 s2c payload+0x24 = 1b e8 e0 50",
+      "packet 874 c2s payload+0x84 = 1b e8 e0 50; InitialSessionData+0x74"
+    ],
+    "interpretation": "The nine-second change between connections corroborates a live clock-derived client number. The patch value equals the first captured connection's number."
+  },
+  "boundedAbsence": {
+    "classification": "supported",
+    "scope": "All TCP payloads in the 54 immutable pcap-1.23b members plus canonical derived/catalog/study artifacts before the new study record.",
+    "result": "No cleartext or binary occurrence of 1356916742. The account path in login.pcapng is TLS-wrapped, so absence cannot inspect its plaintext.",
+    "ceiling": "INSUFFICIENT-DATA for server-side equality, clock-skew window, expiry, or rejection behavior."
+  },
+  "sourceRefs": [
+    "xivl-decomp:config/ffxivgame.symbol_evidence.json#ServerUtcLaunchArgumentPath",
+    "xivl-decomp:config/ffxivgame.symbol_evidence.json#LobbyClientNumberPatchSite",
+    "xivl-decomp:config/ffxivgame.symbol_evidence.json#LobbyClientNumberKeyDerivation",
+    "xivl-decomp:config/ffxivgame.vtable_slots.jsonl#LobbyCryptEngine",
+    "xivl-decomp:docs/net/wire-protocol.md#server_utc-and-lobby-client-number-paths",
+    "xivl-captures:studies/lobby-handshake-triage/derived/server-utc.md",
+    "xivl-captures:sources/pcap-1.23b/manifest.yaml#login.pcapng"
+  ]
+}
