@@ -1200,6 +1200,58 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
     for did in duplicate_ids:
         findings.append(err(f"symbols.json:{did}", "duplicate id"))
 
+    # Function addresses may be shared by role-specific entries; the invariant
+    # requires sibling cross-references instead of treating address reuse as corruption.
+    function_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for sym in symbols_doc["symbols"]:
+        if isinstance(sym, dict) and isinstance(sym.get("address"), str):
+            function_groups[sym["address"].lower()].append(sym)
+
+    for _, members in function_groups.items():
+        if len(members) < 2 or any(member.get("kind") != "function" for member in members):
+            continue
+
+        address = members[0]["address"]
+        member_ids = [str(member.get("id", "<no-id>")) for member in members]
+        missing_ids: list[str] = []
+        for member in members:
+            notes = member.get("notes")
+            if not isinstance(notes, str):
+                notes = ""
+            references_sibling = False
+            for sibling in members:
+                if sibling is member:
+                    continue
+                sibling_id = sibling.get("id")
+                if (isinstance(sibling_id, str)
+                        and re.search(rf"\b{re.escape(sibling_id)}\b", notes)):
+                    references_sibling = True
+                    break
+                sibling_name = sibling.get("name")
+                if (isinstance(sibling_name, str) and sibling_name
+                        and sibling_name in notes):
+                    references_sibling = True
+                    break
+            if not references_sibling:
+                missing_ids.append(str(member.get("id", "<no-id>")))
+
+        if not missing_ids:
+            continue
+        # One-way links make the duplicate discoverable, so keep them INFO;
+        # only fully orphaned groups are WARNING.
+        if len(missing_ids) == len(members):
+            findings.append(warn(
+                "symbols.json",
+                f"duplicate function address {address}: no member references "
+                f"a sibling; members {', '.join(member_ids)}",
+            ))
+        else:
+            findings.append(info(
+                "symbols.json",
+                f"duplicate function address {address}: missing sibling "
+                f"back-references from {', '.join(missing_ids)}",
+            ))
+
     return findings
 
 
@@ -1743,7 +1795,7 @@ def _print_section(section: SectionResult, sample_limit: int = 10) -> None:
             print(f"    ... {len(bucket) - sample_limit} more {sev} findings suppressed")
 
 
-SYMBOL_CHECK_COUNT = 11
+SYMBOL_CHECK_COUNT = 12
 STRUCT_CHECK_COUNT = 14
 MATRIX_CHECK_COUNT = 14
 CROSS_CHECK_COUNT = 2
