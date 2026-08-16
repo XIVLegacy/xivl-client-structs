@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 1976,
+  "symbolCount": 1982,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -74,7 +74,11 @@
       "kind": "function",
       "address": "0x00DA1670",
       "confidence": "confirmed",
-      "notes": "Slot 4. Frees old BF_KEY, mallocs 4168 bytes (= sizeof(BF_KEY)), constructs 16-byte key, calls BF_set_key(key, len=16). [apply-log fix] Address shifted; 0x005A1670 to 0x00DA1670 (+0x00800000); the apply-log pass investigation Shifted address resolves to the real lobby-crypt-engine function entry confirmed via Ghidra decomp."
+      "sourceRefs": [
+        "tools/ghidra/logs/c307_initsecuresession-full.txt",
+        "tools/ghidra/logs/c307_lobby-cipher-cluster.txt"
+      ],
+      "notes": "Slot 4. Frees old BF_KEY, mallocs 4168 bytes (= sizeof(BF_KEY)), constructs 16-byte key, calls BF_set_key(key, len=16). Address corrected; 0x005A1670 to 0x00DA1670 (+0x00800000); the apply-log pass investigation Shifted address resolves to the real lobby-crypt-engine function entry confirmed via Ghidra decomp. [Tier C307 2026-08-16] The MD5 input is the full 44-byte field at engine+0x04, including its trailing zero padding, not just the populated prefix. Instruction witnesses: MD5_Init at 0x00DA173C, PUSH 0x2C / PUSH EDI with EDI = EBX+4 at 0x00DA1741, MD5_Update at 0x00DA1748, MD5_Final at 0x00DA1756, PUSH 0x1048 at 0x00DA17B3, BF_set_key at 0x00DA17ED, and MOV [EBX+0x30],EAX at 0x00DA1801. Ghidra treats the _free at 0x00DA16E8 as noreturn and ends this function at 0x00DA16ED, so the decompilation, the caller and callee lists, and instruction sweeps all see only a 125-byte logging stub. The key install lives in the unclaimed tail and must be read from raw bytes."
     },
     {
       "id": "BCS-Y-0009",
@@ -24310,6 +24314,78 @@
       ],
       "notes": "[Tier C306 2026-08-16] MyPlayer vtable slot 42 (byte offset +0xA8) at VA 0x0070A010. Matches the Lua API _executeCommand by same-slot-index inheritance from PlayerBase slot 42; the PlayerBase directVtableSlots evidence is 0xa8 -> slot 42 in manifests/napi_field_access_enhanced.json. Observed body: 829-byte implementation; direct callees: FUN_006f51a0, FUN_00cc9330, FUN_00cc73b0, __CxxThrowException@8, FUN_005844f0, FUN_00898480, FUN_0044d350, FUN_0071bb80, FUN_005844a0, FUN_009d22b4, FUN_00753b90, FUN_00cc7190, FUN_006e5ba0, FUN_00748870, FUN_0071ce70, FUN_0071ca50, bad_cast, FUN_00cc70b0, FUN_00584370. The slot offset is witnessed in manifests/vtable_resolved_evidence.json; the API name mapping is the inference and is what could be falsified. Related class: [[BCS-Y-0185]].",
       "id": "BCS-Y-1989"
+    },
+    {
+      "name": "BF_ecb_encrypt",
+      "kind": "function",
+      "address": "0x0045AB60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c307_initsecuresession-full.txt",
+        "tools/ghidra/logs/c307_lobby-cipher-cluster.txt"
+      ],
+      "notes": "[Tier C307 2026-08-16] Thiscall with context in ECX; signature (src, dst, len). Copies src to dst with memcpy when the pointers differ, then encrypts len>>3 blocks in place through [[BCS-Y-0011]]. No IV and no chaining between blocks, so the mode is ECB. Called by [[BCS-Y-0009]].",
+      "id": "BCS-Y-1990"
+    },
+    {
+      "name": "BF_ecb_decrypt",
+      "kind": "function",
+      "address": "0x0045ABB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c307_initsecuresession-full.txt",
+        "tools/ghidra/logs/c307_lobby-cipher-cluster.txt"
+      ],
+      "notes": "[Tier C307 2026-08-16] Thiscall with context in ECX; signature (src, dst, len). Copies src to dst with memcpy when the pointers differ, then decrypts len>>3 blocks in place through [[BCS-Y-0012]]. No IV and no chaining between blocks, so the mode is ECB. Called by [[BCS-Y-0010]].",
+      "id": "BCS-Y-1991"
+    },
+    {
+      "name": "LobbyCryptEngine::ctor",
+      "kind": "function",
+      "address": "0x00DA1020",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c307_initsecuresession-full.txt",
+        "tools/ghidra/logs/c307_lobby-cipher-cluster.txt"
+      ],
+      "notes": "[Tier C307 2026-08-16] Stores the LobbyCryptEngine vftable at 0x01127698, zeroes the 44-byte session buffer at +0x04, then writes magic 0x12345678 to +0x04 and 1000 to +0x0C. That 44-byte buffer is the MD5 input for the session key; see [[BCS-Y-0008]].",
+      "id": "BCS-Y-1992"
+    },
+    {
+      "name": "MD5_Init",
+      "kind": "function",
+      "address": "0x00D39A50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c307_initsecuresession-full.txt",
+        "tools/ghidra/logs/c307_lobby-cipher-cluster.txt"
+      ],
+      "notes": "[Tier C307 2026-08-16] Initializes the standard MD5 state with IV constants 0x67452301, 0xEFCDAB89, 0x98BADCFE, and 0x10325476.",
+      "id": "BCS-Y-1993"
+    },
+    {
+      "name": "MD5_Update",
+      "kind": "function",
+      "address": "0x00D3A1D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c307_initsecuresession-full.txt",
+        "tools/ghidra/logs/c307_lobby-cipher-cluster.txt"
+      ],
+      "notes": "[Tier C307 2026-08-16] Standard MD5_Update routine used by [[BCS-Y-0008]] to hash the full 44-byte session field.",
+      "id": "BCS-Y-1994"
+    },
+    {
+      "name": "MD5_Final",
+      "kind": "function",
+      "address": "0x00D3A280",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c307_initsecuresession-full.txt",
+        "tools/ghidra/logs/c307_lobby-cipher-cluster.txt"
+      ],
+      "notes": "[Tier C307 2026-08-16] Standard MD5_Final routine used by [[BCS-Y-0008]] to finalize the full 44-byte session-field digest.",
+      "id": "BCS-Y-1995"
     }
   ]
 }
