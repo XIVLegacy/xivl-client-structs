@@ -9,9 +9,17 @@ decompiled function bodies stay out of the repository.
 
 Manifest evidence locators name their decomp log through the same variables:
 `%BCS_GHIDRA_PROJECTS%\<log>.txt` is the log under whatever project directory
-`BCS_GHIDRA_PROJECTS` points at, and `<ghidra-scripts>` marks a script that
-predates `run-headless.ps1`. Both are locations, not tracked files. The logs
-regenerate on demand.
+`BCS_GHIDRA_PROJECTS` points at. `<ghidra-scripts>` marks an earlier external
+script path whose producing script was not committed; the cited run therefore
+cannot be reproduced from this checkout. Both are locations, not tracked files.
+Historical ignored logs may be unavailable; a 2026-08-17 audit found that many
+logs named in manifest citations no longer existed.
+
+Manifest entries that cite an ignored log must record the recipe in the
+manifest's top-level `method` block. Include the producing script by its
+committed path, the exact `tools\ghidra\run-headless.ps1` invocation, and its
+inputs, such as the VA list, offset query, or targets. A citation naming a
+script that is not committed is not a recipe.
 
 Commit only compact exports containing names, symbols, signatures, offsets, or
 comments needed by a manifest.
