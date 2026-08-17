@@ -51,7 +51,7 @@ tools\ghidra\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly `
 The WRITE/READ label is operand position only, so `CMP` and `TEST` are
 reported as WRITE and must be read as comparisons.
 
-## FindOffsetWriters.java
+## FindCompoundOffsetWriters.java
 
 Finds stores whose effective address reaches one of `XIVL_OFFSET_QUERY`
 after affine register arithmetic, indexed addressing, or an exact stack-local
@@ -63,8 +63,10 @@ code establishes identity. A usable report ends with `COMPLETE:`;
 `INCOMPLETE:` output cannot support a negative.
 
 ```powershell
-tools\ghidra\run-headless.ps1 -Script FindOffsetWriters.java -ReadOnly `
+tools\ghidra\run-headless.ps1 -Script FindCompoundOffsetWriters.java -ReadOnly `
     -Out tools\ghidra\logs\out.txt `
     -ScriptEnv @{ XIVL_OFFSET_QUERY = '0x4d8,0x4e8' } `
     -ScriptPath @('ghidra')
 ```
+
+Historical manifest records reference an earlier, unrelated `FindOffsetWriters.java`; they do not describe this script.

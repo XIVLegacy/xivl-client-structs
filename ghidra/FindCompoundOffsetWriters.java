@@ -48,7 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-public class FindOffsetWriters extends GhidraScript {
+public class FindCompoundOffsetWriters extends GhidraScript {
     private static final long MASK32 = 0xffffffffL;
     private static final int MAX_TRACE = 12;
 
@@ -158,6 +158,7 @@ public class FindOffsetWriters extends GhidraScript {
         String function;
         String instruction;
         String expression;
+        String baseRegisters;
         String registerProvenance;
         String nearestDefinedInstruction;
         List<String> blockPrefix;
@@ -210,8 +211,8 @@ public class FindOffsetWriters extends GhidraScript {
             writeReport(outPath, offsetArg, complete, incompleteReason);
         }
 
-        if (complete) println("COMPLETE: FindOffsetWriters " + outPath);
-        else println("INCOMPLETE: FindOffsetWriters " + incompleteReason);
+        if (complete) println("COMPLETE: FindCompoundOffsetWriters " + outPath);
+        else println("INCOMPLETE: FindCompoundOffsetWriters " + incompleteReason);
     }
 
     private String requireEnv(String name) {
@@ -481,7 +482,7 @@ public class FindOffsetWriters extends GhidraScript {
             else state.stack.remove(stackKey);
         }
 
-        if (!address.known || isStackOnly(address) || !targets.contains(address.offset32())) return;
+        if (!address.known || !targets.contains(address.offset32())) return;
         Hit hit = new Hit();
         hit.address = instruction.getAddress();
         hit.blockStart = state.blockStart;
@@ -492,6 +493,7 @@ public class FindOffsetWriters extends GhidraScript {
             String.format("%s @ 0x%08x", function.getName(), function.getEntryPoint().getOffset());
         hit.instruction = instruction.toString();
         hit.expression = address.format();
+        hit.baseRegisters = formatBaseRegisters(instruction);
         hit.registerProvenance = formatRegisterProvenance(instruction, before, state.blockStart);
         hit.nearestDefinedInstruction = formatNearestDefinedInstruction(instruction.getAddress());
         hit.blockPrefix = new ArrayList<>(state.history);
@@ -505,6 +507,7 @@ public class FindOffsetWriters extends GhidraScript {
     private List<String> classify(Instruction instruction, Expr address) {
         ArrayList<String> forms = new ArrayList<>();
         if (hasLiteralTarget(instruction)) forms.add("DIRECT_LITERAL");
+        if (isStackRelative(address)) forms.add("STACK_LOCAL");
         if (address.flags.contains("INDEXED") || address.terms.size() > 1) forms.add("INDEXED");
         if (address.flags.contains("LOCAL_RELOAD")) forms.add("LOCAL_RELOAD");
         boolean earlier = false;
@@ -534,16 +537,7 @@ public class FindOffsetWriters extends GhidraScript {
 
     private String formatRegisterProvenance(Instruction instruction, Map<Varnode, Expr> before,
             Address blockStart) {
-        LinkedHashSet<String> names = new LinkedHashSet<>();
-        int operandCount = instruction.getNumOperands();
-        for (int operand = 0; operand < operandCount; operand++) {
-            for (Object object : instruction.getOpObjects(operand)) {
-                if (object instanceof Register) {
-                    Register register = ((Register) object).getBaseRegister();
-                    if (isAddressRegister(register)) names.add(register.getName().toUpperCase(Locale.ROOT));
-                }
-            }
-        }
+        LinkedHashSet<String> names = addressRegisterNames(instruction);
 
         ArrayList<String> values = new ArrayList<>();
         for (String name : names) {
@@ -552,6 +546,23 @@ public class FindOffsetWriters extends GhidraScript {
             values.add(name + "=" + value.format());
         }
         return values.isEmpty() ? "<no explicit address register>" : String.join("; ", values);
+    }
+
+    private String formatBaseRegisters(Instruction instruction) {
+        LinkedHashSet<String> names = addressRegisterNames(instruction);
+        return names.isEmpty() ? "<none>" : String.join(",", names);
+    }
+
+    private LinkedHashSet<String> addressRegisterNames(Instruction instruction) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        if (instruction.getNumOperands() == 0) return names;
+        for (Object object : instruction.getOpObjects(0)) {
+            if (object instanceof Register) {
+                Register register = ((Register) object).getBaseRegister();
+                if (isAddressRegister(register)) names.add(register.getName().toUpperCase(Locale.ROOT));
+            }
+        }
+        return names;
     }
 
     private Expr findRegisterValue(Map<Varnode, Expr> values, String name) {
@@ -619,13 +630,13 @@ public class FindOffsetWriters extends GhidraScript {
         return root + String.format("%+d", address.constant);
     }
 
-    private boolean isStackOnly(Expr address) {
+    private boolean isStackRelative(Expr address) {
         if (!address.known || address.terms.isEmpty()) return false;
         for (String root : address.terms.keySet()) {
             String upper = root.toUpperCase(Locale.ROOT);
-            if (!upper.startsWith("ESP@") && !upper.startsWith("EBP@")) return false;
+            if (upper.startsWith("ESP@") || upper.startsWith("EBP@")) return true;
         }
-        return true;
+        return false;
     }
 
     private void writeReport(String outPath, String offsetArg, boolean complete,
@@ -665,6 +676,7 @@ public class FindOffsetWriters extends GhidraScript {
                 line(writer, String.format("Block start: 0x%08x", hit.blockStart.getOffset()));
                 line(writer, "Instruction: " + hit.instruction);
                 line(writer, "Effective address: " + hit.expression);
+                line(writer, "Base registers: " + hit.baseRegisters);
                 line(writer, "Register provenance: " + hit.registerProvenance);
                 if (hit.pseudo) {
                     line(writer, "Nearest prior defined instruction: " + hit.nearestDefinedInstruction);
