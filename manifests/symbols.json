@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 1986,
+  "symbolCount": 1987,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -24468,9 +24468,10 @@
       "sourceRefs": [
         "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
         "manifests/symbols.json#BCS-Y-1851",
-        "manifests/symbols.json#BCS-Y-0279"
+        "manifests/symbols.json#BCS-Y-0279",
+        "tools/ghidra/logs/c313_async-queue-producer.txt"
       ],
-      "notes": "[Tier C309 2026-08-17] Direct body evidence writes Application::Main::MainModule::vftable at the allocation base and constructs its `+0x10` subobject through [[BCS-Y-1998]]. [[BCS-Y-1996]] allocates this object; [[BCS-Y-1851]] stores it at NetworkModule+0x8, and MainModule+0x10 becomes the `this` of central dispatcher [[BCS-Y-0279]]. Confidence is confirmed because the vftable write and constructor call are directly present in the function body. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "notes": "[Tier C309 2026-08-17] Direct body evidence writes Application::Main::MainModule::vftable at the allocation base and constructs its `+0x10` subobject through [[BCS-Y-1998]]. [[BCS-Y-1996]] allocates this object; [[BCS-Y-1851]] stores it at NetworkModule+0x8, and MainModule+0x10 becomes the `this` of central dispatcher [[BCS-Y-0279]]. Confidence is confirmed because the vftable write and constructor call are directly present in the function body. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [Tier C313 2026-08-17] Direct defined-instruction evidence shows the MainModule constructor writes `this+0x17924` at 0x004DC436 and `this+0x17920` at 0x004DC448, with ESI as the same MainModule base established by the offset-zero vftable store. Evidence: tools/ghidra/logs/c313_async-queue-producer.txt.",
       "id": "BCS-Y-1997"
     },
     {
@@ -24498,6 +24499,21 @@
       ],
       "notes": "[Tier C309 2026-08-17] Seven-byte read-only accessor: `MOV EAX,[ECX+0x4D8]; RET` returns the Application::Main::RaptureElementContainer pointer field as a dword. Caller FUN_00691F30 adds `+0x98` to the pointee before use, matching central dispatcher [[BCS-Y-0279]]. The ownership chain runs through NetworkModule ctor [[BCS-Y-1851]] and container ctor [[BCS-Y-1998]]. Confidence is confirmed because the complete body directly implements the accessor. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-1999"
+    },
+    {
+      "name": "Application_Main_MainModule_dtor_FUN_004DBE10",
+      "kind": "function",
+      "address": "0x004DBE10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c313_async-queue-producer.txt",
+        "tools/ghidra/logs/c314_async-queue-object-identity.txt",
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "manifests/symbols.json#BCS-Y-1749",
+        "manifests/symbols.json#BCS-Y-1755"
+      ],
+      "notes": "[Tier C314 2026-08-17] Structural MainModule destructor classification. The body restores [[BCS-Y-1755]], performs member teardown, and defined instruction 0x004DBED8 writes [[BCS-Y-1749]] vftable 0x00F90FDC to ESI+0x17928; RTTI resolves that value as Sqex::Thread::Queue<Application::Main::MainPacket>::vftable. ESI is the same MainModule base established by the offset-zero vftable store. [[BCS-Y-1996]] allocates the 0x17D58 object, [[BCS-Y-1997]] constructs it, [[BCS-Y-1998]] constructs its +0x10 RaptureElementContainer subobject, and [[BCS-Y-1999]] exposes that subobject's +0x4D8 field. Confidence is structural because the teardown role is inferred from the vftable reset and destruction sequence, while the function address and queue-vftable store are direct. Evidence: tools/ghidra/logs/c313_async-queue-producer.txt and tools/ghidra/logs/c314_async-queue-object-identity.txt.",
+      "id": "BCS-Y-2000"
     }
   ]
 }
