@@ -1200,15 +1200,20 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
     for did in duplicate_ids:
         findings.append(err(f"symbols.json:{did}", "duplicate id"))
 
-    # Function addresses may be shared by role-specific entries; the invariant
-    # requires sibling cross-references instead of treating address reuse as corruption.
-    function_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    # Global pass records and address-anchored kinds legitimately permit multiple
+    # rows at one address, so only identity-bearing kinds participate here.
+    identity_kinds = {"function", "data", "rtti", "class"}
+    kind_groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for sym in symbols_doc["symbols"]:
-        if isinstance(sym, dict) and isinstance(sym.get("address"), str):
-            function_groups[sym["address"].lower()].append(sym)
+        if not isinstance(sym, dict) or not isinstance(sym.get("address"), str):
+            continue
+        address = sym["address"].lower()
+        kind = sym.get("kind")
+        if address != "0x00000000" and kind in identity_kinds:
+            kind_groups[(address, kind)].append(sym)
 
-    for _, members in function_groups.items():
-        if len(members) < 2 or any(member.get("kind") != "function" for member in members):
+    for (_, kind), members in kind_groups.items():
+        if len(members) < 2:
             continue
 
         address = members[0]["address"]
@@ -1242,13 +1247,13 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
         if len(missing_ids) == len(members):
             findings.append(warn(
                 "symbols.json",
-                f"duplicate function address {address}: no member references "
+                f"duplicate {kind} address {address}: no member references "
                 f"a sibling; members {', '.join(member_ids)}",
             ))
         else:
             findings.append(info(
                 "symbols.json",
-                f"duplicate function address {address}: missing sibling "
+                f"duplicate {kind} address {address}: missing sibling "
                 f"back-references from {', '.join(missing_ids)}",
             ))
 
