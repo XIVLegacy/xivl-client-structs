@@ -129,6 +129,27 @@ Refs: `manifests/0x16b_0x16c_dual_path_resolution.json`. BCS-Y-0279,
 BCS-Y-0280, BCS-Y-0527, BCS-Y-0540, BCS-Y-0548, BCS-Y-0549, BCS-Y-0734,
 BCS-Y-0736.
 
+### S2C 0x00DA stages a CharaElement-local battle effect
+
+`FUN_004DC690` resolves the target Element and passes the packet pointer to
+slot 9. For a normal-state `CharaElement`, `FUN_0058CCA0` (BCS-Y-0540) case
+`0x00DA` reaches `FUN_0058CAD0` -> `FUN_0058C690`, which builds a battle-effect
+record through the selector/stager pair and submits it through `FUN_005901D0`
+(BCS-Y-0412). Restricted CharaElements reject this opcode at the entry guard;
+other Element dynamic types have no `0x00DA` case and return without applying
+it.
+
+The submitted record enters the circular queue at actor `+0xA84` (array),
+`+0xA88` (capacity), `+0xA8C` (head), and `+0xA90` (count). The per-actor tick
+`FUN_0058DF90` drains one record through `FUN_0058DA10` (BCS-Y-1025). Types
+`3..0xB` reach the visual-class dispatcher `FUN_0058CA80` (BCS-Y-1864) and
+record adapter `FUN_0058A010` (BCS-Y-1865). This queue is neither the Element
+slot-8 `MainPacket` bus nor a proven `CharaActionController` queue. The closest
+battle-result VFX path stops at an indirect object/vtable dispatch, so no
+static edge currently joins these systems.
+
+Refs: BCS-Y-0412, BCS-Y-0540, BCS-Y-1025, BCS-Y-1864..1868.
+
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 
 `FUN_004DC690` case `0xCA` (BCS-Y-0525) looks up or creates the actor,
