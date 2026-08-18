@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 77,
+  "structCount": 80,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -8009,6 +8009,123 @@
       ],
       "notes": "Full byte-accounted EffectElement layout. Sole factory FUN_00533640 allocates exactly 0x9C bytes. The constructor and asynchronous event dispatcher account for both feature flags and the final initialized dword; only the two intervening bytes remain unknown.",
       "id": "BCS-S-0077"
+    },
+    {
+      "name": "ApplicationMainElementSystemClientWorkRecord",
+      "namespace": "Application::Main::Element::System",
+      "size": "0x78",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c327_clientwork-layouts.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x78",
+          "name": "record_storage",
+          "type": "unknown[0x78]",
+          "notes": "Exact array-element stride. FUN_00567210 constructs a default std::string at record offset zero and FUN_0061EC10 destroys it, but current evidence does not establish the string's exact member boundary or the types of the remaining bytes."
+        }
+      ],
+      "notes": "Exact ClientWork record layout at the current evidence boundary. The MSVC vector constructor and destructor iterators both use stride 0x78 and count 0x10. The record begins with a confirmed std::string lifetime, but assigning a concrete string size would exceed the retained evidence, so the stride remains one honest unknown-typed field.",
+      "id": "BCS-S-0078"
+    },
+    {
+      "name": "ApplicationMainElementSystemClientWorkStorage",
+      "namespace": "Application::Main::Element::System",
+      "size": "0x7A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c327_clientwork-layouts.txt",
+        "tools/ghidra/logs/c327_clientwork-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "initializer_value",
+          "type": "unknown",
+          "notes": "Constructor argument retained by FUN_0055F830. Its concrete representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "opaque_004",
+          "type": "unknown[4]",
+          "notes": "Unobserved dword before the cleared header state."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x010",
+          "name": "header_state",
+          "type": "uint32_t[4]",
+          "notes": "Four dwords zero-initialized by FUN_0055F830; individual semantics are unresolved."
+        },
+        {
+          "offset": "0x018",
+          "size": "0x780",
+          "name": "records",
+          "type": "ApplicationMainElementSystemClientWorkRecord[16]",
+          "notes": "Sixteen records constructed and destroyed through the MSVC vector iterator with exact 0x78 stride."
+        },
+        {
+          "offset": "0x798",
+          "size": "0x001",
+          "name": "tail_flag",
+          "type": "uint8_t",
+          "notes": "Zero-initialized by FUN_0055F830 after all sixteen records are constructed; exact semantics are unresolved."
+        },
+        {
+          "offset": "0x799",
+          "size": "0x007",
+          "name": "tail_padding",
+          "type": "unknown[7]",
+          "notes": "Unobserved bytes closing the storage object at the enclosing allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted ClientWork storage layout. FUN_0055F830 initializes the header, constructs sixteen 0x78-byte records at +0x18, and clears the byte at +0x798. Placement at ClientWorkElement+0x98 and the enclosing 0x838-byte factory close the storage extent at exactly 0x7A0.",
+      "id": "BCS-S-0079"
+    },
+    {
+      "name": "ApplicationMainElementSystemClientWorkElement",
+      "namespace": "Application::Main::Element::System",
+      "size": "0x838",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json",
+        "tools/ghidra/logs/c321_direct-callers.txt",
+        "tools/ghidra/logs/c327_clientwork-layouts.txt",
+        "tools/ghidra/logs/c327_clientwork-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x094",
+          "name": "rapture_element",
+          "type": "ApplicationMainRaptureElement",
+          "notes": "Inherited RaptureElement storage; FUN_0055F8B0 replaces its primary and secondary vftables with the ClientWorkElement tables."
+        },
+        {
+          "offset": "0x094",
+          "size": "0x004",
+          "name": "opaque_094",
+          "type": "unknown[4]",
+          "notes": "Unobserved dword between the RaptureElement base and ClientWork storage subobject."
+        },
+        {
+          "offset": "0x098",
+          "size": "0x7A0",
+          "name": "client_work_storage",
+          "type": "ApplicationMainElementSystemClientWorkStorage",
+          "notes": "Embedded storage constructed by FUN_0055F830. Instruction 0x0055F8FD loads ECX from complete-object +0x98 before the call; FUN_0055D100 tears the same storage down through FUN_0055CF20."
+        }
+      ],
+      "notes": "Full byte-accounted ClientWorkElement layout. Sole factory FUN_005334C0 allocates exactly 0x838 bytes. Direct instruction evidence fixes the storage subobject at +0x98, and its 0x7A0-byte extent closes exactly at the allocation boundary. Only the separating dword at +0x94 remains unknown-typed.",
+      "id": "BCS-S-0080"
     }
   ],
   "method": {
@@ -8060,6 +8177,15 @@
     "c326Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c326_element-services.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00533240,0x00564F80,0x00564690,0x00533440,0x00561190,0x00561320,0x00561440,0x00533640,0x00687320,0x00686D70,0x00686DD0' } -ScriptPath @('ghidra')",
     "c326Inputs": "MainElement, ScreenshotManagerElement, and EffectElement factories, constructors, complete-object destructors, and class-specific asynchronous dispatchers",
     "c326Output": "tools/ghidra/logs/c326_element-services.txt",
-    "c326Limits": "DumpVAs supplies direct bodies and call lists for the requested functions only. The ScreenshotManagerElement helper lifetimes are positive evidence, but their individual bases are not preserved by the pseudocode and remain unpartitioned. No negative reference-topology claim relies on this export."
+    "c326Limits": "DumpVAs supplies direct bodies and call lists for the requested functions only. The ScreenshotManagerElement helper lifetimes are positive evidence, but their individual bases are not preserved by the pseudocode and remain unpartitioned. No negative reference-topology claim relies on this export.",
+    "c327Topic": "C327 ClientWork layouts",
+    "c327ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset.",
+    "c327DumpInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c327_clientwork-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x005334C0,0x0055F8B0,0x0055D100,0x0055F830,0x0055CF20,0x00567210,0x0061EC10' } -ScriptPath @('ghidra')",
+    "c327DumpInputs": "ClientWorkElement factory, constructor, and complete-object destructor; embedded storage constructor and destructor; array-record constructor and destructor",
+    "c327DumpOutput": "tools/ghidra/logs/c327_clientwork-layouts.txt",
+    "c327FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c327_clientwork-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x98'; XIVL_BASE_REGS = 'ESI' } -ScriptPath @('ghidra')",
+    "c327FieldRefInputs": "offset 0x98; base register ESI",
+    "c327FieldRefOutput": "tools/ghidra/logs/c327_clientwork-fieldrefs.txt",
+    "c327Limits": "The field-reference export is used only for the positive constructor instruction at 0x0055F8FD that establishes the +0x98 subobject base. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the seven requested functions."
   }
 }
