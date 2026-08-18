@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 109,
+  "structCount": 110,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -574,90 +574,288 @@
       "id": "BCS-S-0010",
       "name": "NpcBase",
       "namespace": "Application::Lua::Script::Client::Control",
-      "size": "unknown",
-      "confidence": "probable",
+      "size": "0x160",
+      "confidence": "confirmed",
       "sourceRefs": [
         "mdi-022",
-        "xivl-opcodes:data/client_receivers.json#9_decomp_batch"
+        "xivl-opcodes:data/client_receivers.json#9_decomp_batch",
+        "BCS-Y-1466",
+        "BCS-Y-1737",
+        "BCS-Y-2028",
+        "tools/ghidra/logs/c336_lua-derived-actors.txt",
+        "tools/ghidra/logs/c336_myplayer-layout.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt"
       ],
       "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xE8",
+          "name": "chara_base",
+          "type": "ApplicationLuaScriptClientControlCharaBase",
+          "notes": "Primary CharaBase subobject. NpcBase construction replaces the inherited primary vftable."
+        },
+        {
+          "offset": "0xE8",
+          "size": "0x50",
+          "name": "npc_state",
+          "type": "unknown[0x50]",
+          "notes": "Derived NPC state containing multiple constructor-cleared dwords and four teardown-managed helper regions. The concrete helper types and intervening unwritten dwords are unresolved."
+        },
+        {
+          "offset": "0x138",
+          "size": "0x0C",
+          "name": "npc_vector_state",
+          "type": "unknown[0x0C]",
+          "notes": "Three-dword vector-like region. Construction clears +0x138 through +0x140; teardown releases storage through the +0x138 pointer and clears all three dwords."
+        },
+        {
+          "offset": "0x144",
+          "size": "0x10",
+          "name": "npc_tail_state",
+          "type": "unknown[0x10]",
+          "notes": "Four constructor-cleared dwords at +0x144 through +0x150. Their concrete types and semantics are unresolved."
+        },
         {
           "offset": "0x154",
           "size": "0x04",
           "name": "hate_value",
           "type": "uint32_t",
-          "notes": "Hate value (combat threat) field. Written inline by HateStatusReceiver (BCS-Y-0043, apply FUN_0089D030) from the u32 at packet body+0x4. Read by 2 confirmed Lua APIs: _isEnmity (NpcBase API, BCS-Y-0338) and _getLookAtCharacter (CharaBase API 0x006FA690 -> NpcBase::vftable[0xA0] override FUN_0072D000, the lua-name-to-opcode-bridge-open pass). Used by NPC targeting reticule UI (CmnTargetHateStatus, status ID 223107). Distinct from the SetActorProperty 0x0137 npcWork.hate emit path - this is a direct field write rather than a property-table mutation. Documented in MDI-022 lifecycle decode; corroborated by xivl-opcodes gap-receiver batch."
+          "notes": "Handle-like dword initialized through FUN_00CC9320 and overwritten by HateStatusReceiver with the combat threat value. Read by _isEnmity and the NpcBase look-at override."
         },
         {
           "offset": "0x158",
           "size": "0x02",
           "name": "hate_aux",
           "type": "uint16_t",
-          "notes": "Hate auxiliary field paired with hate_value at +0x154. Written by HateStatusReceiver from the u16 at packet body+0x8. The semantic role is unknown; possible interpretations include a level or grade indicator, a paired secondary score, or threat-class flags. MDI-022 notes the likely pair (hate_target_id_or_value, hate_status_flag)."
+          "notes": "Hate auxiliary field initialized to 0xFFFF and written by HateStatusReceiver from packet body+0x8. Its exact semantic role remains unresolved."
+        },
+        {
+          "offset": "0x15A",
+          "size": "0x01",
+          "name": "npc_flag_15a",
+          "type": "uint8_t",
+          "notes": "Constructor-cleared byte. Its semantics are unresolved."
+        },
+        {
+          "offset": "0x15B",
+          "size": "0x05",
+          "name": "tail_padding",
+          "type": "unknown[5]",
+          "notes": "Unobserved closing bytes between the final constructor-written flag and the exact 0x160-byte allocation boundary."
         }
       ],
-      "notes": "Client-side runtime struct for NPC actors (Application::Lua::Script::Client::Control::NpcBase RTTI type descriptor). Full size and field layout unknown; only the two hate-status fields at +0x154 and +0x158 are decoded so far, surfaced from HateStatusReceiver lifecycle decode in MDI-022 and corroborated by xivl-opcodes gap-receiver batch. NpcBase appears in many other receiver RTTI cast targets (ExecutePushOnEnter/Leave TriggerBox, HateStatus); decomp of those receivers' downstream handlers can extend this struct's field map. Sibling of CharaBase / MyPlayer / PlayerBase / AreaBase / DirectorBase in the Application::Lua::Script::Client::Control hierarchy. The lua-name-to-opcode-bridge-open pass (BCS-Y-0343) added a 2nd confirmed reader of +0x154 via NpcBase::vftable[0xA0] override FUN_0072D000 reached by CharaBase _getLookAtCharacter."
+      "notes": "Full byte-accounted NpcBase layout. Factory FUN_0073E740 allocates exactly 0x160 bytes. The CharaBase prefix and constructor-established derived tail close at that boundary; the two packet-facing hate fields retain their prior semantics."
     },
     {
       "id": "BCS-S-0011",
       "name": "PlayerBase",
       "namespace": "Application::Lua::Script::Client::Control",
-      "size": "unknown",
-      "confidence": "probable",
+      "size": "0xF8",
+      "confidence": "confirmed",
       "sourceRefs": [
         "manifests/receiver_field_writes.json (receiver-classification)",
         "manifests/vtable_resolved_evidence.json (virtual-dispatch-queries)",
-        "manifests/symbols.json (BCS-Y-0340, BCS-Y-0341 - pending virtual-dispatch-queries entry)"
+        "manifests/symbols.json (BCS-Y-0340, BCS-Y-0341 - pending virtual-dispatch-queries entry)",
+        "BCS-Y-1466",
+        "BCS-Y-1736",
+        "BCS-Y-2025",
+        "tools/ghidra/logs/c336_lua-derived-actors.txt",
+        "tools/ghidra/logs/c336_myplayer-layout.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt"
       ],
       "fields": [
         {
-          "offset": "0xe8",
+          "offset": "0x00",
+          "size": "0xE8",
+          "name": "chara_base",
+          "type": "ApplicationLuaScriptClientControlCharaBase",
+          "notes": "Primary CharaBase subobject. PlayerBase construction replaces the inherited primary vftable."
+        },
+        {
+          "offset": "0xE8",
           "size": "0x01",
           "name": "achievement_title",
           "type": "uint8_t",
-          "notes": "Achievement title slot. Written by AchievementTitleReceiver (opcode 0x019D, slot1Fn FUN_0089C5F0 writes iVar1+0xE8 directly) and by N-API _setAchievementTitle (PlayerBase impl 0x0071E570 which is also reached via PlayerBase::vftable[0x190] -> MyPlayer::vftable[0x190] override 0x00704FA0). Discovered the receiver-classification pass (direct decomp) + corroborated the virtual-dispatch-queries pass (vtable resolution)."
+          "notes": "Achievement title slot written by AchievementTitleReceiver and _setAchievementTitle. The constructor clears the containing dword at +0xE8."
         },
         {
-          "offset": "0xec",
+          "offset": "0xE9",
+          "size": "0x03",
+          "name": "state_e9_eb",
+          "type": "unknown[3]",
+          "notes": "Remaining bytes of the constructor-cleared dword whose low byte is achievement_title. Their semantics are unresolved."
+        },
+        {
+          "offset": "0xEC",
           "size": "0x01",
           "name": "gm_rank",
           "type": "uint8_t",
-          "notes": "GM (game-master) rank cache slot. Written by N-API _getGMRank (PlayerBase impl 0x00706C70) which caches the rank value at this offset. Read-back path uses the same offset. Discovered the lua-name-to-opcode-bridge-open pass step 2 SCALING (BCS-Y-0339)."
+          "notes": "GM rank cache slot written and read by _getGMRank."
         },
         {
-          "offset": "0xed",
+          "offset": "0xED",
           "size": "0x01",
           "name": "grand_company_rank_byte0",
           "type": "uint8_t",
-          "notes": "Grand-company rank/seal cluster byte 0. Written by GrandCompanyReceiver (opcode 0x0194, slot1Fn FUN_0089CD60 virtual call PlayerBase::vftable[0xA4] -> FUN_006DEB00 which writes 4 consecutive u8s at offsets 0xED..0xF0 from param_3, param_4, param_5, param_6). N-API _getBelongGrandCompany (PlayerBase impl 0x00706CC0) reads this offset directly. This is one of the 4 confirmed indirect Lua<->opcode bindings (the virtual-dispatch-queries pass cross-ref). Discovered the virtual-dispatch-queries pass."
+          "notes": "Grand-company cluster byte 0, written by GrandCompanyReceiver and read by _getBelongGrandCompany."
         },
         {
-          "offset": "0xee",
+          "offset": "0xEE",
           "size": "0x01",
           "name": "grand_company_rank_byte1",
           "type": "uint8_t",
-          "notes": "Grand-company rank/seal cluster byte 1. Written by GrandCompanyReceiver (FUN_006DEB00 via PlayerBase::vftable[0xA4]). Discovered the virtual-dispatch-queries pass."
+          "notes": "Grand-company cluster byte 1, written by GrandCompanyReceiver."
         },
         {
-          "offset": "0xef",
+          "offset": "0xEF",
           "size": "0x01",
           "name": "grand_company_rank_byte2",
           "type": "uint8_t",
-          "notes": "Grand-company rank/seal cluster byte 2. Written by GrandCompanyReceiver (FUN_006DEB00 via PlayerBase::vftable[0xA4]). Discovered the virtual-dispatch-queries pass."
+          "notes": "Grand-company cluster byte 2, written by GrandCompanyReceiver."
         },
         {
-          "offset": "0xf0",
+          "offset": "0xF0",
           "size": "0x01",
           "name": "grand_company_rank_byte3",
           "type": "uint8_t",
-          "notes": "Grand-company rank/seal cluster byte 3. Written by GrandCompanyReceiver (FUN_006DEB00 via PlayerBase::vftable[0xA4]). Discovered the virtual-dispatch-queries pass."
+          "notes": "Grand-company cluster byte 3, written by GrandCompanyReceiver."
         },
         {
-          "offset": "0xf1",
+          "offset": "0xF1",
           "size": "0x01",
           "name": "job_slot",
           "type": "uint8_t",
-          "notes": "Current job slot. Written by JobChangeReceiver (opcode 0x01A4, slot1Fn FUN_0089CB60 worker FUN_00706DC0 writes param_1+0xF1 directly). Read by N-API _getJob (CharaBase API 0x0071E020 -> PlayerBase::vftable[0x9C] override FUN_00706D90 reads param_1+0xF1). Discovered the receiver-classification pass (BCS-Y-0340); confirmed indirect binding added in the lua-name-to-opcode-bridge-open pass (BCS-Y-0343)."
+          "notes": "Current job slot written by JobChangeReceiver and read by the PlayerBase job override."
+        },
+        {
+          "offset": "0xF2",
+          "size": "0x06",
+          "name": "tail_padding",
+          "type": "unknown[6]",
+          "notes": "Unobserved closing bytes between the final constructor-written field and the exact 0xF8-byte allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted PlayerBase layout. Factory FUN_00721290 allocates exactly 0xF8 bytes. The derived tail is the achievement, GM, grand-company, and job cluster at +0xE8..+0xF1. Former +0x158..+0x160 mount fields were beyond this proven boundary and now belong to MyPlayer."
+    },
+    {
+      "id": "BCS-S-0012",
+      "name": "MyPlayer",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x168",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/receiver_field_writes.json (receiver-classification)",
+        "manifests/vtable_resolved_evidence.json (virtual-dispatch-queries)",
+        "BCS-Y-0163",
+        "BCS-Y-0366",
+        "BCS-Y-0414",
+        "BCS-Y-0909",
+        "BCS-Y-2030",
+        "tools/ghidra/logs/c336_lua-derived-actors.txt",
+        "tools/ghidra/logs/c336_myplayer-layout.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xF8",
+          "name": "player_base",
+          "type": "PlayerBase",
+          "notes": "Primary PlayerBase subobject. MyPlayer construction replaces the inherited primary vftable."
+        },
+        {
+          "offset": "0xF8",
+          "size": "0x04",
+          "name": "owned_actor_state",
+          "type": "void *",
+          "notes": "Constructor-cleared polymorphic owned pointer. MyPlayer vtable slot 3 replaces it with a newly allocated 0x20-byte object and deletes the prior object virtually."
+        },
+        {
+          "offset": "0xFC",
+          "size": "0x04",
+          "name": "state_fc",
+          "type": "unknown",
+          "notes": "Unwritten dword between the +0xF8 owned pointer and the next constructor-cleared state cluster."
+        },
+        {
+          "offset": "0x100",
+          "size": "0x0C",
+          "name": "state_100",
+          "type": "unknown[0x0C]",
+          "notes": "Three constructor-cleared dwords. Their types and semantics are unresolved."
+        },
+        {
+          "offset": "0x10C",
+          "size": "0x04",
+          "name": "owned_state_10c",
+          "type": "void *",
+          "notes": "Constructor-cleared pointer released during MyPlayer teardown through FUN_00895D70; the pointed-to type remains unresolved."
+        },
+        {
+          "offset": "0x110",
+          "size": "0x04",
+          "name": "job_quest_object",
+          "type": "void *",
+          "notes": "Constructor-cleared pointer to the 0x24-byte JobQuestObject replaced by FUN_006F9520. Existing evidence identifies three 12-byte job-quest records."
+        },
+        {
+          "offset": "0x114",
+          "size": "0x04",
+          "name": "owned_state_114",
+          "type": "void *",
+          "notes": "Constructor-cleared pointer released during MyPlayer teardown through FUN_006F1030; the pointed-to type remains unresolved."
+        },
+        {
+          "offset": "0x118",
+          "size": "0x04",
+          "name": "state_118",
+          "type": "unknown",
+          "notes": "Unwritten dword before the first vector-like storage region."
+        },
+        {
+          "offset": "0x11C",
+          "size": "0x0C",
+          "name": "state_vector_11c",
+          "type": "unknown[0x0C]",
+          "notes": "Three-dword vector-like region initialized empty and released through its +0x11C pointer during teardown. Element type is unresolved."
+        },
+        {
+          "offset": "0x128",
+          "size": "0x0C",
+          "name": "handle_state",
+          "type": "unknown[0x0C]",
+          "notes": "Three consecutive handle-like dwords initialized independently through FUN_00CC9310 and destroyed through FUN_00CC9330. Their concrete handle roles remain unresolved."
+        },
+        {
+          "offset": "0x134",
+          "size": "0x04",
+          "name": "state_134",
+          "type": "unknown",
+          "notes": "Unwritten dword between the handle cluster and the second vector-like region."
+        },
+        {
+          "offset": "0x138",
+          "size": "0x0C",
+          "name": "state_vector_138",
+          "type": "unknown[0x0C]",
+          "notes": "Three-dword vector-like region initialized empty and released through its +0x138 pointer during teardown. Element type is unresolved."
+        },
+        {
+          "offset": "0x144",
+          "size": "0x10",
+          "name": "inventory_package_storage",
+          "type": "unknown[0x10]",
+          "notes": "Embedded vector header constructed by FUN_0072DEB0 with four 0x10-byte package records. Begin, end, and capacity pointers occupy +0x148, +0x14C, and +0x150; the exact container type is unresolved."
+        },
+        {
+          "offset": "0x154",
+          "size": "0x04",
+          "name": "hamlet_defense_score",
+          "type": "void *",
+          "notes": "Constructor-cleared owned pointer replaced by FUN_006F2210 with a newly allocated 0x1C-byte score object and released during teardown. The proven PlayerBase size reassigns this former PlayerBase-attributed field to MyPlayer."
         },
         {
           "offset": "0x158",
@@ -665,6 +863,13 @@
           "name": "mount_cluster_byte_0x158",
           "type": "uint8_t",
           "notes": "Mount/chocobo cluster byte. Written by ChocoboReceiver (opcode 0x0198, worker writes MyPlayer+0x158). The full cluster spans 0x158..0x160 and encodes chocobo/goobbue/vehicle equip state. Discovered the receiver-classification pass."
+        },
+        {
+          "offset": "0x159",
+          "size": "0x03",
+          "name": "mount_state_159_15b",
+          "type": "unknown[3]",
+          "notes": "Remaining bytes of the constructor-cleared dword beginning at +0x158. Their semantics are unresolved."
         },
         {
           "offset": "0x15c",
@@ -700,22 +905,16 @@
           "name": "mount_cluster_byte_0x160",
           "type": "uint8_t",
           "notes": "Mount cluster byte (vehicle grade). Written by VehicleGradeReceiver (opcode 0x01A1). N-API _isEnabledGoobbue (PlayerBase impl 0x0071E4E0) reads this offset - confirmed indirect Lua<->opcode binding (the virtual-dispatch-queries pass). Discovered the receiver-classification pass + 12f."
+        },
+        {
+          "offset": "0x161",
+          "size": "0x07",
+          "name": "mount_tail_state",
+          "type": "unknown[7]",
+          "notes": "Seven constructor-cleared closing bytes after the last presently decoded mount field. Their individual semantics remain unresolved."
         }
       ],
-      "notes": "Client-side runtime struct for player actors (Application::Lua::Script::Client::Control::PlayerBase RTTI type descriptor; vftable at 0x00FD5E04 per the virtual-dispatch-queries pass resolution). Parent of MyPlayer in the Control hierarchy. Full size and field layout unknown; the entries here are the offsets touched by inbound receivers (the receiver-classification pass) and resolved virtual-dispatch targets (the virtual-dispatch-queries pass) that are confirmed actor-state mutators. The 0xE8..0xF1 cluster handles achievement/grand-company/job state; 0x158..0x160 handles mount equip state. Receiver writes use MyPlayer-cast pointers but the offsets live in PlayerBase's layout."
-    },
-    {
-      "id": "BCS-S-0012",
-      "name": "MyPlayer",
-      "namespace": "Application::Lua::Script::Client::Control",
-      "size": "unknown",
-      "confidence": "probable",
-      "sourceRefs": [
-        "manifests/receiver_field_writes.json (receiver-classification)",
-        "manifests/vtable_resolved_evidence.json (virtual-dispatch-queries)"
-      ],
-      "fields": [],
-      "notes": "Derived class of PlayerBase. MyPlayer's vftable (resolved the virtual-dispatch-queries pass) overrides 86 of 86 PlayerBase virtual slots in the 0xA4..0x210 range. The Control-class N-APIs typed against PlayerBase dispatch at runtime to MyPlayer overrides when the actor is the local player; this is the mechanism that connects the PlayerBase N-API impls to the actual state-mutating implementations. Receiver casts (ChocoboReceiver, GoobbueReceiver, VehicleGradeReceiver, ChocoboGradeReceiver) explicitly cast to MyPlayer; the offsets they write (0x158..0x160 mount cluster) are also visible at the PlayerBase layout (see PlayerBase struct entry). No MyPlayer-specific fields are catalogued yet - all known offsets share the PlayerBase layout."
+      "notes": "Full byte-accounted MyPlayer layout. Vtable-slot factory FUN_00749180 allocates exactly 0x168 bytes. The PlayerBase prefix ends at +0xF8; fresh constructor and teardown evidence partitions the complete derived tail and corrects mount, inventory, job-quest, and Hamlet-defense ownership to MyPlayer."
     },
     {
       "id": "BCS-S-0013",
@@ -9376,6 +9575,45 @@
       ],
       "notes": "Full byte-accounted CutScene layout. Factory FUN_0071B210 allocates exactly 0xC4 bytes. Constructor and teardown evidence establish the listener subobject, owned pointer, string-like helper, and final three flags.",
       "id": "BCS-S-0109"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlPrivateAreaBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x114",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0227",
+        "BCS-Y-1856",
+        "tools/ghidra/logs/c336_lua-derived-actors.txt",
+        "tools/ghidra/logs/c336_myplayer-layout.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xBC",
+          "name": "area_base",
+          "type": "ApplicationLuaScriptClientControlAreaBase",
+          "notes": "Primary AreaBase subobject. PrivateAreaBase construction replaces the inherited primary vftable."
+        },
+        {
+          "offset": "0xBC",
+          "size": "0x54",
+          "name": "private_area_identity_storage",
+          "type": "unknown[0x54]",
+          "notes": "Embedded string-like helper constructed through FUN_00445CF0 at instruction 0x006F3DC5 and destroyed through FUN_00446F50. The exact library type remains unresolved."
+        },
+        {
+          "offset": "0x110",
+          "size": "0x04",
+          "name": "private_area_state",
+          "type": "unknown",
+          "notes": "Final dword initialized to 0xFFFFFFFF by instruction 0x006F3DDE. Its concrete type and semantics are unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted PrivateAreaBase layout. Factory FUN_0073E7D0 allocates exactly 0x114 bytes. The AreaBase prefix, string-like helper, and final sentinel dword consume that allocation exactly.",
+      "id": "BCS-S-0110"
     }
   ],
   "method": {
@@ -9525,6 +9763,21 @@
     "c335TeardownInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c335_lua-core-control-teardown.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F32A0,0x006ECE20,0x006DF490,0x006EEC00' } -ScriptPath @('ghidra')",
     "c335TeardownInputs": "AreaBase, CharaBase, and CutScene teardown functions plus the CharaSubStatStorage lazy accessor",
     "c335TeardownOutput": "tools/ghidra/logs/c335_lua-core-control-teardown.txt",
-    "c335Limits": "The field-reference export is used only for positive constructor and destructor placements, with known ActorBase +0x60 boundaries as calibration. No negative claim relies on its coverage or WRITE/READ labels. The AreaBase and CutScene identity-helper types, CharaBase inline-record type, and remaining state semantics are unresolved."
+    "c335Limits": "The field-reference export is used only for positive constructor and destructor placements, with known ActorBase +0x60 boundaries as calibration. No negative claim relies on its coverage or WRITE/READ labels. The AreaBase and CutScene identity-helper types, CharaBase inline-record type, and remaining state semantics are unresolved.",
+    "c336Topic": "C336 Lua derived-actor layouts",
+    "c336ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset.",
+    "c336PrimaryInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c336_lua-derived-actors.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F3D90,0x006ED720,0x006F3650,0x0073E7D0,0x00721290,0x0073E740' } -ScriptPath @('ghidra')",
+    "c336PrimaryInputs": "PrivateAreaBase, PlayerBase, and NpcBase constructors plus their exact allocation factories",
+    "c336PrimaryOutput": "tools/ghidra/logs/c336_lua-derived-actors.txt",
+    "c336MyPlayerInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c336_myplayer-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F9140,0x00749180,0x006F9310,0x006E3440,0x0072DEB0' } -ScriptPath @('ghidra')",
+    "c336MyPlayerInputs": "MyPlayer constructor, exact vtable-slot factory, complete-object teardown, +0xF8 replacement method, and +0x144 inventory-vector constructor",
+    "c336MyPlayerOutput": "tools/ghidra/logs/c336_myplayer-layout.txt",
+    "c336FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c336_lua-derived-actor-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0xbc,0xe8,0xec,0xed,0xee,0xef,0xf0,0xf1,0xf8,0x100,0x10c,0x110,0x114,0x11c,0x128,0x12c,0x130,0x138,0x144,0x154,0x158,0x15a,0x15c,0x160,0x164'; XIVL_BASE_REGS = 'EAX,ECX,EDX,EBX,ESI,EDI' } -ScriptPath @('ghidra')",
+    "c336FieldRefInputs": "positive constructor and destructor offsets from +0xBC through +0x164; all non-stack general registers",
+    "c336FieldRefOutput": "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
+    "c336TeardownInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c336_lua-derived-actor-teardown.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F3E00,0x006ED7A0,0x006F37A0,0x006F2210' } -ScriptPath @('ghidra')",
+    "c336TeardownInputs": "PrivateAreaBase, PlayerBase, and NpcBase teardown functions plus the MyPlayer +0x154 Hamlet-defense replacement worker",
+    "c336TeardownOutput": "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt",
+    "c336Limits": "The field-reference export supports positive constructor and destructor placements only. No negative claim relies on its coverage or WRITE/READ labels. NpcBase helper types, several MyPlayer state and vector element types, and PrivateAreaBase final-state semantics remain unresolved."
   }
 }
