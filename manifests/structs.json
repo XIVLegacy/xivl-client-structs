@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 161,
+  "structCount": 163,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -11507,7 +11507,9 @@
         "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
         "tools/ghidra/logs/c349_rapture-runtime.txt",
         "tools/ghidra/logs/c350_rapture-state-consumers.txt",
-        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt",
+        "tools/ghidra/logs/c357_resource-file-thread.txt",
+        "tools/ghidra/logs/c358_resource-file-record.txt"
       ],
       "fields": [
         {
@@ -11576,9 +11578,9 @@
         {
           "offset": "0x04C",
           "size": "0x004",
-          "name": "resource_context",
-          "type": "void *",
-          "notes": "Owned 0xB0-byte resource context constructed by FUN_00C965E0; concrete class identity remains unresolved."
+          "name": "file_thread",
+          "type": "ComponentResourceFileThread *",
+          "notes": "Owned Component::Resource::FileThread allocated as 0xB0 bytes and constructed with two queue capacities and eight LocalFile records."
         },
         {
           "offset": "0x050",
@@ -11672,7 +11674,7 @@
           "notes": "Unobserved tail bytes before the next enclosing Main subobject at +0x3A0."
         }
       ],
-      "notes": "Full byte-accounted Application::Rapture layout embedded at Main+0x30. Direct instructions place ThreadManager, the owned input/resource/font/Excel/scene/network/main module table, shared input records, CDevTimer, and closing flags. The next Main subobject at +0x3A0 fixes the exact 0x370-byte extent, and RTTI confirms all polymorphic identities used here.",
+      "notes": "Full byte-accounted Application::Rapture layout embedded at Main+0x30. Direct instructions place ThreadManager, the owned input/FileThread/resource/font/Excel/scene/network/main module table, shared input records, CDevTimer, and closing flags. The next Main subobject at +0x3A0 fixes the exact 0x370-byte extent, and RTTI confirms all polymorphic identities used here.",
       "id": "BCS-S-0134"
     },
     {
@@ -13376,6 +13378,144 @@
       ],
       "notes": "Full byte-accounted Application::Misc::RaptureFontModule. RTTI confirms the derived identity, its constructor adds no storage beyond the complete FontModule base, and Application::Rapture allocates exactly 0x5C bytes.",
       "id": "BCS-S-0161"
+    },
+    {
+      "name": "SqexFileLocalFile",
+      "namespace": "Sqex::File",
+      "size": "0x2010",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c357_resource-file-thread.txt",
+        "tools/ghidra/logs/c358_resource-file-record.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x0000",
+          "size": "0x0004",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::File::LocalFile vftable at 0x00F676F4."
+        },
+        {
+          "offset": "0x0004",
+          "size": "0x0004",
+          "name": "stream",
+          "type": "void *",
+          "notes": "Owned CRT file-stream pointer; constructor clears it and teardown flushes and closes it when non-null."
+        },
+        {
+          "offset": "0x0008",
+          "size": "0x0004",
+          "name": "state_0008",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared LocalFile state dword."
+        },
+        {
+          "offset": "0x000C",
+          "size": "0x0002",
+          "name": "state_flags",
+          "type": "uint8_t[2]",
+          "notes": "Constructor clears two adjacent LocalFile state bytes."
+        },
+        {
+          "offset": "0x000E",
+          "size": "0x2002",
+          "name": "opaque_000e",
+          "type": "unknown[0x2002]",
+          "notes": "Unpartitioned LocalFile storage. The 0x2010 array stride fixes its extent, but constructor and teardown do not establish internal member types."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::File::LocalFile. RTTI confirms the identity, direct construction and teardown establish the leading stream/state fields, and FileThread's exception-safe array constructor uses an exact 0x2010-byte element stride.",
+      "id": "BCS-S-0162"
+    },
+    {
+      "name": "ComponentResourceFileThread",
+      "namespace": "Component::Resource",
+      "size": "0xB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c357_resource-file-thread.txt",
+        "tools/ghidra/logs/c358_resource-file-record.txt",
+        "BCS-S-0122",
+        "BCS-S-0123",
+        "BCS-S-0125"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x38",
+          "name": "thread_base",
+          "type": "SqexThreadThread",
+          "notes": "Sqex::Thread::Thread base whose leading vftable is replaced with FileThread vftable 0x01108944."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x1C",
+          "name": "priority_queue",
+          "type": "SqexThreadQueueComponentResourceResourcePtr",
+          "notes": "First Resource pointer queue, labeled file priority by the constructor."
+        },
+        {
+          "offset": "0x54",
+          "size": "0x1C",
+          "name": "normal_queue",
+          "type": "SqexThreadQueueComponentResourceResourcePtr",
+          "notes": "Second Resource pointer queue, labeled file normal by the constructor."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x04",
+          "name": "state_70",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared atomic/runtime state dword."
+        },
+        {
+          "offset": "0x74",
+          "size": "0x04",
+          "name": "opaque_74",
+          "type": "unknown[0x04]",
+          "notes": "Teardown passes this address to an unresolved helper; constructor initialization and concrete type remain unestablished."
+        },
+        {
+          "offset": "0x78",
+          "size": "0x10",
+          "name": "runtime_state",
+          "type": "uint32_t[4]",
+          "notes": "Four constructor-cleared FileThread runtime dwords."
+        },
+        {
+          "offset": "0x88",
+          "size": "0x04",
+          "name": "local_file_count",
+          "type": "uint32_t",
+          "notes": "Number of LocalFile records; Application::Rapture constructs this FileThread with eight."
+        },
+        {
+          "offset": "0x8C",
+          "size": "0x04",
+          "name": "local_files",
+          "type": "SqexFileLocalFile *",
+          "notes": "Owned exception-safe array of local_file_count records at an exact 0x2010-byte stride."
+        },
+        {
+          "offset": "0x90",
+          "size": "0x1C",
+          "name": "mutex",
+          "type": "SqexThreadMutex",
+          "notes": "Embedded Mutex constructed with spin count 5."
+        },
+        {
+          "offset": "0xAC",
+          "size": "0x04",
+          "name": "state_ac",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared closing state dword."
+        }
+      ],
+      "notes": "Full byte-accounted Component::Resource::FileThread. RTTI confirms the class, Application::Rapture allocates exactly 0xB0 bytes, and direct instructions establish the Thread base, two Resource queues, owned LocalFile array, Mutex, and closing state. Unknown +0x74 storage is preserved without inventing a helper type.",
+      "id": "BCS-S-0163"
     }
   ],
   "method": {
@@ -13647,6 +13787,17 @@
     "c356Output": "tools/ghidra/logs/c356_rapture-owned-modules.txt",
     "c356ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies the exact InputDevice, RepeatCounter, MouseDevice, KeyboardDevice, PadDevice, FontModule, and RaptureFontModule identities. BCS-S-0124 and BCS-S-0130 supply the already-established ReadWriteLock and pad-state layouts.",
     "c356InstructionEvidence": "Configured retail instruction excerpts appended to C356 preserve all exact allocation sizes and Application::Rapture owner-field stores, the adjusted input-device base placements, the two PadDevice state records, and the FontModule ReadWriteLock boundary.",
-    "c356Limits": "DumpVAs supplies direct bodies and call lists only for the nine requested functions. No negative reference-topology claim relies on the export. PadDevice internal mapping storage, RepeatCounter element semantics, FontModule lookup template and optional context type, resource-context identity, retained interface types, and untouched tail bytes remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c356Limits": "DumpVAs supplies direct bodies and call lists only for the nine requested functions. No negative reference-topology claim relies on the export. PadDevice internal mapping storage, RepeatCounter element semantics, FontModule lookup template and optional context type, resource-context identity, retained interface types, and untouched tail bytes remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c357Topic": "C357 resource FileThread layouts",
+    "c357ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra, analyzeHeadless, or Java process.",
+    "c357Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c357_resource-file-thread.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00C965E0,0x00C96C10,0x00C96780,0x00D35760,0x004588E0,0x00452A40' } -ScriptPath @('ghidra')",
+    "c357Inputs": "FileThread constructor and teardown, Resource pointer queue constructor, Thread and Mutex constructors, and the shared atomic-state initializer",
+    "c357Output": "tools/ghidra/logs/c357_resource-file-thread.txt",
+    "c358Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c358_resource-file-record.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00452FE0,0x00453190,0x0044D340' } -ScriptPath @('ghidra')",
+    "c358Inputs": "LocalFile constructor and teardown plus the Resource queue slot-state initializer",
+    "c358Output": "tools/ghidra/logs/c358_resource-file-record.txt",
+    "c357ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies the exact FileThread and LocalFile identities. BCS-S-0122, BCS-S-0123, and BCS-S-0125 supply the already-established Thread, Mutex, and Resource pointer queue layouts.",
+    "c357InstructionEvidence": "Configured retail instruction excerpts appended to C357 preserve FileThread subobject placements, the exact 0x2010 LocalFile array stride, Mutex boundary, and all pre-noreturn teardown placements used by this layout.",
+    "c357Limits": "DumpVAs supplies direct bodies and call lists only for the nine requested functions across the two archives. No negative reference-topology claim relies on these exports. LocalFile tail storage, FileThread +0x74 helper identity, queue element semantics, and runtime-state meanings remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after the FileThread teardown's noreturn _free call."
   }
 }
