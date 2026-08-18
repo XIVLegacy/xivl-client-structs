@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 96,
+  "structCount": 99,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -8814,6 +8814,135 @@
       ],
       "notes": "Full byte-accounted Table layout. Clone factory FUN_007772F0 allocates exactly 0x64 bytes and invokes FUN_00777210; the ActorBase prefix and final LGTC-derived secondary vftable consume that allocation exactly.",
       "id": "BCS-S-0096"
+    },
+    {
+      "name": "MsvcTreeHeaderStorage32",
+      "namespace": "std",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c332_lua-math-global-layouts.txt",
+        "tools/ghidra/logs/c332_global-thread-state.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy_state",
+          "type": "unknown",
+          "notes": "Unwritten by the observed tree-header constructor. It is compatible with empty-base allocator or comparison-policy storage, but the concrete template policy is not established."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "head",
+          "type": "void *",
+          "notes": "Sentinel node allocated as 0x1C bytes by FUN_006CF200. Construction marks it as nil and self-links its left, parent, and right pointers."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "size",
+          "type": "uint32_t",
+          "notes": "Element count initialized to zero by FUN_006D1370. Tree lookup and erase code compares iterator state against this count."
+        }
+      ],
+      "notes": "Byte-accounted 32-bit MSVC tree-container header storage. The constructor creates a self-linked nil sentinel at +0x04 and clears +0x08; the destructor walks the tree, frees 0x1C-byte nodes, and clears both fields. Template key, value, comparator, and allocator types remain unresolved.",
+      "id": "BCS-S-0097"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlMath",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1472",
+        "BCS-Y-1542",
+        "BCS-Y-1591",
+        "tools/ghidra/logs/c332_lua-math-global-layouts.txt",
+        "tools/ghidra/logs/c332_lua-math-global-fieldrefs.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject constructed first and destroyed last."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "lua_global_tentative_control_vftable",
+          "type": "void **",
+          "notes": "Secondary LuaGlobalTentativeControl subobject vftable. Instructions 0x006DDDB6 and 0x006DDE2A load this subobject base during construction and destruction."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "time_seed_low32",
+          "type": "uint32_t",
+          "notes": "The constructor calls __time64(NULL) and instruction 0x006DDDDB stores the low 32 bits of the returned timestamp here. Later semantic use is not required to establish the stored value."
+        }
+      ],
+      "notes": "Full byte-accounted Math layout. Its clone factory allocates exactly 0x68 bytes. The ActorBase prefix, LGTC secondary vftable, and timestamp-derived final dword consume that allocation exactly.",
+      "id": "BCS-S-0098"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlGlobal",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x78",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1460",
+        "BCS-Y-1544",
+        "BCS-Y-1592",
+        "BCS-Y-1716",
+        "BCS-Y-1717",
+        "BCS-Y-1718",
+        "tools/ghidra/logs/c332_lua-math-global-layouts.txt",
+        "tools/ghidra/logs/c332_lua-math-global-fieldrefs.txt",
+        "tools/ghidra/logs/c332_global-thread-state.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject. The most-derived constructor installs Global's primary vftable after the base construction completes."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "lua_global_tentative_control_vftable",
+          "type": "void **",
+          "notes": "LGTC secondary subobject override vftable. RTTI COL offset 0x60 and constructor instruction 0x006F15D6 establish this subobject position."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "lua_side_state",
+          "type": "unknown",
+          "notes": "RTTI places the non-polymorphic Lge chain inherited through LGTC at this offset, but the concrete state type and semantics are unresolved."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x04",
+          "name": "thread_end_listener_vftable",
+          "type": "void **",
+          "notes": "LuaThreadEndListenerInterface override vftable. Global's third COL has offset 0x68; construction transiently installs the base LTELI table and then the Global override table."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x0C",
+          "name": "thread_state_tree",
+          "type": "MsvcTreeHeaderStorage32",
+          "notes": "Constructed by FUN_00725FE0 through FUN_006D1370. The LTELI callback FUN_006ED840 searches and erases matching entries, and FUN_00725430 destroys the tree and sentinel."
+        }
+      ],
+      "notes": "Full byte-accounted Global layout. Its clone factory allocates exactly 0x78 bytes. Global is the LGTC-family outlier with ActorBase, an LGTC override, an LTELI override, and the final listener-state tree header.",
+      "id": "BCS-S-0099"
     }
   ],
   "method": {
@@ -8909,6 +9038,18 @@
     "c331Topic": "C331 Lua global tentative-control leaf layouts",
     "c331Evidence": "Existing constructor, clone-factory, and RTTI records in manifests/symbols.json and manifests/cross_class_survey.json were sufficient. The C329 read-only archive supplies the already-defined ActorBase and LuaGlobalTentativeControl subobject boundaries reused here.",
     "c331Inputs": "CommandBase BCS-Y-1469/1546/1593; JudgeBase BCS-Y-1454/1548/1594; QuestBase BCS-Y-0897/0898/1595; String BCS-Y-1470/1551/1596; Table BCS-Y-1465/1553/1597",
-    "c331Limits": "No new headless run was performed because the exact 0x64 allocations, constructor targets, +0x60 LGTC anchors, and RTTI ownership were already durable on disk. The layouts make no claim about storage beyond the exact allocation boundary."
+    "c331Limits": "No new headless run was performed because the exact 0x64 allocations, constructor targets, +0x60 LGTC anchors, and RTTI ownership were already durable on disk. The layouts make no claim about storage beyond the exact allocation boundary.",
+    "c332Topic": "C332 Lua Math and Global layouts",
+    "c332ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset.",
+    "c332DumpInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c332_lua-math-global-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006DDD80,0x006DDE00,0x00719280,0x006F15A0,0x006EF040,0x00728950,0x00725FE0,0x006D1370' } -ScriptPath @('ghidra')",
+    "c332DumpInputs": "Math and Global constructors, destructors, and exact clone factories; Global tail constructor and its tree-header constructor",
+    "c332DumpOutput": "tools/ghidra/logs/c332_lua-math-global-layouts.txt",
+    "c332ThreadStateInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c332_global-thread-state.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00725430,0x006ED840,0x006DCFB0,0x006DCFC0,0x006CF200' } -ScriptPath @('ghidra')",
+    "c332ThreadStateInputs": "Global listener-state destructor, LTELI callbacks, and 0x1C-byte tree sentinel allocator",
+    "c332ThreadStateOutput": "tools/ghidra/logs/c332_global-thread-state.txt",
+    "c332FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c332_lua-math-global-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x60,0x64,0x68,0x6c,0x70,0x74' } -ScriptPath @('ghidra')",
+    "c332FieldRefInputs": "offsets 0x60, 0x64, 0x68, 0x6C, 0x70, and 0x74; all non-stack base registers",
+    "c332FieldRefOutput": "tools/ghidra/logs/c332_lua-math-global-fieldrefs.txt",
+    "c332Limits": "The field-reference export is used only for positive constructor and destructor placements, with known +0x60 LGTC placements as calibration. No negative claim relies on its coverage or WRITE/READ labels. The Global tree template parameters and both opaque policy-state dwords remain unresolved."
   }
 }
