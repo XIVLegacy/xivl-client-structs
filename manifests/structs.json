@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 154,
+  "structCount": 161,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -11506,7 +11506,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
         "tools/ghidra/logs/c349_rapture-runtime.txt",
-        "tools/ghidra/logs/c350_rapture-state-consumers.txt"
+        "tools/ghidra/logs/c350_rapture-state-consumers.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
       ],
       "fields": [
         {
@@ -11554,16 +11555,79 @@
         {
           "offset": "0x040",
           "size": "0x004",
-          "name": "state_040",
-          "type": "int32_t",
-          "notes": "Constructor initializes this signed state dword to -1."
+          "name": "pad_device",
+          "type": "SqexInputPadDevice *",
+          "notes": "Owned PadDevice allocated as 0x1D4 bytes during Application::Rapture initialization."
         },
         {
           "offset": "0x044",
-          "size": "0x02C",
-          "name": "runtime_state",
-          "type": "uint32_t[11]",
-          "notes": "Eleven constructor-cleared Rapture state dwords with unresolved individual semantics."
+          "size": "0x004",
+          "name": "mouse_device",
+          "type": "SqexInputMouseDevice *",
+          "notes": "Owned MouseDevice allocated as 0x18 bytes during Application::Rapture initialization."
+        },
+        {
+          "offset": "0x048",
+          "size": "0x004",
+          "name": "keyboard_device",
+          "type": "SqexInputKeyboardDevice *",
+          "notes": "Owned KeyboardDevice allocated as 0x18 bytes during Application::Rapture initialization."
+        },
+        {
+          "offset": "0x04C",
+          "size": "0x004",
+          "name": "resource_context",
+          "type": "void *",
+          "notes": "Owned 0xB0-byte resource context constructed by FUN_00C965E0; concrete class identity remains unresolved."
+        },
+        {
+          "offset": "0x050",
+          "size": "0x004",
+          "name": "resource_module",
+          "type": "ComponentResourceResourceModule *",
+          "notes": "Owned Component::Resource::ResourceModule allocated as 0x44 bytes."
+        },
+        {
+          "offset": "0x054",
+          "size": "0x004",
+          "name": "font_module",
+          "type": "ApplicationMiscRaptureFontModule *",
+          "notes": "Owned Application::Misc::RaptureFontModule allocated as 0x5C bytes."
+        },
+        {
+          "offset": "0x058",
+          "size": "0x004",
+          "name": "excel_module",
+          "type": "ComponentExcelExcelModule *",
+          "notes": "Owned Component::Excel::ExcelModule allocated as 0x44 bytes."
+        },
+        {
+          "offset": "0x05C",
+          "size": "0x004",
+          "name": "scene_module",
+          "type": "ApplicationSceneSceneModule *",
+          "notes": "Owned Application::Scene::SceneModule allocated as 0x40 bytes."
+        },
+        {
+          "offset": "0x060",
+          "size": "0x004",
+          "name": "network_module",
+          "type": "ApplicationNetworkNetworkModule *",
+          "notes": "Owned Application::Network::NetworkModule allocated as 0x3B8 bytes."
+        },
+        {
+          "offset": "0x064",
+          "size": "0x004",
+          "name": "main_module",
+          "type": "ApplicationMainMainModule *",
+          "notes": "Owned Application::Main::MainModule allocated as 0x17D58 bytes."
+        },
+        {
+          "offset": "0x068",
+          "size": "0x008",
+          "name": "runtime_state_068",
+          "type": "unknown[0x08]",
+          "notes": "Two unresolved Rapture state dwords before the embedded input-state records."
         },
         {
           "offset": "0x070",
@@ -11608,7 +11672,7 @@
           "notes": "Unobserved tail bytes before the next enclosing Main subobject at +0x3A0."
         }
       ],
-      "notes": "Full byte-accounted Application::Rapture layout embedded at Main+0x30. Direct instructions place the next Main subobject at +0x3A0, fixing the exact 0x370-byte extent. RTTI confirms the two adjusted Rapture vftables; constructor and reuse evidence establish ThreadManager, two pad states, mouse and keyboard states, CDevTimer, and the closing flags.",
+      "notes": "Full byte-accounted Application::Rapture layout embedded at Main+0x30. Direct instructions place ThreadManager, the owned input/resource/font/Excel/scene/network/main module table, shared input records, CDevTimer, and closing flags. The next Main subobject at +0x3A0 fixes the exact 0x370-byte extent, and RTTI confirms all polymorphic identities used here.",
       "id": "BCS-S-0134"
     },
     {
@@ -12933,6 +12997,385 @@
       ],
       "notes": "Full byte-accounted RaptureSqwtInterface. RTTI confirms both adjusted vftables, MainModule allocates exactly 0x340 bytes, and direct instructions establish every embedded-object boundary through the closing SoftKeyboardDevice.",
       "id": "BCS-S-0154"
+    },
+    {
+      "name": "SqexInputInputDevice",
+      "namespace": "Sqex::Input",
+      "size": "0x04",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Input::InputDevice vftable at 0x01113144; a derived constructor replaces it in embedded use."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::Input::InputDevice base. RTTI confirms the identity; PadDevice constructs it at +0x04 and begins the next adjusted base at +0x08, fixing the exact four-byte extent.",
+      "id": "BCS-S-0155"
+    },
+    {
+      "name": "SqexInputRepeatCounter",
+      "namespace": "Sqex::Input",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Input::RepeatCounter vftable at 0x0111313C; device constructors replace it with an adjusted derived vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "entry_width",
+          "type": "uint16_t",
+          "notes": "Constructor-provided per-entry byte width."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "entry_count",
+          "type": "uint16_t",
+          "notes": "Constructor-provided entry count."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "entries",
+          "type": "void *",
+          "notes": "Owned zero-filled storage allocated as entry_width times entry_count bytes; concrete element type remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x02",
+          "name": "counter_state",
+          "type": "uint8_t[2]",
+          "notes": "Constructor initializes these two state bytes to 8 and 7."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x02",
+          "name": "opaque_0e",
+          "type": "unknown[2]",
+          "notes": "Unobserved closing bytes before the following device field."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::Input::RepeatCounter. Direct construction establishes its count/width header and owned zeroed storage; placement at MouseDevice+0x04 followed by the owner field at +0x14 fixes the exact 0x10-byte extent.",
+      "id": "BCS-S-0156"
+    },
+    {
+      "name": "SqexInputMouseDevice",
+      "namespace": "Sqex::Input",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "primary_vftable",
+          "type": "void *",
+          "notes": "Sqex::Input::MouseDevice complete-object vftable at 0x01110504."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "repeat_counter",
+          "type": "SqexInputRepeatCounter",
+          "notes": "Embedded RepeatCounter whose leading vftable is replaced with MouseDevice adjusted vftable 0x011104FC; constructed for three one-byte entries."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "input_context",
+          "type": "void *",
+          "notes": "Retained Application::Rapture initialization context pointer; concrete interface type remains unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::Input::MouseDevice. RTTI confirms both vftables, direct instructions establish the RepeatCounter and retained context, and Application::Rapture allocates exactly 0x18 bytes.",
+      "id": "BCS-S-0157"
+    },
+    {
+      "name": "SqexInputKeyboardDevice",
+      "namespace": "Sqex::Input",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "primary_vftable",
+          "type": "void *",
+          "notes": "Sqex::Input::KeyboardDevice complete-object vftable at 0x011104C0."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "repeat_counter",
+          "type": "SqexInputRepeatCounter",
+          "notes": "Embedded RepeatCounter whose leading vftable is replaced with KeyboardDevice adjusted vftable 0x011104B8; constructed for 0x90 one-byte entries."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "input_context",
+          "type": "void *",
+          "notes": "Retained Application::Rapture initialization context pointer; concrete interface type remains unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::Input::KeyboardDevice. RTTI confirms both vftables, direct instructions establish the RepeatCounter and retained context, and Application::Rapture allocates exactly 0x18 bytes.",
+      "id": "BCS-S-0158"
+    },
+    {
+      "name": "SqexInputPadDevice",
+      "namespace": "Sqex::Input",
+      "size": "0x1D4",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "primary_vftable",
+          "type": "void *",
+          "notes": "Sqex::Input::PadDevice complete-object vftable at 0x01110624."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "input_device_base",
+          "type": "SqexInputInputDevice",
+          "notes": "InputDevice base whose vftable is replaced with PadDevice adjusted vftable 0x0111061C."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x010",
+          "name": "repeat_counter",
+          "type": "SqexInputRepeatCounter",
+          "notes": "RepeatCounter base whose vftable is replaced with PadDevice adjusted vftable 0x01110614; constructed for 0x10 two-byte entries."
+        },
+        {
+          "offset": "0x018",
+          "size": "0x004",
+          "name": "opaque_018",
+          "type": "unknown[0x04]",
+          "notes": "Unobserved dword between the adjusted base and constructor-cleared device state."
+        },
+        {
+          "offset": "0x01C",
+          "size": "0x00C",
+          "name": "device_state",
+          "type": "uint32_t[3]",
+          "notes": "Three constructor-cleared device-state dwords."
+        },
+        {
+          "offset": "0x028",
+          "size": "0x02C",
+          "name": "pad_state_0",
+          "type": "SqexInputPadStateLayout",
+          "notes": "First shared 0x2C-byte pad-state record."
+        },
+        {
+          "offset": "0x054",
+          "size": "0x02C",
+          "name": "pad_state_1",
+          "type": "SqexInputPadStateLayout",
+          "notes": "Second shared 0x2C-byte pad-state record."
+        },
+        {
+          "offset": "0x080",
+          "size": "0x148",
+          "name": "opaque_080",
+          "type": "unknown[0x148]",
+          "notes": "Internal pad mapping and runtime storage whose member partition is not established by the constructor."
+        },
+        {
+          "offset": "0x1C8",
+          "size": "0x004",
+          "name": "state_1c8",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared closing state dword."
+        },
+        {
+          "offset": "0x1CC",
+          "size": "0x002",
+          "name": "state_1cc",
+          "type": "uint16_t",
+          "notes": "Constructor-cleared closing state word."
+        },
+        {
+          "offset": "0x1CE",
+          "size": "0x001",
+          "name": "state_1ce",
+          "type": "uint8_t",
+          "notes": "Constructor-cleared closing state byte."
+        },
+        {
+          "offset": "0x1CF",
+          "size": "0x005",
+          "name": "opaque_1cf",
+          "type": "unknown[5]",
+          "notes": "Unobserved allocation tail."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::Input::PadDevice. RTTI confirms three adjusted vftables, direct instructions establish both bases, two pad-state records, and closing state, and Application::Rapture allocates exactly 0x1D4 bytes. The large internal mapping region remains opaque rather than guessed.",
+      "id": "BCS-S-0159"
+    },
+    {
+      "name": "ComponentFontFontModule",
+      "namespace": "Component::Font",
+      "size": "0x5C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c342_thread-primitives.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Component::Font::FontModule vftable at 0x01108AEC; RaptureFontModule replaces it in derived use."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x01",
+          "name": "option_04",
+          "type": "uint8_t",
+          "notes": "Constructor-provided font-module option byte; exact semantics remain unresolved."
+        },
+        {
+          "offset": "0x05",
+          "size": "0x03",
+          "name": "opaque_05",
+          "type": "unknown[3]",
+          "notes": "Unobserved alignment bytes."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "resource_module",
+          "type": "ComponentResourceResourceModule *",
+          "notes": "Retained ResourceModule pointer supplied by Application::Rapture initialization."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state_0c",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared module state."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "option_10",
+          "type": "uint8_t",
+          "notes": "Constructor-provided option byte; exact semantics remain unresolved."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x03",
+          "name": "opaque_11",
+          "type": "unknown[3]",
+          "notes": "Unobserved alignment bytes."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "font_profile",
+          "type": "void *",
+          "notes": "Retained pointer to a selected static font-profile table; concrete record type remains unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "optional_context",
+          "type": "void *",
+          "notes": "Optional owned 0x44-byte context created when option_04 is nonzero; its concrete class identity remains unresolved."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "entry_storage",
+          "type": "void *",
+          "notes": "Owned array storage allocated as four bytes times entry_count; concrete entry type remains unresolved."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "entry_count",
+          "type": "uint32_t",
+          "notes": "Constructor-provided entry count."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x0C",
+          "name": "lookup_state",
+          "type": "unknown[0x0C]",
+          "notes": "Sentinel-backed lookup header initialized by FUN_0095E590; template and key/value types remain unresolved."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x28",
+          "name": "lock",
+          "type": "SqexThreadReadWriteLock",
+          "notes": "Embedded read/write lock."
+        },
+        {
+          "offset": "0x58",
+          "size": "0x04",
+          "name": "owner_context",
+          "type": "void *",
+          "notes": "Retained first constructor argument; concrete interface type remains unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted Component::Font::FontModule. RTTI confirms the identity; direct instructions establish its options, retained pointers, entry storage, lookup header, embedded ReadWriteLock, and closing owner context. The sole derived allocation fixes the exact 0x5C-byte extent.",
+      "id": "BCS-S-0160"
+    },
+    {
+      "name": "ApplicationMiscRaptureFontModule",
+      "namespace": "Application::Misc",
+      "size": "0x5C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x5C",
+          "name": "font_module_base",
+          "type": "ComponentFontFontModule",
+          "notes": "Component::Font::FontModule base whose leading vftable is replaced with RaptureFontModule vftable 0x00F8CBD0."
+        }
+      ],
+      "notes": "Full byte-accounted Application::Misc::RaptureFontModule. RTTI confirms the derived identity, its constructor adds no storage beyond the complete FontModule base, and Application::Rapture allocates exactly 0x5C bytes.",
+      "id": "BCS-S-0161"
     }
   ],
   "method": {
@@ -13196,6 +13639,14 @@
     "c355Output": "tools/ghidra/logs/c355_rapture-sqwt-internals.txt",
     "c353ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies the exact RaptureSqwtInterface, RaptureStringTable, three extension, and SoftKeyboardDevice identities. BCS-S-0135 supplies the established 0x54-byte inline-string layout.",
     "c353InstructionEvidence": "Configured retail instruction excerpts appended to C353 preserve the exact 0x340 allocation, every enclosing subobject base, and the closing SoftKeyboardDevice fields. Excerpts appended to C354 preserve RaptureStringTable placements that pseudocode obscures.",
-    "c353Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on these exports. RaptureStringTable helper identities, retained interface types, alignment bytes, and several runtime-state semantics remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c353Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on these exports. RaptureStringTable helper identities, retained interface types, alignment bytes, and several runtime-state semantics remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c356Topic": "C356 Application Rapture owned-module layouts",
+    "c356ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c356Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c356_rapture-owned-modules.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B2DF0,0x004B2B80,0x00C97560,0x00D330C0,0x00D31F10,0x00D31640,0x00D42A40,0x00D428D0,0x00D35320' } -ScriptPath @('ghidra')",
+    "c356Inputs": "Application::Rapture owner initialization, RaptureFontModule and FontModule constructors, three input-device constructors, and their shared InputDevice, RepeatCounter, and pad-state helpers",
+    "c356Output": "tools/ghidra/logs/c356_rapture-owned-modules.txt",
+    "c356ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies the exact InputDevice, RepeatCounter, MouseDevice, KeyboardDevice, PadDevice, FontModule, and RaptureFontModule identities. BCS-S-0124 and BCS-S-0130 supply the already-established ReadWriteLock and pad-state layouts.",
+    "c356InstructionEvidence": "Configured retail instruction excerpts appended to C356 preserve all exact allocation sizes and Application::Rapture owner-field stores, the adjusted input-device base placements, the two PadDevice state records, and the FontModule ReadWriteLock boundary.",
+    "c356Limits": "DumpVAs supplies direct bodies and call lists only for the nine requested functions. No negative reference-topology claim relies on the export. PadDevice internal mapping storage, RepeatCounter element semantics, FontModule lookup template and optional context type, resource-context identity, retained interface types, and untouched tail bytes remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
