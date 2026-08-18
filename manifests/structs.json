@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 80,
+  "structCount": 85,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -8126,6 +8126,313 @@
       ],
       "notes": "Full byte-accounted ClientWorkElement layout. Sole factory FUN_005334C0 allocates exactly 0x838 bytes. Direct instruction evidence fixes the storage subobject at +0x98, and its 0x7A0-byte extent closes exactly at the allocation boundary. Only the separating dword at +0x94 remains unknown-typed.",
       "id": "BCS-S-0080"
+    },
+    {
+      "name": "SqwtEventHandlerDelegateStorage",
+      "namespace": "Sqwt",
+      "size": "0x30",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c328_luadebug-layouts.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void **",
+          "notes": "Installed by each concrete EventHandler constructor and replaced by the derived typed-handler constructor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x1C",
+          "name": "delegate_base_state",
+          "type": "unknown[0x1C]",
+          "notes": "Inherited delegate state initialized by FUN_00542550; current evidence does not partition its members."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "target",
+          "type": "void *",
+          "notes": "Captured owner pointer in both LuaDebugLog and LuaDebugSelect typed EventHandler constructors."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "opaque_24",
+          "type": "unknown",
+          "notes": "Unobserved dword between the captured target and callback fields."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "callback_method",
+          "type": "unknown",
+          "notes": "Captured callback address. It is a function pointer, but the delegate signature is not established by the retained evidence."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x04",
+          "name": "callback_extra",
+          "type": "unknown",
+          "notes": "Fourth constructor argument captured by the EventHandler base; observed callers pass zero, so its concrete type remains unresolved."
+        }
+      ],
+      "notes": "Reusable byte-accounted storage shared by the LuaDebugLog key handlers and LuaDebugSelect routed and selection-changed handlers. Heap allocation sites request exactly 0x30 bytes, while the base constructors write the final captured field at +0x2C.",
+      "id": "BCS-S-0081"
+    },
+    {
+      "name": "ApplicationMainElementWindowLuaDebugLuaDebugOutRecord",
+      "namespace": "Application::Main::Element::Window::LuaDebug",
+      "size": "0xB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c328_luadebug-layouts.txt",
+        "tools/ghidra/logs/c328_luadebug-fieldrefs.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x54",
+          "name": "first_value_storage",
+          "type": "unknown[0x54]",
+          "notes": "First helper object constructed through FUN_00448730. Its concrete class and internal layout are unresolved."
+        },
+        {
+          "offset": "0x54",
+          "size": "0x54",
+          "name": "second_value_storage",
+          "type": "unknown[0x54]",
+          "notes": "Second helper object. Instruction 0x0068D1DF loads its base at record +0x54 before construction, and the destructor uses the same boundary."
+        },
+        {
+          "offset": "0xA8",
+          "size": "0x04",
+          "name": "state_a8",
+          "type": "uint32_t",
+          "notes": "Zero-initialized by the record constructor; exact semantics are unresolved."
+        },
+        {
+          "offset": "0xAC",
+          "size": "0x04",
+          "name": "state_ac",
+          "type": "uint32_t",
+          "notes": "Zero-initialized by the record constructor; exact semantics are unresolved."
+        }
+      ],
+      "notes": "Exact 0xB0 array-record layout. FUN_0068DA30 constructs sixteen records with stride 0xB0, and FUN_0068D1A0 constructs two adjacent helper values before clearing the final two dwords.",
+      "id": "BCS-S-0082"
+    },
+    {
+      "name": "ApplicationMainElementWindowLuaDebugLuaDebugLog",
+      "namespace": "Application::Main::Element::Window::LuaDebug",
+      "size": "0xF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_element_subtrees.json",
+        "tools/ghidra/logs/c328_luadebug-layouts.txt",
+        "tools/ghidra/logs/c328_luadebug-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xB8",
+          "name": "xaml_element",
+          "type": "ApplicationMainElementXamlElement",
+          "notes": "Inherited XamlElement storage; the constructor replaces both primary and secondary vftables with the LuaDebugLog tables."
+        },
+        {
+          "offset": "0xB8",
+          "size": "0x04",
+          "name": "event_source",
+          "type": "void *",
+          "notes": "Filled by the typed event-source registry lookup and tested before subscriptions are installed."
+        },
+        {
+          "offset": "0xBC",
+          "size": "0x04",
+          "name": "first_key_handler",
+          "type": "SqwtEventHandlerDelegateStorage *",
+          "notes": "Owned heap delegate allocated as 0x30 bytes and subscribed with callback FUN_00599880."
+        },
+        {
+          "offset": "0xC0",
+          "size": "0x04",
+          "name": "second_key_handler",
+          "type": "SqwtEventHandlerDelegateStorage *",
+          "notes": "Owned heap delegate allocated as 0x30 bytes and subscribed with callback LAB_00599800."
+        },
+        {
+          "offset": "0xC4",
+          "size": "0x14",
+          "name": "binding_storage",
+          "type": "unknown[0x14]",
+          "notes": "Embedded helper constructed by FUN_0059A310. Instruction 0x00599D12 fixes its base at complete-object +0xC4, but its concrete type is unresolved."
+        },
+        {
+          "offset": "0xD8",
+          "size": "0x18",
+          "name": "tail_state",
+          "type": "uint32_t[6]",
+          "notes": "Six consecutive dwords cleared by the constructor; their individual semantics are unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted LuaDebugLog layout. Its factory allocates exactly 0xF0 bytes, and constructor instructions partition all derived storage after the 0xB8-byte XamlElement base.",
+      "id": "BCS-S-0083"
+    },
+    {
+      "name": "ApplicationMainElementWindowLuaDebugLuaDebugOut",
+      "namespace": "Application::Main::Element::Window::LuaDebug",
+      "size": "0xBC8",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_element_subtrees.json",
+        "tools/ghidra/logs/c328_luadebug-layouts.txt",
+        "tools/ghidra/logs/c328_luadebug-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x0B8",
+          "name": "xaml_element",
+          "type": "ApplicationMainElementXamlElement",
+          "notes": "Inherited XamlElement storage; the constructor replaces both primary and secondary vftables with the LuaDebugOut tables."
+        },
+        {
+          "offset": "0x0B8",
+          "size": "0x004",
+          "name": "event_source",
+          "type": "void *",
+          "notes": "Filled by the typed event-source registry lookup before the sixteen output records are configured."
+        },
+        {
+          "offset": "0x0BC",
+          "size": "0x004",
+          "name": "opaque_0bc",
+          "type": "unknown[4]",
+          "notes": "Unobserved dword separating the event-source pointer from the record array."
+        },
+        {
+          "offset": "0x0C0",
+          "size": "0xB00",
+          "name": "records",
+          "type": "ApplicationMainElementWindowLuaDebugLuaDebugOutRecord[16]",
+          "notes": "Sixteen records constructed through the MSVC vector constructor iterator with exact 0xB0 stride. Instruction 0x0068D583 loads the array base at complete-object +0xC0."
+        },
+        {
+          "offset": "0xBC0",
+          "size": "0x001",
+          "name": "tail_flag",
+          "type": "uint8_t",
+          "notes": "Cleared by the constructor immediately after the record array is initialized; exact semantics are unresolved."
+        },
+        {
+          "offset": "0xBC1",
+          "size": "0x007",
+          "name": "tail_padding",
+          "type": "unknown[7]",
+          "notes": "Unobserved bytes closing the object at the exact factory allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted LuaDebugOut layout. The factory allocates exactly 0xBC8 bytes; the constructor places a sixteen-element 0xB0-stride record array at +0xC0 and clears the byte at +0xBC0.",
+      "id": "BCS-S-0084"
+    },
+    {
+      "name": "ApplicationMainElementWindowLuaDebugLuaDebugSelect",
+      "namespace": "Application::Main::Element::Window::LuaDebug",
+      "size": "0x100",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_element_subtrees.json",
+        "tools/ghidra/logs/c328_luadebug-layouts.txt",
+        "tools/ghidra/logs/c328_luadebug-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xB8",
+          "name": "xaml_element",
+          "type": "ApplicationMainElementXamlElement",
+          "notes": "Inherited XamlElement storage; the constructor replaces both primary and secondary vftables with the LuaDebugSelect tables."
+        },
+        {
+          "offset": "0xB8",
+          "size": "0x01",
+          "name": "flag_b8",
+          "type": "uint8_t",
+          "notes": "Zero-initialized constructor flag; exact semantics are unresolved."
+        },
+        {
+          "offset": "0xB9",
+          "size": "0x01",
+          "name": "flag_b9",
+          "type": "uint8_t",
+          "notes": "Zero-initialized constructor flag; exact semantics are unresolved."
+        },
+        {
+          "offset": "0xBA",
+          "size": "0x02",
+          "name": "padding_ba",
+          "type": "unknown[2]",
+          "notes": "Unobserved bytes before the first cleared dword."
+        },
+        {
+          "offset": "0xBC",
+          "size": "0x04",
+          "name": "state_bc",
+          "type": "uint32_t",
+          "notes": "Zero-initialized constructor state; exact semantics are unresolved."
+        },
+        {
+          "offset": "0xC0",
+          "size": "0x01",
+          "name": "flag_c0",
+          "type": "uint8_t",
+          "notes": "Zero-initialized constructor flag; exact semantics are unresolved."
+        },
+        {
+          "offset": "0xC1",
+          "size": "0x03",
+          "name": "padding_c1",
+          "type": "unknown[3]",
+          "notes": "Unobserved bytes before the next cleared dword."
+        },
+        {
+          "offset": "0xC4",
+          "size": "0x04",
+          "name": "state_c4",
+          "type": "uint32_t",
+          "notes": "Zero-initialized constructor state; exact semantics are unresolved."
+        },
+        {
+          "offset": "0xC8",
+          "size": "0x04",
+          "name": "selection_changed_handler",
+          "type": "SqwtEventHandlerDelegateStorage *",
+          "notes": "Owned 0x30-byte heap delegate. The class destructor invokes its deleting destructor and clears this pointer."
+        },
+        {
+          "offset": "0xCC",
+          "size": "0x04",
+          "name": "opaque_cc",
+          "type": "unknown[4]",
+          "notes": "Unobserved dword between the heap delegate pointer and embedded routed-event delegate."
+        },
+        {
+          "offset": "0xD0",
+          "size": "0x30",
+          "name": "routed_event_handler",
+          "type": "SqwtEventHandlerDelegateStorage",
+          "notes": "Inline routed-event delegate. Instructions 0x0068DE72 and 0x0068DDAE load complete-object +0xD0 for construction and destruction respectively."
+        }
+      ],
+      "notes": "Full byte-accounted LuaDebugSelect layout. Its factory allocates exactly 0x100 bytes. The constructor allocates one 0x30-byte selection handler and embeds a second 0x30-byte routed-event handler at +0xD0, which closes exactly at the allocation boundary.",
+      "id": "BCS-S-0085"
     }
   ],
   "method": {
@@ -8186,6 +8493,15 @@
     "c327FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c327_clientwork-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x98'; XIVL_BASE_REGS = 'ESI' } -ScriptPath @('ghidra')",
     "c327FieldRefInputs": "offset 0x98; base register ESI",
     "c327FieldRefOutput": "tools/ghidra/logs/c327_clientwork-fieldrefs.txt",
-    "c327Limits": "The field-reference export is used only for the positive constructor instruction at 0x0055F8FD that establishes the +0x98 subobject base. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the seven requested functions."
+    "c327Limits": "The field-reference export is used only for the positive constructor instruction at 0x0055F8FD that establishes the +0x98 subobject base. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the seven requested functions.",
+    "c328Topic": "C328 LuaDebug element layouts",
+    "c328ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset.",
+    "c328DumpInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c328_luadebug-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00533840,0x005338C0,0x00533940,0x00599CB0,0x0068D510,0x0068DDF0,0x0059A310,0x0068DA30,0x0068DD50,0x0068D1A0,0x0068D220,0x0059A380,0x0059A3F0,0x0068E220,0x0068E300,0x0068E290,0x0068E3E0' } -ScriptPath @('ghidra')",
+    "c328DumpInputs": "LuaDebugLog, LuaDebugOut, and LuaDebugSelect factories and constructors; embedded helper and record constructors and destructors; typed EventHandler constructors",
+    "c328DumpOutput": "tools/ghidra/logs/c328_luadebug-layouts.txt",
+    "c328FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c328_luadebug-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x54,0xC0,0xC4,0xD0'; XIVL_BASE_REGS = 'ESI,EDI' } -ScriptPath @('ghidra')",
+    "c328FieldRefInputs": "offsets 0x54, 0xC0, 0xC4, and 0xD0; base registers ESI and EDI",
+    "c328FieldRefOutput": "tools/ghidra/logs/c328_luadebug-fieldrefs.txt",
+    "c328Limits": "The field-reference export is used only for positive constructor and destructor placements, including the previously known LuaDebugSelect +0xD0 delegate as calibration. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the seventeen requested functions."
   }
 }
