@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 177,
+  "structCount": 181,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -9693,8 +9693,8 @@
           "offset": "0x17C",
           "size": "0x04",
           "name": "callback_service",
-          "type": "void *",
-          "notes": "Owned pointer to a 0xA0-byte helper constructed by FUN_00D0A6F0."
+          "type": "ComponentLuaGameEngineCallbackService *",
+          "notes": "Owned exact 0xA0-byte callback service containing lists, a tree, two callback records, and vector storage."
         },
         {
           "offset": "0x180",
@@ -14459,6 +14459,364 @@
       ],
       "notes": "Full byte-accounted GameEngine timer service. The exact owner allocation, constructor, and pre-noreturn teardown establish the owner/config fields, timer tree, timer list, and closing flags.",
       "id": "BCS-S-0177"
+    },
+    {
+      "name": "ComponentLuaCallbackListNode0C",
+      "namespace": "Component::Lua",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c364_gameengine-callback-service.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ComponentLuaCallbackListNode0C *",
+          "notes": "Forward list link self-linked by the sentinel allocator."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ComponentLuaCallbackListNode0C *",
+          "notes": "Backward list link self-linked by the sentinel allocator."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "payload",
+          "type": "unknown",
+          "notes": "Four-byte node payload; the allocator fixes its extent but not its concrete type."
+        }
+      ],
+      "notes": "Full byte-accounted 0x0C-byte list node used by the GameEngine callback service. Allocation and sentinel links are direct; payload type remains unresolved.",
+      "id": "BCS-S-0178"
+    },
+    {
+      "name": "ComponentLuaCallbackTreeNode24",
+      "namespace": "Component::Lua",
+      "size": "0x24",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c364_gameengine-callback-service.txt",
+        "BCS-S-0114"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentLuaCallbackTreeNode24 *",
+          "notes": "R-B tree left link zeroed by the allocator and self-linked for the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentLuaCallbackTreeNode24 *",
+          "notes": "R-B tree right link zeroed by the allocator and self-linked for the sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentLuaCallbackTreeNode24 *",
+          "notes": "R-B tree parent link zeroed by the allocator and self-linked for the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x14",
+          "name": "key_payload",
+          "type": "unknown[0x14]",
+          "notes": "Unpartitioned callback-tree key and payload storage; scheduler semantics are not transferred to this separate tree."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "R-B tree color byte initialized to one by the allocator."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "is_sentinel",
+          "type": "uint8_t",
+          "notes": "Sentinel marker initialized to zero by the allocator and set to one by the service constructor."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[2]",
+          "notes": "Closing alignment bytes at the exact 0x24-byte allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted callback-service R-B tree node. It shares an allocator and physical link/marker convention with the scheduler MS node but remains a distinct type because its key and payload semantics are unresolved.",
+      "id": "BCS-S-0179"
+    },
+    {
+      "name": "ComponentLuaGameEngineCallbackRecord",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x34",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c364_gameengine-callback-service.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "kind",
+          "type": "uint8_t",
+          "notes": "Record discriminator copied from the constructor input."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x03",
+          "name": "alignment_01",
+          "type": "unknown[3]",
+          "notes": "Unobserved alignment bytes before the first state dword."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared record state."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "flag_08",
+          "type": "uint8_t",
+          "notes": "Constructor-cleared flag later set by record installation."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "flag_09",
+          "type": "uint8_t",
+          "notes": "Second constructor-cleared record flag."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "alignment_0a",
+          "type": "unknown[2]",
+          "notes": "Unobserved alignment bytes before the first SID pair."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "sid_0c",
+          "type": "uint32_t",
+          "notes": "SID-like value initialized to the established null-SID sentinel and replaced by record installation."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "sid_state_10",
+          "type": "uint32_t",
+          "notes": "State paired with sid_0c, initialized to zero."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "sid_14",
+          "type": "uint32_t",
+          "notes": "Second SID-like value initialized to the null-SID sentinel."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "sid_state_18",
+          "type": "uint32_t",
+          "notes": "State paired with sid_14, initialized to zero."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared record state."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "value_20",
+          "type": "uint32_t",
+          "notes": "Value produced by the record constructor helper; concrete semantics remain unresolved."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "state_24",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared state adjoining value_20."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "scaled_value_28",
+          "type": "uint32_t",
+          "notes": "Integer conversion derived from value_20 by the record refresh helper."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x04",
+          "name": "scaled_value_2c",
+          "type": "uint32_t",
+          "notes": "Second integer conversion derived from value_20 by the record refresh helper."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x01",
+          "name": "flag_30",
+          "type": "uint8_t",
+          "notes": "Record refresh helper clears this closing flag."
+        },
+        {
+          "offset": "0x31",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[3]",
+          "notes": "Closing alignment bytes before the next exact constructor placement."
+        }
+      ],
+      "notes": "Full byte-accounted callback record embedded twice in the GameEngine callback service. Direct construction establishes the two SID/state pairs, numeric refresh outputs, flags, and exact 0x34 extent; descriptive semantics remain deliberately narrow.",
+      "id": "BCS-S-0180"
+    },
+    {
+      "name": "ComponentLuaGameEngineCallbackService",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0xA0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c364_gameengine-callback-service.txt",
+        "tools/ghidra/logs/c360_gameengine-owned-services.txt",
+        "BCS-S-0178",
+        "BCS-S-0179",
+        "BCS-S-0180"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "primary_list_state",
+          "type": "unknown",
+          "notes": "Unresolved leading policy state for the primary list header."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "primary_list_sentinel",
+          "type": "ComponentLuaCallbackListNode0C *",
+          "notes": "Owned self-linked 0x0C-byte primary-list sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "primary_list_count",
+          "type": "uint32_t",
+          "notes": "Primary-list element count, initialized to zero."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "route_state",
+          "type": "unknown",
+          "notes": "Unresolved route/state dword passed with the service container bundle by both direct consumers."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "callback_tree_state",
+          "type": "unknown",
+          "notes": "Unresolved comparator or allocator state for the callback R-B tree."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "callback_tree_sentinel",
+          "type": "ComponentLuaCallbackTreeNode24 *",
+          "notes": "Owned self-linked 0x24-byte callback-tree sentinel."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "callback_tree_count",
+          "type": "uint32_t",
+          "notes": "Callback-tree element count, initialized to zero."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x34",
+          "name": "primary_record",
+          "type": "ComponentLuaGameEngineCallbackRecord",
+          "notes": "First embedded callback record constructed in place."
+        },
+        {
+          "offset": "0x50",
+          "size": "0x04",
+          "name": "record_vector_state",
+          "type": "unknown",
+          "notes": "Unresolved leading policy state for the four-byte-stride record vector."
+        },
+        {
+          "offset": "0x54",
+          "size": "0x04",
+          "name": "record_vector_begin",
+          "type": "void *",
+          "notes": "Begin pointer of storage reserved for 0x2000 four-byte elements."
+        },
+        {
+          "offset": "0x58",
+          "size": "0x04",
+          "name": "record_vector_end",
+          "type": "void *",
+          "notes": "Current end pointer of the record vector."
+        },
+        {
+          "offset": "0x5C",
+          "size": "0x04",
+          "name": "record_vector_capacity_end",
+          "type": "void *",
+          "notes": "Capacity-end pointer of the record vector."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x34",
+          "name": "secondary_record",
+          "type": "ComponentLuaGameEngineCallbackRecord",
+          "notes": "Second embedded callback record constructed in place."
+        },
+        {
+          "offset": "0x94",
+          "size": "0x04",
+          "name": "secondary_list_state",
+          "type": "unknown",
+          "notes": "Unresolved leading policy state for the secondary list header."
+        },
+        {
+          "offset": "0x98",
+          "size": "0x04",
+          "name": "secondary_list_sentinel",
+          "type": "ComponentLuaCallbackListNode0C *",
+          "notes": "Owned self-linked 0x0C-byte secondary-list sentinel."
+        },
+        {
+          "offset": "0x9C",
+          "size": "0x04",
+          "name": "secondary_list_count",
+          "type": "uint32_t",
+          "notes": "Secondary-list element count, initialized to zero."
+        }
+      ],
+      "notes": "Full byte-accounted GameEngine callback service. The exact 0xA0 owner allocation, constructor instructions, repeated-record construction, vector reserve, and two direct consumer bundles establish every byte partition without assigning unresolved policy or payload semantics.",
+      "id": "BCS-S-0181"
     }
   ],
   "method": {
@@ -14796,6 +15154,15 @@
     "c362InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\Users\\aeshu\\tools\\ghidra-projects\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(va-0x400000,n),va)]\" with (va,n) values (0x00CEE120,96), (0x00D25F00,132), (0x00CEF9E0,143), and (0x00CEF830,180)",
     "c362ExistingEvidence": "BCS-S-0111, BCS-Y-1691, and the fresh C360 owner archive supplied the exact GameEngine ownership slots and 0x44/0x24 allocation bounds. BCS-S-0123 supplies the established 0x1C Mutex layout; BCS-S-0164 supplies the matching compiler tree-link and marker convention.",
     "c362InstructionEvidence": "Configured retail instruction excerpts appended to C362 preserve the runtime-state +0x00 and Mutex +0x28 placements, runtime list +0x04 and record container +0x10 placements, timer tree +0x08 and list +0x14 placements, and all timer teardown operations before the noreturn _free call.",
-    "c362Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. FUN_00CEE180 belongs to an adjacent larger reference-counted object and is not used for either promoted layout. FUN_00CEF900 and FUN_00CEFA70 operate on a larger GameEngine context and are excluded because their +0x24/+0x28 reads exceed the 0x24 timer-service boundary. No negative reference-topology claim relies on these exports. Runtime list payload, eight-byte record type, timer tree key/value type, list payload, policy dwords, timer configuration interface, and alignment bytes remain unknown-typed. The 0xA0 FUN_00D0A6F0 service remains deferred. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c362Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. FUN_00CEE180 belongs to an adjacent larger reference-counted object and is not used for either promoted layout. FUN_00CEF900 and FUN_00CEFA70 operate on a larger GameEngine context and are excluded because their +0x24/+0x28 reads exceed the 0x24 timer-service boundary. No negative reference-topology claim relies on these exports. Runtime list payload, eight-byte record type, timer tree key/value type, list payload, policy dwords, timer configuration interface, and alignment bytes remain unknown-typed. The 0xA0 FUN_00D0A6F0 service remains deferred. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c364Topic": "C364 GameEngine callback service layouts",
+    "c364ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c364Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c364_gameengine-callback-service.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CDC410,0x00D0A6F0,0x00D059D0,0x00D0A870,0x00D0B440,0x00D0B350,0x00D0A8B0,0x00D0A160,0x00D0B210,0x00D0A650,0x00D0A7C0,0x00CF2FD0' } -ScriptPath @('ghidra')",
+    "c364Inputs": "GameEngine owner constructor, exact callback-service constructor, list and tree node allocators, repeated callback-record constructor chain, record refresh helper, record installation helper, two direct service consumers, and the four-byte-stride vector reserve helper",
+    "c364Output": "tools/ghidra/logs/c364_gameengine-callback-service.txt",
+    "c364InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for va,n in [(0x00D0A6F0,198),(0x00D0A8B0,143)] for i in md.disasm(p.get_data(va-0x400000,n),va)]\"",
+    "c364ExistingEvidence": "BCS-S-0111, BCS-Y-1691, and C360 supplied the +0x17C ownership slot and exact 0xA0 allocation. BCS-S-0114 supplies the established physical link ordering for the shared 0x24-byte R-B tree-node allocator; scheduler key semantics are not transferred.",
+    "c364InstructionEvidence": "Configured retail instruction excerpts appended to C364 preserve the three list/tree headers, repeated +0x1C/+0x60 callback-record placements, +0x50 vector header and 0x2000-element reserve, and every direct callback-record write through +0x30.",
+    "c364Limits": "DumpVAs supplies direct bodies and call lists only for the twelve requested functions. No negative reference-topology claim relies on the export. List payloads, tree key/payload, service policy dwords, vector element semantics, several callback-record state dwords, and alignment bytes remain unknown-typed or descriptively named. No RTTI identity is claimed, and no load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
