@@ -11,7 +11,8 @@
   },
   "method": {
     "scripts": [
-      "ghidra/DumpVAs.java"
+      "ghidra/DumpVAs.java",
+      "ghidra/FindReferences.java"
     ],
     "readOnly": true,
     "project": "ffxivgame",
@@ -24,7 +25,10 @@
     ],
     "invocations": [
       "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c318_trade-message-routing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x004D8860,0x00575040,0x0076C220,0x0089F430,0x0089EB20,0x0089E8E0,0x0070A010,0x00898480,0x00897310,0x006EE680,0x0075E3A0,0x00776760,0x004D6D30,0x004E0240' } -ScriptPath @('ghidra')",
-      "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c318_trade-event-update-routing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0089EDB0,0x00894090,0x00894AB0,0x00894BC0,0x00896F70,0x0075E670' } -ScriptPath @('ghidra')"
+      "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c318_trade-event-update-routing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0089EDB0,0x00894090,0x00894AB0,0x00894BC0,0x00896F70,0x0075E670' } -ScriptPath @('ghidra')",
+      "tools\\ghidra\\run-headless.ps1 -Script FindReferences.java -ReadOnly -Out tools\\ghidra\\logs\\c319_trade-notice-addresses.txt -ScriptEnv @{ XIVL_REFERENCE_MODE='ADDRESS'; XIVL_REFERENCE_ADDRESSES='0x0076C220,0x00776760,0x0075E670,0x004E0240' } -ScriptPath @('ghidra')",
+      "tools\\ghidra\\run-headless.ps1 -Script FindReferences.java -ReadOnly -Out tools\\ghidra\\logs\\c319_trade-notice-strings-exact-3.txt -ScriptEnv @{ XIVL_REFERENCE_MODE='STRING'; XIVL_REFERENCE_STRINGS=(@('dictateNoticeTradeWidget','processTradeCommandReply','processTradeCommandOpenTray','processTradeCommandCloseTray','processUpdateTradeCommandTrayData','/Command/System/TradeExecuteCommand') -join \"`n\"); XIVL_STRING_MATCH='EXACT' } -ScriptPath @('ghidra')",
+      "tools\\ghidra\\run-headless.ps1 -Script FindReferences.java -ReadOnly -Out tools\\ghidra\\logs\\c319_trade-notice-strings-substring-3.txt -ScriptEnv @{ XIVL_REFERENCE_MODE='STRING'; XIVL_REFERENCE_STRINGS=(@('Trade','trade','Notice','notice') -join \"`n\"); XIVL_STRING_MATCH='SUBSTRING' } -ScriptPath @('ghidra')"
     ],
     "sectionVerification": {
       "tradeMessageRoutingSections": 14,
@@ -207,16 +211,22 @@
       206,
       212
     ],
-    "status": "unresolved",
-    "reason": "The 0x0130 decoder forwards a data-selected function and Lua parameter stream and contains no code-specific branch. This route cannot establish which server invocation supplies these values, and no exhaustive string or data-reference exporter was available for a binary-wide negative."
+    "status": "resolved_server_supplied",
+    "reason": "Resolved negative for a static client producer. A complete FindReferences run scanned 28,414 defined strings: none of the exact TradeExecuteCommand methods, dictateNoticeTradeWidget, or the class resource path exist in the executable, while the broader Trade and Notice matches were Grid_ItemTrade or unrelated notice infrastructure. The complete address pass found only the generic 0x0130 decoder and 0x012d/0x012e send boundaries already recorded. In the tracked Lua corpus, dictateNoticeTradeWidget has only the TradeExecuteCommand token-mapping calls and the DesktopWidget forwarding shim; codes 204/205/206/212 occur on the TradeWidget consuming side and have no trade-side producer. If these branches are reached, the values are therefore server-supplied through the data-selected generic event input rather than created by a static client emit path. This negative covers directly encoded Ghidra references and static Lua call sites; computed, indirect, dynamically dispatched, or unanalyzed-region references remain outside it."
   },
   "sourceRefs": [
     "tools/ghidra/logs/c318_trade-message-routing.txt",
     "tools/ghidra/logs/c318_trade-event-update-routing.txt",
+    "tools/ghidra/logs/c319_trade-notice-addresses.txt",
+    "tools/ghidra/logs/c319_trade-notice-strings-exact-3.txt",
+    "tools/ghidra/logs/c319_trade-notice-strings-substring-3.txt",
     "manifests/s2c_payload_decoding_mapped.json",
     "manifests/combat_command_emission.json",
     "manifests/op012e_eventupdate_emitter.json",
     "manifests/lua_api_contract.json",
-    "xivl-client-data:manifests/staticactor_class_paths.json#records"
+    "xivl-client-data:manifests/staticactor_class_paths.json#records",
+    "xivl-client-scripts:lua/scripts/command/system/tradeexecutecommand.lua",
+    "xivl-client-scripts:lua/scripts/widget/desktopwidget_connector.lua",
+    "xivl-client-scripts:lua/scripts/widget/tradewidget.lua"
   ]
 }
