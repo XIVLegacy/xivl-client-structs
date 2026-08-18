@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 163,
+  "structCount": 165,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -13316,8 +13316,8 @@
           "offset": "0x18",
           "size": "0x04",
           "name": "optional_context",
-          "type": "void *",
-          "notes": "Optional owned 0x44-byte context created when option_04 is nonzero; its concrete class identity remains unresolved."
+          "type": "ComponentFontGlyphRasterizerContext *",
+          "notes": "Optional owned 0x44-byte glyph rasterizer and cache context created when option_04 is nonzero. The type name is descriptive because no concrete RTTI class identity was established."
         },
         {
           "offset": "0x1C",
@@ -13516,6 +13516,227 @@
       ],
       "notes": "Full byte-accounted Component::Resource::FileThread. RTTI confirms the class, Application::Rapture allocates exactly 0xB0 bytes, and direct instructions establish the Thread base, two Resource queues, owned LocalFile array, Mutex, and closing state. Unknown +0x74 storage is preserved without inventing a helper type.",
       "id": "BCS-S-0163"
+    },
+    {
+      "name": "ComponentFontGlyphCacheTreeNode",
+      "namespace": "Component::Font",
+      "size": "0x3C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c359_font-data-layouts.txt",
+        "tools/ghidra/logs/c359_font-context-consumer.txt",
+        "tools/ghidra/logs/c359_font-tree-lookup.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentFontGlyphCacheTreeNode *",
+          "notes": "R-B tree left link initialized by the sentinel allocator."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentFontGlyphCacheTreeNode *",
+          "notes": "R-B tree parent link; the sentinel's +0x04 link selects the root for lookup."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentFontGlyphCacheTreeNode *",
+          "notes": "R-B tree right link followed when the node glyph key is below the requested key."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "glyph_key",
+          "type": "uint32_t",
+          "notes": "Glyph lookup key passed by address to the tree search helper."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x28",
+          "name": "glyph_record",
+          "type": "unknown[0x28]",
+          "notes": "Cached 40-byte glyph result copied intact on a tree hit; its internal metric and atlas-coordinate split remains unresolved."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "R-B tree color byte initialized to one by the node allocator."
+        },
+        {
+          "offset": "0x39",
+          "size": "0x01",
+          "name": "is_sentinel",
+          "type": "uint8_t",
+          "notes": "Sentinel marker tested by lookup traversal and set to one for the cache head node."
+        },
+        {
+          "offset": "0x3A",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[2]",
+          "notes": "Closing alignment bytes at the exact 0x3C-byte allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted glyph-cache R-B tree node. Allocation size, links, glyph key, 0x28-byte cached result, sentinel marker, and color byte are direct; the cached result remains deliberately unpartitioned.",
+      "id": "BCS-S-0164"
+    },
+    {
+      "name": "ComponentFontGlyphRasterizerContext",
+      "namespace": "Component::Font",
+      "size": "0x44",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c359_font-data-layouts.txt",
+        "tools/ghidra/logs/c359_font-data-owner-call.txt",
+        "tools/ghidra/logs/c359_font-data-teardown-2.txt",
+        "tools/ghidra/logs/c359_font-context-consumer.txt",
+        "BCS-S-0164"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "window_context",
+          "type": "void *",
+          "notes": "Handle-like value copied from the selected font profile and passed to GetDC and ReleaseDC; the profile record type remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "font_handle",
+          "type": "void *",
+          "notes": "Owned CreateFontW result released during teardown."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "outline_scale",
+          "type": "float",
+          "notes": "Constructor-supplied scale converted into the GetGlyphOutlineW transformation matrix."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "glyph_extent",
+          "type": "uint32_t",
+          "notes": "Profile-selected glyph extent used as the font height and glyph clamp."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "cell_extent",
+          "type": "uint32_t",
+          "notes": "Glyph extent plus six, used as the atlas-cell stride."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "cells_per_axis",
+          "type": "uint32_t",
+          "notes": "Derived number of cell slots along a 0x200-unit atlas axis."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "next_cell_index",
+          "type": "uint32_t",
+          "notes": "Incremented after each rasterized glyph and wrapped at cells_per_axis squared."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "atlas_group_index",
+          "type": "uint32_t",
+          "notes": "Outer atlas index copied into each generated glyph record."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "atlas_layer_index",
+          "type": "uint32_t",
+          "notes": "Inner atlas index copied into each generated glyph record; wraps after four layers."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "entry_allocator_state",
+          "type": "unknown",
+          "notes": "Unresolved leading state of a vector-like container whose records have an exact 0x14-byte stride."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "entry_begin",
+          "type": "void *",
+          "notes": "Owned start of vector-like 0x14-byte entry storage, initially reserved for 0x40 records."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x04",
+          "name": "entry_end",
+          "type": "void *",
+          "notes": "Current end of vector-like entry storage."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "entry_capacity_end",
+          "type": "void *",
+          "notes": "Capacity end of vector-like entry storage."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x04",
+          "name": "glyph_map_state",
+          "type": "unknown",
+          "notes": "Unresolved comparator or allocator state at the head of the glyph-keyed R-B tree header."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x04",
+          "name": "glyph_map_sentinel",
+          "type": "ComponentFontGlyphCacheTreeNode *",
+          "notes": "Owned 0x3C-byte sentinel for the glyph cache tree."
+        },
+        {
+          "offset": "0x3C",
+          "size": "0x04",
+          "name": "glyph_map_size",
+          "type": "uint32_t",
+          "notes": "Glyph cache tree element count, initialized to zero."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x01",
+          "name": "scratch_ready",
+          "type": "uint8_t",
+          "notes": "Initialization flag checked before creating the paired 0x80000-byte glyph scratch buffers."
+        },
+        {
+          "offset": "0x41",
+          "size": "0x01",
+          "name": "grayscale_mode",
+          "type": "uint8_t",
+          "notes": "Constructor option selecting grayscale rather than monochrome GetGlyphOutlineW output."
+        },
+        {
+          "offset": "0x42",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[2]",
+          "notes": "Unobserved closing alignment bytes at the exact 0x44-byte allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted FontModule-owned glyph rasterizer and cache context. The descriptive name is structural rather than an RTTI class claim: construction, Windows glyph APIs, cache lookup, and teardown establish the role, but no concrete C++ class identity is present in the bounded evidence.",
+      "id": "BCS-S-0165"
     }
   ],
   "method": {
@@ -13798,6 +14019,36 @@
     "c358Output": "tools/ghidra/logs/c358_resource-file-record.txt",
     "c357ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies the exact FileThread and LocalFile identities. BCS-S-0122, BCS-S-0123, and BCS-S-0125 supply the already-established Thread, Mutex, and Resource pointer queue layouts.",
     "c357InstructionEvidence": "Configured retail instruction excerpts appended to C357 preserve FileThread subobject placements, the exact 0x2010 LocalFile array stride, Mutex boundary, and all pre-noreturn teardown placements used by this layout.",
-    "c357Limits": "DumpVAs supplies direct bodies and call lists only for the nine requested functions across the two archives. No negative reference-topology claim relies on these exports. LocalFile tail storage, FileThread +0x74 helper identity, queue element semantics, and runtime-state meanings remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after the FileThread teardown's noreturn _free call."
+    "c357Limits": "DumpVAs supplies direct bodies and call lists only for the nine requested functions across the two archives. No negative reference-topology claim relies on these exports. LocalFile tail storage, FileThread +0x74 helper identity, queue element semantics, and runtime-state meanings remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after the FileThread teardown's noreturn _free call.",
+    "c359Topic": "C359 FontModule glyph rasterizer layouts",
+    "c359ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c359PrimaryInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-data-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00C97560,0x00CA9A10,0x00CA9530,0x00CA95A0,0x00CAB170,0x00CABA90' } -ScriptPath @('ghidra')",
+    "c359PrimaryInputs": "FontModule owner constructor, the 0x44-byte context constructor, scratch initialization, glyph rasterization, tree-sentinel allocation, and vector reserve helper",
+    "c359PrimaryOutput": "tools/ghidra/logs/c359_font-data-layouts.txt",
+    "c359OwnerInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-data-owner-call.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B2B80' } -ScriptPath @('ghidra')",
+    "c359OwnerInputs": "RaptureFontModule constructor selecting the static font profile passed to FontModule",
+    "c359OwnerOutput": "tools/ghidra/logs/c359_font-data-owner-call.txt",
+    "c359RttiInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script ExtractRtti.java -ReadOnly -ScriptEnv @{ XIVL_RTTI_DETAILS_OUT = 'C:\\Users\\aeshu\\Documents\\Repos\\XIVLegacy\\xivl-client-structs\\tools\\ghidra\\logs\\c359_font-data-rtti.txt'; XIVL_RTTI_DETAILS_TARGETS = '.?AVFontRefCount@Font@Component@@,.?AVFontData@Font@Component@@,.?AVBitmapFont@Font@Component@@,.?AVOsFont@Font@Component@@' } -ScriptPath @('tools\\ghidra')",
+    "c359RttiInputs": "Targeted details for FontRefCount, FontData, BitmapFont, and OsFont; all four known targets were returned",
+    "c359RttiOutput": "tools/ghidra/logs/c359_font-data-rtti.txt",
+    "c359FontModuleTeardownInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-data-teardown.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00C976B0' } -ScriptPath @('ghidra')",
+    "c359FontModuleTeardownInputs": "FontModule scalar deleting destructor",
+    "c359FontModuleTeardownOutput": "tools/ghidra/logs/c359_font-data-teardown.txt",
+    "c359TeardownInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-data-teardown-2.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00C97400' } -ScriptPath @('ghidra')",
+    "c359TeardownInputs": "FontModule complete-object teardown, supplemented in the archive by configured retail instructions beyond Ghidra's noreturn boundary and the unrecognized context teardown body",
+    "c359TeardownOutput": "tools/ghidra/logs/c359_font-data-teardown-2.txt",
+    "c359ConsumerInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-context-consumer.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CA9920' } -ScriptPath @('ghidra')",
+    "c359ConsumerInputs": "Glyph-key cache lookup and 0x28-byte cached-record copy",
+    "c359ConsumerOutput": "tools/ghidra/logs/c359_font-context-consumer.txt",
+    "c359RejectedInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-context-teardown.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CA9880' } -ScriptPath @('ghidra')",
+    "c359RejectedOutput": "tools/ghidra/logs/c359_font-context-teardown.txt",
+    "c359RejectedReason": "The export is archived but supplies no evidence because Ghidra did not recognize 0x00CA9880 as a function; the configured retail instruction excerpt in c359_font-data-teardown-2.txt supplies the teardown placements instead.",
+    "c359InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\Users\\aeshu\\tools\\ghidra-projects\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(0xc974d6-0x400000,160),0xc974d6)]\" and the same command with p.get_data(0xca9880-0x400000,160),0xca9880",
+    "c359ExistingEvidence": "BCS-S-0160 and tools/ghidra/logs/c356_rapture-owned-modules.txt supplied the prior exact 0x44-byte allocation and FontModule +0x18 ownership edge.",
+    "c359InstructionEvidence": "Configured retail instruction excerpts appended to C359 teardown evidence preserve the load-bearing FontModule +0x18 teardown after Ghidra's noreturn _free omission and the context's font-handle, tree-sentinel, and vector-storage cleanup placements.",
+    "c359Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. The rejected 0x00CA9880 export is explicitly excluded. Targeted RTTI returned every known target, but none is asserted as the 0x44-byte context identity. The context and its vector/tree names are descriptive structural names, not recovered C++ RTTI names. Glyph-record internals, 0x14-byte vector entry type, container policy state, static font-profile type, and closing padding remain unknown-typed rather than guessed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c359LookupInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-tree-lookup.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CAB1F0' } -ScriptPath @('ghidra')",
+    "c359LookupInputs": "Glyph-cache R-B tree lower-bound lookup establishing left, parent/root, right, key, and sentinel-marker placements",
+    "c359LookupOutput": "tools/ghidra/logs/c359_font-tree-lookup.txt"
   }
 }
