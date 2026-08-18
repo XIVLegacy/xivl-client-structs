@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 1982,
+  "symbolCount": 2019,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -2954,9 +2954,10 @@
       "sourceRefs": [
         "xivl-opcodes:data/client_receivers.json",
         "mdi-019",
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "tools/ghidra/logs/c311_dispatcher-size-verification.txt"
       ],
-      "notes": "**CENTRAL PACKET DISPATCHER (option 2)**: FUN_004dc690 at 0x004DC690 (size 3390B). Reads packet opcode at `*(short *)(packet + 2)` (game-message header). Two-branch structure: (1) `if (0x13D < uVar2)` switch covers high opcodes; (2) `if (uVar2 < 0x12E)` switch covers low opcodes. High-opcode switch has a multi-opcode fallthrough group (0x144, 0x145, 0x157-0x16A, 0x16B, 0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199-0x1A2, 0x1A4-0x1A8) that dispatches via `(**(code **)(*piVar12 + 0x24))(iVar8)` where piVar12 = `FUN_004d9910(param_2)` is the actor looked up by packet's actor id. Offset 0x24 = slot 9 of the actor's vftable. So the generic dispatch path is: opcode -> determine actor -> actor->vftable[9](packet). Specific handlers exist for ~30 other opcodes (e.g. 0x143 FUN_00576240, 0x146 FUN_005764c0, 0x196 FUN_00576050, 0x198 FUN_00576150, 0x1A3 FUN_00576140). Low-opcode switch has another fallthrough group (0x0F, 0xCC-0xE5) using the same actor-vftable[9] mechanism (covers 0xD3 SetTargetTime). Combined with FUN_004d8860 (event-family dispatcher), these are the central packet routers that bind opcodes to receivers. | **the actor-cluster-dispatch-model pass Actor cluster characterization**: low-switch (uVar2 < 0x12E) contains dedicated cases 0x02..0x11 (init/teardown/walk) plus cases 0xCA (AddActor) and 0xCB (RemoveActor); 24-opcode multi-case fallthrough 0x0F + 0xCC..0xE5 dispatches via FUN_004d9910(param_2) actor-id-to-actor lookup then actor->vftable[9](packet) - the polymorphic per-actor-class handler. ALL the Actor*Packet types; SetActorPosition; SetActorAppearance; etc.) flow through this generic dispatch path; per-opcode receivers do NOT exist for the Actor cluster (architecturally distinct; the *Receiver class pattern the receiver-discovery pass documented). 0xD2 is observed in pcap (33 hits) but NOT in any case list - it falls into the default/skip branch, suggesting either an engine bug, version drift, or different routing path."
+      "notes": "**CENTRAL PACKET DISPATCHER (option 2)**: FUN_004dc690 at 0x004DC690 (size 3390B). Reads packet opcode at `*(short *)(packet + 2)` (game-message header). Two-branch structure: (1) `if (0x13D < uVar2)` switch covers high opcodes; (2) `if (uVar2 < 0x12E)` switch covers low opcodes. High-opcode switch has a multi-opcode fallthrough group (0x144, 0x145, 0x157-0x16A, 0x16B, 0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199-0x1A2, 0x1A4-0x1A8) that dispatches via `(**(code **)(*piVar12 + 0x24))(iVar8)` where piVar12 = `FUN_004d9910(param_2)` is the actor looked up by packet's actor id. Offset 0x24 = slot 9 of the actor's vftable. So the generic dispatch path is: opcode -> determine actor -> actor->vftable[9](packet). Specific handlers exist for ~30 other opcodes (e.g. 0x143 FUN_00576240, 0x146 FUN_005764c0, 0x196 FUN_00576050, 0x198 FUN_00576150, 0x1A3 FUN_00576140). Low-opcode switch has another fallthrough group (0x0F, 0xCC-0xE5) using the same actor-vftable[9] mechanism (covers 0xD3 SetTargetTime). Combined with FUN_004d8860 (event-family dispatcher), these are the central packet routers that bind opcodes to receivers. | **the actor-cluster-dispatch-model pass Actor cluster characterization**: low-switch (uVar2 < 0x12E) contains dedicated cases 0x02..0x11 (init/teardown/walk) plus cases 0xCA (AddActor) and 0xCB (RemoveActor); 24-opcode multi-case fallthrough 0x0F + 0xCC..0xE5 dispatches via FUN_004d9910(param_2) actor-id-to-actor lookup then actor->vftable[9](packet) - the polymorphic per-actor-class handler. ALL the Actor*Packet types; SetActorPosition; SetActorAppearance; etc.) flow through this generic dispatch path; per-opcode receivers do NOT exist for the Actor cluster (architecturally distinct; the *Receiver class pattern the receiver-discovery pass documented). 0xD2 is observed in pcap (33 hits) but NOT in any case list - it falls into the default/skip branch, suggesting either an engine bug, version drift, or different routing path. | [Tier C309] Its `this` is Application::Main::RaptureElementContainer, reached from NetworkModule+0x8 through [[BCS-Y-1851]] and then MainModule+0x10 through [[BCS-Y-1997]] / [[BCS-Y-1998]]. At 0x004DD167 it loads a POINTER from `this+0x4D8`, tests it for zero, and uses the pointee at `+0x98`; [[BCS-Y-1999]] returns the same dword field. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [duplicate-address resolution] Authoritative dispatcher row: this one function is primarily the inbound s2c dispatcher and also contains the embedded c2s 0x00CA response emit documented by [[BCS-Y-0321]] in low-switch case 7. Raw retail instructions continue through the shared `ret 8` at 0x004DD3CC..0x004DD3CE, confirming the catalog's 3390-byte body-size convention; Ghidra's 3364 body-address count omits the post-free continuation because the runtime free call is marked noreturn. Evidence: tools/ghidra/logs/c311_dispatcher-size-verification.txt."
     },
     {
       "id": "BCS-Y-0280",
@@ -3437,11 +3438,12 @@
       "name": "ZoneOutbound_TierD_HelperBuilt_0x00CA_FUN_004DC690",
       "kind": "function",
       "address": "0x004DC690",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "tools/ghidra/logs/c311_dispatcher-size-verification.txt"
       ],
-      "notes": "Tier-D Zone emitter for MapServerbound c2s 0x00CA (helper-built, massive host function). 3364-byte body at VA 0x004DC690. __thiscall(int param_1, undefined4 param_2, int param_3). Sole caller: FUN_004E20A0 (BCS-Y-0314, the Map tick handler). **This is the LARGEST Tier-D emitter in the Zone outbound path** - it has 87+ callee functions (combat / actor / animation / render). Emit site: `uVar6 = FUN_004dd620((int)_Var13, &local_9f4); if (*(int *)(param_1 + 0x174ec) != 0) { FUN_004E0240(uVar6, 0xCA, 0); }`. The record is built by FUN_004dd620 from a __time64 result + local_9f4 (complex state). **Note opcode 0x00CA is OUTSIDE the 0x1C3-0x1DF cluster** that the other 26 Tier-D emitters target - it's a separate, lower- numbered MapServerbound opcode. **Confirms MapServerbound 0x00CA emission site**. The lua-name-to-opcode-bridge-open pass finding. | **the actor-cluster-dispatch-model pass**: address typo fixed (0x000DC690 -> 0x004DC690, leading 4->0 transcription error from the lua-name-to-opcode-bridge-open pass/12 era). | **the actor-cluster-dispatch-model pass reframe**: FUN_004DC690 is the central s2c dispatcher (BCS-Y-0279). The 0xCA emit at decomp line 647 is INSIDE case 7 of the dispatcher's low-switch as a periodic sync/response, NOT the function's primary purpose. BUT THIS IS NOT A STANDALONE EMITTER - it is a response-emit embedded in s2c handler case 7. See manifests/actor_cluster_dispatch_model.json."
+      "notes": "Tier-D Zone emitter for MapServerbound c2s 0x00CA (helper-built, massive host function). 3390-byte body at VA 0x004DC690. __thiscall(int param_1, undefined4 param_2, int param_3). Sole caller: FUN_004E20A0 (BCS-Y-0314, the Map tick handler). **This is the LARGEST Tier-D emitter in the Zone outbound path** - it has 87+ callee functions (combat / actor / animation / render). Emit site: `uVar6 = FUN_004dd620((int)_Var13, &local_9f4); if (*(int *)(param_1 + 0x174ec) != 0) { FUN_004E0240(uVar6, 0xCA, 0); }`. The record is built by FUN_004dd620 from a __time64 result + local_9f4 (complex state). **Note opcode 0x00CA is OUTSIDE the 0x1C3-0x1DF cluster** that the other 26 Tier-D emitters target - it's a separate, lower- numbered MapServerbound opcode. **Confirms MapServerbound 0x00CA emission site**. Confirmed by outbound-emitter analysis. | **Address correction**: address typo fixed (0x000DC690 -> 0x004DC690, leading 4->0 transcription error from an earlier transcription). | **the actor-cluster-dispatch-model pass reframe**: FUN_004DC690 is the central s2c dispatcher (BCS-Y-0279). The 0xCA emit at decomp line 647 is INSIDE case 7 of the dispatcher's low-switch as a periodic sync/response, NOT the function's primary purpose. BUT THIS IS NOT A STANDALONE EMITTER - it is a response-emit embedded in s2c handler case 7. See manifests/actor_cluster_dispatch_model.json. | [duplicate-address resolution] Partial secondary role of the authoritative [[BCS-Y-0279]]: the same function is the inbound dispatcher and contains this embedded c2s 0x00CA response emit in low-switch case 7. This row retains its emit-site, record-builder, callee-count, opcode-cluster, signature, caller, and guard evidence; superseded by [[BCS-Y-0279]]. Evidence: tools/ghidra/logs/c311_dispatcher-size-verification.txt."
     },
     {
       "id": "BCS-Y-0322",
@@ -6101,9 +6103,10 @@
       "address": "0x00537620",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_factory_drill.json"
+        "manifests/actor_factory_drill.json",
+        "tools/ghidra/logs/c310_owner-reattribution-verification.txt"
       ],
-      "notes": "346-byte generic OOP method-dispatch helper. Calls `method_table[index](args)` on a caller-supplied interface struct (method_table held at +4..+8 of the interface, entry count computed as `(end-begin)/4`), then caches the returned value at a struct slot determined by `switch(index)`: case 2->+0x18, 3->+0x1c, 4->+0x20, 5->+0x24, 6->+0x10, 7->+0x14, 8->FUN_004e5ca0 special path, 9->+0x34, 0xc->+0x28, 0xd->+0x2c, 0xe->+0x30, 0x11->+0x44. **The actor-factory-drill pass corrective finding**: this is NOT a class factory (as hypothesized when planning the phase from BCS-Y-0525's case 0xCA AddActor handler). It is a method-invocation helper used by [[ZoneActor_CreateOrGetById_FUN_004d90c0]] (BCS-Y-0531) and [[ZoneActor_CreateGenericById_FUN_004d7c10]] (BCS-Y-0532) - both actor create-via-dispatch primitives - to invoke the actor-class registry's create-method by index. Resolving which actor class is actually dispatched (the actor-vftable9-investigation pass open question) requires drilling the registry interface at zone+0x10, not this dispatcher."
+      "notes": "346-byte generic OOP method-dispatch helper. Calls `method_table[index](args)` on a caller-supplied interface struct (method_table held at +4..+8 of the interface, entry count computed as `(end-begin)/4`), then caches the returned value at a struct slot determined by `switch(index)`: case 2->+0x18, 3->+0x1c, 4->+0x20, 5->+0x24, 6->+0x10, 7->+0x14, 8->FUN_004e5ca0 special path, 9->+0x34, 0xc->+0x28, 0xd->+0x2c, 0xe->+0x30, 0x11->+0x44. **The actor-factory-drill pass corrective finding**: this is NOT a class factory (as hypothesized when planning the phase from BCS-Y-0525's case 0xCA AddActor handler). It is a method-invocation helper used by [[ZoneActor_CreateOrGetById_FUN_004d90c0]] (BCS-Y-0531) and [[ZoneActor_CreateGenericById_FUN_004d7c10]] (BCS-Y-0532) - both actor create-via-dispatch primitives - to invoke the actor-class registry's create-method by index. Resolving which actor class is actually dispatched (the actor-vftable9-investigation pass open question) requires drilling the interface member at RaptureElementContainer+0x4AC; case 0xCA supplies packet+0x10 as the method index, not as the interface object. | [Tier C309 owner correction] Case 0xCA loads the value from packet+0x10 at 0x004DCCD1; it is not a member offset on the dispatcher object. | [Tier C310 correction] The interface attribution from C309 did not reproduce: 0x004D90E7 passes RaptureElementContainer+0x4AC in ECX, while the packet+0x10 value reaches FUN_00537620 as its method index."
     },
     {
       "id": "BCS-Y-0531",
@@ -6112,9 +6115,10 @@
       "address": "0x004d90c0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_factory_drill.json"
+        "manifests/actor_factory_drill.json",
+        "tools/ghidra/logs/c310_owner-reattribution-verification.txt"
       ],
-      "notes": "Actor create-via-dispatch helper used in FUN_004DC690 case 2 (`FUN_004d90c0(8, packet)`) and case 0xCA AddActor (`FUN_004d90c0(*(zone+0x10), packet)`, see BCS-Y-0525). Validates a class id via [[ZoneActorClassId_Validate_FUN_004d9030]] (BCS-Y-0533); on pass, calls [[GenericIndexedMethodInvoker_WithResultCache_FUN_00537620]] (BCS-Y-0530) with `interface=arg_2`, `index=arg_3`, `pass_through=(*(zone+0x174f0), zone, zone+0x510)`; then invokes vtable[5] (offset 0x14) of the returned actor object as an init/register hook. 5 callers besides FUN_004DC690. Ghidra signature inference shows 3 params (this, arg_2, arg_3) but the dispatcher call sites show only 2 visible args - either Ghidra mis-inferred a 2-arg ABI as 3, or `param_3` is sourced from a register/stack location not modelled. Dispatch shape is unambiguous; index source is opaque at this layer."
+      "notes": "Actor create-via-dispatch helper used in FUN_004DC690 case 2 (`FUN_004d90c0(8, packet)`) and case 0xCA AddActor (`FUN_004d90c0(*(packet+0x10), packet)`, see BCS-Y-0525). Validates a class id via [[ZoneActorClassId_Validate_FUN_004d9030]] (BCS-Y-0533); on pass, calls [[GenericIndexedMethodInvoker_WithResultCache_FUN_00537620]] (BCS-Y-0530) with `interface=arg_2`, `index=arg_3`, `pass_through=(*(RaptureElementContainer+0x174f0), RaptureElementContainer, RaptureElementContainer+0x510)`; then invokes vtable[5] (offset 0x14) of the returned actor object as an init/register hook. 5 callers besides FUN_004DC690. Ghidra signature inference shows 3 params (this, arg_2, arg_3) but the dispatcher call sites show only 2 visible args - either Ghidra mis-inferred a 2-arg ABI as 3, or `param_3` is sourced from a register/stack location not modelled. Dispatch shape is unambiguous; index source is opaque at this layer. | [Tier C309 owner correction] At 0x004DCCD1 the caller loads packet+0x10, while 0x004DCCD6 passes the established RaptureElementContainer in ECX. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt."
     },
     {
       "id": "BCS-Y-0532",
@@ -6148,7 +6152,7 @@
         "manifests/actor_factory_drill.json",
         "tools/ghidra/logs/c302_00da-action-queue-boundary.txt"
       ],
-      "notes": "The zone-wide actor map lookup primitive. Body: `FUN_0071d420(&local_8, &stack0x00000004)` does an STL-map find on zone+0x17804..+0x17808 keyed by the 4-byte actor id; if the iterator equals end (`*(zone+0x17808) == iter`) returns 0, otherwise returns `*(iter + 0x10)` (the Element pointer stored at the map node's value slot). Callers span the Lua binding cluster, the synchronous s2c dispatcher, and the internal MainPacket event bus. [Tier C302] Re-read of FUN_004DC690 proves its slot-9 argument is the packet pointer: the dispatcher assigns `iVar8 = param_3`, reads the opcode from `iVar8+2`, and passes the same `iVar8` to `actor->vtable[9]`. The older zone-state interpretation was incorrect."
+      "notes": "The RaptureElementContainer actor map lookup primitive. Body: `FUN_0071d420(&local_8, &stack0x00000004)` does an STL-map find on RaptureElementContainer+0x17804..+0x17808 keyed by the 4-byte actor id; if the iterator equals end (`*(RaptureElementContainer+0x17808) == iter`) returns 0, otherwise returns `*(iter + 0x10)` (the Element pointer stored at the map node's value slot). Callers span the Lua binding cluster, the synchronous s2c dispatcher, and the internal MainPacket event bus. [Tier C302] Re-read of FUN_004DC690 proves its slot-9 argument is the packet pointer: the dispatcher assigns `iVar8 = param_3`, reads the opcode from `iVar8+2`, and passes the same `iVar8` to `actor->vtable[9]`. The older zone-state interpretation was incorrect. | [Tier C309 owner correction] Calls at 0x004DCCC3 and 0x004DD003 pass RaptureElementContainer in ECX, and 0x004D9916 forms ECX+0x17804. MainModule+0x10 plus +0x17808 equals allocation+0x17818, inside 0x17D58. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt."
     },
     {
       "id": "BCS-Y-0535",
@@ -6195,9 +6199,10 @@
         "tools/ghidra/logs/c103_game_loop.txt",
         "tools/ghidra/logs/c103_loop_up.txt",
         "tools/ghidra/logs/c103_loop_top.txt",
-        "manifests/scene_tick_chain.json"
+        "manifests/scene_tick_chain.json",
+        "tools/ghidra/logs/c310_owner-reattribution-verification.txt"
       ],
-      "notes": "Internal MainPacket event-bus drain. It dequeues 0x60-byte MainPacket records, handles event type 2 through a separate channel object, otherwise looks up the Element by actor id, subtracts 3 from event_type, and calls `element->vtable[8](event_type-3, payload, length)`. Sole direct caller is [[FrameTick_SceneAndMap_TopOfChain_FUN_004B3C50]]. [Tier C302] The bus is populated by internal game-logic producers, not by FUN_004DC690. It is therefore separate from synchronous s2c Element slot-9 dispatch and from the CharaElement-local battle-effect queue used by s2c 0x00DA. | [merged from [[BCS-Y-0690]]] [the actor-vtable5-drill pass actor vtable[5] init drill] Drains the zone's sync event queue (at zone+0x17938..+0x1793c, atomically synchronized via Interlocked* family) and dispatches each event polymorphically. Per event: if event_type (event+0x14) == 2, calls `zone->slot17924->vtable[6](-1, scaled_value)` (UI/HUD update path with sVar1 = event+0x20 scaled into 0..5 + percentage); for other types, calls `actor = FUN_004d9910(event+0x10); actor->vtable[8](event_subtype-3, event+0x20, event+0x18)` - SLOT 8 (offset 0x20) of the per-actor vtable. After dispatch, atomically clears the queue slot (InterlockedExchange to 0) and decrements the count (InterlockedDecrement on zone+0x17938). After the queue drains, calls `zone->slot17920->vtable[5](->slot+0x14)` (offset 0x14 - probably a 'sync complete' notification). Sole caller: FUN_004b3c50. | [merged from [[BCS-Y-1712]]] [scene-tick-chain-mapped] **Frame event processor + frame-tick driver** (310 body bytes, sole caller [[Application_Scene_Scene_tick_FUN_004B3C50]] BCS-Y-1713 NEW). Drains a **thread-safe event queue** via [[Application_EventQueue_dequeue_FUN_004DDB50]] (BCS-Y-1714 NEW) in a while loop. Each event (0x60 bytes) has a type field at +0x14: type 2 dispatches to a vftable target at param_1+0x17924 (slot +0x18, with a 5-step scaled severity from sVar1 at +0x20); other types (3..0x103) route via FUN_004D9910 handler-lookup (event_id -> handler_ptr std::map at param_1+0x17808) then vftable slot +0x20 on the resolved handler. Uses InterlockedExchangeAdd/Exchange/Decrement for atomic queue management. After event drain: vftable call on param_1+0x17920 (slot +0x14, probably FlushPending), then FUN_00929B70 (conditional), then FUN_005527A0 (cleanup), then [[Application_FrameTick_FUN_004DA680]] (BCS-Y-1711 NEW). **Architectural significance**: thread-safe boundary between event producers (input/network threads) and the per-frame engine update. | [duplicate-address resolution] True accidental duplicate: the same frame event-queue processor was independently cataloged three times; merged all notes and sourceRefs from [[BCS-Y-0690]], [[BCS-Y-1712]]."
+      "notes": "Internal MainPacket event-bus drain. It dequeues 0x60-byte MainPacket records, handles event type 2 through a separate channel object, otherwise looks up the Element by actor id, subtracts 3 from event_type, and calls `element->vtable[8](event_type-3, payload, length)`. Sole direct caller is [[FrameTick_SceneAndMap_TopOfChain_FUN_004B3C50]]. [Tier C302] The bus is populated by internal game-logic producers, not by FUN_004DC690. It is therefore separate from synchronous s2c Element slot-9 dispatch and from the CharaElement-local battle-effect queue used by s2c 0x00DA. | [merged from [[BCS-Y-0690]]] [the actor-vtable5-drill pass actor vtable[5] init drill] Drains MainModule's sync event queue (at MainModule+0x17938..+0x1793c, atomically synchronized via Interlocked* family) and dispatches each event polymorphically. Per event: if event_type (event+0x14) == 2, calls `MainModule+0x17924 target->vtable[6](-1, scaled_value)` (UI/HUD update path with sVar1 = event+0x20 scaled into 0..5 + percentage); for other types, calls `actor = FUN_004d9910(event+0x10); actor->vtable[8](event_subtype-3, event+0x20, event+0x18)` - SLOT 8 (offset 0x20) of the per-actor vtable. After dispatch, atomically clears the queue slot (InterlockedExchange to 0) and decrements the count (InterlockedDecrement on MainModule+0x17938). After the queue drains, calls `MainModule+0x17920 target->vtable[5](->slot+0x14)` (offset 0x14 - probably a 'sync complete' notification). Sole caller: FUN_004b3c50. | [merged from [[BCS-Y-1712]]] [scene-tick-chain-mapped] **Frame event processor + frame-tick driver** (310 body bytes, sole caller [[Application_Scene_Scene_tick_FUN_004B3C50]] BCS-Y-1713 NEW). Drains a **thread-safe event queue** via [[Application_EventQueue_dequeue_FUN_004DDB50]] (BCS-Y-1714 NEW) in a while loop. Each event (0x60 bytes) has a type field at +0x14: type 2 dispatches to a vftable target at param_1+0x17924 (slot +0x18, with a 5-step scaled severity from sVar1 at +0x20); other types (3..0x103) route via FUN_004D9910 handler-lookup (event_id -> handler_ptr std::map at param_1+0x17808) then vftable slot +0x20 on the resolved handler. Uses InterlockedExchangeAdd/Exchange/Decrement for atomic queue management. After event drain: vftable call on param_1+0x17920 (slot +0x14, probably FlushPending), then FUN_00929B70 (conditional), then FUN_005527A0 (cleanup), then [[Application_FrameTick_FUN_004DA680]] (BCS-Y-1711 NEW). **Architectural significance**: thread-safe boundary between event producers (input/network threads) and the per-frame engine update. | [duplicate-address resolution] True accidental duplicate: the same frame event-queue processor was independently cataloged three times; merged all notes and sourceRefs from [[BCS-Y-0690]], [[BCS-Y-1712]]. | [Tier C309 owner correction] FUN_004B3C50 passes Scene+0x64 at 0x004B3DD1, and 0x004DAAAB adds +0x10 before the container lookup, so this function's member base is MainModule. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt."
     },
     {
       "id": "BCS-Y-0538",
@@ -6210,9 +6215,10 @@
         "manifests/fun_0058cca0_caller_tree.json",
         "manifests/actor_map_writers.json",
         "manifests/fun_004d9910_callers_map.json",
-        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt"
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "manifests/element_vtable8_bulk.json"
       ],
-      "notes": "`Application::Main::RaptureElement::vftable` (primary base) at 0x00F91014; secondary base vtable at 0x00F91138. RTTI and dynamic-cast evidence establish RaptureElement as the value type returned from the actor map at zone+0x17804..+0x17808. The hierarchy contains 23 classes: one base and 22 derived Element classes. CharaElement and MapLayoutElement have dedicated slot-9 handlers; the remaining derived classes use the shared event-family handler. The older 27-class count conflated multiple-inheritance secondary vtables with distinct classes."
+      "notes": "`Application::Main::RaptureElement::vftable` (primary base) at 0x00F91014; secondary base vtable at 0x00F91138. RTTI and dynamic-cast evidence establish RaptureElement as the value type returned from the actor map at RaptureElementContainer+0x17804..+0x17808. The hierarchy contains 23 classes: one base and 22 derived Element classes. CharaElement and MapLayoutElement have dedicated slot-9 handlers; the remaining derived classes use the shared event-family handler. The older 27-class count conflated multiple-inheritance secondary vtables with distinct classes. | [Tier C309 owner correction] The map owner follows the direct RaptureElementContainer-relative lookup evidence in [[BCS-Y-0534]]. | [duplicate-address resolution] Authoritative RaptureElement-vftable row: this record carries the direct RTTI, dynamic-cast, actor-map, hierarchy, and corrected-owner evidence. It incorporates [[BCS-Y-0744]]'s element-vtable8-bulk pass identification of this primary vftable as the Pattern B actor-map base class."
     },
     {
       "id": "BCS-Y-0539",
@@ -6227,7 +6233,7 @@
         "manifests/fun_004d9910_callers_map.json",
         "tools/ghidra/logs/c66_rapture_xaml_ctors_decomp.txt"
       ],
-      "notes": "RaptureElement constructor and entry of the actor-map insert chain (22 callers, one per derived Element subclass). The insert chain: this -> FUN_004da9a0 -> FUN_004de940 (lower_bound + insert) -> FUN_004de610 (RB-tree insert) -> FUN_004ddf20 (node alloc). Once the node is inserted into the STL map at zone+0x17804..+0x17808, the `value` slot at `iter+0x10` is the RaptureElement pointer that [[ZoneActorMap_FindById_FUN_004d9910]] (BCS-Y-0534) returns. The actor-map-writers pass finding. | [sqwt] Parent ctor in the Sqwt UI class chain IDENTIFIED: FUN_0091E090 -> [[Sqwt_InputElement_ctor_FUN_0091E090]] (BCS-Y-1375). Called as the FIRST step of RaptureElement::ctor before the RaptureElement vftable writes. So the full chain is: Sqwt::InputElement <- ... <- Application::Main::RaptureElement <- [[XamlElement_ctor_FUN_00539890]] (BCS-Y-1334) <- concrete Elements. Client-architecture 'Sqwt UI elements follow a uniform heap-factory' section's inheritance-chain description should be updated to reflect this deeper Sqwt-side chain."
+      "notes": "RaptureElement constructor and entry of the actor-map insert chain (22 callers, one per derived Element subclass). The insert chain: this -> FUN_004da9a0 -> FUN_004de940 (lower_bound + insert) -> FUN_004de610 (RB-tree insert) -> FUN_004ddf20 (node alloc). Once the node is inserted into the STL map at RaptureElementContainer+0x17804..+0x17808, the `value` slot at `iter+0x10` is the RaptureElement pointer that [[ZoneActorMap_FindById_FUN_004d9910]] (BCS-Y-0534) returns. The actor-map-writers pass finding. | [sqwt] Parent ctor in the Sqwt UI class chain IDENTIFIED: FUN_0091E090 -> [[Sqwt_InputElement_ctor_FUN_0091E090]] (BCS-Y-1375). Called as the FIRST step of RaptureElement::ctor before the RaptureElement vftable writes. So the full chain is: Sqwt::InputElement <- ... <- Application::Main::RaptureElement <- [[XamlElement_ctor_FUN_00539890]] (BCS-Y-1334) <- concrete Elements. Client-architecture 'Sqwt UI elements follow a uniform heap-factory' section's inheritance-chain description should be updated to reflect this deeper Sqwt-side chain. | [Tier C309 owner correction] The map owner follows the direct RaptureElementContainer-relative lookup evidence in [[BCS-Y-0534]]."
     },
     {
       "id": "BCS-Y-0540",
@@ -6739,9 +6745,10 @@
       "address": "0x00576050",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/high_switch_enumeration.json"
+        "manifests/high_switch_enumeration.json",
+        "tools/ghidra/logs/c310_owner-reattribution-verification.txt"
       ],
-      "notes": "[high-switch-enumeration FUN_004DC690 high-switch dedicated handler] Opcode 0x196 dedicated handler. 237-byte bit-field unpacker: reads byte at payload+1 -> extracts 8 1-bit flags (>>0..>>7), reads 8 u16 fields at payload+2..+0x10, writes payload+2 to (zone+0x38), forwards all 16 fields to FUN_0075d2d0 worker. Shape suggests a packed-state-update packet (16 small fields in 17 bytes).",
+      "notes": "[high-switch-enumeration FUN_004DC690 high-switch dedicated handler] Opcode 0x196 dedicated handler. 237-byte bit-field unpacker: reads byte at payload+1 -> extracts 8 1-bit flags (>>0..>>7), reads 8 u16 fields at payload+2..+0x10, writes payload+2 to the RaptureElementContainer+0x510 subobject at +0x38 (container+0x548), forwards all 16 fields to FUN_0075d2d0 worker. Shape suggests a packed-state-update packet (16 small fields in 17 bytes). | [Tier C309 owner correction] The caller loads ECX with RaptureElementContainer+0x510 at 0x004DD388; the write at 0x00576108 is subobject+0x38, or container+0x548. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0585"
     },
     {
@@ -7592,7 +7599,7 @@
         "manifests/fun_0059ced0_walk.json",
         "tools/ghidra/logs/c133_dalamud_sky_selector_decode.txt"
       ],
-      "notes": "[the fun-0059ced0-walk pass FUN_0059CED0 (MapLayoutElement::vftable[9]) case handler] Case 0x10 handler within FUN_0059CED0. Single-statement body: *(this+0xf0) = (uint)*(byte *)(packet+0x10). Smallest of the 5 local cases. Field this+0xf0 is read in unrelated MapLayoutElement methods to gate behaviour. Opcode 0x10 = SetDalamudPacket; the env-manager at zone+0x4e0 routes SetMap(5)/SetWeather(0xd)/SetDalamud(0x10) through this vftable[9]. The byte read is ZERO-EXTENDED (unsigned movzx), so the dalamud level is an UNSIGNED 8-bit field (0-255), NOT a signed int32 - answers the bahamut question (BuildSetDalamudPacket should be uint8_t; the client ignores the sign-extended upper 3 bytes). the fun-0059ced0-walk pass remark that '+0xf0 is read in unrelated MapLayoutElement methods to gate behaviour' is superseded: the field has exactly ONE reader, [[MapLayoutElement_DalamudStateSelector_FUN_0059CA60]] (BCS-Y allocated here), reached only from the vftable[6] tick. It is not a gating flag - it is a pending-state carrier whose -1 sentinel (set by ctor FUN_0059EE50) means 'nothing pending', and whose 0-7 value selects 1 of 8 mutually-exclusive scene states via scene record 0x93. That is why case 0x10 sets no dirty flag while its SetMap/SetWeather siblings do. Cf docs/client-architecture.md, 'SetDalamud s2c 0x0010 is a server knob'. | [duplicate-address resolution] Legitimate dual perspective: the whole vtable dispatcher, its structural position, and its individual switch-case roles intentionally record different scopes of one function; sibling entries [[BCS-Y-0541]], [[BCS-Y-0615]], [[BCS-Y-0659]], [[BCS-Y-0660]], [[BCS-Y-0661]], [[BCS-Y-0662]], [[BCS-Y-0666]].",
+      "notes": "FUN_0059CED0 (MapLayoutElement::vftable[9]) case handler. Case 0x10 handler within FUN_0059CED0. Single-statement body: *(this+0xf0) = (uint)*(byte *)(packet+0x10). Smallest of the 5 local cases. Field this+0xf0 is read in unrelated MapLayoutElement methods to gate behaviour. Opcode 0x10 = SetDalamudPacket; the environment target at RaptureElementContainer+0x4e0 routes SetMap(5)/SetWeather(0xd)/SetDalamud(0x10) through this vftable[9]. The byte read is ZERO-EXTENDED (unsigned movzx), so the dalamud level is an UNSIGNED 8-bit field (0-255), NOT a signed int32 - answers the bahamut question (BuildSetDalamudPacket should be uint8_t; the client ignores the sign-extended upper 3 bytes). the fun-0059ced0-walk pass remark that '+0xf0 is read in unrelated MapLayoutElement methods to gate behaviour' is superseded: the field has exactly ONE reader, [[MapLayoutElement_DalamudStateSelector_FUN_0059CA60]] (BCS-Y allocated here), reached only from the vftable[6] tick. It is not a gating flag - it is a pending-state carrier whose -1 sentinel (set by ctor FUN_0059EE50) means 'nothing pending', and whose 0-7 value selects 1 of 8 mutually-exclusive scene states via scene record 0x93. That is why case 0x10 sets no dirty flag while its SetMap/SetWeather siblings do. Cf docs/client-architecture.md, 'SetDalamud s2c 0x0010 is a server knob'. | [duplicate-address resolution] Legitimate dual perspective: the whole vtable dispatcher, its structural position, and its individual switch-case roles intentionally record different scopes of one function; sibling entries [[BCS-Y-0541]], [[BCS-Y-0615]], [[BCS-Y-0659]], [[BCS-Y-0660]], [[BCS-Y-0661]], [[BCS-Y-0662]], [[BCS-Y-0666]]. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0661"
     },
     {
@@ -7658,7 +7665,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 3 in FUN_004DC690 low-switch. Two-string command dispatch: builds std::string(32) from packet+0x10, std::string(512) from packet+0x34, reads u16 selector at packet+0x30, calls FUN_004d8560 to look up and invoke command (which goes through FUN_004ce760 gated by zone+0x660 - likely the named-command receiver registry).",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 3 in FUN_004DC690 low-switch. Two-string command dispatch: builds std::string(32) from packet+0x10, std::string(512) from packet+0x34, reads u16 selector at packet+0x30, calls FUN_004d8560 to look up and invoke command (which goes through FUN_004ce760 gated by RaptureElementContainer+0x660 - likely the named-command receiver registry). | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0667"
     },
     {
@@ -7669,7 +7676,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 4 in FUN_004DC690 low-switch. Toggle-driven zone teardown. First-call branch: walks actor list with 3-value preserve filter at entry+3, runs per-actor destructors (vftable[0](1)), clears active target via FUN_004d9980(0xC0000000), rebinds zone state via FUN_0057a3c0, runs per-actor +0x80-substruct cleanup via FUN_00575390. Second-call branch: clears flag, runs FUN_004d8080(1) (client-side init). Re-entrant via zone+0x54b flag. Sibling of case 0xE/0x11 cleanup family.",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 4 in FUN_004DC690 low-switch. Toggle-driven zone teardown. First-call branch: walks actor list with 3-value preserve filter at entry+3, runs per-actor destructors (vftable[0](1)), clears active target via FUN_004d9980(0xC0000000), rebinds zone state via FUN_0057a3c0, runs per-actor +0x80-substruct cleanup via FUN_00575390. Second-call branch: clears flag, runs FUN_004d8080(1) (client-side init). Re-entrant via RaptureElementContainer+0x54b flag. Sibling of case 0xE/0x11 cleanup family. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0668"
     },
     {
@@ -7680,7 +7687,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Cases 0x5 + 0xD + 0x10 fallthrough in FUN_004DC690 low-switch. Pattern A receiver dispatch: `if (*(zone+0x4e0) != 0) (**(*(zone+0x4e0)+0x24))(packet)` - invokes vftable[9] on the object held at zone+0x4e0 (distinct from the actor map). The actual per-opcode behavior is owned by the class registered at zone+0x4e0; this case body is just the lookup-and-invoke wiring. Compare to BCS-Y-0527 which does the same shape but via the actor map for 24 opcodes.",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Cases 0x5 + 0xD + 0x10 fallthrough in FUN_004DC690 low-switch. Pattern A receiver dispatch: `if (*(RaptureElementContainer+0x4e0) != 0) (**(*(RaptureElementContainer+0x4e0)+0x24))(packet)` - invokes vftable[9] on the object held at RaptureElementContainer+0x4e0 (distinct from the actor map). The actual per-opcode behavior is owned by the class registered at RaptureElementContainer+0x4e0; this case body is just the lookup-and-invoke wiring. Compare to BCS-Y-0527 which does the same shape but via the actor map for 24 opcodes. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0669"
     },
     {
@@ -7691,7 +7698,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 6 in FUN_004DC690 low-switch. Flushes the pending-operation vector at zone+0x950 by calling FUN_0081eb90 which range-visits [zone+0x954, zone+0x958] via FUN_00440940. The vector being flushed is the same one that cases 8/9/A/B append into - so case 6 = 'process all queued items'.",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 6 in FUN_004DC690 low-switch. Flushes the pending-operation vector at RaptureElementContainer+0x950 by calling FUN_0081eb90 which range-visits [RaptureElementContainer+0x954, RaptureElementContainer+0x958] via FUN_00440940. The vector being flushed is the same one that cases 8/9/A/B append into - so case 6 = 'process all queued items'. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0670"
     },
     {
@@ -7713,7 +7720,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 8 in FUN_004DC690 low-switch. Variable-length pair append: count = byte at packet+0x10 (0..255), value array at packet+0x14, flag array at packet+0x34. Appends each (u32 value, u8 flag) pair to zone+0x950 via FUN_0081f090 (BCS-Y-0671).",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 8 in FUN_004DC690 low-switch. Variable-length pair append: count = byte at packet+0x10 (0..255), value array at packet+0x14, flag array at packet+0x34. Appends each (u32 value, u8 flag) pair to RaptureElementContainer+0x950 via FUN_0081f090 (BCS-Y-0671). | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0672"
     },
     {
@@ -7724,7 +7731,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 9 in FUN_004DC690 low-switch. Fixed-count (16) pair append: values at packet+0x10+i*4, flags at packet+0x50+i. Appends each (value, flag) pair to zone+0x950 via FUN_0081f090 (BCS-Y-0671). Packet payload 0x60 bytes.",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 9 in FUN_004DC690 low-switch. Fixed-count (16) pair append: values at packet+0x10+i*4, flags at packet+0x50+i. Appends each (value, flag) pair to RaptureElementContainer+0x950 via FUN_0081f090 (BCS-Y-0671). Packet payload 0x60 bytes. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0673"
     },
     {
@@ -7735,7 +7742,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 0xA in FUN_004DC690 low-switch. Fixed-count (32) pair append: values at packet+0x10+i*4, flags at packet+0x90+i. Appends to zone+0x950 via FUN_0081f090 (BCS-Y-0671). Packet payload 0xB0 bytes.",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 0xA in FUN_004DC690 low-switch. Fixed-count (32) pair append: values at packet+0x10+i*4, flags at packet+0x90+i. Appends to RaptureElementContainer+0x950 via FUN_0081f090 (BCS-Y-0671). Packet payload 0xB0 bytes. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0674"
     },
     {
@@ -7746,7 +7753,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 0xB in FUN_004DC690 low-switch. Fixed-count (64) pair append: values at packet+0x10+i*4, flags at packet+0x110+i. Appends to zone+0x950 via FUN_0081f090 (BCS-Y-0671). Packet payload 0x150 bytes.",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 0xB in FUN_004DC690 low-switch. Fixed-count (64) pair append: values at packet+0x10+i*4, flags at packet+0x110+i. Appends to RaptureElementContainer+0x950 via FUN_0081f090 (BCS-Y-0671). Packet payload 0x150 bytes. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0675"
     },
     {
@@ -7768,7 +7775,7 @@
       "sourceRefs": [
         "manifests/low_switch_remaining_cases.json"
       ],
-      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 0xE in FUN_004DC690 low-switch (and identical case 0x11 with state code 0xc instead of 0xb). Three-step zone-leave cleanup: clear active target via FUN_004d9980(0xC0000000), run full zone teardown via FUN_004daf00 (large 1708-byte helper), then if zone+0x4bc != 0 emit a state-change-to-0xB notification via FUN_00565aa0 (which propagates to the observer at obj+0xa0 vftable[1]). Pair with case 0x11 (state 0xC) - this is the 'enter logout state' opcode; 0x11 is 'enter zone-change state'.",
+      "notes": "[low-switch-remaining-cases FUN_004DC690 low-switch case handler] Case 0xE in FUN_004DC690 low-switch (and identical case 0x11 with state code 0xc instead of 0xb). Three-step zone-leave cleanup: clear active target via FUN_004d9980(0xC0000000), run full zone teardown via FUN_004daf00 (large 1708-byte helper), then if RaptureElementContainer+0x4bc != 0 emit a state-change-to-0xB notification via FUN_00565aa0 (which propagates to the observer at obj+0xa0 vftable[1]). Pair with case 0x11 (state 0xC) - this is the 'enter logout state' opcode; 0x11 is 'enter zone-change state'. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0677"
     },
     {
@@ -7823,7 +7830,7 @@
       "sourceRefs": [
         "manifests/actor_vtable5_drill.json"
       ],
-      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] vtable[5] (slot offset 0x14) of Control::CharaBase, Control::PlayerBase, Control::NpcBase. Lua-side lifecycle/finalize hook called by FUN_004d90c0 (BCS-Y-0531) after the dispatched constructor returns AND from other lifecycle contexts. Body: (1) FUN_00cc7510 stack-cookie helper; (2) FUN_0076f010(child_id) - skip-if-engine-managed Lua hash dereg; (3) FUN_00766b30(this, child_id) - STL-map find+erase on the actor's INTERNAL child map at this+0x8..+0xc (NOT zone+0x17804); (4) FUN_006f6900(this, child_id, &context) - dispatches Lua _onFinalize N-API; (5) if `*(this+0xd8) != 0` (a flag), FUN_006f9040(this, child_id, &context) - resource cleanup (frees *(this+0x20), zeros *(this+0x60)). Operates on the actor's own internal data, not the zone-side actor map. | [duplicate-address resolution] Legitimate dual perspective: the inherited vtable-slot identity and the actor lifecycle-hook behavior are independently useful perspectives; sibling entries [[BCS-Y-0192]], [[BCS-Y-0682]].",
+      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] vtable[5] (slot offset 0x14) of Control::CharaBase, Control::PlayerBase, Control::NpcBase. Lua-side lifecycle/finalize hook called by FUN_004d90c0 (BCS-Y-0531) after the dispatched constructor returns AND from other lifecycle contexts. Body: (1) FUN_00cc7510 stack-cookie helper; (2) FUN_0076f010(child_id) - skip-if-engine-managed Lua hash dereg; (3) FUN_00766b30(this, child_id) - STL-map find+erase on the actor's INTERNAL child map at this+0x8..+0xc (NOT RaptureElementContainer+0x17804); (4) FUN_006f6900(this, child_id, &context) - dispatches Lua _onFinalize N-API; (5) if `*(this+0xd8) != 0` (a flag), FUN_006f9040(this, child_id, &context) - resource cleanup (frees *(this+0x20), zeros *(this+0x60)). Operates on the actor's own internal data, not the RaptureElementContainer actor map. | [duplicate-address resolution] Legitimate dual perspective: the inherited vtable-slot identity and the actor lifecycle-hook behavior are independently useful perspectives; sibling entries [[BCS-Y-0192]], [[BCS-Y-0682]]. | [Tier C309 owner correction] The map owner follows the direct RaptureElementContainer-relative lookup evidence in [[BCS-Y-0534]].",
       "id": "BCS-Y-0682"
     },
     {
@@ -7856,7 +7863,7 @@
       "sourceRefs": [
         "manifests/actor_vtable5_drill.json"
       ],
-      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] Allocates the lowest unused actor id in [param_2..param_3) by probing the zone actor map at zone+0x17804..+0x17808. Iterates `uVar3 = param_2; uVar3 < param_3`, calling FUN_0071d420(&local_10, &uVar3) (STL map lower_bound) and checking if the slot is occupied (`*(local_c + 0x10) == 0` = free) - returns `uVar3` for the first hit. Returns 0xC0000000 if no free slot found. Sole caller: FUN_006ac9f0 (Lua-side allocator wrapper).",
+      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] Allocates the lowest unused actor id in [param_2..param_3) by probing the RaptureElementContainer actor map at RaptureElementContainer+0x17804..+0x17808. Iterates `uVar3 = param_2; uVar3 < param_3`, calling FUN_0071d420(&local_10, &uVar3) (STL map lower_bound) and checking if the slot is occupied (`*(local_c + 0x10) == 0` = free) - returns `uVar3` for the first hit. Returns 0xC0000000 if no free slot found. Sole caller: FUN_006ac9f0 (Lua-side allocator wrapper). | [Tier C309 owner correction] The body forms ECX+0x17804 at 0x004D9CB1; its sole caller passes the same parent pointer at 0x006ACA20 that it then passes to [[BCS-Y-0531]].",
       "id": "BCS-Y-0685"
     },
     {
@@ -7867,7 +7874,7 @@
       "sourceRefs": [
         "manifests/actor_vtable5_drill.json"
       ],
-      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] Destroys an actor entry from the zone actor map at zone+0x17804..+0x17808. Body: (1) `actor->vtable[11]()` (offset 0x2c - per-actor destroy method); (2) if zone+0xb4 is non-null and not actor itself, call its vtable[21] (offset 0x54) with `actor->vtable[11]()` result (some UI update); (3) FUN_00563920(actor) if zone+0x4c0 differs from null and from actor (probably 'remove from active list'); (4) FUN_005374d0(actor[0x22]) - per-id de-init; (5) FUN_0071d420 lower_bound on zone+0x17804 with actor[0x22] = id; (6) if zone+0x17820 byte is 0 (safe-to-erase flag), call FUN_004de280(iter) for full STL map erase + if id has engine-managed pattern (top byte 0xC0..0xDF, subtype < 3) call FUN_00d35b30(id & 0xffffff) to deregister from FUN_00d35af0's engine-class registry; (7) if zone+0x17820 != 0 (deferred-remove mode), zero the slot's *(iter+0x10)=0 and call FUN_00813050(iter+0xc) for a node-only free; (8) if zone+0x17834 == actor, clear `actor->parent_zone[0x1f][0x17834]` (probably 'currently-controlled' actor); (9) if zone+0x17838 == actor, call FUN_004d9980(0xc0000000) (BCS-Y-0501 active-actor switcher). Callers: FUN_004db6a0, FUN_0068dd10.",
+      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] Destroys an actor entry from the RaptureElementContainer actor map at RaptureElementContainer+0x17804..+0x17808. Body: (1) `actor->vtable[11]()` (offset 0x2c - per-actor destroy method); (2) if RaptureElementContainer+0xb4 is non-null and not actor itself, call its vtable[21] (offset 0x54) with `actor->vtable[11]()` result (some UI update); (3) FUN_00563920(actor) if RaptureElementContainer+0x4c0 differs from null and from actor (probably 'remove from active list'); (4) FUN_005374d0(actor[0x22]) - per-id de-init; (5) FUN_0071d420 lower_bound on RaptureElementContainer+0x17804 with actor[0x22] = id; (6) if RaptureElementContainer+0x17820 byte is 0 (safe-to-erase flag), call FUN_004de280(iter) for full STL map erase + if id has engine-managed pattern (top byte 0xC0..0xDF, subtype < 3) call FUN_00d35b30(id & 0xffffff) to deregister from FUN_00d35af0's engine-class registry; (7) if RaptureElementContainer+0x17820 != 0 (deferred-remove mode), zero the slot's *(iter+0x10)=0 and call FUN_00813050(iter+0xc) for a node-only free; (8) if RaptureElementContainer+0x17834 == actor, clear `actor->parent_container[0x1f][0x17834]` (probably 'currently-controlled' actor); (9) if RaptureElementContainer+0x17838 == actor, call FUN_004d9980(0xc0000000) (BCS-Y-0501 active-actor switcher). Callers: FUN_004db6a0, FUN_0068dd10. | [Tier C309 owner correction] The body preserves ECX at 0x004DAC30 and forms owner+0x17804 at 0x004DAC93; callers load ECX from the RaptureElement parent field set by [[BCS-Y-0539]].",
       "id": "BCS-Y-0686"
     },
     {
@@ -7909,9 +7916,10 @@
       "address": "0x004DAA10",
       "confidence": "superseded",
       "sourceRefs": [
-        "manifests/actor_vtable5_drill.json"
+        "manifests/actor_vtable5_drill.json",
+        "tools/ghidra/logs/c310_owner-reattribution-verification.txt"
       ],
-      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] Drains the zone's sync event queue (at zone+0x17938..+0x1793c, atomically synchronized via Interlocked* family) and dispatches each event polymorphically. Per event: if event_type (event+0x14) == 2, calls `zone->slot17924->vtable[6](-1, scaled_value)` (UI/HUD update path with sVar1 = event+0x20 scaled into 0..5 + percentage); for other types, calls `actor = FUN_004d9910(event+0x10); actor->vtable[8](event_subtype-3, event+0x20, event+0x18)` - SLOT 8 (offset 0x20) of the per-actor vtable. After dispatch, atomically clears the queue slot (InterlockedExchange to 0) and decrements the count (InterlockedDecrement on zone+0x17938). After the queue drains, calls `zone->slot17920->vtable[5](->slot+0x14)` (offset 0x14 - probably a 'sync complete' notification). Sole caller: FUN_004b3c50. | [duplicate-address resolution] True accidental duplicate: the same frame event-queue processor was independently cataloged three times; superseded by earlier allocation [[BCS-Y-0537]].",
+      "notes": "[the actor-vtable5-drill pass actor vtable[5] init drill] Drains MainModule's sync event queue (at MainModule+0x17938..+0x1793c, atomically synchronized via Interlocked* family) and dispatches each event polymorphically. Per event: if event_type (event+0x14) == 2, calls `MainModule+0x17924 target->vtable[6](-1, scaled_value)` (UI/HUD update path with sVar1 = event+0x20 scaled into 0..5 + percentage); for other types, calls `actor = FUN_004d9910(event+0x10); actor->vtable[8](event_subtype-3, event+0x20, event+0x18)` - SLOT 8 (offset 0x20) of the per-actor vtable. After dispatch, atomically clears the queue slot (InterlockedExchange to 0) and decrements the count (InterlockedDecrement on MainModule+0x17938). After the queue drains, calls `MainModule+0x17920 target->vtable[5](->slot+0x14)` (offset 0x14 - probably a 'sync complete' notification). Sole caller: FUN_004b3c50. | [duplicate-address resolution] True accidental duplicate: the same frame event-queue processor was independently cataloged three times; superseded by earlier allocation [[BCS-Y-0537]]. | [Tier C309 owner correction] FUN_004B3C50 passes Scene+0x64 at 0x004B3DD1, and 0x004DAAAB adds +0x10 before the container lookup, so this function's member base is MainModule. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0690"
     },
     {
@@ -8507,11 +8515,11 @@
       "name": "RaptureElement_vftable_primary",
       "kind": "data",
       "address": "0x00F91014",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "manifests/element_vtable8_bulk.json"
       ],
-      "notes": "[the element-vtable8-bulk pass Element vtable[8] async tier] Primary vtable of Application::Main::RaptureElement (Pattern B actor map base class)",
+      "notes": "[the element-vtable8-bulk pass Element vtable[8] async tier] Primary vtable of Application::Main::RaptureElement (Pattern B actor map base class) | [duplicate-address resolution] True accidental duplicate: the same Application::Main::RaptureElement primary vftable was cataloged twice; its Pattern B actor-map fact and source are retained by authoritative [[BCS-Y-0538]]. Superseded by [[BCS-Y-0538]].",
       "id": "BCS-Y-0744"
     },
     {
@@ -9057,22 +9065,22 @@
       "name": "MainPacket_vftable",
       "kind": "data",
       "address": "0x00F90EF8",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "manifests/async_queue_producer.json"
       ],
-      "notes": "[async-queue-producer async event bus producer] Application::Main::MainPacket::vftable - vtable of the async event payload type. Only slot 0 = FUN_004DDC20 (vector destructor)",
+      "notes": "[async-queue-producer async event bus producer] Application::Main::MainPacket::vftable - vtable of the async event payload type. Only slot 0 = FUN_004DDC20 (vector destructor) | [duplicate-address resolution] True accidental duplicate: the same Application::Main::MainPacket::vftable was cataloged twice; its vector-destructor detail and source are retained by authoritative [[BCS-Y-1756]]. Superseded by [[BCS-Y-1756]].",
       "id": "BCS-Y-0794"
     },
     {
       "name": "Sqex_Thread_Queue_MainPacket_vftable",
       "kind": "data",
       "address": "0x00F90FDC",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "manifests/async_queue_producer.json"
       ],
-      "notes": "[async-queue-producer async event bus producer] Sqex::Thread::Queue<Application::Main::MainPacket>::vftable - vtable of the templated lock-free queue. Only slot 0 = FUN_004DDCA0 (destructor)",
+      "notes": "[async-queue-producer async event bus producer] Sqex::Thread::Queue<Application::Main::MainPacket>::vftable - vtable of the templated lock-free queue. Only slot 0 = FUN_004DDCA0 (destructor) | [duplicate-address resolution] True accidental duplicate: the same Sqex::Thread::Queue<Application::Main::MainPacket>::vftable was cataloged twice; its single-slot shape is retained by authoritative [[BCS-Y-1749]]. Superseded by [[BCS-Y-1749]].",
       "id": "BCS-Y-0795"
     },
     {
@@ -10123,7 +10131,7 @@
       "sourceRefs": [
         "manifests/schema_rescue.json"
       ],
-      "notes": "[schema-rescue schema rescue] Apply path for s2c 0x018D PartyMapMarkerUpdate. Writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json. Updates 16 marker entries (stride 0x28) in the marker-update path reached after the zone-owned +0x4d8 nonzero gate; the field's pointer/widget interpretation is unresolved. The party-subsystem pass opcode_table 0x018D ultimate_callee.",
+      "notes": "[schema-rescue schema rescue] Apply path for s2c 0x018D PartyMapMarkerUpdate. Writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json. Updates 16 marker entries (stride 0x28) in the marker-update path reached after the RaptureElementContainer+0x4d8 nonzero gate; the field's pointer/widget interpretation is unresolved. The party-subsystem pass opcode_table 0x018D ultimate_callee. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-0890"
     },
     {
@@ -10267,9 +10275,10 @@
       "address": "0x01057360",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/schema_rescue.json"
+        "manifests/schema_rescue.json",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[schema-rescue schema rescue] Application::Lua::Script::Client::Command::Network::JobQuestCompleteTripleReceiver vftable (RVA 0xc57360). 6 slots. The ONLY dedicated quest receiver - handles s2c 0x01A2 JobQuestCompleteTriple (fires the 'completion celebration' UI for class-quest completions that don't involve NPC interaction). 6-slot Pattern C receiver. The quest-subsystem pass dedicated_quest_receiver. | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x00C57360 to 0x01057360 (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=notes_rva_shifted; count=1.",
+      "notes": "[schema-rescue schema rescue] Application::Lua::Script::Client::Command::Network::JobQuestCompleteTripleReceiver vftable (RVA 0xc57360). 6 slots. The ONLY dedicated quest receiver - handles s2c 0x01A2 JobQuestCompleteTriple (fires the 'completion celebration' UI for class-quest completions that don't involve NPC interaction). 6-slot Pattern C receiver. The quest-subsystem pass dedicated_quest_receiver. | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x00C57360 to 0x01057360 (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=notes_rva_shifted; count=1. | [duplicate-address resolution] Authoritative JobQuestCompleteTripleReceiver-vftable row: this record carries the tracked schema source, six-slot Pattern C shape, address correction, dedicated quest role, and wire attribution. [[BCS-Y-1436]] independently places this class in the Network sub-namespace of the Lua-bridge Receiver layer and records its coupling to the Lua control hierarchy.",
       "id": "BCS-Y-0902"
     },
     {
@@ -10589,9 +10598,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::Network::GrandCompanyReceiver vftable. Handles s2c 0x0194 SetGrandCompanyPacket - server sets player's Grand Company affiliation. | Address shifted; 0x00C57318 to 0x01057318 (+0x00400000); the apply-log pass / the systematic-rva-not-va-address-shift pass fixes; the manifest's literal-RVA convention did not account for image base). Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the GrandCompanyReceiver COL @ 0x01172C4C. Shape: 2-slot vftable verified - dword[0]=0x008a0f50 (ctor/dtor) dword[1]=0x0089cd60 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (HamletSupplyRankingReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::Network::GrandCompanyReceiver vftable. Handles s2c 0x0194 SetGrandCompanyPacket - server sets player's Grand Company affiliation. | Address shifted; 0x00C57318 to 0x01057318 (+0x00400000); the apply-log pass / the systematic-rva-not-va-address-shift pass fixes; the manifest's literal-RVA convention did not account for image base). Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the GrandCompanyReceiver COL @ 0x01172C4C. Shape: 2-slot vftable verified - dword[0]=0x008a0f50 (ctor/dtor) dword[1]=0x0089cd60 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (HamletSupplyRankingReceiver). | [duplicate-address resolution] Authoritative GrandCompanyReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, next-class relationship, and wire attribution. [[BCS-Y-1431]] independently places this class in the Network sub-namespace of the Lua-bridge Receiver layer and records its coupling to the Lua control hierarchy.",
       "id": "BCS-Y-0931"
     },
     {
@@ -10612,9 +10622,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::System::ChocoboGradeReceiver vftable. Handles s2c 0x0197 SetCurrentMountChocoboPacket - server sets player's chocobo grade/breeding stats. | Address shifted; 0x00C575A4 to 0x010575A4 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the ChocoboGradeReceiver COL @ 0x01173600. Shape: 2-slot vftable verified - dword[0]=0x008a4df0 (ctor/dtor) dword[1]=0x008a3020 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (GoobbueReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::System::ChocoboGradeReceiver vftable. Handles s2c 0x0197 SetCurrentMountChocoboPacket - server sets player's chocobo grade/breeding stats. | Address shifted; 0x00C575A4 to 0x010575A4 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the ChocoboGradeReceiver COL @ 0x01173600. Shape: 2-slot vftable verified - dword[0]=0x008a4df0 (ctor/dtor) dword[1]=0x008a3020 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (GoobbueReceiver). | [duplicate-address resolution] Authoritative ChocoboGradeReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, next-class relationship, and wire attribution. [[BCS-Y-1416]] additionally records that vftable_meta_ptr sits 4 bytes before the vftable and that this Receiver couples to the Lua control hierarchy via __RTDynamicCast at apply time. Its System sub-namespace taxonomy identifies a UI, event, or vehicle-related Receiver.",
       "id": "BCS-Y-0933"
     },
     {
@@ -10635,9 +10646,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::System::GoobbueReceiver vftable. Handles s2c 0x01A0 SetCurrentMountGoobbuePacket - server sets player's goobbue mount state. | Address shifted; 0x00C575B0 to 0x010575B0 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the GoobbueReceiver COL @ 0x01173650. Shape: 2-slot vftable verified - dword[0]=0x008a4e60 (ctor/dtor) dword[1]=0x008a3100 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (VehicleGradeReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::System::GoobbueReceiver vftable. Handles s2c 0x01A0 SetCurrentMountGoobbuePacket - server sets player's goobbue mount state. | Address shifted; 0x00C575B0 to 0x010575B0 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the GoobbueReceiver COL @ 0x01173650. Shape: 2-slot vftable verified - dword[0]=0x008a4e60 (ctor/dtor) dword[1]=0x008a3100 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (VehicleGradeReceiver). | [duplicate-address resolution] Authoritative GoobbueReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, next-class relationship, and wire attribution. [[BCS-Y-1417]] additionally records that vftable_meta_ptr sits 4 bytes before the vftable and that this Receiver couples to the Lua control hierarchy via __RTDynamicCast at apply time. Its System sub-namespace taxonomy identifies a UI, event, or vehicle-related Receiver.",
       "id": "BCS-Y-0935"
     },
     {
@@ -10658,9 +10670,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::System::ChocoboReceiver vftable. Handles s2c 0x0198 SetChocoboNamePacket - server sets player's chocobo name. | Address shifted; 0x00C57598 to 0x01057598 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the ChocoboReceiver COL @ 0x011735B0. Shape: 2-slot vftable verified - dword[0]=0x008a4d80 (ctor/dtor) dword[1]=0x008a2f30 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (ChocoboGradeReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::System::ChocoboReceiver vftable. Handles s2c 0x0198 SetChocoboNamePacket - server sets player's chocobo name. | Address shifted; 0x00C57598 to 0x01057598 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the ChocoboReceiver COL @ 0x011735B0. Shape: 2-slot vftable verified - dword[0]=0x008a4d80 (ctor/dtor) dword[1]=0x008a2f30 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (ChocoboGradeReceiver). | [duplicate-address resolution] Authoritative ChocoboReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, next-class relationship, and wire attribution. [[BCS-Y-1415]] additionally records that vftable_meta_ptr sits 4 bytes before the vftable and that this Receiver couples to the Lua control hierarchy via __RTDynamicCast at apply time. Its System sub-namespace taxonomy identifies a UI, event, or vehicle-related Receiver.",
       "id": "BCS-Y-0937"
     },
     {
@@ -10681,9 +10694,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::Network::EntrustItemReceiver vftable. Handles s2c 0x01A5 SetPlayerItemStoragePacket / MapServerOpcode::SetPlayerItemStorage - server confirms entrust-item operation (gives item to NPC/retainer). | Address shifted; 0x00C57470 to 0x01057470 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the EntrustItemReceiver COL @ 0x011732E8. Shape: 2-slot vftable verified - dword[0]=0x008a1620 (ctor/dtor) dword[1]=0x0089cb90 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (SyncMemoryReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::Network::EntrustItemReceiver vftable. Handles s2c 0x01A5 SetPlayerItemStoragePacket / MapServerOpcode::SetPlayerItemStorage - server confirms entrust-item operation (gives item to NPC/retainer). | Address shifted; 0x00C57470 to 0x01057470 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the EntrustItemReceiver COL @ 0x011732E8. Shape: 2-slot vftable verified - dword[0]=0x008a1620 (ctor/dtor) dword[1]=0x0089cb90 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (SyncMemoryReceiver). | [duplicate-address resolution] Authoritative EntrustItemReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, next-class relationship, and wire attribution. [[BCS-Y-1447]] independently places this class in the Network sub-namespace of the Lua-bridge Receiver layer and records its coupling to the Lua control hierarchy.",
       "id": "BCS-Y-0939"
     },
     {
@@ -10704,9 +10718,12 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
+        "tools/ghidra/logs/c77_all_receiver_vftables.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::System::AttributeTypeEventLeaveReceiver vftable. Client-internal receiver (no network opcode - triggered locally when actor leaves an attribute-type-event zone). Pairs with AttributeTypeEventEnterReceiver (BCS-Y-0257 at 0x00FDFB10) - both family-abbreviated as 'AttributeTypeEventReceiver' in BCS-Y-0261 dispatch wrapper. | Address shifted; 0x00BDFB1C to 0x00FDFB1C (+0x00400000); sibling AttributeTypeEventEnterReceiver/BCS-Y-0257 already fixed in the systematic-rva-not-va-address-shift pass). Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the AttributeTypeEventLeaveReceiver COL @ 0x0115FB2C. Shape: vftable region verified - dword[0]=0x00776c20 (ctor/dtor) dword[1]=0x008a3e20 (Receive entry) dword[2]=0x00000000 (next vftable's COL slot is a sentinel null). The 2-slot claim is consistent with the layout though the trailing null deviates from the typical RTTI-followed pattern of immediate neighbors; the very next dword IS the next class's COL (RTTI_Complete_Object_Locator at +0xc).",
+      "notes": "Application::Lua::Script::Client::Command::System::AttributeTypeEventLeaveReceiver vftable. Client-internal receiver (no network opcode - triggered locally when actor leaves an attribute-type-event zone). Pairs with AttributeTypeEventEnterReceiver (BCS-Y-0257 at 0x00FDFB10) - both family-abbreviated as 'AttributeTypeEventReceiver' in BCS-Y-0261 dispatch wrapper. | Address shifted; 0x00BDFB1C to 0x00FDFB1C (+0x00400000); sibling AttributeTypeEventEnterReceiver/BCS-Y-0257 already fixed in the systematic-rva-not-va-address-shift pass). Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the AttributeTypeEventLeaveReceiver COL @ 0x0115FB2C. Shape: vftable region verified - dword[0]=0x00776c20 (ctor/dtor) dword[1]=0x008a3e20 (Receive entry) dword[2]=0x00000000 (next vftable's COL slot is a sentinel null). The 2-slot claim is consistent with the layout though the trailing null deviates from the typical RTTI-followed pattern of immediate neighbors; the very next dword IS the next class's COL (RTTI_Complete_Object_Locator at +0xc). | [duplicate-address resolution] Authoritative AttributeTypeEventLeaveReceiver-vftable row: this record carries the witnessed address-specific vftable content. [[BCS-Y-1414]] adds that vftable_meta_ptr sits 4 bytes before the vftable and that this Receiver couples to the 3-tier Lua control hierarchy via __RTDynamicCast at apply time. Its System sub-namespace taxonomy identifies a UI, event, or vehicle-related Receiver rather than a Network receiver for network-arrival events, independently supporting this record's evidenced client-internal, no-network-opcode claim.",
       "id": "BCS-Y-0941"
     },
     {
@@ -10727,9 +10744,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::Network::ChangeShadowActorFlagReceiver vftable. Handles s2c 0x017B SetActorIsZoningPacket / MapServerOpcode::SetActorIsZoning - server marks an actor as zoning (shadow/preview state for cross-zone transitions). BCS-S-0024 ChangeShadowActorFlagReceiverPayload exists. | Address shifted; 0x00C5730C to 0x0105730C (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the ChangeShadowActorFlagReceiver COL @ 0x01172BFC. Shape: 2-slot vftable verified - dword[0]=0x008a0ee0 (ctor/dtor) dword[1]=0x0089cc70 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (GrandCompanyReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::Network::ChangeShadowActorFlagReceiver vftable. Handles s2c 0x017B SetActorIsZoningPacket / MapServerOpcode::SetActorIsZoning - server marks an actor as zoning (shadow/preview state for cross-zone transitions). BCS-S-0024 ChangeShadowActorFlagReceiverPayload exists. | Address shifted; 0x00C5730C to 0x0105730C (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the ChangeShadowActorFlagReceiver COL @ 0x01172BFC. Shape: 2-slot vftable verified - dword[0]=0x008a0ee0 (ctor/dtor) dword[1]=0x0089cc70 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (GrandCompanyReceiver). | [duplicate-address resolution] Authoritative ChangeShadowActorFlagReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, next-class relationship, and wire attribution. [[BCS-Y-1430]] independently places this class in the Network sub-namespace of the Lua-bridge Receiver layer and records its coupling to the Lua control hierarchy.",
       "id": "BCS-Y-0943"
     },
     {
@@ -10750,9 +10768,10 @@
       "confidence": "probable",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::Network::SetCommandEventConditionReceiver vftable. Wire opcode binding NOT yet confirmed. | [hygiene act-on-c1-audit] Demoted confirmed -> probable. Notes already say 'Wire opcode binding NOT yet confirmed '. Vtable identity is solid but wire opcode unconfirmed - demoting to reflect the binding-gap caveat. | Address shifted; 0x00C5737C to 0x0105737C (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the SetCommandEventConditionReceiver COL @ 0x01172E84. Shape: 2-slot vftable verified - dword[0]=0x008a1180 (ctor/dtor) dword[1]=0x0089d4f0 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (SetDisplayNameReceiver). Vftable identity reverified; confidence stays 'probable' due to unrelated opcode-binding gap (per the act-on-c1-audit pass demotion). | [hygiene setcommandeventconditionreceiver-wire-opcode-investigation-definitively-dead dead-code finding] Vftable VA 0x0105737C has exactly 2 references binary-wide (FindAllReferences), both from the class's own constructor FUN_0089D400 (at insn 0x0089d43a) and destructor FUN_0089D490 (at insn 0x0089d4b8) - both expected vftable-write ops. NO external code references this vftable. Combined with the finding that ctor FUN_0089D400 has 0 callers binary-wide and NONE of the 90 slots in the Set*EventCondition factory dispatch table (vftable_B at 0x00fe02ac) call FUN_0089D400, the receiver class is DEAD CODE in 1.23b - statically present (vftable + ctor + dtor + slot1 + Lua-callback-registration all compiled in) but never instantiated. Evidence chain: tools/ghidra/logs/c42_setcommand_xrefs.txt (vftable + slot1 + ctor refs), c42_ctor_callers.txt (FUN_0089D400 has 0 callers vs sibling SetNotice/SetEmote ctors which have 1 each from factory wrappers), c42_vftable_b_dump.txt (the 90-slot factory table at 0x00fe02ac), c42_slot50_decomp.txt (slots 50/53/54/55 construct other Set* receivers, not SetCommand). Confidence stays probable (vftable identity is solid; the dead-code finding affects only the wire-opcode-binding question, which is also closed negatively).",
+      "notes": "Application::Lua::Script::Client::Command::Network::SetCommandEventConditionReceiver vftable. Wire opcode binding NOT yet confirmed. | [hygiene act-on-c1-audit] Demoted confirmed -> probable. Notes already say 'Wire opcode binding NOT yet confirmed '. Vtable identity is solid but wire opcode unconfirmed - demoting to reflect the binding-gap caveat. | Address shifted; 0x00C5737C to 0x0105737C (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the SetCommandEventConditionReceiver COL @ 0x01172E84. Shape: 2-slot vftable verified - dword[0]=0x008a1180 (ctor/dtor) dword[1]=0x0089d4f0 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (SetDisplayNameReceiver). Vftable identity reverified; confidence stays 'probable' due to unrelated opcode-binding gap (per the act-on-c1-audit pass demotion). | [hygiene setcommandeventconditionreceiver-wire-opcode-investigation-definitively-dead dead-code finding] Vftable VA 0x0105737C has exactly 2 references binary-wide (FindAllReferences), both from the class's own constructor FUN_0089D400 (at insn 0x0089d43a) and destructor FUN_0089D490 (at insn 0x0089d4b8) - both expected vftable-write ops. NO external code references this vftable. Combined with the finding that ctor FUN_0089D400 has 0 callers binary-wide and NONE of the 90 slots in the Set*EventCondition factory dispatch table (vftable_B at 0x00fe02ac) call FUN_0089D400, the receiver class is DEAD CODE in 1.23b - statically present (vftable + ctor + dtor + slot1 + Lua-callback-registration all compiled in) but never instantiated. Evidence chain: tools/ghidra/logs/c42_setcommand_xrefs.txt (vftable + slot1 + ctor refs), c42_ctor_callers.txt (FUN_0089D400 has 0 callers vs sibling SetNotice/SetEmote ctors which have 1 each from factory wrappers), c42_vftable_b_dump.txt (the 90-slot factory table at 0x00fe02ac), c42_slot50_decomp.txt (slots 50/53/54/55 construct other Set* receivers, not SetCommand). Confidence stays probable (vftable identity is solid; the dead-code finding affects only the wire-opcode-binding question, which is also closed negatively). | [duplicate-address resolution] Authoritative SetCommandEventConditionReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, and address-specific dead-code reference analysis while preserving the probable confidence required by the unrelated wire-attribution gap. [[BCS-Y-1437]] independently places this class in the Network sub-namespace of the Lua-bridge Receiver layer and records its coupling to the Lua control hierarchy.",
       "id": "BCS-Y-0945"
     },
     {
@@ -10773,9 +10792,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::Network::HamletSupplyRankingReceiver vftable. Handles s2c 0x01A6 (added catalog_extension) - hamlet defense supply ranking update. | Address shifted; 0x00C57324 to 0x01057324 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the HamletSupplyRankingReceiver COL @ 0x01172C9C. Shape: 2-slot vftable verified - dword[0]=0x008a0fc0 (ctor/dtor) dword[1]=0x0089ce70 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (HamletDefenseScoreReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::Network::HamletSupplyRankingReceiver vftable. Handles s2c 0x01A6 (added catalog_extension) - hamlet defense supply ranking update. | Address shifted; 0x00C57324 to 0x01057324 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the HamletSupplyRankingReceiver COL @ 0x01172C9C. Shape: 2-slot vftable verified - dword[0]=0x008a0fc0 (ctor/dtor) dword[1]=0x0089ce70 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (HamletDefenseScoreReceiver). | [duplicate-address resolution] Authoritative HamletSupplyRankingReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, sibling relationship, and wire attribution. [[BCS-Y-1432]] independently places this class in the Network sub-namespace of the Lua-bridge Receiver layer and records its coupling to the Lua control hierarchy.",
       "id": "BCS-Y-0947"
     },
     {
@@ -10796,9 +10816,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/d4a_vftables.txt",
-        "manifests/rtti_extraction_OUR.txt"
+        "manifests/rtti_extraction_OUR.txt",
+        "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "Application::Lua::Script::Client::Command::Network::HamletDefenseScoreReceiver vftable. Handles s2c 0x01A8 (added catalog_extension) - hamlet defense score update. | Address shifted; 0x00C57330 to 0x01057330 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the HamletDefenseScoreReceiver COL @ 0x01172CEC. Shape: 2-slot vftable verified - dword[0]=0x008a1030 (ctor/dtor) dword[1]=0x0089e420 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (HateStatusReceiver).",
+      "notes": "Application::Lua::Script::Client::Command::Network::HamletDefenseScoreReceiver vftable. Handles s2c 0x01A8 (added catalog_extension) - hamlet defense score update. | Address shifted; 0x00C57330 to 0x01057330 (+0x00400000) Self-sourced rtti_extraction_OUR.txt confirms shifted VA carries the HamletDefenseScoreReceiver COL @ 0x01172CEC. Shape: 2-slot vftable verified - dword[0]=0x008a1030 (ctor/dtor) dword[1]=0x0089e420 (Receive entry) dword[2]=RTTI_Complete_Object_Locator for next class (HateStatusReceiver). | [duplicate-address resolution] Authoritative HamletDefenseScoreReceiver-vftable row: this record carries the witnessed two-slot contents, COL VA, address correction, sibling relationship, and wire attribution. [[BCS-Y-1433]] independently places this class in the Network sub-namespace of the Lua-bridge Receiver layer and records its coupling to the Lua control hierarchy.",
       "id": "BCS-Y-0949"
     },
     {
@@ -12252,7 +12273,7 @@
         "manifests/symbols.json#BCS-Y-0279",
         "manifests/symbols.json#BCS-Y-0700"
       ],
-      "notes": "[inline-case-block-formalization-for-fun_004dc690] FUN_004DC690 low-switch case 7 (s2c 0x0007 DeleteAllActorsPacket per the promoted opcode catalog `data/vendor/opcodes/opcodes.json`). Walks the session-object actor map (local_a04 = param_1 + 0x17804) via iterator FUN_00944d70 + FUN_0071b730. For each live actor: FUN_00575750 gate (alive-check), FUN_006cfbb0 record, inner FUN_004ddef0 erase loop, FUN_005761d0 actor-del helper, FUN_00813050 broadcast. Special branches: if the iterator hits the focused-target actor (id matches *(int *)(param_1 + 0x17838)), calls FUN_004d9980(0xc0000000) + FUN_004b7340 (clear-current-target pattern shared with cases 0xE/0x11/0xCB). Outer cleanup loop uses FUN_009d22b4 (bounds-check error reporter). The walk completes the actor-cluster cleanup before the next zone-tick or scene transition. 12 pcap hits in our corpus (low-volume; zone-transition / scene-change events). Decomp evidence: tools/ghidra/logs/c19_dispatchers_decomp.txt:554-621."
+      "notes": "[inline-case-block-formalization-for-fun_004dc690] FUN_004DC690 low-switch case 7 (s2c 0x0007 DeleteAllActorsPacket per the promoted opcode catalog `data/vendor/opcodes/opcodes.json`). Walks the RaptureElementContainer actor map (local_a04 = param_1 + 0x17804) via iterator FUN_00944d70 + FUN_0071b730. For each live actor: FUN_00575750 gate (alive-check), FUN_006cfbb0 record, inner FUN_004ddef0 erase loop, FUN_005761d0 actor-del helper, FUN_00813050 broadcast. Special branches: if the iterator hits the focused-target actor (id matches *(int *)(param_1 + 0x17838)), calls FUN_004d9980(0xc0000000) + FUN_004b7340 (clear-current-target pattern shared with cases 0xE/0x11/0xCB). Outer cleanup loop uses FUN_009d22b4 (bounds-check error reporter). The walk completes the actor-cluster cleanup before the next zone-tick or scene transition. 12 pcap hits in our corpus (low-volume; zone-transition / scene-change events). Decomp evidence: tools/ghidra/logs/c19_dispatchers_decomp.txt:554-621. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt."
     },
     {
       "id": "BCS-Y-1078",
@@ -12265,7 +12286,7 @@
         "manifests/symbols.json#BCS-Y-0279",
         "manifests/symbols.json#BCS-Y-0700"
       ],
-      "notes": "[inline-case-block-formalization-for-fun_004dc690] FUN_004DC690 low-switch 3-case fallthrough block (cases 5, 0xD, 0x10). Wire names: 0x000D = SetWeather per the promoted opcode catalog `data/vendor/opcodes/opcodes.json`; 0x0005 and 0x0010 unnamed there. Body: `if (*(int **)(param_1 + 0x4e0) != 0) { (**(code **)(**(int **)(param_1 + 0x4e0) + 0x24))(iVar8); }`. Pattern: if the session-object context pointer at +0x4e0 is non-null, dispatch the packet body (iVar8) to vftable slot 9 (offset 0x24) of *that* context object. The context object at +0x4e0 is likely the WeatherController (or similar environment-state holder) since 0x000D is SetWeather and 0x05 / 0x10 share the same dispatch target. Per-handler discrimination happens inside the context object's slot 9 method (Pattern C indirect-via-context-vftable model, distinct from Pattern B which dispatches via Actor->vftable[9]). 11 pcap hits across 0x000D in our corpus; 0x0005 and 0x10 have 0 pcap hits but are wired into the same fallthrough block. Decomp evidence: tools/ghidra/logs/c19_dispatchers_decomp.txt:544-550."
+      "notes": "[inline-case-block-formalization-for-fun_004dc690] FUN_004DC690 low-switch 3-case fallthrough block (cases 5, 0xD, 0x10). Wire names: 0x000D = SetWeather per the promoted opcode catalog `data/vendor/opcodes/opcodes.json`; 0x0005 and 0x0010 unnamed there. Body: `if (*(int **)(param_1 + 0x4e0) != 0) { (**(code **)(**(int **)(param_1 + 0x4e0) + 0x24))(iVar8); }`. Pattern: if the RaptureElementContainer context pointer at +0x4e0 is non-null, dispatch the packet body (iVar8) to vftable slot 9 (offset 0x24) of *that* context object. The context object at +0x4e0 is likely the WeatherController (or similar environment-state holder) since 0x000D is SetWeather and 0x05 / 0x10 share the same dispatch target. Per-handler discrimination happens inside the context object's slot 9 method (Pattern C indirect-via-context-vftable model, distinct from Pattern B which dispatches via Actor->vftable[9]). 11 pcap hits across 0x000D in our corpus; 0x0005 and 0x10 have 0 pcap hits but are wired into the same fallthrough block. Decomp evidence: tools/ghidra/logs/c19_dispatchers_decomp.txt:544-550. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt."
     },
     {
       "id": "BCS-Y-1079",
@@ -16525,52 +16546,52 @@
       "name": "Application_Lua_Script_Client_Command_System_AttributeTypeEventLeaveReceiver_vftable_DAT_00fdfb1c",
       "kind": "data",
       "address": "0x00FDFB1C",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::AttributeTypeEventLeaveReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution)."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::AttributeTypeEventLeaveReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution). | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::System::AttributeTypeEventLeaveReceiver::vftable was cataloged twice; its Lua-bridge coupling, System sub-namespace taxonomy, vftable_meta_ptr layout fact, and sources are retained by authoritative [[BCS-Y-0941]]. Superseded by [[BCS-Y-0941]]."
     },
     {
       "id": "BCS-Y-1415",
       "name": "Application_Lua_Script_Client_Command_System_ChocoboReceiver_vftable_DAT_01057598",
       "kind": "data",
       "address": "0x01057598",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::ChocoboReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution)."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::ChocoboReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution). | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::System::ChocoboReceiver::vftable was cataloged twice; its Lua-bridge coupling, System sub-namespace taxonomy, vftable_meta_ptr layout fact, and tracked namespace source are retained by authoritative [[BCS-Y-0937]]. Superseded by [[BCS-Y-0937]]."
     },
     {
       "id": "BCS-Y-1416",
       "name": "Application_Lua_Script_Client_Command_System_ChocoboGradeReceiver_vftable_DAT_010575a4",
       "kind": "data",
       "address": "0x010575A4",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::ChocoboGradeReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution)."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::ChocoboGradeReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution). | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::System::ChocoboGradeReceiver::vftable was cataloged twice; its Lua-bridge coupling, System sub-namespace taxonomy, vftable_meta_ptr layout fact, and tracked namespace source are retained by authoritative [[BCS-Y-0933]]. Superseded by [[BCS-Y-0933]]."
     },
     {
       "id": "BCS-Y-1417",
       "name": "Application_Lua_Script_Client_Command_System_GoobbueReceiver_vftable_DAT_010575b0",
       "kind": "data",
       "address": "0x010575B0",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::GoobbueReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution)."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::System::GoobbueReceiver::vftable global. Resolved via FindSymbolByName.java query 'Receiver::vftable' (88 total matches; see tools/ghidra/logs/c77_all_receiver_vftables.txt). vftable_meta_ptr is 4 bytes before the vftable. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface') via __RTDynamicCast at apply time. Sub-namespace 'System' indicates this is a UI/event/vehicle-related Receiver (vs 'Network' sub-namespace for network-arrival events). Wire opcode attribution: TBD (see xivl-opcodes/notes:receiver-cross-reference for any existing wire-side attribution). | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::System::GoobbueReceiver::vftable was cataloged twice; its Lua-bridge coupling, System sub-namespace taxonomy, vftable_meta_ptr layout fact, and tracked namespace source are retained by authoritative [[BCS-Y-0935]]. Superseded by [[BCS-Y-0935]]."
     },
     {
       "id": "BCS-Y-1418",
@@ -16733,52 +16754,52 @@
       "name": "Application_Lua_Script_Client_Command_Network_ChangeShadowActorFlagReceiver_vftable_DAT_0105730c",
       "kind": "data",
       "address": "0x0105730C",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::ChangeShadowActorFlagReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::ChangeShadowActorFlagReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping. | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::Network::ChangeShadowActorFlagReceiver::vftable was cataloged twice; its Lua-bridge coupling, Network sub-namespace taxonomy, and tracked namespace source are retained by authoritative [[BCS-Y-0943]]. Superseded by [[BCS-Y-0943]]."
     },
     {
       "id": "BCS-Y-1431",
       "name": "Application_Lua_Script_Client_Command_Network_GrandCompanyReceiver_vftable_DAT_01057318",
       "kind": "data",
       "address": "0x01057318",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::GrandCompanyReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::GrandCompanyReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping. | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::Network::GrandCompanyReceiver::vftable was cataloged twice; its Lua-bridge coupling, Network sub-namespace taxonomy, and tracked namespace source are retained by authoritative [[BCS-Y-0931]]. Superseded by [[BCS-Y-0931]]."
     },
     {
       "id": "BCS-Y-1432",
       "name": "Application_Lua_Script_Client_Command_Network_HamletSupplyRankingReceiver_vftable_DAT_01057324",
       "kind": "data",
       "address": "0x01057324",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::HamletSupplyRankingReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::HamletSupplyRankingReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping. | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::Network::HamletSupplyRankingReceiver::vftable was cataloged twice; its Lua-bridge coupling, Network sub-namespace taxonomy, and tracked namespace source are retained by authoritative [[BCS-Y-0947]]. Superseded by [[BCS-Y-0947]]."
     },
     {
       "id": "BCS-Y-1433",
       "name": "Application_Lua_Script_Client_Command_Network_HamletDefenseScoreReceiver_vftable_DAT_01057330",
       "kind": "data",
       "address": "0x01057330",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::HamletDefenseScoreReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::HamletDefenseScoreReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping. | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::Network::HamletDefenseScoreReceiver::vftable was cataloged twice; its Lua-bridge coupling, Network sub-namespace taxonomy, and tracked namespace source are retained by authoritative [[BCS-Y-0949]]. Superseded by [[BCS-Y-0949]]."
     },
     {
       "id": "BCS-Y-1434",
@@ -16811,26 +16832,26 @@
       "name": "Application_Lua_Script_Client_Command_Network_JobQuestCompleteTripleReceiver_vftable_DAT_01057360",
       "kind": "data",
       "address": "0x01057360",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::JobQuestCompleteTripleReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::JobQuestCompleteTripleReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping. | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::Network::JobQuestCompleteTripleReceiver::vftable was cataloged twice; its Lua-bridge coupling, Network sub-namespace taxonomy, and tracked namespace source are retained by authoritative [[BCS-Y-0902]]. Superseded by [[BCS-Y-0902]]."
     },
     {
       "id": "BCS-Y-1437",
       "name": "Application_Lua_Script_Client_Command_Network_SetCommandEventConditionReceiver_vftable_DAT_0105737c",
       "kind": "data",
       "address": "0x0105737C",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::SetCommandEventConditionReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::SetCommandEventConditionReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping. | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::Network::SetCommandEventConditionReceiver::vftable was cataloged twice; its Lua-bridge coupling, Network sub-namespace taxonomy, and tracked namespace source are retained by authoritative [[BCS-Y-0945]]. Superseded by [[BCS-Y-0945]]."
     },
     {
       "id": "BCS-Y-1438",
@@ -16954,13 +16975,13 @@
       "name": "Application_Lua_Script_Client_Command_Network_EntrustItemReceiver_vftable_DAT_01057470",
       "kind": "data",
       "address": "0x01057470",
-      "confidence": "confirmed",
+      "confidence": "superseded",
       "sourceRefs": [
         "tools/ghidra/logs/c77_lua_command_system_symbols.txt",
         "tools/ghidra/logs/c77_all_receiver_vftables.txt",
         "manifests/lua_bridge_receiver_namespace.json"
       ],
-      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::EntrustItemReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping."
+      "notes": "[lua-bridge-receiver-namespace-verified-+] Application::Lua::Script::Client::Command::Network::EntrustItemReceiver::vftable global. Resolved via FindSymbolByName.java. **Lua-bridge Receiver** - couples to the 3-tier Lua control hierarchy (client-architecture 'The LuaControl hierarchy is the runtime surface'). Sub-namespace 'Network' indicates network-arrival event Receiver (vs 'System' for UI/event/vehicle Receivers). Wire opcode attribution: TBD or see xivl-opcodes/notes:receiver-cross-reference for existing wire-side mapping. | [duplicate-address resolution] True accidental duplicate: the same Application::Lua::Script::Client::Command::Network::EntrustItemReceiver::vftable was cataloged twice; its Lua-bridge coupling, Network sub-namespace taxonomy, and tracked namespace source are retained by authoritative [[BCS-Y-0939]]. Superseded by [[BCS-Y-0939]]."
     },
     {
       "id": "BCS-Y-1448",
@@ -21310,9 +21331,10 @@
         "tools/ghidra/logs/c110_queue_ctors_decomp.txt",
         "tools/ghidra/logs/c110_scenethread_symbols.txt",
         "tools/ghidra/logs/c110_appmain_symbols.txt",
-        "manifests/sqex_thread_namespace.json"
+        "manifests/sqex_thread_namespace.json",
+        "manifests/async_queue_producer.json"
       ],
-      "notes": "[sqex; S6 correction ] Vftable for Sqex::Thread::Queue<Application::Main::MainPacket> at 0x00F90FDC. Full RTTI quartet: COL 0x011413E4, CHD 0x011413F8, BCA 0x01141408, and TD 0x01269BC0. The queue is embedded in [[Application_Main_MainModule_vftable]] (BCS-Y-1755) at +0x17928. MainModule drains Queue<MainPacket> explicitly; MainPacket has a destructor-only vftable, so no packet slot-3 dispatch is claimed."
+      "notes": "[sqex; S6 correction ] Vftable for Sqex::Thread::Queue<Application::Main::MainPacket> at 0x00F90FDC. Full RTTI quartet: COL 0x011413E4, CHD 0x011413F8, BCA 0x01141408, and TD 0x01269BC0. The queue is embedded in [[Application_Main_MainModule_vftable]] (BCS-Y-1755) at +0x17928. MainModule drains Queue<MainPacket> explicitly; MainPacket has a destructor-only vftable, so no packet slot-3 dispatch is claimed. | [duplicate-address resolution] Authoritative queue-vftable row: this record incorporates the single-slot shape from [[BCS-Y-0795]]. The vftable has one slot: slot 0 is [[Sqex_Thread_Queue_MainPacket_Dtor_FUN_004DDCA0]] (BCS-Y-0803)."
     },
     {
       "id": "BCS-Y-1750",
@@ -21424,9 +21446,10 @@
         "tools/ghidra/logs/c110_queue_ctors_decomp.txt",
         "tools/ghidra/logs/c110_scenethread_symbols.txt",
         "tools/ghidra/logs/c110_appmain_symbols.txt",
-        "manifests/sqex_thread_namespace.json"
+        "manifests/sqex_thread_namespace.json",
+        "manifests/async_queue_producer.json"
       ],
-      "notes": "[sqex; S6 correction ] Vftable for Application::Main::MainPacket at 0x00F90EF8, the message type carried by [[Sqex_Thread_Queue_MainPacket_vftable]] (BCS-Y-1749). It is the main-thread sibling of ScenePacket, but its vftable has only the destructor slot FUN_004DDC20; processing is performed by the explicit queue drain rather than a presumed packet slot 3. Full RTTI is cataloged by [[Application_Main_MainPacket_TypeDescriptor]] (BCS-Y-1774)."
+      "notes": "[sqex; S6 correction ] Vftable for Application::Main::MainPacket at 0x00F90EF8, the message type carried by [[Sqex_Thread_Queue_MainPacket_vftable]] (BCS-Y-1749). It is the main-thread sibling of ScenePacket, but its vftable has only the destructor slot FUN_004DDC20; processing is performed by the explicit queue drain rather than a presumed packet slot 3. Full RTTI is cataloged by [[Application_Main_MainPacket_TypeDescriptor]] (BCS-Y-1774). | [duplicate-address resolution] Authoritative MainPacket-vftable row: the single destructor slot was already recorded here; [[BCS-Y-0794]] additionally identifies FUN_004DDC20 as the vector destructor variant [[MainPacket_destructor_vector_FUN_004DDC20]] (BCS-Y-0796)."
     },
     {
       "id": "BCS-Y-1757",
@@ -22398,7 +22421,7 @@
       "address": "0x004D7490",
       "kind": "function",
       "confidence": "confirmed",
-      "notes": "7-byte accessor `return *(u32*)(zone + 0x1783c)` - the local player's actor id held on the zone module (the same object that holds the actor map at zone+0x17804..+0x17808 per [[ZoneActorMap_FindById_FUN_004d9910]] (BCS-Y-0534), and the local player's actor POINTER at zone+0x17838). 11 callers; the load-bearing ones for the seam are [[SelfActorAddHook_FUN_004CAF60]] (the case 0xCA self test), FUN_004DC690 case 0xCB (self-removal test against zone+0x17838), [[CharaElement_Vftable9_Apply_FUN_0058CCA0]] (BCS-Y-0540) case 0xCE (self test against actor+0x88), and FUN_00774AD0 (BCS-Y-1019, the 0x00CC self-actor record branch). Sibling accessor FUN_004D7460 returns zone+0x174ec. The-seamless-flip-self-actor-clamp pass; see client-architecture 'The per-actor rebuild transaction: s2c 0x00CA opens'.",
+      "notes": "7-byte accessor `return *(u32*)(RaptureElementContainer + 0x1783c)` - the local player's actor id held on RaptureElementContainer (the same object that holds the actor map at RaptureElementContainer+0x17804..+0x17808 per [[ZoneActorMap_FindById_FUN_004d9910]] (BCS-Y-0534), and the local player's actor POINTER at RaptureElementContainer+0x17838). 11 callers; the load-bearing ones for the seam are [[SelfActorAddHook_FUN_004CAF60]] (the case 0xCA self test), FUN_004DC690 case 0xCB (self-removal test against RaptureElementContainer+0x17838), [[CharaElement_Vftable9_Apply_FUN_0058CCA0]] (BCS-Y-0540) case 0xCE (self test against actor+0x88), and FUN_00774AD0 (BCS-Y-1019, the 0x00CC self-actor record branch). Sibling accessor FUN_004D7460 returns RaptureElementContainer+0x174ec. The-seamless-flip-self-actor-clamp pass; see client-architecture 'The per-actor rebuild transaction: s2c 0x00CA opens'. | [Tier C309 owner correction] The accessor reads ECX+0x1783C at 0x004D7490, and 0x0058CD88 loads ECX from the CharaElement parent-container field. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-1834",
       "sourceRefs": [
         "tools/ghidra/logs/c134_seam_self_addactor.txt"
@@ -22596,7 +22619,7 @@
       "sourceRefs": [
         "xivl-decomp:docs/resource/application-hierarchy.md"
       ],
-      "notes": "[Phase 9 ] NetworkModule ctor writes vtable 0x00F91B5C; sole caller FUN_004B2DF0 is Rapture::Init, which stores the result at Rapture+0x60.",
+      "notes": "[Phase 9] NetworkModule ctor writes vtable 0x00F91B5C; sole caller FUN_004B2DF0 is Rapture::Init, which stores the result at Rapture+0x60. | [Tier C309] This ctor also stores the 0x17D58-byte allocation from [[BCS-Y-1996]] at NetworkModule+0x8. That allocation is constructed by [[BCS-Y-1997]], whose +0x10 subobject is built by [[BCS-Y-1998]] and supplies the RaptureElementContainer `this` for [[BCS-Y-0279]]. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
       "id": "BCS-Y-1851"
     },
     {
@@ -24439,6 +24462,522 @@
       ],
       "notes": "[Tier C307] Standard MD5_Final routine used by [[BCS-Y-0008]] to finalize the full 44-byte session-field digest.",
       "id": "BCS-Y-1995"
+    },
+    {
+      "name": "Application_Rapture_Init_FUN_004B2DF0",
+      "kind": "function",
+      "address": "0x004B2DF0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
+        "manifests/symbols.json#BCS-Y-1851",
+        "manifests/symbols.json#BCS-Y-0279"
+      ],
+      "notes": "[Tier C309] Direct body evidence allocates 0x17D58 bytes and constructs it through [[BCS-Y-1997]], then separately allocates 0x3B8 bytes and constructs Application::Network::NetworkModule through [[BCS-Y-1851]]. The latter chain supplies the Application::Main::RaptureElementContainer `this` used by central dispatcher [[BCS-Y-0279]]. Confidence is structural because the allocation sizes and constructor calls are direct, while the Rapture ownership relationship is derived from the caller layout. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "id": "BCS-Y-1996"
+    },
+    {
+      "name": "Application_Main_MainModule_ctor_FUN_004DC3A0",
+      "kind": "function",
+      "address": "0x004DC3A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
+        "manifests/symbols.json#BCS-Y-1851",
+        "manifests/symbols.json#BCS-Y-0279",
+        "tools/ghidra/logs/c313_async-queue-producer.txt",
+        "tools/ghidra/logs/c316_mainmodule-prequeue-fields.txt"
+      ],
+      "notes": "[Tier C309] Direct body evidence writes Application::Main::MainModule::vftable at the allocation base and constructs its `+0x10` subobject through [[BCS-Y-1998]]. [[BCS-Y-1996]] allocates this object; [[BCS-Y-1851]] stores it at NetworkModule+0x8, and MainModule+0x10 becomes the `this` of central dispatcher [[BCS-Y-0279]]. Confidence is confirmed because the vftable write and constructor call are directly present in the function body. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [Tier C313] Direct defined-instruction evidence shows the MainModule constructor writes `this+0x17924` at 0x004DC436 and `this+0x17920` at 0x004DC448, with ESI as the same MainModule base established by the offset-zero vftable store. Evidence: tools/ghidra/logs/c313_async-queue-producer.txt. | [Tier C316] Instruction-stream register provenance identifies MainModule+0x17920 as a retained Application::Misc::RaptureFontModule pointer and MainModule+0x17924 as a retained Sqex::Input::PadDevice pointer. EBP at 0x004DC448 came from the constructor's fourth explicit argument, loaded at 0x004DC3DF and supplied by the sole caller from Rapture+0x54; ECX at 0x004DC436 came from the sixth explicit argument, loaded at 0x004DC42F and supplied from Rapture+0x40. The caller constructs those source objects through FUN_004B2B80, which writes Application::Misc::RaptureFontModule::vftable, and FUN_00D330C0, which writes Sqex::Input::PadDevice::vftable. Neither value feeds queue constructor [[BCS-Y-0802]]: 0x004DC46D pushes capacity 0xBB8, 0x004DC472 sets ECX to MainModule+0x17928, and 0x004DC478 calls FUN_004DE080. FUN_004DAA10 reads +0x17924 and dispatches through its vftable at +0x18, then reads +0x17920 and dispatches through its vftable at +0x14. The constructor also rereads +0x17920 at 0x004DC589. FindFieldRefs covered all 3,174,303 defined instructions and found five literal-displacement operand references; its WRITE/READ label is positional and it does not cover compound-address or undefined-byte readers. FindCompoundOffsetWriters completed a defined plus read-only pseudo-disassembly sweep of 3,965,883 instructions and found only the two constructor stores. Evidence: tools/ghidra/logs/c316_mainmodule-prequeue-fields.txt.",
+      "id": "BCS-Y-1997"
+    },
+    {
+      "name": "Application_Main_RaptureElementContainer_ctor_FUN_004DBF40",
+      "kind": "function",
+      "address": "0x004DBF40",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
+        "manifests/symbols.json#BCS-Y-1851",
+        "manifests/symbols.json#BCS-Y-0279"
+      ],
+      "notes": "[Tier C309] At 0x004DBFAB, direct instruction evidence writes vftable 0x00F912E4 at the subobject base; RTTI resolves it to Application::Main::RaptureElementContainer with 81 slots. Called by [[BCS-Y-1997]] for MainModule+0x10. The object reaches central dispatcher [[BCS-Y-0279]] through NetworkModule ctor [[BCS-Y-1851]]. Confidence is confirmed because the vftable write and RTTI identity are direct. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "id": "BCS-Y-1998"
+    },
+    {
+      "name": "Application_Main_RaptureElementContainer_plus0x4D8_pointer_getter_FUN_004D7370",
+      "kind": "function",
+      "address": "0x004D7370",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
+        "manifests/symbols.json#BCS-Y-1851",
+        "manifests/symbols.json#BCS-Y-0279"
+      ],
+      "notes": "[Tier C309] Seven-byte read-only accessor: `MOV EAX,[ECX+0x4D8]; RET` returns the Application::Main::RaptureElementContainer pointer field as a dword. Caller FUN_00691F30 adds `+0x98` to the pointee before use, matching central dispatcher [[BCS-Y-0279]]. The ownership chain runs through NetworkModule ctor [[BCS-Y-1851]] and container ctor [[BCS-Y-1998]]. Confidence is confirmed because the complete body directly implements the accessor. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "id": "BCS-Y-1999"
+    },
+    {
+      "name": "Application_Main_MainModule_dtor_FUN_004DBE10",
+      "kind": "function",
+      "address": "0x004DBE10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c313_async-queue-producer.txt",
+        "tools/ghidra/logs/c314_async-queue-object-identity.txt",
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "manifests/symbols.json#BCS-Y-1749",
+        "manifests/symbols.json#BCS-Y-1755"
+      ],
+      "notes": "[Tier C314] Structural MainModule destructor classification. The body restores [[BCS-Y-1755]], performs member teardown, and defined instruction 0x004DBED8 writes [[BCS-Y-1749]] vftable 0x00F90FDC to ESI+0x17928; RTTI resolves that value as Sqex::Thread::Queue<Application::Main::MainPacket>::vftable. ESI is the same MainModule base established by the offset-zero vftable store. [[BCS-Y-1996]] allocates the 0x17D58 object, [[BCS-Y-1997]] constructs it, [[BCS-Y-1998]] constructs its +0x10 RaptureElementContainer subobject, and [[BCS-Y-1999]] exposes that subobject's +0x4D8 field. Confidence is structural because the teardown role is inferred from the vftable reset and destruction sequence, while the function address and queue-vftable store are direct. Evidence: tools/ghidra/logs/c313_async-queue-producer.txt and tools/ghidra/logs/c314_async-queue-object-identity.txt.",
+      "id": "BCS-Y-2000"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot21_FUN_006DC1B0",
+      "kind": "function",
+      "address": "0x006DC1B0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 21 at VA 0x006DC1B0 is a 179-byte substantive function inherited at the same slot by PlayerBase and MyPlayer. The function pointer was read from the RTTI-anchored vftables; byte offset +0x54 is computed as slot 21 * 4. The body builds a scoped value from param_1, requires tag 0xBBE with mode 2, and returns lookup 0x3F2 or 0xFFFFFFFF after cleanup through FUN_00CC9330. No static caller is recorded, consistent with virtual dispatch. Related class: [[BCS-Y-0184]]. Confidence is structural because class and slot are direct shape evidence while no method name was recovered.",
+      "id": "BCS-Y-2001"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot22_FUN_006DC270",
+      "kind": "function",
+      "address": "0x006DC270",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 22 at VA 0x006DC270 is a 179-byte substantive function inherited at the same slot by PlayerBase, MyPlayer, and NpcBase. The function pointer was read from the RTTI-anchored vftables; byte offset +0x58 is computed as slot 22 * 4. The body builds a scoped value from param_1, requires tag 0xBBE with mode 2, and returns lookup 0x3F3 or 0xFFFFFFFF after cleanup through FUN_00CC9330. No static caller is recorded, consistent with virtual dispatch. Related class: [[BCS-Y-0184]]. Confidence is structural because class and slot are direct shape evidence while no method name was recovered.",
+      "id": "BCS-Y-2002"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot33_FUN_006DC370",
+      "kind": "function",
+      "address": "0x006DC370",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 33 at VA 0x006DC370 is a 104-byte substantive function inherited by PlayerBase, MyPlayer, and NpcBase. The function pointer was read from the RTTI-anchored vftables; byte offset +0x84 is computed as slot 33 * 4. It constructs a scoped value from param_1 and param_2, writes byte 1 to output+0x19, copies the scoped value to output+0x0, and cleans up through FUN_00CC9330. No static caller is recorded. Related class: [[BCS-Y-0184]]. Confidence is structural because the shared slot and output shape are witnessed without a method name.",
+      "id": "BCS-Y-2003"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot6_FUN_006DE3E0",
+      "kind": "function",
+      "address": "0x006DE3E0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 6 at VA 0x006DE3E0 is a 51-byte substantive function. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0x18 is computed as slot 6 * 4. It invokes param_2 virtual offsets +0x38, +0x34, and +0x3C with globals 0x0134BC70, 0x0134BC90, and 0x0134BCB0. No direct callees or static callers are resolved because all three calls are indirect. Related class: [[BCS-Y-0163]]. Confidence is structural because the class-specific slot and three-call shape are witnessed without recovered semantics.",
+      "id": "BCS-Y-2004"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot35_FUN_006DE4F0",
+      "kind": "function",
+      "address": "0x006DE4F0",
+      "confidence": "candidate",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 35 at VA 0x006DE4F0 is a 24-byte substantive function. The function pointer was read from the RTTI-anchored NpcBase vftable; byte offset +0x8C is computed as slot 35 * 4. The body tests dword this+0x144 and calls FUN_00CC73E0(this, 0) only when that dword is zero. No static caller is recorded. Related class: [[BCS-Y-0186]]. Confidence is candidate because the slot is resolved but the short body and unclassified +0x144 state do not establish a stronger role.",
+      "id": "BCS-Y-2005"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot21_FUN_006DE510",
+      "kind": "function",
+      "address": "0x006DE510",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 21 at VA 0x006DE510 is a 242-byte substantive function. The function pointer was read from the RTTI-anchored NpcBase vftable; byte offset +0x54 is computed as slot 21 * 4. It builds a scoped value, checks tag 0xBBE mode 2, reads float selector 0x7D2, and returns lookup 0x3F2 only when the float is outside the witnessed global bounds; all other paths return 0xFFFFFFFF after FUN_00CC9330 cleanup. No static caller is recorded. Related class: [[BCS-Y-0186]]. Confidence is structural because the class slot and branch shape are direct while the method name is unknown.",
+      "id": "BCS-Y-2006"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot6_FUN_006DE610",
+      "kind": "function",
+      "address": "0x006DE610",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 6 at VA 0x006DE610 is a 51-byte substantive function. The function pointer was read from the RTTI-anchored NpcBase vftable; byte offset +0x18 is computed as slot 6 * 4. It invokes param_2 virtual offsets +0x38, +0x34, and +0x3C with globals 0x0134BCD0, 0x0134BCF0, and 0x0134BD10. No direct callees or static callers are resolved because all three calls are indirect. Related class: [[BCS-Y-0186]]. Confidence is structural because the class-specific slot and call shape are witnessed without a method name.",
+      "id": "BCS-Y-2007"
+    },
+    {
+      "name": "Control::PlayerBase::vtable_slot6_FUN_006DEAC0",
+      "kind": "function",
+      "address": "0x006DEAC0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::PlayerBase vtable slot 6 at VA 0x006DEAC0 is a 51-byte substantive function. The function pointer was read from the RTTI-anchored PlayerBase vftable; byte offset +0x18 is computed as slot 6 * 4. It invokes param_2 virtual offsets +0x38, +0x34, and +0x3C with globals 0x0134BCD0, 0x0134BCF0, and 0x0134BD10, matching the NpcBase slot-6 body at a distinct VA. No static caller is recorded. Related class: [[BCS-Y-0185]]. Confidence is structural because the class-specific slot and call shape are witnessed without a method name.",
+      "id": "BCS-Y-2008"
+    },
+    {
+      "name": "Control::PlayerBase::vtable_slot41_FUN_006DEB00",
+      "kind": "function",
+      "address": "0x006DEB00",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::PlayerBase vtable slot 41 at VA 0x006DEB00 is a 43-byte substantive function, resolved directly as PlayerBase slot offset 0xA4 in manifests/vtable_resolved_evidence.json. The byte offset +0xA4 is computed as slot 41 * 4. The body writes param_3 through param_6 as four consecutive bytes at this+0xED through this+0xF0, consistent with the existing PlayerBase layout [[BCS-S-0011]]. No static caller is recorded because the witnessed path is virtual. Related class: [[BCS-Y-0185]]. Confidence is structural because the exact resolved slot and field-write shape are direct evidence.",
+      "id": "BCS-Y-2009"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot36_FUN_006E1940",
+      "kind": "function",
+      "address": "0x006E1940",
+      "confidence": "candidate",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 36 at VA 0x006E1940 is a 38-byte substantive wrapper inherited by PlayerBase and NpcBase. The function pointer was read from the RTTI-anchored vftables; byte offset +0x90 is computed as slot 36 * 4. The body calls FUN_00CC7510 and then forwards param_1 and param_2 to FUN_0076DCE0. No static caller is recorded. Related class: [[BCS-Y-0184]]. Confidence is candidate because the slot is resolved but the two-call wrapper exposes no class-specific state or recovered method role.",
+      "id": "BCS-Y-2010"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot41_FUN_006E2DE0",
+      "kind": "function",
+      "address": "0x006E2DE0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 41 at VA 0x006E2DE0 is an 81-byte substantive override, resolved directly as MyPlayer slot offset 0xA4 in manifests/vtable_resolved_evidence.json. The byte offset +0xA4 is computed as slot 41 * 4. It writes four bytes at this+0xED through this+0xF0, then calls FUN_00CC7510 and forwards the final three input values to FUN_0076A840. The writes agree with PlayerBase layout [[BCS-S-0011]]. No static caller is recorded because dispatch is virtual. Related class: [[BCS-Y-0163]]. Confidence is structural because the exact override slot and field writes are witnessed.",
+      "id": "BCS-Y-2011"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot3_FUN_006E3440",
+      "kind": "function",
+      "address": "0x006E3440",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 3 at VA 0x006E3440 is a 178-byte substantive function. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0xC is computed as slot 3 * 4. It calls FUN_006E03B0, FUN_00CC7510, FUN_00758E40, and FUN_00CC73E0, allocates 0x20 bytes, constructs a replacement through FUN_00895F50, releases the prior this+0xF8 pointer through virtual slot 0 when needed, and stores the replacement at this+0xF8. No static caller is recorded. Related class: [[BCS-Y-0163]]. Confidence is structural because the class slot and replacement-pointer sequence are direct.",
+      "id": "BCS-Y-2012"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot36_FUN_006E3500",
+      "kind": "function",
+      "address": "0x006E3500",
+      "confidence": "candidate",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 36 at VA 0x006E3500 is a 38-byte substantive wrapper. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0x90 is computed as slot 36 * 4. The body calls FUN_00CC7510 and then forwards param_1 and param_2 to FUN_0076DDC0. No static caller is recorded. Related class: [[BCS-Y-0163]]. Confidence is candidate because the override slot is resolved but the two-call wrapper exposes no class-specific state or recovered method role.",
+      "id": "BCS-Y-2013"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot24_FUN_006E3530",
+      "kind": "function",
+      "address": "0x006E3530",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 24 at VA 0x006E3530 is a 133-byte substantive function. The function pointer was read from the RTTI-anchored NpcBase vftable; byte offset +0x60 is computed as slot 24 * 4. It obtains a comparison value through FUN_0057AB60, writes to output+0 whether that value equals this+0x154, and copies the word at this+0x158 to output+2. Those reads agree with NpcBase fields hate_value and hate_aux in [[BCS-S-0010]]. No static caller is recorded. Related class: [[BCS-Y-0186]]. Confidence is structural because the slot and paired field-read shape are direct.",
+      "id": "BCS-Y-2014"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot84_FUN_006E62A0",
+      "kind": "function",
+      "address": "0x006E62A0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 84 at VA 0x006E62A0 is a 179-byte substantive function. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0x150 is computed as slot 84 * 4. It reads the first 16-byte element from the container reached through param_1+0x10, takes the bounds-failure path through FUN_009D22B4 when empty, obtains a value through FUN_0071BC90, builds a scoped copy through FUN_00CC73B0, and passes it to FUN_0075C360 before cleanup. No static caller is recorded. Related class: [[BCS-Y-0163]]. Confidence is structural because the class slot and container-consumer shape are witnessed.",
+      "id": "BCS-Y-2015"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot67_FUN_006E91F0",
+      "kind": "function",
+      "address": "0x006E91F0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 67 at VA 0x006E91F0 is a 567-byte substantive function. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0x10C is computed as slot 67 * 4. It extracts two 16-byte arguments from the param_2 container, compares a mode string against witnessed literals including `shout`, `emote`, and `group`, and dispatches to distinct FUN_0075BEF0, FUN_0075BFD0, FUN_0075C0B0, FUN_0075C190, or FUN_0075C1A0 paths before FUN_00446F50 cleanup. No static caller is recorded. Related class: [[BCS-Y-0163]]. Confidence is structural because the resolved class slot and multi-branch implementation shape are strong direct evidence without a recovered method name.",
+      "id": "BCS-Y-2016"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot37_FUN_006EEB00",
+      "kind": "function",
+      "address": "0x006EEB00",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 37 at VA 0x006EEB00 is a 242-byte substantive function inherited by PlayerBase and MyPlayer, and manifests/vtable_resolved_evidence.json resolves all three classes at slot offset 0x94. The byte offset +0x94 is computed as slot 37 * 4. It reads the first 16-byte argument unless its type byte is 6, initializes three zero dwords, calls FUN_0076D920 with the object at param_1+0xC and the extracted value, and cleans up through FUN_00581B20. No static caller is recorded. Related class: [[BCS-Y-0184]]. Confidence is structural because the multi-class resolved slot and argument-processing shape are direct.",
+      "id": "BCS-Y-2017"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot30_FUN_006EECD0",
+      "kind": "function",
+      "address": "0x006EECD0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 30 at VA 0x006EECD0 is a 166-byte substantive function also inherited by NpcBase. The function pointer was read from the RTTI-anchored vftables; byte offset +0x78 is computed as slot 30 * 4. It copies param_3+0x50 and +0xB5 into internal state, allocates 0x5C bytes, constructs from param_3+0x54, calls FUN_007195D0, FUN_007643F0, and FUN_00765E30, then ends at noreturn FUN_009D1B17(param_3). The direct caller is [[BCS-Y-0215]]. The 166-byte size is the fresh instruction-stream body size even though decompiled C stops at FUN_009D1B17. Related class: [[BCS-Y-0184]]. Confidence is structural because the inherited slot and ownership-transfer sequence are direct.",
+      "id": "BCS-Y-2018"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot37_FUN_006F0020",
+      "kind": "function",
+      "address": "0x006F0020",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 37 at VA 0x006F0020 is a 497-byte substantive override, resolved directly as NpcBase slot offset 0x94 in manifests/vtable_resolved_evidence.json. The byte offset +0x94 is computed as slot 37 * 4. It parses up to three 16-byte arguments with bounds checks, builds local collection state through FUN_00721720 and FUN_00723100, then either allocates a 0x14-byte object for FUN_007218E0 or dispatches through FUN_0076D920 before FUN_00581B20 cleanup. No static caller is recorded. Related class: [[BCS-Y-0186]]. Confidence is structural because the exact override slot and substantial argument-dispatch shape are direct.",
+      "id": "BCS-Y-2019"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot4_FUN_006F3000",
+      "kind": "function",
+      "address": "0x006F3000",
+      "confidence": "candidate",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 4 at VA 0x006F3000 is a 47-byte substantive function inherited by PlayerBase. The function pointer was read from the RTTI-anchored vftables; byte offset +0x10 is computed as slot 4 * 4. If this[0x36] is nonzero and FUN_006F1A40 returns 1, it invokes virtual offset +0x8C with param_2; otherwise it returns without dispatch. No static caller is recorded. Related class: [[BCS-Y-0184]]. Confidence is candidate because the slot is resolved but the compact gated-dispatch body does not identify the underlying role.",
+      "id": "BCS-Y-2020"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot4_FUN_006F3110",
+      "kind": "function",
+      "address": "0x006F3110",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 4 at VA 0x006F3110 is a 241-byte substantive override. The function pointer was read from the RTTI-anchored NpcBase vftable; byte offset +0x10 is computed as slot 4 * 4. It retains the CharaBase gated virtual +0x8C dispatch, then compares this[0x51] with FUN_009D5725(NULL); when due, it calls FUN_0075F330 with this[0x52] through this[0x54] and advances this[0x51] to current time plus 1. No static caller is recorded. Related class: [[BCS-Y-0186]]. Confidence is structural because the class override and timed state-update shape are direct.",
+      "id": "BCS-Y-2021"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot34_FUN_00704820",
+      "kind": "function",
+      "address": "0x00704820",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 34 at VA 0x00704820 is a 60-byte substantive function. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0x88 is computed as slot 34 * 4. It first calls FUN_006FA840, then writes byte 1 to this+0x167 when param_3 equals 0xB or 0xD and writes byte 0 otherwise. This records only the witnessed branch polarity, without assigning semantic polarity to the flag. No static caller is recorded. Related class: [[BCS-Y-0163]]. Confidence is structural because the class slot and exact conditional write are direct.",
+      "id": "BCS-Y-2022"
+    },
+    {
+      "name": "Control::PlayerBase::vtable_slot39_FUN_00706D90",
+      "kind": "function",
+      "address": "0x00706D90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::PlayerBase vtable slot 39 at VA 0x00706D90 is a 37-byte substantive function inherited by MyPlayer, and manifests/vtable_resolved_evidence.json resolves both classes at slot offset 0x9C. The byte offset +0x9C is computed as slot 39 * 4. It sign-extends the byte at this+0xF1 into a local dword and passes that value by address to FUN_00584F70. The read agrees with PlayerBase job_slot in [[BCS-S-0011]]. No static caller is recorded. Related class: [[BCS-Y-0185]]. Confidence is structural because the exact resolved slot and field read are direct.",
+      "id": "BCS-Y-2023"
+    },
+    {
+      "name": "Control::CharaBase::vtable_slot40_FUN_0071E030",
+      "kind": "function",
+      "address": "0x0071E030",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::CharaBase vtable slot 40 at VA 0x0071E030 is an 81-byte substantive function inherited by PlayerBase and MyPlayer, and manifests/vtable_resolved_evidence.json resolves all three classes at slot offset 0xA0. The byte offset +0xA0 is computed as slot 40 * 4. The decompiled body writes dword global DAT_0130C778 to the caller-provided output pointer and returns. No static caller is recorded. Related class: [[BCS-Y-0184]]. Confidence is structural because the multi-class resolved slot and copy-out shape are direct.",
+      "id": "BCS-Y-2024"
+    },
+    {
+      "name": "Control::PlayerBase::vtable_slot1_FUN_00721290",
+      "kind": "function",
+      "address": "0x00721290",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::PlayerBase vtable slot 1 at VA 0x00721290 is a 97-byte factory. The function pointer was read from the RTTI-anchored PlayerBase vftable; byte offset +0x4 is computed as slot 1 * 4. It allocates 0xF8 bytes through FUN_009D1B35, returns zero on allocation failure, and otherwise returns the object constructed by FUN_006ED720. No static caller is recorded. Related class: [[BCS-Y-0185]]. Confidence is structural because allocation size, constructor, class identity, and slot are direct.",
+      "id": "BCS-Y-2025"
+    },
+    {
+      "name": "Control::PlayerBase::vtable_slot0_FUN_00721390",
+      "kind": "function",
+      "address": "0x00721390",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::PlayerBase vtable slot 0 at VA 0x00721390 is a 93-byte deleting destructor. The function pointer was read from the RTTI-anchored PlayerBase vftable; byte offset +0x0 is computed as slot 0 * 4. It writes PlayerBase::vftable to this, calls base teardown FUN_006ECE20, and calls noreturn FUN_009D1B17(this) when flag bit 0 is set. No static caller is recorded. Related class: [[BCS-Y-0185]]. Confidence is structural because the class vftable write, teardown, conditional free, and slot are direct.",
+      "id": "BCS-Y-2026"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot40_FUN_0072D000",
+      "kind": "function",
+      "address": "0x0072D000",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 40 at VA 0x0072D000 is an 81-byte substantive function, resolved directly as NpcBase slot offset 0xA0 in manifests/vtable_resolved_evidence.json. The byte offset +0xA0 is computed as slot 40 * 4. The body copies the dword at this+0x154 to the caller-provided output pointer, matching NpcBase hate_value in [[BCS-S-0010]]. No static caller is recorded because dispatch is virtual. Related class: [[BCS-Y-0186]]. Confidence is structural because the exact override slot and field copy are direct.",
+      "id": "BCS-Y-2027"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot1_FUN_0073E740",
+      "kind": "function",
+      "address": "0x0073E740",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 1 at VA 0x0073E740 is a 97-byte factory. The function pointer was read from the RTTI-anchored NpcBase vftable; byte offset +0x4 is computed as slot 1 * 4. It allocates 0x160 bytes through FUN_009D1B35, returns zero on allocation failure, and otherwise returns the object constructed by FUN_006F3650. No static caller is recorded. Related class: [[BCS-Y-0186]]. Confidence is structural because allocation size, constructor, class identity, and slot are direct.",
+      "id": "BCS-Y-2028"
+    },
+    {
+      "name": "Control::NpcBase::vtable_slot0_FUN_0073E7B0",
+      "kind": "function",
+      "address": "0x0073E7B0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::NpcBase vtable slot 0 at VA 0x0073E7B0 is a 27-byte deleting-destructor wrapper. The function pointer was read from the RTTI-anchored NpcBase vftable; byte offset +0x0 is computed as slot 0 * 4. It calls FUN_006F37A0 and then calls noreturn FUN_009D1B17(this) when flag bit 0 is set. No static caller is recorded. Related class: [[BCS-Y-0186]]. Confidence is structural because the class slot, destructor call, and conditional free are direct despite the compact wrapper.",
+      "id": "BCS-Y-2029"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot1_FUN_00749180",
+      "kind": "function",
+      "address": "0x00749180",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 1 at VA 0x00749180 is a 97-byte factory. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0x4 is computed as slot 1 * 4. It allocates 0x168 bytes through FUN_009D1B35, returns zero on allocation failure, and otherwise returns the object constructed by FUN_006F9140. No static caller is recorded. Related class: [[BCS-Y-0163]]. Confidence is structural because allocation size, constructor, class identity, and slot are direct.",
+      "id": "BCS-Y-2030"
+    },
+    {
+      "name": "Control::MyPlayer::vtable_slot0_FUN_007493E0",
+      "kind": "function",
+      "address": "0x007493E0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c315_held-vtable-slot-targets.txt",
+        "tools/ghidra/logs/c315_actor-rtti-details.txt",
+        "tools/ghidra/logs/c315_actor-vtable-slot-map.txt",
+        "manifests/vtable_resolved_evidence.json"
+      ],
+      "notes": "[Tier C315] Control::MyPlayer vtable slot 0 at VA 0x007493E0 is a 27-byte deleting-destructor wrapper. The function pointer was read from the RTTI-anchored MyPlayer vftable; byte offset +0x0 is computed as slot 0 * 4. It calls FUN_006F9310 and then calls noreturn FUN_009D1B17(this) when flag bit 0 is set. No static caller is recorded. Related class: [[BCS-Y-0163]]. Confidence is structural because the class slot, destructor call, and conditional free are direct despite the compact wrapper.",
+      "id": "BCS-Y-2031"
+    },
+    {
+      "name": "LuaActorImpl::vtable_slot57_RunEventFunction_decoder_FUN_0076C220",
+      "kind": "function",
+      "address": "0x0076C220",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/trade_message_routing.json",
+        "tools/ghidra/logs/c318_trade-message-routing.txt",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "notes": "[Tier C318] LuaActorImpl vtable slot 57 generic RunEventFunction decoder on the s2c 0x0130 route from [[BCS-Y-0280]] through [[BCS-Y-0592]]. The instruction stream reads u32 handles at payload+0x00/+0x04, event type at +0x08, fixed string inputs at +0x09/+0x29, and a 0x40-byte Lua parameter input at +0x49 before constructing StartServerOrderEventFunctionReceiver. The decoder contains no trade-specific token, notice-code branch, or dedicated trade opcode; trade specialization remains data-selected through the function name and Lua arguments. Evidence and exact read-only recipe: manifests/trade_message_routing.json and tools/ghidra/logs/c318_trade-message-routing.txt.",
+      "id": "BCS-Y-2032"
     }
   ]
 }
