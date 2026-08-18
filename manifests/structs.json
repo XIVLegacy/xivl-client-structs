@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 85,
+  "structCount": 88,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -8433,6 +8433,114 @@
       ],
       "notes": "Full byte-accounted LuaDebugSelect layout. Its factory allocates exactly 0x100 bytes. The constructor allocates one 0x30-byte selection handler and embeds a second 0x30-byte routed-event handler at +0xD0, which closes exactly at the allocation boundary.",
       "id": "BCS-S-0085"
+    },
+    {
+      "name": "ComponentLuaGameEngineLuaControl",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c329_lua-control-layouts.txt",
+        "tools/ghidra/logs/c329_lua-control-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void **",
+          "notes": "Written by FUN_00CCCB70 and replaced by the most-derived control-class constructor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "allocator_state",
+          "type": "unknown",
+          "notes": "Zero-initialized by the LuaControl constructor. RTTI places the non-polymorphic Lge allocator chain at +0x04, but the concrete state type is unresolved."
+        }
+      ],
+      "notes": "Byte-accounted LuaControl base layout. Its constructor initializes two dwords, and ActorBase construction begins the next embedded member at +0x08, closing the base-subobject extent.",
+      "id": "BCS-S-0086"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlActorBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c329_lua-control-layouts.txt",
+        "tools/ghidra/logs/c329_lua-control-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "lua_control",
+          "type": "ComponentLuaGameEngineLuaControl",
+          "notes": "Primary LuaControl base subobject. ActorBase construction replaces its vftable with the ActorBase vftable."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x54",
+          "name": "identity_storage",
+          "type": "unknown[0x54]",
+          "notes": "Embedded helper constructed through FUN_00445CF0 and destroyed through FUN_00446F50. Instructions 0x006DBBA5 and 0x006DBC16 fix its base at ActorBase +0x08, but its exact library type is unresolved."
+        },
+        {
+          "offset": "0x5C",
+          "size": "0x01",
+          "name": "flag_5c",
+          "type": "uint8_t",
+          "notes": "Zero-initialized by the ActorBase constructor; exact semantics are unresolved."
+        },
+        {
+          "offset": "0x5D",
+          "size": "0x01",
+          "name": "flag_5d",
+          "type": "uint8_t",
+          "notes": "Zero-initialized by the ActorBase constructor; exact semantics are unresolved."
+        },
+        {
+          "offset": "0x5E",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[2]",
+          "notes": "Unobserved bytes closing ActorBase at its exact 0x60-byte factory allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted ActorBase layout. FUN_007185E0 allocates exactly 0x60 bytes. Constructor and destructor instructions place the only nontrivial derived member at +0x08 and the two cleared flags at +0x5C and +0x5D.",
+      "id": "BCS-S-0087"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlStatusBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x64",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c329_lua-control-layouts.txt",
+        "tools/ghidra/logs/c329_lua-control-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject constructed first and destroyed last."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "lua_global_tentative_control_vftable",
+          "type": "void **",
+          "notes": "Secondary LuaGlobalTentativeControl subobject vftable. The base constructor installs the LGTC table here, then StatusBase overwrites it with its secondary table at 0x00FDF8D4. Construction and destruction both load the subobject base from complete-object +0x60."
+        }
+      ],
+      "notes": "Full byte-accounted StatusBase layout. Its clone factory allocates exactly 100 decimal bytes (0x64). Direct instructions establish the ActorBase primary subobject through +0x5F and the final LGTC-derived secondary vftable at +0x60.",
+      "id": "BCS-S-0088"
     }
   ],
   "method": {
@@ -8502,6 +8610,16 @@
     "c328FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c328_luadebug-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x54,0xC0,0xC4,0xD0'; XIVL_BASE_REGS = 'ESI,EDI' } -ScriptPath @('ghidra')",
     "c328FieldRefInputs": "offsets 0x54, 0xC0, 0xC4, and 0xD0; base registers ESI and EDI",
     "c328FieldRefOutput": "tools/ghidra/logs/c328_luadebug-fieldrefs.txt",
-    "c328Limits": "The field-reference export is used only for positive constructor and destructor placements, including the previously known LuaDebugSelect +0xD0 delegate as calibration. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the seventeen requested functions."
+    "c328Limits": "The field-reference export is used only for positive constructor and destructor placements, including the previously known LuaDebugSelect +0xD0 delegate as calibration. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the seventeen requested functions.",
+    "c329Topic": "C329 Lua control base layouts",
+    "c329ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset.",
+    "c329DumpInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c329_lua-control-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CCCB70,0x006DBB70,0x006DBBE0,0x007185E0,0x00776200,0x00776270,0x007762E0,0x00CCCBF0,0x00CCCC00' } -ScriptPath @('ghidra')",
+    "c329DumpInputs": "LuaControl, ActorBase, StatusBase, and LuaGlobalTentativeControl constructors and destructors plus the exact ActorBase and StatusBase allocation factories",
+    "c329DumpOutput": "tools/ghidra/logs/c329_lua-control-layouts.txt",
+    "c329FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c329_lua-control-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x8,0x5C,0x60'; XIVL_BASE_REGS = 'ESI' } -ScriptPath @('ghidra')",
+    "c329FieldRefInputs": "offsets 0x08, 0x5C, and 0x60; base register ESI",
+    "c329FieldRefOutput": "tools/ghidra/logs/c329_lua-control-fieldrefs.txt",
+    "c329InstructionEvidence": "Direct instructions 0x00776245 and 0x0077624B write vftable VAs 0x00FDF8DC at complete-object +0 and 0x00FDF8D4 at +0x60 respectively, correcting the prior primary and secondary labels.",
+    "c329Limits": "The field-reference export is used only for positive member placements, with the previously known StatusBase +0x60 subobject as calibration. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the nine requested functions."
   }
 }
