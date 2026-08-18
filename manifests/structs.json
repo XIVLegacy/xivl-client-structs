@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 124,
+  "structCount": 129,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -10647,7 +10647,10 @@
         "BCS-Y-1843",
         "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
         "tools/ghidra/logs/s6_scene-module-drain-6.txt",
-        "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt"
+        "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt",
+        "tools/ghidra/logs/c344_thread-coordination.txt",
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
       ],
       "fields": [
         {
@@ -10695,16 +10698,16 @@
         {
           "offset": "0x390",
           "size": "0x044",
-          "name": "scene_world_state",
-          "type": "unknown[0x44]",
-          "notes": "Constructor-built synchronization/runtime object passed to RaptureWorld; its concrete class is unresolved."
+          "name": "resource_module",
+          "type": "ComponentResourceResourceModule",
+          "notes": "Embedded Component::Resource::ResourceModule. Direct instructions construct it at SceneThreadImpl+0x390 with the supplied FileThread pointer and capacity 1000."
         },
         {
           "offset": "0x3D4",
           "size": "0x044",
-          "name": "scene_render_state",
-          "type": "unknown[0x44]",
-          "notes": "Second constructor-built synchronization/runtime object passed to RaptureWorld; its concrete class is unresolved."
+          "name": "excel_module",
+          "type": "ComponentExcelExcelModule",
+          "notes": "Embedded Component::Excel::ExcelModule constructed at SceneThreadImpl+0x3D4 with the preceding ResourceModule as its explicit dependency."
         },
         {
           "offset": "0x418",
@@ -10840,7 +10843,7 @@
           "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
         }
       ],
-      "notes": "Full byte-accounted SceneThreadImpl layout. SceneThread allocates exactly 0x580 bytes; constructor, queue/drain, readiness, RaptureWorld, and teardown evidence establish the queue, synchronization regions, module/context pointers, owned world, and eight closing 0x28-byte callback-tree headers. The large scene-driver base and several helper types remain unknown-typed.",
+      "notes": "Full byte-accounted SceneThreadImpl layout. SceneThread allocates exactly 0x580 bytes; constructor, queue/drain, readiness, resource and Excel module, RaptureWorld, and teardown evidence establish the queue, embedded service modules, module/context pointers, owned world, and eight closing 0x28-byte callback-tree headers. The large scene-driver base and several helper types remain unknown-typed.",
       "id": "BCS-S-0121"
     },
     {
@@ -10997,6 +11000,287 @@
       ],
       "notes": "Full byte-accounted shared/exclusive lock. Constructor and lock operations establish both atomic counters and the embedded mutex. An owner constructs the lock at +0x18 and writes its next field at +0x40, fixing the exact 0x28-byte boundary.",
       "id": "BCS-S-0124"
+    },
+    {
+      "name": "SqexThreadQueueComponentResourceResourcePtr",
+      "namespace": "Sqex::Thread",
+      "size": "0x1C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1750",
+        "BCS-Y-1770",
+        "tools/ghidra/logs/c344_thread-coordination.txt",
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Thread::Queue<Component::Resource::Resource *> vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "capacity",
+          "type": "uint32_t",
+          "notes": "Number of Resource pointer slots; ResourceModule constructs this queue with capacity 1000."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "head_consumer",
+          "type": "uint32_t",
+          "notes": "Atomic read cursor, initialized to zero by the shared queue-header helper."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "tail_producer",
+          "type": "uint32_t",
+          "notes": "Atomic write cursor, initialized to zero by the shared queue-header helper."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "depth_counter",
+          "type": "uint32_t",
+          "notes": "Atomic published-entry count, initialized to zero by the shared queue-header helper."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "slot_state_array",
+          "type": "uint32_t *",
+          "notes": "Capacity-sized array of four-byte slot-state objects."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "entries",
+          "type": "ComponentResourceResource **",
+          "notes": "Capacity-sized ring storage for Resource pointers."
+        }
+      ],
+      "notes": "Full byte-accounted Resource pointer queue header embedded at ResourceModule+0x28. Its template identity is RTTI-confirmed, and its constructor initializes the same cursor/depth header shape as Queue<ScenePacket> before allocating capacity-sized state and pointer arrays.",
+      "id": "BCS-S-0125"
+    },
+    {
+      "name": "ComponentResourceResourceModuleBase",
+      "namespace": "Component::Resource",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Component::Resource::ResourceModuleBase vftable; a derived ResourceModule replaces it in complete objects."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared base state dword; higher-level semantics are unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared base state dword; higher-level semantics are unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x0C",
+          "name": "container_0",
+          "type": "unknown[0x0C]",
+          "notes": "Self-linked container header with its sentinel at +0x10 and count at +0x14; key and node types are unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x0C",
+          "name": "container_1",
+          "type": "unknown[0x0C]",
+          "notes": "Second self-linked container header with its sentinel at +0x1C and count at +0x20; key and node types are unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted ResourceModuleBase prefix. Its constructor initializes two state dwords and two independent self-linked container headers; ResourceModule's first derived field at +0x24 fixes the exact base boundary.",
+      "id": "BCS-S-0126"
+    },
+    {
+      "name": "ComponentResourceResourceModule",
+      "namespace": "Component::Resource",
+      "size": "0x44",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c344_thread-coordination.txt",
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x24",
+          "name": "resource_module_base",
+          "type": "ComponentResourceResourceModuleBase",
+          "notes": "ResourceModuleBase prefix; complete construction replaces its vftable with Component::Resource::ResourceModule."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "file_thread",
+          "type": "ComponentResourceFileThread *",
+          "notes": "Constructor-supplied Component::Resource::FileThread dependency."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x1C",
+          "name": "resource_queue",
+          "type": "SqexThreadQueueComponentResourceResourcePtr",
+          "notes": "Embedded Resource pointer queue constructed with capacity 1000 in SceneThreadImpl."
+        }
+      ],
+      "notes": "Full byte-accounted ResourceModule. MainModule allocates this class as exactly 0x44 bytes; direct instructions establish the 0x24-byte base, FileThread pointer, and closing 0x1C-byte Resource pointer queue. SceneThreadImpl embeds the same class at +0x390.",
+      "id": "BCS-S-0127"
+    },
+    {
+      "name": "ComponentExcelExcelModule",
+      "namespace": "Component::Excel",
+      "size": "0x44",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c344_thread-coordination.txt",
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "primary_vftable",
+          "type": "void *",
+          "notes": "Component::Excel::ExcelModule complete-object vftable at 0x01108C00."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "resource_event_vftable",
+          "type": "void *",
+          "notes": "Adjusted Component::Excel::ExcelModule vftable at 0x01108BF0 for the ResourceEvent-facing subobject."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "resource_module",
+          "type": "ComponentResourceResourceModule *",
+          "notes": "Constructor-supplied ResourceModule dependency; SceneThreadImpl passes its embedded module at +0x390."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state_0c",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared Excel runtime state; concrete semantics are unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "state_10",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared Excel runtime state; concrete semantics are unresolved."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "state_14",
+          "type": "int32_t",
+          "notes": "Constructor initializes this signed state dword to -1; its value domain is unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "opaque_18",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x10",
+          "name": "runtime_state",
+          "type": "uint32_t[4]",
+          "notes": "Four constructor-cleared Excel runtime dwords whose individual semantics are unresolved."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x0C",
+          "name": "container_2c",
+          "type": "unknown[0x0C]",
+          "notes": "Self-linked container header with sentinel at +0x30 and count at +0x34; key and node types are unresolved."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x08",
+          "name": "opaque_38",
+          "type": "unknown[0x08]",
+          "notes": "Unobserved storage between the registry header and final constructor-cleared dword."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x04",
+          "name": "state_40",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared final Excel runtime dword."
+        }
+      ],
+      "notes": "Full byte-accounted ExcelModule. RTTI confirms both complete and adjusted vftables. MainModule allocates the class as exactly 0x44 bytes, while SceneThreadImpl constructs it at +0x3D4 immediately before the known +0x418 field and passes its embedded ResourceModule as the dependency.",
+      "id": "BCS-S-0128"
+    },
+    {
+      "name": "SqexThreadThreadManager",
+      "namespace": "Sqex::Thread",
+      "size": "0x2C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1746",
+        "BCS-Y-1766",
+        "tools/ghidra/logs/c344_thread-coordination.txt",
+        "tools/ghidra/logs/c345_thread-coordination-helpers.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Thread::ThreadManager vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x1C",
+          "name": "registry_mutex",
+          "type": "SqexThreadMutex",
+          "notes": "Embedded mutex whose critical section at ThreadManager+0x08 serializes registry traversal and insertion."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x0C",
+          "name": "thread_registry",
+          "type": "unknown[0x0C]",
+          "notes": "Self-linked registry header with sentinel pointer at +0x24 and count at +0x28; its concrete container and node types remain unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted ThreadManager embedded at Application::Rapture+0x08. Direct instructions place the Mutex at +0x04, registry header at +0x20, and the next owner field at +0x34, fixing the exact 0x2C-byte boundary. Registry methods lock the embedded critical section and compare stored thread pointers, but the concrete container template remains unresolved.",
+      "id": "BCS-S-0129"
     }
   ],
   "method": {
@@ -11200,6 +11484,25 @@
     "c343Output": "tools/ghidra/logs/c343_thread-primitive-boundaries.txt",
     "c343InstructionEvidence": "Configured retail instruction excerpts appended to the C343 archive preserve implicit ECX placement: ReadWriteLock is constructed at owner+0x18 before the next owner field at +0x40; Mutex is constructed at ReadWriteLock+0x0C; and the 0x3C SocketThread allocation writes its first derived field at +0x38 after Thread construction.",
     "c342ExistingEvidence": "BCS-Y-1744/1745/1747 and BCS-Y-1764/1765/1767 supplied the RTTI identities; C339 supplied the independent SceneThread derived-base boundary.",
-    "c342Limits": "The Thread +0x08 state domain, the higher-level meaning of its constructor option and retained creation parameter, and the operating-system-private members of CRITICAL_SECTION remain unresolved. These are kept unknown-typed or conservatively named. No negative reference-topology claim relies on these exports."
+    "c342Limits": "The Thread +0x08 state domain, the higher-level meaning of its constructor option and retained creation parameter, and the operating-system-private members of CRITICAL_SECTION remain unresolved. These are kept unknown-typed or conservatively named. No negative reference-topology claim relies on these exports.",
+    "c344Topic": "C344 resource and thread coordination layouts",
+    "c344ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c344Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c344_thread-coordination.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00C99090,0x00C98C30,0x00D34E60,0x00D34E90,0x00D3500A,0x004B2DF0,0x004EA870' } -ScriptPath @('ghidra')",
+    "c344Inputs": "ResourceModule and ExcelModule constructors, ThreadManager constructor and destructor interiors, their shared MainModule owner, and SceneThreadImpl construction",
+    "c344Output": "tools/ghidra/logs/c344_thread-coordination.txt",
+    "c345Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c345_thread-coordination-helpers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B3B50,0x004B3AA0,0x00D34DC0,0x00D34F70,0x00D35050,0x00D351C0,0x00D51550,0x004588E0,0x00458900' } -ScriptPath @('ghidra')",
+    "c345Inputs": "ThreadManager owner construction and teardown, registry lookup/insert/drain helpers, sentinel allocation, and embedded Mutex construction and teardown",
+    "c345Output": "tools/ghidra/logs/c345_thread-coordination-helpers.txt",
+    "c346RejectedInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c346_resource-excel-helpers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00C97C50,0x00C96C10,0x0099B960,0x00C96780,0x00C98CD8,0x00C99130' } -ScriptPath @('ghidra')",
+    "c346RejectedOutput": "tools/ghidra/logs/c346_resource-excel-helpers.txt",
+    "c346RejectedReason": "The exploratory export is archived but supplies no evidence because 0x00C98CD8 was not a function entry; the successful C347 rerun contains only validated sections.",
+    "c347Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c347_resource-excel-helpers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00C97C50,0x00C96C10,0x0099B960,0x00C96780,0x00C99130' } -ScriptPath @('ghidra')",
+    "c347Inputs": "ResourceModuleBase and Queue<Resource *> constructors, shared container sentinel allocator, and FileThread teardown; 0x00C99130 was inspected but is not used for a layout claim",
+    "c347Output": "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+    "c348Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script ExtractRtti.java -ReadOnly -ScriptEnv @{ XIVL_RTTI_OUT = 'C:\\Users\\aeshu\\Documents\\Repos\\XIVLegacy\\xivl-client-structs\\tools\\ghidra\\logs\\c348_thread-coordination-rtti.txt' } -ScriptPath @('tools\\ghidra')",
+    "c348Inputs": "Full RTTI export used for the exact ResourceModuleBase, ResourceModule, ExcelModule, Queue<Resource *>, and ThreadManager class identities",
+    "c348Output": "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+    "c344InstructionEvidence": "Configured retail instruction excerpts appended to C344 preserve implicit ECX placement: ResourceModule is at SceneThreadImpl+0x390, ExcelModule is at +0x3D4, ResourceModule contains Queue<Resource *> at +0x28, and ThreadManager is the exact 0x2C-byte Application::Rapture subobject at +0x08.",
+    "c344Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. C346 is explicitly rejected because one requested VA lacked a function section. No negative reference-topology claim relies on these exports. ResourceModuleBase container key/node types, ExcelModule state semantics, and ThreadManager registry template remain unresolved and are kept unknown-typed."
   }
 }
