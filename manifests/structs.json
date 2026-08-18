@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 134,
+  "structCount": 139,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -11591,6 +11591,431 @@
       ],
       "notes": "Full byte-accounted Application::Rapture layout embedded at Main+0x30. Direct instructions place the next Main subobject at +0x3A0, fixing the exact 0x370-byte extent. RTTI confirms the two adjusted Rapture vftables; constructor and reuse evidence establish ThreadManager, two pad states, mouse and keyboard states, CDevTimer, and the closing flags.",
       "id": "BCS-S-0134"
+    },
+    {
+      "name": "SqexMiscUtf8StringLayout",
+      "namespace": "Sqex::Misc",
+      "size": "0x54",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-1709",
+        "tools/ghidra/logs/c351_main-runtime.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "data",
+          "type": "char *",
+          "notes": "Points at inline_buffer after default construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "inline_capacity",
+          "type": "uint32_t",
+          "notes": "Default constructor writes the 0x40-byte inline capacity."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "uint32_t",
+          "notes": "Default constructor initializes this unresolved string state to 1."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "length",
+          "type": "uint32_t",
+          "notes": "Default constructor clears this string length/state dword."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "inline_state",
+          "type": "uint8_t",
+          "notes": "Default constructor initializes the first storage-mode byte to 1."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "ownership_state",
+          "type": "uint8_t",
+          "notes": "Default constructor initializes the second storage-mode byte to 1; exact flag semantics remain unresolved."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x42",
+          "name": "inline_buffer",
+          "type": "char[0x42]",
+          "notes": "Inline storage begins with a null terminator. Repeated 0x54-byte placements fix its full extent without asserting usable character capacity beyond the initialized 0x40 value."
+        }
+      ],
+      "notes": "Full byte-accounted inline string layout used pervasively by the client. Direct initialization fixes the header and inline-buffer start; ten consecutive SystemConfig members and the following Main member fix the exact 0x54-byte stride. The structural name avoids asserting a precise library template identity that RTTI does not provide.",
+      "id": "BCS-S-0135"
+    },
+    {
+      "name": "SqexCryptCert",
+      "namespace": "Sqex::Crypt",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c351_main-runtime.txt",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_0044c710.cpp"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Crypt::Cert vftable at 0x00F6738C."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "certificate",
+          "type": "void *",
+          "notes": "Owned certificate subobject allocated as four bytes by the constructor; its concrete implementation type remains unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::Crypt::Cert. RTTI confirms the class identity, its constructor writes the vftable and owned pointer, and placement at SystemConfig+0x4D8 immediately before the enclosing +0x4E0 boundary fixes the exact size.",
+      "id": "BCS-S-0136"
+    },
+    {
+      "name": "ApplicationMiscSystemConfig",
+      "namespace": "Application::Misc",
+      "size": "0x4E0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1709",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c351_main-runtime.txt",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_00444150.cpp",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_0044c710.cpp"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Misc::SystemConfig vftable at 0x00F90A50, replacing the Sqex::Misc::Config base vftable."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "config_entry_count",
+          "type": "uint32_t",
+          "notes": "Sqex::Misc::Config base constructor receives and stores 10."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x004",
+          "name": "config_entries",
+          "type": "void *",
+          "notes": "Owned entry storage allocated by the Sqex::Misc::Config base constructor; the concrete entry type remains unresolved."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x001",
+          "name": "config_state_flag",
+          "type": "uint8_t",
+          "notes": "Sqex::Misc::Config base constructor clears this byte."
+        },
+        {
+          "offset": "0x00D",
+          "size": "0x013",
+          "name": "opaque_00d",
+          "type": "unknown[0x13]",
+          "notes": "Unobserved remainder of the inherited/configuration header before SystemConfig-specific state."
+        },
+        {
+          "offset": "0x020",
+          "size": "0x004",
+          "name": "state_020",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared SystemConfig state."
+        },
+        {
+          "offset": "0x024",
+          "size": "0x004",
+          "name": "state_024",
+          "type": "int32_t",
+          "notes": "Constructor initializes this signed state to -1."
+        },
+        {
+          "offset": "0x028",
+          "size": "0x008",
+          "name": "state_028",
+          "type": "uint32_t[2]",
+          "notes": "Two constructor-cleared state dwords."
+        },
+        {
+          "offset": "0x030",
+          "size": "0x002",
+          "name": "state_flags",
+          "type": "uint8_t[2]",
+          "notes": "Constructor writes 1 then 0 to these adjacent flags."
+        },
+        {
+          "offset": "0x032",
+          "size": "0x002",
+          "name": "opaque_032",
+          "type": "unknown[2]",
+          "notes": "Unobserved bytes before the next aligned state block."
+        },
+        {
+          "offset": "0x034",
+          "size": "0x014",
+          "name": "runtime_state",
+          "type": "uint32_t[5]",
+          "notes": "Five constructor-cleared SystemConfig state dwords."
+        },
+        {
+          "offset": "0x048",
+          "size": "0x348",
+          "name": "config_strings",
+          "type": "SqexMiscUtf8StringLayout[10]",
+          "notes": "Ten consecutive inline strings at 0x54-byte strides through +0x38F."
+        },
+        {
+          "offset": "0x390",
+          "size": "0x148",
+          "name": "cleared_state",
+          "type": "unknown[0x148]",
+          "notes": "Constructor clears the complete region with memset; member partition and types remain unresolved."
+        },
+        {
+          "offset": "0x4D8",
+          "size": "0x008",
+          "name": "certificate",
+          "type": "SqexCryptCert",
+          "notes": "Embedded Sqex::Crypt::Cert at the exact tail boundary."
+        }
+      ],
+      "notes": "Full byte-accounted Application::Misc::SystemConfig embedded at Main+0x3A0. Direct instructions establish its Sqex::Misc::Config header, state writes, ten inline strings, 0x148-byte cleared region, and final Cert. The following Main member at +0x880 fixes the exact 0x4E0-byte extent.",
+      "id": "BCS-S-0137"
+    },
+    {
+      "name": "SqexLoginSqexIdAuthentication",
+      "namespace": "Sqex::Login",
+      "size": "0x88",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1709",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c351_main-runtime.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Login::SqexIdAuthentication vftable at 0x00F6742C."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "opaque_04",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "shared_state",
+          "type": "void *",
+          "notes": "Main passes the address of its +0x14 shared authentication state."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "opaque_0c",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "timeout_ms",
+          "type": "uint32_t",
+          "notes": "Main constructs the object with 40000 milliseconds."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "mode",
+          "type": "uint32_t",
+          "notes": "Main constructs the object with mode 0."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "state_18",
+          "type": "uint32_t",
+          "notes": "Constructor initializes this state dword to 1."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "uint32_t",
+          "notes": "Constructor clears this state dword."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x08",
+          "name": "opaque_20",
+          "type": "unknown[0x08]",
+          "notes": "Constructor does not expose these two dwords' types or initialization."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x08",
+          "name": "runtime_state",
+          "type": "uint32_t[2]",
+          "notes": "Two constructor-cleared authentication state dwords."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "opaque_30",
+          "type": "unknown[0x04]",
+          "notes": "Unobserved dword before the inline string member."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x54",
+          "name": "credential_string",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline string initialized by the shared constructor and ending at the exact object boundary."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex::Login::SqexIdAuthentication embedded at Main+0x8D8. RTTI confirms its identity; direct constructor instructions establish the shared-state pointer, timeout, mode, runtime state, and closing string. The following Main field at +0x960 fixes the exact 0x88-byte extent.",
+      "id": "BCS-S-0138"
+    },
+    {
+      "name": "Main",
+      "namespace": "Global",
+      "size": "0x968",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c351_main-runtime.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Main vftable at 0x00F54A24."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "opaque_004",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x003",
+          "name": "runtime_flags",
+          "type": "uint8_t[3]",
+          "notes": "Constructor clears all three leading runtime flags."
+        },
+        {
+          "offset": "0x00B",
+          "size": "0x001",
+          "name": "opaque_00b",
+          "type": "unknown[1]",
+          "notes": "Unobserved byte before the aligned dimensions."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x004",
+          "name": "window_width",
+          "type": "uint32_t",
+          "notes": "Constructor initializes the width to 0x500."
+        },
+        {
+          "offset": "0x010",
+          "size": "0x004",
+          "name": "window_height",
+          "type": "uint32_t",
+          "notes": "Constructor initializes the height to 0x2D0."
+        },
+        {
+          "offset": "0x014",
+          "size": "0x018",
+          "name": "authentication_state",
+          "type": "uint32_t[6]",
+          "notes": "Six constructor-cleared dwords; SqexIdAuthentication retains a pointer to the first one."
+        },
+        {
+          "offset": "0x02C",
+          "size": "0x004",
+          "name": "opaque_02c",
+          "type": "unknown[0x04]",
+          "notes": "Unobserved dword before Application::Rapture."
+        },
+        {
+          "offset": "0x030",
+          "size": "0x370",
+          "name": "rapture",
+          "type": "ApplicationRapture",
+          "notes": "Embedded Application::Rapture runtime."
+        },
+        {
+          "offset": "0x3A0",
+          "size": "0x4E0",
+          "name": "system_config",
+          "type": "ApplicationMiscSystemConfig",
+          "notes": "Embedded Application::Misc::SystemConfig."
+        },
+        {
+          "offset": "0x880",
+          "size": "0x054",
+          "name": "runtime_string",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Embedded inline string ending at +0x8D4."
+        },
+        {
+          "offset": "0x8D4",
+          "size": "0x004",
+          "name": "opaque_8d4",
+          "type": "unknown[0x04]",
+          "notes": "Unobserved dword between the string and authentication object."
+        },
+        {
+          "offset": "0x8D8",
+          "size": "0x088",
+          "name": "authentication",
+          "type": "SqexLoginSqexIdAuthentication",
+          "notes": "Embedded Sqex ID authentication object."
+        },
+        {
+          "offset": "0x960",
+          "size": "0x004",
+          "name": "runtime_state",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared closing state dword."
+        },
+        {
+          "offset": "0x964",
+          "size": "0x004",
+          "name": "opaque_964",
+          "type": "unknown[0x04]",
+          "notes": "Unobserved allocation tail; retained as unknown rather than inventing a member."
+        }
+      ],
+      "notes": "Full byte-accounted Main layout. The startup path allocates exactly 0x968 bytes before calling the constructor. Direct instructions place Application::Rapture, SystemConfig, an inline string, and SqexIdAuthentication; RTTI confirms Main and all RTTI-bearing nested classes.",
+      "id": "BCS-S-0139"
     }
   ],
   "method": {
@@ -11824,6 +12249,14 @@
     "c350Output": "tools/ghidra/logs/c350_rapture-state-consumers.txt",
     "c349ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies the exact Application::Rapture, IRapture, ExcelLanguageEvent, and Sqex::CDev::CDevTimer identities.",
     "c349InstructionEvidence": "Configured retail instruction excerpts appended to C349 preserve implicit ECX placement: Application::Rapture is exactly Main+0x30 through +0x39F; its input records begin at +0x70, +0x9C, +0xC8, and +0xE8; CDevTimer begins at +0x340; and the final flags are at +0x368/+0x369.",
-    "c349Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on these exports. The pad/mouse/keyboard POD record names describe their repeated input-domain use but are not asserted as RTTI class names. Rapture state meanings and the keyboard pointer-table policy remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c349Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on these exports. The pad/mouse/keyboard POD record names describe their repeated input-domain use but are not asserted as RTTI class names. Rapture state meanings and the keyboard pointer-table policy remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c351Topic": "C351 Main runtime layouts",
+    "c351ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c351Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c351_main-runtime.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00403640,0x00401750,0x004B8640,0x00445CF0,0x00446F50,0x0044C890' } -ScriptPath @('ghidra')",
+    "c351Inputs": "Main allocation path and constructor, SystemConfig constructor, inline-string constructor and teardown, and SqexIdAuthentication constructor",
+    "c351Output": "tools/ghidra/logs/c351_main-runtime.txt",
+    "c351ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies Main, Application::Misc::SystemConfig, Sqex::Misc::Config, Sqex::Crypt::Cert, and Sqex::Login::SqexIdAuthentication identities. The sibling decompiled corpus already supplied the Sqex::Misc::Config and Cert helper bodies, so no second Ghidra run was needed.",
+    "c351InstructionEvidence": "Configured retail instruction excerpts appended to C351 preserve the exact 0x968 Main allocation, nested-object placements, ten 0x54-byte SystemConfig string strides, the 0x148-byte cleared region, and the closing Cert and authentication boundaries.",
+    "c351Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on the export. Inline-string flag semantics, Config entry type, SystemConfig cleared-region partition, Cert owned implementation, authentication opaque fields, and Main tail state remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
