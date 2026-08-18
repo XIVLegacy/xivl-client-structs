@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 171,
+  "structCount": 177,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -9672,8 +9672,8 @@
           "offset": "0x018",
           "size": "0x04",
           "name": "runtime_service_18",
-          "type": "void *",
-          "notes": "Owned pointer to a 0x44-byte runtime service constructed by FUN_00CEE120."
+          "type": "ComponentLuaGameEngineRuntimeService *",
+          "notes": "Owned exact 0x44-byte runtime service containing list/record state and an embedded Mutex."
         },
         {
           "offset": "0x01C",
@@ -9700,8 +9700,8 @@
           "offset": "0x180",
           "size": "0x04",
           "name": "timer_service",
-          "type": "void *",
-          "notes": "Owned pointer to a 0x24-byte helper constructed by FUN_00CEF9E0."
+          "type": "ComponentLuaGameEngineTimerService *",
+          "notes": "Owned exact 0x24-byte timer service containing an R-B tree and list header."
         },
         {
           "offset": "0x184",
@@ -14119,6 +14119,346 @@
       ],
       "notes": "Full byte-accounted GameEngine vector-and-tree service. Direct instructions fix the vector header at +0x00, 0x200-element reserve, and tree header at +0x10. Four-byte element semantics and tree key/value types remain unresolved.",
       "id": "BCS-S-0171"
+    },
+    {
+      "name": "ComponentLuaRuntimeListNode60",
+      "namespace": "Component::Lua",
+      "size": "0x60",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c363_gameengine-runtime-timer-helpers.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ComponentLuaRuntimeListNode60 *",
+          "notes": "Forward list link self-linked by the sentinel allocator."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ComponentLuaRuntimeListNode60 *",
+          "notes": "Backward list link self-linked by the sentinel allocator."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x58",
+          "name": "payload",
+          "type": "unknown[0x58]",
+          "notes": "Unpartitioned list payload; the exact node allocation fixes its extent but no bounded consumer establishes its representation."
+        }
+      ],
+      "notes": "Full byte-accounted 0x60-byte list node used by the GameEngine runtime service. Sentinel links and allocation extent are direct; payload type remains unknown.",
+      "id": "BCS-S-0172"
+    },
+    {
+      "name": "ComponentLuaTimerListNode10",
+      "namespace": "Component::Lua",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c363_gameengine-runtime-timer-helpers.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ComponentLuaTimerListNode10 *",
+          "notes": "Forward list link self-linked by the sentinel allocator."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ComponentLuaTimerListNode10 *",
+          "notes": "Backward list link self-linked by the sentinel allocator."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "payload",
+          "type": "unknown[8]",
+          "notes": "Eight-byte list payload copied by the value-node allocator; its concrete type remains unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted timer-service list node. Allocation, two links, and eight-byte payload extent are direct; payload semantics remain unknown.",
+      "id": "BCS-S-0173"
+    },
+    {
+      "name": "ComponentLuaTimerTreeNode30",
+      "namespace": "Component::Lua",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c362_gameengine-runtime-timer-services.txt",
+        "BCS-S-0164"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentLuaTimerTreeNode30 *",
+          "notes": "R-B tree left link initialized before sentinel self-linking."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentLuaTimerTreeNode30 *",
+          "notes": "R-B tree parent link self-linked for the sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentLuaTimerTreeNode30 *",
+          "notes": "R-B tree right link initialized before sentinel self-linking."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x1C",
+          "name": "key_payload",
+          "type": "unknown[0x1C]",
+          "notes": "Unpartitioned timer key and payload storage; this batch does not establish the tree template arguments."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "R-B tree color byte initialized to one by the allocator."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x01",
+          "name": "is_sentinel",
+          "type": "uint8_t",
+          "notes": "Sentinel marker initialized to zero by the allocator and set to one by the timer-service constructor."
+        },
+        {
+          "offset": "0x2A",
+          "size": "0x06",
+          "name": "tail_padding",
+          "type": "unknown[6]",
+          "notes": "Closing alignment bytes at the exact 0x30-byte allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted timer-service R-B tree node. Allocation, links, color, and sentinel marker are direct; the node is kept distinct from the scheduler's semantic node because its key/payload type is unresolved.",
+      "id": "BCS-S-0174"
+    },
+    {
+      "name": "ComponentLuaGameEngineRuntimeServiceState",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c362_gameengine-runtime-timer-services.txt",
+        "tools/ghidra/logs/c363_gameengine-runtime-timer-helpers.txt",
+        "BCS-S-0172"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "option",
+          "type": "uint8_t",
+          "notes": "Constructor option copied from the provided byte."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x03",
+          "name": "alignment_01",
+          "type": "unknown[3]",
+          "notes": "Unobserved alignment bytes before the list header."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "list_state",
+          "type": "unknown",
+          "notes": "Unresolved leading policy state of the embedded list header."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "list_sentinel",
+          "type": "ComponentLuaRuntimeListNode60 *",
+          "notes": "Owned self-linked 0x60-byte list sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "list_count",
+          "type": "uint32_t",
+          "notes": "List element count, initialized to zero."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "record_allocator_state",
+          "type": "unknown",
+          "notes": "Unresolved leading state of the nine-record vector-like container."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "record_begin",
+          "type": "void *",
+          "notes": "Owned start of storage for nine records at an exact eight-byte stride."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "record_end",
+          "type": "void *",
+          "notes": "Current end of the initialized nine-record storage."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "record_capacity_end",
+          "type": "void *",
+          "notes": "Capacity end of the nine-record storage."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "state_20",
+          "type": "uint32_t",
+          "notes": "Runtime-state dword initialized to one."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "state_24",
+          "type": "uint32_t",
+          "notes": "Closing runtime-state dword initialized to one."
+        }
+      ],
+      "notes": "Full byte-accounted leading state of GameEngine's 0x44-byte runtime service. Direct construction establishes a 0x60-node list, nine eight-byte records, and two closing state dwords; record and list payload types remain unknown.",
+      "id": "BCS-S-0175"
+    },
+    {
+      "name": "ComponentLuaGameEngineRuntimeService",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x44",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c360_gameengine-owned-services.txt",
+        "tools/ghidra/logs/c362_gameengine-runtime-timer-services.txt",
+        "BCS-S-0123",
+        "BCS-S-0175"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "runtime_state",
+          "type": "ComponentLuaGameEngineRuntimeServiceState",
+          "notes": "Embedded runtime list, record storage, and state block."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x1C",
+          "name": "mutex",
+          "type": "SqexThreadMutex",
+          "notes": "Embedded Mutex constructed with spin count 5."
+        }
+      ],
+      "notes": "Full byte-accounted GameEngine runtime service. The exact owner allocation is 0x44 bytes; direct instructions place the complete 0x28-byte runtime state first and the known 0x1C-byte Mutex at +0x28.",
+      "id": "BCS-S-0176"
+    },
+    {
+      "name": "ComponentLuaGameEngineTimerService",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x24",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c360_gameengine-owned-services.txt",
+        "tools/ghidra/logs/c362_gameengine-runtime-timer-services.txt",
+        "tools/ghidra/logs/c363_gameengine-runtime-timer-helpers.txt",
+        "BCS-S-0173",
+        "BCS-S-0174"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "game_engine",
+          "type": "ComponentLuaGameEngine *",
+          "notes": "Retained pointer to the owning GameEngine."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "timer_config",
+          "type": "void *",
+          "notes": "Constructor-copied global timer configuration value; concrete interface type remains unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "timer_tree_state",
+          "type": "unknown",
+          "notes": "Unresolved comparator or allocator state for the timer R-B tree."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "timer_tree_sentinel",
+          "type": "ComponentLuaTimerTreeNode30 *",
+          "notes": "Owned self-linked 0x30-byte timer-tree sentinel."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "timer_tree_count",
+          "type": "uint32_t",
+          "notes": "Timer-tree element count, initialized to zero."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "timer_list_state",
+          "type": "unknown",
+          "notes": "Unresolved leading policy state for the timer list header."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "timer_list_sentinel",
+          "type": "ComponentLuaTimerListNode10 *",
+          "notes": "Owned self-linked 0x10-byte timer-list sentinel."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "timer_list_count",
+          "type": "uint32_t",
+          "notes": "Timer-list element count, initialized to zero."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x02",
+          "name": "flags",
+          "type": "uint16_t",
+          "notes": "Two constructor-cleared timer-service flag bytes."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[2]",
+          "notes": "Unobserved closing alignment bytes at the exact 0x24-byte owner allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted GameEngine timer service. The exact owner allocation, constructor, and pre-noreturn teardown establish the owner/config fields, timer tree, timer list, and closing flags.",
+      "id": "BCS-S-0177"
     }
   ],
   "method": {
@@ -14444,6 +14784,18 @@
     "c360ExistingEvidence": "BCS-S-0111 and BCS-Y-1691 supplied the exact GameEngine extent and prior ownership slots. BCS-S-0164 supplies direct lower-bound traversal evidence for the matching MSVC left/parent/right and color/sentinel convention. BCS-S-0113 remains the separate 0x30-byte scheduler US-tree node.",
     "c360InstructionEvidence": "Configured retail instruction excerpts appended to C360 preserve the +0x08 and +0x1C tree-header placements in the dispatch service, +0x04 tree header in the scheduled service, and +0x00 vector plus +0x10 tree header in the vector-tree service.",
     "c360Correction": "GameEngine +0x208 previously reused the scheduler's 0x30-byte US-tree node type. FUN_00CED070 directly allocates 0x2C, so +0x208 now uses the distinct BCS-S-0168 node while the scheduler layout is unchanged.",
-    "c360Limits": "DumpVAs supplies direct bodies and call lists only for the twelve requested functions. No negative reference-topology claim relies on these exports. Tree key/value types, tree policy dwords, vector element semantics, and unwritten leading service state remain unknown-typed. The 0x44 FUN_00CEE120 service, 0x24 FUN_00CEF9E0 service, and 0xA0 FUN_00D0A6F0 service were inspected but deferred because their helper/subobject partitions do not yet close cleanly. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c360Limits": "DumpVAs supplies direct bodies and call lists only for the twelve requested functions. No negative reference-topology claim relies on these exports. Tree key/value types, tree policy dwords, vector element semantics, and unwritten leading service state remain unknown-typed. The 0x44 FUN_00CEE120 service, 0x24 FUN_00CEF9E0 service, and 0xA0 FUN_00D0A6F0 service were inspected but deferred because their helper/subobject partitions do not yet close cleanly. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c362Topic": "C362 GameEngine runtime and timer service layouts",
+    "c362ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c362Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c362_gameengine-runtime-timer-services.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CEE120,0x00CEE180,0x00CEE210,0x00D25F00,0x00CEF9E0,0x00CEF830,0x00CEF900,0x00CEFA70,0x00CEFB30,0x00CEFC50' } -ScriptPath @('ghidra')",
+    "c362Inputs": "Runtime-service constructor, adjacent unrelated reference-release function, exact allocation factory, runtime-state constructor, timer-service constructor and pre-noreturn teardown, adjacent timeGetTime path inspected but excluded, tree-node allocator, and list drain helper",
+    "c362Output": "tools/ghidra/logs/c362_gameengine-runtime-timer-services.txt",
+    "c363Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c363_gameengine-runtime-timer-helpers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x008F74F0,0x008F75C0,0x00D1F5B0,0x00CE8130' } -ScriptPath @('ghidra')",
+    "c363Inputs": "Timer-list sentinel and value-node allocators, 0x60 runtime-list sentinel allocator, and the nine-element eight-byte-stride record constructor",
+    "c363Output": "tools/ghidra/logs/c363_gameengine-runtime-timer-helpers.txt",
+    "c362InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\Users\\aeshu\\tools\\ghidra-projects\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(va-0x400000,n),va)]\" with (va,n) values (0x00CEE120,96), (0x00D25F00,132), (0x00CEF9E0,143), and (0x00CEF830,180)",
+    "c362ExistingEvidence": "BCS-S-0111, BCS-Y-1691, and the fresh C360 owner archive supplied the exact GameEngine ownership slots and 0x44/0x24 allocation bounds. BCS-S-0123 supplies the established 0x1C Mutex layout; BCS-S-0164 supplies the matching compiler tree-link and marker convention.",
+    "c362InstructionEvidence": "Configured retail instruction excerpts appended to C362 preserve the runtime-state +0x00 and Mutex +0x28 placements, runtime list +0x04 and record container +0x10 placements, timer tree +0x08 and list +0x14 placements, and all timer teardown operations before the noreturn _free call.",
+    "c362Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. FUN_00CEE180 belongs to an adjacent larger reference-counted object and is not used for either promoted layout. FUN_00CEF900 and FUN_00CEFA70 operate on a larger GameEngine context and are excluded because their +0x24/+0x28 reads exceed the 0x24 timer-service boundary. No negative reference-topology claim relies on these exports. Runtime list payload, eight-byte record type, timer tree key/value type, list payload, policy dwords, timer configuration interface, and alignment bytes remain unknown-typed. The 0xA0 FUN_00D0A6F0 service remains deferred. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
