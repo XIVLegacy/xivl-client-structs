@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 118,
+  "structCount": 121,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -10505,7 +10505,7 @@
     {
       "name": "SqexThreadQueueApplicationSceneScenePacket",
       "namespace": "Sqex::Thread",
-      "size": "0x20",
+      "size": "0x1C",
       "confidence": "confirmed",
       "sourceRefs": [
         "BCS-Y-1733",
@@ -10514,7 +10514,8 @@
         "BCS-Y-1830",
         "BCS-Y-1858",
         "BCS-Y-1859",
-        "tools/ghidra/logs/s6_scene-module-drain-6.txt"
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt",
+        "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt"
       ],
       "fields": [
         {
@@ -10565,17 +10566,287 @@
           "name": "entries",
           "type": "ApplicationSceneScenePacket *",
           "notes": "Contiguous 0xA0-stride ScenePacket ring storage."
-        },
-        {
-          "offset": "0x1C",
-          "size": "0x04",
-          "name": "reserved",
-          "type": "unknown",
-          "notes": "Closing queue bookkeeping dword; concrete semantics unresolved."
         }
       ],
-      "notes": "Full byte-accounted ScenePacket ring header embedded at SceneThreadImpl+0x370. Producer and consumer evidence establishes both cursors, depth, slot-state array, and 0xA0-stride entry storage. The closing bookkeeping dword remains unknown-typed.",
+      "notes": "Full byte-accounted ScenePacket ring header embedded at SceneThreadImpl+0x370. Producer, consumer, and constructor evidence establishes both cursors, depth, slot-state array, and 0xA0-stride entry storage. The independent SceneThreadImpl readiness dword begins immediately after the 0x1C-byte queue at +0x38C.",
       "id": "BCS-S-0118"
+    },
+    {
+      "name": "ApplicationSceneSceneModule",
+      "namespace": "Application::Scene",
+      "size": "0x40",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1829",
+        "BCS-Y-1830",
+        "BCS-Y-1831",
+        "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
+        "tools/ghidra/logs/c340_scene-module-owner.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Scene::SceneModule vftable installed over the SceneModuleInterface base vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x3C",
+          "name": "scene_thread",
+          "type": "ApplicationSceneSceneThread",
+          "notes": "Embedded SceneThread constructed by FUN_004EAC80 and destroyed by FUN_004E83F0. Its SceneThreadImpl pointer is therefore visible at SceneModule+0x3C."
+        }
+      ],
+      "notes": "Full byte-accounted SceneModule layout. The sole owner allocates exactly 0x40 bytes, and the constructor/destructor chain proves that the complete 0x3C-byte SceneThread follows the interface vftable at +0x04.",
+      "id": "BCS-S-0119"
+    },
+    {
+      "name": "ApplicationSceneSceneThread",
+      "namespace": "Application::Scene",
+      "size": "0x3C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1831",
+        "BCS-Y-1753",
+        "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
+        "tools/ghidra/logs/c340_scene-module-owner.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Scene::SceneThread vftable installed after the Sqex thread-base constructor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x34",
+          "name": "thread_runtime_state",
+          "type": "unknown[0x34]",
+          "notes": "Sqex thread-base state initialized and destroyed by external thread helpers; its internal field types are unresolved."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x04",
+          "name": "implementation",
+          "type": "ApplicationSceneSceneThreadImpl *",
+          "notes": "Owned SceneThreadImpl allocated as 0x580 bytes by the SceneThread constructor and released virtually by its destructor."
+        }
+      ],
+      "notes": "Full byte-accounted SceneThread layout. The enclosing 0x40-byte SceneModule starts this subobject at +0x04, fixing its boundary at 0x3C; constructor and destructor evidence establishes the owned implementation pointer at +0x38.",
+      "id": "BCS-S-0120"
+    },
+    {
+      "name": "ApplicationSceneSceneThreadImpl",
+      "namespace": "Application::Scene",
+      "size": "0x580",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1733",
+        "BCS-Y-1753",
+        "BCS-Y-1829",
+        "BCS-Y-1832",
+        "BCS-Y-1843",
+        "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
+        "tools/ghidra/logs/s6_scene-module-drain-6.txt",
+        "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Scene::SceneThreadImpl vftable."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x364",
+          "name": "scene_driver_state",
+          "type": "unknown[0x364]",
+          "notes": "Large base/driver region initialized by FUN_00A4A730. Positive consumers exist inside it, but its helper boundaries and concrete types remain unresolved."
+        },
+        {
+          "offset": "0x368",
+          "size": "0x004",
+          "name": "scene_thread",
+          "type": "ApplicationSceneSceneThread *",
+          "notes": "Back-reference to the owning SceneThread, copied from the first explicit constructor argument."
+        },
+        {
+          "offset": "0x36C",
+          "size": "0x004",
+          "name": "construction_context",
+          "type": "unknown",
+          "notes": "Constructor-supplied context dword whose concrete pointer/value type is unresolved."
+        },
+        {
+          "offset": "0x370",
+          "size": "0x01C",
+          "name": "scene_packet_queue",
+          "type": "SqexThreadQueueApplicationSceneScenePacket",
+          "notes": "Embedded 0x1C-byte Queue<ScenePacket> used for the producer/consumer scene boundary."
+        },
+        {
+          "offset": "0x38C",
+          "size": "0x004",
+          "name": "readiness_state",
+          "type": "uint32_t",
+          "notes": "Atomic readiness dword polled through SceneModule slot 4; it is independent of the preceding queue header."
+        },
+        {
+          "offset": "0x390",
+          "size": "0x044",
+          "name": "scene_world_state",
+          "type": "unknown[0x44]",
+          "notes": "Constructor-built synchronization/runtime object passed to RaptureWorld; its concrete class is unresolved."
+        },
+        {
+          "offset": "0x3D4",
+          "size": "0x044",
+          "name": "scene_render_state",
+          "type": "unknown[0x44]",
+          "notes": "Second constructor-built synchronization/runtime object passed to RaptureWorld; its concrete class is unresolved."
+        },
+        {
+          "offset": "0x418",
+          "size": "0x004",
+          "name": "scene_module",
+          "type": "ApplicationSceneSceneModule *",
+          "notes": "Shared SceneModule sink polled by SceneThreadImpl and forwarded into RaptureWorld."
+        },
+        {
+          "offset": "0x41C",
+          "size": "0x004",
+          "name": "render_context",
+          "type": "void *",
+          "notes": "Constructor-supplied render context forwarded into RaptureWorld."
+        },
+        {
+          "offset": "0x420",
+          "size": "0x003",
+          "name": "runtime_flags",
+          "type": "uint8_t[3]",
+          "notes": "Three constructor-cleared scene runtime flags."
+        },
+        {
+          "offset": "0x423",
+          "size": "0x001",
+          "name": "flag_padding",
+          "type": "unknown[1]",
+          "notes": "Unobserved byte between the three flags and the next aligned dword."
+        },
+        {
+          "offset": "0x424",
+          "size": "0x004",
+          "name": "scene_runtime_handle",
+          "type": "unknown",
+          "notes": "Handle returned by the constructor's scene-runtime lookup; concrete type unresolved."
+        },
+        {
+          "offset": "0x428",
+          "size": "0x004",
+          "name": "rapture_world",
+          "type": "ApplicationSceneRaptureWorld *",
+          "notes": "Owned RaptureWorld, lazily allocated as 0xE0 bytes by FUN_004E8560."
+        },
+        {
+          "offset": "0x42C",
+          "size": "0x004",
+          "name": "runtime_state_42c",
+          "type": "unknown",
+          "notes": "Constructor-cleared runtime dword."
+        },
+        {
+          "offset": "0x430",
+          "size": "0x004",
+          "name": "owned_component_430",
+          "type": "void *",
+          "notes": "Constructor-cleared owned polymorphic component released virtually during teardown; concrete class unresolved."
+        },
+        {
+          "offset": "0x434",
+          "size": "0x004",
+          "name": "owned_component_434",
+          "type": "void *",
+          "notes": "Constructor-cleared owned polymorphic component released virtually during teardown; concrete class unresolved."
+        },
+        {
+          "offset": "0x438",
+          "size": "0x004",
+          "name": "runtime_state_438",
+          "type": "unknown",
+          "notes": "Constructor-cleared runtime dword."
+        },
+        {
+          "offset": "0x43C",
+          "size": "0x004",
+          "name": "world_runtime_handle",
+          "type": "unknown",
+          "notes": "Runtime handle set by FUN_004E8540 and consumed when RaptureWorld is initialized; concrete type unresolved."
+        },
+        {
+          "offset": "0x440",
+          "size": "0x028",
+          "name": "callback_tree_0",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        },
+        {
+          "offset": "0x468",
+          "size": "0x028",
+          "name": "callback_tree_1",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        },
+        {
+          "offset": "0x490",
+          "size": "0x028",
+          "name": "callback_tree_2",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        },
+        {
+          "offset": "0x4B8",
+          "size": "0x028",
+          "name": "callback_tree_3",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        },
+        {
+          "offset": "0x4E0",
+          "size": "0x028",
+          "name": "callback_tree_4",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        },
+        {
+          "offset": "0x508",
+          "size": "0x028",
+          "name": "callback_tree_5",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        },
+        {
+          "offset": "0x530",
+          "size": "0x028",
+          "name": "callback_tree_6",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        },
+        {
+          "offset": "0x558",
+          "size": "0x028",
+          "name": "callback_tree_7",
+          "type": "unknown[0x28]",
+          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted SceneThreadImpl layout. SceneThread allocates exactly 0x580 bytes; constructor, queue/drain, readiness, RaptureWorld, and teardown evidence establish the queue, synchronization regions, module/context pointers, owned world, and eight closing 0x28-byte callback-tree headers. The large scene-driver base and several helper types remain unknown-typed.",
+      "id": "BCS-S-0121"
     }
   ],
   "method": {
@@ -10752,6 +11023,21 @@
     "c338Topic": "C338 scene message layouts",
     "c338Evidence": "Existing constructor, queue, copy, drain, RTTI, and allocation records in manifests/symbols.json plus the read-only archives tools/ghidra/logs/s4_raptureworld-render-fallback.txt, tools/ghidra/logs/s6_scene-module-drain-4.txt, and tools/ghidra/logs/s6_scene-module-drain-6.txt were sufficient.",
     "c338Inputs": "RaptureWorld BCS-Y-1832/1833/1843; ScenePacket BCS-Y-1083/1715/1732/1843/1858; Queue<ScenePacket> BCS-Y-1733/1734/1753/1830/1858/1859",
-    "c338Limits": "No new headless run was performed because exact 0xE0, 0xA0, and 0x20 boundaries and the positive field placements were already durable on disk. RaptureWorld engine helper types, ScenePacket union bookkeeping, and the queue's closing dword remain unresolved. SceneModule was considered but not defined because its exact allocation size is not yet evidenced."
+    "c338Limits": "No new headless run was performed because the existing evidence was then read as fixing 0xE0, 0xA0, and 0x20 boundaries. C341 later corrected Queue<ScenePacket> from 0x20 to 0x1C and identified the following dword as SceneThreadImpl readiness state. RaptureWorld engine helper types and ScenePacket union bookkeeping remain unresolved. SceneModule was deferred until C339/C340 supplied its exact allocation size.",
+    "c339Topic": "C339 scene runtime layouts",
+    "c339ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra or client-project Java process.",
+    "c339Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c339_scene-runtime-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004E81A0,0x004E8140,0x004EAC80,0x004EA870,0x004E83F0,0x004E93A0,0x004EBAC0,0x004E8330' } -ScriptPath @('ghidra')",
+    "c339Inputs": "SceneModule constructor/destructor, embedded SceneThread constructor/destructor, SceneThreadImpl constructor/destructor, and both scalar deleting destructors",
+    "c339Output": "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
+    "c340ProjectMode": "The follow-up headless call used -ReadOnly against the same configured client project with BCS_GHIDRA_PROGRAM unset. A second pre-run process check found no live Ghidra or client-project Java process.",
+    "c340Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c340_scene-module-owner.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B2DF0' } -ScriptPath @('ghidra')",
+    "c340Inputs": "The sole SceneModule constructor caller, used to confirm its direct 0x40-byte allocation boundary",
+    "c340Output": "tools/ghidra/logs/c340_scene-module-owner.txt",
+    "c339ExistingEvidence": "BCS-Y-1733/1753/1829/1830/1831/1832/1843 and tools/ghidra/logs/s6_scene-module-drain-6.txt supplied the durable queue, packet-drain, RaptureWorld, module, and closing callback-tree placements.",
+    "c339Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on these exports. The large SceneThreadImpl base/driver region, two 0x44-byte synchronization helper classes, callback-tree node/key types, and several runtime handles remain unresolved and are represented as unknown rather than guessed.",
+    "c341ProjectMode": "The queue-boundary follow-up used -ReadOnly against the same configured client project with BCS_GHIDRA_PROGRAM unset. A third pre-run process check found no live Ghidra or client-project Java process.",
+    "c341Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c341_scene-packet-queue-ctor.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004EBC20' } -ScriptPath @('ghidra')",
+    "c341Inputs": "Queue<ScenePacket> constructor, used to distinguish the 0x1C-byte queue header from SceneThreadImpl readiness_state at +0x38C",
+    "c341Output": "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt"
   }
 }
