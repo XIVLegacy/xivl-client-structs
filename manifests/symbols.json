@@ -8602,25 +8602,27 @@
       "id": "BCS-Y-0751"
     },
     {
-      "name": "FormElement_vftable_primary",
+      "name": "FormElement_secondary_input_vftable",
       "kind": "data",
       "address": "0x00FA10DC",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/element_vtable8_bulk.json"
+        "manifests/element_vtable8_bulk.json",
+        "tools/ghidra/logs/c325_interactive-elements.txt"
       ],
-      "notes": "[the element-vtable8-bulk pass Element vtable[8] async tier] Primary vtable Application::Main::Element::FormElement",
+      "notes": "Application::Main::Element::FormElement secondary input vftable at complete-object +0x8. C325 corrects the older primary label: FUN_0053AF60 stores 0x00FA10DC at +0x8, while the deleting-destructor thunk at this table adjusts into the complete object. Evidence: tools/ghidra/logs/c325_interactive-elements.txt.",
       "id": "BCS-Y-0752"
     },
     {
-      "name": "FormElement_vftable_secondary",
+      "name": "FormElement_primary_vftable",
       "kind": "data",
       "address": "0x00FA1200",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/element_vtable8_bulk.json"
+        "manifests/element_vtable8_bulk.json",
+        "tools/ghidra/logs/c325_interactive-elements.txt"
       ],
-      "notes": "[the element-vtable8-bulk pass Element vtable[8] async tier] Secondary vtable Application::Main::Element::FormElement",
+      "notes": "Application::Main::Element::FormElement primary vftable at complete-object +0x0. C325 corrects the older secondary label: FUN_0053AF60 stores 0x00FA1200 at +0x0, and slot 0 reaches the complete-object destructor chain. Evidence: tools/ghidra/logs/c325_interactive-elements.txt.",
       "id": "BCS-Y-0753"
     },
     {
@@ -8822,36 +8824,39 @@
       "id": "BCS-Y-0771"
     },
     {
-      "name": "TargetElement_vftable_primary",
+      "name": "TargetElement_SearchInfoInterface_vftable",
       "kind": "data",
       "address": "0x00FA4F84",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/element_vtable8_bulk.json"
+        "manifests/element_vtable8_bulk.json",
+        "tools/ghidra/logs/c325_interactive-elements.txt"
       ],
-      "notes": "[the element-vtable8-bulk pass Element vtable[8] async tier] Primary vtable Application::Main::Element::System::TargetElement (3 vtables due to triple MI)",
+      "notes": "Application::Main::Element::System::TargetElement override vftable for its ElementFactory::SearchInfoInterface subobject at complete-object +0x94. C325 corrects the older primary label: FUN_00566880 first installs the base SearchInfoInterface vftable at +0x94, then replaces it with 0x00FA4F84. Its methods receive the +0x94 subobject and access TargetElement fields relative to that base. Evidence: tools/ghidra/logs/c325_interactive-elements.txt.",
       "id": "BCS-Y-0772"
     },
     {
-      "name": "TargetElement_vftable_secondary",
+      "name": "TargetElement_secondary_input_vftable",
       "kind": "data",
       "address": "0x00FA4F9C",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/element_vtable8_bulk.json"
+        "manifests/element_vtable8_bulk.json",
+        "tools/ghidra/logs/c325_interactive-elements.txt"
       ],
-      "notes": "[the element-vtable8-bulk pass Element vtable[8] async tier] Secondary vtable Application::Main::Element::System::TargetElement",
+      "notes": "Application::Main::Element::System::TargetElement secondary input vftable at complete-object +0x8. FUN_00566880 stores 0x00FA4F9C at +0x8; TargetElement-specific slot 65 processes input events through the adjusted secondary subobject. Evidence: tools/ghidra/logs/c325_interactive-elements.txt.",
       "id": "BCS-Y-0773"
     },
     {
-      "name": "TargetElement_vftable_tertiary",
+      "name": "TargetElement_primary_vftable",
       "kind": "data",
       "address": "0x00FA50C4",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/element_vtable8_bulk.json"
+        "manifests/element_vtable8_bulk.json",
+        "tools/ghidra/logs/c325_interactive-elements.txt"
       ],
-      "notes": "[the element-vtable8-bulk pass Element vtable[8] async tier] Tertiary vtable Application::Main::Element::System::TargetElement (triple MI third base)",
+      "notes": "Application::Main::Element::System::TargetElement primary vftable at complete-object +0x0. C325 corrects the older tertiary label: FUN_00566880 stores 0x00FA50C4 at +0x0, and its deleting-destructor slot reaches the complete-object teardown. Evidence: tools/ghidra/logs/c325_interactive-elements.txt.",
       "id": "BCS-Y-0774"
     },
     {
@@ -15404,9 +15409,10 @@
         "tools/ghidra/logs/c57_other_class_xrefs.txt",
         "tools/ghidra/logs/c57_concrete_check_decomp.txt",
         "manifests/binder_promotion.json",
-        "tools/ghidra/logs/c66_rapture_xaml_ctors_decomp.txt"
+        "tools/ghidra/logs/c66_rapture_xaml_ctors_decomp.txt",
+        "tools/ghidra/logs/c325_interactive-elements.txt"
       ],
-      "notes": "[sqwt-element-class-subscription-pattern-+] Constructor for Application::Main::Element::XamlElement - the PARENT class of LuaDebugLog / LuaDebugSelect / FormElement / and likely most Element-namespace classes. 169-byte SEH-wrapped body. __thiscall(this, p2, p3, p4, p5) - passes 4 args to parent. Body: (1) Calls grandparent [[RaptureElement_Ctor_FUN_004dab50]] (BCS-Y-0539) with p2..p5; (2) writes XamlElement::vftable to *this AND *(this+2) (primary + MI secondary); (3) initializes 4 fields to 0 (this[0x25..0x28] = +0x94/+0x98/+0x9C/+0xA0); (4) calls FUN_00542C80 and FUN_0052CCB0 (likely RaptureXmlInit + something). **Confirms inheritance chain**: RaptureElement <- XamlElement <- LuaDebugLog/LuaDebugSelect/etc. XamlElement is an ABSTRACT base - it does NOT subscribe any events itself; subscriptions happen in concrete derived classes. Direct callers: FUN_0068D510 (likely sibling Element ctor), FUN_0068DDF0 (BCS-Y-this-tier LuaDebugSelect::ctor), FUN_00539940 (likely XamlElement::dtor cleanup helper), FUN_00599CB0 (BCS-Y-this-tier LuaDebugLog::ctor). Client-architecture 'Sqwt UI elements follow a uniform heap-factory' supporting evidence (parent class hierarchy). Body bytes: 169. | [sqwt] State-init helper IDENTIFIED: FUN_00542C80 -> [[XamlElement_StateInit_FUN_00542C80]] (BCS-Y-1376). Allocates a std::list-sentinel-style sub-state object via FUN_0053D7B0 and stores it at xaml_element+4 (overlapping the InputElement::vftable at +0x04 in its base class scope - composition rather than overlap). The 3-pointer self-cycle (sub_state[0/4/8] = sub_state) is the standard MSVC std::list head-node init for an empty list."
+      "notes": "[sqwt-element-class-subscription-pattern-+] Constructor for Application::Main::Element::XamlElement - the parent class of LuaDebugLog, LuaDebugOut, and LuaDebugSelect. 169-byte SEH-wrapped body. __thiscall(this, p2, p3, p4, p5) - passes 4 args to parent. Body: (1) Calls grandparent [[RaptureElement_Ctor_FUN_004dab50]] (BCS-Y-0539) with p2..p5; (2) writes XamlElement::vftable to *this AND *(this+2) (primary + MI secondary); (3) initializes 4 fields to 0 (this[0x25..0x28] = +0x94/+0x98/+0x9C/+0xA0); (4) calls FUN_00542C80 and FUN_0052CCB0 (likely RaptureXmlInit + something). **Confirms inheritance chain**: RaptureElement <- XamlElement <- LuaDebugLog/LuaDebugSelect/etc. XamlElement is an ABSTRACT base - it does NOT subscribe any events itself; subscriptions happen in concrete derived classes. Direct callers: FUN_0068D510 (likely sibling Element ctor), FUN_0068DDF0 (BCS-Y-this-tier LuaDebugSelect::ctor), FUN_00539940 (likely XamlElement::dtor cleanup helper), FUN_00599CB0 (BCS-Y-this-tier LuaDebugLog::ctor). Client-architecture 'Sqwt UI elements follow a uniform heap-factory' supporting evidence (parent class hierarchy). Body bytes: 169. | [sqwt] State-init helper IDENTIFIED: FUN_00542C80 -> [[XamlElement_StateInit_FUN_00542C80]] (BCS-Y-1376). Allocates a std::list-sentinel-style sub-state object via FUN_0053D7B0 and stores it at xaml_element+4 (overlapping the InputElement::vftable at +0x04 in its base class scope - composition rather than overlap). The 3-pointer self-cycle (sub_state[0/4/8] = sub_state) is the standard MSVC std::list head-node init for an empty list. | [Tier C325 2026-08-18 correction] FormElement is not a XamlElement descendant: its constructor FUN_0053AF60 directly calls the RaptureElement constructor and installs FormElement vftables without calling FUN_00539890. Evidence: tools/ghidra/logs/c325_interactive-elements.txt."
     },
     {
       "id": "BCS-Y-1335",
