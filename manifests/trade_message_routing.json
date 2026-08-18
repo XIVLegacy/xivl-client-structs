@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "generated": "2026-08-17",
+  "gameVersion": "1.23b",
+  "status": "closed_with_generic_event_routes",
+  "scope": "Client-side routing and payload shape for player-to-player trade command traffic. This records static client structure only and does not claim observed trade values, server sequencing, or a trade-only opcode.",
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "2012.09.19.0001",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "method": {
+    "scripts": [
+      "ghidra/DumpVAs.java"
+    ],
+    "readOnly": true,
+    "project": "ffxivgame",
+    "program": "ffxivgame.exe (wrapper default; BCS_GHIDRA_PROGRAM unset)",
+    "environmentInputs": [
+      "BCS_GHIDRA_HOME",
+      "BCS_GHIDRA_PROJECTS",
+      "BCS_GHIDRA_PROJECT=ffxivgame",
+      "BCS_JAVA_HOME"
+    ],
+    "invocations": [
+      "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c318_trade-message-routing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x004D8860,0x00575040,0x0076C220,0x0089F430,0x0089EB20,0x0089E8E0,0x0070A010,0x00898480,0x00897310,0x006EE680,0x0075E3A0,0x00776760,0x004D6D30,0x004E0240' } -ScriptPath @('ghidra')",
+      "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c318_trade-event-update-routing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0089EDB0,0x00894090,0x00894AB0,0x00894BC0,0x00896F70,0x0075E670' } -ScriptPath @('ghidra')"
+    ],
+    "sectionVerification": {
+      "tradeMessageRoutingSections": 14,
+      "tradeEventUpdateRoutingSections": 6,
+      "requirements": "Each requested VA occurred exactly once with Name and DECOMPILATION markers and without ERROR or DECOMP FAILED. Load-bearing field offsets were cross-checked against the tracked instruction listings."
+    }
+  },
+  "verdict": {
+    "t1": "resolved_generic_s2c_shape",
+    "t2": "partially_resolved_generic_c2s_routes",
+    "t3": "resolved_existing_generic_opcodes",
+    "summary": "Trade rides the existing event-command transport. The examined client path has no trade-only native handler, emitter, or opcode: s2c function delivery uses 0x0130 RunEventFunction, command starts use c2s 0x012d EventStart, and server-driven event return data can use c2s 0x012e EventUpdate.",
+    "newOpcodeRequired": false
+  },
+  "s2c": {
+    "opcodeHex": "0x0130",
+    "name": "RunEventFunctionPacket",
+    "route": [
+      "FUN_004D8860 case 0x0130",
+      "FUN_00575040",
+      "LuaActorImpl vtable slot 57 FUN_0076C220",
+      "StartServerOrderEventFunctionReceiver constructor FUN_0089EDB0"
+    ],
+    "decoder": {
+      "function": "FUN_0076C220",
+      "va": "0x0076C220",
+      "instructionEvidence": "xivl-decomp:asm/ffxivgame/0036c220_FUN_0076c220.s",
+      "facts": [
+        "The dispatcher passes packet+0x10, so offsets below are application-payload relative.",
+        "The decoder reads two u32 actor handles, one event-type byte, two fixed string slots, and a 0x40-byte Lua parameter input.",
+        "No trade token or notice code is hardcoded in the decoder; event and function selection remain data-driven."
+      ]
+    },
+    "payload": {
+      "offsetBasis": "application payload after the 16-byte game-message prefix",
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "type": "u32",
+          "name": "triggerActorId"
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "type": "u32",
+          "name": "ownerActorId"
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "type": "u8",
+          "name": "eventType"
+        },
+        {
+          "offset": "0x09",
+          "size": "0x20",
+          "type": "char[32]",
+          "name": "eventName"
+        },
+        {
+          "offset": "0x29",
+          "size": "0x20",
+          "type": "char[32]",
+          "name": "functionName"
+        },
+        {
+          "offset": "0x49",
+          "size": "0x40",
+          "type": "bytes[64]",
+          "name": "luaParameterInput"
+        }
+      ]
+    },
+    "tradeSpecialization": {
+      "commandClassPath": "/Command/System/TradeExecuteCommand",
+      "staticActorId": 24218,
+      "declaredFunctions": [
+        "processTradeCommandOpenTray(actorId)",
+        "processTradeCommandCloseTray(actorId)",
+        "processTradeCommandReply(actorId, token, optionalArg, ...)",
+        "processUpdateTradeCommandTrayData(actorId)"
+      ],
+      "interpretation": "The generic functionName selects the script method and luaParameterInput carries its positional arguments. The first Lua argument supplies actorId; processTradeCommandReply then interprets the next argument as a token and the following argument as optional data. This is a script-contract interpretation, not an observed trade packet."
+    }
+  },
+  "c2s": {
+    "commandStart": {
+      "opcodeHex": "0x012d",
+      "name": "EventStartPacket",
+      "builder": "FUN_00776760",
+      "builderVa": "0x00776760",
+      "route": "FUN_0075E3A0 -> FUN_00776760 -> FUN_004D6D30 -> FUN_004E0240",
+      "instructionEvidence": "xivl-decomp:asm/ffxivgame/00376760_FUN_00776760.s",
+      "payload": {
+        "recordSize": "0xc8",
+        "offsetBasis": "application payload after the 16-byte game-message prefix",
+        "fields": [
+          {
+            "offset": "0x00",
+            "size": "0x04",
+            "type": "u32",
+            "name": "triggerActorId_or_selfActorId"
+          },
+          {
+            "offset": "0x04",
+            "size": "0x04",
+            "type": "u32",
+            "name": "ownerActorId_or_targetActorId"
+          },
+          {
+            "offset": "0x08",
+            "size": "0x04",
+            "type": "u32",
+            "name": "eventArgument0_unresolved"
+          },
+          {
+            "offset": "0x0c",
+            "size": "0x04",
+            "type": "u32",
+            "name": "eventArgument1_unresolved"
+          },
+          {
+            "offset": "0x10",
+            "size": "0x01",
+            "type": "u8",
+            "name": "eventType"
+          },
+          {
+            "offset": "0x11",
+            "size": "0x20",
+            "type": "bytes[32]",
+            "name": "eventName_or_inlineData"
+          },
+          {
+            "offset": "0x31",
+            "size": "0x80",
+            "type": "bytes[128]",
+            "name": "luaParameterBlob_or_eventTail"
+          }
+        ]
+      },
+      "tradeCommandClasses": [
+        {
+          "staticActorId": 24217,
+          "classPath": "/Command/System/TradeOfferCommand",
+          "role": "initial trade offer command"
+        },
+        {
+          "staticActorId": 24230,
+          "classPath": "/Command/System/TradeOfferCancelCommand",
+          "role": "initial trade offer cancellation command"
+        }
+      ],
+      "limit": "The generic route and command class identities are resolved, but decomp does not expose a trade-specific fixed field layout inside the dynamic event arguments."
+    },
+    "serverDrivenUpdate": {
+      "opcodeHex": "0x012e",
+      "name": "EventUpdatePacket",
+      "builder": "FUN_0075E670",
+      "builderVa": "0x0075E670",
+      "route": "FUN_00894090 -> FUN_0075E670 -> FUN_004D6D30 -> FUN_004E0240",
+      "payloadShape": "Four leading u32 values, one u8 value, and a 0x40-byte event-data block inside the 0x68-byte record.",
+      "tradeBinding": "structural_not_directly_resolved",
+      "limit": "The generic event-return builder is resolved, but no direct static edge binds individual TradeWidget operations to distinct native emitters. The operation selection and returned values cross a dynamic Lua/event boundary."
+    },
+    "unresolvedOperations": [
+      "offer item",
+      "set gil",
+      "fix or lock",
+      "unfix or reedit",
+      "execute or confirm",
+      "cancel an open trade"
+    ]
+  },
+  "noticeCodeOrigin": {
+    "codes": [
+      204,
+      205,
+      206,
+      212
+    ],
+    "status": "unresolved",
+    "reason": "The 0x0130 decoder forwards a data-selected function and Lua parameter stream and contains no code-specific branch. This route cannot establish which server invocation supplies these values, and no exhaustive string or data-reference exporter was available for a binary-wide negative."
+  },
+  "sourceRefs": [
+    "tools/ghidra/logs/c318_trade-message-routing.txt",
+    "tools/ghidra/logs/c318_trade-event-update-routing.txt",
+    "manifests/s2c_payload_decoding_mapped.json",
+    "manifests/combat_command_emission.json",
+    "manifests/op012e_eventupdate_emitter.json",
+    "manifests/lua_api_contract.json",
+    "xivl-client-data:manifests/staticactor_class_paths.json#records"
+  ]
+}
