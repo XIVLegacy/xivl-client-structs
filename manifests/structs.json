@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 129,
+  "structCount": 134,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -11281,6 +11281,316 @@
       ],
       "notes": "Full byte-accounted ThreadManager embedded at Application::Rapture+0x08. Direct instructions place the Mutex at +0x04, registry header at +0x20, and the next owner field at +0x34, fixing the exact 0x2C-byte boundary. Registry methods lock the embedded critical section and compare stored thread pointers, but the concrete container template remains unresolved.",
       "id": "BCS-S-0129"
+    },
+    {
+      "name": "SqexInputPadStateLayout",
+      "namespace": "Sqex::Input",
+      "size": "0x2C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c349_rapture-runtime.txt",
+        "tools/ghidra/logs/c350_rapture-state-consumers.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "state_dwords",
+          "type": "uint32_t[10]",
+          "notes": "Ten dwords cleared by the shared pad-state initializer; individual control meanings remain unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x01",
+          "name": "state_flag",
+          "type": "uint8_t",
+          "notes": "Final byte cleared by the shared initializer."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x03",
+          "name": "opaque_29",
+          "type": "unknown[3]",
+          "notes": "Unobserved bytes to the exact 0x2C boundary; they may be alignment or unresolved byte state."
+        }
+      ],
+      "notes": "Full byte-accounted pad-state record. Application::Rapture embeds two consecutive records at +0x70 and +0x9C. The same initializer constructs the state subobject inside Sqex::Input::PadDevice and Application::Main::SqwtInterface::RapturePadDevice, establishing the input-domain identity without asserting unresolved control semantics.",
+      "id": "BCS-S-0130"
+    },
+    {
+      "name": "SqexInputMouseStateLayout",
+      "namespace": "Sqex::Input",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c349_rapture-runtime.txt",
+        "tools/ghidra/logs/c350_rapture-state-consumers.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x14",
+          "name": "state_dwords",
+          "type": "uint32_t[5]",
+          "notes": "Five dwords cleared by the shared mouse-state initializer."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x08",
+          "name": "opaque_14",
+          "type": "unknown[0x08]",
+          "notes": "The initializer does not expose these two dwords' types or initialization."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "uint32_t",
+          "notes": "Final dword cleared by the shared initializer."
+        }
+      ],
+      "notes": "Full byte-accounted mouse-state record embedded at Application::Rapture+0xC8. The same initializer constructs the state subobject inside Application::Main::SqwtInterface::RaptureMouseDevice, while the next Rapture subobject at +0xE8 fixes the exact boundary.",
+      "id": "BCS-S-0131"
+    },
+    {
+      "name": "SqexInputKeyboardStateLayout",
+      "namespace": "Sqex::Input",
+      "size": "0x258",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c349_rapture-runtime.txt",
+        "tools/ghidra/logs/c350_rapture-state-consumers.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x001",
+          "name": "state_flag",
+          "type": "uint8_t",
+          "notes": "Leading keyboard-state byte cleared by the initializer."
+        },
+        {
+          "offset": "0x001",
+          "size": "0x003",
+          "name": "opaque_001",
+          "type": "unknown[3]",
+          "notes": "Unobserved bytes before the dword state array; they may be alignment or unresolved byte state."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x240",
+          "name": "key_state",
+          "type": "uint32_t[144]",
+          "notes": "A 144-dword state array cleared with one REP STOSD operation; per-entry semantics remain unresolved."
+        },
+        {
+          "offset": "0x244",
+          "size": "0x004",
+          "name": "pointer_table_policy",
+          "type": "unknown[0x04]",
+          "notes": "Unobserved leading dword of the closing owned-pointer table."
+        },
+        {
+          "offset": "0x248",
+          "size": "0x004",
+          "name": "pointer_table_entries",
+          "type": "void **",
+          "notes": "Owned pointer array, initialized to null and released by the shared teardown helper."
+        },
+        {
+          "offset": "0x24C",
+          "size": "0x004",
+          "name": "pointer_table_count",
+          "type": "uint32_t",
+          "notes": "Entry count initialized to zero and used to walk the owned pointer array during teardown."
+        },
+        {
+          "offset": "0x250",
+          "size": "0x004",
+          "name": "pointer_table_state",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared table state whose higher-level meaning is unresolved."
+        },
+        {
+          "offset": "0x254",
+          "size": "0x004",
+          "name": "pointer_table_refs",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared reference/state count drained before owned entries are released."
+        }
+      ],
+      "notes": "Full byte-accounted keyboard-state record embedded at Application::Rapture+0xE8. The same initializer constructs the state subobject inside Application::Main::SqwtInterface::RaptureKeyboardDevice. The following CDevTimer at Rapture+0x340 fixes the exact 0x258-byte extent.",
+      "id": "BCS-S-0132"
+    },
+    {
+      "name": "SqexCDevCDevTimer",
+      "namespace": "Sqex::CDev",
+      "size": "0x28",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c349_rapture-runtime.txt",
+        "tools/ghidra/logs/c350_rapture-state-consumers.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::CDev::CDevTimer vftable at 0x0110DD74."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "opaque_04",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "timestamp_us",
+          "type": "uint64_t",
+          "notes": "Initial high-resolution timestamp converted to microseconds from QueryPerformanceCounter."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "state_10",
+          "type": "float",
+          "notes": "Constructor-cleared floating-point timer state; exact role is unresolved."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "opaque_14",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x10",
+          "name": "runtime_state",
+          "type": "uint32_t[4]",
+          "notes": "Four constructor-cleared timer state dwords."
+        }
+      ],
+      "notes": "Full byte-accounted CDevTimer embedded at Application::Rapture+0x340. RTTI confirms the class identity; its constructor records a microsecond performance-counter timestamp and clears the observable runtime state. The next Rapture flags at +0x368 fix the exact 0x28-byte boundary.",
+      "id": "BCS-S-0133"
+    },
+    {
+      "name": "ApplicationRapture",
+      "namespace": "Application",
+      "size": "0x370",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c349_rapture-runtime.txt",
+        "tools/ghidra/logs/c350_rapture-state-consumers.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "primary_vftable",
+          "type": "void *",
+          "notes": "Application::Rapture complete-object vftable at 0x00F8CC30, replacing the ExcelLanguageEvent base vftable."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "irapture_vftable",
+          "type": "void *",
+          "notes": "Adjusted Application::Rapture vftable at 0x00F8CC1C for the IRapture-facing subobject."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x02C",
+          "name": "thread_manager",
+          "type": "SqexThreadThreadManager",
+          "notes": "Embedded ThreadManager used to register and drain engine worker threads."
+        },
+        {
+          "offset": "0x034",
+          "size": "0x004",
+          "name": "state_034",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared Rapture state dword."
+        },
+        {
+          "offset": "0x038",
+          "size": "0x004",
+          "name": "opaque_038",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x03C",
+          "size": "0x004",
+          "name": "state_03c",
+          "type": "int32_t",
+          "notes": "Constructor initializes this signed state dword to -1."
+        },
+        {
+          "offset": "0x040",
+          "size": "0x004",
+          "name": "state_040",
+          "type": "int32_t",
+          "notes": "Constructor initializes this signed state dword to -1."
+        },
+        {
+          "offset": "0x044",
+          "size": "0x02C",
+          "name": "runtime_state",
+          "type": "uint32_t[11]",
+          "notes": "Eleven constructor-cleared Rapture state dwords with unresolved individual semantics."
+        },
+        {
+          "offset": "0x070",
+          "size": "0x058",
+          "name": "pad_states",
+          "type": "SqexInputPadStateLayout[2]",
+          "notes": "Two consecutive pad-state records initialized by the shared input helper."
+        },
+        {
+          "offset": "0x0C8",
+          "size": "0x020",
+          "name": "mouse_state",
+          "type": "SqexInputMouseStateLayout",
+          "notes": "Embedded mouse-state record."
+        },
+        {
+          "offset": "0x0E8",
+          "size": "0x258",
+          "name": "keyboard_state",
+          "type": "SqexInputKeyboardStateLayout",
+          "notes": "Embedded keyboard-state record."
+        },
+        {
+          "offset": "0x340",
+          "size": "0x028",
+          "name": "timer",
+          "type": "SqexCDevCDevTimer",
+          "notes": "Embedded high-resolution CDevTimer."
+        },
+        {
+          "offset": "0x368",
+          "size": "0x002",
+          "name": "runtime_flags",
+          "type": "uint8_t[2]",
+          "notes": "Constructor writes 0 then 1 to the two closing runtime flags."
+        },
+        {
+          "offset": "0x36A",
+          "size": "0x006",
+          "name": "opaque_36a",
+          "type": "unknown[6]",
+          "notes": "Unobserved tail bytes before the next enclosing Main subobject at +0x3A0."
+        }
+      ],
+      "notes": "Full byte-accounted Application::Rapture layout embedded at Main+0x30. Direct instructions place the next Main subobject at +0x3A0, fixing the exact 0x370-byte extent. RTTI confirms the two adjusted Rapture vftables; constructor and reuse evidence establish ThreadManager, two pad states, mouse and keyboard states, CDevTimer, and the closing flags.",
+      "id": "BCS-S-0134"
     }
   ],
   "method": {
@@ -11503,6 +11813,17 @@
     "c348Inputs": "Full RTTI export used for the exact ResourceModuleBase, ResourceModule, ExcelModule, Queue<Resource *>, and ThreadManager class identities",
     "c348Output": "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
     "c344InstructionEvidence": "Configured retail instruction excerpts appended to C344 preserve implicit ECX placement: ResourceModule is at SceneThreadImpl+0x390, ExcelModule is at +0x3D4, ResourceModule contains Queue<Resource *> at +0x28, and ThreadManager is the exact 0x2C-byte Application::Rapture subobject at +0x08.",
-    "c344Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. C346 is explicitly rejected because one requested VA lacked a function section. No negative reference-topology claim relies on these exports. ResourceModuleBase container key/node types, ExcelModule state semantics, and ThreadManager registry template remain unresolved and are kept unknown-typed."
+    "c344Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. C346 is explicitly rejected because one requested VA lacked a function section. No negative reference-topology claim relies on these exports. ResourceModuleBase container key/node types, ExcelModule state semantics, and ThreadManager registry template remain unresolved and are kept unknown-typed.",
+    "c349Topic": "C349 Application Rapture runtime layouts",
+    "c349ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra, analyzeHeadless, or Java process.",
+    "c349Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c349_rapture-runtime.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00401750,0x004B3B50,0x004B3AA0,0x00D35320,0x00D35280,0x00D351E0,0x00CC6CD0,0x004B3830,0x00CC6CC0,0x00CC3B80' } -ScriptPath @('ghidra')",
+    "c349Inputs": "Enclosing Main constructor, Application::Rapture construction and teardown, three state initializers, CDevTimer construction and teardown, and Rapture-owned cleanup helpers",
+    "c349Output": "tools/ghidra/logs/c349_rapture-runtime.txt",
+    "c350Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c350_rapture-state-consumers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x005480D0,0x00547D20,0x0054C6C0,0x004B3FC0' } -ScriptPath @('ghidra')",
+    "c350Inputs": "RapturePadDevice, RaptureMouseDevice, and RaptureKeyboardDevice constructors plus the CDevTimer microsecond timestamp helper",
+    "c350Output": "tools/ghidra/logs/c350_rapture-state-consumers.txt",
+    "c349ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies the exact Application::Rapture, IRapture, ExcelLanguageEvent, and Sqex::CDev::CDevTimer identities.",
+    "c349InstructionEvidence": "Configured retail instruction excerpts appended to C349 preserve implicit ECX placement: Application::Rapture is exactly Main+0x30 through +0x39F; its input records begin at +0x70, +0x9C, +0xC8, and +0xE8; CDevTimer begins at +0x340; and the final flags are at +0x368/+0x369.",
+    "c349Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on these exports. The pad/mouse/keyboard POD record names describe their repeated input-domain use but are not asserted as RTTI class names. Rapture state meanings and the keyboard pointer-table policy remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
