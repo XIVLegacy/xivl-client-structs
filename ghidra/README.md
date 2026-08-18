@@ -78,3 +78,24 @@ tools\ghidra\run-headless.ps1 -Script FindCompoundOffsetWriters.java -ReadOnly `
 ```
 
 Historical manifest records reference an earlier, unrelated `FindOffsetWriters.java`; they do not describe this script.
+
+## FindReferences.java
+
+Exports every reference recorded by Ghidra analysis to one or more addresses,
+or resolves exact or substring queries against all defined-string data and
+exports each match and its references. A usable report ends with `COMPLETE:`;
+`INCOMPLETE:` output cannot support a negative. The reference database can omit
+computed, indirect, dynamically dispatched, or unanalyzed-region references,
+so zero results establish only the directly encoded reference class represented
+by the analyzed database.
+
+```powershell
+tools\ghidra\run-headless.ps1 -Script FindReferences.java -ReadOnly `
+    -Out tools\ghidra\logs\out.txt `
+    -ScriptEnv @{ XIVL_REFERENCE_MODE = 'ADDRESS'; XIVL_REFERENCE_ADDRESSES = '0x0076C220,0x004E0240' } `
+    -ScriptPath @('ghidra')
+```
+
+For string queries, set `XIVL_REFERENCE_MODE` to `STRING`, provide newline-
+separated literals in `XIVL_REFERENCE_STRINGS`, and optionally set
+`XIVL_STRING_MATCH` to `SUBSTRING`; its default is `EXACT`.
