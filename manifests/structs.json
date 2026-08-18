@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 88,
+  "structCount": 91,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -8541,6 +8541,124 @@
       ],
       "notes": "Full byte-accounted StatusBase layout. Its clone factory allocates exactly 100 decimal bytes (0x64). Direct instructions establish the ActorBase primary subobject through +0x5F and the final LGTC-derived secondary vftable at +0x60.",
       "id": "BCS-S-0088"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlGroupBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x78",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c330_lua-tentative-layouts.txt",
+        "tools/ghidra/logs/c330_lua-tentative-helpers.txt",
+        "tools/ghidra/logs/c330_lua-tentative-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject constructed first and destroyed last."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "lua_tentative_control_vftable",
+          "type": "void **",
+          "notes": "Secondary LuaTentativeControl subobject vftable. Instructions 0x006DD026 and 0x006DD09B load this subobject base during construction and destruction."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "lua_side_state",
+          "type": "unknown",
+          "notes": "RTTI places the duplicated non-polymorphic Lge allocator chain at this secondary-base offset, but no retained instruction establishes the concrete state type or semantics."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x10",
+          "name": "group_reference_storage",
+          "type": "unknown[0x10]",
+          "notes": "Embedded value initialized by FUN_006BFCD0 and passed to the matching no-op destructor FUN_006BFD00. The constructor clears dwords at relative +0x00, +0x08, and +0x0C; the value's concrete type and the relative +0x04 member remain unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted GroupBase layout. Its clone factory allocates exactly 0x78 bytes. Direct instructions place LuaTentativeControl at +0x60 and the final 0x10-byte helper value at +0x68, which closes at the allocation boundary.",
+      "id": "BCS-S-0089"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x74",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c330_lua-tentative-layouts.txt",
+        "tools/ghidra/logs/c330_lua-tentative-fieldrefs.txt",
+        "BCS-S-0033",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject constructed first and destroyed last."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "lua_tentative_control_vftable",
+          "type": "void **",
+          "notes": "Secondary LuaTentativeControl subobject vftable. Instructions 0x006DD485 and 0x006DD4FA load this subobject base during construction and destruction."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x10",
+          "name": "handle_ref",
+          "type": "ItemBaseHandleRef",
+          "notes": "Previously established resolver-visible item handle tail. Constructor instructions clear +0x64, +0x68, +0x6C, and byte +0x70; the declared 0x10-byte value closes exactly at the factory allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted ItemBase layout. Its clone factory allocates exactly 0x74 bytes. The existing ItemBaseHandleRef evidence supplies the complete derived tail after the LuaTentativeControl vftable.",
+      "id": "BCS-S-0090"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlWidgetHandle",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c330_lua-tentative-layouts.txt",
+        "tools/ghidra/logs/c330_lua-tentative-helpers.txt",
+        "tools/ghidra/logs/c330_lua-tentative-fieldrefs.txt",
+        "manifests/symbols.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject constructed first and destroyed last."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "lua_tentative_control_vftable",
+          "type": "void **",
+          "notes": "Secondary LuaTentativeControl subobject vftable. Instructions 0x006DEF16 and 0x006DEF8B load this subobject base during construction and destruction."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "widget_handle_id",
+          "type": "uint32_t",
+          "notes": "FUN_00CC9310 initializes the dword to the shared empty-handle sentinel. FUN_006DEFF0 writes the caller-provided handle id here after registering the WidgetHandle class name and its _wh%X instance name."
+        }
+      ],
+      "notes": "Full byte-accounted WidgetHandle layout. Its clone factory allocates exactly 0x68 bytes. The final dword at +0x64 is initialized as handle storage and later receives the numeric widget handle id.",
+      "id": "BCS-S-0091"
     }
   ],
   "method": {
@@ -8620,6 +8738,18 @@
     "c329FieldRefInputs": "offsets 0x08, 0x5C, and 0x60; base register ESI",
     "c329FieldRefOutput": "tools/ghidra/logs/c329_lua-control-fieldrefs.txt",
     "c329InstructionEvidence": "Direct instructions 0x00776245 and 0x0077624B write vftable VAs 0x00FDF8DC at complete-object +0 and 0x00FDF8D4 at +0x60 respectively, correcting the prior primary and secondary labels.",
-    "c329Limits": "The field-reference export is used only for positive member placements, with the previously known StatusBase +0x60 subobject as calibration. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the nine requested functions."
+    "c329Limits": "The field-reference export is used only for positive member placements, with the previously known StatusBase +0x60 subobject as calibration. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the nine requested functions.",
+    "c330Topic": "C330 Lua tentative-control layouts",
+    "c330ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset.",
+    "c330DumpInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c330_lua-tentative-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006DCFF0,0x006DD450,0x006DEEE0,0x006DD070,0x006DD4D0,0x006DEF60,0x007186D0,0x00718730,0x00719220,0x00CCCBD0,0x00CCCBE0,0x006BFCD0' } -ScriptPath @('ghidra')",
+    "c330DumpInputs": "GroupBase, ItemBase, and WidgetHandle constructors, destructors, and exact clone factories; LuaTentativeControl constructor and destructor; GroupBase tail constructor",
+    "c330DumpOutput": "tools/ghidra/logs/c330_lua-tentative-layouts.txt",
+    "c330HelperInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c330_lua-tentative-helpers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006BFD00,0x00CC9310,0x00CC9330,0x006DD180,0x00701430,0x00577100,0x00577200,0x00577300,0x006DEFF0' } -ScriptPath @('ghidra')",
+    "c330HelperInputs": "GroupBase tail destructor and representative value consumers; WidgetHandle final-dword constructor, destructor, and class-registration writer",
+    "c330HelperOutput": "tools/ghidra/logs/c330_lua-tentative-helpers.txt",
+    "c330FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c330_lua-tentative-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x60,0x64,0x68,0x6c,0x70,0x74' } -ScriptPath @('ghidra')",
+    "c330FieldRefInputs": "offsets 0x60, 0x64, 0x68, 0x6C, 0x70, and 0x74; all non-stack base registers",
+    "c330FieldRefOutput": "tools/ghidra/logs/c330_lua-tentative-fieldrefs.txt",
+    "c330Limits": "The field-reference export is used only for positive constructor and destructor placements, with each known +0x60 LuaTentativeControl placement serving as calibration. No negative claim relies on its coverage or WRITE/READ labels. DumpVAs supplies direct bodies and call lists only for the requested functions."
   }
 }
