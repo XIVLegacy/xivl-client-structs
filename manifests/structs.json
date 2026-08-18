@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 139,
+  "structCount": 146,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -2737,10 +2737,11 @@
       "id": "BCS-S-0048",
       "name": "SqexThreadQueue_MainPacket_Layout",
       "namespace": "Sqex::Thread",
-      "size": "0x20",
+      "size": "0x1C",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/async_queue_producer.json"
+        "manifests/async_queue_producer.json",
+        "tools/ghidra/logs/c352_main-input-layouts.txt"
       ],
       "fields": [
         {
@@ -2791,15 +2792,9 @@
           "name": "entries_array_ptr",
           "type": "ptr MainPacket[capacity]",
           "notes": "0x60 bytes per entry. Allocated as `new MainPacket[capacity]` with vector-constructor-iterator. Allocation has 16-byte header for capacity tracking"
-        },
-        {
-          "offset": "0x1C",
-          "size": "0x4",
-          "name": "reserved",
-          "type": "?",
-          "notes": "5 unwind-handler refs hit this offset; likely cleanup/teardown bookkeeping"
         }
-      ]
+      ],
+      "notes": "Full byte-accounted Queue<Application::Main::MainPacket> header. The constructor initializes storage through +0x18, and MainModule constructs RaptureMouseDevice at +0x17944 immediately after the queue at +0x17928, correcting the former speculative +0x1C reserved dword and fixing the exact 0x1C extent."
     },
     {
       "id": "BCS-S-0049",
@@ -3834,7 +3829,8 @@
         "tools/ghidra/logs/c313_async-queue-producer.txt",
         "tools/ghidra/logs/c314_async-queue-object-identity.txt",
         "tools/ghidra/logs/c316_mainmodule-prequeue-fields.txt",
-        "manifests/async_queue_producer.json"
+        "manifests/async_queue_producer.json",
+        "tools/ghidra/logs/c352_main-input-layouts.txt"
       ],
       "fields": [
         {
@@ -3888,17 +3884,38 @@
         },
         {
           "offset": "0x17928",
-          "size": "0x020",
+          "size": "0x01C",
           "name": "main_packet_queue",
           "type": "SqexThreadQueue_MainPacket_Layout",
-          "notes": "Embedded Queue<Application::Main::MainPacket>, cataloged as BCS-S-0048 and constructed with capacity 0xBB8."
+          "notes": "Embedded 0x1C-byte Queue<Application::Main::MainPacket>, cataloged as BCS-S-0048 and constructed with capacity 0xBB8."
         },
         {
-          "offset": "0x17948",
-          "size": "0x40C",
-          "name": "opaque_tail",
-          "type": "unknown[0x40C]",
-          "notes": "Tail storage whose internal subobjects are constructed and destroyed by helpers, but whose boundaries and types are not established on disk."
+          "offset": "0x17944",
+          "size": "0x064",
+          "name": "mouse_device",
+          "type": "ApplicationMainSqwtInterfaceRaptureMouseDevice",
+          "notes": "Embedded Rapture mouse device."
+        },
+        {
+          "offset": "0x179A8",
+          "size": "0x2D8",
+          "name": "keyboard_device",
+          "type": "ApplicationMainSqwtInterfaceRaptureKeyboardDevice",
+          "notes": "Embedded Rapture keyboard device."
+        },
+        {
+          "offset": "0x17C80",
+          "size": "0x060",
+          "name": "pad_device_runtime",
+          "type": "ApplicationMainSqwtInterfaceRapturePadDevice",
+          "notes": "Embedded Rapture pad device; distinct from the retained Sqex::Input::PadDevice pointer at +0x17924."
+        },
+        {
+          "offset": "0x17CE0",
+          "size": "0x074",
+          "name": "text_service",
+          "type": "ApplicationMainSqwtInterfaceRaptureTextService",
+          "notes": "Embedded Rapture text service."
         },
         {
           "offset": "0x17D54",
@@ -3908,7 +3925,7 @@
           "notes": "Pointer returned by a 0x340-byte allocation and FUN_0054E190 construction; concrete runtime type is unresolved. The destructor invokes its first virtual slot and clears the pointer."
         }
       ],
-      "notes": "Full byte-accounted MainModule layout. FUN_004B2DF0 allocates exactly 0x17D58 bytes. Direct constructor and instruction evidence establish the embedded RaptureElementContainer, two retained module pointers, and the MainPacket queue; the remaining tail stays opaque rather than inventing subobject types.",
+      "notes": "Full byte-accounted MainModule layout. FUN_004B2DF0 allocates exactly 0x17D58 bytes. Direct constructor and instruction evidence establish the RaptureElementContainer, retained module pointers, 0x1C-byte MainPacket queue, three Rapture input devices, RaptureTextService, and final owned-runtime pointer.",
       "id": "BCS-S-0054"
     },
     {
@@ -12016,6 +12033,387 @@
       ],
       "notes": "Full byte-accounted Main layout. The startup path allocates exactly 0x968 bytes before calling the constructor. Direct instructions place Application::Rapture, SystemConfig, an inline string, and SqexIdAuthentication; RTTI confirms Main and all RTTI-bearing nested classes.",
       "id": "BCS-S-0139"
+    },
+    {
+      "name": "SqwtInputMouseDevice",
+      "namespace": "Sqwt::Input",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c352_main-input-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqwt::Input::MouseDevice vftable at 0x01068F48; a derived constructor replaces it in embedded use."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "uint32_t",
+          "notes": "Base constructor clears this state dword."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x05",
+          "name": "state_flags",
+          "type": "uint8_t[5]",
+          "notes": "Base constructor clears five consecutive device-state bytes."
+        },
+        {
+          "offset": "0x0D",
+          "size": "0x03",
+          "name": "opaque_0d",
+          "type": "unknown[3]",
+          "notes": "Unobserved bytes before the aligned floating-point state."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "position",
+          "type": "float[2]",
+          "notes": "Base constructor clears two floating-point coordinates."
+        }
+      ],
+      "notes": "Full byte-accounted Sqwt::Input::MouseDevice base. RTTI confirms the identity; the base constructor initializes members through +0x17, and RaptureMouseDevice begins its derived state at +0x18.",
+      "id": "BCS-S-0140"
+    },
+    {
+      "name": "SqwtInputKeyboardDevice",
+      "namespace": "Sqwt::Input",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c352_main-input-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqwt::Input::KeyboardDevice vftable at 0x00FA2608; a derived constructor replaces it in embedded use."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "uint32_t",
+          "notes": "Base constructor clears this state dword."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "uint32_t",
+          "notes": "Base constructor clears this state dword while retaining the object in a global keyboard-device slot."
+        }
+      ],
+      "notes": "Full byte-accounted Sqwt::Input::KeyboardDevice base. RTTI confirms the identity; the base constructor initializes three dwords, and RaptureKeyboardDevice begins its keyboard-state record at +0x0C.",
+      "id": "BCS-S-0141"
+    },
+    {
+      "name": "SqwtInputPadDevice",
+      "namespace": "Sqwt::Input",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c352_main-input-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqwt::Input::PadDevice vftable at 0x01068F84; a derived constructor replaces it in embedded use."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "uint32_t",
+          "notes": "Base constructor clears this state dword."
+        }
+      ],
+      "notes": "Full byte-accounted Sqwt::Input::PadDevice base. RTTI confirms the identity; RapturePadDevice begins its pad-state record immediately after the two initialized base dwords.",
+      "id": "BCS-S-0142"
+    },
+    {
+      "name": "ApplicationMainSqwtInterfaceRaptureMouseDevice",
+      "namespace": "Application::Main::SqwtInterface",
+      "size": "0x64",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c352_main-input-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x18",
+          "name": "mouse_device_base",
+          "type": "SqwtInputMouseDevice",
+          "notes": "Sqwt mouse-device base; its leading vftable is replaced with RaptureMouseDevice vftable 0x00FA2AF4."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x10",
+          "name": "pointer_state",
+          "type": "float[4]",
+          "notes": "Four constructor-cleared floating-point pointer coordinates/state values."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x20",
+          "name": "mouse_state",
+          "type": "SqexInputMouseStateLayout",
+          "notes": "Embedded mouse-state record initialized by the shared input helper."
+        },
+        {
+          "offset": "0x48",
+          "size": "0x18",
+          "name": "runtime_state",
+          "type": "uint32_t[6]",
+          "notes": "Six constructor-cleared runtime dwords."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x02",
+          "name": "runtime_flags",
+          "type": "uint8_t[2]",
+          "notes": "Two constructor-cleared closing flags."
+        },
+        {
+          "offset": "0x62",
+          "size": "0x02",
+          "name": "opaque_62",
+          "type": "unknown[2]",
+          "notes": "Unobserved tail bytes before the following keyboard device."
+        }
+      ],
+      "notes": "Full byte-accounted RaptureMouseDevice embedded at MainModule+0x17944. RTTI confirms the class identity. Its constructor establishes the SQWT base, pointer state, shared mouse state, and closing runtime fields; the next object at +0x179A8 fixes the exact extent.",
+      "id": "BCS-S-0143"
+    },
+    {
+      "name": "ApplicationMainSqwtInterfaceRaptureKeyboardDevice",
+      "namespace": "Application::Main::SqwtInterface",
+      "size": "0x2D8",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c352_main-input-layouts.txt",
+        "BCS-Y-1709"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x00C",
+          "name": "keyboard_device_base",
+          "type": "SqwtInputKeyboardDevice",
+          "notes": "Sqwt keyboard-device base; its leading vftable is replaced with RaptureKeyboardDevice vftable 0x00FA2E64."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x258",
+          "name": "keyboard_state",
+          "type": "SqexInputKeyboardStateLayout",
+          "notes": "Embedded keyboard-state record initialized by the shared input helper."
+        },
+        {
+          "offset": "0x264",
+          "size": "0x004",
+          "name": "configuration",
+          "type": "void *",
+          "notes": "Retained second constructor argument; its concrete interface type remains unresolved."
+        },
+        {
+          "offset": "0x268",
+          "size": "0x004",
+          "name": "state_268",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared state dword."
+        },
+        {
+          "offset": "0x26C",
+          "size": "0x004",
+          "name": "sqwt_interface",
+          "type": "void *",
+          "notes": "Pointer to the enclosing container's SQWT-facing secondary subobject; the constructor also retains it in the base +0x04 field."
+        },
+        {
+          "offset": "0x270",
+          "size": "0x010",
+          "name": "runtime_state",
+          "type": "uint32_t[4]",
+          "notes": "Four constructor-cleared runtime dwords."
+        },
+        {
+          "offset": "0x280",
+          "size": "0x054",
+          "name": "text_state",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Embedded inline string initialized by the shared string constructor."
+        },
+        {
+          "offset": "0x2D4",
+          "size": "0x001",
+          "name": "runtime_flag",
+          "type": "uint8_t",
+          "notes": "Constructor-cleared closing flag."
+        },
+        {
+          "offset": "0x2D5",
+          "size": "0x003",
+          "name": "opaque_2d5",
+          "type": "unknown[3]",
+          "notes": "Unobserved tail bytes before the following pad device."
+        }
+      ],
+      "notes": "Full byte-accounted RaptureKeyboardDevice embedded at MainModule+0x179A8. RTTI confirms the class identity. Constructor placement establishes the SQWT base, shared keyboard state, retained pointers, inline string, and closing flag; the next object at +0x17C80 fixes the exact extent.",
+      "id": "BCS-S-0144"
+    },
+    {
+      "name": "ApplicationMainSqwtInterfaceRapturePadDevice",
+      "namespace": "Application::Main::SqwtInterface",
+      "size": "0x60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c352_main-input-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "pad_device_base",
+          "type": "SqwtInputPadDevice",
+          "notes": "Sqwt pad-device base; its leading vftable is replaced with RapturePadDevice vftable 0x00FA2B28."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x2C",
+          "name": "pad_state",
+          "type": "SqexInputPadStateLayout",
+          "notes": "Embedded pad-state record initialized by the shared input helper."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x10",
+          "name": "runtime_state_34",
+          "type": "uint32_t[4]",
+          "notes": "Four constructor-cleared runtime dwords."
+        },
+        {
+          "offset": "0x44",
+          "size": "0x04",
+          "name": "opaque_44",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x48",
+          "size": "0x14",
+          "name": "runtime_state_48",
+          "type": "uint32_t[5]",
+          "notes": "Five constructor-cleared runtime dwords."
+        },
+        {
+          "offset": "0x5C",
+          "size": "0x02",
+          "name": "runtime_flags",
+          "type": "uint8_t[2]",
+          "notes": "Two constructor-cleared closing flags."
+        },
+        {
+          "offset": "0x5E",
+          "size": "0x02",
+          "name": "opaque_5e",
+          "type": "unknown[2]",
+          "notes": "Unobserved tail bytes before RaptureTextService."
+        }
+      ],
+      "notes": "Full byte-accounted RapturePadDevice embedded at MainModule+0x17C80. RTTI confirms the class identity. Constructor placement establishes the SQWT base, shared pad state, and closing runtime fields; the next object at +0x17CE0 fixes the exact extent.",
+      "id": "BCS-S-0145"
+    },
+    {
+      "name": "ApplicationMainSqwtInterfaceRaptureTextService",
+      "namespace": "Application::Main::SqwtInterface",
+      "size": "0x74",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c352_main-input-layouts.txt",
+        "BCS-Y-1709",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_0044db70.cpp"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "primary_vftable",
+          "type": "void *",
+          "notes": "RaptureTextService complete-object vftable at 0x00FA2E0C."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "secondary_vftable",
+          "type": "void *",
+          "notes": "RaptureTextService adjusted vftable at 0x00FA2DF0."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "sqwt_interface",
+          "type": "void *",
+          "notes": "Pointer to the enclosing container's SQWT-facing secondary subobject; concrete base-interface typing remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x01",
+          "name": "enabled",
+          "type": "uint8_t",
+          "notes": "Constructor-provided mode byte."
+        },
+        {
+          "offset": "0x0D",
+          "size": "0x03",
+          "name": "opaque_0d",
+          "type": "unknown[3]",
+          "notes": "Unobserved alignment bytes before the inline string."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x54",
+          "name": "text",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Embedded inline string initialized by the shared constructor."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "opaque_64",
+          "type": "unknown[0x04]",
+          "notes": "Constructor does not expose this dword's type or initialization."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x0C",
+          "name": "runtime_state",
+          "type": "uint32_t[3]",
+          "notes": "Three constructor-cleared closing state dwords."
+        }
+      ],
+      "notes": "Full byte-accounted RaptureTextService embedded at MainModule+0x17CE0. RTTI confirms both adjusted vftables, the constructor establishes the retained interface pointer, mode, string, and closing state, and the following MainModule pointer at +0x17D54 fixes the exact extent.",
+      "id": "BCS-S-0146"
     }
   ],
   "method": {
@@ -12257,6 +12655,14 @@
     "c351Output": "tools/ghidra/logs/c351_main-runtime.txt",
     "c351ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies Main, Application::Misc::SystemConfig, Sqex::Misc::Config, Sqex::Crypt::Cert, and Sqex::Login::SqexIdAuthentication identities. The sibling decompiled corpus already supplied the Sqex::Misc::Config and Cert helper bodies, so no second Ghidra run was needed.",
     "c351InstructionEvidence": "Configured retail instruction excerpts appended to C351 preserve the exact 0x968 Main allocation, nested-object placements, ten 0x54-byte SystemConfig string strides, the 0x148-byte cleared region, and the closing Cert and authentication boundaries.",
-    "c351Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on the export. Inline-string flag semantics, Config entry type, SystemConfig cleared-region partition, Cert owned implementation, authentication opaque fields, and Main tail state remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c351Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on the export. Inline-string flag semantics, Config entry type, SystemConfig cleared-region partition, Cert owned implementation, authentication opaque fields, and Main tail state remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c352Topic": "C352 MainModule input-device layouts",
+    "c352ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c352Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c352_main-input-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004DC3A0,0x00547D20,0x0054C6C0,0x005480D0,0x0054E310,0x00919B50,0x009869A0,0x00919C20,0x00D35280,0x00D351E0,0x00D35320' } -ScriptPath @('ghidra')",
+    "c352Inputs": "MainModule constructor, three Rapture input-device constructors, RaptureTextService constructor, three SQWT input-base constructors, and three shared input-state initializers",
+    "c352Output": "tools/ghidra/logs/c352_main-input-layouts.txt",
+    "c352ExistingEvidence": "The existing RTTI archive tools/ghidra/logs/c348_thread-coordination-rtti.txt supplies all seven exact class identities. BCS-S-0130/0131/0132 and BCS-S-0135 supply the already-established shared pad, mouse, keyboard, and string layouts.",
+    "c352InstructionEvidence": "Configured retail instruction excerpts appended to C352 preserve the consecutive MainModule placements at +0x17944, +0x179A8, +0x17C80, and +0x17CE0. They also preserve each nested state placement and correct Queue<MainPacket> from 0x20 to 0x1C because the mouse device begins at +0x17944.",
+    "c352Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative reference-topology claim relies on the export. SQWT interface pointer types, untouched alignment/tail bytes, keyboard configuration type, and several runtime-state semantics remain unresolved and are kept unknown-typed. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
