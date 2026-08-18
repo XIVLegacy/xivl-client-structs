@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 121,
+  "structCount": 124,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -10611,22 +10611,17 @@
         "BCS-Y-1831",
         "BCS-Y-1753",
         "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
-        "tools/ghidra/logs/c340_scene-module-owner.txt"
+        "tools/ghidra/logs/c340_scene-module-owner.txt",
+        "tools/ghidra/logs/c342_thread-primitives.txt",
+        "tools/ghidra/logs/c343_thread-primitive-boundaries.txt"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x04",
-          "name": "vftable",
-          "type": "void *",
-          "notes": "Application::Scene::SceneThread vftable installed after the Sqex thread-base constructor."
-        },
-        {
-          "offset": "0x04",
-          "size": "0x34",
-          "name": "thread_runtime_state",
-          "type": "unknown[0x34]",
-          "notes": "Sqex thread-base state initialized and destroyed by external thread helpers; its internal field types are unresolved."
+          "size": "0x38",
+          "name": "thread_base",
+          "type": "SqexThreadThread",
+          "notes": "Sqex::Thread::Thread base subobject whose vftable is replaced by the SceneThread vftable after base construction."
         },
         {
           "offset": "0x38",
@@ -10636,7 +10631,7 @@
           "notes": "Owned SceneThreadImpl allocated as 0x580 bytes by the SceneThread constructor and released virtually by its destructor."
         }
       ],
-      "notes": "Full byte-accounted SceneThread layout. The enclosing 0x40-byte SceneModule starts this subobject at +0x04, fixing its boundary at 0x3C; constructor and destructor evidence establishes the owned implementation pointer at +0x38.",
+      "notes": "Full byte-accounted SceneThread layout. The enclosing 0x40-byte SceneModule starts this subobject at +0x04, fixing its boundary at 0x3C. Fresh thread-primitive evidence identifies the complete 0x38-byte Sqex::Thread::Thread base followed by the owned implementation pointer.",
       "id": "BCS-S-0120"
     },
     {
@@ -10847,6 +10842,161 @@
       ],
       "notes": "Full byte-accounted SceneThreadImpl layout. SceneThread allocates exactly 0x580 bytes; constructor, queue/drain, readiness, RaptureWorld, and teardown evidence establish the queue, synchronization regions, module/context pointers, owned world, and eight closing 0x28-byte callback-tree headers. The large scene-driver base and several helper types remain unknown-typed.",
       "id": "BCS-S-0121"
+    },
+    {
+      "name": "SqexThreadThread",
+      "namespace": "Sqex::Thread",
+      "size": "0x38",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1745",
+        "BCS-Y-1765",
+        "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
+        "tools/ghidra/logs/c342_thread-primitives.txt",
+        "tools/ghidra/logs/c343_thread-primitive-boundaries.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Thread::Thread vftable installed by FUN_00D35760."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "thread_id",
+          "type": "uint32_t",
+          "notes": "Thread identifier output supplied to the thread-creation wrapper and cleared after a successful join."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "thread_state_08",
+          "type": "unknown",
+          "notes": "Constructor initializes this state dword to 2; its complete state domain is unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "thread_handle",
+          "type": "void *",
+          "notes": "Owned operating-system thread handle consumed by wait, terminate, and close operations."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "lifecycle_state",
+          "type": "uint32_t",
+          "notes": "Atomic lifecycle dword initialized to zero and set to 3 by the no-handle join path."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "worker_option",
+          "type": "uint8_t",
+          "notes": "Byte copied from the constructor option argument; its higher-level policy meaning is unresolved."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x03",
+          "name": "worker_option_padding",
+          "type": "unknown[3]",
+          "notes": "Unobserved alignment bytes before the retained thread-creation parameter."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "creation_parameter",
+          "type": "uint32_t",
+          "notes": "Parameter passed to the thread-creation wrapper and retained for later recreation; exact API-level semantics remain unresolved."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x1C",
+          "name": "name",
+          "type": "char[0x1C]",
+          "notes": "Inline NUL-terminated thread name copied with a 0x1C-byte destination bound and forced terminator at +0x37."
+        }
+      ],
+      "notes": "Full byte-accounted Sqex thread base. Constructor, join, and teardown establish the operating-system identifiers, handle, atomic lifecycle state, constructor option, retained creation parameter, and inline name. A derived SocketThread writes its first field at +0x38, and SceneThread does the same, fixing the base boundary.",
+      "id": "BCS-S-0122"
+    },
+    {
+      "name": "SqexThreadMutex",
+      "namespace": "Sqex::Thread",
+      "size": "0x1C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1744",
+        "BCS-Y-1764",
+        "tools/ghidra/logs/c342_thread-primitives.txt",
+        "tools/ghidra/logs/c343_thread-primitive-boundaries.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Thread::Mutex vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x18",
+          "name": "critical_section",
+          "type": "unknown[0x18]",
+          "notes": "Inline 32-bit Win32 CRITICAL_SECTION initialized and deleted by the corresponding operating-system APIs. Its platform-private members are intentionally not expanded."
+        }
+      ],
+      "notes": "Full byte-accounted mutex wrapper. The constructor places the inline critical section at +0x04; ReadWriteLock embeds this complete wrapper at +0x0C and its independently evidenced 0x28-byte boundary fixes the mutex size at 0x1C.",
+      "id": "BCS-S-0123"
+    },
+    {
+      "name": "SqexThreadReadWriteLock",
+      "namespace": "Sqex::Thread",
+      "size": "0x28",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1744",
+        "BCS-Y-1747",
+        "BCS-Y-1767",
+        "tools/ghidra/logs/c342_thread-primitives.txt",
+        "tools/ghidra/logs/c343_thread-primitive-boundaries.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Sqex::Thread::ReadWriteLock vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "reader_count",
+          "type": "uint32_t",
+          "notes": "Atomic reader count incremented on read acquisition and decremented on release."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "writer_count",
+          "type": "uint32_t",
+          "notes": "Atomic writer count incremented before exclusive acquisition and decremented on failure or release."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x1C",
+          "name": "writer_mutex",
+          "type": "SqexThreadMutex",
+          "notes": "Embedded mutex whose critical section at ReadWriteLock+0x10 serializes successful writers."
+        }
+      ],
+      "notes": "Full byte-accounted shared/exclusive lock. Constructor and lock operations establish both atomic counters and the embedded mutex. An owner constructs the lock at +0x18 and writes its next field at +0x40, fixing the exact 0x28-byte boundary.",
+      "id": "BCS-S-0124"
     }
   ],
   "method": {
@@ -11038,6 +11188,18 @@
     "c341ProjectMode": "The queue-boundary follow-up used -ReadOnly against the same configured client project with BCS_GHIDRA_PROGRAM unset. A third pre-run process check found no live Ghidra or client-project Java process.",
     "c341Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c341_scene-packet-queue-ctor.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004EBC20' } -ScriptPath @('ghidra')",
     "c341Inputs": "Queue<ScenePacket> constructor, used to distinguish the 0x1C-byte queue header from SceneThreadImpl readiness_state at +0x38C",
-    "c341Output": "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt"
+    "c341Output": "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt",
+    "c342Topic": "C342 thread primitive layouts",
+    "c342ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra or client-project Java process.",
+    "c342Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c342_thread-primitives.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00D35760,0x00D35560,0x00D356A0,0x00D35710,0x004588E0,0x00458900,0x00D3D960,0x00D3D990,0x00D3D9D0,0x00D3DA00,0x00D3DA10,0x00D3DA50,0x00D3DB10' } -ScriptPath @('ghidra')",
+    "c342Inputs": "Sqex Thread, Mutex, and ReadWriteLock constructors and teardown plus thread create/join and read/write acquire/release operations",
+    "c342Output": "tools/ghidra/logs/c342_thread-primitives.txt",
+    "c343ProjectMode": "The boundary follow-up used -ReadOnly against the same configured client project with BCS_GHIDRA_PROGRAM unset. A second pre-run process check found no live Ghidra or client-project Java process.",
+    "c343Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c343_thread-primitive-boundaries.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x008F9FC0,0x00901050,0x00907630,0x00C97560,0x00CAEDD0,0x00CAEF40,0x00DB7160' } -ScriptPath @('ghidra')",
+    "c343Inputs": "All six direct ReadWriteLock constructor callers plus the SocketThread allocation/constructor path that exposes the Thread base boundary",
+    "c343Output": "tools/ghidra/logs/c343_thread-primitive-boundaries.txt",
+    "c343InstructionEvidence": "Configured retail instruction excerpts appended to the C343 archive preserve implicit ECX placement: ReadWriteLock is constructed at owner+0x18 before the next owner field at +0x40; Mutex is constructed at ReadWriteLock+0x0C; and the 0x3C SocketThread allocation writes its first derived field at +0x38 after Thread construction.",
+    "c342ExistingEvidence": "BCS-Y-1744/1745/1747 and BCS-Y-1764/1765/1767 supplied the RTTI identities; C339 supplied the independent SceneThread derived-base boundary.",
+    "c342Limits": "The Thread +0x08 state domain, the higher-level meaning of its constructor option and retained creation parameter, and the operating-system-private members of CRITICAL_SECTION remain unresolved. These are kept unknown-typed or conservatively named. No negative reference-topology claim relies on these exports."
   }
 }
