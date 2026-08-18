@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 102,
+  "structCount": 105,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -9033,6 +9033,126 @@
       ],
       "notes": "Full byte-accounted CommandDebuggerBase layout. Factory FUN_007187F0 allocates exactly 0x60 bytes and invokes the constructor, whose only derived action is the primary vftable override.",
       "id": "BCS-S-0102"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlDirectorBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1457",
+        "tools/ghidra/logs/c334_lua-service-controls.txt",
+        "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+        "tools/ghidra/logs/c334_lua-service-control-fieldrefs-headless.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject. DirectorBase construction replaces the inherited primary vftable."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "state_60",
+          "type": "unknown",
+          "notes": "Unwritten dword between the ActorBase prefix and the three constructor-cleared tail dwords. Its type and semantics are unresolved."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x0C",
+          "name": "director_state",
+          "type": "unknown[0x0C]",
+          "notes": "The constructor clears the three dwords at +0x64, +0x68, and +0x6C. Their grouping and concrete semantics are unresolved."
+        }
+      ],
+      "notes": "Full byte-accounted DirectorBase layout. Factory FUN_007288F0 allocates exactly 0x70 bytes and invokes the constructor; the ActorBase prefix, one unresolved dword, and three cleared tail dwords consume that allocation exactly.",
+      "id": "BCS-S-0103"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlWorldMaster",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x64",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0226",
+        "BCS-Y-1468",
+        "tools/ghidra/logs/c334_lua-service-controls.txt",
+        "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+        "tools/ghidra/logs/c334_lua-service-control-fieldrefs-headless.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject. WorldMaster construction replaces the inherited primary vftable."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "world_state",
+          "type": "unknown",
+          "notes": "Constructor-cleared final dword. The WorldMaster Lua surface exposes several global queries, but the retained evidence does not identify which state, pointer, or handle this member stores."
+        }
+      ],
+      "notes": "Full byte-accounted WorldMaster layout. Factory FUN_00718DB0 allocates exactly 100 decimal bytes (0x64) and invokes the constructor; the ActorBase prefix and final cleared dword consume that allocation exactly.",
+      "id": "BCS-S-0104"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheet",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0xDC",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1463",
+        "BCS-Y-1709",
+        "tools/ghidra/logs/c334_lua-service-controls.txt",
+        "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+        "tools/ghidra/logs/c334_lua-service-control-fieldrefs-headless.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x60",
+          "name": "actor_base",
+          "type": "ApplicationLuaScriptClientControlActorBase",
+          "notes": "Primary ActorBase subobject. SpreadSheet construction replaces the inherited primary vftable."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x54",
+          "name": "sheet_identity_storage",
+          "type": "unknown[0x54]",
+          "notes": "Embedded string-like helper constructed through FUN_00445CF0 at instruction 0x006F67F4. The same helper occupies 0x54 bytes in ActorBase, but its exact library type remains unresolved."
+        },
+        {
+          "offset": "0xB4",
+          "size": "0x04",
+          "name": "state_b4",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword at instruction 0x006F6807. Its concrete type and semantics are unresolved."
+        },
+        {
+          "offset": "0xB8",
+          "size": "0x0C",
+          "name": "lookup_state",
+          "type": "unknown[0x0C]",
+          "notes": "Embedded helper based at instruction 0x006F680D and initialized by FUN_0077C850. That helper writes relative +0x04 and +0x08, but its concrete container type is unresolved."
+        },
+        {
+          "offset": "0xC4",
+          "size": "0x18",
+          "name": "loaded_data_state",
+          "type": "unknown[0x18]",
+          "notes": "Final embedded helper based at instruction 0x006F6820 and initialized through FUN_00746860. Its observed writes and the exact allocation boundary establish the span, but not the concrete helper type."
+        }
+      ],
+      "notes": "Full byte-accounted SpreadSheet layout. Factory FUN_00747CD0 allocates exactly 0xDC bytes. Constructor instructions partition the derived tail at +0x60, +0xB4, +0xB8, and +0xC4, with the final helper closing at the allocation boundary.",
+      "id": "BCS-S-0105"
     }
   ],
   "method": {
@@ -9155,6 +9275,18 @@
     "c333FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c333_lua-actor-leaf-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x60,0x64' } -ScriptPath @('ghidra')",
     "c333FieldRefInputs": "offsets 0x60 and 0x64; all non-stack base registers",
     "c333FieldRefOutput": "tools/ghidra/logs/c333_lua-actor-leaf-fieldrefs.txt",
-    "c333Limits": "The field-reference export is used only for positive WidgetBase constructor placements. No negative claim relies on its coverage or WRITE/READ labels. The concrete owned-object type and the byte flag semantics remain unresolved."
+    "c333Limits": "The field-reference export is used only for positive WidgetBase constructor placements. No negative claim relies on its coverage or WRITE/READ labels. The concrete owned-object type and the byte flag semantics remain unresolved.",
+    "c334Topic": "C334 Lua service-control layouts",
+    "c334ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset.",
+    "c334CtorInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c334_lua-service-controls.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F1310,0x006F67C0,0x006DF130' } -ScriptPath @('ghidra')",
+    "c334CtorInputs": "DirectorBase, SpreadSheet, and WorldMaster constructors",
+    "c334CtorOutput": "tools/ghidra/logs/c334_lua-service-controls.txt",
+    "c334FactoryInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c334_lua-service-control-factories.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x007288F0,0x00747CD0,0x00718DB0,0x00445CF0,0x0077C850,0x00746860' } -ScriptPath @('ghidra')",
+    "c334FactoryInputs": "Three exact allocation factories and the three SpreadSheet tail helpers",
+    "c334FactoryOutput": "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+    "c334FieldRefInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c334_lua-service-control-fieldrefs-headless.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x60,0x64,0x68,0x6c,0xb4,0xb8,0xbc,0xc0,0xc4,0xc8,0xcc,0xd0,0xd4,0xd8'; XIVL_BASE_REGS = 'EAX,ECX,EDX,EBX,ESI,EDI'; XIVL_DUMP_PATH = 'tools\\ghidra\\logs\\c334_lua-service-control-fieldrefs.txt' } -ScriptPath @('ghidra')",
+    "c334FieldRefInputs": "offsets 0x60, 0x64, 0x68, 0x6C, 0xB4, 0xB8, 0xBC, 0xC0, 0xC4, 0xC8, 0xCC, 0xD0, 0xD4, and 0xD8; all non-stack general registers",
+    "c334FieldRefOutput": "tools/ghidra/logs/c334_lua-service-control-fieldrefs-headless.txt",
+    "c334Limits": "The field-reference export is used only for positive constructor placements, with the known ActorBase +0x60 boundary as calibration. No negative claim relies on its coverage or WRITE/READ labels. DirectorBase tail semantics, WorldMaster final-dword semantics, and the concrete SpreadSheet helper types remain unresolved."
   }
 }
