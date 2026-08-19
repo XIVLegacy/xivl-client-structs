@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 242,
+  "structCount": 243,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -7034,8 +7034,8 @@
           "offset": "0x094",
           "size": "0x00C",
           "name": "camera_input_state",
-          "type": "unknown[0xC]",
-          "notes": "Compact input record initialized by FUN_00566380 and published as a 0xC-byte payload by FUN_005624D0; its member semantics are unresolved."
+          "type": "ApplicationMainElementSystemCameraInputStateRecord",
+          "notes": "Compact input record initialized by FUN_00566380 and published as a complete 0xC-byte payload by FUN_005624D0."
         },
         {
           "offset": "0x0A0",
@@ -18479,6 +18479,78 @@
       ],
       "notes": "Complete 0x0C resource-tree header shared by ResourceModuleBase and ExcelModule. Construction, iteration, erase, and teardown establish the exact 0x68 sentinel specialization and count; the untouched policy dword remains unknown-typed.",
       "id": "BCS-S-0242"
+    },
+    {
+      "name": "ApplicationMainElementSystemCameraInputStateRecord",
+      "namespace": "Application::Main::Element::System",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0069",
+        "tools/ghidra/logs/c324_system-event-elements.txt",
+        "tools/ghidra/logs/c324_system-event-elements-2.txt",
+        "tools/ghidra/logs/c419_camera-input-record.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "word_00",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor and cleared again before publication; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "word_02",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor and cleared again before publication; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "word_04",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "word_06",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "state_08",
+          "type": "uint8_t",
+          "notes": "Byte initialized to 0x12 by the owner constructor; its semantic role is unresolved."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "opaque_09",
+          "type": "unknown[0x01]",
+          "notes": "Byte carried in the published payload but not initialized or interpreted by the bounded evidence."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x01",
+          "name": "flags_0a",
+          "type": "uint8_t",
+          "notes": "Flag byte whose low nibble is cleared by the owner constructor while the high nibble is preserved."
+        },
+        {
+          "offset": "0x0B",
+          "size": "0x01",
+          "name": "opaque_0b",
+          "type": "unknown[0x01]",
+          "notes": "Closing byte carried in the published payload but not initialized or interpreted by the bounded evidence."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x0C CameraElement input record. The constructor establishes four 16-bit slots, one initialized state byte, and one flag byte; the publisher clears the first two slots and transmits the complete record. Signedness and semantics of the four word slots and the two otherwise unobserved bytes remain unknown.",
+      "id": "BCS-S-0243"
     }
   ],
   "method": {
@@ -19135,6 +19207,15 @@
     "c418Output": "tools/ghidra/logs/c418_resource-tree-layouts.txt",
     "c418ExistingEvidence": "BCS-S-0126, BCS-S-0128, and retained C344/C347 evidence supplied all three exact 0x0C owner placements, self-linked sentinels, and zero counts. BCS-S-0160 and retained C359 evidence supplied the FontModule+0x24 placement and boundary.",
     "c418FreshEvidence": "C418 establishes exact 0x18 and 0x68 sentinel allocations, link and flag fields, Resource pointer tails at node+0x10 and node+0x60, erase balancing, iteration, clear, and owner teardown behavior.",
-    "c418Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Both leading tree-policy dwords, the 0x18 node's four-byte key or value, the 0x68 node's 0x54-byte key or value, and both two-byte node tails remain unknown-typed because the bounded paths do not establish their representations. ResourceModuleBase teardown decompilation truncates after freeing the 0x68 sentinel; no claim about the later instruction stream relies on that omitted region."
+    "c418Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Both leading tree-policy dwords, the 0x18 node's four-byte key or value, the 0x68 node's 0x54-byte key or value, and both two-byte node tails remain unknown-typed because the bounded paths do not establish their representations. ResourceModuleBase teardown decompilation truncates after freeing the 0x68 sentinel; no claim about the later instruction stream relies on that omitted region.",
+    "c419Topic": "C419 CameraElement input record layout",
+    "c419ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c419Script": "ghidra/DumpVAs.java",
+    "c419Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c419_camera-input-record.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00566380,0x005624D0' } -ScriptPath @('ghidra')",
+    "c419Inputs": "CameraElement owner constructor and periodic publisher for event channel 1.",
+    "c419Output": "tools/ghidra/logs/c419_camera-input-record.txt",
+    "c419ExistingEvidence": "BCS-S-0069 and retained C324 evidence supplied the complete-object +0x94 placement, exact 0x0C payload boundary, constructor writes, and publication through event channel 1.",
+    "c419FreshEvidence": "C419 rechecked the constructor and publisher in one current read-only batch, confirming four 16-bit stores, the 0x12 byte initialization, the low-nibble clear, and complete 0x0C publication.",
+    "c419Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on the export. The four 16-bit slots remain unknown-typed because their signedness and semantics are not exposed. Bytes +0x09 and +0x0B remain unknown-typed because neither bounded function initializes or interprets them. No claim relies on instructions omitted after a noreturn _free."
   }
 }
