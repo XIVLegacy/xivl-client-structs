@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 200,
+  "structCount": 203,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -758,7 +758,12 @@
         "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
         "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt",
         "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
-        "tools/ghidra/logs/c368_myplayer-player-manager-helper.txt"
+        "tools/ghidra/logs/c368_myplayer-player-manager-helper.txt",
+        "tools/ghidra/logs/c154_settouch-attribute-complete.txt",
+        "tools/ghidra/logs/c378_touch-attribute-state-types.txt",
+        "tools/ghidra/logs/c379_touch-attribute-tree-node.txt",
+        "tools/ghidra/logs/c380_touch-attribute-node-lifecycle.txt",
+        "BCS-S-0203"
       ],
       "fields": [
         {
@@ -792,9 +797,9 @@
         {
           "offset": "0x10C",
           "size": "0x04",
-          "name": "owned_state_10c",
-          "type": "void *",
-          "notes": "Constructor-cleared pointer released during MyPlayer teardown through FUN_00895D70; the pointed-to type remains unresolved."
+          "name": "touch_attribute_state",
+          "type": "ApplicationLuaScriptClientControlMyPlayerTouchAttributeState *",
+          "notes": "Constructor-cleared lazy pointer. _setTouchAttribute allocates the exact 0x18 state, constructs its two byte-key trees, stores it here, and MyPlayer teardown destroys both trees before freeing the allocation."
         },
         {
           "offset": "0x110",
@@ -16065,6 +16070,142 @@
       ],
       "notes": "Complete 8-byte listener allocated by the ReceiverStateCache display-name fast path. Fresh instructions correct the older 0x60 allocation reading: the allocation argument is 8, and the constructor writes only the derived vftable and cache back-reference.",
       "id": "BCS-S-0200"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlTouchAttributeTreeNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c378_touch-attribute-state-types.txt",
+        "tools/ghidra/logs/c379_touch-attribute-tree-node.txt",
+        "tools/ghidra/logs/c380_touch-attribute-node-lifecycle.txt",
+        "BCS-Y-1925"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationLuaScriptClientControlTouchAttributeTreeNode *",
+          "notes": "Left child link used by ordered lookup, insertion, rotation, and recursive teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationLuaScriptClientControlTouchAttributeTreeNode *",
+          "notes": "Parent link. The sentinel uses this field for the root node."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationLuaScriptClientControlTouchAttributeTreeNode *",
+          "notes": "Right child link used by ordered lookup, insertion, rotation, and recursive teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x01",
+          "name": "key",
+          "type": "uint8_t",
+          "notes": "Touch-attribute byte used as the ordering and equality key."
+        },
+        {
+          "offset": "0x0D",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Byte manipulated by the balancing path. Concrete enum values are intentionally unnamed."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Sentinel marker checked by lookup, insertion, traversal, and recursive teardown."
+        },
+        {
+          "offset": "0x0F",
+          "size": "0x01",
+          "name": "tail_padding",
+          "type": "unknown[1]",
+          "notes": "Unwritten closing byte at the exact 0x10 node allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted node used by the two MyPlayer touch-attribute ordered trees. Fresh allocation and initializer instructions establish the exact 0x10 extent and all link, key, balancing, and sentinel fields without assigning an unsupported standard-library template identity.",
+      "id": "BCS-S-0201"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlTouchAttributeTree",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c378_touch-attribute-state-types.txt",
+        "tools/ghidra/logs/c379_touch-attribute-tree-node.txt",
+        "tools/ghidra/logs/c380_touch-attribute-node-lifecycle.txt",
+        "BCS-S-0201",
+        "BCS-Y-1925"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, lookup, insertion, or teardown paths. Its allocator or policy type remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlTouchAttributeTreeNode *",
+          "notes": "Exact 0x10 sentinel node whose left, parent, and right links track minimum, root, and maximum nodes."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel byte-key nodes, initialized to zero and incremented on insertion."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header used twice by MyPlayerTouchAttributeState. Constructor, lookup, insertion, balancing, and teardown paths independently establish the sentinel pointer and node count; the untouched leading policy dword remains honestly unknown-typed.",
+      "id": "BCS-S-0202"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlMyPlayerTouchAttributeState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c154_settouch-attribute-complete.txt",
+        "tools/ghidra/logs/c378_touch-attribute-state-types.txt",
+        "tools/ghidra/logs/c379_touch-attribute-tree-node.txt",
+        "tools/ghidra/logs/c380_touch-attribute-node-lifecycle.txt",
+        "BCS-S-0012",
+        "BCS-S-0202",
+        "BCS-Y-1925"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x0C",
+          "name": "primary_keys",
+          "type": "ApplicationLuaScriptClientControlTouchAttributeTree",
+          "notes": "First byte-key tree consulted by the touch-attribute update path. Its precise distinction from secondary_keys remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x0C",
+          "name": "secondary_keys",
+          "type": "ApplicationLuaScriptClientControlTouchAttributeTree",
+          "notes": "Second byte-key tree consulted by the touch-attribute update path. Its precise distinction from primary_keys remains unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x18 MyPlayer-owned touch-attribute state lazily allocated by _setTouchAttribute and stored at MyPlayer+0x10C. Constructor and destructor instructions place two identical 0x0C ordered-tree headers back-to-back; the update path looks up and inserts byte keys in both trees and drives the downstream touch bit transition.",
+      "id": "BCS-S-0203"
     }
   ],
   "method": {
@@ -16486,6 +16627,22 @@
     "c374InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{va:08x} BEGIN'),[(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08x} END')) for va,n in [(0x006E03B0,130),(0x006BF420,94),(0x007195D0,100),(0x0089D530,144),(0x0089D610,128),(0x006FAFF0,448),(0x00771230,384),(0x006ECE20,256),(0x00771980,512)]]\"",
     "c374ExistingEvidence": "BCS-S-0108 already identified the CharaBase+0x60 ownership slot and its inner offsets; BCS-S-0135 supplied the established 0x54 inline-string layout. BCS-Y-0731, BCS-Y-0732, and BCS-Y-1365 supplied SetDisplayNameReceiver identity and roles. BCS-Y-1585, BCS-Y-1707, and BCS-Y-1708 supplied the listener RTTI and inheritance identity.",
     "c374InstructionEvidence": "Configured retail instructions preserve the exact 0x5C Chara state allocation and CharaBase+0x60 swap destination, the Chara state constructor offsets, the exact 8-byte listener allocation and cache back-reference, the exact 0x60 SetDisplayNameReceiver allocation, every receiver field access, and the post-_free owner replacement store hidden by decompilation.",
-    "c374Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative topology claim relies on these exports. Chara display-name tail bytes and SetDisplayNameReceiver tail bytes are unknown alignment padding because no bounded path reads or writes them. Semantic enum values for the kind byte remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c374Limits": "DumpVAs supplies direct bodies and call lists only for the requested functions. No negative topology claim relies on these exports. Chara display-name tail bytes and SetDisplayNameReceiver tail bytes are unknown alignment padding because no bounded path reads or writes them. Semantic enum values for the kind byte remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c378Script": "ghidra/DumpVAs.java",
+    "c378Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c378_touch-attribute-state-types.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006E6110,0x00895790,0x00895EF0,0x00895D70,0x0089AE80,0x0089ADA0,0x0089A1C0,0x0089A780,0x0089A2D0,0x0089A0A0' }",
+    "c378Inputs": "Configured retail ffxivgame.exe program; VAs 0x006E6110, 0x00895790, 0x00895EF0, 0x00895D70, 0x0089AE80, 0x0089ADA0, 0x0089A1C0, 0x0089A780, 0x0089A2D0, and 0x0089A0A0.",
+    "c378Output": "tools/ghidra/logs/c378_touch-attribute-state-types.txt",
+    "c379Script": "ghidra/DumpVAs.java",
+    "c379Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c379_touch-attribute-tree-node.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0089A240,0x00899F40,0x0089A840' }",
+    "c379Inputs": "Configured retail ffxivgame.exe program; VAs 0x0089A240, 0x00899F40, and 0x0089A840.",
+    "c379Output": "tools/ghidra/logs/c379_touch-attribute-tree-node.txt",
+    "c380Script": "ghidra/DumpVAs.java",
+    "c380Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c380_touch-attribute-node-lifecycle.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00899FF0,0x00899AC0,0x0089A130' }",
+    "c380Inputs": "Configured retail ffxivgame.exe program; VAs 0x00899FF0, 0x00899AC0, and 0x0089A130.",
+    "c380Output": "tools/ghidra/logs/c380_touch-attribute-node-lifecycle.txt",
+    "c378InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{va:08X} BEGIN'),[(print(f'{i.address:08X}: {i.mnemonic:<7} {i.op_str}')) for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08X} END')) for va,n in [(0x006E6110,299),(0x00895EF0,88),(0x00895D70,88),(0x0089AE80,86),(0x0089A240,101),(0x00899FF0,139),(0x00899F40,143),(0x00899AC0,45)]]\"",
+    "c378ExistingEvidence": "BCS-S-0012 supplied the MyPlayer+0x10C lazy ownership slot. BCS-Y-1925 and the C154 archive supplied the _setTouchAttribute attribution, exact 0x18 allocation, and ordered-tree helper chain.",
+    "c378InstructionEvidence": "Configured retail instructions preserve the exact 0x18 allocation, the MyPlayer+0x10C owner replacement after _free, two constructor and destructor destinations separated by 0x0C, exact 0x10 sentinel and ordinary-node allocations, and every node field write.",
+    "c378Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. The distinction between the two byte-key trees, the leading tree policy dword, the color enum values, and the closing node byte remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
