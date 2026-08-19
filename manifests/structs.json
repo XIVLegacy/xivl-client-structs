@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 234,
+  "structCount": 236,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -9386,8 +9386,8 @@
           "offset": "0xB8",
           "size": "0x0C",
           "name": "lookup_state",
-          "type": "unknown[0x0C]",
-          "notes": "Embedded helper based at instruction 0x006F680D and initialized by FUN_0077C850. That helper writes relative +0x04 and +0x08, but its concrete container type is unresolved."
+          "type": "ApplicationLuaScriptClientControlSpreadSheetList",
+          "notes": "Exact embedded 0x0C circular-list container constructed by FUN_0077C850, retained by the adjacent loaded-data state, and cleared during SpreadSheet teardown."
         },
         {
           "offset": "0xC4",
@@ -18099,8 +18099,8 @@
           "offset": "0x10",
           "size": "0x04",
           "name": "source_container",
-          "type": "void *",
-          "notes": "Points to the embedded 0x0C container at the owning SpreadSheet+0xB8. Its concrete specialization is unresolved."
+          "type": "ApplicationLuaScriptClientControlSpreadSheetList *",
+          "notes": "Points to the exact embedded circular-list container at the owning SpreadSheet+0xB8."
         },
         {
           "offset": "0x14",
@@ -18110,8 +18110,88 @@
           "notes": "Closing dword at the exact owner-supplied 0x18 boundary. No bounded producer or consumer establishes its representation."
         }
       ],
-      "notes": "Exact byte-accounted loaded-data helper embedded at SpreadSheet+0xC4. It owns an R-B tree, retains the address of the preceding +0xB8 container, and has two unresolved state dwords.",
+      "notes": "Exact byte-accounted loaded-data helper embedded at SpreadSheet+0xC4. It owns an R-B tree, retains the preceding +0xB8 circular-list container, and has two unresolved state dwords.",
       "id": "BCS-S-0234"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetListNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0105",
+        "BCS-Y-1463",
+        "BCS-Y-0232"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetListNode *",
+          "notes": "Forward link initialized to self on the exact sentinel and followed during list teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetListNode *",
+          "notes": "Backward link initialized to self on the exact sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown",
+          "notes": "Four-byte node payload. The retained SpreadSheet paths do not establish its concrete representation."
+        }
+      ],
+      "notes": "Exact byte-accounted circular-list node used by the SpreadSheet+0xB8 container. The shared allocator fixes the 0x0C size and self-links the sentinel; the owner-specific payload type remains unresolved.",
+      "id": "BCS-S-0235"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetList",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c334_lua-service-controls.txt",
+        "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+        "BCS-S-0105",
+        "BCS-S-0234",
+        "BCS-Y-1463",
+        "BCS-Y-0232"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "list_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the retained constructor, owner, loaded-data, or teardown paths."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetListNode *",
+          "notes": "Owned exact 0x0C circular-list sentinel whose next and previous links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by the shared teardown."
+        }
+      ],
+      "notes": "Exact byte-accounted circular-list container embedded at SpreadSheet+0xB8 and retained by the adjacent loaded-data state at +0xC4.",
+      "id": "BCS-S-0236"
     }
   ],
   "method": {
@@ -18726,6 +18806,10 @@
     "c411InstructionRecipe": "python -c with pefile and capstone against the configured retail image; disassemble 0x006F67C0 length 135, 0x006F6850 length 176, 0x00746860 length 90, 0x00746750 length 86, 0x0071D5F0 length 101, 0x00719AA0 length 139, and 0x007466E0 length 112. The selected instruction lines and exact recipe are appended to the C411 archive.",
     "c411ExistingEvidence": "BCS-S-0105 and C334 supplied the exact SpreadSheet+0xC4 placement, 0x18 extent, owner constructor and destructor, and the initial calls into the nested helpers.",
     "c411FreshEvidence": "C411 direct bodies and selected retail instructions establish the nested tree at +0x00, exact 0x24 node allocation, self-linked sentinel, count, state dword, source-container pointer, and teardown sizes.",
-    "c411Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The three tree-link roles, node key and payload partition, leading tree policy, source-container specialization, state semantics, and closing dword remain unknown-typed or descriptively named. No noreturn _free path contributes to either promoted layout."
+    "c411Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The three tree-link roles, node key and payload partition, leading tree policy, source-container specialization, state semantics, and closing dword remain unknown-typed or descriptively named. No noreturn _free path contributes to either promoted layout.",
+    "c412Topic": "C412 SpreadSheet list layouts",
+    "c412ExistingEvidence": "BCS-Y-1463 and BCS-Y-0232 supply the SpreadSheet constructor, class identity, and data-table API role. C334 supplies the exact SpreadSheet+0xB8 placement and 0x0C boundary. C400 supplies the shared list constructor and exact 0x0C sentinel allocation. C401 supplies the circular-link reset, count clear, traversal, and exact 0x0C node frees. C411 supplies the adjacent loaded-data state pointer back to SpreadSheet+0xB8.",
+    "c412FreshReads": "None. The retained C334, C400, C401, and C411 archives already establish both complete physical layouts and the owner relationship.",
+    "c412Limits": "The leading list-policy dword and four-byte node payload remain unknown-typed because the retained bounded SpreadSheet paths do not initialize or interpret them. The shared helper topology establishes a circular list but does not identify the owner-specific payload class. No negative topology claim or noreturn-truncated decompilation supports these layouts."
   }
 }
