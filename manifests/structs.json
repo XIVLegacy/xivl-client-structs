@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 236,
+  "structCount": 237,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -766,7 +766,8 @@
         "BCS-S-0203",
         "tools/ghidra/logs/c381_myplayer-owned-state.txt",
         "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
-        "BCS-S-0209"
+        "BCS-S-0209",
+        "BCS-S-0032"
       ],
       "fields": [
         {
@@ -857,8 +858,8 @@
           "offset": "0x144",
           "size": "0x10",
           "name": "inventory_package_storage",
-          "type": "unknown[0x10]",
-          "notes": "Embedded vector header constructed by FUN_0072DEB0 with four 0x10-byte package records. Begin, end, and capacity pointers occupy +0x148, +0x14C, and +0x150; the exact container type is unresolved."
+          "type": "PlayerInventoryStorageContainer",
+          "notes": "Embedded exact four-bucket inventory container. Its begin, end, and capacity pointers occupy +0x148, +0x14C, and +0x150; each exact 0x10 bucket owns a 4-byte slot-ID vector."
         },
         {
           "offset": "0x154",
@@ -1906,64 +1907,47 @@
     {
       "name": "PlayerInventoryStorageContainer",
       "namespace": "Application::Lua::Script::Client::Control",
-      "size": "0x10 header; 0x10-byte bucket elements",
-      "confidence": "probable",
+      "size": "0x10",
+      "confidence": "structural",
       "sourceRefs": [
-        "manifests/control_class_napi_field_access_recursive.json",
-        "BCS-Y-0414"
+        "BCS-S-0012",
+        "BCS-Y-0414",
+        "tools/ghidra/logs/c336_myplayer-layout.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
+        "tools/ghidra/logs/c413_myplayer-inventory-package-storage.txt",
+        "tools/ghidra/logs/c414_myplayer-inventory-bucket-lifetime.txt"
       ],
       "fields": [
         {
           "offset": "0x00",
           "size": "0x04",
-          "type": "unknown/unused",
-          "name": "reservedOrAllocatorTag",
-          "evidence": "The constructor passes ECX=this+0x144 to FUN_0072DEB0, while the vector helper initializes only +0x04/+0x08/+0x0c."
+          "name": "vector_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, producer, consumer, or teardown paths."
         },
         {
           "offset": "0x04",
           "size": "0x04",
-          "type": "InventoryPackageBucket*",
-          "name": "bucketBegin",
-          "evidence": "FUN_006EFBD0 reads [Player+0x148] through EBP+0x04 as the package-bucket vector begin pointer."
+          "name": "bucket_begin",
+          "type": "PlayerInventoryPackageBucket *",
+          "notes": "Beginning of the four-record package-bucket array allocated by the MyPlayer constructor."
         },
         {
           "offset": "0x08",
           "size": "0x04",
-          "type": "InventoryPackageBucket*",
-          "name": "bucketEnd",
-          "evidence": "FUN_006EFBD0 subtracts [Player+0x148] from [Player+0x14c] and divides by 0x10 for bucket count."
+          "name": "bucket_end",
+          "type": "PlayerInventoryPackageBucket *",
+          "notes": "One-past-last constructed bucket. Producer and Lua count paths subtract bucket_begin and divide by the exact 0x10 stride."
         },
         {
-          "offset": "0x0c",
+          "offset": "0x0C",
           "size": "0x04",
-          "type": "InventoryPackageBucket*",
-          "name": "bucketCapacityEnd",
-          "evidence": "FUN_0072DEB0 writes param_1+0x0c after allocating count*0x10 bytes for the bucket array."
-        },
-        {
-          "offset": "element+0x04",
-          "size": "0x04",
-          "type": "uint32_t*",
-          "name": "slotBegin",
-          "evidence": "Each 0x10-byte bucket has a nested 4-byte vector: FUN_006EFBD0 reads element+0x04 as begin."
-        },
-        {
-          "offset": "element+0x08",
-          "size": "0x04",
-          "type": "uint32_t*",
-          "name": "slotEnd",
-          "evidence": "FUN_006EFBD0 uses element+0x08 as end, rewrites it after compaction, append, and sort."
-        },
-        {
-          "offset": "element+0x0c",
-          "size": "0x04",
-          "type": "uint32_t*",
-          "name": "slotCapacityEnd",
-          "evidence": "FUN_006EFBD0 compares element+0x08 against element+0x0c before appending and calls FUN_007228E0 when growth is required."
+          "name": "bucket_capacity_end",
+          "type": "PlayerInventoryPackageBucket *",
+          "notes": "End of allocated bucket storage. Construction sets it to bucket_begin plus four exact 0x10 records."
         }
       ],
-      "notes": "Embedded storage-bucket vector at MyPlayer/PlayerBase +0x144; the handoff's PlayerBase+0x148/+0x14c pointers are the vector begin/end fields inside this header. MyPlayer constructor FUN_006F9140 calls FUN_0072DEB0 with ECX=this+0x144 and count 4, which allocates four 0x10-byte bucket records. No container-specific RTTI, BaseClassDescriptor, or vtable was found; the owner classes have PlayerBase/MyPlayer vtables, while this member uses STL-like vector helpers. EntrustItemReceiver worker FUN_006EFBD0 iterates the 0x10-byte buckets, clears each nested slot vector, reserves package capacities 0x23/0x41/0x1a/0x04 through FUN_007222D0, appends bitset-derived slot ids through FUN_007228E0, and sorts buckets with FUN_00720BB0. PlayerBase N-API _countStoredItem dispatches through PlayerBase stub FUN_0071E6C0 slot 0x1f0; the MyPlayer target FUN_00706580 indexes the same +0x148/+0x14c vector and returns the selected bucket's nested slot count. The apparent PlayerBase 0x148/0x14c N-API hits for _setTouchAttribute/_isTouching are vtable slot offsets, not direct storage field accesses.",
+      "notes": "Exact byte-accounted four-bucket inventory storage container embedded at MyPlayer+0x144. Construction, producer, Lua count consumer, and teardown establish the outer vector pointers, four-element count, and exact 0x10 bucket stride without assigning an unsupported standard-library template identity.",
       "id": "BCS-S-0032"
     },
     {
@@ -18192,6 +18176,52 @@
       ],
       "notes": "Exact byte-accounted circular-list container embedded at SpreadSheet+0xB8 and retained by the adjacent loaded-data state at +0xC4.",
       "id": "BCS-S-0236"
+    },
+    {
+      "name": "PlayerInventoryPackageBucket",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0032",
+        "BCS-Y-0414",
+        "tools/ghidra/logs/c413_myplayer-inventory-package-storage.txt",
+        "tools/ghidra/logs/c414_myplayer-inventory-bucket-lifetime.txt",
+        "tools/ghidra/logs/c415_myplayer-inventory-bucket-init.txt",
+        "tools/ghidra/logs/c416_myplayer-inventory-vector-init.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vector_policy",
+          "type": "unknown",
+          "notes": "Leading dword untouched by the bounded bucket constructor, producer, count consumer, and destructor paths."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "slot_id_begin",
+          "type": "uint32_t *",
+          "notes": "Beginning of the 4-byte slot-ID array. The producer compacts existing IDs and appends bitset-derived IDs here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "slot_id_end",
+          "type": "uint32_t *",
+          "notes": "One-past-last slot ID. The producer advances it in 4-byte steps and the Lua consumer derives the stored-item count from it."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "slot_id_capacity_end",
+          "type": "uint32_t *",
+          "notes": "End of allocated slot-ID storage. Reserve and append helpers compare it with slot_id_end using a 4-byte element width."
+        }
+      ],
+      "notes": "Exact byte-accounted inventory package bucket stored in the four-record MyPlayer inventory array. Construction, reserve, compaction, append, sort, count, and teardown independently establish the 0x10 stride and nested 4-byte slot-ID vector.",
+      "id": "BCS-S-0237"
     }
   ],
   "method": {
@@ -18810,6 +18840,24 @@
     "c412Topic": "C412 SpreadSheet list layouts",
     "c412ExistingEvidence": "BCS-Y-1463 and BCS-Y-0232 supply the SpreadSheet constructor, class identity, and data-table API role. C334 supplies the exact SpreadSheet+0xB8 placement and 0x0C boundary. C400 supplies the shared list constructor and exact 0x0C sentinel allocation. C401 supplies the circular-link reset, count clear, traversal, and exact 0x0C node frees. C411 supplies the adjacent loaded-data state pointer back to SpreadSheet+0xB8.",
     "c412FreshReads": "None. The retained C334, C400, C401, and C411 archives already establish both complete physical layouts and the owner relationship.",
-    "c412Limits": "The leading list-policy dword and four-byte node payload remain unknown-typed because the retained bounded SpreadSheet paths do not initialize or interpret them. The shared helper topology establishes a circular list but does not identify the owner-specific payload class. No negative topology claim or noreturn-truncated decompilation supports these layouts."
+    "c412Limits": "The leading list-policy dword and four-byte node payload remain unknown-typed because the retained bounded SpreadSheet paths do not initialize or interpret them. The shared helper topology establishes a circular list but does not identify the owner-specific payload class. No negative topology claim or noreturn-truncated decompilation supports these layouts.",
+    "c413Topic": "C413-C416 MyPlayer inventory package layouts",
+    "c413ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c413Script": "ghidra/DumpVAs.java",
+    "c413Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c413_myplayer-inventory-package-storage.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F9140,0x006F9310,0x0072DEB0,0x00728DC0,0x006EFBD0,0x007222D0,0x007228E0,0x00720BB0,0x00706580,0x00723B80' } -ScriptPath @('ghidra')",
+    "c413Inputs": "MyPlayer constructor and teardown; outer vector constructor, bucket-array constructor, inventory producer, reserve, append, sort, Lua count consumer, and outer teardown helper.",
+    "c413Output": "tools/ghidra/logs/c413_myplayer-inventory-package-storage.txt",
+    "c414Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c414_myplayer-inventory-bucket-lifetime.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00727010,0x0071DF80' } -ScriptPath @('ghidra')",
+    "c414Inputs": "Exact-stride bucket construction loop and per-bucket nested-vector teardown loop.",
+    "c414Output": "tools/ghidra/logs/c414_myplayer-inventory-bucket-lifetime.txt",
+    "c415Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c415_myplayer-inventory-bucket-init.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x007242C0' } -ScriptPath @('ghidra')",
+    "c415Inputs": "Per-bucket construction wrapper called by the exact-stride array constructor.",
+    "c415Output": "tools/ghidra/logs/c415_myplayer-inventory-bucket-init.txt",
+    "c416Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c416_myplayer-inventory-vector-init.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00723330' } -ScriptPath @('ghidra')",
+    "c416Inputs": "Nested 4-byte vector initializer used by every package bucket.",
+    "c416Output": "tools/ghidra/logs/c416_myplayer-inventory-vector-init.txt",
+    "c413ExistingEvidence": "BCS-S-0012 fixed the MyPlayer+0x144 placement and 0x10 owner boundary. BCS-S-0032 and BCS-Y-0414 supplied the four-bucket count, 0x10 bucket stride, reserve capacities, append and sort roles, and Lua count consumer.",
+    "c413FreshEvidence": "C413-C416 directly close outer construction and teardown, exact per-bucket construction and destruction, three pointer roles in each record, and the nested 4-byte element width.",
+    "c413Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. The leading dword in both the outer container and each bucket remains unknown-typed because bounded construction, producer, consumer, and teardown paths do not initialize or interpret it. MyPlayer teardown decompilation omits the explicit +0x144 argument after an earlier noreturn _free; retained C336 instruction evidence places the call at this+0x144, while C413 confirms the callee and subsequent teardown body."
   }
 }
