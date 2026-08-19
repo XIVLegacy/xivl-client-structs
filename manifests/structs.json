@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 230,
+  "structCount": 231,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -9494,7 +9494,9 @@
         "tools/ghidra/logs/c396_owned-resource-producers.txt",
         "tools/ghidra/logs/c397_owned-resource-layouts.txt",
         "tools/ghidra/logs/c399_owned-resource-teardown.txt",
-        "BCS-S-0215"
+        "BCS-S-0215",
+        "tools/ghidra/logs/c409_chara-inline-state-records.txt",
+        "BCS-Y-1030"
       ],
       "fields": [
         {
@@ -9522,8 +9524,8 @@
           "offset": "0x68",
           "size": "0x70",
           "name": "inline_state_records",
-          "type": "unknown[0x70]",
-          "notes": "Two inline 0x38-byte records constructed by FUN_00712DD0 and destroyed by FUN_00712E90 through the MSVC vector constructor and destructor iterators. The record constructor initializes a handle-like value and embedded helper, but the concrete record type remains unresolved."
+          "type": "ApplicationLuaScriptClientControlCharaInlineStateRecord[2]",
+          "notes": "Two exact 0x38 records constructed and destroyed through the MSVC vector iterators. Fresh instruction evidence fixes the nested shared-state base at record +0x08."
         },
         {
           "offset": "0xD8",
@@ -17833,6 +17835,78 @@
       ],
       "notes": "Exact 0x08 record used by CharaElement's 17-entry case-0xD0 table. The packet-facing path supplies up to sixteen records followed by a sentinel; the helper initializes and copies the same 17-record, 0x88-byte shape.",
       "id": "BCS-S-0230"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlCharaInlineStateRecord",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c335_lua-core-control-factories.txt",
+        "tools/ghidra/logs/c409_chara-inline-state-records.txt",
+        "BCS-Y-1030",
+        "BCS-S-0108"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_00",
+          "type": "unknown",
+          "notes": "Constructed through FUN_00CC9310 and destroyed through FUN_00CC9330. The exact helper type is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "uint32_t",
+          "notes": "Zero-initialized by FUN_00712DD0."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "shared_state_base_08",
+          "type": "unknown",
+          "notes": "Base of the state region passed to FUN_0076F5A0 and FUN_0076F690. The cleanup reaches FUN_004D45E0 with this base, but its concrete representation is unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "state_values_0c",
+          "type": "uint32_t[4]",
+          "notes": "Four dwords at shared-state offsets +0x04 through +0x10, zero-initialized by BCS-Y-1030."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "context_1c",
+          "type": "unknown",
+          "notes": "Nested helper at shared-state +0x14, constructed through FUN_00CC9310 and destroyed through FUN_00CC9330. Its concrete type is unresolved."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x10",
+          "name": "state_values_20",
+          "type": "uint32_t[4]",
+          "notes": "Four dwords at shared-state offsets +0x18 through +0x24, zero-initialized by BCS-Y-1030."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x01",
+          "name": "state_flag_30",
+          "type": "uint8_t",
+          "notes": "Byte at shared-state +0x28, zero-initialized by BCS-Y-1030."
+        },
+        {
+          "offset": "0x31",
+          "size": "0x07",
+          "name": "tail_31",
+          "type": "unknown[7]",
+          "notes": "Bytes after the final constructor write and before the exact 0x38 array stride. No retained access distinguishes payload from padding."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x38 record used as a two-element inline array in CharaBase. The record owns two unresolved 4-byte helper regions around a shared zero-initialized dword-and-flag state shape; the exact stride supplies the closing boundary.",
+      "id": "BCS-S-0231"
     }
   ],
   "method": {
@@ -18425,6 +18499,14 @@
     "c408Inputs": "CharaElement owner constructor, case-0xD0 packet dispatcher, and the table initialization/copy helper.",
     "c408Output": "tools/ghidra/logs/c408_chara-status-slot-records.txt",
     "c408ExistingEvidence": "BCS-S-0066 and C323 supplied the +0x188 placement, 0x88 extent, 17-entry count, and observed dword-plus-halfword members. The 0x00D0 pipeline snapshot supplied the packet offsets and sentinel path.",
-    "c408Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x06 bytes remain unknown-typed because the helper copies them only as part of the whole table. No noreturn _free path contributes to this layout."
+    "c408Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x06 bytes remain unknown-typed because the helper copies them only as part of the whole table. No noreturn _free path contributes to this layout.",
+    "c409Topic": "C409 CharaBase inline state records",
+    "c409ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c409Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c409_chara-inline-state-records.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006ECD80,0x00712DD0,0x00712E90,0x0076F5A0,0x0076F690,0x006ED2D0,0x0089FBF0' } -ScriptPath @('ghidra')",
+    "c409Inputs": "CharaBase owner constructor; inline record constructor and destructor; shared state constructor and destructor; two independent shared-state users.",
+    "c409Output": "tools/ghidra/logs/c409_chara-inline-state-records.txt",
+    "c409InstructionRecipe": "python -c with pefile and capstone against the configured retail image; disassemble 0x00712DD0 length 0x59, 0x00712E90 length 0x58, 0x0076F5A0 length 0x73, and 0x0076F690 length 0x58. The selected instruction lines and recipe are appended to the C409 archive.",
+    "c409ExistingEvidence": "BCS-S-0108 and C335 supplied the +0x68 placement, two-element count, 0x38 stride, and constructor/destructor identities. BCS-Y-1030 supplied the shared dword-and-byte initialization shape.",
+    "c409Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. The instruction stream is load-bearing only for the +0x08 shared-state base and nested +0x14 helper. No negative topology claim relies on the export. The two helper regions and seven tail bytes remain unknown-typed because retained evidence does not establish their concrete representations. No noreturn _free path contributes to this layout."
   }
 }
