@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 228,
+  "structCount": 229,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -5985,7 +5985,9 @@
         "tools/ghidra/logs/c321_child-callers.txt",
         "tools/ghidra/logs/c323_packet-element-layouts.txt",
         "manifests/symbols.json",
-        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt"
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+        "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
+        "BCS-Y-1027"
       ],
       "fields": [
         {
@@ -6265,8 +6267,8 @@
           "offset": "0x290",
           "size": "0x120",
           "name": "status_effect_timer_slots",
-          "type": "unknown[6][0x30]",
-          "notes": "Six 0x30-byte timer slots constructed as an array. BCS-Y-1027 processes them as three rows of two slots."
+          "type": "ApplicationMainElementCharaStatusEffectTimerSlot[6]",
+          "notes": "Six exact 0x30 status-effect timer slots constructed as an array. BCS-Y-1027 processes them as two rows of three slots and selects the greatest remaining timer in each row."
         },
         {
           "offset": "0x3B0",
@@ -17685,6 +17687,113 @@
       ],
       "notes": "Complete exact 0x14 segmented pointer-queue header. The shared constructor, append helper, CharaActionController iterator, and teardown establish a map of four-pointer blocks plus logical begin and count fields. Both CharaActionController and CharaElement own arrays of 26 headers with this layout; their concrete queued-object classes are not assumed to match.",
       "id": "BCS-S-0228"
+    },
+    {
+      "name": "ApplicationMainElementCharaStatusEffectTimerSlot",
+      "namespace": "Application::Main::Element::Chara",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c323_packet-element-layouts.txt",
+        "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
+        "BCS-Y-1027",
+        "BCS-S-0066"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "flags",
+          "type": "uint16_t",
+          "notes": "Constructor applies the fixed initial bit pattern while preserving unrelated bits. The tick reads bit 0 and bits 1 through 3 as state and variant selectors and bit 4 as a forwarded flag."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x01",
+          "name": "remaining_ticks",
+          "type": "uint8_t",
+          "notes": "Active timer value. The tick selects the greatest value across each three-slot row and decrements nonzero values."
+        },
+        {
+          "offset": "0x03",
+          "size": "0x01",
+          "name": "decrement_per_tick",
+          "type": "uint8_t",
+          "notes": "Amount subtracted from remaining_ticks with saturation at zero."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "value_04",
+          "type": "uint16_t",
+          "notes": "Constructor initializes this halfword to zero. The tick forwards it together with value_06 as one dword for variants 1 and 4; narrower semantics are unresolved."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "value_06",
+          "type": "uint16_t",
+          "notes": "Constructor initializes this halfword to 0xC000. The tick forwards it together with value_04; narrower semantics are unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "extended_payload_present",
+          "type": "uint8_t",
+          "notes": "Zero selects the compact variant-1/4 broadcast shape; nonzero selects the 0x28-byte extended shape."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x0F",
+          "name": "variant_payload_09",
+          "type": "unknown[15]",
+          "notes": "Remaining bytes of the variant payload beginning at +0x08. The extended path copies aligned portions of this region, but their concrete scalar partition and semantics are unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "value_18",
+          "type": "float",
+          "notes": "Constructor initializes this field from the retail float constant 1.0. Variants 1 through 4 forward the raw value in their state broadcasts; its role remains unresolved."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "unknown",
+          "notes": "Dword between directly consumed variant regions. The bounded constructor and tick do not establish its representation."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "variant_value_20",
+          "type": "unknown",
+          "notes": "Forwarded by extended variants 1 and 4 and by variants 2 and 3. Concrete scalar type and meaning are unresolved."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "variant_value_24",
+          "type": "unknown",
+          "notes": "Forwarded by extended variants 1 and 4 and by variants 2 and 3. Concrete scalar type and meaning are unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "variant_value_28",
+          "type": "unknown",
+          "notes": "Forwarded by extended variants 1 and 4 and by variant 2. Concrete scalar type and meaning are unresolved."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x04",
+          "name": "state_2c",
+          "type": "unknown",
+          "notes": "Final dword within the exact 0x30 array stride. The bounded constructor and tick do not establish its representation."
+        }
+      ],
+      "notes": "Complete exact 0x30 CharaElement status-effect timer slot. Six slots are constructed inline and processed as two rows of three: each row selects its greatest remaining timer, decrements active timers, and emits a variant-sized state broadcast. Header fields and variant access boundaries are explicit; payload semantics remain intentionally narrow.",
+      "id": "BCS-S-0229"
     }
   ],
   "method": {
@@ -18260,6 +18369,16 @@
     "c406Inputs": "Shared 0x14 queue-header constructor and teardown; CharaActionController constructor and iterator; generic temporary queue use; pointer append helper; action-entry allocation and construction.",
     "c406Output": "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
     "c406ExistingEvidence": "BCS-S-0059 and C302 supplied the 26-record CharaActionController array, 0x14 stride, queue iteration, and polymorphic action-object use. BCS-S-0066 and C323 supplied the second 26-record array at CharaElement+0x878 using the same constructor and stride.",
-    "c406Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The leading policy dword and concrete queued-object types remain unknown. The teardown establishes the count and block-map fields before its first noreturn _free call; no load-bearing claim relies on omitted instructions after that call."
+    "c406Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The leading policy dword and concrete queued-object types remain unknown. The teardown establishes the count and block-map fields before its first noreturn _free call; no load-bearing claim relies on omitted instructions after that call.",
+    "c407Topic": "C407 CharaElement status-effect timer slots",
+    "c407ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c407Script": "ghidra/DumpVAs.java",
+    "c407Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c407_chara-status-timer-slots.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0058F130,0x006CE2E0,0x0058B4E0,0x005861B0,0x0058DF90,0x004D7980' } -ScriptPath @('ghidra')",
+    "c407Inputs": "Shared 0x30 timer-slot constructor and no-op destructor; CharaElement owner constructor; timer tick; per-actor frame caller; state-broadcast sink.",
+    "c407Output": "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
+    "c407DataRecipe": "python -c \"import pefile,struct; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); b=p.get_data(0x00f54f70-0x00400000,4); print(b.hex(),struct.unpack('<I',b)[0],struct.unpack('<f',b)[0])\"",
+    "c407DataEvidence": "The configured retail bytes at 0x00F54F70 are 00 00 80 3F, fixing the constructor value stored at slot+0x18 as float 1.0. The recipe and result are appended to C407.",
+    "c407ExistingEvidence": "BCS-S-0066 and C323 supplied the exact CharaElement+0x290 placement, six-element count, and 0x30 stride. BCS-Y-1027 supplied the established timer-tick role and per-frame caller.",
+    "c407Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x09 payload bytes and dwords at +0x1C and +0x20..+0x2C remain unknown-typed where the tick only copies raw values or does not consume them. No noreturn _free path contributes to this layout."
   }
 }

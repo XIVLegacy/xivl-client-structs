@@ -11704,9 +11704,11 @@
       "address": "0x005861B0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/battle_effect_queue_consumer.json"
+        "manifests/battle_effect_queue_consumer.json",
+        "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
+        "BCS-S-0229"
       ],
-      "notes": "[battle-effect-queue-consumer battle-effect queue consumer] 733-byte status-effect TIMER TICK. Walks 6 status-effect timer slots at actor+0x290..+0x2c0..+0x2f0 (3 rows of 2 slots, 0x48 byte stride). Per-slot: tracks max remaining timer across 3 sub-timers per slot; decrements active timer by per-tick rate at slot+1; on changes, builds a per-slot state record sized 4/0xc/0x28/0x14/0x10 by switch on slot bits 1-3 (type discriminator) and broadcasts via FUN_004D7980 with subtype 10..0xe (one per slot variant). Sole caller [[CharaElement_PerActorFrameTick_FUN_0058DF90]]. Separate subsystem from battle-effect queue (FUN_0058DA10) - status effects are timer-based, not event-queue-based.",
+      "notes": "[battle-effect-queue-consumer battle-effect queue consumer; C407 2026-08-19 correction] 733-byte status-effect timer tick. Walks six exact 0x30 timer slots at CharaElement+0x290..+0x3AF as two rows of three, correcting the earlier three-rows-of-two description. For each row it selects the slot with the greatest remaining_ticks byte at slot+0x02, decrements every nonzero timer by its slot+0x03 rate with saturation at zero, and records the selected slot in the three row-member flag words. Based on flag bits 1 through 3, it builds a per-row state record sized 0x04, 0x0C, 0x28, 0x14, or 0x10 and broadcasts through FUN_004D7980 with subtype 0x0A..0x0E. Sole caller [[CharaElement_PerActorFrameTick_FUN_0058DF90]]. Separate subsystem from the battle-effect queue at FUN_0058DA10; status effects here are timer-based, not event-queue-based. [Evidence: tools/ghidra/logs/c407_chara-status-timer-slots.txt]",
       "id": "BCS-Y-1027"
     },
     {
