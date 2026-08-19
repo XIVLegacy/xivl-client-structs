@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 238,
+  "structCount": 242,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -11126,7 +11126,8 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c347_resource-excel-helpers.txt",
-        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
       ],
       "fields": [
         {
@@ -11153,16 +11154,16 @@
         {
           "offset": "0x0C",
           "size": "0x0C",
-          "name": "container_0",
-          "type": "unknown[0x0C]",
-          "notes": "Self-linked container header with its sentinel at +0x10 and count at +0x14; key and node types are unresolved."
+          "name": "resource_tree_18",
+          "type": "ComponentResourceResourceTree18",
+          "notes": "Typed 0x0C resource tree with an exact 0x18 sentinel node and Resource pointer payload tail."
         },
         {
           "offset": "0x18",
           "size": "0x0C",
-          "name": "container_1",
-          "type": "unknown[0x0C]",
-          "notes": "Second self-linked container header with its sentinel at +0x1C and count at +0x20; key and node types are unresolved."
+          "name": "resource_tree_68",
+          "type": "ComponentResourceResourceTree68",
+          "notes": "Typed 0x0C resource tree with an exact 0x68 sentinel node and Resource pointer payload tail."
         }
       ],
       "notes": "Full byte-accounted ResourceModuleBase prefix. Its constructor initializes two state dwords and two independent self-linked container headers; ResourceModule's first derived field at +0x24 fixes the exact base boundary.",
@@ -11212,7 +11213,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c344_thread-coordination.txt",
         "tools/ghidra/logs/c347_resource-excel-helpers.txt",
-        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
       ],
       "fields": [
         {
@@ -11274,9 +11276,9 @@
         {
           "offset": "0x2C",
           "size": "0x0C",
-          "name": "container_2c",
-          "type": "unknown[0x0C]",
-          "notes": "Self-linked container header with sentinel at +0x30 and count at +0x34; key and node types are unresolved."
+          "name": "resource_tree",
+          "type": "ComponentResourceResourceTree68",
+          "notes": "Typed 0x0C resource tree with an exact 0x68 sentinel node; ExcelModule releases each node's Resource pointer during clear or teardown."
         },
         {
           "offset": "0x38",
@@ -13286,7 +13288,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
         "tools/ghidra/logs/c342_thread-primitives.txt",
-        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
       ],
       "fields": [
         {
@@ -13369,9 +13372,9 @@
         {
           "offset": "0x24",
           "size": "0x0C",
-          "name": "lookup_state",
-          "type": "unknown[0x0C]",
-          "notes": "Sentinel-backed lookup header initialized by FUN_0095E590; template and key/value types remain unresolved."
+          "name": "resource_tree",
+          "type": "ComponentResourceResourceTree18",
+          "notes": "Typed 0x0C resource tree with an exact 0x18 sentinel node; FontModule releases each node's Resource pointer during teardown."
         },
         {
           "offset": "0x30",
@@ -18268,6 +18271,214 @@
       ],
       "notes": "Exact byte-accounted 0x20 movement-state record stored twice in CharaElement. The owner constructor initializes both records with the same paired three-lane positive and negative float values and two zeroed dwords. The adjacent live input axes begin after the two-record array at complete-object +0x264.",
       "id": "BCS-S-0238"
+    },
+    {
+      "name": "ComponentResourceResourceTreeNode18",
+      "namespace": "Component::Resource",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Tree parent link; the sentinel stores the root here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "key_or_value",
+          "type": "unknown[0x04]",
+          "notes": "Four-byte key or value storage not interpreted by the bounded constructor, iteration, erase, or teardown paths."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "resource",
+          "type": "ComponentResourceResource *",
+          "notes": "Owned Resource pointer released when ResourceModuleBase or FontModule removes the node."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 on the sentinel and used by erase rebalancing."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x18-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x18 resource-tree node. Allocation, sentinel initialization, iteration, erase balancing, and owner teardown establish every structural field and the Resource pointer tail; the four-byte key or value representation remains unknown.",
+      "id": "BCS-S-0239"
+    },
+    {
+      "name": "ComponentResourceResourceTree18",
+      "namespace": "Component::Resource",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Owned exact 0x18 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by erase or teardown."
+        }
+      ],
+      "notes": "Complete 0x0C resource-tree header used by ResourceModuleBase and FontModule. Construction, iteration, erase, and teardown establish the exact 0x18 sentinel specialization and count; the untouched policy dword remains unknown-typed.",
+      "id": "BCS-S-0240"
+    },
+    {
+      "name": "ComponentResourceResourceTreeNode68",
+      "namespace": "Component::Resource",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Tree parent link; the sentinel stores the root here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x54",
+          "name": "key_or_value",
+          "type": "unknown[0x54]",
+          "notes": "Inline key or value storage whose concrete representation is not established by the bounded constructor, iteration, erase, or teardown paths."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "resource",
+          "type": "ComponentResourceResource *",
+          "notes": "Owned Resource pointer released by both ResourceModuleBase and ExcelModule consumers."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 on the sentinel and used by erase rebalancing."
+        },
+        {
+          "offset": "0x65",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x66",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x68-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x68 resource-tree node. Allocation, sentinel initialization, iteration, erase balancing, and two owner teardown paths establish every structural field and the Resource pointer tail; the inline key or value representation remains unknown.",
+      "id": "BCS-S-0241"
+    },
+    {
+      "name": "ComponentResourceResourceTree68",
+      "namespace": "Component::Resource",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Owned exact 0x68 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by erase or teardown."
+        }
+      ],
+      "notes": "Complete 0x0C resource-tree header shared by ResourceModuleBase and ExcelModule. Construction, iteration, erase, and teardown establish the exact 0x68 sentinel specialization and count; the untouched policy dword remains unknown-typed.",
+      "id": "BCS-S-0242"
     }
   ],
   "method": {
@@ -18915,6 +19126,15 @@
     "c417DataEvidence": "0x00FA5124 is bytes 00 40 1C 46, float32 10000.0. 0x00FA7B24 is bytes 00 40 1C C6, float32 -10000.0.",
     "c417ExistingEvidence": "BCS-S-0066 and retained C323/C408 constructor bodies supplied the exact CharaElement+0x224 placement, two-element count, 0x20 stride, and repeated initialization shape.",
     "c417FreshEvidence": "C417 rechecked the constructor and established that the input listener receives CharaElement+8, correcting listener offsets +0x25C..+0x25F to complete-object +0x264..+0x267 outside the record array. Direct retail data reads fix the two replicated constructor constants as 10000.0f and -10000.0f.",
-    "c417Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on this export. The dwords at record +0x0C and +0x1C remain unknown-typed because the bounded constructor and input path do not expose their representation or semantics. The three-lane arrays are named by their initialized signs rather than an unsupported gameplay role."
+    "c417Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on this export. The dwords at record +0x0C and +0x1C remain unknown-typed because the bounded constructor and input path do not expose their representation or semantics. The three-lane arrays are named by their initialized signs rather than an unsupported gameplay role.",
+    "c418Topic": "C418 resource-tree nested layouts",
+    "c418ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c418Script": "ghidra/DumpVAs.java",
+    "c418Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c418_resource-tree-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0095E590,0x0099B960,0x00C97C50,0x00C98C30,0x00C97AE0,0x00C989C0,0x00C97880,0x00C98340,0x00927440,0x009A0230,0x009A06D0,0x009AB440,0x00C97560,0x00C97400' } -ScriptPath @('ghidra')",
+    "c418Inputs": "Both exact sentinel allocators; ResourceModuleBase and ExcelModule constructors and teardowns; both resource-tree iteration and erase paths; the large-tree clear helper; FontModule construction and teardown as an independent small-tree owner.",
+    "c418Output": "tools/ghidra/logs/c418_resource-tree-layouts.txt",
+    "c418ExistingEvidence": "BCS-S-0126, BCS-S-0128, and retained C344/C347 evidence supplied all three exact 0x0C owner placements, self-linked sentinels, and zero counts. BCS-S-0160 and retained C359 evidence supplied the FontModule+0x24 placement and boundary.",
+    "c418FreshEvidence": "C418 establishes exact 0x18 and 0x68 sentinel allocations, link and flag fields, Resource pointer tails at node+0x10 and node+0x60, erase balancing, iteration, clear, and owner teardown behavior.",
+    "c418Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Both leading tree-policy dwords, the 0x18 node's four-byte key or value, the 0x68 node's 0x54-byte key or value, and both two-byte node tails remain unknown-typed because the bounded paths do not establish their representations. ResourceModuleBase teardown decompilation truncates after freeing the 0x68 sentinel; no claim about the later instruction stream relies on that omitted region."
   }
 }
