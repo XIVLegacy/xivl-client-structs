@@ -41,7 +41,7 @@
     },
     {
       "path": "manifests/structs.json",
-      "sha256": "e41f88f3e20a2f6eabc046b4cfa0e41269a232ad84c98f7b65b31348c89287c0"
+      "sha256": "367b3f8300f8232071d912ff7d55ff4cbc3447cfc0a3715b2962e287bf6ea0cb"
     },
     {
       "path": "manifests/symbols.json",
@@ -102,10 +102,10 @@
     }
   },
   "counts": {
-    "types": 231,
+    "types": 232,
     "symbols": 2042,
     "citations": 1005,
-    "members": 2029,
+    "members": 2039,
     "unknownSpans": 14,
     "opcodes": 189
   },
@@ -33113,8 +33113,8 @@
             "raw": "0x28",
             "bytes": 40
           },
-          "type": "unknown[0x28]",
-          "notes": "Cached 40-byte glyph result copied intact on a tree hit; its internal metric and atlas-coordinate split remains unresolved."
+          "type": "ComponentFontGlyphRecord",
+          "notes": "Cached glyph result written by the rasterizer and copied intact on a tree hit. BCS-S-0232 partitions all ten dwords."
         },
         {
           "kind": "field",
@@ -33170,7 +33170,7 @@
         "EV-0772",
         "EV-0776"
       ],
-      "notes": "Full byte-accounted glyph-cache R-B tree node. Allocation size, links, glyph key, 0x28-byte cached result, sentinel marker, and color byte are direct; the cached result remains deliberately unpartitioned."
+      "notes": "Full byte-accounted glyph-cache R-B tree node. Allocation size, links, glyph key, typed 0x28-byte cached result, sentinel marker, and color byte are direct."
     },
     {
       "id": "BCS-S-0165",
@@ -43644,6 +43644,210 @@
         "EV-0013"
       ],
       "notes": "Complete byte-accounted 0x38 record used as a two-element inline array in CharaBase. The record owns two unresolved 4-byte helper regions around a shared zero-initialized dword-and-flag state shape; the exact stride supplies the closing boundary."
+    },
+    {
+      "id": "BCS-S-0232",
+      "name": "ComponentFontGlyphRecord",
+      "namespace": {
+        "raw": "Component::Font",
+        "convention": "cxx",
+        "segments": [
+          "Component",
+          "Font"
+        ]
+      },
+      "confidence": "confirmed",
+      "size": {
+        "kind": "exact",
+        "raw": "0x28",
+        "bytes": 40
+      },
+      "alignment": {
+        "kind": "unknown",
+        "reason": "no catalog records alignment for this type; deriving it from offsets would be inference"
+      },
+      "bases": {
+        "status": "deferred",
+        "owner": "C1c"
+      },
+      "vtable": {
+        "status": "deferred",
+        "owner": "C1c"
+      },
+      "layout": {
+        "status": "modeled",
+        "declaredBytes": 40,
+        "coveredBytes": 40,
+        "unknownBytes": 0,
+        "overlapBytes": 0
+      },
+      "members": [
+        {
+          "kind": "field",
+          "name": "atlas_outer_index",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x00",
+            "bytes": 0
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Outer atlas counter copied from the font context. It advances after the inner counter reaches four."
+        },
+        {
+          "kind": "field",
+          "name": "atlas_inner_index",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Inner atlas counter copied from the font context. It advances after the current cell grid fills."
+        },
+        {
+          "kind": "field",
+          "name": "state",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x08",
+            "bytes": 8
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Producer initializes this dword to zero; the retained evidence does not establish a narrower semantic name."
+        },
+        {
+          "kind": "field",
+          "name": "baseline_offset",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x0C",
+            "bytes": 12
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "int32_t",
+          "notes": "Text ascent minus the glyph origin Y coordinate."
+        },
+        {
+          "kind": "field",
+          "name": "padded_width_primary",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x10",
+            "bytes": 16
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Clamped glyph black-box width plus four; the same value is written independently at +0x18."
+        },
+        {
+          "kind": "field",
+          "name": "cell_extent",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x14",
+            "bytes": 20
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Configured font height plus two, used as the atlas cell extent."
+        },
+        {
+          "kind": "field",
+          "name": "padded_width_secondary",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x18",
+            "bytes": 24
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Second stored copy of the clamped glyph black-box width plus four; distinct downstream semantics are not established."
+        },
+        {
+          "kind": "field",
+          "name": "padded_height",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x1C",
+            "bytes": 28
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Clamped glyph black-box height plus four."
+        },
+        {
+          "kind": "field",
+          "name": "atlas_x",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x20",
+            "bytes": 32
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Column within the current atlas grid multiplied by the cell extent."
+        },
+        {
+          "kind": "field",
+          "name": "atlas_y",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x24",
+            "bytes": 36
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Row within the current atlas grid multiplied by the cell extent."
+        }
+      ],
+      "citations": [
+        "EV-0773",
+        "EV-0772"
+      ],
+      "notes": "Full byte-accounted cached glyph result. The rasterizer writes all ten dwords, and the cache-hit path copies exactly the same 0x28-byte extent from each tree node."
     }
   ],
   "symbols": [
@@ -94482,7 +94686,8 @@
       "path": "tools/ghidra/logs/c359_font-context-consumer.txt",
       "referencedBy": [
         "BCS-S-0164",
-        "BCS-S-0165"
+        "BCS-S-0165",
+        "BCS-S-0232"
       ]
     },
     {
@@ -94493,7 +94698,8 @@
       "path": "tools/ghidra/logs/c359_font-data-layouts.txt",
       "referencedBy": [
         "BCS-S-0164",
-        "BCS-S-0165"
+        "BCS-S-0165",
+        "BCS-S-0232"
       ]
     },
     {
