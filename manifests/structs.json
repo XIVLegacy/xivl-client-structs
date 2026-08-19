@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 232,
+  "structCount": 234,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -9393,8 +9393,8 @@
           "offset": "0xC4",
           "size": "0x18",
           "name": "loaded_data_state",
-          "type": "unknown[0x18]",
-          "notes": "Final embedded helper based at instruction 0x006F6820 and initialized through FUN_00746860. Its observed writes and the exact allocation boundary establish the span, but not the concrete helper type."
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataState",
+          "notes": "Exact embedded loaded-data helper containing a 0x24-node R-B tree, a pointer to the preceding +0xB8 container, and two unresolved state dwords."
         }
       ],
       "notes": "Full byte-accounted SpreadSheet layout. Factory FUN_00747CD0 allocates exactly 0xDC bytes. Constructor instructions partition the derived tail at +0x60, +0xB4, +0xB8, and +0xC4, with the final helper closing at the allocation boundary.",
@@ -17991,6 +17991,127 @@
       ],
       "notes": "Full byte-accounted cached glyph result. The rasterizer writes all ten dwords, and the cache-hit path copies exactly the same 0x28-byte extent from each tree node.",
       "id": "BCS-S-0232"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x24",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+        "BCS-S-0105"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "link_00",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Tree link at +0x00, self-linked on the exact sentinel allocation. The bounded evidence does not distinguish its traversal role."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "link_04",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Tree link at +0x04, self-linked on the exact sentinel allocation. The bounded evidence does not distinguish its traversal role."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "link_08",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Tree link at +0x08, self-linked on the exact sentinel allocation. The bounded evidence does not distinguish its traversal role."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x14",
+          "name": "value",
+          "type": "unknown[0x14]",
+          "notes": "Tree key and payload span. The bounded constructor and teardown establish its extent but do not expose the member partition or concrete types."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "R-B tree color byte initialized to 1 by the exact node allocator."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Nil marker initialized to zero by the allocator and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "tail_22",
+          "type": "unknown[2]",
+          "notes": "Unwritten closing bytes at the exact 0x24 allocation boundary. The bounded evidence does not distinguish payload from padding."
+        }
+      ],
+      "notes": "Exact byte-accounted R-B tree node used by the SpreadSheet loaded-data state. Construction establishes the three links and marker bytes; the retained bounded paths do not partition the 0x14-byte key and payload span.",
+      "id": "BCS-S-0233"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c334_lua-service-controls.txt",
+        "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+        "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+        "BCS-S-0105"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading tree dword not initialized or interpreted by the bounded constructor and teardown paths."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "tree_sentinel",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Owned exact 0x24 sentinel. Construction self-links it and teardown clears and frees the tree."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "tree_count",
+          "type": "uint32_t",
+          "notes": "Tree element count initialized to zero and cleared during teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared dword that is cleared again before tree teardown; its semantic role is unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "source_container",
+          "type": "void *",
+          "notes": "Points to the embedded 0x0C container at the owning SpreadSheet+0xB8. Its concrete specialization is unresolved."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "tail_state",
+          "type": "unknown",
+          "notes": "Closing dword at the exact owner-supplied 0x18 boundary. No bounded producer or consumer establishes its representation."
+        }
+      ],
+      "notes": "Exact byte-accounted loaded-data helper embedded at SpreadSheet+0xC4. It owns an R-B tree, retains the address of the preceding +0xB8 container, and has two unresolved state dwords.",
+      "id": "BCS-S-0234"
     }
   ],
   "method": {
@@ -18595,6 +18716,16 @@
     "c410Topic": "C410 Font glyph record layout",
     "c410ExistingEvidence": "C359 FUN_00CA95A0 supplied every producer write across the 0x28-byte result, including metrics and atlas counters. C359 FUN_00CA9920 supplied the cache-hit copy from node+0x10 through node+0x37. BCS-S-0164 supplied the enclosing tree-node boundary.",
     "c410FreshReads": "None. The retained C359 archives already establish the complete record; no new Ghidra run was needed.",
-    "c410Limits": "The +0x08 dword is confirmed uint32_t storage initialized to zero, but its semantic role is unknown. The two independently stored padded-width copies remain separately named because retained evidence does not establish their distinct downstream roles. No negative topology claim or noreturn-truncated decompilation supports this layout."
+    "c410Limits": "The +0x08 dword is confirmed uint32_t storage initialized to zero, but its semantic role is unknown. The two independently stored padded-width copies remain separately named because retained evidence does not establish their distinct downstream roles. No negative topology claim or noreturn-truncated decompilation supports this layout.",
+    "c411Topic": "C411 SpreadSheet loaded-data state layouts",
+    "c411ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c411Script": "ghidra/DumpVAs.java",
+    "c411Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c411_spreadsheet-loaded-data-state.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F67C0,0x006F6850,0x00746860,0x00746750,0x0071D5F0,0x00719AA0,0x007466E0,0x007885F0' } -ScriptPath @('ghidra')",
+    "c411Inputs": "SpreadSheet owner constructor and destructor; loaded-data state constructor and destructor; nested tree constructor; exact node allocator; independent tree-constructor user.",
+    "c411Output": "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+    "c411InstructionRecipe": "python -c with pefile and capstone against the configured retail image; disassemble 0x006F67C0 length 135, 0x006F6850 length 176, 0x00746860 length 90, 0x00746750 length 86, 0x0071D5F0 length 101, 0x00719AA0 length 139, and 0x007466E0 length 112. The selected instruction lines and exact recipe are appended to the C411 archive.",
+    "c411ExistingEvidence": "BCS-S-0105 and C334 supplied the exact SpreadSheet+0xC4 placement, 0x18 extent, owner constructor and destructor, and the initial calls into the nested helpers.",
+    "c411FreshEvidence": "C411 direct bodies and selected retail instructions establish the nested tree at +0x00, exact 0x24 node allocation, self-linked sentinel, count, state dword, source-container pointer, and teardown sizes.",
+    "c411Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The three tree-link roles, node key and payload partition, leading tree policy, source-container specialization, state semantics, and closing dword remain unknown-typed or descriptively named. No noreturn _free path contributes to either promoted layout."
   }
 }
