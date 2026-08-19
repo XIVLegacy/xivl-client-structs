@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 214,
+  "structCount": 216,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -9484,7 +9484,11 @@
         "tools/ghidra/logs/c374_display-name-state-types.txt",
         "tools/ghidra/logs/c375_chara-display-name-ownership.txt",
         "tools/ghidra/logs/c376_chara-display-name-allocation.txt",
-        "BCS-S-0198"
+        "BCS-S-0198",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0215"
       ],
       "fields": [
         {
@@ -9518,9 +9522,9 @@
         {
           "offset": "0xD8",
           "size": "0x04",
-          "name": "owned_resource",
-          "type": "void *",
-          "notes": "Constructor-cleared polymorphic owned pointer. CharaBase teardown invokes virtual slot 0 with deleting flag 1 when non-null; the concrete pointed-to class remains unresolved."
+          "name": "item_manager",
+          "type": "ApplicationLuaScriptClientControlItemManager *",
+          "notes": "Constructor-cleared lazy owner. FUN_006F51A0 allocates the exact 0x78-byte ItemManager on first access, replaces any prior value through its deleting virtual, and stores it here; CharaBase teardown invokes the same deleting virtual."
         },
         {
           "offset": "0xDC",
@@ -9567,7 +9571,11 @@
         "tools/ghidra/logs/c335_lua-core-controls.txt",
         "tools/ghidra/logs/c335_lua-core-control-factories.txt",
         "tools/ghidra/logs/c335_lua-core-control-fieldrefs.txt",
-        "tools/ghidra/logs/c335_lua-core-control-teardown.txt"
+        "tools/ghidra/logs/c335_lua-core-control-teardown.txt",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0216"
       ],
       "fields": [
         {
@@ -9594,9 +9602,9 @@
         {
           "offset": "0x68",
           "size": "0x04",
-          "name": "owned_resource",
-          "type": "void *",
-          "notes": "Constructor-cleared polymorphic owned pointer. CutScene teardown invokes virtual slot 0 with deleting flag 1 when non-null; the concrete pointed-to class remains unresolved."
+          "name": "initialization_clip_arguments",
+          "type": "ApplicationLuaScriptClientControlCutSceneInitializationClipArguments *",
+          "notes": "Constructor-cleared owner. FUN_006FBE80 allocates exactly 0x68 bytes, constructs InitializationClipArguments, replaces any prior value through its deleting virtual, and stores it here; finalization and CutScene teardown release it through that virtual."
         },
         {
           "offset": "0x6C",
@@ -16868,6 +16876,170 @@
       ],
       "notes": "Complete exact 0x34 RaptureReferenceResource lazily allocated into CharaActor+0x2B84. RTTI, base construction, inherited vector methods, and instruction-complete teardown account for both pointer-vector headers and the retained scene-service reference.",
       "id": "BCS-S-0214"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManager",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0187",
+        "tools/ghidra/logs/c221_get-equipping-slot.txt",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c398_owned-resource-components.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0108"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Control::ItemManager vftable at 0x00FD7618. Construction first installs the ItemSheet::LoadFinishedListenerInterface table before replacing it with this primary table."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "base_state",
+          "type": "unknown",
+          "notes": "Four bytes between the primary vftable and the first constructed subobject. No bounded constructor, update, or teardown path exposes their representation."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x0C",
+          "name": "item_index_a",
+          "type": "unknown[12]",
+          "notes": "First 0x0C helper constructed through FUN_00726120 and destroyed from the same exact base. Its concrete container or policy type remains unresolved."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x0C",
+          "name": "item_index_b",
+          "type": "unknown[12]",
+          "notes": "Second 0x0C helper constructed through FUN_00726120 and destroyed from the same exact base. The bounded evidence does not establish how its role differs from item_index_a."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "owned_item_state",
+          "type": "void *",
+          "notes": "Constructor-cleared owned pointer. ItemManager teardown invokes FUN_0089BAD0 on the pointed-to object and then frees it; no concrete allocation or RTTI identity was recovered in this batch."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x3C",
+          "name": "item_runtime_state",
+          "type": "unknown[60]",
+          "notes": "Embedded helper constructed by FUN_006F3080 and destroyed by FUN_006F1AB0. Its exact boundary is fixed by the neighboring +0x20 pointer and +0x60 flag, but its internal helper types remain unresolved."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x01",
+          "name": "update_pending",
+          "type": "uint8_t",
+          "notes": "Initialized to 1 and set to 1 again by ItemManager vtable slot 1 after the paired item-update handlers run."
+        },
+        {
+          "offset": "0x61",
+          "size": "0x01",
+          "name": "state_61",
+          "type": "uint8_t",
+          "notes": "Constructor-cleared byte. No bounded consumer establishes narrower semantics."
+        },
+        {
+          "offset": "0x62",
+          "size": "0x02",
+          "name": "alignment_62",
+          "type": "unknown[2]",
+          "notes": "Unwritten alignment bytes between the two constructor-cleared byte fields and the following dwords."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "state_64",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword with unresolved representation and semantics."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x04",
+          "name": "state_68",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword with unresolved representation and semantics."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x0C",
+          "name": "item_update_state",
+          "type": "unknown[12]",
+          "notes": "Final 0x0C helper constructed by FUN_00742DF0 and destroyed by FUN_00742D80. Its concrete type remains unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x78 ItemManager layout lazily allocated into CharaBase+0xD8. The allocation and recovered class vftable establish its identity and size; instruction-complete construction and teardown account for every subobject boundary, including the cleanup hidden after the decompiler's noreturn _free call. Existing item API evidence establishes the inventory and trade manager role while opaque helper representations remain honestly unknown-typed.",
+      "id": "BCS-S-0215"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlCutSceneInitializationClipArguments",
+      "namespace": "Application::Lua::Script::Client::Control::CutScene",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c398_owned-resource-components.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0109",
+        "BCS-S-0135"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Control::CutScene::InitializationClipArguments vftable at 0x00FD6178."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "clip_entries_policy",
+          "type": "unknown",
+          "notes": "Leading dword of the copied four-byte-stride range. Its allocator or policy representation is not exposed by construction or teardown."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "clip_entries_begin",
+          "type": "void *",
+          "notes": "Beginning of the copied four-byte-stride initialization-clip argument range. The concrete element type remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "clip_entries_end",
+          "type": "void *",
+          "notes": "One-past-last copied initialization-clip argument entry."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "clip_entries_capacity_end",
+          "type": "void *",
+          "notes": "One-past-end of allocated four-byte-stride entry storage."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x54",
+          "name": "clip_name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Embedded established string layout constructed by FUN_00445CF0 and destroyed by FUN_00446F50. CutScene initialization and finalization paths pass this object as the clip identity."
+        }
+      ],
+      "notes": "Complete exact 0x68 polymorphic InitializationClipArguments object owned through CutScene+0x68. The exact allocation, recovered RTTI-backed vftable, constructor and destructor instructions, copied four-byte-stride range, and embedded string account for every byte.",
+      "id": "BCS-S-0216"
     }
   ],
   "method": {
@@ -17371,6 +17543,32 @@
     "c387InstructionRecipe": "python -c \"import pefile; from capstone import *; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=Cs(CS_ARCH_X86,CS_MODE_32); spans=[(0x65f180,1942),(0x65f940,341),(0x80e8c0,176),(0x80e970,171),(0x8581b0,134),(0xa6aa40,245)]; [(print(f'-- {va:08x} --'),[print(f'{i.address:08x}  {i.mnemonic:<7} {i.op_str}') for i in md.disasm(p.get_data(va-p.OPTIONAL_HEADER.ImageBase,n),va)]) for va,n in spans]\"",
     "c387ExistingEvidence": "BCS-S-0060 and the C307-C308 archives supplied the exact 0x2BB0 CharaActor, its constructor and destructor, and four unresolved ownership or link slots. The C314 RTTI inventory already contained both concrete scene-class names but no layouts.",
     "c387InstructionEvidence": "Configured retail excerpts appended to C388, C389, and C394 preserve both exact allocations and owner stores, the distinct 0x0C factory object, every controller and reference-resource constructor placement, and all vector cleanup instructions hidden after noreturn _free calls in decompilation.",
-    "c387Limits": "FindFieldRefs is used only for positive hits and is calibrated by the known CharaVisual+0x2B5C field; no negative claim relies on its coverage or operand-position labels. DumpVAs supplies direct bodies and call lists only for requested functions. Controller vector policy dwords, effect-record payload, target element type, container schedule policy/state, reference-resource base state, and pointer-vector policy dwords remain unknown-typed or descriptively named. The +0x12F4 factory interface remains incomplete because no concrete class constructor or RTTI identity is exposed. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c387Limits": "FindFieldRefs is used only for positive hits and is calibrated by the known CharaVisual+0x2B5C field; no negative claim relies on its coverage or operand-position labels. DumpVAs supplies direct bodies and call lists only for requested functions. Controller vector policy dwords, effect-record payload, target element type, container schedule policy/state, reference-resource base state, and pointer-vector policy dwords remain unknown-typed or descriptively named. The +0x12F4 factory interface remains incomplete because no concrete class constructor or RTTI identity is exposed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c395Topic": "C395-C399 Lua control owned-resource layouts",
+    "c395ProjectMode": "All five headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c395Script": "ghidra/DumpVAs.java",
+    "c395Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c395_lua-control-owned-resources.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006E13F0,0x006F6900,0x006DEE90,0x005F5F70,0x006DEED0,0x006E3920,0x006E3A00,0x00707770,0x006E3890,0x00707870,0x006EBF30,0x006FCAA0,0x006DC570,0x006A7AC0,0x006DC560,0x006E19D0,0x006E19A0,0x006E01D0,0x006DBFA0,0x006F1A40' }",
+    "c395Inputs": "Class-specific WidgetBase and CutScene virtual methods plus the CharaBase owned-resource gate helper.",
+    "c395Output": "tools/ghidra/logs/c395_lua-control-owned-resources.txt",
+    "c396Script": "ghidra/DumpVAs.java",
+    "c396Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c396_owned-resource-producers.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F51A0,0x006DE710,0x006E2000,0x006F0840,0x006FA7E0,0x0070A350,0x007642D0,0x00767870,0x00772F60,0x00772FB0,0x00774700,0x00774AD0,0x006FB9C0,0x006FBCC0,0x006FBE80,0x00762D20,0x006E1DE0' }",
+    "c396Inputs": "Positive +0xD8 and +0x68 field-reference functions, including the exact lazy allocation and replacement paths.",
+    "c396Output": "tools/ghidra/logs/c396_owned-resource-producers.txt",
+    "c397Script": "ghidra/DumpVAs.java",
+    "c397Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c397_owned-resource-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F5100,0x00727640' }",
+    "c397Inputs": "ItemManager and CutScene::InitializationClipArguments constructors.",
+    "c397Output": "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+    "c398Script": "ghidra/DumpVAs.java",
+    "c398Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c398_owned-resource-components.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00743400,0x00727750,0x00726120,0x006F3080,0x00742DF0,0x00726290,0x007036E0' }",
+    "c398Inputs": "Both deleting destructors, ItemManager embedded-helper constructors and update method, and the clip-argument range constructor.",
+    "c398Output": "tools/ghidra/logs/c398_owned-resource-components.txt",
+    "c399Script": "ghidra/DumpVAs.java",
+    "c399Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c399_owned-resource-teardown.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F5050,0x007276D0,0x006EE3E0,0x006EE480' }",
+    "c399Inputs": "Complete-object teardowns plus the two existing item lookup helpers used to check whether they supplied inner ItemManager types.",
+    "c399Output": "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+    "c395InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{va:08X} BEGIN'),[print(f'{i.address:08X}: {i.mnemonic:<8} {i.op_str}') for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08X} END')) for va,n in [(0x006F5100,155),(0x00727640,139)]]\"; repeated for (0x006F5050,159) and (0x007276D0,127).",
+    "c395ExistingEvidence": "BCS-S-0108 and BCS-S-0109 supplied the CharaBase+0xD8 and CutScene+0x68 ownership slots. BCS-Y-0187 and the C204-C221 item API archives supplied the ItemManager role. The C314 RTTI inventory already contained the exact InitializationClipArguments identity. BCS-S-0135 supplied the established 0x54 inline-string layout.",
+    "c395InstructionEvidence": "Configured retail instructions appended to C397 preserve both concrete constructor destinations and every field boundary. Instructions appended to C399 preserve ItemManager cleanup after the noreturn _free call and both clip-argument container and string teardown placements.",
+    "c395Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. Existing broad field-reference archives are used only for positive producer and consumer hits; no negative claim relies on their coverage or operand labels. ItemManager helper representations, its +0x20 owned type, four state bytes/dwords, and the clip-entry element type remain unknown-typed. WidgetBase+0x60 remains unresolved because no producer or concrete allocation was observed in the bounded existing or fresh method set. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
