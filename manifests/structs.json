@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 237,
+  "structCount": 238,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -5973,7 +5973,9 @@
         "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
         "BCS-Y-1027",
         "tools/ghidra/logs/c408_chara-status-slot-records.txt",
-        "BCS-Y-0619"
+        "BCS-Y-0619",
+        "tools/ghidra/logs/c417_chara-movement-state-records.txt",
+        "BCS-Y-1838"
       ],
       "fields": [
         {
@@ -6162,8 +6164,8 @@
           "offset": "0x224",
           "size": "0x040",
           "name": "movement_state_records",
-          "type": "unknown[2][0x20]",
-          "notes": "Two 0x20-byte records initialized together by FUN_0058B4E0. The second record contains the live movement axes at +0x25C..+0x25F."
+          "type": "ApplicationMainElementCharaMovementStateRecord[2]",
+          "notes": "Two exact 0x20 records initialized identically by the owner constructor. Each contains paired three-lane float values and two unknown-typed zeroed dwords; the live input axes begin after this array at +0x264."
         },
         {
           "offset": "0x264",
@@ -18222,6 +18224,50 @@
       ],
       "notes": "Exact byte-accounted inventory package bucket stored in the four-record MyPlayer inventory array. Construction, reserve, compaction, append, sort, count, and teardown independently establish the 0x10 stride and nested 4-byte slot-ID vector.",
       "id": "BCS-S-0237"
+    },
+    {
+      "name": "ApplicationMainElementCharaMovementStateRecord",
+      "namespace": "Application::Main::Element::Chara",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0066",
+        "tools/ghidra/logs/c323_packet-element-layouts.txt",
+        "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+        "tools/ghidra/logs/c417_chara-movement-state-records.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x0C",
+          "name": "positive_values",
+          "type": "float[3]",
+          "notes": "Three float lanes initialized to 10000.0f from the retail constant at 0x00FA5124."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state_0c",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword. The bounded evidence does not expose its representation or semantics."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x0C",
+          "name": "negative_values",
+          "type": "float[3]",
+          "notes": "Three float lanes initialized to -10000.0f from the retail constant at 0x00FA7B24."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "unknown",
+          "notes": "Constructor-cleared closing dword. The bounded evidence does not expose its representation or semantics."
+        }
+      ],
+      "notes": "Exact byte-accounted 0x20 movement-state record stored twice in CharaElement. The owner constructor initializes both records with the same paired three-lane positive and negative float values and two zeroed dwords. The adjacent live input axes begin after the two-record array at complete-object +0x264.",
+      "id": "BCS-S-0238"
     }
   ],
   "method": {
@@ -18858,6 +18904,17 @@
     "c416Output": "tools/ghidra/logs/c416_myplayer-inventory-vector-init.txt",
     "c413ExistingEvidence": "BCS-S-0012 fixed the MyPlayer+0x144 placement and 0x10 owner boundary. BCS-S-0032 and BCS-Y-0414 supplied the four-bucket count, 0x10 bucket stride, reserve capacities, append and sort roles, and Lua count consumer.",
     "c413FreshEvidence": "C413-C416 directly close outer construction and teardown, exact per-bucket construction and destruction, three pointer roles in each record, and the nested 4-byte element width.",
-    "c413Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. The leading dword in both the outer container and each bucket remains unknown-typed because bounded construction, producer, consumer, and teardown paths do not initialize or interpret it. MyPlayer teardown decompilation omits the explicit +0x144 argument after an earlier noreturn _free; retained C336 instruction evidence places the call at this+0x144, while C413 confirms the callee and subsequent teardown body."
+    "c413Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. The leading dword in both the outer container and each bucket remains unknown-typed because bounded construction, producer, consumer, and teardown paths do not initialize or interpret it. MyPlayer teardown decompilation omits the explicit +0x144 argument after an earlier noreturn _free; retained C336 instruction evidence places the call at this+0x144, while C413 confirms the callee and subsequent teardown body.",
+    "c417Topic": "C417 CharaElement movement-state records",
+    "c417ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c417Script": "ghidra/DumpVAs.java",
+    "c417Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c417_chara-movement-state-records.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0058B4E0,0x00589490' } -ScriptPath @('ghidra')",
+    "c417Inputs": "CharaElement owner constructor and the primary input-command listener reached through the +8 interface subobject.",
+    "c417Output": "tools/ghidra/logs/c417_chara-movement-state-records.txt",
+    "c417DataRecipe": "Read four bytes at VAs 0x00FA5124 and 0x00FA7B24 from the configured retail image and decode each as little-endian uint32 and IEEE-754 float32. The recipe and results are appended to C417.",
+    "c417DataEvidence": "0x00FA5124 is bytes 00 40 1C 46, float32 10000.0. 0x00FA7B24 is bytes 00 40 1C C6, float32 -10000.0.",
+    "c417ExistingEvidence": "BCS-S-0066 and retained C323/C408 constructor bodies supplied the exact CharaElement+0x224 placement, two-element count, 0x20 stride, and repeated initialization shape.",
+    "c417FreshEvidence": "C417 rechecked the constructor and established that the input listener receives CharaElement+8, correcting listener offsets +0x25C..+0x25F to complete-object +0x264..+0x267 outside the record array. Direct retail data reads fix the two replicated constructor constants as 10000.0f and -10000.0f.",
+    "c417Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on this export. The dwords at record +0x0C and +0x1C remain unknown-typed because the bounded constructor and input path do not expose their representation or semantics. The three-lane arrays are named by their initialized signs rather than an unsupported gameplay role."
   }
 }
