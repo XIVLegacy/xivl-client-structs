@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 227,
+  "structCount": 228,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -4485,7 +4485,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c308_actioncontroller-ctor.txt",
         "xivl-decomp:docs/actor/action-queue.md",
-        "xivl-decomp:include/actor/chara_actor.h"
+        "xivl-decomp:include/actor/chara_actor.h",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt"
       ],
       "fields": [
         {
@@ -4498,9 +4499,9 @@
         {
           "offset": "0x4",
           "size": "0x208",
-          "name": "buckets",
-          "type": "unknown[26][0x14]",
-          "notes": "Twenty-six 0x14-byte bucket objects constructed by eh_vector_constructor_iterator. FUN_00845430 walks the same array from controller+0x10 with a 0x14 stride."
+          "name": "action_queues",
+          "type": "ApplicationSegmentedPointerQueue[26]",
+          "notes": "Twenty-six exact 0x14 segmented pointer queues constructed as an array. FUN_00845430 walks the same array and dispatches the polymorphic queued action objects."
         },
         {
           "offset": "0x20C",
@@ -4517,7 +4518,7 @@
           "notes": "FUN_00845340 stores its constructor argument at dword index 0x8A."
         }
       ],
-      "notes": "Inline at CharaActor+0x2858. Constructor FUN_00845340 and destructor FUN_008453C0 both receive the member by LEA. The concrete object is observed through +0x22B; its exact sizeof is not claimed because the next CharaActor field is eight bytes later at +0x2A8C.",
+      "notes": "Inline at CharaActor+0x2858. Constructor FUN_00845340 and destructor FUN_008453C0 both receive the member by LEA. Within the byte-accounted observed extent, its vftable is followed by 26 exact segmented pointer queues, controller state, and the owning CharaActor pointer. The complete object size beyond +0x22B is not claimed because the next CharaActor field is eight bytes later at +0x2A8C.",
       "id": "BCS-S-0059"
     },
     {
@@ -5983,7 +5984,8 @@
         "tools/ghidra/logs/c321_direct-callers.txt",
         "tools/ghidra/logs/c321_child-callers.txt",
         "tools/ghidra/logs/c323_packet-element-layouts.txt",
-        "manifests/symbols.json"
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt"
       ],
       "fields": [
         {
@@ -6353,9 +6355,9 @@
         {
           "offset": "0x878",
           "size": "0x208",
-          "name": "event_records",
-          "type": "unknown[26][0x14]",
-          "notes": "Twenty-six 0x14-byte records constructed with FUN_008462D0."
+          "name": "segmented_pointer_queues",
+          "type": "ApplicationSegmentedPointerQueue[26]",
+          "notes": "Twenty-six exact 0x14 segmented pointer queues constructed with the shared queue-header constructor. Their queued-object role within CharaElement remains unresolved."
         },
         {
           "offset": "0xA80",
@@ -17631,6 +17633,58 @@
       ],
       "notes": "Complete exact 0x28 intrusive SceneThread callback descriptor shared by two draw callbacks, five update callbacks, and one interval callback. Instruction-level construction fixes all eight destinations and argument mappings; teardown independently confirms the leading self-linked list node. Two state dwords remain honestly unknown-typed.",
       "id": "BCS-S-0227"
+    },
+    {
+      "name": "ApplicationSegmentedPointerQueue",
+      "namespace": "Application",
+      "size": "0x14",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "tools/ghidra/logs/c323_packet-element-layouts.txt",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+        "BCS-S-0059",
+        "BCS-S-0066"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy_state",
+          "type": "unknown",
+          "notes": "Leading dword within the exact repeated record boundary. The shared constructor leaves it untouched and the bounded queue consumers do not establish its representation."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "block_map",
+          "type": "void *",
+          "notes": "Pointer to a dynamically allocated map of pointer-block addresses. Each live block holds four queued-object pointers."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "block_count",
+          "type": "uint32_t",
+          "notes": "Number of block-map entries. Queue insertion and iteration use it as the wrap threshold for the computed block index."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "begin_offset",
+          "type": "uint32_t",
+          "notes": "Logical offset of the first queued pointer within the segmented storage."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "element_count",
+          "type": "uint32_t",
+          "notes": "Number of queued pointers. Append increments this value and teardown drains it to zero before releasing storage."
+        }
+      ],
+      "notes": "Complete exact 0x14 segmented pointer-queue header. The shared constructor, append helper, CharaActionController iterator, and teardown establish a map of four-pointer blocks plus logical begin and count fields. Both CharaActionController and CharaElement own arrays of 26 headers with this layout; their concrete queued-object classes are not assumed to match.",
+      "id": "BCS-S-0228"
     }
   ],
   "method": {
@@ -18198,6 +18252,14 @@
     "c405InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); va=0x004EA870; n=687; md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [print(f'{i.address:08X}: {i.mnemonic:<8} {i.op_str}') for i in md.disasm(p.get_data(va-0x400000,n),va)]\"",
     "c405ExistingEvidence": "BCS-S-0121 and the C339 archive supplied the exact eight repeated 0x28 SceneThreadImpl+0x440..+0x57F boundaries and their teardown unlink operations.",
     "c405InstructionEvidence": "Configured retail instructions appended to C405 preserve every exact record destination and the complete push order mapping owner, callback, context, schedule order, name, and zero state into the shared constructors.",
-    "c405Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. The rejected C404 archive supports no claim. No negative topology claim relies on either export. Callback context representation and the +0x1C and +0x24 state dwords remain unknown-typed. The two non-entry callback labels are retained only as code-pointer values and are not treated as exported functions."
+    "c405Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. The rejected C404 archive supports no claim. No negative topology claim relies on either export. Callback context representation and the +0x1C and +0x24 state dwords remain unknown-typed. The two non-entry callback labels are retained only as code-pointer values and are not treated as exported functions.",
+    "c406Topic": "C406 segmented pointer-queue layout",
+    "c406ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c406Script": "ghidra/DumpVAs.java",
+    "c406Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c406_chara-action-queue-buckets.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x008462D0,0x00CC3BF0,0x00845340,0x008781D0,0x00845430,0x005692F0,0x00845E80,0x00843B50' } -ScriptPath @('ghidra')",
+    "c406Inputs": "Shared 0x14 queue-header constructor and teardown; CharaActionController constructor and iterator; generic temporary queue use; pointer append helper; action-entry allocation and construction.",
+    "c406Output": "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+    "c406ExistingEvidence": "BCS-S-0059 and C302 supplied the 26-record CharaActionController array, 0x14 stride, queue iteration, and polymorphic action-object use. BCS-S-0066 and C323 supplied the second 26-record array at CharaElement+0x878 using the same constructor and stride.",
+    "c406Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The leading policy dword and concrete queued-object types remain unknown. The teardown establishes the count and block-map fields before its first noreturn _free call; no load-bearing claim relies on omitted instructions after that call."
   }
 }
