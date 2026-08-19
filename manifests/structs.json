@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 189,
+  "structCount": 193,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -756,7 +756,9 @@
         "tools/ghidra/logs/c336_lua-derived-actors.txt",
         "tools/ghidra/logs/c336_myplayer-layout.txt",
         "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
-        "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt"
+        "tools/ghidra/logs/c336_lua-derived-actor-teardown.txt",
+        "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
+        "tools/ghidra/logs/c368_myplayer-player-manager-helper.txt"
       ],
       "fields": [
         {
@@ -769,9 +771,9 @@
         {
           "offset": "0xF8",
           "size": "0x04",
-          "name": "owned_actor_state",
-          "type": "void *",
-          "notes": "Constructor-cleared polymorphic owned pointer. MyPlayer vtable slot 3 replaces it with a newly allocated 0x20-byte object and deletes the prior object virtually."
+          "name": "player_manager",
+          "type": "ApplicationLuaScriptClientEventPlayerManager *",
+          "notes": "Owned exact 0x20-byte Application::Lua::Script::Client::Event::PlayerManager replaced by MyPlayer vtable slot 3 and deleted virtually."
         },
         {
           "offset": "0xFC",
@@ -798,8 +800,8 @@
           "offset": "0x110",
           "size": "0x04",
           "name": "job_quest_object",
-          "type": "void *",
-          "notes": "Constructor-cleared pointer to the 0x24-byte JobQuestObject replaced by FUN_006F9520. Existing evidence identifies three 12-byte job-quest records."
+          "type": "ApplicationLuaScriptClientJobQuestObject *",
+          "notes": "Owned exact 0x24-byte polymorphic JobQuestObject replaced by FUN_006F9520 and destroyed during teardown."
         },
         {
           "offset": "0x114",
@@ -854,8 +856,8 @@
           "offset": "0x154",
           "size": "0x04",
           "name": "hamlet_defense_score",
-          "type": "void *",
-          "notes": "Constructor-cleared owned pointer replaced by FUN_006F2210 with a newly allocated 0x1C-byte score object and released during teardown. The proven PlayerBase size reassigns this former PlayerBase-attributed field to MyPlayer."
+          "type": "ApplicationLuaScriptClientControlHamletDefenseScore *",
+          "notes": "Owned exact 0x1C-byte Hamlet-defense score cache replaced by FUN_006F2210 and released during teardown."
         },
         {
           "offset": "0x158",
@@ -15370,6 +15372,293 @@
       ],
       "notes": "Full byte-accounted Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil> owned at GameEngine+0x220. Existing RTTI fixes the template identity; fresh owner instructions fix the allocation and initialized fields.",
       "id": "BCS-S-0189"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventPlayerManager",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
+        "tools/ghidra/logs/c368_myplayer-player-manager-helper.txt",
+        "BCS-S-0012",
+        "BCS-Y-1494"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Event::PlayerManager vftable written after the LuaThreadEndListenerInterface base vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "runtime_owner",
+          "type": "void *",
+          "notes": "Pointer copied from the constructor's runtime-owner argument; its narrower interface type is unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared dword."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state_0c",
+          "type": "uint32_t",
+          "notes": "Second constructor-cleared dword."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "event_state_policy",
+          "type": "unknown",
+          "notes": "Unwritten leading dword of the sentinel-backed event-state header."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "event_state_sentinel",
+          "type": "void *",
+          "notes": "Self-linked exact 0x2C-byte sentinel returned by FUN_00899E00; its concrete node type is unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "event_state_count",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared count paired with event_state_sentinel."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "flag_1c",
+          "type": "uint8_t",
+          "notes": "Constructor-cleared flag byte."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "flag_1d",
+          "type": "uint8_t",
+          "notes": "Second constructor-cleared flag byte."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x01",
+          "name": "flag_1e",
+          "type": "uint8_t",
+          "notes": "Third constructor-cleared flag byte."
+        },
+        {
+          "offset": "0x1F",
+          "size": "0x01",
+          "name": "tail_padding",
+          "type": "unknown[1]",
+          "notes": "Unwritten closing byte at the exact allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted Application::Lua::Script::Client::Event::PlayerManager owned at MyPlayer+0xF8. Existing RTTI fixed the class identity; fresh allocation, constructor, and helper instructions establish the exact 0x20 extent and all directly initialized fields.",
+      "id": "BCS-S-0190"
+    },
+    {
+      "name": "ApplicationLuaScriptClientJobQuestObject",
+      "namespace": "Application::Lua::Script::Client",
+      "size": "0x24",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
+        "BCS-S-0012",
+        "BCS-Y-0909"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Polymorphic vftable copied from the constructor's type/template argument."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "callback_target",
+          "type": "void *",
+          "notes": "Constructor-cleared pointer later used as the target for completion-cancellation callbacks."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "job_key",
+          "type": "unknown",
+          "notes": "Four-byte interned key state initialized from the incoming payload; the concrete handle type is unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "completion_selector",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared selector later read as values one through three to choose the first, second, or third completion-cancellation callback."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "state_10",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared dword with unresolved semantics."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "payload_14",
+          "type": "uint32_t",
+          "notes": "Dword copied from incoming payload +0x04; concrete semantics are unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "name": "payload_18",
+          "type": "uint8_t",
+          "notes": "Byte copied from incoming payload +0x08."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x04",
+          "name": "payload_19",
+          "type": "uint32_t",
+          "notes": "Unaligned dword copied from incoming payload +0x09."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x04",
+          "name": "payload_1d",
+          "type": "uint32_t",
+          "notes": "Unaligned dword copied from incoming payload +0x0D."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[3]",
+          "notes": "Unwritten closing bytes at the exact allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted polymorphic JobQuestObject owned at MyPlayer+0x110. Fresh constructor instructions correct the earlier three-record interpretation and preserve unresolved payload semantics without guessing job or quest identifiers.",
+      "id": "BCS-S-0191"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlHamletDefenseScoreEntry",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
+        "BCS-S-0012",
+        "BCS-Y-0366"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "score",
+          "type": "int32_t",
+          "notes": "Computed per-entry score appended by FUN_007231A0 and returned by the indexed score getter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "entry_id",
+          "type": "int32_t",
+          "notes": "Sign-extended table identifier associated with the score entry."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "quantity",
+          "type": "uint32_t",
+          "notes": "Zero-extended source quantity associated with the score entry."
+        }
+      ],
+      "notes": "Complete 0x0C Hamlet-defense score entry. The fill path constructs all three dwords before append, while the indexed consumer proves the exact 0x0C stride and returns each dword independently.",
+      "id": "BCS-S-0192"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlHamletDefenseScore",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x1C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
+        "BCS-S-0012",
+        "BCS-Y-0366",
+        "BCS-Y-1985",
+        "BCS-Y-1986"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "entry_allocator_state",
+          "type": "unknown",
+          "notes": "Unwritten leading state for the score-entry vector; its concrete allocator or policy type is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "entries_begin",
+          "type": "ApplicationLuaScriptClientControlHamletDefenseScoreEntry *",
+          "notes": "Beginning of the exact 0x0C-stride score-entry vector."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "entries_end",
+          "type": "ApplicationLuaScriptClientControlHamletDefenseScoreEntry *",
+          "notes": "End pointer for the score-entry vector."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "entries_capacity",
+          "type": "ApplicationLuaScriptClientControlHamletDefenseScoreEntry *",
+          "notes": "Capacity-end pointer for the score-entry vector."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "entry_score_total",
+          "type": "int32_t",
+          "notes": "Constructor-cleared accumulator increased by every computed entry score."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "base_score",
+          "type": "int32_t",
+          "notes": "Base score copied from the incoming update and added after multiplier scaling."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "name": "multiplier",
+          "type": "int8_t",
+          "notes": "Signed multiplier copied from the incoming update; the aggregate consumer computes base_score + multiplier * entry_score_total."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[3]",
+          "notes": "Unwritten closing bytes at the exact allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted Hamlet-defense score cache owned at MyPlayer+0x154. Fresh allocation, construction, fill, indexed-entry, aggregate-score, and teardown evidence closes the exact 0x1C layout without claiming an unresolved class identity.",
+      "id": "BCS-S-0193"
     }
   ],
   "method": {
@@ -15734,6 +16023,22 @@
     "c366InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for va,n in [(0x00CDC410,1306),(0x00CF4C40,89),(0x00CD37D0,20),(0x00D18EA0,9)] for i in md.disasm(p.get_data(va-0x400000,n),va)]\"",
     "c366ExistingEvidence": "BCS-S-0111 and BCS-Y-1691 supplied the GameEngine owner extent and ownership slots. BCS-Y-1741 and BCS-Y-1742 supplied the exact Holder<Component::Lua::GameEngine::Nil> vftable and RTTI identity.",
     "c366InstructionEvidence": "Configured retail instruction excerpts appended to C366 preserve all four exact allocations and owner placements, the binding's +0x08 back-reference, both named helper vftable writes, and the Holder<Nil> +0x00/+0x08 writes.",
-    "c366Limits": "DumpVAs supplies direct bodies and call lists only for the four requested functions. No negative reference-topology claim relies on this export. The binding's runtime handle semantics and +0x07 byte, ErrorHandler's closing two bytes, and Holder<Nil> +0x04 dword remain unknown-typed or descriptively named rather than guessed. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c366Limits": "DumpVAs supplies direct bodies and call lists only for the four requested functions. No negative reference-topology claim relies on this export. The binding's runtime handle semantics and +0x07 byte, ErrorHandler's closing two bytes, and Holder<Nil> +0x04 dword remain unknown-typed or descriptively named rather than guessed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c367Topic": "C367 MyPlayer owned runtime type layouts",
+    "c367ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c367Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c367_myplayer-owned-runtime-types.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006E3440,0x00895F50,0x0089A170,0x006F9520,0x006DDA90,0x006F7CD0,0x006F2210,0x006EEFE0,0x006F1480,0x006E8800,0x00706870,0x00706940' } -ScriptPath @('ghidra')",
+    "c367Inputs": "MyPlayer replacement path, PlayerManager constructor/state helper, JobQuestObject swapper/constructor/teardown, and Hamlet-defense score swapper/constructor/fill/teardown/indexed getter/aggregate getter",
+    "c367Output": "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
+    "c367InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{va:08x} BEGIN'),[(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08x} END')) for va,n in [(0x00895F50,141),(0x0089A170,78),(0x006F9520,149),(0x006DDA90,151),(0x006F2210,151),(0x006EEFE0,96),(0x006F1480,197),(0x006E8800,135),(0x00706870,201),(0x00706940,183)]]\"",
+    "c367ExistingEvidence": "BCS-S-0012 supplied the three MyPlayer ownership slots. BCS-Y-1494 supplied the exact PlayerManager RTTI identity. BCS-Y-0909 supplied the JobQuestObject role and 0x24 swap path but its earlier three-record physical interpretation was corrected by the fresh constructor. BCS-Y-0366 and BCS-Y-1985/1986 supplied the Hamlet-defense ownership and consumer roles.",
+    "c367InstructionEvidence": "Configured retail instruction excerpts appended to C367 preserve all three exact allocations and owner stores, every direct constructor write, the JobQuestObject store after the old-object free path, the Hamlet entry's 0x0C stride, and the aggregate score formula.",
+    "c367Limits": "DumpVAs supplies direct bodies and call lists only for the twelve requested functions. No negative reference-topology claim relies on the export. PlayerManager +0x10 and sentinel node internals, JobQuestObject key/payload semantics, and Hamlet-defense +0x00 policy state remain unknown-typed or descriptively named. No load-bearing claim relies on decompiler output after a noreturn _free call; the relevant replacement stores are preserved from instructions.",
+    "c368Topic": "C368 PlayerManager sentinel helper layout evidence",
+    "c368ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra, analyzeHeadless, or Java process.",
+    "c368Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c368_myplayer-player-manager-helper.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00899E00' } -ScriptPath @('ghidra')",
+    "c368Inputs": "PlayerManager event-state sentinel allocator called by FUN_0089A170",
+    "c368Output": "tools/ghidra/logs/c368_myplayer-player-manager-helper.txt",
+    "c368InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(0x00899E00-0x400000,108),0x00899E00)]\"",
+    "c368Limits": "The helper proves an exact 0x2C self-linked sentinel allocation returned to PlayerManager+0x14, but does not establish the sentinel's complete node type. PlayerManager+0x10 remains unwritten and unknown-typed rather than inferred from the helper call convention."
   }
 }

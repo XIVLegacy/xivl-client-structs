@@ -10366,9 +10366,10 @@
       "address": "0x006F9520",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/schema_rescue.json"
+        "manifests/schema_rescue.json",
+        "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt"
       ],
-      "notes": "[schema-rescue schema rescue] Allocates 0x24-byte JobQuestObject (3 x 12-byte entries: jobId u32 + questId u32 + completionFlags u32 - the 'last 3 completed job quests' UI cache) and swaps it into MyPlayer+0x110. Per-update lifecycle: alloc 36B -> swap into MyPlayer+0x110 -> free old. The quest-subsystem pass dedicated_quest_receiver.",
+      "notes": "[schema-rescue schema rescue; C367 correction 2026-08-18] Allocates an exact 0x24-byte polymorphic JobQuestObject through FUN_006DDA90 and swaps it into MyPlayer+0x110, destroying and freeing the prior object when present. Direct constructor instructions establish a copied vftable at +0x00, callback target at +0x04, interned key at +0x08, completion selector at +0x0C, state at +0x10, and copied payload at +0x14..+0x20. This falsifies the earlier physical interpretation as three 12-byte records; concrete payload semantics remain unresolved.",
       "id": "BCS-Y-0909"
     },
     {
@@ -17682,9 +17683,11 @@
         "tools/ghidra/logs/c80_lteli_symbols.txt",
         "tools/ghidra/logs/c80_lteli_all_refs.txt",
         "tools/ghidra/logs/c80_implementors_decomp.txt",
-        "manifests/lteli_implementors.json"
+        "manifests/lteli_implementors.json",
+        "tools/ghidra/logs/c367_myplayer-owned-runtime-types.txt",
+        "tools/ghidra/logs/c368_myplayer-player-manager-helper.txt"
       ],
-      "notes": "[luathreadendlistenerinterface-implementor-enumeration] **Event::PlayerManager ctor** at VA 0x00895F50. Writes LTELI::vftable + PlayerManager::vftable at *param_1. NEW LTELI implementor. Sibling to FormManager in Application::Lua::Script::Client::Event namespace. Likely manages per-player Lua state lifecycle in the Lua-bridge."
+      "notes": "[luathreadendlistenerinterface-implementor-enumeration] **Event::PlayerManager ctor** at VA 0x00895F50. Writes LTELI::vftable + PlayerManager::vftable at *param_1. NEW LTELI implementor. Sibling to FormManager in Application::Lua::Script::Client::Event namespace. Likely manages per-player Lua state lifecycle in the Lua-bridge. [C367 2026-08-18] MyPlayer allocates this object at an exact 0x20 bytes and stores it at +0xF8. Constructor instructions establish the owner/context pointer, two cleared dwords, an embedded sentinel-backed state header, and three closing flag bytes."
     },
     {
       "id": "BCS-Y-1495",
