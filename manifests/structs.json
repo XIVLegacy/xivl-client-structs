@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 229,
+  "structCount": 230,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -5987,7 +5987,9 @@
         "manifests/symbols.json",
         "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
         "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
-        "BCS-Y-1027"
+        "BCS-Y-1027",
+        "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+        "BCS-Y-0619"
       ],
       "fields": [
         {
@@ -6147,9 +6149,9 @@
         {
           "offset": "0x188",
           "size": "0x088",
-          "name": "status_slot_table",
-          "type": "unknown[17][8]",
-          "notes": "Seventeen eight-byte entries initialized by the constructor. Each entry contains a dword plus a halfword; the concrete entry type is unresolved."
+          "name": "status_slot_records",
+          "type": "ApplicationMainElementCharaStatusSlotRecord[17]",
+          "notes": "Seventeen exact 0x08 records. Case 0xD0 writes at most sixteen packet records and places a 0xFFFF terminator in record N and the fixed seventeenth record; BCS-Y-0619 then copies the full 0x88-byte table."
         },
         {
           "offset": "0x210",
@@ -17794,6 +17796,43 @@
       ],
       "notes": "Complete exact 0x30 CharaElement status-effect timer slot. Six slots are constructed inline and processed as two rows of three: each row selects its greatest remaining timer, decrements active timers, and emits a variant-sized state broadcast. Header fields and variant access boundaries are explicit; payload semantics remain intentionally narrow.",
       "id": "BCS-S-0229"
+    },
+    {
+      "name": "ApplicationMainElementCharaStatusSlotRecord",
+      "namespace": "Application::Main::Element::Chara",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+        "manifests/0x00D0_state_table_pipeline.json",
+        "BCS-Y-0619",
+        "BCS-S-0066"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "record_id",
+          "type": "uint32_t",
+          "notes": "Case 0xD0 copies this dword from packet+0x10+i*8; the constructor and BCS-Y-0619 clear it before whole-table copy."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "record_param",
+          "type": "uint16_t",
+          "notes": "Case 0xD0 copies this halfword from packet+0x14+i*8. The value 0xFFFF terminates the variable list, including the fixed seventeenth sentinel record."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "opaque_06",
+          "type": "unknown[2]",
+          "notes": "Copied as part of the helper's complete 0x88-byte table copy, but no retained scalar access establishes its type or whether it is payload or padding."
+        }
+      ],
+      "notes": "Exact 0x08 record used by CharaElement's 17-entry case-0xD0 table. The packet-facing path supplies up to sixteen records followed by a sentinel; the helper initializes and copies the same 17-record, 0x88-byte shape.",
+      "id": "BCS-S-0230"
     }
   ],
   "method": {
@@ -18379,6 +18418,13 @@
     "c407DataRecipe": "python -c \"import pefile,struct; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); b=p.get_data(0x00f54f70-0x00400000,4); print(b.hex(),struct.unpack('<I',b)[0],struct.unpack('<f',b)[0])\"",
     "c407DataEvidence": "The configured retail bytes at 0x00F54F70 are 00 00 80 3F, fixing the constructor value stored at slot+0x18 as float 1.0. The recipe and result are appended to C407.",
     "c407ExistingEvidence": "BCS-S-0066 and C323 supplied the exact CharaElement+0x290 placement, six-element count, and 0x30 stride. BCS-Y-1027 supplied the established timer-tick role and per-frame caller.",
-    "c407Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x09 payload bytes and dwords at +0x1C and +0x20..+0x2C remain unknown-typed where the tick only copies raw values or does not consume them. No noreturn _free path contributes to this layout."
+    "c407Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x09 payload bytes and dwords at +0x1C and +0x20..+0x2C remain unknown-typed where the tick only copies raw values or does not consume them. No noreturn _free path contributes to this layout.",
+    "c408Topic": "C408 CharaElement status-slot records",
+    "c408ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c408Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c408_chara-status-slot-records.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0058B4E0,0x0058CCA0,0x0058ECB0' } -ScriptPath @('ghidra')",
+    "c408Inputs": "CharaElement owner constructor, case-0xD0 packet dispatcher, and the table initialization/copy helper.",
+    "c408Output": "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+    "c408ExistingEvidence": "BCS-S-0066 and C323 supplied the +0x188 placement, 0x88 extent, 17-entry count, and observed dword-plus-halfword members. The 0x00D0 pipeline snapshot supplied the packet offsets and sentinel path.",
+    "c408Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x06 bytes remain unknown-typed because the helper copies them only as part of the whole table. No noreturn _free path contributes to this layout."
   }
 }
