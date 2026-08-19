@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 209,
+  "structCount": 214,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -4531,7 +4531,16 @@
         "tools/ghidra/logs/c308_status-controller-ctors.txt",
         "tools/ghidra/logs/c308_status-controller-offsets.txt",
         "tools/ghidra/logs/c308_actioncontroller-ctor.txt",
-        "xivl-decomp:include/actor/chara_actor.h"
+        "xivl-decomp:include/actor/chara_actor.h",
+        "tools/ghidra/logs/c387_charaactor-owned-state-fieldrefs.txt",
+        "tools/ghidra/logs/c388_charaactor-owned-state-consumers.txt",
+        "tools/ghidra/logs/c389_charaactor-owned-state-constructors.txt",
+        "tools/ghidra/logs/c390_charaactor-owned-state-bases.txt",
+        "tools/ghidra/logs/c392_charaactor-owned-state-rtti.txt",
+        "tools/ghidra/logs/c393_charaactor-owned-state-vtable-methods.txt",
+        "tools/ghidra/logs/c394_charaactor-owned-state-container-lifecycle.txt",
+        "BCS-S-0212",
+        "BCS-S-0214"
       ],
       "fields": [
         {
@@ -5020,16 +5029,16 @@
         {
           "offset": "0x12F0",
           "size": "0x4",
-          "name": "owned_object_12f0",
-          "type": "void *",
-          "notes": "Owned vtable-bearing object pointer, initialized to zero and freed through its virtual destructor."
+          "name": "effect_controller",
+          "type": "ApplicationSceneVfxRaptureSchEffectController *",
+          "notes": "Lazily allocated exact 0x58 RaptureSchEffectController owned by CharaActor and released through its deleting destructor."
         },
         {
           "offset": "0x12F4",
           "size": "0x4",
-          "name": "owned_object_12f4",
+          "name": "scene_resource_interface",
           "type": "void *",
-          "notes": "Owned vtable-bearing object pointer, initialized to zero."
+          "notes": "Factory-produced polymorphic interface requested with a 0x0C allocation size. Its virtual +0x20 teardown is observed, but the factory-selected concrete class remains unresolved, so no target layout is asserted."
         },
         {
           "offset": "0x12F8",
@@ -5433,9 +5442,9 @@
         {
           "offset": "0x2B84",
           "size": "0x4",
-          "name": "owned_object_2b84",
-          "type": "void *",
-          "notes": "Owned vtable-bearing object pointer, initialized to zero."
+          "name": "reference_resource",
+          "type": "ApplicationSceneRaptureReferenceResource *",
+          "notes": "Lazily allocated exact 0x34 RaptureReferenceResource owned by CharaActor and released through its deleting destructor."
         },
         {
           "offset": "0x2B88",
@@ -5461,16 +5470,16 @@
         {
           "offset": "0x2B94",
           "size": "0x4",
-          "name": "owned_object_2b94",
-          "type": "void *",
-          "notes": "Owned vtable-bearing object pointer, initialized to zero; the target holds a back-reference to this actor."
+          "name": "linked_actor",
+          "type": "ApplicationSceneActorCharaCharaActor *",
+          "notes": "Forward CharaActor link. FUN_006627E0 stores the peer here and writes this actor into the peer's +0x2B98 reciprocal slot; unlink paths clear both sides."
         },
         {
           "offset": "0x2B98",
           "size": "0x4",
-          "name": "owned_object_backref",
-          "type": "void *",
-          "notes": "Back-reference slot associated with owned_object_2b94, initialized to zero."
+          "name": "link_owner",
+          "type": "ApplicationSceneActorCharaCharaActor *",
+          "notes": "Reciprocal CharaActor link owner written into the linked peer by FUN_006627E0 and cleared by the unlink paths. This is not heap ownership."
         },
         {
           "offset": "0x2B9C",
@@ -16527,6 +16536,338 @@
       ],
       "notes": "Complete exact 0xAC MyPlayer-owned achievement state. Allocation and constructor instructions partition every byte into a 1024-bit completion set, item-ID vector, enabled-title tree, rate-cache tree, and point total; independent Lua consumers establish each region's role.",
       "id": "BCS-S-0209"
+    },
+    {
+      "name": "ApplicationSceneVfxRaptureSchEffectRecord",
+      "namespace": "Application::Scene::Vfx",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c393_charaactor-owned-state-vtable-methods.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x0C",
+          "name": "payload",
+          "type": "unknown[12]",
+          "notes": "Record bytes copied as a unit by vector compaction. Their internal representation is not exposed by the bounded methods."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "match_key",
+          "type": "unknown",
+          "notes": "Four-byte value compared against the removal key by FUN_0080EA30. The evidence does not distinguish an identifier from a pointer or handle."
+        }
+      ],
+      "notes": "Complete 0x10 record stride used by RaptureSchEffectController's primary vector. Removal and compaction methods independently establish the stride and final match-key position while leaving the payload representation unresolved.",
+      "id": "BCS-S-0210"
+    },
+    {
+      "name": "ApplicationSceneVfxRaptureSchEffectContainer",
+      "namespace": "Application::Scene::Vfx",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c389_charaactor-owned-state-constructors.txt",
+        "tools/ghidra/logs/c390_charaactor-owned-state-bases.txt",
+        "tools/ghidra/logs/c394_charaactor-owned-state-container-lifecycle.txt",
+        "BCS-S-0060"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "RaptureSchEffectContainer vftable written after the move-register base construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "scene_service",
+          "type": "void *",
+          "notes": "Scene service supplied from the CharaActor construction context and retained by the move-register base."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "actor",
+          "type": "ApplicationSceneActorCharaCharaActor *",
+          "notes": "Owning CharaActor pointer passed into the move-register base."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "move_listener_vftable",
+          "type": "void *",
+          "notes": "Adjusted RaptureMoveRegisterListener interface vftable."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "schedule_listener_vftable",
+          "type": "void *",
+          "notes": "Adjusted RaptureMoveRegisterScheduleControllerListener interface vftable registered with the scene service."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "schedule_policy",
+          "type": "unknown",
+          "notes": "Leading dword of the final schedule-state header. Its allocator or policy representation is not exposed by the bounded constructor and teardown."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "schedule_head",
+          "type": "void *",
+          "notes": "Head returned by the exact 0x214-byte schedule-node allocation and retained by the container."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "schedule_state",
+          "type": "unknown",
+          "notes": "Final dword initialized to zero. No bounded consumer establishes whether it is a count, flag set, or allocator state."
+        }
+      ],
+      "notes": "Complete exact 0x20 container embedded at RaptureSchEffectController+0x38. Direct constructor instructions establish both adjusted listener interfaces, scene and actor references, and the final schedule-state header.",
+      "id": "BCS-S-0211"
+    },
+    {
+      "name": "ApplicationSceneVfxRaptureSchEffectController",
+      "namespace": "Application::Scene::Vfx",
+      "size": "0x58",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c387_charaactor-owned-state-fieldrefs.txt",
+        "tools/ghidra/logs/c388_charaactor-owned-state-consumers.txt",
+        "tools/ghidra/logs/c389_charaactor-owned-state-constructors.txt",
+        "tools/ghidra/logs/c390_charaactor-owned-state-bases.txt",
+        "tools/ghidra/logs/c392_charaactor-owned-state-rtti.txt",
+        "tools/ghidra/logs/c393_charaactor-owned-state-vtable-methods.txt",
+        "tools/ghidra/logs/c394_charaactor-owned-state-container-lifecycle.txt",
+        "BCS-S-0060",
+        "BCS-S-0210",
+        "BCS-S-0211"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Primary RaptureSchEffectController vftable at 0x00FF5628."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "scheduler_listener_vftable",
+          "type": "void *",
+          "notes": "Adjusted RaptureSchEffectController scheduler-listener vftable at 0x00FF55F4."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "effect_records_policy",
+          "type": "unknown",
+          "notes": "Leading policy dword for the 0x10-stride effect-record vector. Its concrete allocator representation remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "effect_records_begin",
+          "type": "ApplicationSceneVfxRaptureSchEffectRecord *",
+          "notes": "Beginning of the 0x10-stride effect-record range."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "effect_records_end",
+          "type": "ApplicationSceneVfxRaptureSchEffectRecord *",
+          "notes": "One-past-last effect record used by removal and compaction methods."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "effect_records_capacity_end",
+          "type": "ApplicationSceneVfxRaptureSchEffectRecord *",
+          "notes": "One-past-end of allocated effect-record storage."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "targets_policy",
+          "type": "unknown",
+          "notes": "Leading policy dword for the four-byte target vector. Its concrete allocator representation remains unresolved."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "targets_begin",
+          "type": "void **",
+          "notes": "Beginning of the four-byte target or handle range."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "targets_end",
+          "type": "void **",
+          "notes": "One-past-last target or handle entry."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "targets_capacity_end",
+          "type": "void **",
+          "notes": "One-past-end of allocated target or handle storage."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "actor",
+          "type": "ApplicationSceneActorCharaCharaActor *",
+          "notes": "Owning CharaActor passed directly by the +0x12F0 lazy construction path."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x04",
+          "name": "state_2c",
+          "type": "uint32_t",
+          "notes": "Constructor argument fixed to zero by the CharaActor creation path; narrower semantics are unresolved."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "selected_index",
+          "type": "int32_t",
+          "notes": "Constructor argument fixed to -1 by the CharaActor creation path."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x04",
+          "name": "scene_owner",
+          "type": "unknown",
+          "notes": "Value forwarded from CharaActor+0x118. That actor field's concrete relationship and pointed-to type remain unresolved."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x20",
+          "name": "container",
+          "type": "ApplicationSceneVfxRaptureSchEffectContainer",
+          "notes": "Embedded move-register and schedule-listener container constructed and destroyed at this exact base."
+        }
+      ],
+      "notes": "Complete exact 0x58 RaptureSchEffectController lazily allocated into CharaActor+0x12F0. RTTI, primary and adjusted vftables, vector consumers, constructor placements, embedded-container lifecycle, and instruction-complete teardown account for every byte.",
+      "id": "BCS-S-0212"
+    },
+    {
+      "name": "ApplicationSceneReferenceResourcePointerVector",
+      "namespace": "Application::Scene",
+      "size": "0x14",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c389_charaactor-owned-state-constructors.txt",
+        "tools/ghidra/logs/c393_charaactor-owned-state-vtable-methods.txt",
+        "tools/ghidra/logs/c394_charaactor-owned-state-container-lifecycle.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vector_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, vtable methods, or teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "begin",
+          "type": "void **",
+          "notes": "Beginning of the four-byte pointer range."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "end",
+          "type": "void **",
+          "notes": "One-past-last pointer entry."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "capacity_end",
+          "type": "void **",
+          "notes": "One-past-end of allocated pointer storage."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "tail_policy",
+          "type": "unknown",
+          "notes": "Closing dword at the exact 0x14 header boundary. No bounded path exposes its allocator or policy representation."
+        }
+      ],
+      "notes": "Complete 0x14 pointer-vector header used twice by RaptureReferenceResource. Constructor and teardown instructions establish the three contiguous storage pointers while preserving the untouched policy dwords as unknown-typed.",
+      "id": "BCS-S-0213"
+    },
+    {
+      "name": "ApplicationSceneRaptureReferenceResource",
+      "namespace": "Application::Scene",
+      "size": "0x34",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c387_charaactor-owned-state-fieldrefs.txt",
+        "tools/ghidra/logs/c388_charaactor-owned-state-consumers.txt",
+        "tools/ghidra/logs/c389_charaactor-owned-state-constructors.txt",
+        "tools/ghidra/logs/c390_charaactor-owned-state-bases.txt",
+        "tools/ghidra/logs/c392_charaactor-owned-state-rtti.txt",
+        "tools/ghidra/logs/c393_charaactor-owned-state-vtable-methods.txt",
+        "tools/ghidra/logs/c394_charaactor-owned-state-container-lifecycle.txt",
+        "BCS-S-0060",
+        "BCS-S-0213"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Scene::RaptureReferenceResource vftable at 0x01047240."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "base_state",
+          "type": "unknown",
+          "notes": "Inherited dword not initialized or interpreted by the bounded constructor, inherited vtable methods, or teardown paths."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "scene_service",
+          "type": "void *",
+          "notes": "Scene service returned from the CharaActor context and passed directly to the reference-resource base constructor."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x14",
+          "name": "retained_resources",
+          "type": "ApplicationSceneReferenceResourcePointerVector",
+          "notes": "Pointer vector whose non-null entries are released during teardown."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x14",
+          "name": "listeners",
+          "type": "ApplicationSceneReferenceResourcePointerVector",
+          "notes": "Pointer vector whose entries receive the resource teardown notification before storage is freed."
+        }
+      ],
+      "notes": "Complete exact 0x34 RaptureReferenceResource lazily allocated into CharaActor+0x2B84. RTTI, base construction, inherited vector methods, and instruction-complete teardown account for both pointer-vector headers and the retained scene-service reference.",
+      "id": "BCS-S-0214"
     }
   ],
   "method": {
@@ -16994,6 +17335,42 @@
     "c381InstructionRecipe": "python -c \"import pefile; from capstone import *; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); va=0x006f3420; data=p.get_data(va-p.OPTIONAL_HEADER.ImageBase,554); md=Cs(CS_ARCH_X86,CS_MODE_32); [print(f'{i.address:08x}  {i.mnemonic:<7} {i.op_str}') for i in md.disasm(data,va)]\"; repeated with va=0x006f1030 and length 158. Constructor reconciliation repeated with va=0x006f2f60 and length 153.",
     "c381ExistingEvidence": "BCS-S-0012 and the C336 archive supplied the unresolved MyPlayer+0x114 ownership slot. BCS-Y-1918 and BCS-Y-1965 through BCS-Y-1971 supplied the achievement API attributions and direct consumer roles. The C306 archive already preserved the completion-bit, vector, count, cache-clear, and point accesses.",
     "c381InstructionEvidence": "Configured retail instruction excerpts appended to C381 and C382 preserve the exact 0xAC allocation, the owner replacement store after _free, all constructor subobject destinations, the 32-dword zeroing loop, the final +0xA8 write, and matching destructor destinations.",
-    "c381Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. Both tree policy dwords, the title-node payload, the rate-cache node payload partition, concrete color values, and node tail padding remain unknown-typed or descriptively named. The unused C386 call-chain check did not contribute a field claim. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c381Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. Both tree policy dwords, the title-node payload, the rate-cache node payload partition, concrete color values, and node tail padding remain unknown-typed or descriptively named. The unused C386 call-chain check did not contribute a field claim. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c387Topic": "C387-C394 CharaActor owned scene-state layouts",
+    "c387ProjectMode": "All eight headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra or Java process.",
+    "c387Script": "ghidra/FindFieldRefs.java",
+    "c387Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c387_charaactor-owned-state-fieldrefs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY = '0x12f0,0x12f4,0x2b5c,0x2b84,0x2b94,0x2b98'; XIVL_BASE_REGS = 'EAX,EBX,ECX,EDX,ESI,EDI' } -ScriptPath @('ghidra')",
+    "c387Inputs": "Offsets 0x12F0, 0x12F4, 0x2B84, 0x2B94, and 0x2B98; known CharaVisual+0x2B5C as a positive calibration; non-stack x86 base registers.",
+    "c387Output": "tools/ghidra/logs/c387_charaactor-owned-state-fieldrefs.txt",
+    "c388Script": "ghidra/DumpVAs.java",
+    "c388Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c388_charaactor-owned-state-consumers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0065F940,0x0065DD20,0x00662570,0x00669450,0x00669470,0x00666130,0x006627E0' } -ScriptPath @('ghidra')",
+    "c388Inputs": "Configured retail program; VAs 0x0065F940,0x0065DD20,0x00662570,0x00669450,0x00669470,0x00666130,0x006627E0.",
+    "c388Output": "tools/ghidra/logs/c388_charaactor-owned-state-consumers.txt",
+    "c389Script": "ghidra/DumpVAs.java",
+    "c389Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c389_charaactor-owned-state-constructors.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0080E8C0,0x00857B50,0x0060B370,0x0060B260' } -ScriptPath @('ghidra')",
+    "c389Inputs": "Configured retail program; VAs 0x0080E8C0,0x00857B50,0x0060B370,0x0060B260.",
+    "c389Output": "tools/ghidra/logs/c389_charaactor-owned-state-constructors.txt",
+    "c390Script": "ghidra/DumpVAs.java",
+    "c390Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c390_charaactor-owned-state-bases.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0080E6A0,0x008581B0' } -ScriptPath @('ghidra')",
+    "c390Inputs": "Configured retail program; VAs 0x0080E6A0,0x008581B0.",
+    "c390Output": "tools/ghidra/logs/c390_charaactor-owned-state-bases.txt",
+    "c393Script": "ghidra/DumpVAs.java",
+    "c393Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c393_charaactor-owned-state-vtable-methods.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00857D80,0x00857B20,0x00A6A820,0x00A6A8B0,0x00A6A8D0,0x00A6A850,0x00A6ABE0,0x00A6AB40,0x00A6ACF0,0x00A6AC80,0x00A6A9B0,0x00A6ABD0,0x0080FA40,0x0080E050,0x0080DF10,0x0080EA30,0x0080EAE0,0x0080FA00,0x0080FA10' } -ScriptPath @('ghidra')",
+    "c393Inputs": "Configured retail program; VAs 0x00857D80,0x00857B20,0x00A6A820,0x00A6A8B0,0x00A6A8D0,0x00A6A850,0x00A6ABE0,0x00A6AB40,0x00A6ACF0,0x00A6AC80,0x00A6A9B0,0x00A6ABD0,0x0080FA40,0x0080E050,0x0080DF10,0x0080EA30,0x0080EAE0,0x0080FA00,0x0080FA10.",
+    "c393Output": "tools/ghidra/logs/c393_charaactor-owned-state-vtable-methods.txt",
+    "c394Script": "ghidra/DumpVAs.java",
+    "c394Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c394_charaactor-owned-state-container-lifecycle.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0080EFC0,0x0080F330,0x00A6AA40,0x0080E970' } -ScriptPath @('ghidra')",
+    "c394Inputs": "Configured retail program; VAs 0x0080EFC0,0x0080F330,0x00A6AA40,0x0080E970.",
+    "c394Output": "tools/ghidra/logs/c394_charaactor-owned-state-container-lifecycle.txt",
+    "c391FailedInvocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script ExtractRtti.java -ReadOnly -Out tools\\ghidra\\logs\\c391_charaactor-owned-state-rtti-wrapper.txt -ScriptEnv @{ XIVL_RTTI_DETAILS_OUT = 'tools\\ghidra\\logs\\c391_charaactor-owned-state-rtti.txt'; XIVL_RTTI_DETAILS_TARGETS = '.?AVRaptureSchEffectController@Vfx@Scene@Application@@`n.?AVRaptureReferenceResource@Scene@Application@@' } -ScriptPath @('tools\\ghidra')",
+    "c391Failure": "The read-only script rejected the literal newline encoding because its documented implementation requires comma-separated exact targets. The failure is archived at tools/ghidra/logs/c391_charaactor-owned-state-rtti-failed.txt and supports no claim.",
+    "c392Script": "tools/ghidra/ExtractRtti.java",
+    "c392Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script ExtractRtti.java -ReadOnly -Out tools\\ghidra\\logs\\c392_charaactor-owned-state-rtti-wrapper.txt -ScriptEnv @{ XIVL_RTTI_DETAILS_OUT = 'tools\\ghidra\\logs\\c392_charaactor-owned-state-rtti.txt'; XIVL_RTTI_DETAILS_TARGETS = '.?AVRaptureSchEffectController@Vfx@Scene@Application@@,.?AVRaptureReferenceResource@Scene@Application@@' } -ScriptPath @('tools\\ghidra')",
+    "c392Inputs": "Exact mangled RTTI names for Application::Scene::Vfx::RaptureSchEffectController and Application::Scene::RaptureReferenceResource.",
+    "c392Output": "tools/ghidra/logs/c392_charaactor-owned-state-rtti.txt",
+    "c387InstructionRecipe": "python -c \"import pefile; from capstone import *; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=Cs(CS_ARCH_X86,CS_MODE_32); spans=[(0x65f180,1942),(0x65f940,341),(0x80e8c0,176),(0x80e970,171),(0x8581b0,134),(0xa6aa40,245)]; [(print(f'-- {va:08x} --'),[print(f'{i.address:08x}  {i.mnemonic:<7} {i.op_str}') for i in md.disasm(p.get_data(va-p.OPTIONAL_HEADER.ImageBase,n),va)]) for va,n in spans]\"",
+    "c387ExistingEvidence": "BCS-S-0060 and the C307-C308 archives supplied the exact 0x2BB0 CharaActor, its constructor and destructor, and four unresolved ownership or link slots. The C314 RTTI inventory already contained both concrete scene-class names but no layouts.",
+    "c387InstructionEvidence": "Configured retail excerpts appended to C388, C389, and C394 preserve both exact allocations and owner stores, the distinct 0x0C factory object, every controller and reference-resource constructor placement, and all vector cleanup instructions hidden after noreturn _free calls in decompilation.",
+    "c387Limits": "FindFieldRefs is used only for positive hits and is calibrated by the known CharaVisual+0x2B5C field; no negative claim relies on its coverage or operand-position labels. DumpVAs supplies direct bodies and call lists only for requested functions. Controller vector policy dwords, effect-record payload, target element type, container schedule policy/state, reference-resource base state, and pointer-vector policy dwords remain unknown-typed or descriptively named. The +0x12F4 factory interface remains incomplete because no concrete class constructor or RTTI identity is exposed. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
