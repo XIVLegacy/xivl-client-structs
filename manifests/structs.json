@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 231,
+  "structCount": 232,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -13607,8 +13607,8 @@
           "offset": "0x10",
           "size": "0x28",
           "name": "glyph_record",
-          "type": "unknown[0x28]",
-          "notes": "Cached 40-byte glyph result copied intact on a tree hit; its internal metric and atlas-coordinate split remains unresolved."
+          "type": "ComponentFontGlyphRecord",
+          "notes": "Cached glyph result written by the rasterizer and copied intact on a tree hit. BCS-S-0232 partitions all ten dwords."
         },
         {
           "offset": "0x38",
@@ -13632,7 +13632,7 @@
           "notes": "Closing alignment bytes at the exact 0x3C-byte allocation boundary."
         }
       ],
-      "notes": "Full byte-accounted glyph-cache R-B tree node. Allocation size, links, glyph key, 0x28-byte cached result, sentinel marker, and color byte are direct; the cached result remains deliberately unpartitioned.",
+      "notes": "Full byte-accounted glyph-cache R-B tree node. Allocation size, links, glyph key, typed 0x28-byte cached result, sentinel marker, and color byte are direct.",
       "id": "BCS-S-0164"
     },
     {
@@ -17907,6 +17907,90 @@
       ],
       "notes": "Complete byte-accounted 0x38 record used as a two-element inline array in CharaBase. The record owns two unresolved 4-byte helper regions around a shared zero-initialized dword-and-flag state shape; the exact stride supplies the closing boundary.",
       "id": "BCS-S-0231"
+    },
+    {
+      "name": "ComponentFontGlyphRecord",
+      "namespace": "Component::Font",
+      "size": "0x28",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c359_font-data-layouts.txt",
+        "tools/ghidra/logs/c359_font-context-consumer.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "atlas_outer_index",
+          "type": "uint32_t",
+          "notes": "Outer atlas counter copied from the font context. It advances after the inner counter reaches four."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "atlas_inner_index",
+          "type": "uint32_t",
+          "notes": "Inner atlas counter copied from the font context. It advances after the current cell grid fills."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state",
+          "type": "uint32_t",
+          "notes": "Producer initializes this dword to zero; the retained evidence does not establish a narrower semantic name."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "baseline_offset",
+          "type": "int32_t",
+          "notes": "Text ascent minus the glyph origin Y coordinate."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "padded_width_primary",
+          "type": "uint32_t",
+          "notes": "Clamped glyph black-box width plus four; the same value is written independently at +0x18."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "cell_extent",
+          "type": "uint32_t",
+          "notes": "Configured font height plus two, used as the atlas cell extent."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "padded_width_secondary",
+          "type": "uint32_t",
+          "notes": "Second stored copy of the clamped glyph black-box width plus four; distinct downstream semantics are not established."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "padded_height",
+          "type": "uint32_t",
+          "notes": "Clamped glyph black-box height plus four."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "atlas_x",
+          "type": "uint32_t",
+          "notes": "Column within the current atlas grid multiplied by the cell extent."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "atlas_y",
+          "type": "uint32_t",
+          "notes": "Row within the current atlas grid multiplied by the cell extent."
+        }
+      ],
+      "notes": "Full byte-accounted cached glyph result. The rasterizer writes all ten dwords, and the cache-hit path copies exactly the same 0x28-byte extent from each tree node.",
+      "id": "BCS-S-0232"
     }
   ],
   "method": {
@@ -18216,7 +18300,7 @@
     "c359InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\Users\\aeshu\\tools\\ghidra-projects\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(0xc974d6-0x400000,160),0xc974d6)]\" and the same command with p.get_data(0xca9880-0x400000,160),0xca9880",
     "c359ExistingEvidence": "BCS-S-0160 and tools/ghidra/logs/c356_rapture-owned-modules.txt supplied the prior exact 0x44-byte allocation and FontModule +0x18 ownership edge.",
     "c359InstructionEvidence": "Configured retail instruction excerpts appended to C359 teardown evidence preserve the load-bearing FontModule +0x18 teardown after Ghidra's noreturn _free omission and the context's font-handle, tree-sentinel, and vector-storage cleanup placements.",
-    "c359Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. The rejected 0x00CA9880 export is explicitly excluded. Targeted RTTI returned every known target, but none is asserted as the 0x44-byte context identity. The context and its vector/tree names are descriptive structural names, not recovered C++ RTTI names. Glyph-record internals, 0x14-byte vector entry type, container policy state, static font-profile type, and closing padding remain unknown-typed rather than guessed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c359Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. The rejected 0x00CA9880 export is explicitly excluded. Targeted RTTI returned every known target, but none is asserted as the 0x44-byte context identity. The context and its vector/tree names are descriptive structural names, not recovered C++ RTTI names. 0x14-byte vector entry type, container policy state, static font-profile type, and closing padding remain unknown-typed rather than guessed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
     "c359LookupInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-tree-lookup.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CAB1F0' } -ScriptPath @('ghidra')",
     "c359LookupInputs": "Glyph-cache R-B tree lower-bound lookup establishing left, parent/root, right, key, and sentinel-marker placements",
     "c359LookupOutput": "tools/ghidra/logs/c359_font-tree-lookup.txt",
@@ -18507,6 +18591,10 @@
     "c409Output": "tools/ghidra/logs/c409_chara-inline-state-records.txt",
     "c409InstructionRecipe": "python -c with pefile and capstone against the configured retail image; disassemble 0x00712DD0 length 0x59, 0x00712E90 length 0x58, 0x0076F5A0 length 0x73, and 0x0076F690 length 0x58. The selected instruction lines and recipe are appended to the C409 archive.",
     "c409ExistingEvidence": "BCS-S-0108 and C335 supplied the +0x68 placement, two-element count, 0x38 stride, and constructor/destructor identities. BCS-Y-1030 supplied the shared dword-and-byte initialization shape.",
-    "c409Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. The instruction stream is load-bearing only for the +0x08 shared-state base and nested +0x14 helper. No negative topology claim relies on the export. The two helper regions and seven tail bytes remain unknown-typed because retained evidence does not establish their concrete representations. No noreturn _free path contributes to this layout."
+    "c409Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. The instruction stream is load-bearing only for the +0x08 shared-state base and nested +0x14 helper. No negative topology claim relies on the export. The two helper regions and seven tail bytes remain unknown-typed because retained evidence does not establish their concrete representations. No noreturn _free path contributes to this layout.",
+    "c410Topic": "C410 Font glyph record layout",
+    "c410ExistingEvidence": "C359 FUN_00CA95A0 supplied every producer write across the 0x28-byte result, including metrics and atlas counters. C359 FUN_00CA9920 supplied the cache-hit copy from node+0x10 through node+0x37. BCS-S-0164 supplied the enclosing tree-node boundary.",
+    "c410FreshReads": "None. The retained C359 archives already establish the complete record; no new Ghidra run was needed.",
+    "c410Limits": "The +0x08 dword is confirmed uint32_t storage initialized to zero, but its semantic role is unknown. The two independently stored padded-width copies remain separately named because retained evidence does not establish their distinct downstream roles. No negative topology claim or noreturn-truncated decompilation supports this layout."
   }
 }
