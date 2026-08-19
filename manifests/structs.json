@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 216,
+  "structCount": 222,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -16889,7 +16889,11 @@
         "tools/ghidra/logs/c397_owned-resource-layouts.txt",
         "tools/ghidra/logs/c398_owned-resource-components.txt",
         "tools/ghidra/logs/c399_owned-resource-teardown.txt",
-        "BCS-S-0108"
+        "BCS-S-0108",
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0219",
+        "BCS-S-0222"
       ],
       "fields": [
         {
@@ -16924,15 +16928,15 @@
           "offset": "0x20",
           "size": "0x04",
           "name": "owned_item_state",
-          "type": "void *",
-          "notes": "Constructor-cleared owned pointer. ItemManager teardown invokes FUN_0089BAD0 on the pointed-to object and then frees it; no concrete allocation or RTTI identity was recovered in this batch."
+          "type": "ApplicationLuaScriptClientControlItemManagerOwnedItemState *",
+          "notes": "Constructor-cleared owned pointer to the exact 0x10 action-list state. The owner gate dispatches its polymorphic payloads and drains, destroys, and frees the state when empty."
         },
         {
           "offset": "0x24",
           "size": "0x3C",
           "name": "item_runtime_state",
-          "type": "unknown[60]",
-          "notes": "Embedded helper constructed by FUN_006F3080 and destroyed by FUN_006F1AB0. Its exact boundary is fixed by the neighboring +0x20 pointer and +0x60 flag, but its internal helper types remain unresolved."
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeState",
+          "notes": "Embedded exact 0x3C runtime helper containing a block-table core, two counted lists, and an ordered tree. Instruction-complete construction and teardown establish every nested base."
         },
         {
           "offset": "0x60",
@@ -16977,7 +16981,7 @@
           "notes": "Final 0x0C helper constructed by FUN_00742DF0 and destroyed by FUN_00742D80. Its concrete type remains unresolved."
         }
       ],
-      "notes": "Complete exact 0x78 ItemManager layout lazily allocated into CharaBase+0xD8. The allocation and recovered class vftable establish its identity and size; instruction-complete construction and teardown account for every subobject boundary, including the cleanup hidden after the decompiler's noreturn _free call. Existing item API evidence establishes the inventory and trade manager role while opaque helper representations remain honestly unknown-typed.",
+      "notes": "Complete exact 0x78 ItemManager layout lazily allocated into CharaBase+0xD8. The allocation and recovered class vftable establish its identity and size; instruction-complete construction and teardown account for every subobject boundary, including the cleanup hidden after the decompiler's noreturn _free call. Existing item API evidence establishes the inventory and trade manager role. The +0x20 owned action state and +0x24 runtime state are now concrete layouts; remaining opaque helper representations and scalar semantics stay honestly unknown-typed.",
       "id": "BCS-S-0215"
     },
     {
@@ -17040,6 +17044,288 @@
       ],
       "notes": "Complete exact 0x68 polymorphic InitializationClipArguments object owned through CutScene+0x68. The exact allocation, recovered RTTI-backed vftable, constructor and destructor instructions, copied four-byte-stride range, and embedded string account for every byte.",
       "id": "BCS-S-0216"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerListNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ApplicationLuaScriptClientControlItemManagerListNode *",
+          "notes": "Forward link. The exact 0x0C sentinel self-links this field, and erase relinks the successor through the predecessor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ApplicationLuaScriptClientControlItemManagerListNode *",
+          "notes": "Backward link. The exact 0x0C sentinel self-links this field, and erase relinks the predecessor through the successor."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown",
+          "notes": "Four-byte list value. The ItemManager-owned specialization interprets it as a polymorphic action pointer, but the two embedded runtime-list specializations do not expose their payload representation."
+        }
+      ],
+      "notes": "Complete exact 0x0C doubly linked list node used by ItemManager helpers. Sentinel construction, list drain, unlink, and exact-size deallocation account for all three dwords; only the owned-state specialization establishes a polymorphic pointer interpretation for the value.",
+      "id": "BCS-S-0217"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerList",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0217"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "list_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, drain, dispatch, or teardown paths. Its allocator or policy representation remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlItemManagerListNode *",
+          "notes": "Exact 0x0C sentinel whose next and previous links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes. Construction clears it and each observed erase decrements it."
+        }
+      ],
+      "notes": "Complete 0x0C counted doubly linked list header used by ItemManager helpers. Construction, traversal, erase, drain, and teardown establish the sentinel and count; the untouched leading policy dword remains honestly unknown-typed.",
+      "id": "BCS-S-0218"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerOwnedItemState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215",
+        "BCS-S-0218"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x0C",
+          "name": "pending_actions",
+          "type": "ApplicationLuaScriptClientControlItemManagerList",
+          "notes": "Owned polymorphic action list. ItemManager drains it by deleting each payload or dispatches each payload through vtable slot +0x24."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "dispatch_limit",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied upper bound on actions dispatched during one pass. Zero means the observed loop is limited only by the list becoming empty."
+        }
+      ],
+      "notes": "Complete exact 0x10 owned ItemManager action state. The factory allocation fixes the size, construction initializes the list and bound, and the owner gate, dispatch loop, drain, and teardown account for both fields.",
+      "id": "BCS-S-0219"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x14",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Left/minimum link, self-linked on the exact 0x14 sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Parent/root link, self-linked on the exact 0x14 sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Right/maximum link, self-linked on the exact 0x14 sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown",
+          "notes": "Four-byte node payload. The bounded constructor and teardown paths do not establish its concrete key or value type."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Initialized to 1 on the sentinel by the tree-node allocator."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Initialized to 1 for the sentinel and 0 by the raw node allocator before ordinary node construction."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x02",
+          "name": "alignment_12",
+          "type": "unknown[2]",
+          "notes": "Unwritten tail bytes completing the exact 0x14 node allocation."
+        }
+      ],
+      "notes": "Complete exact 0x14 ordered-tree node layout for ItemManager runtime state. Allocation, sentinel initialization, self-links, flag bytes, and exact-size teardown account for every byte; the four-byte payload remains unknown-typed.",
+      "id": "BCS-S-0220"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerRuntimeTree",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0220"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor or teardown paths. Its allocator or comparison-policy representation remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Exact 0x14 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header embedded in ItemManager runtime state. Constructor and teardown establish the exact 0x14 sentinel specialization and count; the untouched leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0221"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerRuntimeState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x3C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215",
+        "BCS-S-0218",
+        "BCS-S-0221"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "state_00",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded runtime-state constructor and destructor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "block_table_policy",
+          "type": "unknown",
+          "notes": "Leading dword of the block-table core. Teardown starts at this exact base but does not expose its representation."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "block_table",
+          "type": "void **",
+          "notes": "Pointer array whose non-null entries refer to exact 0x10 allocations freed during teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "block_count",
+          "type": "uint32_t",
+          "notes": "Number of pointer-array slots traversed during teardown; initialized to zero."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "block_state",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword also cleared when the reference count reaches zero. The bounded paths do not establish whether it is a pointer, index, or scalar state."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "reference_count",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared count drained to zero before block-table teardown."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x0C",
+          "name": "runtime_list_a",
+          "type": "ApplicationLuaScriptClientControlItemManagerList",
+          "notes": "First counted list constructed and destroyed at this exact subobject base. Its payload role is not established by the bounded paths."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x0C",
+          "name": "runtime_list_b",
+          "type": "ApplicationLuaScriptClientControlItemManagerList",
+          "notes": "Second counted list constructed and destroyed at this exact subobject base. Its role relative to runtime_list_a remains unresolved."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x0C",
+          "name": "runtime_tree",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTree",
+          "notes": "Ordered tree constructed and destroyed at the final exact subobject base."
+        }
+      ],
+      "notes": "Complete exact 0x3C ItemManager runtime-state layout. Instruction-level construction and teardown partition its block-table core, two counted lists, and one ordered tree, matching the enclosing ItemManager+0x24..+0x5F boundary.",
+      "id": "BCS-S-0222"
     }
   ],
   "method": {
@@ -17569,6 +17855,20 @@
     "c395InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{va:08X} BEGIN'),[print(f'{i.address:08X}: {i.mnemonic:<8} {i.op_str}') for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08X} END')) for va,n in [(0x006F5100,155),(0x00727640,139)]]\"; repeated for (0x006F5050,159) and (0x007276D0,127).",
     "c395ExistingEvidence": "BCS-S-0108 and BCS-S-0109 supplied the CharaBase+0xD8 and CutScene+0x68 ownership slots. BCS-Y-0187 and the C204-C221 item API archives supplied the ItemManager role. The C314 RTTI inventory already contained the exact InitializationClipArguments identity. BCS-S-0135 supplied the established 0x54 inline-string layout.",
     "c395InstructionEvidence": "Configured retail instructions appended to C397 preserve both concrete constructor destinations and every field boundary. Instructions appended to C399 preserve ItemManager cleanup after the noreturn _free call and both clip-argument container and string teardown placements.",
-    "c395Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. Existing broad field-reference archives are used only for positive producer and consumer hits; no negative claim relies on their coverage or operand labels. ItemManager helper representations, its +0x20 owned type, four state bytes/dwords, and the clip-entry element type remain unknown-typed. WidgetBase+0x60 remains unresolved because no producer or concrete allocation was observed in the bounded existing or fresh method set. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c395Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. Existing broad field-reference archives are used only for positive producer and consumer hits; no negative claim relies on their coverage or operand labels. ItemManager helper representations, its +0x20 owned type, four state bytes/dwords, and the clip-entry element type remain unknown-typed. WidgetBase+0x60 remains unresolved because no producer or concrete allocation was observed in the bounded existing or fresh method set. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c400Topic": "C400-C401 ItemManager runtime layouts",
+    "c400ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c400Script": "ghidra/DumpVAs.java",
+    "c400Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c400_item-manager-runtime-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F3080,0x006F1AB0,0x0077C850,0x00778350,0x00727B50,0x0077CA50,0x0089BA70,0x0089BAD0,0x0089BBA0,0x006F1A40' }",
+    "c400Inputs": "ItemManager runtime-state constructor and destructor; list and tree constructors and sentinel allocators; owned-state constructor, destructor, dispatcher, and owner gate.",
+    "c400Output": "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+    "c401Script": "ghidra/DumpVAs.java",
+    "c401Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c401_item-manager-container-lifecycle.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0075F5B0,0x0089BA10,0x006F5100,0x006F5050,0x007251E0,0x006CE520,0x006CFB30,0x00778830' }",
+    "c401Inputs": "Exact owned-state allocator; alternate bounded-list constructor; ItemManager lifecycle; runtime list, tree, and block-table teardown helpers; exact 0x14 tree sentinel allocator.",
+    "c401Output": "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+    "c400InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); spans=[(0x006F3080,144),(0x006F1AB0,185),(0x0075F5B0,134),(0x0089BA70,89),(0x0089BAD0,197)]; [(print(f'{va:08X} BEGIN'),[print(f'{i.address:08X}: {i.mnemonic:<8} {i.op_str}') for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08X} END')) for va,n in spans]\"",
+    "c400ExistingEvidence": "BCS-S-0215 and the C395-C399 archives supplied the exact enclosing 0x78 ItemManager, the unresolved +0x20 ownership pointer, and the exact +0x24..+0x5F runtime-state boundary.",
+    "c400InstructionEvidence": "Configured retail instruction excerpts appended to C400 and C401 preserve the exact nested constructor and destructor destinations, the 0x10 owned-state allocation, the dispatch-limit write, and the 0x0C list-node links and deallocation size omitted or obscured by pseudocode.",
+    "c400Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. List and tree policy dwords, the concrete polymorphic action class, both runtime-list roles, the tree payload type, two runtime-core state dwords, and tree tail padding remain unknown-typed or descriptively named. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
