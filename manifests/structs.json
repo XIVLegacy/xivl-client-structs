@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 203,
+  "structCount": 209,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -763,7 +763,10 @@
         "tools/ghidra/logs/c378_touch-attribute-state-types.txt",
         "tools/ghidra/logs/c379_touch-attribute-tree-node.txt",
         "tools/ghidra/logs/c380_touch-attribute-node-lifecycle.txt",
-        "BCS-S-0203"
+        "BCS-S-0203",
+        "tools/ghidra/logs/c381_myplayer-owned-state.txt",
+        "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
+        "BCS-S-0209"
       ],
       "fields": [
         {
@@ -811,9 +814,9 @@
         {
           "offset": "0x114",
           "size": "0x04",
-          "name": "owned_state_114",
-          "type": "void *",
-          "notes": "Constructor-cleared pointer released during MyPlayer teardown through FUN_006F1030; the pointed-to type remains unresolved."
+          "name": "achievement_state",
+          "type": "ApplicationLuaScriptClientControlMyPlayerAchievementState *",
+          "notes": "Replacement-owned pointer to the exact 0xAC achievement state. The slot-30 refresh path destroys and frees the old state before storing the newly constructed object here."
         },
         {
           "offset": "0x118",
@@ -16206,6 +16209,324 @@
       ],
       "notes": "Complete exact 0x18 MyPlayer-owned touch-attribute state lazily allocated by _setTouchAttribute and stored at MyPlayer+0x10C. Constructor and destructor instructions place two identical 0x0C ordered-tree headers back-to-back; the update path looks up and inserts byte keys in both trees and drives the downstream touch bit transition.",
       "id": "BCS-S-0203"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlAchievementItemIdVector",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c381_myplayer-owned-state.txt",
+        "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
+        "tools/ghidra/logs/c383_myplayer-owned-state-initializers.txt",
+        "tools/ghidra/logs/c384_achievement-container-cores.txt",
+        "BCS-Y-1965"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vector_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, indexed consumer, or teardown path. Its allocator or policy type remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "begin",
+          "type": "uint32_t *",
+          "notes": "Start of the dword item-ID storage. The constructor initially allocates eight zero dwords."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "end",
+          "type": "uint32_t *",
+          "notes": "One-past-last initialized item-ID entry used with begin to bounds-check indexed reads."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "capacity_end",
+          "type": "uint32_t *",
+          "notes": "One-past-end of the allocated dword storage."
+        }
+      ],
+      "notes": "Complete 0x10 vector header embedded at MyPlayerAchievementState+0x80. Construction, indexed _getAchievementItemId access, and teardown establish the three storage pointers and dword element width without assigning an unsupported standard-library template identity.",
+      "id": "BCS-S-0204"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlAchievementTitleTreeNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x14",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c384_achievement-container-cores.txt",
+        "tools/ghidra/logs/c385_achievement-tree-node-allocation.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationLuaScriptClientControlAchievementTitleTreeNode *",
+          "notes": "Left child link initialized on the exact sentinel allocation and traversed during recursive teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationLuaScriptClientControlAchievementTitleTreeNode *",
+          "notes": "Parent link. The sentinel uses this field for the root node."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationLuaScriptClientControlAchievementTitleTreeNode *",
+          "notes": "Right child link initialized on the exact sentinel allocation and traversed during recursive teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown",
+          "notes": "Four-byte ordered-node payload. The bounded paths establish its extent but do not expose its concrete key or value type."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Balancing byte initialized on node allocation. Concrete enum values are intentionally unnamed."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Sentinel marker checked by recursive teardown and set for the header node."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[2]",
+          "notes": "Unwritten closing bytes at the exact 0x14 node allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted node for the enabled-achievement-title tree. The allocator proves the exact 0x14 extent, link and marker positions; the four-byte payload remains unknown-typed because no bounded consumer exposes its representation.",
+      "id": "BCS-S-0205"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlAchievementTitleTree",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c381_myplayer-owned-state.txt",
+        "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
+        "tools/ghidra/logs/c383_myplayer-owned-state-initializers.txt",
+        "tools/ghidra/logs/c384_achievement-container-cores.txt",
+        "tools/ghidra/logs/c385_achievement-tree-node-allocation.txt",
+        "BCS-S-0205",
+        "BCS-Y-1968"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded construction, count, or teardown paths. Its allocator or policy type remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlAchievementTitleTreeNode *",
+          "notes": "Exact 0x14 self-linked sentinel whose parent link tracks the root."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel entries, initialized to zero and returned directly by _countEnableAchievementTitle."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header embedded at MyPlayerAchievementState+0x90. The direct Lua count consumer establishes the enabled-achievement-title role while the node payload type remains unresolved.",
+      "id": "BCS-S-0206"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlAchievementRateCacheTreeNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x1C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c381_myplayer-owned-state.txt",
+        "tools/ghidra/logs/c384_achievement-container-cores.txt",
+        "tools/ghidra/logs/c385_achievement-tree-node-allocation.txt",
+        "BCS-Y-1918"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationLuaScriptClientControlAchievementRateCacheTreeNode *",
+          "notes": "Left child link traversed by the cache-clear recursive teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationLuaScriptClientControlAchievementRateCacheTreeNode *",
+          "notes": "Parent link. The sentinel uses this field for the root node."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationLuaScriptClientControlAchievementRateCacheTreeNode *",
+          "notes": "Right child link traversed by the cache-clear recursive teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x0C",
+          "name": "payload",
+          "type": "unknown[12]",
+          "notes": "Twelve-byte ordered-node payload. Its key/value partition is not exposed by the bounded constructor and cache-clear paths."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Balancing byte initialized on node allocation. Concrete enum values are intentionally unnamed."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Sentinel marker checked by cache-clear traversal and set for the header node."
+        },
+        {
+          "offset": "0x1A",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[2]",
+          "notes": "Unwritten closing bytes at the exact 0x1C node allocation boundary."
+        }
+      ],
+      "notes": "Full byte-accounted node for the achievement-rate cache tree. Exact allocation, sentinel initialization, and recursive cache clearing establish the structural fields; the 12-byte payload remains honestly opaque.",
+      "id": "BCS-S-0207"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlAchievementRateCacheTree",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c381_myplayer-owned-state.txt",
+        "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
+        "tools/ghidra/logs/c383_myplayer-owned-state-initializers.txt",
+        "tools/ghidra/logs/c384_achievement-container-cores.txt",
+        "tools/ghidra/logs/c385_achievement-tree-node-allocation.txt",
+        "BCS-S-0207",
+        "BCS-Y-1918"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, clear, or teardown paths. Its allocator or policy type remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlAchievementRateCacheTreeNode *",
+          "notes": "Exact 0x1C self-linked sentinel whose parent link tracks the root."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel cached entries. _clearAchievementRateCache resets it to zero after freeing the rooted nodes."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header embedded at MyPlayerAchievementState+0x9C. The direct clear API establishes its achievement-rate-cache role and resets its sentinel links and count.",
+      "id": "BCS-S-0208"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlMyPlayerAchievementState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0xAC",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c306_actor-vtable-slots.txt",
+        "tools/ghidra/logs/c336_myplayer-layout.txt",
+        "tools/ghidra/logs/c381_myplayer-owned-state.txt",
+        "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
+        "tools/ghidra/logs/c383_myplayer-owned-state-initializers.txt",
+        "tools/ghidra/logs/c384_achievement-container-cores.txt",
+        "tools/ghidra/logs/c385_achievement-tree-node-allocation.txt",
+        "BCS-S-0012",
+        "BCS-S-0204",
+        "BCS-S-0206",
+        "BCS-S-0208",
+        "BCS-Y-1918",
+        "BCS-Y-1965",
+        "BCS-Y-1966",
+        "BCS-Y-1967",
+        "BCS-Y-1968",
+        "BCS-Y-1970",
+        "BCS-Y-1971"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x80",
+          "name": "completion_bits",
+          "type": "uint32_t[32]",
+          "notes": "1024-bit achievement completion set. _isDoneAchievement and title/item helpers convert identifiers to bit indexes and test this region."
+        },
+        {
+          "offset": "0x80",
+          "size": "0x10",
+          "name": "item_ids",
+          "type": "ApplicationLuaScriptClientControlAchievementItemIdVector",
+          "notes": "Dword item-ID vector read by _getAchievementItemId after its 1-based index check."
+        },
+        {
+          "offset": "0x90",
+          "size": "0x0C",
+          "name": "enabled_titles",
+          "type": "ApplicationLuaScriptClientControlAchievementTitleTree",
+          "notes": "Ordered collection whose count is returned directly by _countEnableAchievementTitle."
+        },
+        {
+          "offset": "0x9C",
+          "size": "0x0C",
+          "name": "rate_cache",
+          "type": "ApplicationLuaScriptClientControlAchievementRateCacheTree",
+          "notes": "Ordered cache cleared by _clearAchievementRateCache through recursive node teardown and sentinel reset."
+        },
+        {
+          "offset": "0xA8",
+          "size": "0x04",
+          "name": "achievement_points",
+          "type": "uint32_t",
+          "notes": "Achievement point total initialized to zero and returned directly by _getAchievementPoint."
+        }
+      ],
+      "notes": "Complete exact 0xAC MyPlayer-owned achievement state. Allocation and constructor instructions partition every byte into a 1024-bit completion set, item-ID vector, enabled-title tree, rate-cache tree, and point total; independent Lua consumers establish each region's role.",
+      "id": "BCS-S-0209"
     }
   ],
   "method": {
@@ -16643,6 +16964,36 @@
     "c378InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{va:08X} BEGIN'),[(print(f'{i.address:08X}: {i.mnemonic:<7} {i.op_str}')) for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08X} END')) for va,n in [(0x006E6110,299),(0x00895EF0,88),(0x00895D70,88),(0x0089AE80,86),(0x0089A240,101),(0x00899FF0,139),(0x00899F40,143),(0x00899AC0,45)]]\"",
     "c378ExistingEvidence": "BCS-S-0012 supplied the MyPlayer+0x10C lazy ownership slot. BCS-Y-1925 and the C154 archive supplied the _setTouchAttribute attribution, exact 0x18 allocation, and ordered-tree helper chain.",
     "c378InstructionEvidence": "Configured retail instructions preserve the exact 0x18 allocation, the MyPlayer+0x10C owner replacement after _free, two constructor and destructor destinations separated by 0x0C, exact 0x10 sentinel and ordinary-node allocations, and every node field write.",
-    "c378Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. The distinction between the two byte-key trees, the leading tree policy dword, the color enum values, and the closing node byte remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c378Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. The distinction between the two byte-key trees, the leading tree policy dword, the color enum values, and the closing node byte remain unresolved. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c381Topic": "C381-C386 MyPlayer achievement-state layouts",
+    "c381ProjectMode": "All six headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. A pre-run process check found no live Ghidra or Java process.",
+    "c381Script": "ghidra/DumpVAs.java",
+    "c381Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c381_myplayer-owned-state.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F3420,0x006F1030,0x006E3400,0x007058D0,0x00705A70,0x00705B00,0x00705B30,0x00705BD0,0x00705C70' } -ScriptPath @('ghidra')",
+    "c381Inputs": "Configured retail program; VAs 0x006F3420,0x006F1030,0x006E3400,0x007058D0,0x00705A70,0x00705B00,0x00705B30,0x00705BD0,0x00705C70.",
+    "c381Output": "tools/ghidra/logs/c381_myplayer-owned-state.txt",
+    "c382Script": "ghidra/DumpVAs.java",
+    "c382Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c382_myplayer-owned-state-containers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F2F60,0x007251E0,0x007275D0,0x006D06D0' } -ScriptPath @('ghidra')",
+    "c382Inputs": "Configured retail program; VAs 0x006F2F60,0x007251E0,0x007275D0,0x006D06D0.",
+    "c382Output": "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
+    "c383Script": "ghidra/DumpVAs.java",
+    "c383Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c383_myplayer-owned-state-initializers.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00726230,0x00727B50,0x006D7DD0' } -ScriptPath @('ghidra')",
+    "c383Inputs": "Configured retail program; VAs 0x00726230,0x00727B50,0x006D7DD0.",
+    "c383Output": "tools/ghidra/logs/c383_myplayer-owned-state-initializers.txt",
+    "c384Script": "ghidra/DumpVAs.java",
+    "c384Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c384_achievement-container-cores.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x007240E0,0x0077CA50,0x006D1370,0x00722A30,0x006D5160' } -ScriptPath @('ghidra')",
+    "c384Inputs": "Configured retail program; VAs 0x007240E0,0x0077CA50,0x006D1370,0x00722A30,0x006D5160.",
+    "c384Output": "tools/ghidra/logs/c384_achievement-container-cores.txt",
+    "c385Script": "ghidra/DumpVAs.java",
+    "c385Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c385_achievement-tree-node-allocation.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00778830,0x006CF200,0x00719D30,0x006D3860' } -ScriptPath @('ghidra')",
+    "c385Inputs": "Configured retail program; VAs 0x00778830,0x006CF200,0x00719D30,0x006D3860.",
+    "c385Output": "tools/ghidra/logs/c385_achievement-tree-node-allocation.txt",
+    "c386Script": "ghidra/DumpVAs.java",
+    "c386Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c386_achievement-state-populator.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075D3B0' } -ScriptPath @('ghidra')",
+    "c386Inputs": "Configured retail program; VAs 0x0075D3B0.",
+    "c386Output": "tools/ghidra/logs/c386_achievement-state-populator.txt",
+    "c381InstructionRecipe": "python -c \"import pefile; from capstone import *; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); va=0x006f3420; data=p.get_data(va-p.OPTIONAL_HEADER.ImageBase,554); md=Cs(CS_ARCH_X86,CS_MODE_32); [print(f'{i.address:08x}  {i.mnemonic:<7} {i.op_str}') for i in md.disasm(data,va)]\"; repeated with va=0x006f1030 and length 158. Constructor reconciliation repeated with va=0x006f2f60 and length 153.",
+    "c381ExistingEvidence": "BCS-S-0012 and the C336 archive supplied the unresolved MyPlayer+0x114 ownership slot. BCS-Y-1918 and BCS-Y-1965 through BCS-Y-1971 supplied the achievement API attributions and direct consumer roles. The C306 archive already preserved the completion-bit, vector, count, cache-clear, and point accesses.",
+    "c381InstructionEvidence": "Configured retail instruction excerpts appended to C381 and C382 preserve the exact 0xAC allocation, the owner replacement store after _free, all constructor subobject destinations, the 32-dword zeroing loop, the final +0xA8 write, and matching destructor destinations.",
+    "c381Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. Both tree policy dwords, the title-node payload, the rate-cache node payload partition, concrete color values, and node tail padding remain unknown-typed or descriptively named. The unused C386 call-chain check did not contribute a field claim. No load-bearing claim relies on decompiler output after a noreturn _free call."
   }
 }
