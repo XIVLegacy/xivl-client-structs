@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 441,
+  "structCount": 443,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27915,6 +27915,81 @@
       ],
       "notes": "Complete exact 0x20 JobQuestCompleteTripleReceiver layout. The slot-one heap factory fixes the allocation boundary, construction copies the full 0x18 packet record after the 0x08 base, and the real handler forwards that record from +0x08.",
       "id": "BCS-S-0441"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandByteRangeVector",
+      "namespace": "Application::Lua::Script::Client::Command",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c511_entrust-item-receiver-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy_00",
+          "type": "unknown[0x04]",
+          "notes": "Unwritten leading policy word. The observed range initializer and receiver destructor operate only on the three following pointers."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "begin",
+          "type": "uint8_t *",
+          "notes": "Beginning of the owned byte range; cleared by teardown and used as the first byte consumed by the storage worker."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "end",
+          "type": "uint8_t *",
+          "notes": "One-past-last copied byte; the storage worker derives the byte count as end minus begin."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "capacity_end",
+          "type": "uint8_t *",
+          "notes": "Allocation boundary used by teardown when releasing the owned range."
+        }
+      ],
+      "notes": "Complete exact 0x10 byte-range vector used by client-command receivers. The range initializer clears and fills the three pointer slots, and EntrustItemReceiver teardown releases and clears the same slots.",
+      "id": "BCS-S-0442"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkEntrustItemReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x14",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0295",
+        "BCS-S-0442",
+        "BCS-Y-0391",
+        "BCS-Y-0414",
+        "BCS-Y-0657",
+        "BCS-Y-0939",
+        "BCS-Y-0940",
+        "tools/ghidra/logs/c511_entrust-item-receiver-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "EntrustItemReceiver vftable at 0x01057470."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "item_storage_bitstream",
+          "type": "ApplicationLuaScriptClientCommandByteRangeVector",
+          "notes": "Owned copy of the leading 0x20-byte item-storage bitstream from SetPlayerItemStoragePacket. Receive forwards this vector to the MyPlayer storage worker."
+        }
+      ],
+      "notes": "Complete exact 0x14 EntrustItemReceiver layout. The heap factory fixes the allocation boundary, construction initializes the byte-range vector at +0x04 from the leading 0x20 packet bytes, receive forwards that vector, and teardown releases it.",
+      "id": "BCS-S-0443"
     }
   ],
   "method": {
@@ -29360,6 +29435,17 @@
     "c510StructOutputs": "BCS-S-0441 in manifests/structs.json.",
     "c510ExistingEvidence": "BCS-S-0436 supplies the exact 0x08 CommandUpdaterBase prefix. BCS-S-0263 and retained C431 evidence supply the exact 0x18 JobQuestCompleteTriple packet record. BCS-Y-0655 and BCS-Y-0902 through BCS-Y-0909 preserve the wire route, six-slot receiver identity, lifecycle roles, gated wrapper, and downstream JobQuestObject swapper.",
     "c510FreshEvidence": "The five-section closing export reproduces the constructor, destructor, slot-one heap factory, real handler, and LuaActorImpl wrapper. The factory allocates exactly 0x20 bytes; construction copies three consecutive eight-byte words to +0x08, +0x10, and +0x18; and the real handler forwards this+0x08.",
-    "c510Limits": "The three packet words retain their existing semantically opaque names; this batch proves their exact nested placement but does not assign job or quest meanings. The nested CommandUpdaterBase state_04 remains unknown-typed for the reason recorded by BCS-S-0436. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c510Limits": "The three packet words retain their existing semantically opaque names; this batch proves their exact nested placement but does not assign job or quest meanings. The nested CommandUpdaterBase state_04 remains unknown-typed for the reason recorded by BCS-S-0436. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c511Topic": "C511 EntrustItem receiver and byte-range vector layouts",
+    "c511Scripts": "ghidra/DumpVAs.java",
+    "c511ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c511Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c511_entrust-item-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075A730,0x0089CB90,0x008A1620,0x0089F110,0x0089E5E0,0x006EFBD0,0x00762860,0x00531320,0x00530CD0' } -ScriptPath @('ghidra')",
+    "c511Inputs": "EntrustItemReceiver wrapper 0x0075A730, receive 0x0089CB90, deleting destructor 0x008A1620, constructor 0x0089F110, destructor 0x0089E5E0, storage worker 0x006EFBD0, heap factory 0x00762860, range constructor 0x00531320, and range initializer 0x00530CD0.",
+    "c511Output": "tools/ghidra/logs/c511_entrust-item-receiver-layout.txt",
+    "c511InstructionAudit": "A pefile and capstone walk confirms PUSH 0x14 at 0x00762886 before the receiver allocator call at 0x00762888, PUSH 0x20 at 0x007628A4 before construction, and LEA ECX,[ESI+0x04] at 0x0089F153 before the byte-range constructor call at 0x0089F15C.",
+    "c511StructOutputs": "BCS-S-0442 and BCS-S-0443 in manifests/structs.json.",
+    "c511ExistingEvidence": "BCS-S-0295 and BCS-Y-0391 establish the exact 0x30 SetPlayerItemStorage packet and its leading 0x20 item-storage bitstream. BCS-Y-0414, BCS-Y-0657, BCS-Y-0939/0940, BCS-Y-1042, and BCS-Y-1447 preserve the storage-worker role, wire route, receiver identity, receive entry, and vftable.",
+    "c511FreshEvidence": "The nine-section closing export reproduces the wrapper, receive path, constructor, destructor, deleting destructor, storage worker, heap factory, range constructor, and range initializer. The factory allocates exactly 0x14 bytes. Construction places a 0x10 byte-range vector at +0x04 and copies only the leading 0x20 packet bytes; receive and the worker consume that range, while teardown releases and clears its three pointers.",
+    "c511Limits": "The byte-range vector policy_00 word remains unknown-typed because the observed initializer leaves it unwritten and the observed consumer and teardown do not classify it. The packet's closing unknown_20 span is not copied into this receiver. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
