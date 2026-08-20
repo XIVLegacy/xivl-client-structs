@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 330,
+  "structCount": 333,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -22971,6 +22971,101 @@
       ],
       "notes": "Complete exact 0x40 application payload for s2c 0x0187 SetOccupancyGroup, excluding the 0x10 game-message prefix. The packet drives group occupancy or claim state through the SharedWork property-updater path.",
       "id": "BCS-S-0330"
+    },
+    {
+      "name": "SetActorPropertyPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x88",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0170",
+        "BCS-Y-0392",
+        "manifests/data_dependency_catalog.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "running_byte_total",
+          "type": "uint8_t",
+          "notes": "Number of valid bytes in the following property stream."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x87",
+          "name": "property_stream",
+          "type": "uint8_t[135]",
+          "notes": "Fixed-capacity variable property stream containing tags, property identifiers, values, and target markers."
+        }
+      ],
+      "notes": "Complete exact 0x88 application payload for s2c 0x0137 SetActorProperty, excluding the 0x10 game-message prefix. Only running_byte_total bytes of the fixed-capacity stream are logically populated.",
+      "id": "BCS-S-0331"
+    },
+    {
+      "name": "SynchGroupWorkValuesPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0563",
+        "BCS-Y-0873",
+        "BCS-Y-1795",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json",
+        "manifests/sharedwork_gate_audit.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "list_id",
+          "type": "uint64_t",
+          "notes": "Group-list identifier consumed before the property-stream update."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "running_byte_total",
+          "type": "uint8_t",
+          "notes": "Number of valid bytes copied from the following property stream."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x87",
+          "name": "property_stream",
+          "type": "uint8_t[135]",
+          "notes": "Fixed-capacity stream of tag, property-id, and tag-dependent value records."
+        }
+      ],
+      "notes": "Complete exact 0x90 application payload for s2c 0x017A SynchGroupWorkValues, excluding the 0x10 game-message prefix. The apply path copies running_byte_total stream bytes and applies them to group SharedWork state.",
+      "id": "BCS-S-0332"
+    },
+    {
+      "name": "HamletSupplyRankingPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x5F0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0194",
+        "BCS-Y-0392",
+        "BCS-Y-0948",
+        "manifests/data_dependency_catalog.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x5F0",
+          "name": "entries",
+          "type": "ApplicationLuaScriptClientControlHamletSupplyRankingWireRecord[20]",
+          "notes": "Twenty fixed 0x4C supply-ranking records consumed by the ranking helper."
+        }
+      ],
+      "notes": "Complete decomp-inferred 0x5F0 application payload for s2c 0x01A6 HamletSupplyRanking, excluding the 0x10 game-message prefix. The content-gated receiver iterates exactly twenty wire records; no packet capture currently corroborates the extent.",
+      "id": "BCS-S-0333"
     }
   ],
   "method": {
@@ -23917,6 +24012,13 @@
     "c456Outputs": "BCS-S-0328 through BCS-S-0330 in manifests/structs.json; no new local evidence archive.",
     "c456ExistingEvidence": "BCS-Y-0393/0951/0952 establish the two modifier identifiers and sixteen-dword block consumed as an exact 0x48 record; the retained payload catalogs establish the parent packet's exact 0x68 application extent. BCS-Y-0395/0575/0885 establish the SetOccupancyGroup updater path, the two occupancy-work dwords, localized-name dword, 36-byte name, and exact 0x40 extent.",
     "c456FreshEvidence": "No fresh analysis read was required because retained positive consumers and packet-shape evidence close all three layouts. No claim relies on a zero-result search.",
-    "c456Limits": "MassSetItemModifier+0x48 remains an unknown-typed 0x20-byte tail because the documented record writer reads only the first 0x48 application bytes. SetOccupancyGroup+0x00 remains an unknown-typed 0x10-byte header because the retained direct decode passes that span onward without stable internal boundaries. Semantic labels for occupancy ownership remain structural pending live revalidation. MapServerbound c2s 0x0130 was screened but not started because its four dwords have exact widths but conflicting higher-level use labels across retained evidence."
+    "c456Limits": "MassSetItemModifier+0x48 remains an unknown-typed 0x20-byte tail because the documented record writer reads only the first 0x48 application bytes. SetOccupancyGroup+0x00 remains an unknown-typed 0x10-byte header because the retained direct decode passes that span onward without stable internal boundaries. Semantic labels for occupancy ownership remain structural pending live revalidation. MapServerbound c2s 0x0130 was screened but not started because its four dwords have exact widths but conflicting higher-level use labels across retained evidence.",
+    "c457Topic": "C457 property streams and ranking packet",
+    "c457Scripts": "No new headless export was required; retained property-stream consumers, the existing Hamlet wire record, and exact or decomp-inferred packet extents supplied the load-bearing evidence.",
+    "c457Inputs": "SetActorPropertyPacket, SynchGroupWorkValuesPacket, HamletSupplyRankingPacket, and existing BCS-S-0194 Hamlet supply-ranking wire records.",
+    "c457Outputs": "BCS-S-0331 through BCS-S-0333 in manifests/structs.json; no new local evidence archive.",
+    "c457ExistingEvidence": "BCS-Y-0170/0392 establish the SetActorProperty length byte, 135-byte stream capacity, and exact 0x88 extent. BCS-Y-0394/0563/0873/1795 establish the SynchGroupWorkValues list identifier, length byte, 135-byte stream capacity, and exact 0x90 extent. BCS-Y-0392/0948 and BCS-S-0194 establish twenty exact 0x4C ranking records and the decomp-inferred 0x5F0 HamletSupplyRanking extent.",
+    "c457FreshEvidence": "No fresh analysis read was required because retained positive consumers and the existing nested wire record close all three layouts. No claim relies on a zero-result search.",
+    "c457Limits": "The two property_stream arrays have exact byte capacities, but their internal record boundaries remain variable and tag-dependent; only running_byte_total bytes are logically valid. HamletSupplyRanking has no packet-level unknown span, but each nested BCS-S-0194 record retains two unknown-typed 0x20-byte text sources and one unread closing byte. Its size is decomp-inferred because no packet capture is available. HamletDefenseScore was screened but not started because its incoming 0x1C record remains unsplit and the existing same-sized BCS-S-0193 is a converted runtime cache rather than the wire record."
   }
 }
