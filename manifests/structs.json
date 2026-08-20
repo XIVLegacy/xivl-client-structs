@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 414,
+  "structCount": 417,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -26946,6 +26946,99 @@
       ],
       "notes": "Complete exact 0x24 state record owned through ComponentSoundPointerArrayState. The queue insertion helper allocates exactly 0x24 bytes and copies all nine dwords. Independent producer and consumer paths establish the signed dword, four-float vector, and closing callback-owner pointer while retaining broad names for the first three dwords.",
       "id": "BCS-S-0414"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlCommandEventRelationControlBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0086",
+        "BCS-Y-1410",
+        "tools/ghidra/logs/c499_command-event-relation-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "lua_control",
+          "type": "ComponentLuaGameEngineLuaControl",
+          "notes": "Primary LuaControl base. Construction initializes the complete 0x08 base and replaces its primary vftable with the CommandEventRelationControlBase vftable."
+        }
+      ],
+      "notes": "Complete byte-accounted CommandEventRelationControlBase layout. Its constructor builds the established 0x08 LuaControl base, and both derived constructors place their first member at +0x08, closing the base extent.",
+      "id": "BCS-S-0415"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlCommandEventRelationActorBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1568",
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c499_command-event-relation-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "control_base",
+          "type": "ApplicationLuaScriptClientControlCommandEventRelationControlBase",
+          "notes": "Primary CommandEventRelationControlBase subobject. Construction replaces the inherited primary vftable with the CommandEventRelationActorBase vftable."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "relation_value",
+          "type": "unknown[0x04]",
+          "notes": "Copied from the factory-prepared input value. No bounded consumer establishes its representation or role."
+        }
+      ],
+      "notes": "Complete exact 0x0C CommandEventRelationActorBase layout. The factory allocates 0x0C bytes, the constructor builds the common base, writes the RTTI-named derived vftable, and copies the closing dword.",
+      "id": "BCS-S-0416"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlCommandEventRelationItemBase",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x14",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c499_command-event-relation-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "control_base",
+          "type": "ApplicationLuaScriptClientControlCommandEventRelationControlBase",
+          "notes": "Primary CommandEventRelationControlBase subobject. Construction replaces the inherited primary vftable with the CommandEventRelationItemBase vftable."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "relation_value_08",
+          "type": "unknown[0x04]",
+          "notes": "Copied from a factory-prepared input value. No bounded consumer establishes its representation or role."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "relation_value_0c",
+          "type": "unknown[0x04]",
+          "notes": "Copied from factory source offset +0x68. No bounded consumer establishes its representation or role."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "relation_value_10",
+          "type": "unknown[0x04]",
+          "notes": "Copied from factory source offset +0x6C. No bounded consumer establishes its representation or role."
+        }
+      ],
+      "notes": "Complete exact 0x14 CommandEventRelationItemBase layout. The factory allocates 0x14 bytes, the constructor builds the common base, writes the RTTI-named derived vftable, and copies the complete three-dword tail.",
+      "id": "BCS-S-0417"
     }
   ],
   "method": {
@@ -28266,6 +28359,16 @@
     "c498StructOutput": "BCS-S-0414 in manifests/structs.json and a typed BCS-S-0399 owned_pointers field.",
     "c498ExistingEvidence": "Retained C492 evidence establishes the exact 0x24 allocation, nine-dword copy, producer-local extent, and ownership through BCS-S-0399. Retained C491 teardown independently frees every non-null record pointer before releasing the pointer array.",
     "c498FreshEvidence": "The closing seven-section export reproduces the complete producer, allocator, copy, growth, consumer, callback, and reload paths. The active consumer sign-extends +0x0C and passes +0x10 as four floats to a helper that reads all components. The exact insertion copies +0x00 through +0x23 with no gap. The complete instruction audit positively confirms the callback-owner load from +0x20 that the decompiler hides as an implicit this argument.",
-    "c498Limits": "state_00, state_04, and state_08 remain unknown-typed because their producer-to-consumer forwarding does not establish representation or higher-level role. callback_owner remains a void pointer because virtual or member dispatch does not identify its concrete interface. DumpVAs supplies direct bodies and caller/callee lists only for the seven requested functions and does not establish arbitrary reference topology. The pointer-array growth decompilation ends at a noreturn-marked _free; no load-bearing record-layout claim relies on omitted instructions beyond that boundary. RemovableHeapBlock, the narrow-string list node, and BootupElement remain incomplete for their previously recorded allocation or member-boundary gaps."
+    "c498Limits": "state_00, state_04, and state_08 remain unknown-typed because their producer-to-consumer forwarding does not establish representation or higher-level role. callback_owner remains a void pointer because virtual or member dispatch does not identify its concrete interface. DumpVAs supplies direct bodies and caller/callee lists only for the seven requested functions and does not establish arbitrary reference topology. The pointer-array growth decompilation ends at a noreturn-marked _free; no load-bearing record-layout claim relies on omitted instructions beyond that boundary. RemovableHeapBlock, the narrow-string list node, and BootupElement remain incomplete for their previously recorded allocation or member-boundary gaps.",
+    "c499Topic": "C499 command-event relation layouts",
+    "c499Scripts": "ghidra/DumpVAs.java",
+    "c499ProjectMode": "All exploratory and closing headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before the closing invocation.",
+    "c499Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c499_command-event-relation-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006DBEB0,0x006DD5B0,0x006E02C0,0x006E0D30,0x00712A90' } -ScriptPath @('ghidra')",
+    "c499Inputs": "CommandEventRelationActorBase constructor 0x006DBEB0 and exact factory 0x006E02C0; CommandEventRelationItemBase constructor 0x006DD5B0 and exact factory 0x006E0D30; shared CommandEventRelationControlBase constructor 0x00712A90.",
+    "c499Output": "tools/ghidra/logs/c499_command-event-relation-layouts.txt",
+    "c499StructOutput": "BCS-S-0415 through BCS-S-0417 in manifests/structs.json.",
+    "c499ExistingEvidence": "BCS-S-0086 establishes the complete 0x08 LuaControl layout. BCS-Y-1410 identifies the shared CommandEventRelationControlBase constructor. BCS-Y-1568 preserves the exact 0x0C ActorBase allocation and constructor chain. Retained RTTI exports name both derived classes.",
+    "c499FreshEvidence": "The five-section closing export reproduces both exact allocation sizes, the shared base construction, both RTTI-named derived vftable writes, the ActorBase closing dword copy, and the ItemBase complete three-dword tail copy. The first derived member at +0x08 independently closes the shared base extent.",
+    "c499Limits": "The four relation-value dwords remain unknown-typed because bounded construction proves their widths and source copies but no bounded consumer establishes their representations or roles. The allocator_state nested inside BCS-S-0086 retains that layout's existing unknown type. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions and does not establish arbitrary reference topology. ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, and BootupElement remain incomplete for their previously recorded consumer, allocation, or member-boundary gaps."
   }
 }
