@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 443,
+  "structCount": 444,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27990,6 +27990,40 @@
       ],
       "notes": "Complete exact 0x14 EntrustItemReceiver layout. The heap factory fixes the allocation boundary, construction initializes the byte-range vector at +0x04 from the leading 0x20 packet bytes, receive forwards that vector, and teardown releases it.",
       "id": "BCS-S-0443"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkSyncMemoryReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x14",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0331",
+        "BCS-S-0442",
+        "BCS-Y-0168",
+        "BCS-Y-0169",
+        "BCS-Y-0170",
+        "BCS-Y-0597",
+        "BCS-Y-1448",
+        "tools/ghidra/logs/c512_sync-memory-receiver-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "SyncMemoryReceiver vftable at 0x0105747C."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "property_stream",
+          "type": "ApplicationLuaScriptClientCommandByteRangeVector",
+          "notes": "Owned copy of running_byte_total bytes from SetActorPropertyPacket.property_stream. Apply forwards this vector to the property-stream consumer."
+        }
+      ],
+      "notes": "Complete exact 0x14 SyncMemoryReceiver layout. The alternate heap path fixes the allocation boundary, construction initializes the byte-range vector at +0x04 from the length-prefixed property stream, apply forwards that vector, and teardown releases it.",
+      "id": "BCS-S-0444"
     }
   ],
   "method": {
@@ -29446,6 +29480,17 @@
     "c511StructOutputs": "BCS-S-0442 and BCS-S-0443 in manifests/structs.json.",
     "c511ExistingEvidence": "BCS-S-0295 and BCS-Y-0391 establish the exact 0x30 SetPlayerItemStorage packet and its leading 0x20 item-storage bitstream. BCS-Y-0414, BCS-Y-0657, BCS-Y-0939/0940, BCS-Y-1042, and BCS-Y-1447 preserve the storage-worker role, wire route, receiver identity, receive entry, and vftable.",
     "c511FreshEvidence": "The nine-section export reproduces the wrapper, receive path, constructor, destructor, deleting destructor, storage worker, heap factory, range constructor, and range initializer. The factory allocates exactly 0x14 bytes. Construction places a 0x10 byte-range vector at +0x04 and copies only the leading 0x20 packet bytes; receive and the worker consume that range, while teardown releases and clears its three pointers.",
-    "c511Limits": "The byte-range vector policy_00 word remains unknown-typed because the observed initializer leaves it unwritten and the observed consumer and teardown do not classify it. The packet's closing unknown_20 span is not copied into this receiver. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c511Limits": "The byte-range vector policy_00 word remains unknown-typed because the observed initializer leaves it unwritten and the observed consumer and teardown do not classify it. The packet's closing unknown_20 span is not copied into this receiver. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c512Topic": "C512 SyncMemory receiver layout",
+    "c512Scripts": "ghidra/DumpVAs.java",
+    "c512ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c512Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c512_sync-memory-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00759ED0,0x00775BD0,0x0089F4C0,0x0089E6E0,0x008A1640,0x0089E550,0x00775A30' } -ScriptPath @('ghidra')",
+    "c512Inputs": "SyncMemoryReceiver LuaActorImpl wrapper 0x00759ED0, alternate heap/direct-apply path 0x00775BD0, constructor 0x0089F4C0, destructor 0x0089E6E0, deleting destructor 0x008A1640, apply method 0x0089E550, and property-stream worker 0x00775A30.",
+    "c512Output": "tools/ghidra/logs/c512_sync-memory-receiver-layout.txt",
+    "c512InstructionAudit": "A pefile and capstone walk confirms PUSH 0x14 at 0x00775D33 before the receiver allocator call at 0x00775D35, and LEA ECX,[ESI+0x04] at 0x0089F503 before the shared byte-range constructor call at 0x0089F50C.",
+    "c512StructOutputs": "BCS-S-0444 in manifests/structs.json.",
+    "c512ExistingEvidence": "BCS-S-0331 supplies the exact SetActorProperty packet with running_byte_total at +0x00 and property_stream at +0x01. BCS-S-0442 supplies the exact 0x10 byte-range vector. BCS-Y-0168/0169/0170, BCS-Y-0597, and BCS-Y-1448 preserve the receiver lifecycle, apply role, wire route, and vftable identity.",
+    "c512FreshEvidence": "The seven-section export reproduces the LuaActorImpl wrapper, alternate heap/direct-apply path, constructor, destructor, deleting destructor, apply method, and property-stream worker. The heap path allocates exactly 0x14 bytes. Construction places the shared byte-range vector at +0x04 from the packet's length-prefixed property stream, apply forwards it intact, and teardown releases and clears its three pointers.",
+    "c512Limits": "The receiver stores only running_byte_total property-stream bytes, not the packet's unused fixed-capacity remainder. The nested byte-range vector policy_00 remains unknown-typed for the reason recorded by BCS-S-0442. DumpVAs supplies direct bodies and caller/callee lists only for the seven requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
