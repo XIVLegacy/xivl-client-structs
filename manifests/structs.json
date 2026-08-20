@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 336,
+  "structCount": 337,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -23189,6 +23189,28 @@
       ],
       "notes": "Complete decomp-confirmed 0x108 application payload for s2c 0x01A8 HamletDefenseScore, excluding the 0x10 game-message prefix. No packet capture currently corroborates this content-gated packet extent.",
       "id": "BCS-S-0336"
+    },
+    {
+      "name": "EventStartPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0xB8",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0034",
+        "BCS-Y-0426",
+        "manifests/data_dependency_catalog.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xB8",
+          "name": "payload",
+          "type": "MapEventStartPayload",
+          "notes": "Complete application payload emitted by the canonical 0x012D builder."
+        }
+      ],
+      "notes": "Complete c2s 0x012D EventStart application payload, excluding the 0x10 game-message prefix. The canonical builder writes body size 0xC8 and stages the existing MapEventStartPayload at record+0x18; retained packet observations corroborate the fixed 0xD8 total message extent.",
+      "id": "BCS-S-0337"
     }
   ],
   "method": {
@@ -24162,6 +24184,16 @@
     "c459Outputs": "BCS-S-0335 and BCS-S-0336 in manifests/structs.json; corrected s2c 0x01A8 blocks in the mapped payload and data-dependency manifests.",
     "c459ExistingEvidence": "BCS-Y-0392/0611/0949/0950 establish the opcode, receiver identity, apply path, separate 0x1C runtime-cache allocation, and absence of packet-capture corroboration. Existing C367 evidence establishes the conversion loop and runtime cache layout.",
     "c459FreshEvidence": "The primary read confirms that the fill helper consumes base_score at +0x00, multiplier at +0x04, table indices at +0x05..+0x84, and paired quantities at +0x85..+0x104. The supplemental receiver constructor copies exactly 0x42 dwords, proving a 0x108 input-record boundary and leaving +0x105..+0x107 copied but unread.",
-    "c459Limits": "HamletDefenseScoreWireRecord+0x105 remains an unknown-typed three-byte tail because the constructor copies it but the documented conversion helper does not read it. A zero table index terminates conversion, so later array elements may be present but unprocessed; no negative value claim is made for them. The exact extent is decomp-confirmed but lacks packet-capture corroboration. DumpVAs supplies direct bodies and call lists only for the seven requested functions."
+    "c459Limits": "HamletDefenseScoreWireRecord+0x105 remains an unknown-typed three-byte tail because the constructor copies it but the documented conversion helper does not read it. A zero table index terminates conversion, so later array elements may be present but unprocessed; no negative value claim is made for them. The exact extent is decomp-confirmed but lacks packet-capture corroboration. DumpVAs supplies direct bodies and call lists only for the seven requested functions.",
+    "c460Topic": "C460 EventStart packet and opaque 0x0132 boundary audit",
+    "c460Scripts": "ghidra/DumpVAs.java",
+    "c460ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c460Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c460_opaque-0132-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004D8860,0x00574FC0,0x0076CA90,0x00446F50,0x00447260,0x0075AEE0,0x00767B40,0x0076A3F0,0x0078DDE0' } -ScriptPath @('ghidra')",
+    "c460Inputs": "s2c 0x0132 event-family dispatcher, slot bridge, NullActorImpl slot-49 in-place factory, and its directly called construction, cache, staging, and registration helpers",
+    "c460Output": "tools/ghidra/logs/c460_opaque-0132-layout.txt",
+    "c460StructOutputs": "BCS-S-0337 in manifests/structs.json.",
+    "c460ExistingEvidence": "BCS-S-0034, BCS-Y-0426, and the retained data-dependency catalog establish the exact 0xB8 MapEventStartPayload, canonical builder writes, 0xC8 body size, 0xD8 total message extent, and packet observations. These existing positive records close the nested EventStartPacket layout without a fresh read.",
+    "c460FreshEvidence": "The read-only export confirms that s2c 0x0132 dispatch reaches NullActorImpl slot 49. The slot body consumes payload bytes +0 and +1, then constructs an in-place receiver at payload+2 before cache and registration calls. This explains the size dispute but does not establish the packet boundary.",
+    "c460Limits": "EventStartPacket adds no new unknown-typed field; its nested BCS-S-0034 payload retains the pre-existing unknown-typed and broadly named fields documented there. S2c 0x0132 remains incomplete because the live consumer proves only its first two bytes and an in-place object overlay at +2; it does not resolve the conflict between the 0x28 capture-derived payload and the stale 72-byte symbol note. DumpVAs supplies direct bodies and call lists only for the nine requested functions."
   }
 }
