@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 256,
+  "structCount": 257,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -19290,6 +19290,128 @@
       ],
       "notes": "Complete exact 0x0C nested resume checker allocated by the block event. Construction and cancellation establish the owner and two byte-sized resume fields.",
       "id": "BCS-S-0256"
+    },
+    {
+      "name": "InventoryItemRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0395",
+        "BCS-Y-0702",
+        "manifests/data_dependency_catalog.json",
+        "tools/ghidra/logs/c147_inventory-state-final-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unique_id",
+          "type": "uint64_t",
+          "notes": "Wire item-instance identifier read as two consecutive dwords by the shared deserializer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "quantity",
+          "type": "int32_t",
+          "notes": "Signed item quantity consumed by the shared inventory update path."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "item_id",
+          "type": "uint32_t",
+          "notes": "Static item identifier."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x02",
+          "name": "slot_or_link_slot",
+          "type": "uint16_t",
+          "notes": "Inventory slot or linked-item slot selected by the receiving operation."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x01",
+          "name": "dealing_value",
+          "type": "uint8_t",
+          "notes": "Byte-sized dealing value copied by the shared deserializer."
+        },
+        {
+          "offset": "0x13",
+          "size": "0x01",
+          "name": "dealing_mode",
+          "type": "uint8_t",
+          "notes": "Byte-sized dealing mode copied by the shared deserializer."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "dealing_attached_1",
+          "type": "int32_t",
+          "notes": "First signed dealing attachment value."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "dealing_attached_2",
+          "type": "int32_t",
+          "notes": "Second signed dealing attachment value."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "dealing_attached_3",
+          "type": "int32_t",
+          "notes": "Third signed dealing attachment value."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "tags",
+          "type": "uint8_t[4]",
+          "notes": "Four item-tag selector bytes in the reusable wire record."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "tag_values",
+          "type": "uint8_t[4]",
+          "notes": "Four values paired with the item-tag selector bytes."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x01",
+          "name": "quality",
+          "type": "uint8_t",
+          "notes": "Item quality byte copied by the shared deserializer."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x01",
+          "name": "modifier_present",
+          "type": "bool",
+          "notes": "Controls whether the following 0x40-byte modifier region is copied."
+        },
+        {
+          "offset": "0x2A",
+          "size": "0x40",
+          "name": "modifier_data",
+          "type": "unknown[0x40]",
+          "notes": "Conditionally copied modifier record. Its exact extent is established, but no internal member layout is promoted."
+        },
+        {
+          "offset": "0x6A",
+          "size": "0x06",
+          "name": "reserved",
+          "type": "unknown[0x06]",
+          "notes": "Unconsumed bytes closing the exact 0x70 wire-record stride."
+        }
+      ],
+      "notes": "Complete exact 0x70 inventory-item wire record reused by the one-, eight-, sixteen-, and thirty-two-row inventory-list packets. The shared deserializer establishes the member boundaries through +0x69, while packet sizes close the six-byte tail.",
+      "id": "BCS-S-0257"
     }
   ],
   "method": {
@@ -20029,6 +20151,13 @@
     "c427Output": "tools/ghidra/logs/c427_event-execution-block-layout.txt",
     "c427ExistingEvidence": "BCS-Y-0473 and BCS-Y-0475 supplied the exact block-event allocation and dispatch context. manifests/event_block_execution_state.json supplied the retained RTTI identities, derived field roles, vtable-slot attribution, and exact nested checker allocation.",
     "c427FreshEvidence": "C427 revalidates the exact 0x2C block-event allocation, layered construction, all base and derived member boundaries, block dispatch and server-order state transitions, the typed checker pointer, exact 0x0C checker allocation, checker construction, cancellation fields, and layered teardown.",
-    "c427Limits": "DumpVAs supplies direct bodies and call lists only for the nineteen requested functions. Vtable-slot identity comes from the retained investigation snapshot rather than fresh data-reference coverage. The concrete Event::Base leaf and unpacked-order payload record types vary or remain unresolved, state_22 has no promoted higher-level meaning, and four alignment bytes remain unknown-typed. No negative topology claim relies on the export or on a zero-result search."
+    "c427Limits": "DumpVAs supplies direct bodies and call lists only for the nineteen requested functions. Vtable-slot identity comes from the retained investigation snapshot rather than fresh data-reference coverage. The concrete Event::Base leaf and unpacked-order payload record types vary or remain unresolved, state_22 has no promoted higher-level meaning, and four alignment bytes remain unknown-typed. No negative topology claim relies on the export or on a zero-result search.",
+    "c428Topic": "C428 reusable inventory item wire record",
+    "c428Scripts": "No new headless export was required; the retained C147 DumpVAs archive and tracked payload-decoding catalogs supplied the load-bearing evidence.",
+    "c428Inputs": "InventoryListX01/X08/X16/X32 payload layouts, the shared InventoryItemRecord deserializer finding, and the retained one-row wrapper decompilation.",
+    "c428Outputs": "BCS-S-0257 in manifests/structs.json; no new local evidence archive.",
+    "c428ExistingEvidence": "BCS-Y-0394/0395 establish reuse at exact 0x70 stride across four packet array sizes. BCS-Y-0702 and manifests/data_dependency_catalog.json supply all deserialized member widths and offsets. The retained C147 archive confirms the one-row packet wrapper calls the shared deserializer once.",
+    "c428FreshEvidence": "No fresh Ghidra read was made because a Java process was present at the exclusive-project preflight. Existing positive evidence was sufficient, so the investigation did not rely on a zero-result search or a negative project claim.",
+    "c428Limits": "The 0x40 modifier region remains opaque, and the final six bytes are unconsumed by the documented client parser. The layout claims their exact extents only. The adjacent ExecutionServerSideBlockEvent candidate remains incomplete because its derived +0x28 field is not established by retained consumers."
   }
 }
