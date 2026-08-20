@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 369,
+  "structCount": 371,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -24434,6 +24434,102 @@
       ],
       "notes": "Complete exact 0x108 application payload for c2s 0x01DD, excluding the 0x10 game-message prefix. Retained player-search attribution and one packet observation identify it as a search query without resolving the inner criteria schema.",
       "id": "BCS-S-0369"
+    },
+    {
+      "name": "MapOpcode0003StatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x220",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0313",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c473_map-bootstrap-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "header_values",
+          "type": "uint32_t[4]",
+          "notes": "Four caller-supplied dwords copied as two adjacent qwords."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "value_14",
+          "type": "uint32_t",
+          "notes": "Caller-supplied dword written directly by the dedicated emitter."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x02",
+          "name": "value_18",
+          "type": "uint16_t",
+          "notes": "Caller-supplied word written directly by the dedicated emitter."
+        },
+        {
+          "offset": "0x1A",
+          "size": "0x02",
+          "name": "zero_1a",
+          "type": "uint16_t",
+          "notes": "Word explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x200",
+          "name": "state_block",
+          "type": "uint32_t[128]",
+          "notes": "Exact 512-byte block copied from the zero-initialized source buffer loaded by the shared data helpers."
+        },
+        {
+          "offset": "0x21C",
+          "size": "0x04",
+          "name": "unknown_21c",
+          "type": "unknown",
+          "notes": "Exact closing application span; the dedicated emitter documents no explicit write."
+        }
+      ],
+      "notes": "Complete exact 0x220 application payload for MapServerbound c2s 0x0003, excluding the 0x10 game-message prefix. Retained evidence identifies a large Map-channel state push without establishing a more specific operation or the inner state-block schema.",
+      "id": "BCS-S-0370"
+    },
+    {
+      "name": "MapLanguageCodePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0308",
+        "BCS-Y-0314",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c473_map-bootstrap-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by both witnessed emit sites."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "language_code",
+          "type": "uint32_t",
+          "notes": "Language-code dword supplied by the dedicated caller and independently read from Map-channel state by the tick emitter."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for MapServerbound c2s 0x0006 LanguageCodePacket, excluding the 0x10 game-message prefix. The dedicated emitter and the independent tick-state emitter produce the same two-dword layout.",
+      "id": "BCS-S-0371"
     }
   ],
   "method": {
@@ -25525,6 +25621,16 @@
     "c472StructOutputs": "BCS-S-0367, BCS-S-0368, BCS-S-0369 in manifests/structs.json.",
     "c472ExistingEvidence": "BCS-Y-0325 through BCS-Y-0327 and manifests/c2s_emit_sites.json establish all three emitters, opcodes, relay route, and exact 0x118, 0x18, and 0x238 emitted record extents. manifests/search_subsystem.json and manifests/retainer_bazaar_subsystem.json separate player-search 0x01DD from ItemSearch 0x01DB and 0x01DC. manifests/pcap_grounded_c2s_validation.json supplies one exact 0x108 application-payload observation for 0x01DD.",
     "c472FreshEvidence": "Emitter 0x004C73D0 explicitly zeros application +0x00. Emitter 0x004C7490 explicitly zeros +0x00 and copies exactly 137 dwords at +0x04. Emitter 0x004C7300 explicitly zeros +0x00 and copies exactly 65 dwords at +0x04. The fixed emitted extents close the 0x228 and 0x108 application layouts and leave only the 0x01DB closing dword unwritten.",
-    "c472Limits": "ItemSearchCompactRequestPacket+0x04 remains unknown-typed because its dedicated emitter documents no explicit write. The 0x01DB operation remains unresolved. ItemSearchBulkRequestPacket.payload and PcSearchQueryPacket.criteria retain broad names because direct copies and one packet sample do not establish their inner schemas. DumpVAs supplies direct bodies and call lists only for the seven requested functions."
+    "c472Limits": "ItemSearchCompactRequestPacket+0x04 remains unknown-typed because its dedicated emitter documents no explicit write. The 0x01DB operation remains unresolved. ItemSearchBulkRequestPacket.payload and PcSearchQueryPacket.criteria retain broad names because direct copies and one packet sample do not establish their inner schemas. DumpVAs supplies direct bodies and call lists only for the seven requested functions.",
+    "c473Topic": "C473 Map bootstrap packet layouts",
+    "c473Scripts": "ghidra/DumpVAs.java",
+    "c473ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c473Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c473_map-bootstrap-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004E0290,0x004E0320,0x004E20A0,0x004D8160,0x004B37F0,0x004E0240' } -ScriptPath @('ghidra')",
+    "c473Inputs": "MapServerbound 0x0006 and 0x0003 emitters 0x004E0290 and 0x004E0320; the independent 0x0006 tick emitter 0x004E20A0; direct callers 0x004B37F0 and 0x004D8160; and generic relay 0x004E0240.",
+    "c473Output": "tools/ghidra/logs/c473_map-bootstrap-packets.txt",
+    "c473StructOutputs": "BCS-S-0370 and BCS-S-0371 in manifests/structs.json.",
+    "c473ExistingEvidence": "BCS-Y-0313 and manifests/operation_opcode_map_outbound.json establish the MapServerbound 0x0003 emitter and exact 0x230 emitted extent. BCS-Y-0308, BCS-Y-0314, and the same manifest establish two MapServerbound 0x0006 emit sites, the LanguageCodePacket attribution, and exact 0x18 emitted extent. The vendored opcode catalog independently retains both channel bindings.",
+    "c473FreshEvidence": "Emitter 0x004E0320 explicitly zeros application +0x00, writes four caller dwords at +0x04, one dword at +0x14, one word at +0x18, zeros the word at +0x1A, and copies exactly 128 dwords at +0x1C; the fixed extent leaves the closing dword at +0x21C unwritten. Emitter 0x004E0290 and tick emitter 0x004E20A0 both zero application +0x00 and write the language-code dword at +0x04.",
+    "c473Limits": "MapOpcode0003StatePacket+0x21C remains unknown-typed because the dedicated emitter documents no explicit write. The 0x0003 operation, header-value semantics, and inner 512-byte state schema remain unresolved, so their names stay broad. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions."
   }
 }
