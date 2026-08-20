@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 293,
+  "structCount": 296,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -21161,6 +21161,114 @@
       ],
       "notes": "Complete exact 0x08 application payload for s2c 0x0192 SendAddictionLimitMessage, excluding the 0x10 game-message prefix. The receiver consumes the leading kind byte and the fixed packet extent closes the seven-byte tail.",
       "id": "BCS-S-0293"
+    },
+    {
+      "name": "SetActorStatusPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0643",
+        "BCS-Y-0697",
+        "BCS-Y-0699",
+        "BCS-Y-1067",
+        "BCS-Y-1070",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "index",
+          "type": "uint16_t",
+          "notes": "Status staging index; the documented apply path consumes its low byte."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "status_code",
+          "type": "uint16_t",
+          "notes": "Status identifier written into the selected actor staging slot."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented dispatcher path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0177 SetActorStatus, excluding the 0x10 game-message prefix. The third-router path consumes the status index and code and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0294"
+    },
+    {
+      "name": "SetPlayerItemStoragePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0391",
+        "BCS-Y-0414",
+        "BCS-Y-0940",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "item_storage_bitstream",
+          "type": "uint8_t[32]",
+          "notes": "Stored-item enabled-flag bitstream iterated into item-storage category vectors by the receiver helper."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x10",
+          "name": "unknown_20",
+          "type": "unknown[0x10]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x30 application payload for s2c 0x01A5 SetPlayerItemStorage, excluding the 0x10 game-message prefix. The receiver helper consumes the leading 32-byte enabled-item bitstream and the fixed packet extent closes the 16-byte tail.",
+      "id": "BCS-S-0295"
+    },
+    {
+      "name": "SetPlayerDreamPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0658",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "dream_id",
+          "type": "uint8_t",
+          "notes": "Dream identifier masked to six bits before storage in player state."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "inn_id",
+          "type": "uint8_t",
+          "notes": "Inn identifier consumed by the direct state-update path."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x06",
+          "name": "unknown_02",
+          "type": "unknown[0x06]",
+          "notes": "Closing payload span not interpreted by the documented dispatcher path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x01A7 SetPlayerDream, excluding the 0x10 game-message prefix. The direct handler consumes the leading dream and inn bytes and the fixed packet extent closes the six-byte tail.",
+      "id": "BCS-S-0296"
     }
   ],
   "method": {
@@ -22007,6 +22115,13 @@
     "c442Outputs": "BCS-S-0292 through BCS-S-0293 in manifests/structs.json; no new local evidence archive.",
     "c442ExistingEvidence": "BCS-Y-0251/0956 and BCS-Y-0392 establish the SendLog receiver/parser path, fixed actor1 message members, single eight-byte parameter slot, and exact s2c 0x0157 extent. BCS-Y-0108/0109/0111 and BCS-Y-0392 establish the addiction-limit kind consumer, its tier mapping, and exact s2c 0x0192 extent.",
     "c442FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes both payloads. No claim relies on a zero-result search.",
-    "c442Limits": "SendAddictionLimitMessage+0x01 remains an unknown-typed seven-byte tail because retained consumers do not interpret it. GameMessageWithActor1 is fully byte-accounted, but the internal tagged representation of its eight-byte Lua-parameter slot is not promoted. TextSheetNoSourceX28Packet was reviewed but not started because retained evidence preserves competing receiver interpretations for opcode 0x0166. Semantic confidence remains structural because the parent receiver batch still requests live revalidation."
+    "c442Limits": "SendAddictionLimitMessage+0x01 remains an unknown-typed seven-byte tail because retained consumers do not interpret it. GameMessageWithActor1 is fully byte-accounted, but the internal tagged representation of its eight-byte Lua-parameter slot is not promoted. TextSheetNoSourceX28Packet was reviewed but not started because retained evidence preserves competing receiver interpretations for opcode 0x0166. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c443Topic": "C443 direct actor and player state payloads",
+    "c443Scripts": "No new headless export was required; retained dispatcher, receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c443Inputs": "SetActorStatusPacket, SetPlayerItemStoragePacket, and SetPlayerDreamPacket consumer paths and exact application-payload extents.",
+    "c443Outputs": "BCS-S-0294 through BCS-S-0296 in manifests/structs.json; no new local evidence archive.",
+    "c443ExistingEvidence": "BCS-Y-0643/0697/0699/1067/1070 and BCS-Y-0394 establish the indexed status staging update and exact s2c 0x0177 extent. BCS-Y-0414/0940 and BCS-Y-0391 establish the 32-byte item-storage bitstream consumer and exact s2c 0x01A5 extent. BCS-Y-0658 and BCS-Y-0396 establish the dream-id and inn-id reads and exact s2c 0x01A7 extent.",
+    "c443FreshEvidence": "No fresh analysis read was required because existing positive consumer and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c443Limits": "SetActorStatus+0x04 remains an unknown-typed four-byte tail, SetPlayerItemStorage+0x20 remains an unknown-typed 16-byte tail, and SetPlayerDream+0x02 remains an unknown-typed six-byte tail because retained consumers do not interpret them. The actor-status path consumes only the low index byte, so no narrower wire type is inferred over the retained uint16 field. Individual item-storage bit meanings remain outside this layout. Semantic confidence remains structural because the parent payload batches still request live revalidation."
   }
 }
