@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 307,
+  "structCount": 310,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -21682,6 +21682,109 @@
       ],
       "notes": "Complete exact 0x38 application payload for s2c 0x014E LinkedItemListX08, excluding the 0x10 game-message prefix. Eight complete LinkedItemEntry rows are followed by the retained count word and a four-byte closing span.",
       "id": "BCS-S-0307"
+    },
+    {
+      "name": "InventorySetBeginPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0544",
+        "BCS-Y-0703",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "source_actor_id",
+          "type": "uint32_t",
+          "notes": "Source actor identifier for the inventory-set frame."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "size",
+          "type": "uint16_t",
+          "notes": "Inventory-set size value consumed by the deep handler."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "code",
+          "type": "uint16_t",
+          "notes": "Inventory-set code word; the documented client path compares its low byte."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0146 InventorySetBegin, excluding the 0x10 game-message prefix. The deep handler consumes the actor id and two closing words with no trailing span.",
+      "id": "BCS-S-0308"
+    },
+    {
+      "name": "InventoryBeginChangePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0560",
+        "BCS-Y-0707",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "change_code",
+          "type": "uint8_t",
+          "notes": "Inventory-change code forwarded by the dedicated deep handler."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented begin-change handler."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x016D InventoryBeginChange, excluding the 0x10 game-message prefix. The handler consumes the leading change byte and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0309"
+    },
+    {
+      "name": "InventoryRemoveX01Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0555",
+        "BCS-Y-0716",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "slot",
+          "type": "uint16_t",
+          "notes": "Inventory slot removed by the X01 handler."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x06",
+          "name": "unknown_02",
+          "type": "unknown[0x06]",
+          "notes": "Closing payload span not interpreted by the documented remove handler."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0152 InventoryRemoveX01, excluding the 0x10 game-message prefix. The handler consumes the leading slot word and the fixed packet extent closes the six-byte tail.",
+      "id": "BCS-S-0310"
     }
   ],
   "method": {
@@ -22565,6 +22668,13 @@
     "c447Outputs": "BCS-S-0306 and BCS-S-0307 in manifests/structs.json; no new local evidence archive.",
     "c447ExistingEvidence": "BCS-Y-0396 and the retained payload catalogs establish the three X01 words and exact s2c 0x014D extent. BCS-Y-0394 establishes eight 0x06 rows, the count word, and exact s2c 0x014E extent. BCS-Y-0550/0551 and BCS-Y-0712/0706 establish the dedicated dispatcher paths. Existing BCS-S-0259 supplies the complete nested linked-item row type.",
     "c447FreshEvidence": "No fresh analysis read was required because existing positive handlers, packet-shape evidence, and nested-record evidence close both payloads. No claim relies on a zero-result search.",
-    "c447Limits": "LinkedItemListX01+0x06 and LinkedItemListX08+0x34 remain unknown-typed closing spans because retained consumers do not interpret them. The X08 handler consumes only the low item-count byte, so no narrower wire type is inferred over the retained uint32_t field. X16, X32, and X64 linked-item variants were screened but not started because retained evidence does not establish their exact packet extents."
+    "c447Limits": "LinkedItemListX01+0x06 and LinkedItemListX08+0x34 remain unknown-typed closing spans because retained consumers do not interpret them. The X08 handler consumes only the low item-count byte, so no narrower wire type is inferred over the retained uint32_t field. X16, X32, and X64 linked-item variants were screened but not started because retained evidence does not establish their exact packet extents.",
+    "c448Topic": "C448 compact inventory control packets",
+    "c448Scripts": "No new headless export was required; retained inventory handlers, payload decoding, and exact packet extents supplied the load-bearing evidence.",
+    "c448Inputs": "InventorySetBeginPacket, InventoryBeginChangePacket, and InventoryRemoveX01Packet consumer paths and exact application-payload extents.",
+    "c448Outputs": "BCS-S-0308 through BCS-S-0310 in manifests/structs.json; no new local evidence archive.",
+    "c448ExistingEvidence": "BCS-Y-0393/0544/0703 establish the three InventorySetBegin members and exact s2c 0x0146 extent. BCS-Y-0394/0560/0707 establish the InventoryBeginChange byte and exact s2c 0x016D extent. BCS-Y-0396/0555/0716 establish the InventoryRemoveX01 slot word and exact s2c 0x0152 extent. The retained payload and equipment catalogs corroborate all three dedicated paths.",
+    "c448FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close all three payloads. No claim relies on a zero-result search.",
+    "c448Limits": "InventoryBeginChange+0x01 and InventoryRemoveX01+0x02 remain unknown-typed closing spans because retained consumers do not interpret them. InventorySetBegin is fully byte-accounted with no unknown field, but the higher-level domains of size and code remain unresolved. InventoryEndChange was screened but not started because its handler consumes no payload pointer and all eight payload bytes remain opaque."
   }
 }
