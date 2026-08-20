@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 317,
+  "structCount": 319,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -22251,6 +22251,99 @@
       ],
       "notes": "Complete exact 0x298 application payload for s2c 0x018D PartyMapMarkerUpdate, excluding the 0x10 game-message prefix. The payload contains a group header, sixteen exact marker records, a byte count, and a seven-byte closing span.",
       "id": "BCS-S-0317"
+    },
+    {
+      "name": "CreateNamedGroupMultiplePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x208",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0577",
+        "BCS-Y-0887",
+        "BCS-S-0261",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x200",
+          "name": "groups",
+          "type": "NamedGroupRecord[8]",
+          "notes": "Eight fixed-stride named-group records consumed by the bulk group-registration path."
+        },
+        {
+          "offset": "0x200",
+          "size": "0x001",
+          "name": "group_count",
+          "type": "uint8_t",
+          "notes": "Low-byte row count used to bound the named-group loop."
+        },
+        {
+          "offset": "0x201",
+          "size": "0x007",
+          "name": "unknown_201",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented bulk consumer."
+        }
+      ],
+      "notes": "Complete exact 0x208 application payload for s2c 0x0189 CreateNamedGroupMultiple, excluding the 0x10 game-message prefix. The consumer walks up to eight existing NamedGroupRecord rows and uses the byte at +0x200 as the row count.",
+      "id": "BCS-S-0318"
+    },
+    {
+      "name": "SetActiveLinkshellPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0578",
+        "BCS-Y-0888",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x40",
+          "name": "linkshell_group_ids",
+          "type": "uint64_t[8]",
+          "notes": "Eight linkshell group identifiers consumed as fixed eight-byte rows."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x20",
+          "name": "linkshell_group_types",
+          "type": "uint32_t[8]",
+          "notes": "Group-type values paired by index with the linkshell identifiers."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x01",
+          "name": "active_linkshell_index",
+          "type": "uint8_t",
+          "notes": "Low byte consumed by the active-linkshell path; retained evidence describes it as the active index and loop bound."
+        },
+        {
+          "offset": "0x61",
+          "size": "0x03",
+          "name": "unknown_61",
+          "type": "unknown[0x03]",
+          "notes": "Bytes adjacent to the consumed low byte whose storage is not established by the documented path."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x14",
+          "name": "unknown_64",
+          "type": "unknown[0x14]",
+          "notes": "Closing payload span not interpreted by the documented active-linkshell consumer."
+        }
+      ],
+      "notes": "Complete exact 0x78 application payload for s2c 0x018A SetActiveLinkshell, excluding the 0x10 game-message prefix. The positive consumer establishes the two eight-element arrays and reads only the low byte at +0x60; the remaining bytes stay unknown-typed.",
+      "id": "BCS-S-0319"
     }
   ],
   "method": {
@@ -23162,6 +23255,13 @@
     "c451Outputs": "BCS-S-0316 and BCS-S-0317 in manifests/structs.json; no new local evidence archive.",
     "c451ExistingEvidence": "BCS-Y-0890 and the retained payload and party catalogs establish the 0x28 marker stride, player identifier, two additional consumed dwords, four float coordinates, sixteen-record capacity, marker-count byte, and exact 0x298 application payload. BCS-Y-0580 establishes the dedicated 0x018D handler path. Retained packet observations corroborate the fixed wire extent.",
     "c451FreshEvidence": "No fresh analysis read was required because existing positive consumers, subsystem layout evidence, and packet-shape evidence close both records. No claim relies on a zero-result search.",
-    "c451Limits": "PartyMapMarkerEntry+0x04, +0x10, and +0x24 remain unknown-typed four-byte spans because the documented consumer does not interpret them. The typed dwords at +0x08 and +0x0C have unresolved higher-level semantics. PartyMapMarkerUpdate+0x0C remains an unknown-typed header dword and +0x291 remains an unknown-typed seven-byte tail. The zone-owned +0x4D8 gate belongs to the handler owner rather than this wire layout and remains outside this batch."
+    "c451Limits": "PartyMapMarkerEntry+0x04, +0x10, and +0x24 remain unknown-typed four-byte spans because the documented consumer does not interpret them. The typed dwords at +0x08 and +0x0C have unresolved higher-level semantics. PartyMapMarkerUpdate+0x0C remains an unknown-typed header dword and +0x291 remains an unknown-typed seven-byte tail. The zone-owned +0x4D8 gate belongs to the handler owner rather than this wire layout and remains outside this batch.",
+    "c452Topic": "C452 named-group and active-linkshell packets",
+    "c452Scripts": "No new headless export was required; retained positive group consumers, the existing nested record, and exact packet extents supplied the load-bearing evidence.",
+    "c452Inputs": "CreateNamedGroupMultiplePacket with existing BCS-S-0261 NamedGroupRecord, SetActiveLinkshellPacket, their dedicated handlers and consumers, and exact application-payload extents.",
+    "c452Outputs": "BCS-S-0318 and BCS-S-0319 in manifests/structs.json; no new local evidence archive.",
+    "c452ExistingEvidence": "BCS-Y-0396/0577/0887 and the retained payload catalogs establish eight 0x40 NamedGroupRecord rows, the +0x200 count byte, and the exact 0x208 bulk-group payload. BCS-Y-0396/0578/0888 establish the eight linkshell identifiers, eight paired group types, the low-byte +0x60 consumer, and the exact 0x78 active-linkshell payload.",
+    "c452FreshEvidence": "No fresh analysis read was required because existing positive consumers, nested-record evidence, and packet-shape evidence close both layouts. No claim relies on a zero-result search.",
+    "c452Limits": "CreateNamedGroupMultiple+0x201 remains an unknown-typed seven-byte tail, and each nested NamedGroupRecord retains its existing unknown +0x12..+0x1F span. SetActiveLinkshell+0x61 remains an unknown-typed three-byte span because only the low byte at +0x60 is consumed; +0x64 remains an unknown-typed 0x14-byte tail. The higher-level role of +0x60 as both retained active index and iteration bound is not narrowed further."
   }
 }
