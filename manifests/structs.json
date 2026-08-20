@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 383,
+  "structCount": 384,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -25146,6 +25146,59 @@
       ],
       "notes": "Complete exact 0x28 application payload for MapServerbound c2s 0x0133 GroupCreatedPacket, excluding the 0x10 game-message prefix. The group-state aggregator feeds the dedicated builder, which writes an exact 0x38 game-message record and sends it through the shared Map gating thunk. Packet observations independently retain the same framed extent and direction-specific group-created attribution.",
       "id": "BCS-S-0383"
+    },
+    {
+      "name": "UpdateGroupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0244",
+        "BCS-Y-0329",
+        "BCS-Y-0380",
+        "BCS-Y-0382",
+        "BCS-Y-1778",
+        "BCS-Y-1782",
+        "BCS-Y-1783",
+        "manifests/c2s_payload_decoding.json",
+        "manifests/c2s_coverage_synthesis.json",
+        "manifests/data_dependency_catalog.json",
+        "manifests/party_subsystem.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "tools/ghidra/logs/c479_group-update-packet.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Producer-dependent context dword. The compact builder copies the CharaBase update value or teardown helper result; the full builder copies the actor-context value at +0x04."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "group_value",
+          "type": "uint32_t",
+          "notes": "Producer-dependent group dword. Teardown acknowledgements write Party group-type id 0x2711; the CharaBase path copies its group lookup result, and the full builder copies the GroupBase value returned by FUN_006BFD20."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "group_state_0",
+          "type": "uint32_t",
+          "notes": "First dword of the GroupReferenceRecord state pair in the full builder; explicitly zero in the compact acknowledgement builder."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "group_state_1",
+          "type": "uint32_t",
+          "notes": "Second dword of the GroupReferenceRecord state pair in the full builder; explicitly zero in the compact acknowledgement builder."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for MapServerbound c2s 0x0130 UpdateGroup, excluding the 0x10 game-message prefix. The compact CharaBase and teardown-acknowledgement builder writes two dwords followed by two zeros. The GroupBase update-member builder writes all four dwords, sourcing the closing pair from the embedded GroupReferenceRecord. Field names remain broad because the variants intentionally supply different higher-level values.",
+      "id": "BCS-S-0384"
     }
   ],
   "method": {
@@ -26297,6 +26350,17 @@
     "c478StructOutputs": "BCS-S-0382 and BCS-S-0383 in manifests/structs.json.",
     "c478ExistingEvidence": "BCS-Y-0309 and manifests/autotranslate_wire_format_study.json establish WorldServerbound c2s 0x00C9, the 0x218 game-message extent, and PartyChat attribution; BCS-Y-0306 establishes the Chat forwarder's exact application-copy rule. BCS-Y-0984 and manifests/op0133_groupcreated_emitter.json establish MapServerbound c2s 0x0133, the 0x38 game-message extent, two leading identifier dwords, and 32 staged bytes; BCS-Y-0985 establishes the Group aggregator. Packet observations independently retain both framed extents and semantic attributions.",
     "c478FreshEvidence": "PartyChat emitter 0x004DF6D0 writes the caller-supplied dword at application +0x00, clears a 0x200-byte local message buffer, copies the current text bytes into it, and transfers all 128 dwords to application +0x04. Chat forwarder 0x00DB3E30 copies the full 0x208 application extent, leaving the closing dword at +0x204 unwritten by the emitter. GroupCreated builder 0x0075E950 writes two dwords at application +0x00/+0x04 and copies two cleared 16-byte staging blocks to application +0x08, closing the exact 0x28 extent; aggregator 0x006C72E0 supplies the serialized state and gating thunk 0x004D6D30 routes the finished record.",
-    "c478Limits": "PartyChat+0x00 retains a broad name because the caller-supplied dword has no resolved consumer semantics. PartyChat+0x204 remains unknown-typed because the forwarder includes it in the application copy but the emitter documents no explicit write. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions."
+    "c478Limits": "PartyChat+0x00 retains a broad name because the caller-supplied dword has no resolved consumer semantics. PartyChat+0x204 remains unknown-typed because the forwarder includes it in the application copy but the emitter documents no explicit write. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions.",
+    "c479Topic": "C479 complete group-update packet layout",
+    "c479Scripts": "ghidra/DumpVAs.java plus a read-only instruction-stream audit with pefile and capstone",
+    "c479ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c479Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c479_group-update-packet.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075E860,0x0075E8D0,0x006E42E0,0x006E2130,0x006DAE90,0x006DACD0' } -ScriptPath @('ghidra')",
+    "c479InstructionAudit": "A pefile and capstone walk decoded the complete defined byte ranges (0x006E42E0, 189), (0x006E2130, 157), (0x006DAE90, 436), (0x006DACD0, 432), (0x0075E860, 106), and (0x0075E8D0, 114) from the configured client image.",
+    "c479Inputs": "Compact 0x0130 builder 0x0075E860, full 0x0130 builder 0x0075E8D0, CharaBase producer 0x006E42E0, GroupBase producer 0x006E2130, and teardown acknowledgement producers 0x006DAE90 and 0x006DACD0.",
+    "c479Output": "tools/ghidra/logs/c479_group-update-packet.txt",
+    "c479StructOutput": "BCS-S-0384 in manifests/structs.json.",
+    "c479ExistingEvidence": "BCS-Y-0329/0380/0382 and the retained c2s payload catalogs establish MapServerbound opcode 0x0130, exact 0x20 game-message extent, two builder variants, and four exact dword slots. BCS-Y-1778/1782/1783 establish two Party teardown acknowledgement producers and group-type id 0x2711. BCS-S-0244 establishes the embedded GroupReferenceRecord and its closing state pair.",
+    "c479FreshEvidence": "Builder 0x0075E860 writes application +0x00/+0x04 from two producer values and explicitly zeros +0x08/+0x0C. Builder 0x0075E8D0 writes context +0x04 at application +0x00, the FUN_006BFD20 result at +0x04, and the two FUN_006BFD10 state dwords at +0x08/+0x0C. The instruction stream confirms both teardown callsites beyond `_free` boundaries annotated noreturn: each supplies a helper result at +0x00 and Party group-type id 0x2711 at +0x04.",
+    "c479Limits": "The four dword boundaries and storage widths are exact, but their names remain broad because the compact acknowledgement and full update variants intentionally source different higher-level values. The GroupReferenceRecord state-pair representation remains unresolved. No retained packet sample corroborates c2s 0x0130 values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions; the instruction audit covers their complete defined byte ranges and does not establish wider reference topology."
   }
 }
