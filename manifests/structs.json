@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 389,
+  "structCount": 394,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -2177,13 +2177,14 @@
     {
       "name": "LuaThreadInvokeState",
       "namespace": "FFXIV.Client.System.Lua",
-      "size": "at least 0x13c observed on the active frame object; wrapper fields observed through offsets +0x10, +0x2c, and +0x38",
+      "size": "at least 0x3F observed extent",
       "confidence": "inferred",
       "sourceRefs": [
         "BCS-Y-0461",
         "BCS-Y-0462",
         "BCS-Y-0463",
-        "BCS-Y-0464"
+        "BCS-Y-0464",
+        "tools/ghidra/logs/c484_lua-current-frame.txt"
       ],
       "fields": [
         {
@@ -2196,9 +2197,23 @@
         {
           "offset": "0x2c",
           "size": "0x04",
-          "type": "void*",
+          "type": "ComponentLuaGameEngineCurrentFrameControl *",
           "name": "currentFrameOrControl",
-          "evidence": "FUN_00CF0910 returns *(this+0x2c); FUN_00CF09C0 destroys/frees the old pointer and stores a newly allocated 0x140-byte replacement there."
+          "evidence": "FUN_00CF0910 returns *(this+0x2C); FUN_00CF09C0 destroys and frees the old exact 0x140-byte ComponentLuaGameEngineCurrentFrameControl before storing its replacement."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "type": "ComponentLuaGameEngineCurrentFrameControl *",
+          "name": "secondaryFrameOrControl",
+          "evidence": "FUN_00CF1A10 allocates a second exact 0x140-byte frame through the same constructor and stores it here."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x04",
+          "type": "ComponentLuaGameEngineCurrentFrameControl *",
+          "name": "selectedFrameOrControl",
+          "evidence": "FUN_00CF1A10 initializes this slot from currentFrameOrControl at +0x2C."
         },
         {
           "offset": "0x38",
@@ -2208,14 +2223,21 @@
           "evidence": "FUN_00CF08F0 gates and writes this slot; FUN_00CCF7D0 installs the callback target before stack preparation and clears it after invocation."
         },
         {
-          "offset": "0x138",
+          "offset": "0x3c",
+          "size": "0x02",
+          "type": "uint16_t",
+          "name": "invocationState3c",
+          "evidence": "FUN_00CF1A10 clears this exact word during owner construction. Its higher-level semantics remain unresolved."
+        },
+        {
+          "offset": "0x3e",
           "size": "0x01",
           "type": "uint8_t",
-          "name": "newFrameStatusByte",
-          "evidence": "FUN_00CF09C0 writes DAT_0130D424 to replacement+0x138 after constructing the new current frame/control object."
+          "name": "invocationFlag3e",
+          "evidence": "FUN_00CF1A10 clears this exact byte during owner construction. Its higher-level semantics remain unresolved."
         }
       ],
-      "notes": "Observed native surface around the active Lua thread/frame rather than a complete stock lua_State layout. The bundled VM accepts Lua 5.1 bytecode, but the recovered code is wrapped by Component::Lua::GameEngine objects; this struct therefore records only the offsets touched by the lifecycle and invoke helpers here.",
+      "notes": "Observed native owner surface around the active Lua thread rather than a complete stock lua_State layout. The bundled VM accepts Lua 5.1 bytecode, but the recovered code is wrapped by Component::Lua::GameEngine objects. C484 separates the exact current-frame object at +0x2C from this owner wrapper; only owner offsets through +0x3E are claimed here.",
       "id": "BCS-S-0036"
     },
     {
@@ -25409,6 +25431,421 @@
       ],
       "notes": "Complete byte-accounted 0x2C sentinel-backed PlayerManager state node. The exact allocator initializes the two list links to self and returns the node to PlayerManager+0x14; the remaining payload stays unknown rather than borrowing an unsupported event-state schema.",
       "id": "BCS-S-0389"
+    },
+    {
+      "name": "ComponentLuaGameEngineDwordVector",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c484_lua-current-frame.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading vector policy or allocator dword; construction and teardown do not establish its representation."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "begin",
+          "type": "uint32_t *",
+          "notes": "Start of the dword element storage."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "end",
+          "type": "uint32_t *",
+          "notes": "One-past-last initialized dword element."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "capacity_end",
+          "type": "uint32_t *",
+          "notes": "One-past-end of allocated dword storage; teardown derives the released byte count from this pointer and begin."
+        }
+      ],
+      "notes": "Complete exact 0x10 dword-vector header used twice by the current-frame object. Construction clears the pointer triple and teardown releases storage using four-byte element arithmetic.",
+      "id": "BCS-S-0390"
+    },
+    {
+      "name": "ComponentLuaGameEngineFrameRecordVector",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c484_lua-current-frame.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading vector policy or allocator dword; construction and teardown do not establish its representation."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "begin",
+          "type": "void *",
+          "notes": "Start of storage whose elements have exact 0x10-byte stride; the element type remains unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "end",
+          "type": "void *",
+          "notes": "One-past-last initialized 0x10-byte record."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "capacity_end",
+          "type": "void *",
+          "notes": "One-past-end of allocated storage; teardown computes the released extent in 0x10-byte units."
+        }
+      ],
+      "notes": "Complete exact 0x10 vector header for unresolved 0x10-byte frame records. Construction clears its pointer triple, while teardown walks and releases the exact record stride without establishing a concrete element class.",
+      "id": "BCS-S-0391"
+    },
+    {
+      "name": "ComponentLuaGameEngineFrameObjectTreeNode",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x68",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c484_lua-current-frame.txt",
+        "tools/ghidra/logs/c485_lua-current-frame-nodes.txt",
+        "BCS-S-0135"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentLuaGameEngineFrameObjectTreeNode *",
+          "notes": "Tree link cleared by node allocation and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentLuaGameEngineFrameObjectTreeNode *",
+          "notes": "Tree parent link; the sentinel stores the root here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentLuaGameEngineFrameObjectTreeNode *",
+          "notes": "Tree link cleared by node allocation and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x54",
+          "name": "key",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline string released for each non-sentinel node during recursive tree teardown."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "owned_object",
+          "type": "void *",
+          "notes": "Optional polymorphic object destroyed through virtual slot zero before its node is erased; its concrete interface type is unresolved."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Tree color byte initialized to one by the exact node allocator."
+        },
+        {
+          "offset": "0x65",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by allocation and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x66",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved closing bytes required by the exact 0x68 allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x68 string-keyed tree node owned by the current-frame object. Allocation, sentinel initialization, recursive teardown, inline-string destruction, and owned-object release establish every structural boundary.",
+      "id": "BCS-S-0392"
+    },
+    {
+      "name": "ComponentLuaGameEngineFrameValueTreeNode",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x14",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c484_lua-current-frame.txt",
+        "tools/ghidra/logs/c485_lua-current-frame-nodes.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentLuaGameEngineFrameValueTreeNode *",
+          "notes": "Tree link cleared by node allocation and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentLuaGameEngineFrameValueTreeNode *",
+          "notes": "Tree parent link; the sentinel stores the root here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentLuaGameEngineFrameValueTreeNode *",
+          "notes": "Tree link cleared by node allocation and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown[0x04]",
+          "notes": "Four-byte key or value storage whose representation is not established by allocation or bounded teardown."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Tree color byte initialized to one by the exact node allocator."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by allocation and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved closing bytes required by the exact 0x14 allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x14 compact tree node owned by the current-frame object. Allocation and sentinel initialization establish the links and control bytes; the four-byte stored value remains unknown.",
+      "id": "BCS-S-0393"
+    },
+    {
+      "name": "ComponentLuaGameEngineCurrentFrameControl",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x140",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0463",
+        "BCS-S-0036",
+        "BCS-S-0135",
+        "tools/ghidra/logs/c484_lua-current-frame.txt",
+        "tools/ghidra/logs/c485_lua-current-frame-nodes.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "base_policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading dword before the constructor-initialized +0x04 base state; its representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x08",
+          "name": "base_state",
+          "type": "unknown[0x08]",
+          "notes": "Eight-byte helper-constructed base state. Its inner representation is not established by the bounded constructor and teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "frame_state",
+          "type": "uint32_t",
+          "notes": "Constructor argument copied directly and cleared during teardown."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "runtime_context",
+          "type": "void *",
+          "notes": "Runtime context copied from the owner and cleared during teardown; its concrete pointee type is unresolved."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x02",
+          "name": "selector",
+          "type": "uint16_t",
+          "notes": "Two-byte constructor value copied from the supplied selector pointer."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "alignment_16",
+          "type": "unknown[0x02]",
+          "notes": "Unwritten bytes between the selector and callback-slot pointer."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "back_reference_slot",
+          "type": "void **",
+          "notes": "Optional external slot set to this frame during construction and cleared during teardown."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x54",
+          "name": "name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline string copy-constructed from the final constructor argument and released during teardown."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x54",
+          "name": "secondary_text",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Second exact inline string, default-constructed and independently released during teardown."
+        },
+        {
+          "offset": "0xC4",
+          "size": "0x10",
+          "name": "dword_records_c4",
+          "type": "ComponentLuaGameEngineDwordVector",
+          "notes": "First exact dword-vector header, initialized empty and released during teardown."
+        },
+        {
+          "offset": "0xD4",
+          "size": "0x14",
+          "name": "runtime_state_d4",
+          "type": "unknown[0x14]",
+          "notes": "Helper-constructed and helper-destroyed subobject. Its concrete class and internal boundaries remain unresolved."
+        },
+        {
+          "offset": "0xE8",
+          "size": "0x04",
+          "name": "owned_interface",
+          "type": "void *",
+          "notes": "Optional polymorphic object destroyed through virtual slot zero; its concrete interface type is unresolved."
+        },
+        {
+          "offset": "0xEC",
+          "size": "0x10",
+          "name": "frame_records",
+          "type": "ComponentLuaGameEngineFrameRecordVector",
+          "notes": "Exact vector header for 0x10-byte records, initialized empty and released with element cleanup."
+        },
+        {
+          "offset": "0xFC",
+          "size": "0x10",
+          "name": "dword_records_fc",
+          "type": "ComponentLuaGameEngineDwordVector",
+          "notes": "Second exact dword-vector header, initialized empty and released during teardown."
+        },
+        {
+          "offset": "0x10C",
+          "size": "0x10",
+          "name": "dword_records_10c",
+          "type": "ComponentLuaGameEngineDwordVector",
+          "notes": "Third exact dword-vector header, initialized empty and released during teardown."
+        },
+        {
+          "offset": "0x11C",
+          "size": "0x04",
+          "name": "state_11c",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared dword immediately before the first tree header."
+        },
+        {
+          "offset": "0x120",
+          "size": "0x04",
+          "name": "object_tree_policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading policy dword of the string-keyed object tree; its representation is unresolved."
+        },
+        {
+          "offset": "0x124",
+          "size": "0x04",
+          "name": "object_tree_sentinel",
+          "type": "ComponentLuaGameEngineFrameObjectTreeNode *",
+          "notes": "Self-linked exact 0x68 sentinel; teardown releases owned objects and strings before freeing nodes."
+        },
+        {
+          "offset": "0x128",
+          "size": "0x04",
+          "name": "object_tree_count",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared element count for the object tree."
+        },
+        {
+          "offset": "0x12C",
+          "size": "0x04",
+          "name": "value_tree_policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading policy dword of the compact value tree; its representation is unresolved."
+        },
+        {
+          "offset": "0x130",
+          "size": "0x04",
+          "name": "value_tree_sentinel",
+          "type": "ComponentLuaGameEngineFrameValueTreeNode *",
+          "notes": "Self-linked exact 0x14 sentinel released independently during teardown."
+        },
+        {
+          "offset": "0x134",
+          "size": "0x04",
+          "name": "value_tree_count",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared element count for the compact value tree."
+        },
+        {
+          "offset": "0x138",
+          "size": "0x01",
+          "name": "status",
+          "type": "uint8_t",
+          "notes": "Initialized from a global default and overwritten by both exact frame producers."
+        },
+        {
+          "offset": "0x139",
+          "size": "0x01",
+          "name": "special_kind",
+          "type": "bool",
+          "notes": "Constructor-cleared flag set by the extended producer when its input kind matches one distinguished runtime value."
+        },
+        {
+          "offset": "0x13A",
+          "size": "0x05",
+          "name": "flags_13a",
+          "type": "uint8_t[5]",
+          "notes": "Five individually constructor-cleared flag bytes whose higher-level roles remain unresolved."
+        },
+        {
+          "offset": "0x13F",
+          "size": "0x01",
+          "name": "tail_padding",
+          "type": "unknown[0x01]",
+          "notes": "Unwritten closing byte required by the exact 0x140 allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x140 Lua current-frame/control object. Two independent producers allocate this extent and call the same constructor; construction and teardown close two inline strings, three vector headers, two sentinel-backed trees, one helper-owned subobject, an owned interface, back-reference lifetime, and the closing flag bytes.",
+      "id": "BCS-S-0394"
     }
   ],
   "method": {
@@ -26604,6 +27041,18 @@
     "c482StructOutput": "BCS-S-0389 in manifests/structs.json uses retained C368 evidence; the C482/C483 candidate audit produced no promoted reaction record.",
     "c482ExistingEvidence": "BCS-Y-0201 and BCS-Y-1642 supplied the prior 0x5C reaction-record hypothesis. BCS-S-0198 and BCS-S-0135 supplied the established 0x5C Chara display-name state and its embedded 0x54 inline-string layout. Retained C368 evidence independently supplied the exact PlayerManager state-node allocation and its two self-links.",
     "c482FreshEvidence": "The 0x006BF500 copy constructor copies the same leading dword, established inline string, and closing bytes used by BCS-S-0198. The callback filter reads +0x54 inside that established inline-string extent and +0x58 at its closing byte, so the fresh reads do not justify a distinct reaction-record layout. No fresh field was used for BCS-S-0389.",
-    "c482Limits": "The reaction-record candidate remains incomplete because the callback interpretation conflicts with the established display-name-state copy layout and no producer separates a distinct record schema. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions. BCS-S-0389 payload+0x08 remains unknown because the retained exact allocator initializes only the two list links and no bounded consumer establishes payload member boundaries."
+    "c482Limits": "The reaction-record candidate remains incomplete because the callback interpretation conflicts with the established display-name-state copy layout and no producer separates a distinct record schema. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions. BCS-S-0389 payload+0x08 remains unknown because the retained exact allocator initializes only the two list links and no bounded consumer establishes payload member boundaries.",
+    "c484Topic": "C484 Lua current-frame object layouts",
+    "c484Scripts": "ghidra/DumpVAs.java plus a read-only instruction-stream audit with pefile and capstone",
+    "c484ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before either invocation.",
+    "c484Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c484_lua-current-frame.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CCE2D0,0x00CCE460,0x00CF09C0,0x00CF1060,0x00CF1A10,0x00CF31C0,0x00CF31E0,0x00CD7CC0' } -ScriptPath @('ghidra')",
+    "c485Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c485_lua-current-frame-nodes.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CCFDE0,0x00CCFE20,0x00CCFF90,0x00CD06D0,0x00D0E7C0' } -ScriptPath @('ghidra')",
+    "c484InstructionAudit": "python -c with pefile and capstone decoded complete defined byte ranges (0x00CCE2D0, 394), (0x00CCE460, 725), (0x00CF09C0, 209), and (0x00CF1A10, 320) from the configured client image.",
+    "c484Inputs": "Current-frame constructor 0x00CCE2D0, destructor 0x00CCE460, reset producer 0x00CF09C0, extended producer 0x00CF1060, owner constructor 0x00CF1A10, base-state helpers 0x00CF31C0/0x00CF31E0, runtime helper 0x00CD7CC0, exact node allocators 0x00CCFDE0/0x00CCFE20, and tree teardown helpers 0x00CCFF90/0x00CD06D0/0x00D0E7C0.",
+    "c484Outputs": "tools/ghidra/logs/c484_lua-current-frame.txt and tools/ghidra/logs/c485_lua-current-frame-nodes.txt.",
+    "c484StructOutputs": "BCS-S-0390 through BCS-S-0394 in manifests/structs.json; corrected BCS-S-0036 owner/frame separation.",
+    "c484ExistingEvidence": "BCS-Y-0461 through BCS-Y-0464 establish the owner wrapper, current-frame pointer at owner +0x2C, exact 0x140 replacement allocation, teardown, and status write at frame +0x138. BCS-S-0135 supplies the established 0x54 inline-string layout.",
+    "c484FreshEvidence": "Two independent producers allocate exactly 0x140 and call the same constructor. Constructor and destructor instructions establish two inline strings, one dword vector at +0xC4, a helper-owned +0xD4 subobject, an owned +0xE8 interface, a 0x10-stride vector at +0xEC, two more dword vectors, two tree headers, back-reference lifetime, and seven closing flags. Exact helper allocations establish the 0x68 string-keyed object node and 0x14 compact value node, including link, color, nil, string, and owned-object boundaries.",
+    "c484Limits": "Base policy/state at +0x00/+0x04, helper-owned runtime state at +0xD4, vector policy dwords, tree policy dwords, compact-node value representation, and closing padding remain unknown-typed because bounded construction and teardown do not expose narrower representations. FrameRecordVector elements have exact 0x10 stride but unresolved class. owned_interface and object-node owned_object remain void pointers because virtual destruction does not identify their concrete interfaces. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions; the instruction audit covers only the listed defined byte ranges and does not establish wider reference topology."
   }
 }
