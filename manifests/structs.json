@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 413,
+  "structCount": 414,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -26065,8 +26065,8 @@
           "offset": "0x04",
           "size": "0x04",
           "name": "owned_pointers",
-          "type": "void **",
-          "notes": "Pointer-array storage. Teardown walks pointer_count entries, frees each non-null pointee, then frees this storage."
+          "type": "ComponentSoundSoundCacheStateRecord **",
+          "notes": "Pointer-array storage for owned 0x24-byte ComponentSoundSoundCacheStateRecord objects. Teardown walks pointer_count entries, frees each non-null record, then frees this storage."
         },
         {
           "offset": "0x08",
@@ -26889,6 +26889,63 @@
       ],
       "notes": "Full byte-accounted LobbyCryptEngine nested layout. Construction initializes the vftable, exact 44-byte session material, and closing Blowfish-key pointer. Embedding in ServiceConsumerConnectionManager begins at complete offset +0x80 and the next owner field is written at +0xB4, independently closing the 0x34 extent.",
       "id": "BCS-S-0413"
+    },
+    {
+      "name": "ComponentSoundSoundCacheStateRecord",
+      "namespace": "Component::Sound",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0399",
+        "tools/ghidra/logs/c492_sound-cache-stream-layout.txt",
+        "tools/ghidra/logs/c498_sound-cache-state-record.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "state_00",
+          "type": "unknown[0x04]",
+          "notes": "Producer-supplied dword forwarded as one argument to the sound-state consumer; its representation and role remain unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "unknown[0x04]",
+          "notes": "Producer-supplied dword forwarded as one argument to the sound-state consumer; its representation and role remain unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "unknown[0x04]",
+          "notes": "Producer-supplied dword forwarded as one argument to the sound-state consumer; its representation and role remain unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "signed_value_0c",
+          "type": "int32_t",
+          "notes": "Consumer sign-extends this dword before passing the resulting 64-bit value to the active sound-state path."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x10",
+          "name": "vector_10",
+          "type": "float[4]",
+          "notes": "Consumer passes the complete span as four floats and uses all four components in squared-length calculations before normalization or fallback."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "callback_owner",
+          "type": "void *",
+          "notes": "Producer-supplied polymorphic owner used by the active sound-state callback path; its concrete interface type is unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x24 state record owned through ComponentSoundPointerArrayState. The queue insertion helper allocates exactly 0x24 bytes and copies all nine dwords. Independent producer and consumer paths establish the signed dword, four-float vector, and closing callback-owner pointer while retaining broad names for the first three dwords.",
+      "id": "BCS-S-0414"
     }
   ],
   "method": {
@@ -28198,6 +28255,17 @@
     "c497StructOutput": "BCS-S-0413 in manifests/structs.json uses retained C307 evidence; the fresh C497 BootupElement audit produced no promoted layout.",
     "c497ExistingEvidence": "BCS-Y-0006 through BCS-Y-0010, BCS-Y-1992, and retained C307 exports establish the LobbyCryptEngine vftable, exact 44-byte session-material initialization, magic, client number, 32-byte ticket data, constant-initialized dword, and closing BF_KEY pointer. The ServiceConsumerConnectionManager constructor embeds the object at +0x80 and writes the next owner field at +0xB4, fixing its exact 0x34 boundary. Key setup, encrypt, decrypt, and teardown independently consume the pointer at relative +0x30.",
     "c497FreshEvidence": "The fresh read-only export reproduces the exact 0x130 BootupElement factory, RaptureElement-derived constructor, derived vftables, byte clear at complete +0xA0, destructor vftable sequence, and slot-8 return stub. No fresh read contributes a field to BCS-S-0413.",
-    "c497Limits": "BootupElement remains incomplete because the fresh constructor, destructor, and stub do not establish the command-subobject offset or partition complete offsets +0x98 through +0x12F beyond the byte at +0xA0. LobbyCryptEngine session_value_0c remains unknown-typed because constant initialization and inclusion in the MD5 input do not establish its representation or role. DumpVAs supplies direct bodies and caller/callee lists only for the four requested BootupElement functions and does not establish arbitrary reference topology. No load-bearing claim relies on decompiler output after a noreturn _free. The narrow-string list node and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded member-boundary gaps."
+    "c497Limits": "BootupElement remains incomplete because the fresh constructor, destructor, and stub do not establish the command-subobject offset or partition complete offsets +0x98 through +0x12F beyond the byte at +0xA0. LobbyCryptEngine session_value_0c remains unknown-typed because constant initialization and inclusion in the MD5 input do not establish its representation or role. DumpVAs supplies direct bodies and caller/callee lists only for the four requested BootupElement functions and does not establish arbitrary reference topology. No load-bearing claim relies on decompiler output after a noreturn _free. The narrow-string list node and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded member-boundary gaps.",
+    "c498Topic": "C498 SoundCache state-record layout",
+    "c498Scripts": "ghidra/DumpVAs.java",
+    "c498ProjectMode": "Both the exploratory and closing headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before either invocation.",
+    "c498Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c498_sound-cache-state-record.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00441F00,0x004429D0,0x00443160,0x004432C0,0x00443860,0x00443A10,0x00443660' } -ScriptPath @('ghidra')",
+    "c498InstructionAudit": "A pefile and capstone walk decoded the complete defined byte range (0x004429D0, 205) from the configured client image. At 0x00442A3B, MOV ECX,[ESI+0x20] loads the record's closing pointer immediately before the call to 0x00443860 at 0x00442A47.",
+    "c498Inputs": "SoundCacheStream producer 0x00441F00, active-state consumer 0x004429D0, pointer-array growth 0x00443160, exact record insertion 0x004432C0, active-owner callback 0x00443860, four-float consumer 0x00443A10, and stream reload producer 0x00443660.",
+    "c498Output": "tools/ghidra/logs/c498_sound-cache-state-record.txt",
+    "c498StructOutput": "BCS-S-0414 in manifests/structs.json and a typed BCS-S-0399 owned_pointers field.",
+    "c498ExistingEvidence": "Retained C492 evidence establishes the exact 0x24 allocation, nine-dword copy, producer-local extent, and ownership through BCS-S-0399. Retained C491 teardown independently frees every non-null record pointer before releasing the pointer array.",
+    "c498FreshEvidence": "The closing seven-section export reproduces the complete producer, allocator, copy, growth, consumer, callback, and reload paths. The active consumer sign-extends +0x0C and passes +0x10 as four floats to a helper that reads all components. The exact insertion copies +0x00 through +0x23 with no gap. The complete instruction audit positively confirms the callback-owner load from +0x20 that the decompiler hides as an implicit this argument.",
+    "c498Limits": "state_00, state_04, and state_08 remain unknown-typed because their producer-to-consumer forwarding does not establish representation or higher-level role. callback_owner remains a void pointer because virtual or member dispatch does not identify its concrete interface. DumpVAs supplies direct bodies and caller/callee lists only for the seven requested functions and does not establish arbitrary reference topology. The pointer-array growth decompilation ends at a noreturn-marked _free; no load-bearing record-layout claim relies on omitted instructions beyond that boundary. RemovableHeapBlock, the narrow-string list node, and BootupElement remain incomplete for their previously recorded allocation or member-boundary gaps."
   }
 }
