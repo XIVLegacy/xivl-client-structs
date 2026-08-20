@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 388,
+  "structCount": 389,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -15485,8 +15485,8 @@
           "offset": "0x14",
           "size": "0x04",
           "name": "event_state_sentinel",
-          "type": "void *",
-          "notes": "Self-linked exact 0x2C-byte sentinel returned by FUN_00899E00; its concrete node type is unresolved."
+          "type": "ApplicationLuaScriptClientEventPlayerManagerStateNode *",
+          "notes": "Self-linked exact 0x2C-byte state node returned by FUN_00899E00. The node's two initialized links are catalogued by BCS-S-0389."
         },
         {
           "offset": "0x18",
@@ -25373,6 +25373,42 @@
       ],
       "notes": "Complete exact 0x1C concrete action-queue object. The producer allocates 0x1C bytes, construction closes the base, secondary-vtable, flag, state, and pointer regions, type-specific setup can update the flag byte or dispatch slot +0x04, and the finished object is inserted into the controller bucket selected from the action type.",
       "id": "BCS-S-0388"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventPlayerManagerStateNode",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x2C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c368_myplayer-player-manager-helper.txt",
+        "BCS-S-0190",
+        "BCS-Y-1494"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ApplicationLuaScriptClientEventPlayerManagerStateNode *",
+          "notes": "Initialized to the node itself by the exact sentinel allocator."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ApplicationLuaScriptClientEventPlayerManagerStateNode *",
+          "notes": "Initialized to the node itself by the exact sentinel allocator."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x24",
+          "name": "payload",
+          "type": "unknown[0x24]",
+          "notes": "Exact remaining node storage. The retained allocator and owner construction do not establish its member boundaries or payload type."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x2C sentinel-backed PlayerManager state node. The exact allocator initializes the two list links to self and returns the node to PlayerManager+0x14; the remaining payload stays unknown rather than borrowing an unsupported event-state schema.",
+      "id": "BCS-S-0389"
     }
   ],
   "method": {
@@ -26557,6 +26593,17 @@
     "c481StructOutputs": "BCS-S-0386, BCS-S-0387, and BCS-S-0388 in manifests/structs.json.",
     "c481ExistingEvidence": "BCS-Y-0052/0053/0054 establish the RTTI-anchored base, concrete, and pre-load queue class identities. BCS-Y-1868 and retained C302/C406 exports establish the 0x10 and 0x1C allocation sites, constructor calls, controller insertion, and concrete action-type bucket routing.",
     "c481FreshEvidence": "Both constructors write the same 0x08 base subobject. The pre-load constructor then writes a runtime-object pointer at +0x08 and action-context pointer at +0x0C. The concrete constructor installs a secondary vtable at +0x08, clears the low flag byte at +0x0C and state dword at +0x10, and writes the equivalent runtime-object and context pointers at +0x14/+0x18. The concrete wrapper modifies only flag bits 5 through 7. Exact producer allocations close both derived object extents.",
-    "c481Limits": "The three object boundaries, base embedding, vtable positions, flag byte, state dwords, and pointer storage are direct. The three bytes at concrete +0x0D remain unknown because construction preserves them and bounded consumers do not interpret them. The exact classes behind runtime_object and action_context remain unresolved and are represented only as pointers. DumpVAs provides direct bodies and caller/callee lists for the six requested functions and does not establish arbitrary reference coverage."
+    "c481Limits": "The three object boundaries, base embedding, vtable positions, flag byte, state dwords, and pointer storage are direct. The three bytes at concrete +0x0D remain unknown because construction preserves them and bounded consumers do not interpret them. The exact classes behind runtime_object and action_context remain unresolved and are represented only as pointers. DumpVAs provides direct bodies and caller/callee lists for the six requested functions and does not establish arbitrary reference coverage.",
+    "c482Topic": "C482 reaction-record candidate audit",
+    "c482Scripts": "ghidra/DumpVAs.java",
+    "c482ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before either invocation.",
+    "c482Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c482_reaction-record.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006EECD0,0x006F0220,0x00706F60,0x007195D0,0x007643F0,0x00765E30' } -ScriptPath @('ghidra')",
+    "c483Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c483_reaction-record-support.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006BF500,0x00748C80,0x00446F50,0x006E03B0' } -ScriptPath @('ghidra')",
+    "c482Inputs": "Reaction callback path 0x00706F60; CharaBase and PlayerBase state-update paths 0x006EECD0 and 0x006F0220; pointer replacement, vector consumer, cleanup, copy constructor, callback argument formatter, string cleanup, and shared state initializer at 0x007195D0, 0x007643F0, 0x00765E30, 0x006BF500, 0x00748C80, 0x00446F50, and 0x006E03B0.",
+    "c482Outputs": "tools/ghidra/logs/c482_reaction-record.txt and tools/ghidra/logs/c483_reaction-record-support.txt.",
+    "c482StructOutput": "BCS-S-0389 in manifests/structs.json uses retained C368 evidence; the C482/C483 candidate audit produced no promoted reaction record.",
+    "c482ExistingEvidence": "BCS-Y-0201 and BCS-Y-1642 supplied the prior 0x5C reaction-record hypothesis. BCS-S-0198 and BCS-S-0135 supplied the established 0x5C Chara display-name state and its embedded 0x54 inline-string layout. Retained C368 evidence independently supplied the exact PlayerManager state-node allocation and its two self-links.",
+    "c482FreshEvidence": "The 0x006BF500 copy constructor copies the same leading dword, established inline string, and closing bytes used by BCS-S-0198. The callback filter reads +0x54 inside that established inline-string extent and +0x58 at its closing byte, so the fresh reads do not justify a distinct reaction-record layout. No fresh field was used for BCS-S-0389.",
+    "c482Limits": "The reaction-record candidate remains incomplete because the callback interpretation conflicts with the established display-name-state copy layout and no producer separates a distinct record schema. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions. BCS-S-0389 payload+0x08 remains unknown because the retained exact allocator initializes only the two list links and no bounded consumer establishes payload member boundaries."
   }
 }
