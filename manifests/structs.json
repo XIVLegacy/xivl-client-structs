@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 327,
+  "structCount": 330,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -22851,6 +22851,126 @@
       ],
       "notes": "Complete exact 0x08 application payload for c2s 0x0132 ItemWorkUpdate, excluding the 0x10 game-message prefix. The clientbound opcode with the same numeric value is a distinct packet family.",
       "id": "BCS-S-0327"
+    },
+    {
+      "name": "MassSetItemModifierRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x48",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0951",
+        "BCS-Y-0952",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "target_id",
+          "type": "uint32_t",
+          "notes": "Target identifier copied into the active modifier record."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sub_id",
+          "type": "uint32_t",
+          "notes": "Secondary identifier copied into the active modifier record."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x40",
+          "name": "modifier_words",
+          "type": "uint32_t[16]",
+          "notes": "Sixteen modifier dwords copied into a freshly allocated 64-byte buffer."
+        }
+      ],
+      "notes": "Complete 0x48 consumed record at the start of s2c 0x0190 MassSetItemModifier. The record writer reads both identifiers and all sixteen modifier words.",
+      "id": "BCS-S-0328"
+    },
+    {
+      "name": "MassSetItemModifierPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x68",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0328",
+        "BCS-Y-0393",
+        "BCS-Y-0582",
+        "BCS-Y-0721",
+        "BCS-Y-0951",
+        "BCS-Y-0952",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x48",
+          "name": "record",
+          "type": "MassSetItemModifierRecord",
+          "notes": "Consumed modifier record handled by the dedicated record writer."
+        },
+        {
+          "offset": "0x48",
+          "size": "0x20",
+          "name": "unknown_48",
+          "type": "unknown[0x20]",
+          "notes": "Closing application-payload span not read by the documented handler path."
+        }
+      ],
+      "notes": "Complete exact 0x68 application payload for s2c 0x0190 MassSetItemModifier, excluding the 0x10 game-message prefix. The packet is the repeated body in the begin/body/end bulk-modifier sequence.",
+      "id": "BCS-S-0329"
+    },
+    {
+      "name": "SetOccupancyGroupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0575",
+        "BCS-Y-0885",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x10",
+          "name": "unknown_00",
+          "type": "unknown[0x10]",
+          "notes": "Group-header span passed through the property-updater path without stable internal boundaries in the retained direct decode."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "occupancy_work",
+          "type": "uint32_t[2]",
+          "notes": "Two occupancy-work dwords consumed by the group property updater."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "uint32_t",
+          "notes": "Localized-name identifier consumed alongside the occupancy name."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x24",
+          "name": "occupancy_name",
+          "type": "char[36]",
+          "notes": "Fixed-width occupancy-group name consumed by the updater."
+        }
+      ],
+      "notes": "Complete exact 0x40 application payload for s2c 0x0187 SetOccupancyGroup, excluding the 0x10 game-message prefix. The packet drives group occupancy or claim state through the SharedWork property-updater path.",
+      "id": "BCS-S-0330"
     }
   ],
   "method": {
@@ -23790,6 +23910,13 @@
     "c455Outputs": "BCS-S-0324 through BCS-S-0327 in manifests/structs.json; no new local evidence archive.",
     "c455ExistingEvidence": "BCS-Y-0375/0388 establish the 0x00CA timestamp, four floats, movement word, and exact 0x20 extent. BCS-Y-0388/0988 and the C168 archive establish both 0x00CD dwords and exact 0x08 extent. BCS-Y-0382/0388 establish the 0x0131 actor dword, package byte, and exact 0x08 extent. BCS-Y-0383/0388 establish the 0x0132 identifier, work selector, work value, and exact 0x08 extent.",
     "c455FreshEvidence": "No fresh analysis read was required because retained positive builders close all four layouts. No claim relies on a zero-result search.",
-    "c455Limits": "UpdatePlayerPosition+0x1A remains an unknown-typed six-byte span within the final eight-byte copy. UpdateItemPackage+0x05 and ItemWorkUpdate+0x07 remain unknown-typed closing spans because the builders do not initialize them as named members. SetTarget is fully byte-accounted, but attack_target retains the broad semantic label from the retained builder decoding. LockTarget was screened but not started because its second dword lacks an explicit write in the retained evidence."
+    "c455Limits": "UpdatePlayerPosition+0x1A remains an unknown-typed six-byte span within the final eight-byte copy. UpdateItemPackage+0x05 and ItemWorkUpdate+0x07 remain unknown-typed closing spans because the builders do not initialize them as named members. SetTarget is fully byte-accounted, but attack_target retains the broad semantic label from the retained builder decoding. LockTarget was screened but not started because its second dword lacks an explicit write in the retained evidence.",
+    "c456Topic": "C456 modifier record and occupancy layouts",
+    "c456Scripts": "No new headless export was required; retained record-writer, group-updater, payload-decoding, and exact packet-extent evidence supplied the load-bearing boundaries.",
+    "c456Inputs": "MassSetItemModifierRecord, its parent MassSetItemModifierPacket, and SetOccupancyGroupPacket consumer paths and exact application-payload extents.",
+    "c456Outputs": "BCS-S-0328 through BCS-S-0330 in manifests/structs.json; no new local evidence archive.",
+    "c456ExistingEvidence": "BCS-Y-0393/0951/0952 establish the two modifier identifiers and sixteen-dword block consumed as an exact 0x48 record; the retained payload catalogs establish the parent packet's exact 0x68 application extent. BCS-Y-0395/0575/0885 establish the SetOccupancyGroup updater path, the two occupancy-work dwords, localized-name dword, 36-byte name, and exact 0x40 extent.",
+    "c456FreshEvidence": "No fresh analysis read was required because retained positive consumers and packet-shape evidence close all three layouts. No claim relies on a zero-result search.",
+    "c456Limits": "MassSetItemModifier+0x48 remains an unknown-typed 0x20-byte tail because the documented record writer reads only the first 0x48 application bytes. SetOccupancyGroup+0x00 remains an unknown-typed 0x10-byte header because the retained direct decode passes that span onward without stable internal boundaries. Semantic labels for occupancy ownership remain structural pending live revalidation. MapServerbound c2s 0x0130 was screened but not started because its four dwords have exact widths but conflicting higher-level use labels across retained evidence."
   }
 }
