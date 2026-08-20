@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 435,
+  "structCount": 437,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27671,6 +27671,96 @@
       ],
       "notes": "Complete exact 0x08 ChangeSystemStatReceiver layout. The heap factory fixes the boundary, construction writes the vftable and closing dword, and retained consumer evidence accounts for that dword in the system-flag update path.",
       "id": "BCS-S-0435"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandCommandUpdaterBase",
+      "namespace": "Application::Lua::Script::Client::Command",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c507_sub-stat-status-receiver-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "CommandUpdaterBase vftable written by both the base constructor and base destructor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "unknown[0x04]",
+          "notes": "Unresolved closing base-state word. The observed base lifecycle methods do not access it, while the derived receiver's first field begins at +0x08."
+        }
+      ],
+      "notes": "Complete exact 0x08 CommandUpdaterBase prefix. The base constructor and destructor establish the vftable field, and ChangeActorSubStatStatusReceiver construction places the first derived field at +0x08.",
+      "id": "BCS-S-0436"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandSystemChangeActorSubStatStatusReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::System",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c507_sub-stat-status-receiver-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "base",
+          "type": "ApplicationLuaScriptClientCommandCommandUpdaterBase",
+          "notes": "Complete CommandUpdaterBase prefix. Derived construction overwrites its vftable with the receiver vftable at 0x010575C8."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "unknown[0x04]",
+          "notes": "Constructor-copied dword later passed to the receiver state resolver. Its concrete pointer or handle type remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "status_key_state",
+          "type": "unknown[0x04]",
+          "notes": "Interned status-key or sentinel state derived from the constructor's status word and released by the lifecycle paths. Its concrete owned type remains unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "status_value",
+          "type": "uint32_t",
+          "notes": "Initialized to zero by construction and forwarded with the status flag by the confirmed Lua-firing slot."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "status_flag",
+          "type": "uint8_t",
+          "notes": "Constructor-supplied byte forwarded with status_value by the Lua-firing slot."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "is_status_zero",
+          "type": "bool",
+          "notes": "Constructor-derived boolean set when the supplied status word is zero and copied by the slot-1 clone path."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x18 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x18 ChangeActorSubStatStatusReceiver layout. The hybrid factory fixes the boundary, construction accounts for the base and all derived state through +0x15, and the clone and Lua-firing slots consume the same derived fields.",
+      "id": "BCS-S-0437"
     }
   ],
   "method": {
@@ -29073,6 +29163,17 @@
     "c506StructOutputs": "BCS-S-0434 and BCS-S-0435 in manifests/structs.json.",
     "c506ExistingEvidence": "BCS-Y-0108 through BCS-Y-0111, BCS-Y-0161/0166, BCS-Y-0608, BCS-Y-1426, BCS-Y-0182/0183, BCS-Y-0366, BCS-Y-0607, and BCS-Y-1428 preserve the two class identities, constructor and consumer roles, Lua callback paths, and factory relationships.",
     "c506FreshEvidence": "The corrected ten-section closing export reproduces both wrappers, constructors, destructors, receive or apply methods, and heap factories. AddictLoginTimeKindReceiver construction writes one byte at +0x04 and its receive path forwards that byte through the MyPlayer addiction-limit handler. ChangeSystemStatReceiver construction writes the complete dword at +0x04 and its apply path reaches the established system-flag worker. The direct instruction audit independently fixes both exact 0x08 allocation boundaries hidden by factory pseudocode.",
-    "c506Limits": "AddictLoginTimeKindReceiver tail_padding remains unknown-typed because construction writes only the byte at +0x04 and the exact allocation fixes the closing bytes without another observed consumer. ChangeSystemStatReceiver has no unknown span. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference topology. The factory decompiler omits both allocator arguments; exact sizes rely on the positive instruction audit. The first C506 archive used interior address 0x00762540 for the ChangeSystemStatReceiver factory and is not cited; the corrected -2 archive uses function entry 0x00762520. No candidate was started and left incomplete in this batch."
+    "c506Limits": "AddictLoginTimeKindReceiver tail_padding remains unknown-typed because construction writes only the byte at +0x04 and the exact allocation fixes the closing bytes without another observed consumer. ChangeSystemStatReceiver has no unknown span. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference topology. The factory decompiler omits both allocator arguments; exact sizes rely on the positive instruction audit. The first C506 archive used interior address 0x00762540 for the ChangeSystemStatReceiver factory and is not cited; the corrected -2 archive uses function entry 0x00762520. No candidate was started and left incomplete in this batch.",
+    "c507Topic": "C507 CommandUpdaterBase and ChangeActorSubStatStatusReceiver layouts",
+    "c507Scripts": "ghidra/DumpVAs.java",
+    "c507ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c507Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c507_sub-stat-status-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0076D450,0x008A3350,0x008A3460,0x008A34D0,0x008A3630,0x0076C720,0x00767870,0x007942B0,0x007942C0' } -ScriptPath @('ghidra')",
+    "c507Inputs": "ChangeActorSubStatStatusReceiver hybrid factory 0x0076D450, constructor 0x008A3350, destructor 0x008A3460, slot 1 at 0x008A34D0, Lua-firing slot 0x008A3630, alternate wrapper 0x0076C720, and fast-path worker 0x00767870; CommandUpdaterBase constructor 0x007942B0 and destructor 0x007942C0.",
+    "c507Output": "tools/ghidra/logs/c507_sub-stat-status-receiver-layout.txt",
+    "c507InstructionAudit": "The factory decompilation directly retains the 0x18 allocator argument. A pefile and capstone walk independently confirms PUSH 0x18 at 0x0076D4A6 immediately before the sole allocator call at 0x0076D4A8.",
+    "c507StructOutputs": "BCS-S-0436 and BCS-S-0437 in manifests/structs.json.",
+    "c507ExistingEvidence": "BCS-Y-0050/0051, BCS-Y-0124/0125, BCS-Y-0149, BCS-Y-1348, BCS-Y-1368, BCS-Y-1399, and BCS-Y-1419 preserve the receiver identity, exact-size claim, constructor field map, hybrid factory, lifecycle, clone, and Lua-firing roles.",
+    "c507FreshEvidence": "The nine-section closing export reproduces the hybrid factory, receiver constructor and destructor, clone and Lua-firing slots, alternate wrapper, fast-path worker, and both CommandUpdaterBase lifecycle methods. The base lifecycle writes only the vftable and the first derived receiver field begins at +0x08. Receiver construction writes state at +0x08, +0x0C, +0x10, +0x14, and +0x15; the clone and firing slots consume that same range. Factory pseudocode and the independent instruction audit both fix the exact 0x18 allocation.",
+    "c507Limits": "CommandUpdaterBase state_04 remains unknown-typed because the observed base lifecycle does not access it. ChangeActorSubStatStatusReceiver state_08 and status_key_state remain unknown-typed because their widths and ownership behavior are established but their concrete pointer or handle types are not. Receiver tail_padding remains unknown-typed because construction writes only through +0x15. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
