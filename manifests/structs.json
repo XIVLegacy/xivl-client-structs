@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 243,
+  "structCount": 244,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -8810,9 +8810,9 @@
         {
           "offset": "0x68",
           "size": "0x10",
-          "name": "group_reference_storage",
-          "type": "unknown[0x10]",
-          "notes": "Embedded value initialized by FUN_006BFCD0 and passed to the matching no-op destructor FUN_006BFD00. The constructor clears dwords at relative +0x00, +0x08, and +0x0C; the value's concrete type and the relative +0x04 member remain unresolved."
+          "name": "group_reference",
+          "type": "ApplicationLuaScriptClientControlGroupReferenceRecord",
+          "notes": "Embedded group-reference value initialized by FUN_006BFCD0 and copied into newly created GroupBase objects by FUN_006E2240."
         }
       ],
       "notes": "Full byte-accounted GroupBase layout. Its clone factory allocates exactly 0x78 bytes. Direct instructions place LuaTentativeControl at +0x60 and the final 0x10-byte helper value at +0x68, which closes at the allocation boundary.",
@@ -18551,6 +18551,51 @@
       ],
       "notes": "Complete byte-accounted 0x0C CameraElement input record. The constructor establishes four 16-bit slots, one initialized state byte, and one flag byte; the publisher clears the first two slots and transmits the complete record. Signedness and semantics of the four word slots and the two otherwise unobserved bytes remain unknown.",
       "id": "BCS-S-0243"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlGroupReferenceRecord",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0089",
+        "tools/ghidra/logs/c280_get-group-by-display-name.txt",
+        "tools/ghidra/logs/c298_get-group-by-display-name-4.txt",
+        "tools/ghidra/logs/c330_lua-tentative-layouts.txt",
+        "tools/ghidra/logs/c420_group-reference-record.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "group",
+          "type": "ApplicationLuaScriptClientControlGroupBase *",
+          "notes": "GroupBase pointer returned from matched group-list nodes, dereferenced by FUN_006BFD20, and copied into newly created GroupBase objects."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "opaque_04",
+          "type": "unknown[0x04]",
+          "notes": "Preserved by complete 0x10-byte copies but not initialized, populated, or interpreted by the bounded lifecycle, producer, and consumer paths."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "node_state_08",
+          "type": "unknown[0x04]",
+          "notes": "First dword of the eight-byte state pair sourced from matched list-node storage and returned together by FUN_006BFD10; its concrete representation is unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "node_state_0c",
+          "type": "unknown[0x04]",
+          "notes": "Second dword of the eight-byte state pair sourced from matched list-node storage and returned together by FUN_006BFD10; its concrete representation is unresolved."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x10 group-reference record embedded at GroupBase+0x68 and also used as a temporary lookup result. Initialization, two producer variants, accessors, conversion, full-width copies, and wrapper creation establish the GroupBase pointer and closing eight-byte state pair. The intervening dword and the state-pair representation remain unknown.",
+      "id": "BCS-S-0244"
     }
   ],
   "method": {
@@ -19216,6 +19261,15 @@
     "c419Output": "tools/ghidra/logs/c419_camera-input-record.txt",
     "c419ExistingEvidence": "BCS-S-0069 and retained C324 evidence supplied the complete-object +0x94 placement, exact 0x0C payload boundary, constructor writes, and publication through event channel 1.",
     "c419FreshEvidence": "C419 rechecked the constructor and publisher in one current read-only batch, confirming four 16-bit stores, the 0x12 byte initialization, the low-nibble clear, and complete 0x0C publication.",
-    "c419Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on the export. The four 16-bit slots remain unknown-typed because their signedness and semantics are not exposed. Bytes +0x09 and +0x0B remain unknown-typed because neither bounded function initializes or interprets them. No claim relies on instructions omitted after a noreturn _free."
+    "c419Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on the export. The four 16-bit slots remain unknown-typed because their signedness and semantics are not exposed. Bytes +0x09 and +0x0B remain unknown-typed because neither bounded function initializes or interprets them. No claim relies on instructions omitted after a noreturn _free.",
+    "c420Topic": "C420 GroupBase group-reference record layout",
+    "c420ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c420Script": "ghidra/DumpVAs.java",
+    "c420Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c420_group-reference-record.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006DCFF0,0x006BFCD0,0x006BFD00,0x006C3F30,0x006C4050,0x006C4580,0x006C45A0,0x00701430,0x006E2240,0x006BFD10,0x006BFD20,0x006BFD30,0x006C2090,0x006C1510' } -ScriptPath @('ghidra')",
+    "c420Inputs": "GroupBase owner constructor; record initializer and no-op destructor; two group-list producer variants and wrappers; display-name and occupancy consumers; wrapper-object creator; three record accessors; and occupancy conversion lookup.",
+    "c420Output": "tools/ghidra/logs/c420_group-reference-record.txt",
+    "c420ExistingEvidence": "BCS-S-0089 and retained C330 evidence supplied the exact GroupBase+0x68 placement, 0x10 closing boundary, constructor identity, and zero initialization at record +0x00, +0x08, and +0x0C. Retained C280 and C298 evidence supplied complete temporary-record copies and GroupBase wrapper creation.",
+    "c420FreshEvidence": "C420 establishes both producer variants, their list-node sources, the GroupBase pointer at +0x00, the separately accessed eight-byte state pair at +0x08, full 0x10 copies into newly created GroupBase objects, and the occupancy conversion path.",
+    "c420Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Record +0x04 remains unknown-typed because bounded initialization, failure, success, access, and wrapper-copy paths do not populate or interpret it. The two state-pair dwords remain unknown-typed because the bounded paths copy and return them without exposing their concrete representation. No noreturn _free path contributes to the layout."
   }
 }
