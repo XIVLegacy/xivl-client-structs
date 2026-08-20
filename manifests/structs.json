@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 419,
+  "structCount": 423,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27097,6 +27097,125 @@
       ],
       "notes": "Complete exact 0x0C Application::Lua::Script::Client::LuaActorImpl layout. The sole factory fixes the allocation boundary, construction accounts for all three dwords, RTTI fixes the class identity, and existing virtual-slot consumers establish the closing dword as a Control::ActorBase pointer.",
       "id": "BCS-S-0419"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkAchievementPointReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c502_achievement-job-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::AchievementPointReceiver vftable at 0x010572AC."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "point_value",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied achievement-point value. The apply path reads the full dword and forwards it to the MyPlayer update helper."
+        }
+      ],
+      "notes": "Complete exact 0x08 AchievementPointReceiver layout. The slow-path factory allocates eight bytes, construction accounts for both dwords, and the apply path consumes the closing value.",
+      "id": "BCS-S-0420"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkAchievementTitleReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c502_achievement-job-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::AchievementTitleReceiver vftable at 0x010572B8."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "title_id",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied title identifier. The apply path copies the full dword to PlayerBase +0xE8."
+        }
+      ],
+      "notes": "Complete exact 0x08 AchievementTitleReceiver layout. The slow-path factory allocates eight bytes, construction accounts for both dwords, and the apply path copies the closing title identifier into PlayerBase.",
+      "id": "BCS-S-0421"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkAchievementIdReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c502_achievement-job-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::AchievementIdReceiver vftable at 0x010572C4."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "achievement_id",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied achievement identifier forwarded through the MyPlayer achievement callback path."
+        }
+      ],
+      "notes": "Complete exact 0x08 AchievementIdReceiver layout. The heap factory allocates eight bytes, construction accounts for both dwords, and the consumer forwards the closing achievement identifier through the MyPlayer path.",
+      "id": "BCS-S-0422"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkJobChangeReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c502_achievement-job-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::JobChangeReceiver vftable at 0x01057300."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x01",
+          "name": "job_id",
+          "type": "uint8_t",
+          "notes": "Constructor-supplied job identifier consumed by the PlayerBase job-change path."
+        },
+        {
+          "offset": "0x05",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[0x03]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x08 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x08 JobChangeReceiver layout. The slow-path factory fixes the allocation boundary, construction writes the vftable and one-byte job identifier, and the apply path forwards that identifier to PlayerBase.",
+      "id": "BCS-S-0423"
     }
   ],
   "method": {
@@ -28444,6 +28563,17 @@
     "c501StructOutput": "BCS-S-0419 in manifests/structs.json.",
     "c501ExistingEvidence": "BCS-Y-0130 and BCS-Y-0131 preserve the constructor field map and exact 0x0C factory allocation. BCS-Y-0139 and related LuaActorImpl slot records establish that the closing field is passed as an Application::Lua::Script::Client::Control::ActorBase pointer and dynamically cast to narrower actor classes. C314 RTTI identifies vftable 0x00FDFB2C as Application::Lua::Script::Client::LuaActorImpl.",
     "c501FreshEvidence": "The three-section closing export reproduces the exact 0x0C allocation, sole constructor call, primary and interface vftable writes, copied target pointer at +0x04, constructor-supplied closing dword at +0x08, and destructor vftable sequence.",
-    "c501Limits": "target_object remains a void pointer because bounded construction and virtual wrappers do not identify its concrete interface. DumpVAs supplies direct bodies and caller/callee lists only for the three requested functions and does not establish arbitrary reference topology. The factory decompiler omits explicit constructor arguments at the call expression, so the field-source mapping relies on the separately reproduced constructor body and the existing slot-consumer evidence; the exact allocation boundary does not rely on the omitted arguments. No candidate was started and left incomplete in this batch."
+    "c501Limits": "target_object remains a void pointer because bounded construction and virtual wrappers do not identify its concrete interface. DumpVAs supplies direct bodies and caller/callee lists only for the three requested functions and does not establish arbitrary reference topology. The factory decompiler omits explicit constructor arguments at the call expression, so the field-source mapping relies on the separately reproduced constructor body and the existing slot-consumer evidence; the exact allocation boundary does not rely on the omitted arguments. No candidate was started and left incomplete in this batch.",
+    "c502Topic": "C502 achievement and job receiver layouts",
+    "c502Scripts": "ghidra/DumpVAs.java",
+    "c502ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c502Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c502_achievement-job-receiver-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0076D010,0x0089C460,0x0089C510,0x0076D0E0,0x0089C540,0x0089C5F0,0x007627A0,0x0089C620,0x0089C6D0,0x0076D1B0,0x0089CAB0,0x0089CB60' } -ScriptPath @('ghidra')",
+    "c502Inputs": "AchievementPointReceiver factory 0x0076D010, constructor 0x0089C460, and apply 0x0089C510; AchievementTitleReceiver factory 0x0076D0E0, constructor 0x0089C540, and apply 0x0089C5F0; AchievementIdReceiver factory 0x007627A0, constructor 0x0089C620, and consumer 0x0089C6D0; JobChangeReceiver factory 0x0076D1B0, constructor 0x0089CAB0, and apply 0x0089CB60.",
+    "c502Output": "tools/ghidra/logs/c502_achievement-job-receiver-layouts.txt",
+    "c502InstructionAudit": "A pefile and capstone walk decoded the complete defined factory bodies from the configured client image. PUSH 8 immediately precedes the sole allocator call at 0x0076D03B, 0x0076D10B, 0x007627C6, and 0x0076D1DC, establishing an exact 0x08 allocation for each receiver.",
+    "c502StructOutputs": "BCS-S-0420 through BCS-S-0423 in manifests/structs.json.",
+    "c502ExistingEvidence": "BCS-Y-0034 through BCS-Y-0041, BCS-Y-0046/0047, BCS-Y-0082/0085, BCS-Y-0098, BCS-Y-1128, BCS-Y-1144, and BCS-Y-1342 through BCS-Y-1344 preserve the four class identities, constructor field maps, consumer roles, and factory relationships.",
+    "c502FreshEvidence": "The twelve-section closing export reproduces all four factories, constructors, and consumers. Construction accounts for both dwords in the three achievement receivers. JobChangeReceiver construction writes one byte at +0x04. The direct instruction audit supplies the four exact 0x08 allocation boundaries hidden by factory pseudocode.",
+    "c502Limits": "JobChangeReceiver tail_padding remains unknown-typed because construction writes only the byte at +0x04 and the exact allocation fixes the three closing bytes without a consumer. DumpVAs supplies direct bodies and caller/callee lists only for the twelve requested functions and does not establish arbitrary reference topology. The factory decompiler omits all four allocator arguments; exact sizes rely on the positive instruction audit, not the omitted pseudocode arguments. AchievementAchievedCountReceiver was screened but not started because construction reaches +0x0C without an exact closing allocation boundary."
   }
 }
