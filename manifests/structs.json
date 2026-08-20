@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 357,
+  "structCount": 360,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -23936,6 +23936,85 @@
       ],
       "notes": "Complete exact 0x38 application payload for c2s 0x01C7, excluding the 0x10 game-message prefix. Retained caller evidence identifies this as the recruitment attribute or listing update request. The builder preserves the packed source-record boundaries but does not establish their individual wire semantics.",
       "id": "BCS-S-0357"
+    },
+    {
+      "name": "RecruitmentModeRequestRecord",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c467_recruitment-mode-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading request dword explicitly initialized to zero by both dedicated emitters."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Shared exact 0x08 application record used by the retained recruitment listing-view and edit-toggle emitters. Both emitters explicitly zero the leading dword and leave the closing dword without an explicit write.",
+      "id": "BCS-S-0358"
+    },
+    {
+      "name": "RecruitmentListingViewPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c467_recruitment-mode-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "request",
+          "type": "RecruitmentModeRequestRecord",
+          "notes": "Shared mode-request record emitted for the recruitment listing-view action."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01C4, excluding the 0x10 game-message prefix. Retained caller evidence identifies the operation as the recruitment listing-view or browse action.",
+      "id": "BCS-S-0359"
+    },
+    {
+      "name": "RecruitmentEditModePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c467_recruitment-mode-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "request",
+          "type": "RecruitmentModeRequestRecord",
+          "notes": "Shared mode-request record emitted for the recruitment edit-mode toggle."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01C5, excluding the 0x10 game-message prefix. Retained caller evidence identifies the operation as the recruitment edit-mode toggle.",
+      "id": "BCS-S-0360"
     }
   ],
   "method": {
@@ -24970,6 +25049,16 @@
     "c466StructOutputs": "BCS-S-0356 and BCS-S-0357 in manifests/structs.json.",
     "c466ExistingEvidence": "BCS-Y-0318, BCS-Y-0319, BCS-Y-0346, manifests/c2s_emit_sites.json, and manifests/cluster_refinements_unobserved.json establish both helper-built opcodes, exact 0x1D0 and 0x48 emitted record extents, source argument groupings, direct callers, and recruitment subsystem roles.",
     "c466FreshEvidence": "Builder 0x004CFD10 writes three leading application dwords, four exact three-dword groups, and a 96-dword block. Builder 0x004CFDA0 writes four dwords, two bytes, and four packed qwords. Their fixed record-size headers leave exact unwritten tails of four and six bytes respectively.",
-    "c466Limits": "RecruitmentPostPacket+0x1BC remains an unknown-typed four-byte tail and RecruitmentUpdatePacket+0x32 remains an unknown-typed six-byte tail because the dedicated builders do not write those spans. All typed members retain neutral names because the emitters and builders do not establish individual wire semantics. DumpVAs supplies direct bodies and call lists only for the four requested functions."
+    "c466Limits": "RecruitmentPostPacket+0x1BC remains an unknown-typed four-byte tail and RecruitmentUpdatePacket+0x32 remains an unknown-typed six-byte tail because the dedicated builders do not write those spans. All typed members retain neutral names because the emitters and builders do not establish individual wire semantics. DumpVAs supplies direct bodies and call lists only for the four requested functions.",
+    "c467Topic": "C467 recruitment mode request layouts",
+    "c467Scripts": "ghidra/DumpVAs.java",
+    "c467ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c467Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c467_recruitment-mode-emitters.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B7AD0,0x004B7990' } -ScriptPath @('ghidra')",
+    "c467Inputs": "Dedicated c2s 0x01C4 listing-view emitter 0x004B7AD0 and c2s 0x01C5 edit-toggle emitter 0x004B7990.",
+    "c467Output": "tools/ghidra/logs/c467_recruitment-mode-emitters.txt",
+    "c467StructOutputs": "BCS-S-0358 through BCS-S-0360 in manifests/structs.json.",
+    "c467ExistingEvidence": "BCS-Y-0324, BCS-Y-0346, manifests/c2s_emit_sites.json, and manifests/cluster_refinements_unobserved.json establish both opcodes, exact 0x18 emitted record extents, direct callers, and listing-view or edit-toggle roles.",
+    "c467FreshEvidence": "Both dedicated emitters explicitly initialize application +0x00 to zero and emit an exact 0x18 record, establishing a shared 0x08 application shape.",
+    "c467Limits": "RecruitmentModeRequestRecord+0x04 remains an unknown-typed closing dword because neither emitter documents an explicit write to that span. The leading field retains a broad request_value name because zero initialization alone does not establish its wire semantics. C2s 0x01C8 was screened but not started because retained sources still disagree on its detailed recruitment role. DumpVAs supplies direct bodies and call lists only for the two requested functions."
   }
 }
