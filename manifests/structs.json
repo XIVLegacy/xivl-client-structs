@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 246,
+  "structCount": 248,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -7740,9 +7740,9 @@
         {
           "offset": "0x0EC",
           "size": "0x00C",
-          "name": "helper_state_0ec",
-          "type": "unknown[0xC]",
-          "notes": "Helper-constructed state initialized by FUN_00542160 and destroyed through FUN_00541FA0."
+          "name": "tree_0ec",
+          "type": "ApplicationMainElementFormTree68",
+          "notes": "Ordered-tree header initialized through FUN_00542160 with an exact 0x68-byte sentinel specialization."
         },
         {
           "offset": "0x0F8",
@@ -18697,6 +18697,107 @@
       ],
       "notes": "Complete 0x0C ordered-tree header used twice at FormElement+0xF8 and +0x104. Construction, recursive clear, erase, and teardown establish the exact 0x70 sentinel specialization and count; the leading policy dword remains unknown-typed.",
       "id": "BCS-S-0246"
+    },
+    {
+      "name": "ApplicationMainElementFormTreeNode68",
+      "namespace": "Application::Main::Element",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c422_form-tree68-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Tree parent link; the sentinel stores the root here and erase rebalancing updates it."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x58",
+          "name": "key_or_value",
+          "type": "unknown[0x58]",
+          "notes": "Inline key or value storage not partitioned by the bounded construction, clear, erase, or teardown paths."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 and read or updated by erase balancing."
+        },
+        {
+          "offset": "0x65",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator, set to one on the sentinel, and used by traversal and erase."
+        },
+        {
+          "offset": "0x66",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x68-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x68 ordered-tree node specialization used by FormElement. Allocation, sentinel initialization, recursive clear, erase balancing, and exact-size deallocation establish the links and marker bytes; the inline key or value representation remains unknown.",
+      "id": "BCS-S-0247"
+    },
+    {
+      "name": "ApplicationMainElementFormTree68",
+      "namespace": "Application::Main::Element",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "BCS-S-0247",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c422_form-tree68-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Owned exact 0x68 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and decremented or cleared by erase and teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header at FormElement+0xEC. Construction, recursive clear, erase, and teardown establish the exact 0x68 sentinel specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0248"
     }
   ],
   "method": {
@@ -19380,6 +19481,15 @@
     "c421Output": "tools/ghidra/logs/c421_form-tree70-layouts.txt",
     "c421ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied both exact FormElement placements at +0xF8 and +0x104, their 0x0C boundaries, the shared constructor and teardown identities, and the owner constructor call order.",
     "c421FreshEvidence": "C421 establishes exact 0x70 node allocation and deallocation, three tree links, self-linked sentinel initialization, count initialization and maintenance, red-black color at +0x6C, nil marker at +0x6D, recursive clear, and erase balancing.",
-    "c421Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x60-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free."
+    "c421Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x60-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free.",
+    "c422Topic": "C422 FormElement 0x68-node tree layouts",
+    "c422ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c422Script": "ghidra/DumpVAs.java",
+    "c422Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c422_form-tree68-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0053AF60,0x00542160,0x0053DEE0,0x0053CD50,0x00541FA0,0x0053F500,0x0053D900,0x0053EB20' } -ScriptPath @('ghidra')",
+    "c422Inputs": "FormElement owner constructor; tree-constructor wrapper and inner constructor; exact sentinel allocator; tree teardown, clear, recursive node teardown, and erase-balancing paths.",
+    "c422Output": "tools/ghidra/logs/c422_form-tree68-layouts.txt",
+    "c422ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied the exact FormElement+0xEC placement, its 0x0C boundary, the constructor and teardown identities, and the owner constructor and destructor call order.",
+    "c422FreshEvidence": "C422 establishes exact 0x68 node allocation and deallocation, three tree links, self-linked sentinel initialization, count initialization and maintenance, red-black color at +0x64, nil marker at +0x65, recursive clear, and erase balancing.",
+    "c422Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x58-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free."
   }
 }
