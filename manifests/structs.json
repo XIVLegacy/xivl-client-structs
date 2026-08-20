@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 344,
+  "structCount": 348,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -23406,6 +23406,122 @@
       ],
       "notes": "Complete exact 0x08 application payload for c2s 0x01D3, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x18 and sends the GM-ticket start request through the generic map forwarder.",
       "id": "BCS-S-0344"
+    },
+    {
+      "name": "SocialListMutationRecord",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "value_0",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "value_1",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "value_2",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x08",
+          "name": "value_3",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        }
+      ],
+      "notes": "Complete four-qword social-list mutation record shared by the retained add-blacklist, remove-blacklist, and add-friendlist emitters. The storage boundaries are exact; individual qword semantics remain unresolved.",
+      "id": "BCS-S-0345"
+    },
+    {
+      "name": "AddBlacklistPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0345",
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "record",
+          "type": "SocialListMutationRecord",
+          "notes": "Complete four-qword record copied by emitter 0x004C9DA0."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for c2s 0x01C9 AddBlacklist, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x30 and fills all four qwords.",
+      "id": "BCS-S-0346"
+    },
+    {
+      "name": "RemoveBlacklistPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0345",
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "record",
+          "type": "SocialListMutationRecord",
+          "notes": "Complete four-qword record copied by emitter 0x004B7D70."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for c2s 0x01CA RemoveBlacklist, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x30 and fills all four qwords.",
+      "id": "BCS-S-0347"
+    },
+    {
+      "name": "AddFriendlistPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0345",
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "record",
+          "type": "SocialListMutationRecord",
+          "notes": "Complete four-qword record copied by emitter 0x004CA1B0."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for c2s 0x01CC AddFriendlist, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x30 and fills all four qwords.",
+      "id": "BCS-S-0348"
     }
   ],
   "method": {
@@ -24403,6 +24519,13 @@
     "c462Outputs": "BCS-S-0341 through BCS-S-0344 in manifests/structs.json; no new local evidence archive.",
     "c462ExistingEvidence": "BCS-Y-1071 through BCS-Y-1074 establish four dedicated emitters, their opcodes, 0x18 emitted body sizes, and leading application dword writes. BCS-Y-1071 writes owner+0xC40 for 0x01CB; BCS-Y-1072/1073 both write owner+0xCB0 for 0x01CE/0x01CF; BCS-Y-1074 explicitly writes zero for 0x01D3. The retained outbound catalogs corroborate the routes and names.",
     "c462FreshEvidence": "No fresh analysis read was required because the retained positive emitter writes and fixed body sizes close all four layouts. No claim relies on a zero-result search.",
-    "c462Limits": "Each packet retains an unknown-typed dword at +0x04 because the documented emitter does not preserve an explicit member write for that closing application span. The leading dword boundaries are exact, but client_state_value and request_state_value retain broad storage-source semantics."
+    "c462Limits": "Each packet retains an unknown-typed dword at +0x04 because the documented emitter does not preserve an explicit member write for that closing application span. The leading dword boundaries are exact, but client_state_value and request_state_value retain broad storage-source semantics.",
+    "c463Topic": "C463 social-list mutation record and packets",
+    "c463Scripts": "No new headless export was required; retained Tier-D emitter decoding and outbound subsystem attribution supplied the exact copies, emitted extents, and packet roles.",
+    "c463Inputs": "The c2s 0x01C9 AddBlacklist, 0x01CA RemoveBlacklist, and 0x01CC AddFriendlist emitters and their shared four-qword source record shape.",
+    "c463Outputs": "BCS-S-0345 through BCS-S-0348 in manifests/structs.json; no new local evidence archive.",
+    "c463ExistingEvidence": "BCS-Y-0324 and manifests/c2s_emit_sites.json establish body size 0x30 and four exact qword copies for emitters 0x004C9DA0, 0x004B7D70, and 0x004CA1B0. BCS-Y-0346 and the retained outbound map establish their social-list subsystem roles as AddBlacklist, RemoveBlacklist, and AddFriendlist.",
+    "c463FreshEvidence": "No fresh analysis read was required because the retained positive emitter copies and body sizes close the nested record and all three packet layouts. No claim relies on a zero-result search.",
+    "c463Limits": "The four uint64_t fields have exact widths and offsets but retain neutral value_0 through value_3 names because their higher-level meanings are unresolved. No new unknown-typed field is present. C2s 0x01C8 was screened but not started because retained sources disagree on its detailed recruitment role. C2s 0x01CD was screened but not started because retained caller metadata conflicts with a later dead-code reachability finding."
   }
 }
