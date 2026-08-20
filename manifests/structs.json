@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 299,
+  "structCount": 301,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -21410,6 +21410,97 @@
       ],
       "notes": "Complete exact 0x18 application payload for s2c 0x017E GroupMembersEnd, excluding the 0x10 game-message prefix. The end handler consumes three contiguous uint64 framing values with no trailing span.",
       "id": "BCS-S-0299"
+    },
+    {
+      "name": "ContentMemberEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0881",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "actor_id",
+          "type": "uint32_t",
+          "notes": "Content-group member actor identifier consumed by the append pipeline."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "layout_id",
+          "type": "uint32_t",
+          "notes": "Content-group layout identifier paired with the member actor."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "unknown_08",
+          "type": "unknown[0x04]",
+          "notes": "Third row dword has no stable semantic interpretation in the retained consumer evidence."
+        }
+      ],
+      "notes": "Complete fixed 0x0C member row used by the content-group append packets. Retained decoding establishes the actor and layout identifiers; the third dword remains semantically unknown.",
+      "id": "BCS-S-0300"
+    },
+    {
+      "name": "ContentMembersX08Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0571",
+        "BCS-Y-0881",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Content-group transfer location code consumed by the X08 handler."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Content-group transfer sequence identifier consumed by the X08 handler."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x60",
+          "name": "entries",
+          "type": "ContentMemberEntry[8]",
+          "notes": "Eight fixed 0x0C content-member rows passed to the shared append pipeline."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x01",
+          "name": "entry_count",
+          "type": "uint8_t",
+          "notes": "Low-byte entry count read directly by the X08 append helper."
+        },
+        {
+          "offset": "0x71",
+          "size": "0x07",
+          "name": "unknown_71",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented X08 helper."
+        }
+      ],
+      "notes": "Complete exact 0x78 application payload for s2c 0x0183 ContentMembersX08, excluding the 0x10 game-message prefix. The packet carries two framing values, eight complete ContentMemberEntry rows, and a byte count before the fixed closing span.",
+      "id": "BCS-S-0301"
     }
   ],
   "method": {
@@ -22270,6 +22361,15 @@
     "c444Outputs": "BCS-S-0297 through BCS-S-0299 in manifests/structs.json; no new local evidence archive.",
     "c444ExistingEvidence": "BCS-Y-0565/0875 and BCS-Y-0393 establish the begin framing fields and exact s2c 0x017D extent. BCS-Y-0567/0877 and BCS-Y-0395 establish the two framing values, eight 0x30 GroupMemberEntry rows, count word, and exact s2c 0x017F extent. BCS-Y-0566/0876 and BCS-Y-0393 establish the three end framing fields and exact s2c 0x017E extent. Existing BCS-S-0260 supplies the complete nested member-row type.",
     "c444FreshEvidence": "No fresh analysis read was required because existing positive handlers and packet-shape evidence close all three payloads. No claim relies on a zero-result search.",
-    "c444Limits": "GroupMembersBegin+0x1C and GroupMembersX08+0x194 remain unknown-typed four-byte tails because retained consumers do not interpret them. GroupMembersX08 consumes only the low count byte, so no narrower wire type is inferred over the retained uint32 field. GroupMembersEnd is fully byte-accounted with no unknown field. Unknown members inside GroupMemberEntry retain the limits already recorded by BCS-S-0260. Semantic confidence remains structural because the parent payload batches still request live revalidation."
+    "c444Limits": "GroupMembersBegin+0x1C and GroupMembersX08+0x194 remain unknown-typed four-byte tails because retained consumers do not interpret them. GroupMembersX08 consumes only the low count byte, so no narrower wire type is inferred over the retained uint32 field. GroupMembersEnd is fully byte-accounted with no unknown field. Unknown members inside GroupMemberEntry retain the limits already recorded by BCS-S-0260. Semantic confidence remains structural because the parent payload batches still request live revalidation.",
+    "c445Topic": "C445 content member transfer packet layout",
+    "c445Scripts": "ghidra/DumpVAs.java",
+    "c445ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No process held the project before invocation.",
+    "c445Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c445_content-member-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00576320,0x006C3100,0x006C3150' } -ScriptPath @('ghidra')",
+    "c445Inputs": "s2c 0x0183 dispatcher thunk 0x00576320, ContentMembersX08 append helper 0x006C3100, and ContentMembersX16 sibling calibration helper 0x006C3150",
+    "c445Output": "tools/ghidra/logs/c445_content-member-layout.txt",
+    "c445ExistingEvidence": "BCS-Y-0393 and the retained payload catalogs establish the exact 0x78 application-payload extent, two uint64 framing values, eight 0x0C rows, actor and layout dwords within each row, and the byte-count position. BCS-Y-0571 and BCS-Y-0881 establish the dispatcher and SharedWork append identities.",
+    "c445FreshEvidence": "The read-only X08 helper body passes rows from payload+0x10 and reads the count byte at payload+0x70. The adjacent X16 helper supplies a positive sibling-shape calibration with the same framing extraction and a constant count of 16.",
+    "c445Limits": "The third ContentMemberEntry dword remains unknown-typed because retained decoding provides no stable semantic interpretation. ContentMembersX08+0x71 remains an unknown-typed seven-byte tail because the helper reads only the byte at +0x70. The fresh export covers only the three requested functions and supplies no negative reference-topology claim."
   }
 }
