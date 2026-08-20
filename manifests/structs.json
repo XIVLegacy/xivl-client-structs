@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 384,
+  "structCount": 385,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -25199,6 +25199,46 @@
       ],
       "notes": "Complete exact 0x10 application payload for MapServerbound c2s 0x0130 UpdateGroup, excluding the 0x10 game-message prefix. The compact CharaBase and teardown-acknowledgement builder writes two dwords followed by two zeros. The GroupBase update-member builder writes all four dwords, sourcing the closing pair from the embedded GroupReferenceRecord. Field names remain broad because the variants intentionally supply different higher-level values.",
       "id": "BCS-S-0384"
+    },
+    {
+      "name": "ApplicationLuaScriptClientGroupSharedWorkMemberRecord",
+      "namespace": "Application::Lua::Script::Client::Group",
+      "size": "0x30",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1792",
+        "BCS-Y-1793",
+        "BCS-Y-1794",
+        "BCS-Y-1796",
+        "tools/ghidra/logs/c480_group-shared-member.txt",
+        "tools/ghidra/logs/c480_group-shared-member-2.txt",
+        "tools/ghidra/logs/c480_group-shared-member-3.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x10",
+          "name": "value_bytes_0",
+          "type": "std::vector<uint8_t>",
+          "notes": "First independently owned byte vector. Its begin, end, and capacity-end pointers occupy +0x04, +0x08, and +0x0C. The property-copy pair at 0x006C9930 and 0x006C9AB0 reads and writes byte ranges selected by the property-key offset resolver."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x10",
+          "name": "value_bytes_1",
+          "type": "std::vector<uint8_t>",
+          "notes": "Second independently owned byte vector. Its begin, end, and capacity-end pointers occupy +0x14, +0x18, and +0x1C. The property-copy pair at 0x006C99B0 and 0x006C9B30 reads and writes byte ranges selected by the property-key offset resolver."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x10",
+          "name": "value_bytes_2",
+          "type": "std::vector<uint8_t>",
+          "notes": "Third independently owned byte vector. Its begin, end, and capacity-end pointers occupy +0x24, +0x28, and +0x2C. The property-copy pair at 0x006C9A30 and 0x006C9BB0 reads and writes byte ranges selected by the property-key offset resolver."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x30 member record owned by Group::SharedWork lookup maps. Both creation paths allocate exactly 0x30 bytes and run the shared constructor. The constructor initializes three consecutive 0x10 vector objects, the length synchronizer resizes them independently from three group-wide source lengths, and six consumers perform bounded byte-range copies through the three vector lanes. The lane semantics and the property-key-to-byte-offset mapping remain unresolved, so the field names are intentionally ordinal.",
+      "id": "BCS-S-0385"
     }
   ],
   "method": {
@@ -26361,6 +26401,18 @@
     "c479StructOutput": "BCS-S-0384 in manifests/structs.json.",
     "c479ExistingEvidence": "BCS-Y-0329/0380/0382 and the retained c2s payload catalogs establish MapServerbound opcode 0x0130, exact 0x20 game-message extent, two builder variants, and four exact dword slots. BCS-Y-1778/1782/1783 establish two Party teardown acknowledgement producers and group-type id 0x2711. BCS-S-0244 establishes the embedded GroupReferenceRecord and its closing state pair.",
     "c479FreshEvidence": "Builder 0x0075E860 writes application +0x00/+0x04 from two producer values and explicitly zeros +0x08/+0x0C. Builder 0x0075E8D0 writes context +0x04 at application +0x00, the FUN_006BFD20 result at +0x04, and the two FUN_006BFD10 state dwords at +0x08/+0x0C. The instruction stream confirms both teardown callsites beyond `_free` boundaries annotated noreturn: each supplies a helper result at +0x00 and Party group-type id 0x2711 at +0x04.",
-    "c479Limits": "The four dword boundaries and storage widths are exact, but their names remain broad because the compact acknowledgement and full update variants intentionally source different higher-level values. The GroupReferenceRecord state-pair representation remains unresolved. No retained packet sample corroborates c2s 0x0130 values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions; the instruction audit covers their complete defined byte ranges and does not establish wider reference topology."
+    "c479Limits": "The four dword boundaries and storage widths are exact, but their names remain broad because the compact acknowledgement and full update variants intentionally source different higher-level values. The GroupReferenceRecord state-pair representation remains unresolved. No retained packet sample corroborates c2s 0x0130 values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions; the instruction audit covers their complete defined byte ranges and does not establish wider reference topology.",
+    "c480Topic": "C480 complete Group SharedWork member-record layout",
+    "c480Scripts": "ghidra/DumpVAs.java",
+    "c480ProjectMode": "All headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before each invocation.",
+    "c480Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c480_group-shared-member.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006C4930,0x006C8AC0,0x006C8C20,0x006C97A0,0x006C9930,0x006C99B0,0x006C9A30,0x006C9AB0,0x006C9B30,0x006C9BB0' } -ScriptPath @('ghidra')",
+    "c480FollowupInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c480_group-shared-member-2.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006C49B0,0x006C1510,0x006C1DD0' } -ScriptPath @('ghidra')",
+    "c480HelperInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c480_group-shared-member-3.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006D5AF0' } -ScriptPath @('ghidra')",
+    "c480Inputs": "Member constructor 0x006C4930, two allocation and lookup paths 0x006C8AC0/0x006C8C20/0x006C97A0, six lane-copy consumers 0x006C9930 through 0x006C9BB0, lane length synchronizer 0x006C49B0, owner resolver 0x006C1510, property-key offset resolver 0x006C1DD0, and byte-vector resize helper 0x006D5AF0.",
+    "c480Outputs": "tools/ghidra/logs/c480_group-shared-member.txt; tools/ghidra/logs/c480_group-shared-member-2.txt; tools/ghidra/logs/c480_group-shared-member-3.txt",
+    "c480StructOutput": "BCS-S-0385 in manifests/structs.json.",
+    "c480ExistingEvidence": "BCS-Y-1792/1793/1794 establish the unique SharedWork lookup/create funnel, exact 0x30 allocation, and shared constructor. BCS-Y-1796 establishes a six-method property-copy family and the first member-record lane. Retained SendLog parser notes independently identify 0x006D5AF0 as the shared byte-vector resize helper.",
+    "c480FreshEvidence": "The constructor initializes begin/end/capacity triples at +0x04/+0x08/+0x0C, +0x14/+0x18/+0x1C, and +0x24/+0x28/+0x2C. The length synchronizer independently resizes those three 0x10 subobjects from three source lengths. Three read consumers and three write consumers resolve a property key to a byte offset, bounds-check the matching lane by end-minus-begin, and copy an arbitrary byte count. The resize helper computes lengths and insertion positions directly in bytes, proving one-byte elements.",
+    "c480Limits": "The exact 0x30 boundary, three 0x10 vector partitions, pointer roles, and one-byte element width are direct. The three lanes intentionally retain ordinal names because their higher-level roles are not established. The property-key tree returns byte offsets, but the keys, element schemas, and lane semantics remain unresolved. DumpVAs provides direct bodies and caller/callee lists only for the requested functions and does not establish arbitrary reference coverage."
   }
 }
