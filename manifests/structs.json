@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 337,
+  "structCount": 340,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -23211,6 +23211,83 @@
       ],
       "notes": "Complete c2s 0x012D EventStart application payload, excluding the 0x10 game-message prefix. The canonical builder writes body size 0xC8 and stages the existing MapEventStartPayload at record+0x18; retained packet observations corroborate the fixed 0xD8 total message extent.",
       "id": "BCS-S-0337"
+    },
+    {
+      "name": "InventoryEndChangePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0561",
+        "BCS-Y-0708",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unknown_00",
+          "type": "unknown[0x08]",
+          "notes": "Fixed closing payload whose internal member boundaries are not consumed by the documented end-change path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x016E InventoryEndChange, excluding the 0x10 game-message prefix. The dedicated handler signals the end of the inventory-change frame without receiving the application payload.",
+      "id": "BCS-S-0338"
+    },
+    {
+      "name": "MassSetItemModifierBeginPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0581",
+        "BCS-Y-0722",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unknown_00",
+          "type": "unknown[0x08]",
+          "notes": "Fixed opening payload whose internal member boundaries are not consumed by the documented begin-marker path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x018F MassSetItemModifierBegin, excluding the 0x10 game-message prefix. This marker opens the begin/body/end bulk-modifier sequence consumed by MassSetItemModifierPacket bodies.",
+      "id": "BCS-S-0339"
+    },
+    {
+      "name": "MassSetItemModifierEndPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0583",
+        "BCS-Y-0723",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unknown_00",
+          "type": "unknown[0x08]",
+          "notes": "Fixed closing payload whose internal member boundaries are not consumed by the documented end-marker path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0191 MassSetItemModifierEnd, excluding the 0x10 game-message prefix. This marker closes the begin/body/end bulk-modifier sequence.",
+      "id": "BCS-S-0340"
     }
   ],
   "method": {
@@ -24194,6 +24271,13 @@
     "c460StructOutputs": "BCS-S-0337 in manifests/structs.json.",
     "c460ExistingEvidence": "BCS-S-0034, BCS-Y-0426, and the retained data-dependency catalog establish the exact 0xB8 MapEventStartPayload, canonical builder writes, 0xC8 body size, 0xD8 total message extent, and packet observations. These existing positive records close the nested EventStartPacket layout without a fresh read.",
     "c460FreshEvidence": "The read-only export confirms that s2c 0x0132 dispatch reaches NullActorImpl slot 49. The slot body consumes payload bytes +0 and +1, then constructs an in-place receiver at payload+2 before cache and registration calls. This explains the size dispute but does not establish the packet boundary.",
-    "c460Limits": "EventStartPacket adds no new unknown-typed field; its nested BCS-S-0034 payload retains the pre-existing unknown-typed and broadly named fields documented there. S2c 0x0132 remains incomplete because the live consumer proves only its first two bytes and an in-place object overlay at +2; it does not resolve the conflict between the 0x28 capture-derived payload and the stale 72-byte symbol note. DumpVAs supplies direct bodies and call lists only for the nine requested functions."
+    "c460Limits": "EventStartPacket adds no new unknown-typed field; its nested BCS-S-0034 payload retains the pre-existing unknown-typed and broadly named fields documented there. S2c 0x0132 remains incomplete because the live consumer proves only its first two bytes and an in-place object overlay at +2; it does not resolve the conflict between the 0x28 capture-derived payload and the stale 72-byte symbol note. DumpVAs supplies direct bodies and call lists only for the nine requested functions.",
+    "c461Topic": "C461 lifecycle marker packet layouts",
+    "c461Scripts": "No new headless export was required; retained dedicated-handler, packet-family, and exact packet-extent evidence supplied the load-bearing boundaries.",
+    "c461Inputs": "InventoryEndChangePacket and the MassSetItemModifier begin/end markers, their dedicated handlers, and exact application-payload extents.",
+    "c461Outputs": "BCS-S-0338 through BCS-S-0340 in manifests/structs.json; no new local evidence archive.",
+    "c461ExistingEvidence": "BCS-Y-0394/0561/0708 establish the 0x016E dedicated end-change path and exact 0x08 extent. BCS-Y-0396/0581/0722 and BCS-Y-0395/0583/0723 establish the 0x018F begin and 0x0191 end markers around the existing 0x0190 MassSetItemModifier body, with exact 0x08 application extents.",
+    "c461FreshEvidence": "No fresh analysis read was required because the retained positive dispatcher and packet-family evidence closes all three packet boundaries. No claim relies on a zero-result search.",
+    "c461Limits": "Each packet retains one unknown-typed 0x08 span because its dedicated lifecycle handler changes subsystem state without exposing stable application-payload member boundaries. The exact wire extent is known, but naming the bytes reserved or assigning scalar fields would be speculative."
   }
 }
