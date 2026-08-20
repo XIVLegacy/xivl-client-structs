@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 363,
+  "structCount": 364,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -24202,6 +24202,52 @@
       ],
       "notes": "Complete exact 0x40 application payload for c2s 0x01DE, excluding the 0x10 game-message prefix. Retained vtable and UI evidence identifies the owner as ItemSearchDirectPurchaseWidget and the operation as a retainer direct-buy commit.",
       "id": "BCS-S-0363"
+    },
+    {
+      "name": "ItemSearchListQueryPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x118",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0693",
+        "BCS-Y-0926",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "manifests/schema_rescue.json",
+        "tools/ghidra/logs/c470_itemsearch-list-query.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "widget_value",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchListWidget +0x1220."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "zero_values",
+          "type": "uint32_t[4]",
+          "notes": "Four consecutive dwords explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Dword returned by the shared context helper, which reads source offset +0x20."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x100",
+          "name": "criteria",
+          "type": "uint8_t[256]",
+          "notes": "Exact zero-filled byte block populated from the shared source pointer using its recorded length excluding the terminator."
+        }
+      ],
+      "notes": "Complete exact 0x118 application payload for c2s 0x01DF, excluding the 0x10 game-message prefix. Retained widget and state-machine evidence identifies the owner as ItemSearchListWidget and the operation as a retainer item-search list query.",
+      "id": "BCS-S-0364"
     }
   ],
   "method": {
@@ -25263,6 +25309,16 @@
     "c469StructOutput": "BCS-S-0363 in manifests/structs.json.",
     "c469ExistingEvidence": "BCS-Y-0320 establishes the virtual emitter, source argument grouping, exact 0x50 emitted record extent, and c2s 0x01DE route. BCS-Y-0347, manifests/cluster_refinements_unresolved.json, and manifests/vtable_slot_resolution.json establish ItemSearchDirectPurchaseWidget ownership and the retainer direct-buy role.",
     "c469FreshEvidence": "Builder 0x0085D160 writes six leading source dwords, one widget dword, two source bytes, one source word, and four packed qwords. These writes account for the complete exact 0x40 application payload.",
-    "c469Limits": "No unknown-typed field remains, but value_0 through value_5, widget_value, value_7, and metadata retain neutral or broad names because the emitter and builder do not establish their individual wire semantics. Stack_count and quantity use the retained ItemSearch attribution. DumpVAs supplies direct bodies and call lists only for the two requested functions."
+    "c469Limits": "No unknown-typed field remains, but value_0 through value_5, widget_value, value_7, and metadata retain neutral or broad names because the emitter and builder do not establish their individual wire semantics. Stack_count and quantity use the retained ItemSearch attribution. DumpVAs supplies direct bodies and call lists only for the two requested functions.",
+    "c470Topic": "C470 ItemSearch list query packet layout",
+    "c470Scripts": "ghidra/DumpVAs.java",
+    "c470ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c470Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c470_itemsearch-list-query.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0051A970,0x00525E50,0x00445210,0x004451F0,0x004B68A0' } -ScriptPath @('ghidra')",
+    "c470Inputs": "C2s 0x01DF emitter 0x0051A970, ItemSearchListWidget tick dispatcher 0x00525E50, shared source and length helpers 0x00445210 and 0x004451F0, and context-value helper 0x004B68A0.",
+    "c470Output": "tools/ghidra/logs/c470_itemsearch-list-query.txt",
+    "c470StructOutput": "BCS-S-0364 in manifests/structs.json.",
+    "c470ExistingEvidence": "BCS-Y-0693 and manifests/c2s_emit_sites.json establish the dedicated c2s 0x01DF emitter and exact 0x128 emitted record extent. BCS-Y-0926, manifests/retainer_bazaar_subsystem.json, and manifests/schema_rescue.json establish ItemSearchListWidget ownership, tick-state case 10 dispatch, and the retainer item-search list role.",
+    "c470FreshEvidence": "Emitter 0x0051A970 writes the widget dword, explicitly zeros four dwords, writes one context-helper dword, zero-fills 0x100 bytes, copies the shared source bytes using the recorded length excluding its terminator, and forwards the complete exact 0x118 application payload. Helpers 0x00445210 and 0x004451F0 prove the source pointer and length-minus-one reads; helper 0x004B68A0 proves a dword read at source +0x20.",
+    "c470Limits": "No unknown-typed field remains. widget_value and context_value retain broad names because the emitter does not establish their individual wire semantics. criteria remains a byte array because the shared source representation and its inner search-filter schema are not established. DumpVAs supplies direct bodies and call lists only for the five requested functions."
   }
 }
