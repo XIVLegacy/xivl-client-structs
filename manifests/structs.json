@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 371,
+  "structCount": 372,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -24530,6 +24530,37 @@
       ],
       "notes": "Complete exact 0x08 application payload for MapServerbound c2s 0x0006 LanguageCodePacket, excluding the 0x10 game-message prefix. The dedicated emitter and the independent tick-state emitter produce the same two-dword layout.",
       "id": "BCS-S-0371"
+    },
+    {
+      "name": "WorldOpcode00C8StatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x220",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0316",
+        "BCS-Y-0331",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c474_world-state-packet.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "header_values",
+          "type": "uint64_t[4]",
+          "notes": "Exact four-qword header copied from the emitter's zero-initialized source buffer."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x200",
+          "name": "state_block",
+          "type": "uint32_t[128]",
+          "notes": "Exact 512-byte block copied from the emitter's zero-initialized source buffer."
+        }
+      ],
+      "notes": "Complete exact 0x220 application payload for WorldServerbound c2s 0x00C8, excluding the 0x10 game-message prefix. Retained evidence identifies a large World-channel state push without establishing a more specific operation or either copied region's inner schema.",
+      "id": "BCS-S-0372"
     }
   ],
   "method": {
@@ -25631,6 +25662,16 @@
     "c473StructOutputs": "BCS-S-0370 and BCS-S-0371 in manifests/structs.json.",
     "c473ExistingEvidence": "BCS-Y-0313 and manifests/operation_opcode_map_outbound.json establish the MapServerbound 0x0003 emitter and exact 0x230 emitted extent. BCS-Y-0308, BCS-Y-0314, and the same manifest establish two MapServerbound 0x0006 emit sites, the LanguageCodePacket attribution, and exact 0x18 emitted extent. The vendored opcode catalog independently retains both channel bindings.",
     "c473FreshEvidence": "Emitter 0x004E0320 explicitly zeros application +0x00, writes four caller dwords at +0x04, one dword at +0x14, one word at +0x18, zeros the word at +0x1A, and copies exactly 128 dwords at +0x1C; the fixed extent leaves the closing dword at +0x21C unwritten. Emitter 0x004E0290 and tick emitter 0x004E20A0 both zero application +0x00 and write the language-code dword at +0x04.",
-    "c473Limits": "MapOpcode0003StatePacket+0x21C remains unknown-typed because the dedicated emitter documents no explicit write. The 0x0003 operation, header-value semantics, and inner 512-byte state schema remain unresolved, so their names stay broad. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions."
+    "c473Limits": "MapOpcode0003StatePacket+0x21C remains unknown-typed because the dedicated emitter documents no explicit write. The 0x0003 operation, header-value semantics, and inner 512-byte state schema remain unresolved, so their names stay broad. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
+    "c474Topic": "C474 World state packet layout",
+    "c474Scripts": "ghidra/DumpVAs.java",
+    "c474ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c474Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c474_world-state-packet.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004E3750,0x004DF810,0x004D83E0,0x00445210,0x004451F0,0x00DB3E30' } -ScriptPath @('ghidra')",
+    "c474Inputs": "WorldServerbound 0x00C8 record builder 0x004E3750; emitter 0x004DF810; upstream caller 0x004D83E0; shared source pointer and length helpers 0x00445210 and 0x004451F0; and World-channel relay 0x00DB3E30.",
+    "c474Output": "tools/ghidra/logs/c474_world-state-packet.txt",
+    "c474StructOutputs": "BCS-S-0372 in manifests/structs.json.",
+    "c474ExistingEvidence": "BCS-Y-0316, BCS-Y-0331, and manifests/operation_opcode_map_outbound.json establish the WorldServerbound 0x00C8 builder and emitter, the exact 0x230 emitted extent, four-qword prefix, and 512-byte state block. The vendored opcode catalog independently retains the channel, direction, extent, and broad state-push role.",
+    "c474FreshEvidence": "Builder 0x004E3750 writes the opcode and 0x230 extent, copies exactly four qwords at record +0x18, then copies exactly 128 dwords at record +0x38. These map to application +0x00 and +0x20 and close the exact 0x220 application extent. Emitter 0x004DF810 zero-initializes both source buffers before copying their current contents and passes the completed record to relay 0x00DB3E30.",
+    "c474Limits": "The 32-byte header and 512-byte state block retain broad names because their source-buffer construction and the available consumers do not establish inner wire semantics. No retained packet sample corroborates individual values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions."
   }
 }
