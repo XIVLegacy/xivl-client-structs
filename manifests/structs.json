@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 333,
+  "structCount": 334,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -23066,6 +23066,46 @@
       ],
       "notes": "Complete decomp-inferred 0x5F0 application payload for s2c 0x01A6 HamletSupplyRanking, excluding the 0x10 game-message prefix. The content-gated receiver iterates exactly twenty wire records; no packet capture currently corroborates the extent.",
       "id": "BCS-S-0333"
+    },
+    {
+      "name": "SetActorStatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0404",
+        "BCS-Y-0540",
+        "BCS-Y-0636",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/fun_0058cca0_walk.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "main_state",
+          "type": "uint8_t",
+          "notes": "Low state byte isolated from the first payload dword and forwarded to the primary-state setter."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "cleared_state_byte",
+          "type": "uint8_t",
+          "notes": "Second payload byte explicitly cleared before the temporary state record reaches the helper; its wire-level meaning is unresolved."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x06",
+          "name": "unknown_02",
+          "type": "unknown[0x06]",
+          "notes": "Closing payload span whose internal boundaries are not established by the documented state path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0134 SetActorState, excluding the 0x10 game-message prefix. The third-router path isolates the low main-state byte and clears the adjacent byte before applying the state transition.",
+      "id": "BCS-S-0334"
     }
   ],
   "method": {
@@ -24019,6 +24059,13 @@
     "c457Outputs": "BCS-S-0331 through BCS-S-0333 in manifests/structs.json; no new local evidence archive.",
     "c457ExistingEvidence": "BCS-Y-0170/0392 establish the SetActorProperty length byte, 135-byte stream capacity, and exact 0x88 extent. BCS-Y-0394/0563/0873/1795 establish the SynchGroupWorkValues list identifier, length byte, 135-byte stream capacity, and exact 0x90 extent. BCS-Y-0392/0948 and BCS-S-0194 establish twenty exact 0x4C ranking records and the decomp-inferred 0x5F0 HamletSupplyRanking extent.",
     "c457FreshEvidence": "No fresh analysis read was required because retained positive consumers and the existing nested wire record close all three layouts. No claim relies on a zero-result search.",
-    "c457Limits": "The two property_stream arrays have exact byte capacities, but their internal record boundaries remain variable and tag-dependent; only running_byte_total bytes are logically valid. HamletSupplyRanking has no packet-level unknown span, but each nested BCS-S-0194 record retains two unknown-typed 0x20-byte text sources and one unread closing byte. Its size is decomp-inferred because no packet capture is available. HamletDefenseScore was screened but not started because its incoming 0x1C record remains unsplit and the existing same-sized BCS-S-0193 is a converted runtime cache rather than the wire record."
+    "c457Limits": "The two property_stream arrays have exact byte capacities, but their internal record boundaries remain variable and tag-dependent; only running_byte_total bytes are logically valid. HamletSupplyRanking has no packet-level unknown span, but each nested BCS-S-0194 record retains two unknown-typed 0x20-byte text sources and one unread closing byte. Its size is decomp-inferred because no packet capture is available. HamletDefenseScore was screened but not started because its incoming 0x1C record remains unsplit and the existing same-sized BCS-S-0193 is a converted runtime cache rather than the wire record.",
+    "c458Topic": "C458 actor state packet layout",
+    "c458Scripts": "No new headless export was required; retained third-router decoding, the primary-state setter, and the exact packet extent supplied the load-bearing evidence.",
+    "c458Inputs": "SetActorStatePacket third-router path, temporary state-record handling, primary-state setter, and exact application-payload extent.",
+    "c458Outputs": "BCS-S-0334 in manifests/structs.json; no new local evidence archive.",
+    "c458ExistingEvidence": "BCS-Y-0393/0404/0540 establish the exact 0x08 payload, the low-byte mask over the first dword, and the adjacent-byte clear. BCS-Y-0636 establishes the downstream primary-state setter that consumes the isolated state value.",
+    "c458FreshEvidence": "No fresh analysis read was required because retained positive instructions and packet-shape evidence close the layout. No claim relies on a zero-result search.",
+    "c458Limits": "SetActorState+0x02 remains an unknown-typed six-byte closing span. cleared_state_byte has exact uint8_t storage and documented clearing behavior, but its original wire meaning is unresolved. The payload's retained semantic labels still request live revalidation. S2c 0x0132 was screened but not started because retained symbol and packet catalogs conflict on its payload size. TextSheetNoSourceX28 was screened but not started because the retained direct consumer does not establish every proposed field boundary and the receiver mapping has a competing variant."
   }
 }
