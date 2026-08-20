@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 437,
+  "structCount": 438,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27761,6 +27761,55 @@
       ],
       "notes": "Complete exact 0x18 ChangeActorSubStatStatusReceiver layout. The hybrid factory fixes the boundary, construction accounts for the base and all derived state through +0x15, and the clone and Lua-firing slots consume the same derived fields.",
       "id": "BCS-S-0437"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkSetDisplayNameReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c508_set-display-name-receiver-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "SetDisplayNameReceiver vftable at 0x01057388."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "display_id",
+          "type": "int32_t",
+          "notes": "Constructor-supplied display identifier normalized from zero to the -1 unnamed sentinel and forwarded by the receive path."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x54",
+          "name": "name_state",
+          "type": "unknown[0x54]",
+          "notes": "Inline owned name-state block acquired by construction, released by destruction, and passed intact to the display-name apply path. Its internal member boundaries remain unresolved."
+        },
+        {
+          "offset": "0x5C",
+          "size": "0x01",
+          "name": "set_flag",
+          "type": "uint8_t",
+          "notes": "Constructor-supplied flag forwarded with display_id and name_state by the receive path."
+        },
+        {
+          "offset": "0x5D",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[0x03]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x60 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x60 SetDisplayNameReceiver layout. The hybrid factory fixes the boundary, construction accounts for the identifier, inline name state, and flag, and the receive and destruction paths consume the same fields.",
+      "id": "BCS-S-0438"
     }
   ],
   "method": {
@@ -29174,6 +29223,17 @@
     "c507StructOutputs": "BCS-S-0436 and BCS-S-0437 in manifests/structs.json.",
     "c507ExistingEvidence": "BCS-Y-0050/0051, BCS-Y-0124/0125, BCS-Y-0149, BCS-Y-1348, BCS-Y-1368, BCS-Y-1399, and BCS-Y-1419 preserve the receiver identity, exact-size claim, constructor field map, hybrid factory, lifecycle, clone, and Lua-firing roles.",
     "c507FreshEvidence": "The nine-section closing export reproduces the hybrid factory, receiver constructor and destructor, clone and Lua-firing slots, alternate wrapper, fast-path worker, and both CommandUpdaterBase lifecycle methods. The base lifecycle writes only the vftable and the first derived receiver field begins at +0x08. Receiver construction writes state at +0x08, +0x0C, +0x10, +0x14, and +0x15; the clone and firing slots consume that same range. Factory pseudocode and the independent instruction audit both fix the exact 0x18 allocation.",
-    "c507Limits": "CommandUpdaterBase state_04 remains unknown-typed because the observed base lifecycle does not access it. ChangeActorSubStatStatusReceiver state_08 and status_key_state remain unknown-typed because their widths and ownership behavior are established but their concrete pointer or handle types are not. Receiver tail_padding remains unknown-typed because construction writes only through +0x15. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c507Limits": "CommandUpdaterBase state_04 remains unknown-typed because the observed base lifecycle does not access it. ChangeActorSubStatStatusReceiver state_08 and status_key_state remain unknown-typed because their widths and ownership behavior are established but their concrete pointer or handle types are not. Receiver tail_padding remains unknown-typed because construction writes only through +0x15. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c508Topic": "C508 SetDisplayNameReceiver layout",
+    "c508Scripts": "ghidra/DumpVAs.java",
+    "c508ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c508Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c508_set-display-name-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00771980,0x0076C4D0,0x0089D530,0x0089D5B0,0x0089D610,0x00771230,0x00447200,0x00447450' } -ScriptPath @('ghidra')",
+    "c508Inputs": "SetDisplayNameReceiver hybrid factory 0x00771980, wrapper 0x0076C4D0, constructor 0x0089D530, destructor 0x0089D5B0, receive 0x0089D610, fast-path cache apply 0x00771230, name-state acquire 0x00447200, and name-state copy/release 0x00447450.",
+    "c508Output": "tools/ghidra/logs/c508_set-display-name-receiver-layout.txt",
+    "c508InstructionAudit": "A calibrated pefile and capstone call scan found the known wrapper and hybrid-factory constructor calls. PUSH 0x60 at 0x00771A9C immediately precedes the factory's sole allocator call at 0x00771A9E.",
+    "c508StructOutputs": "BCS-S-0438 in manifests/structs.json.",
+    "c508ExistingEvidence": "BCS-Y-0731/0732, BCS-Y-1349, BCS-Y-1365, BCS-Y-1369, and BCS-Y-1438 preserve the receiver identity, exact-size claim, constructor field map, hybrid factory, receive role, and parallel cache layout.",
+    "c508FreshEvidence": "The eight-section closing export reproduces the hybrid factory, wrapper, constructor, destructor, receive path, cache apply, and both name-state lifecycle helpers. Construction writes display_id at +0x04, acquires the inline name state beginning at +0x08, and writes set_flag at +0x5C. Receive forwards those same three values, while destruction releases the inline state. The instruction audit independently fixes the exact 0x60 allocation.",
+    "c508Limits": "name_state remains unknown-typed because its exact 0x54 extent and ownership lifecycle are established but its internal member boundaries are not. tail_padding remains unknown-typed because construction writes only through +0x5C. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
