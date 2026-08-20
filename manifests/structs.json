@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 253,
+  "structCount": 254,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -2244,49 +2244,37 @@
       "name": "EventExecutionQueueNode",
       "namespace": "FFXIV.Client.System.Event",
       "size": "0x2c",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
         "BCS-Y-0474",
-        "BCS-Y-0476"
+        "BCS-Y-0476",
+        "BCS-S-0254",
+        "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt"
       ],
       "fields": [
         {
           "offset": "0x00",
           "size": "0x04",
-          "type": "void*",
-          "name": "link0",
-          "evidence": "FUN_0089AF70 stores its first list argument at node+0x00; FUN_008955C0 iterates from the sentinel through this field."
+          "name": "next",
+          "type": "EventExecutionQueueNode *",
+          "notes": "Forward list link. The walker advances through this pointer and the sentinel insertion path repairs the previous tail's forward link."
         },
         {
           "offset": "0x04",
           "size": "0x04",
-          "type": "void*",
-          "name": "link1",
-          "evidence": "FUN_0089AF70 stores its second list argument at node+0x04; FUN_00896510 repairs the sentinel/list link after allocation."
+          "name": "previous",
+          "type": "EventExecutionQueueNode *",
+          "notes": "Backward list link initialized from the sentinel's prior tail during insertion."
         },
         {
           "offset": "0x08",
-          "size": "0x1c observed through helper construction",
-          "type": "EventExecutionPayload",
-          "name": "payload",
-          "evidence": "FUN_0089AF70 constructs this region through FUN_0089AEE0; FUN_008955C0 reads the callback pointer at *(node+0x08)+0x04."
-        },
-        {
-          "offset": "0x25",
-          "size": "0x01",
-          "type": "uint8_t",
-          "name": "callbackFired",
-          "evidence": "FUN_008955C0 checks node+0x25 and sets it to 1 before invoking the node payload callback."
-        },
-        {
-          "offset": "0x28",
-          "size": "0x04",
-          "type": "opaque tail",
-          "name": "mappedTail",
-          "evidence": "FUN_008955C0 passes node+0x28 as the third argument to FUN_006DE2D0 during list drain."
+          "size": "0x24",
+          "name": "event",
+          "type": "ApplicationLuaScriptClientEventExecutionClientSideNonBlockEvent",
+          "notes": "Embedded copy of the temporary non-block execution object. Queue traversal, callback dispatch, context mapping, teardown, and exact node deallocation operate on this full region."
         }
       ],
-      "notes": "Allocated by FUN_0089AF70 with size 0x2c and inserted by FUN_00896510 into the non-block execution list rooted at owner+0x14.",
+      "notes": "Complete exact 0x2C doubly linked queue node allocated and inserted by the non-block event path. The former overlapping payload, callback flag, and mapped tail are fields of the exact embedded 0x24 ExecutionClientSideNonBlockEvent object.",
       "id": "BCS-S-0038"
     },
     {
@@ -19054,6 +19042,91 @@
       ],
       "notes": "Complete exact 0x24 cached CharaMake retainer snapshot. Construction copies the operation-level retainer count and vector, creates a separate working vector, consumers normalize that working copy, and teardown independently frees both vector allocations.",
       "id": "BCS-S-0253"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionClientSideNonBlockEvent",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0474",
+        "BCS-Y-0476",
+        "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ExecutionClientSideNonBlockEvent vftable installed by construction and copy construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "event_object",
+          "type": "void *",
+          "notes": "Polymorphic Event::Base-derived object dispatched through virtual slot 1. The concrete leaf subclass varies by producer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "primary_context_key",
+          "type": "uint32_t",
+          "notes": "Primary 4-byte context key copied at construction and compared directly by the queue predicate."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "context_keys",
+          "type": "std::vector<uint32_t>",
+          "notes": "Owned vector of additional 4-byte context keys. Copy construction derives the exact four-byte stride; the queue predicate scans begin at +0x10 through end at +0x14."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "state_1c",
+          "type": "uint8_t",
+          "notes": "State byte initialized to zero and preserved by copy construction; its higher-level meaning is unresolved."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "callback_fired",
+          "type": "bool",
+          "notes": "One-shot callback guard. The queue walker tests this byte and sets it to one immediately before invoking the payload callback."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x01",
+          "name": "owns_event_object",
+          "type": "bool",
+          "notes": "Ownership flag initialized to false and preserved by copying; base teardown releases event_object only when this flag is true."
+        },
+        {
+          "offset": "0x1F",
+          "size": "0x01",
+          "name": "padding_1f",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte between the base flags and the derived selector."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x02",
+          "name": "event_selector",
+          "type": "uint16_t",
+          "notes": "Derived non-block selector copied from the constructor input and passed by address to the event virtual dispatch."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x24 embedded-object boundary."
+        }
+      ],
+      "notes": "Complete exact 0x24 non-block event-execution object embedded in each EventExecutionQueueNode. Base and derived construction, copy construction, context matching, virtual dispatch, one-shot callback handling, and teardown establish every member boundary.",
+      "id": "BCS-S-0254"
     }
   ],
   "method": {
@@ -19775,6 +19848,15 @@
     "c425Outputs": "tools/ghidra/logs/c425_chara-make-retainer-snapshot.txt and tools/ghidra/logs/c425_chara-make-retainer-snapshot-instruction-refs.txt",
     "c425ExistingEvidence": "BCS-S-0004 and BCS-Y-0022 establish the RetainerListRecord element layout, the operation-level vector at CharaMakeOperation+0x204, and the zero-extended count at +0x200. BCS-Y-0080 and BCS-Y-0081 establish the shared vector implementation, exact 0x24 allocation, and initial snapshot construction shape.",
     "c425FreshEvidence": "C425 revalidates the exact allocation and closes all three snapshot members: count at +0x00, owned source vector at +0x04, and separately owned working vector at +0x14. Direct consumers append and update 0x30-stride RetainerListRecord values through the working vector, while teardown independently releases both vector allocations. Positive instructions confirm both pointer triples, including the first-vector cleanup reached after the decompiler-marked working-vector free.",
-    "c425Limits": "DumpVAs supplies direct bodies and call lists only for the thirteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The snapshot is fully byte-accounted; no claim assigns semantics beyond the confirmed count, RetainerListRecord element type, source-copy role, and consumer-mutated working-copy role."
+    "c425Limits": "DumpVAs supplies direct bodies and call lists only for the thirteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The snapshot is fully byte-accounted; no claim assigns semantics beyond the confirmed count, RetainerListRecord element type, source-copy role, and consumer-mutated working-copy role.",
+    "c426Topic": "C426 non-block event execution layouts",
+    "c426ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c426Script": "ghidra/DumpVAs.java",
+    "c426Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c426_event-execution-nonblock-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0089AF70,0x0089AEE0,0x0089ACA0,0x0089AAC0,0x0089A910,0x00895860,0x008959C0,0x00895560,0x00895380,0x00896510,0x008955C0,0x00895400,0x0089ABE0,0x008963F0' } -ScriptPath @('ghidra')",
+    "c426Inputs": "Exact node allocator and insertion; embedded-object wrapper and base or derived copy constructors; four-byte vector copy constructor; base and derived construction and teardown; queue predicate, walker, dispatch, and full list teardown.",
+    "c426Output": "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt",
+    "c426ExistingEvidence": "BCS-S-0038 and BCS-Y-0474/0476 supplied the exact 0x2C node allocation, list placement, embedded payload construction at +0x08, callback guard at node+0x25, and queue-walker context. The retained catalog left the payload type undefined and represented its later fields as overlapping siblings.",
+    "c426FreshEvidence": "C426 establishes the exact 0x24 embedded ExecutionClientSideNonBlockEvent extent, its base and derived construction and copy boundaries, the 0x10 vector of four-byte context keys, one-shot callback and ownership flags, selector, exact node link directions, virtual dispatch, and independent embedded-object teardown before exact 0x2C node deallocation.",
+    "c426Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf class varies by producer; the higher-level meanings of primary_context_key, context_keys, state_1c, and event_selector remain bounded to their observed storage and use. Three alignment bytes remain unknown-typed. No claim relies on instructions omitted after a noreturn free."
   }
 }
