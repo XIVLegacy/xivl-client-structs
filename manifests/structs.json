@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 257,
+  "structCount": 258,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -19412,6 +19412,128 @@
       ],
       "notes": "Complete exact 0x70 inventory-item wire record reused by the one-, eight-, sixteen-, and thirty-two-row inventory-list packets. The shared deserializer establishes the member boundaries through +0x69, while packet sizes close the six-byte tail.",
       "id": "BCS-S-0257"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionServerSideBlockEvent",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x2C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0432",
+        "BCS-Y-1097",
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c427_event-execution-block-layout.txt",
+        "tools/ghidra/logs/c429_event-execution-server-block-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ExecutionServerSideBlockEvent vftable installed after shared block-base construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "event_object",
+          "type": "void *",
+          "notes": "Polymorphic Event::Base-derived object dispatched through virtual slots. The concrete leaf subclass varies by producer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "primary_context_key",
+          "type": "uint32_t",
+          "notes": "Primary four-byte execution context key copied by the shared base constructor and passed to EventStart staging."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "context_keys",
+          "type": "std::vector<uint32_t>",
+          "notes": "Owned vector of additional four-byte context keys constructed and destroyed by the shared execution-event base; the server-side staging path passes this vector to the chat buffer iterator."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "end_notified",
+          "type": "bool",
+          "notes": "Shared execution-base one-shot end-notification latch initialized to false."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "abort_notified",
+          "type": "bool",
+          "notes": "Shared execution-base one-shot abort-notification latch initialized to false."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x01",
+          "name": "owns_event_object",
+          "type": "bool",
+          "notes": "Shared-base ownership flag; teardown releases event_object only when this byte is true."
+        },
+        {
+          "offset": "0x1F",
+          "size": "0x01",
+          "name": "padding_1f",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the block-event state bytes."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "server_order_executed",
+          "type": "bool",
+          "notes": "Shared block-base state byte initialized to false and set when a server order successfully executes."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "armed",
+          "type": "bool",
+          "notes": "Shared block-base latch initialized to false and cleared by observed completion paths."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x01",
+          "name": "state_22",
+          "type": "uint8_t",
+          "notes": "Initialized to one by block-base construction; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x23",
+          "size": "0x01",
+          "name": "padding_23",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the derived pointer field."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "event_start_payload",
+          "type": "void *",
+          "notes": "Owned EventStart staging payload. The staging consumer forwards it with primary_context_key, and derived teardown destroys its nested allocation before freeing it. Its concrete record type is unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x01",
+          "name": "state_28",
+          "type": "uint8_t",
+          "notes": "Derived byte initialized to zero. No bounded consumer establishes its higher-level meaning."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[0x03]",
+          "notes": "Unobserved bytes closing the exact 0x2C allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x2C server-side block execution object. Shared base and block construction, two exact allocations, EventStart staging, derived payload teardown, and the derived constructor establish every member boundary.",
+      "id": "BCS-S-0258"
     }
   ],
   "method": {
@@ -20158,6 +20280,15 @@
     "c428Outputs": "BCS-S-0257 in manifests/structs.json; no new local evidence archive.",
     "c428ExistingEvidence": "BCS-Y-0394/0395 establish reuse at exact 0x70 stride across four packet array sizes. BCS-Y-0702 and manifests/data_dependency_catalog.json supply all deserialized member widths and offsets. The retained C147 archive confirms the one-row packet wrapper calls the shared deserializer once.",
     "c428FreshEvidence": "No fresh Ghidra read was made because a Java process was present at the exclusive-project preflight. Existing positive evidence was sufficient, so the investigation did not rely on a zero-result search or a negative project claim.",
-    "c428Limits": "The 0x40 modifier region remains opaque, and the final six bytes are unconsumed by the documented client parser. The layout claims their exact extents only. The adjacent ExecutionServerSideBlockEvent candidate remains incomplete because its derived +0x28 field is not established by retained consumers."
+    "c428Limits": "The 0x40 modifier region remains opaque, and the final six bytes are unconsumed by the documented client parser. The layout claims their exact extents only. At C428, the adjacent ExecutionServerSideBlockEvent candidate remained incomplete because its derived +0x28 field was not yet established.",
+    "c429Topic": "C429 server-side block event layout",
+    "c429ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c429Script": "ghidra/DumpVAs.java",
+    "c429Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c429_event-execution-server-block-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00895950,0x00895A30,0x00893DA0,0x008954E0,0x00895860,0x008958E0,0x0089E660,0x00893290' } -ScriptPath @('ghidra')",
+    "c429Inputs": "Server-side block-event constructor and state-machine allocator; EventStart staging consumer; derived teardown; shared execution and block constructors; owned-payload teardown and replacement helpers.",
+    "c429Output": "tools/ghidra/logs/c429_event-execution-server-block-layout.txt",
+    "c429ExistingEvidence": "BCS-Y-0432 and BCS-Y-1097 supplied the EventStart state-machine allocation context, exact +0x24 staging read, shared context vector, and downstream EventStart staging call. C314 supplied the concrete RTTI identity. C427 supplied the complete shared execution and block-base member boundaries and state roles.",
+    "c429FreshEvidence": "C429 revalidates both exact 0x2C allocations and layered construction, installs the server-side vftable, initializes the owned +0x24 pointer and the derived +0x28 byte, forwards +0x24 through EventStart staging, and independently destroys and frees the +0x24 payload during derived teardown.",
+    "c429Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf, the +0x24 payload record type, the higher-level meanings of state_22 and state_28, and five alignment bytes remain unresolved. No load-bearing claim relies on decompiler output after a noreturn free."
   }
 }
