@@ -42,6 +42,7 @@ Read these pages in order:
 1. [Evidence and claims](evidence-and-claims.md)
 2. [Comments and prose](comments-and-prose.md)
 3. [Verification](verification.md)
+4. [Retail-input validation](retail-input-validation.md)
 
 The [manifest contract](../../manifests/README.md) owns the catalog charter.
 The [checks workflow](../../.github/workflows/checks.yml) owns the CI-covered

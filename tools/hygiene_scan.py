@@ -59,7 +59,8 @@ NAMED_CATALOGS = frozenset({
     "lua_apply_chain_firers.json", "lua_to_opcode.json",
     "operation_opcode_map_outbound.json", "operation_opcode_map_overlay.json",
     "receiver_field_writes.json", "receiver_opcode_map_inbound.json",
-    "receiver_opcode_map_overlay.json", "rtti_vftable_index.json",
+    "receiver_opcode_map_overlay.json", "retail_actor_rebuild_check.json",
+    "retail_inputs.json", "rtti_vftable_index.json",
     "structs.json", "symbols.json",
 })
 
