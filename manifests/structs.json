@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 381,
+  "structCount": 383,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -25063,6 +25063,89 @@
       ],
       "notes": "Complete exact 0x90 application payload for LobbyServerbound c2s 0x000F SelectCharacterConfirm, excluding the 0x10 game-message prefix. The CharaMake operation clears the record, copies two exact state blocks, and expects s2c 0x0010 in response.",
       "id": "BCS-S-0381"
+    },
+    {
+      "name": "PartyChatMessagePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x208",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "BCS-Y-0306",
+        "BCS-Y-0309",
+        "manifests/autotranslate_wire_format_study.json",
+        "manifests/party_subsystem.json",
+        "manifests/pcap_opcode_coverage_matrix.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c478_party-group-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "chat_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword supplied by the emitter caller; its narrower selector or routing semantics remain unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x200",
+          "name": "message",
+          "type": "char[512]",
+          "notes": "Fixed-capacity message buffer cleared before the current source-text length is copied, then copied in full into the outbound record."
+        },
+        {
+          "offset": "0x204",
+          "size": "0x04",
+          "name": "unknown_204",
+          "type": "unknown",
+          "notes": "Exact closing application span copied by the Chat forwarder but not explicitly written by the retained emitter."
+        }
+      ],
+      "notes": "Exact 0x208 application payload for WorldServerbound c2s 0x00C9 PartyChatMessagePacket, excluding the 0x10 game-message prefix. The emitter constructs an exact 0x218 game-message record, and the Chat forwarder copies exactly record_size minus 0x10 application bytes. Packet observations independently retain the full framed extent and party-chat attribution. The closing dword remains unknown-typed because the emitter writes only the leading value and 512-byte message region.",
+      "id": "BCS-S-0382"
+    },
+    {
+      "name": "GroupCreatedPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x28",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "BCS-Y-0983",
+        "BCS-Y-0984",
+        "BCS-Y-0985",
+        "manifests/op0133_groupcreated_emitter.json",
+        "manifests/party_subsystem.json",
+        "manifests/pcap_opcode_coverage_matrix.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c478_party-group-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "group_id",
+          "type": "uint32_t",
+          "notes": "First identifier dword copied from the builder input record."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "member_id",
+          "type": "uint32_t",
+          "notes": "Second identifier dword copied from the builder input record."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x20",
+          "name": "serialized_state",
+          "type": "uint8_t[32]",
+          "notes": "Exact 32-byte staging region cleared before the aggregator's serialized state is copied, then transferred in full to the packet."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for MapServerbound c2s 0x0133 GroupCreatedPacket, excluding the 0x10 game-message prefix. The group-state aggregator feeds the dedicated builder, which writes an exact 0x38 game-message record and sends it through the shared Map gating thunk. Packet observations independently retain the same framed extent and direction-specific group-created attribution.",
+      "id": "BCS-S-0383"
     }
   ],
   "method": {
@@ -26204,6 +26287,16 @@
     "c477StructOutputs": "Corrected BCS-S-0007 and added BCS-S-0379 through BCS-S-0381 in manifests/structs.json.",
     "c477ExistingEvidence": "BCS-Y-0112 establishes CharaMakeOperation emissions for c2s 0x000B and 0x000F with exact framed extents 0x1E0 and 0xA0. BCS-Y-0290 and BCS-Y-0293 establish ServiceLogin c2s 0x0003 and GameLogin c2s 0x0004 with exact framed extents 0x20 and 0x28. BCS-Y-0296 establishes the canonical Lobby allocator, while manifests/operation_opcode_map_outbound.json and the vendored opcode catalog retain the class, channel, and request/response attribution.",
     "c477FreshEvidence": "The 0x000B builder clears the exact 0x1D0 application, writes a uint32 sequence, fixed character fields through +0x33, a 400-byte encoded region through +0x1C3, and only the command-6 byte at +0x1C8 in the closing tail. The 0x000F builder clears 0x90 bytes and copies exact 0x20 and 0x60 state blocks at +0x10 and +0x30. The 0x0003 and 0x0004 builders explicitly clear their complete 0x10 and 0x18 applications before their typed writes.",
-    "c477Limits": "Zero-only spans remain unknown-typed because initialization does not establish member types. Copied operation-state blocks and request values retain broad names where no consumer establishes narrower semantics. No retained Lobby packet sample corroborates values. DumpVAs supplies direct bodies and caller/callee lists only for the four requested functions."
+    "c477Limits": "Zero-only spans remain unknown-typed because initialization does not establish member types. Copied operation-state blocks and request values retain broad names where no consumer establishes narrower semantics. No retained Lobby packet sample corroborates values. DumpVAs supplies direct bodies and caller/callee lists only for the four requested functions.",
+    "c478Topic": "C478 Party chat and group-created packet layouts",
+    "c478Scripts": "ghidra/DumpVAs.java",
+    "c478ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c478Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c478_party-group-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004DF6D0,0x00DB3E30,0x0075E950,0x006C72E0,0x004D6D30' } -ScriptPath @('ghidra')",
+    "c478Inputs": "PartyChat emitter 0x004DF6D0 and Chat forwarder 0x00DB3E30; GroupCreated builder 0x0075E950, group-state aggregator 0x006C72E0, and Map gating thunk 0x004D6D30.",
+    "c478Output": "tools/ghidra/logs/c478_party-group-packets.txt",
+    "c478StructOutputs": "BCS-S-0382 and BCS-S-0383 in manifests/structs.json.",
+    "c478ExistingEvidence": "BCS-Y-0309 and manifests/autotranslate_wire_format_study.json establish WorldServerbound c2s 0x00C9, the 0x218 game-message extent, and PartyChat attribution; BCS-Y-0306 establishes the Chat forwarder's exact application-copy rule. BCS-Y-0984 and manifests/op0133_groupcreated_emitter.json establish MapServerbound c2s 0x0133, the 0x38 game-message extent, two leading identifier dwords, and 32 staged bytes; BCS-Y-0985 establishes the Group aggregator. Packet observations independently retain both framed extents and semantic attributions.",
+    "c478FreshEvidence": "PartyChat emitter 0x004DF6D0 writes the caller-supplied dword at application +0x00, clears a 0x200-byte local message buffer, copies the current text bytes into it, and transfers all 128 dwords to application +0x04. Chat forwarder 0x00DB3E30 copies the full 0x208 application extent, leaving the closing dword at +0x204 unwritten by the emitter. GroupCreated builder 0x0075E950 writes two dwords at application +0x00/+0x04 and copies two cleared 16-byte staging blocks to application +0x08, closing the exact 0x28 extent; aggregator 0x006C72E0 supplies the serialized state and gating thunk 0x004D6D30 routes the finished record.",
+    "c478Limits": "PartyChat+0x00 retains a broad name because the caller-supplied dword has no resolved consumer semantics. PartyChat+0x204 remains unknown-typed because the forwarder includes it in the application copy but the emitter documents no explicit write. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions."
   }
 }
