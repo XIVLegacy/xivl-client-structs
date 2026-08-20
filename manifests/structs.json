@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 261,
+  "structCount": 264,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -19697,6 +19697,135 @@
       ],
       "notes": "Complete exact 0x40 named-group wire row used by CreateNamedGroupMultiple. The handler walks up to eight rows at this stride, and the row consumer establishes the identifier prefix and fixed name buffer.",
       "id": "BCS-S-0261"
+    },
+    {
+      "name": "EndEventPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0032",
+        "BCS-Y-0033",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "source_player_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor handle for the player ending the event."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "reserved_zero",
+          "type": "uint32_t",
+          "notes": "Zero dword occupying the event-owner position; no event-owner actor id is serialized in this packet."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "event_type",
+          "type": "uint8_t",
+          "notes": "Byte-sized event selector forwarded by the receiver."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x27",
+          "name": "event_name",
+          "type": "char[39]",
+          "notes": "Null-terminated event name stored in the remainder of the exact application payload."
+        }
+      ],
+      "notes": "Complete exact 0x30 application payload for s2c 0x0131 EndEvent, excluding the 0x10 game-message prefix. Receiver construction and forwarding establish the actor, selector, and event-name boundaries; the fixed packet extent closes the name buffer.",
+      "id": "BCS-S-0262"
+    },
+    {
+      "name": "JobQuestCompleteTripleReceiverPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0391",
+        "BCS-Y-0902",
+        "BCS-Y-0903",
+        "BCS-Y-0905",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "completion_word_0",
+          "type": "uint64_t",
+          "notes": "First consecutive eight-byte completion subrecord copied into receiver storage. Its internal meaning remains unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "completion_word_1",
+          "type": "uint64_t",
+          "notes": "Second consecutive eight-byte completion subrecord copied into receiver storage. Its internal meaning remains unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "completion_word_2",
+          "type": "uint64_t",
+          "notes": "Third consecutive eight-byte completion subrecord copied into receiver storage. Its internal meaning remains unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for s2c 0x01A2 JobQuestCompleteTriple, excluding the 0x10 game-message prefix. Receiver construction copies exactly three consecutive eight-byte subrecords and the receiver-map body shape closes the payload.",
+      "id": "BCS-S-0263"
+    },
+    {
+      "name": "DeleteGroupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "control_number",
+          "type": "uint64_t",
+          "notes": "Group control number; the documented client path treats zero as an empty delete request."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "group_id",
+          "type": "uint64_t",
+          "notes": "Primary group identifier consumed by the delete path."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "zero_group_id",
+          "type": "uint64_t",
+          "notes": "Eight-byte group-id position documented as zero in the retained tuple."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x08",
+          "name": "confirmed_group_id",
+          "type": "uint64_t",
+          "notes": "Closing group identifier checked by the delete-group consumer."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for s2c 0x0143 DeleteGroup, excluding the 0x10 game-message prefix. The delete-group consumer reads four consecutive eight-byte tuple members, accounting for the entire payload.",
+      "id": "BCS-S-0264"
     }
   ],
   "method": {
@@ -20459,6 +20588,13 @@
     "c430Outputs": "BCS-S-0259 through BCS-S-0261 in manifests/structs.json; no new local evidence archive.",
     "c430ExistingEvidence": "BCS-Y-0394 and the equipment subsystem catalog establish the reusable three-word LinkedItemEntry across one-, eight-, sixteen-, thirty-two-, and sixty-four-row packets. BCS-Y-0395/0877 establish the 0x30 GroupMemberEntry fields through +0x2D and its eight-row use. BCS-Y-0396/0887 establish the 0x40 NamedGroupRecord identifier prefix, fixed name buffer, and eight-row use. Fixed packet extents close both group-record unknown spans.",
     "c430FreshEvidence": "No fresh analysis read was required because the retained positive consumer and packet-stride evidence closes all three records. No claim relies on a zero-result search.",
-    "c430Limits": "The concrete meaning of GroupMemberEntry state_08 and flag_0c remains unresolved. Its final two bytes and NamedGroupRecord+0x12..+0x1F remain unknown-typed because the documented consumers do not interpret them. LinkedItemEntry semantic labels retain structural confidence because the equipment catalog calls for live confirmation even though all three word boundaries are direct."
+    "c430Limits": "The concrete meaning of GroupMemberEntry state_08 and flag_0c remains unresolved. Its final two bytes and NamedGroupRecord+0x12..+0x1F remain unknown-typed because the documented consumers do not interpret them. LinkedItemEntry semantic labels retain structural confidence because the equipment catalog calls for live confirmation even though all three word boundaries are direct.",
+    "c431Topic": "C431 complete event, quest, and group packet payloads",
+    "c431Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c431Inputs": "EndClientOrderEventReceiver construction and forwarding for s2c 0x0131; JobQuestCompleteTripleReceiver construction and receiver-map body shape for s2c 0x01A2; and the direct DeleteGroup tuple consumer for s2c 0x0143.",
+    "c431Outputs": "BCS-S-0262 through BCS-S-0264 in manifests/structs.json; no new local evidence archive.",
+    "c431ExistingEvidence": "BCS-Y-0032/0033 and BCS-Y-0390 establish the exact EndEvent actor, selector, and name boundaries. BCS-Y-0391 and BCS-Y-0902/0903/0905 establish the exact three-word JobQuestCompleteTriple receiver input. BCS-Y-0396 establishes the complete four-qword DeleteGroup tuple. Retained packet and receiver body shapes close all three application-payload extents.",
+    "c431FreshEvidence": "No fresh analysis read was required because existing positive consumers account for every byte of all three payloads. No claim relies on a zero-result search.",
+    "c431Limits": "The three JobQuestCompleteTriple qwords remain semantically opaque despite their exact widths and positions. EndEvent field roles retain structural confidence because the parent batch still requests live revalidation. DeleteGroup semantic labels are limited to the retained consumer's tuple roles. All three layouts are fully byte-accounted and contain no unknown-typed spans."
   }
 }
