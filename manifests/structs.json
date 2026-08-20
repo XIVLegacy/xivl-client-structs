@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 301,
+  "structCount": 305,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -21501,6 +21501,116 @@
       ],
       "notes": "Complete exact 0x78 application payload for s2c 0x0183 ContentMembersX08, excluding the 0x10 game-message prefix. The packet carries two framing values, eight complete ContentMemberEntry rows, and a byte count before the fixed closing span.",
       "id": "BCS-S-0301"
+    },
+    {
+      "name": "InventoryListX01Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x70",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0545",
+        "BCS-Y-0704",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x70",
+          "name": "item",
+          "type": "InventoryItemRecord",
+          "notes": "Single complete inventory-item row consumed by the X01 handler."
+        }
+      ],
+      "notes": "Complete exact 0x70 application payload for s2c 0x0148 InventoryListX01, excluding the 0x10 game-message prefix. The payload is one complete InventoryItemRecord.",
+      "id": "BCS-S-0302"
+    },
+    {
+      "name": "InventoryListX08Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x388",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0546",
+        "BCS-Y-0705",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x380",
+          "name": "items",
+          "type": "InventoryItemRecord[8]",
+          "notes": "Eight complete 0x70 inventory-item rows consumed by the X08 handler."
+        },
+        {
+          "offset": "0x380",
+          "size": "0x04",
+          "name": "item_count",
+          "type": "uint32_t",
+          "notes": "Packet item count; the documented handler consumes its low byte."
+        },
+        {
+          "offset": "0x384",
+          "size": "0x04",
+          "name": "unknown_384",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented X08 handler."
+        }
+      ],
+      "notes": "Complete exact 0x388 application payload for s2c 0x0149 InventoryListX08, excluding the 0x10 game-message prefix. Eight complete InventoryItemRecord rows are followed by the retained count word and a four-byte closing span.",
+      "id": "BCS-S-0303"
+    },
+    {
+      "name": "InventoryListX16Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x700",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0547",
+        "BCS-Y-0709",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x700",
+          "name": "items",
+          "type": "InventoryItemRecord[16]",
+          "notes": "Sixteen complete 0x70 inventory-item rows consumed by the X16 handler."
+        }
+      ],
+      "notes": "Complete exact 0x700 application payload for s2c 0x014A InventoryListX16, excluding the 0x10 game-message prefix. The payload is sixteen complete InventoryItemRecord rows.",
+      "id": "BCS-S-0304"
+    },
+    {
+      "name": "InventoryListX32Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0xE00",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0548",
+        "BCS-Y-0710",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xE00",
+          "name": "items",
+          "type": "InventoryItemRecord[32]",
+          "notes": "Thirty-two complete 0x70 inventory-item rows consumed by the X32 handler."
+        }
+      ],
+      "notes": "Complete exact 0xE00 application payload for s2c 0x014B InventoryListX32, excluding the 0x10 game-message prefix. The payload is thirty-two complete InventoryItemRecord rows.",
+      "id": "BCS-S-0305"
     }
   ],
   "method": {
@@ -22370,6 +22480,13 @@
     "c445Output": "tools/ghidra/logs/c445_content-member-layout.txt",
     "c445ExistingEvidence": "BCS-Y-0393 and the retained payload catalogs establish the exact 0x78 application-payload extent, two uint64 framing values, eight 0x0C rows, actor and layout dwords within each row, and the byte-count position. BCS-Y-0571 and BCS-Y-0881 establish the dispatcher and SharedWork append identities.",
     "c445FreshEvidence": "The read-only X08 helper body passes rows from payload+0x10 and reads the count byte at payload+0x70. The adjacent X16 helper supplies a positive sibling-shape calibration with the same framing extraction and a constant count of 16.",
-    "c445Limits": "The third ContentMemberEntry dword remains unknown-typed because retained decoding provides no stable semantic interpretation. ContentMembersX08+0x71 remains an unknown-typed seven-byte tail because the helper reads only the byte at +0x70. The fresh export covers only the three requested functions and supplies no negative reference-topology claim."
+    "c445Limits": "The third ContentMemberEntry dword remains unknown-typed because retained decoding provides no stable semantic interpretation. ContentMembersX08+0x71 remains an unknown-typed seven-byte tail because the helper reads only the byte at +0x70. The fresh export covers only the three requested functions and supplies no negative reference-topology claim.",
+    "c446Topic": "C446 inventory list packet family",
+    "c446Scripts": "No new headless export was required; retained inventory handlers, payload decoding, packet extents, and the existing nested record supplied the load-bearing evidence.",
+    "c446Inputs": "InventoryListX01Packet, InventoryListX08Packet, InventoryListX16Packet, InventoryListX32Packet, and existing BCS-S-0257 InventoryItemRecord.",
+    "c446Outputs": "BCS-S-0302 through BCS-S-0305 in manifests/structs.json; no new local evidence archive.",
+    "c446ExistingEvidence": "BCS-Y-0394/0395 and the retained payload catalogs establish exact packet extents and fixed 0x70 row counts for s2c 0x0148 through 0x014B. BCS-Y-0545 through BCS-Y-0548 and BCS-Y-0704/0705/0709/0710 establish the dedicated dispatcher paths. Existing BCS-S-0257 supplies the complete nested inventory-item row type.",
+    "c446FreshEvidence": "No fresh analysis read was required because existing positive handlers, packet-shape evidence, and nested-record evidence close all four payloads. No claim relies on a zero-result search.",
+    "c446Limits": "InventoryListX08+0x384 remains an unknown-typed four-byte tail because the retained handler does not interpret it. The X08 handler consumes only the low item-count byte, so no narrower wire type is inferred over the retained uint32_t field. X01, X16, and X32 have no packet-level unknown spans. Unknown members inside InventoryItemRecord retain the limits already recorded by BCS-S-0257."
   }
 }
