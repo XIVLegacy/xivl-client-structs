@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 385,
+  "structCount": 388,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -25239,6 +25239,140 @@
       ],
       "notes": "Complete byte-accounted 0x30 member record owned by Group::SharedWork lookup maps. Both creation paths allocate exactly 0x30 bytes and run the shared constructor. The constructor initializes three consecutive 0x10 vector objects, the length synchronizer resizes them independently from three group-wide source lengths, and six consumers perform bounded byte-range copies through the three vector lanes. The lane semantics and the property-key-to-byte-offset mapping remain unresolved, so the field names are intentionally ordinal.",
       "id": "BCS-S-0385"
+    },
+    {
+      "name": "ApplicationSceneActorCharaCharaActionQueBase",
+      "namespace": "Application::Scene::Actor::Chara",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0052",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+        "tools/ghidra/logs/c481_chara-action-queue-entries.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vtable",
+          "type": "void **",
+          "notes": "Primary CharaActionQueBase vtable pointer. Both concrete constructors install the base vtable before replacing it with their derived-class vtable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state",
+          "type": "uint32_t",
+          "notes": "Base state dword cleared by both concrete constructors. Its higher-level meaning is unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x08 base subobject shared by CharaActionPreLoadQue and CharaActionQue. Both constructors perform the same base vtable write and state clear before installing their derived layouts.",
+      "id": "BCS-S-0386"
+    },
+    {
+      "name": "ApplicationSceneActorCharaCharaActionPreLoadQue",
+      "namespace": "Application::Scene::Actor::Chara",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0386",
+        "BCS-Y-0054",
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+        "tools/ghidra/logs/c481_chara-action-queue-entries.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "base",
+          "type": "ApplicationSceneActorCharaCharaActionQueBase",
+          "notes": "Embedded CharaActionQueBase subobject. The constructor replaces its primary vtable with the CharaActionPreLoadQue vtable."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "runtime_object",
+          "type": "void *",
+          "notes": "Runtime object created through FUN_00798AA0. The constructor installs a back-pointer to this queue at runtime_object+0x1CC and initializes runtime-object state before invoking its vtable slot +0x48. The exact pointee class and teardown policy are unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "action_context",
+          "type": "void *",
+          "notes": "Context pointer copied from the producer bundle. The producer sources it from the action controller owner at +0x228; the exact pointee type is unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x10 pre-load action-queue object. The producer allocates 0x10 bytes, the constructor accounts for every byte through the base subobject and two pointers, and the completed object is inserted into the controller queue.",
+      "id": "BCS-S-0387"
+    },
+    {
+      "name": "ApplicationSceneActorCharaCharaActionQue",
+      "namespace": "Application::Scene::Actor::Chara",
+      "size": "0x1C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0386",
+        "BCS-Y-0053",
+        "BCS-Y-1868",
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+        "tools/ghidra/logs/c481_chara-action-queue-entries.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "base",
+          "type": "ApplicationSceneActorCharaCharaActionQueBase",
+          "notes": "Embedded CharaActionQueBase subobject. The constructor replaces its primary vtable with the concrete CharaActionQue vtable."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "scheduler_listener_vtable",
+          "type": "void **",
+          "notes": "Secondary vtable pointer. Construction first installs the scheduler-listener base vtable and then replaces it with the CharaActionQue secondary vtable."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x01",
+          "name": "flags",
+          "type": "uint8_t",
+          "notes": "Low flag byte cleared by construction. FUN_00846050 replaces bits 5 through 7 from its caller-supplied selector."
+        },
+        {
+          "offset": "0x0D",
+          "size": "0x03",
+          "name": "opaque_0d",
+          "type": "unknown[0x03]",
+          "notes": "The constructor preserves these three bytes while clearing only the low byte at +0x0C. No bounded producer or consumer establishes whether they are padding or state."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "queue_state",
+          "type": "uint32_t",
+          "notes": "Concrete-queue state dword cleared by the constructor. Its higher-level meaning is unresolved."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "runtime_object",
+          "type": "void *",
+          "notes": "Runtime object created through FUN_00798AA0. The constructor installs a back-pointer to this queue at runtime_object+0x1CC and initializes runtime-object state before invoking its vtable slot +0x48. The exact pointee class and teardown policy are unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "action_context",
+          "type": "void *",
+          "notes": "Context pointer copied from the producer bundle. The producer sources it from the action controller owner at +0x228; the exact pointee type is unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x1C concrete action-queue object. The producer allocates 0x1C bytes, construction closes the base, secondary-vtable, flag, state, and pointer regions, type-specific setup can update the flag byte or dispatch slot +0x04, and the finished object is inserted into the controller bucket selected from the action type.",
+      "id": "BCS-S-0388"
     }
   ],
   "method": {
@@ -26413,6 +26547,16 @@
     "c480StructOutput": "BCS-S-0385 in manifests/structs.json.",
     "c480ExistingEvidence": "BCS-Y-1792/1793/1794 establish the unique SharedWork lookup/create funnel, exact 0x30 allocation, and shared constructor. BCS-Y-1796 establishes a six-method property-copy family and the first member-record lane. Retained SendLog parser notes independently identify 0x006D5AF0 as the shared byte-vector resize helper.",
     "c480FreshEvidence": "The constructor initializes begin/end/capacity triples at +0x04/+0x08/+0x0C, +0x14/+0x18/+0x1C, and +0x24/+0x28/+0x2C. The length synchronizer independently resizes those three 0x10 subobjects from three source lengths. Three read consumers and three write consumers resolve a property key to a byte offset, bounds-check the matching lane by end-minus-begin, and copy an arbitrary byte count. The resize helper computes lengths and insertion positions directly in bytes, proving one-byte elements.",
-    "c480Limits": "The exact 0x30 boundary, three 0x10 vector partitions, pointer roles, and one-byte element width are direct. The three lanes intentionally retain ordinal names because their higher-level roles are not established. The property-key tree returns byte offsets, but the keys, element schemas, and lane semantics remain unresolved. DumpVAs provides direct bodies and caller/callee lists only for the requested functions and does not establish arbitrary reference coverage."
+    "c480Limits": "The exact 0x30 boundary, three 0x10 vector partitions, pointer roles, and one-byte element width are direct. The three lanes intentionally retain ordinal names because their higher-level roles are not established. The property-key tree returns byte offsets, but the keys, element schemas, and lane semantics remain unresolved. DumpVAs provides direct bodies and caller/callee lists only for the requested functions and does not establish arbitrary reference coverage.",
+    "c481Topic": "C481 complete Chara action-queue object layouts",
+    "c481Scripts": "ghidra/DumpVAs.java",
+    "c481ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c481Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c481_chara-action-queue-entries.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x008438D0,0x00843B50,0x00845D70,0x00845E80,0x00846050,0x00846080' } -ScriptPath @('ghidra')",
+    "c481Inputs": "Pre-load constructor 0x008438D0, concrete constructor 0x00843B50, exact-size producers 0x00845D70 and 0x00845E80, and concrete producer wrappers 0x00846050 and 0x00846080.",
+    "c481Output": "tools/ghidra/logs/c481_chara-action-queue-entries.txt",
+    "c481StructOutputs": "BCS-S-0386, BCS-S-0387, and BCS-S-0388 in manifests/structs.json.",
+    "c481ExistingEvidence": "BCS-Y-0052/0053/0054 establish the RTTI-anchored base, concrete, and pre-load queue class identities. BCS-Y-1868 and retained C302/C406 exports establish the 0x10 and 0x1C allocation sites, constructor calls, controller insertion, and concrete action-type bucket routing.",
+    "c481FreshEvidence": "Both constructors write the same 0x08 base subobject. The pre-load constructor then writes a runtime-object pointer at +0x08 and action-context pointer at +0x0C. The concrete constructor installs a secondary vtable at +0x08, clears the low flag byte at +0x0C and state dword at +0x10, and writes the equivalent runtime-object and context pointers at +0x14/+0x18. The concrete wrapper modifies only flag bits 5 through 7. Exact producer allocations close both derived object extents.",
+    "c481Limits": "The three object boundaries, base embedding, vtable positions, flag byte, state dwords, and pointer storage are direct. The three bytes at concrete +0x0D remain unknown because construction preserves them and bounded consumers do not interpret them. The exact classes behind runtime_object and action_context remain unresolved and are represented only as pointers. DumpVAs provides direct bodies and caller/callee lists for the six requested functions and does not establish arbitrary reference coverage."
   }
 }
