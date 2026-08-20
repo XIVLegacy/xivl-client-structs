@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 372,
+  "structCount": 374,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -24561,6 +24561,67 @@
       ],
       "notes": "Complete exact 0x220 application payload for WorldServerbound c2s 0x00C8, excluding the 0x10 game-message prefix. Retained evidence identifies a large World-channel state push without establishing a more specific operation or either copied region's inner schema.",
       "id": "BCS-S-0372"
+    },
+    {
+      "name": "WorldChatLoginHandshakePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0307",
+        "BCS-Y-0315",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c475_world-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "handshake_value",
+          "type": "uint32_t",
+          "notes": "Leading dword is zero in the callback emitter and 0x00003C6B in the dedicated handshake builder."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x24",
+          "name": "identity_data",
+          "type": "uint32_t[9]",
+          "notes": "Exact 36-byte identity block filled by the callback emitter from two qwords, an eight-byte type-descriptor header, and an eight-byte name prefix."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for WorldServerbound c2s 0x0002, excluding the 0x10 game-message prefix. Two independent Chat-channel paths emit the same opcode and extent with different leading handshake values; the callback path fills the complete identity block.",
+      "id": "BCS-S-0373"
+    },
+    {
+      "name": "WorldChatLoginFollowupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0315",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c475_world-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to one by the state-one emitter branch."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact closing application span; the emitter documents no explicit write."
+        }
+      ],
+      "notes": "Exact 0x08 application payload for WorldServerbound c2s 0x012C, excluding the 0x10 game-message prefix. Retained state-machine evidence identifies it as the second Chat-channel login step without establishing a more specific operation.",
+      "id": "BCS-S-0374"
     }
   ],
   "method": {
@@ -25672,6 +25733,16 @@
     "c474StructOutputs": "BCS-S-0372 in manifests/structs.json.",
     "c474ExistingEvidence": "BCS-Y-0316, BCS-Y-0331, and manifests/operation_opcode_map_outbound.json establish the WorldServerbound 0x00C8 builder and emitter, the exact 0x230 emitted extent, four-qword prefix, and 512-byte state block. The vendored opcode catalog independently retains the channel, direction, extent, and broad state-push role.",
     "c474FreshEvidence": "Builder 0x004E3750 writes the opcode and 0x230 extent, copies exactly four qwords at record +0x18, then copies exactly 128 dwords at record +0x38. These map to application +0x00 and +0x20 and close the exact 0x220 application extent. Emitter 0x004DF810 zero-initializes both source buffers before copying their current contents and passes the completed record to relay 0x00DB3E30.",
-    "c474Limits": "The 32-byte header and 512-byte state block retain broad names because their source-buffer construction and the available consumers do not establish inner wire semantics. No retained packet sample corroborates individual values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions."
+    "c474Limits": "The 32-byte header and 512-byte state block retain broad names because their source-buffer construction and the available consumers do not establish inner wire semantics. No retained packet sample corroborates individual values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
+    "c475Topic": "C475 World login packet layouts",
+    "c475Scripts": "ghidra/DumpVAs.java",
+    "c475ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c475Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c475_world-login-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004DF9A0,0x00DB4020,0x00DB41E0,0x00E40A60,0x00DB3E30' } -ScriptPath @('ghidra')",
+    "c475Inputs": "Two-state World login emitter 0x004DF9A0; dedicated 0x0002 handshake builder 0x00DB4020 and caller 0x00DB41E0; Chat packet allocation helper 0x00E40A60; and World-channel relay 0x00DB3E30.",
+    "c475Output": "tools/ghidra/logs/c475_world-login-packets.txt",
+    "c475StructOutputs": "BCS-S-0373 and BCS-S-0374 in manifests/structs.json.",
+    "c475ExistingEvidence": "BCS-Y-0307 establishes the dedicated WorldServerbound 0x0002 Chat handshake path, exact 0x38 emitted extent, and leading 0x3C6B value. BCS-Y-0315 and manifests/operation_opcode_map_outbound.json establish the callback emitter's state-zero 0x0002 branch and state-one 0x012C branch with exact 0x38 and 0x18 extents. The vendored opcode catalog retains both channel bindings and the sequential login-step role.",
+    "c475FreshEvidence": "Emitter 0x004DF9A0 writes the 0x0002 application as a zero dword at +0x00, two qwords at +0x04, an eight-byte type-descriptor header at +0x14, and an eight-byte name prefix at +0x1C, closing the exact 0x28 extent. Dedicated builder 0x00DB4020 independently writes 0x00003C6B to the leading 0x0002 application dword. The same callback emitter writes one at 0x012C application +0x00 and documents no write to the closing dword.",
+    "c475Limits": "WorldChatLoginFollowupPacket+0x04 remains unknown-typed because its emitter documents no explicit write. The 0x0002 identity block retains a broad name because copied static bytes do not establish individual wire semantics, and the two emit paths intentionally use different leading values. The more specific 0x012C operation remains unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions."
   }
 }
