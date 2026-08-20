@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 438,
+  "structCount": 440,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27810,6 +27810,76 @@
       ],
       "notes": "Complete exact 0x60 SetDisplayNameReceiver layout. The hybrid factory fixes the boundary, construction accounts for the identifier, inline name state, and flag, and the receive and destruction paths consume the same fields.",
       "id": "BCS-S-0438"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkHamletSupplyRankingReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x5F8",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c509_hamlet-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "HamletSupplyRankingReceiver vftable at 0x01057324."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "unknown[0x04]",
+          "notes": "Unwritten word between the vftable and copied payload; no observed consumer establishes its role."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x5F0",
+          "name": "ranking_payload",
+          "type": "unknown[0x5F0]",
+          "notes": "Exactly 0x17C constructor-copied dwords forwarded as one block to the AreaBase Hamlet supply-ranking worker. Internal member boundaries remain unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x5F8 HamletSupplyRankingReceiver layout. The heap factory fixes the boundary, construction copies the full closing payload, and the receive path forwards that payload intact.",
+      "id": "BCS-S-0439"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkHamletDefenseScoreReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x110",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c509_hamlet-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "HamletDefenseScoreReceiver vftable at 0x01057330."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "unknown[0x04]",
+          "notes": "Unwritten word between the vftable and copied payload; no observed consumer establishes its role."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x108",
+          "name": "defense_payload",
+          "type": "unknown[0x108]",
+          "notes": "Exactly 0x42 constructor-copied dwords forwarded as one block to the Hamlet defense-score worker. Internal member boundaries remain unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x110 HamletDefenseScoreReceiver layout. The heap factory fixes the boundary, construction copies the full closing payload, and the receive path forwards that payload intact.",
+      "id": "BCS-S-0440"
     }
   ],
   "method": {
@@ -29234,6 +29304,17 @@
     "c508StructOutputs": "BCS-S-0438 in manifests/structs.json.",
     "c508ExistingEvidence": "BCS-Y-0731/0732, BCS-Y-1349, BCS-Y-1365, BCS-Y-1369, and BCS-Y-1438 preserve the receiver identity, exact-size claim, constructor field map, hybrid factory, receive role, and parallel cache layout.",
     "c508FreshEvidence": "The eight-section closing export reproduces the hybrid factory, wrapper, constructor, destructor, receive path, cache apply, and both name-state lifecycle helpers. Construction writes display_id at +0x04, acquires the inline name state beginning at +0x08, and writes set_flag at +0x5C. Receive forwards those same three values, while destruction releases the inline state. The instruction audit independently fixes the exact 0x60 allocation.",
-    "c508Limits": "name_state remains unknown-typed because its exact 0x54 extent and ownership lifecycle are established but its internal member boundaries are not. tail_padding remains unknown-typed because construction writes only through +0x5C. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c508Limits": "name_state remains unknown-typed because its exact 0x54 extent and ownership lifecycle are established but its internal member boundaries are not. tail_padding remains unknown-typed because construction writes only through +0x5C. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c509Topic": "C509 Hamlet supply-ranking and defense-score receiver layouts",
+    "c509Scripts": "ghidra/DumpVAs.java",
+    "c509ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c509Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c509_hamlet-receiver-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075A7C0,0x0089CDB0,0x0089CE20,0x0089CE70,0x00762920,0x006F3310,0x0075A870,0x0089CEA0,0x0089CF10,0x0089E420,0x007629E0,0x006F2210' } -ScriptPath @('ghidra')",
+    "c509Inputs": "HamletSupplyRankingReceiver wrapper 0x0075A7C0, constructor 0x0089CDB0, destructor 0x0089CE20, receive 0x0089CE70, heap factory 0x00762920, and worker 0x006F3310; HamletDefenseScoreReceiver wrapper 0x0075A870, constructor 0x0089CEA0, destructor 0x0089CF10, receive 0x0089E420, heap factory 0x007629E0, and worker 0x006F2210.",
+    "c509Output": "tools/ghidra/logs/c509_hamlet-receiver-layouts.txt",
+    "c509InstructionAudit": "A pefile and capstone walk confirms PUSH 0x5F8 at 0x00762946 before the supply receiver allocator at 0x0076294B and PUSH 0x110 at 0x00762A06 before the defense receiver allocator at 0x00762A0B.",
+    "c509StructOutputs": "BCS-S-0439 and BCS-S-0440 in manifests/structs.json.",
+    "c509ExistingEvidence": "BCS-Y-0278, BCS-Y-0366/0367/0368, BCS-Y-0610/0611, BCS-Y-0947 through BCS-Y-0950, BCS-Y-1043/1044, and BCS-Y-1432/1433 preserve the receiver identities, apply roles, and downstream Hamlet state consumers. Retained C369 and C459 evidence supplied the initial worker model.",
+    "c509FreshEvidence": "The twelve-section closing export reproduces both wrappers, constructors, destructors, receive methods, heap factories, and immediate workers. Supply construction copies 0x17C dwords beginning at +0x08 and its exact allocation is 0x5F8. Defense construction copies 0x42 dwords beginning at +0x08 and its exact allocation is 0x110. Each receive path forwards the copied block intact.",
+    "c509Limits": "Both state_04 words remain unknown-typed because construction leaves them unwritten and no observed consumer reads them. ranking_payload and defense_payload remain unknown-typed because their exact extents and block consumers are established but their internal member boundaries are not. DumpVAs supplies direct bodies and caller/callee lists only for the twelve requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
