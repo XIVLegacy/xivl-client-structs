@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 250,
+  "structCount": 252,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -7670,9 +7670,9 @@
         {
           "offset": "0x094",
           "size": "0x004",
-          "name": "form_state",
-          "type": "uint32_t",
-          "notes": "Zero-initialized by FUN_0053AF60."
+          "name": "next_window_index",
+          "type": "int32_t",
+          "notes": "Zero-initialized, copied into each form-object tree node, and incremented after a successful window insertion."
         },
         {
           "offset": "0x098",
@@ -7844,10 +7844,17 @@
         },
         {
           "offset": "0x1F8",
-          "size": "0x010",
-          "name": "form_object_tree",
-          "type": "unknown[0x10]",
-          "notes": "Tree-header state constructed by FUN_00542270 and walked during event removal and teardown; concrete key and node types are unresolved."
+          "size": "0x00C",
+          "name": "tree_1f8",
+          "type": "ApplicationMainElementFormTree18",
+          "notes": "Ordered-tree header initialized through FUN_00542270 with an exact 0x18-byte sentinel specialization."
+        },
+        {
+          "offset": "0x204",
+          "size": "0x004",
+          "name": "unknown_204",
+          "type": "unknown",
+          "notes": "Closing dword of the former 0x10 unknown span; the bounded tree lifecycle and producer or consumer paths neither initialize nor interpret it."
         },
         {
           "offset": "0x208",
@@ -18899,6 +18906,115 @@
       ],
       "notes": "Complete 0x0C ordered-tree header at FormElement+0x1DC. Construction, recursive clear, erase, and teardown establish the exact 0x1C sentinel specialization and count; the leading policy dword remains unknown-typed.",
       "id": "BCS-S-0250"
+    },
+    {
+      "name": "ApplicationMainElementFormTreeNode18",
+      "namespace": "Application::Main::Element",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c424_form-tree18-layouts.txt",
+        "tools/ghidra/logs/c424_form-tree18-instruction-refs.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Tree link initialized by node construction and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Tree parent link; the sentinel stores the root here and erase rebalancing updates it."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Tree link initialized by node construction and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "window_object",
+          "type": "void *",
+          "notes": "Nullable polymorphic window-object pointer used as the map key, copied into the node by insertion, and released through its first virtual slot before erasure."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "window_index",
+          "type": "int32_t",
+          "notes": "Signed window index copied from FormElement+0x094, compared with selected_window_index, and passed to the indexed window lookup."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 and read or updated by insertion and erase balancing."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero on ordinary nodes, set to one on the sentinel, and used by traversal and erase."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x18-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x18 ordered-map node specialization used by FormElement. Construction and insertion establish the window-object key and signed window-index value; lifecycle, recursive clear, insertion and erase balancing, and exact-size deallocation establish the links and marker bytes.",
+      "id": "BCS-S-0251"
+    },
+    {
+      "name": "ApplicationMainElementFormTree18",
+      "namespace": "Application::Main::Element",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "BCS-S-0251",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c424_form-tree18-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Owned exact 0x18 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and maintained by insertion, erase, and teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-map header at FormElement+0x1F8. Construction, insertion, traversal, recursive clear, erase, and teardown establish the exact 0x18 node specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0252"
     }
   ],
   "method": {
@@ -19600,6 +19716,16 @@
     "c423Output": "tools/ghidra/logs/c423_form-tree1c-layouts.txt",
     "c423ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied the exact FormElement+0x1DC placement, its 0x0C boundary, the constructor and teardown identities, and the owner constructor and destructor call order.",
     "c423FreshEvidence": "C423 establishes exact 0x1C node allocation and deallocation, three tree links, self-linked sentinel initialization, count initialization and maintenance, red-black color at +0x18, nil marker at +0x19, recursive clear, and erase balancing.",
-    "c423Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x0C-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free."
+    "c423Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x0C-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free.",
+    "c424Topic": "C424 FormElement 0x18-node tree layouts",
+    "c424ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c424Scripts": "ghidra/DumpVAs.java and ghidra/FindFieldRefs.java",
+    "c424Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c424_form-tree18-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0053AF60,0x0053AC10,0x00542270,0x0053DFC0,0x0053CEB0,0x00542010,0x0053F5D0,0x0053C200,0x0053EE00,0x005387F0,0x005377C0,0x005409C0,0x0053F890,0x0053CFB0,0x0061EEC0' } -ScriptPath @('ghidra')",
+    "c424InstructionInvocation": "tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c424_form-tree18-instruction-refs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY='0xC,0x14,0x15' } -ScriptPath @('ghidra')",
+    "c424Inputs": "FormElement owner constructor and teardown; tree lifecycle, exact allocators, recursive clear, insertion and erase paths; window producer and routed-event consumer; post-free instruction reference at owner teardown VA 0x0053ADBE.",
+    "c424Outputs": "tools/ghidra/logs/c424_form-tree18-layouts.txt and tools/ghidra/logs/c424_form-tree18-instruction-refs.txt",
+    "c424ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied the FormElement+0x1F8 placement, its former 0x10 unknown boundary, the constructor and teardown identities, and owner traversal of the container.",
+    "c424FreshEvidence": "C424 establishes the exact 0x0C tree-header extent, separate owner dword at +0x204, exact 0x18 node allocation and deallocation, three tree links, window-object key at +0x0C, signed window-index value at +0x10, color at +0x14, nil marker at +0x15, sentinel and count initialization, insertion, traversal, recursive clear, and erase balancing. The instruction export positively confirms the owner +0x0C node access beyond the earlier noreturn-marked free path.",
+    "c424Limits": "DumpVAs supplies direct bodies and call lists only for the fifteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The concrete window-object class, the tree-policy dword, the node's two-byte tail, and FormElement+0x204 remain unknown because the bounded paths do not establish them."
   }
 }
