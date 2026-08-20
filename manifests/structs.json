@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 310,
+  "structCount": 313,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -21785,6 +21785,171 @@
       ],
       "notes": "Complete exact 0x08 application payload for s2c 0x0152 InventoryRemoveX01, excluding the 0x10 game-message prefix. The handler consumes the leading slot word and the fixed packet extent closes the six-byte tail.",
       "id": "BCS-S-0310"
+    },
+    {
+      "name": "CommandResultHeader",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0395",
+        "BCS-Y-0408",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "source_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor identifier that originated the command result."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "animation_id",
+          "type": "uint32_t",
+          "notes": "Animation identifier staged by the shared command-result header consumer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x18",
+          "name": "unknown_08",
+          "type": "unknown[0x18]",
+          "notes": "Copied pre-action header block whose internal member boundaries are not established."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x02",
+          "name": "row_count",
+          "type": "uint16_t",
+          "notes": "Row-loop bound staged by the shared command-result consumer."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "header_control_value",
+          "type": "uint16_t",
+          "notes": "Separately copied and consumed header-side control word; narrower semantics remain unresolved."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x02",
+          "name": "command_id",
+          "type": "uint16_t",
+          "notes": "Command identifier consumed by the shared result path."
+        },
+        {
+          "offset": "0x26",
+          "size": "0x02",
+          "name": "flags",
+          "type": "uint16_t",
+          "notes": "Command-result flag word consumed by the shared header path."
+        }
+      ],
+      "notes": "Complete exact 0x28 header shared by the CommandResultX00, X01, X10, and X18 application payloads. Positive staging consumers establish the scalar boundaries and the separate +0x20/+0x22 words; the copied +0x08 block remains internally opaque.",
+      "id": "BCS-S-0311"
+    },
+    {
+      "name": "CommandResultX00Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0405",
+        "BCS-Y-0408",
+        "BCS-Y-0640",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "header",
+          "type": "CommandResultHeader",
+          "notes": "Complete shared command-result header with no result rows."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x013C CommandResultX00, excluding the 0x10 game-message prefix. The payload is exactly one CommandResultHeader.",
+      "id": "BCS-S-0312"
+    },
+    {
+      "name": "CommandResultX01Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0406",
+        "BCS-Y-0408",
+        "BCS-Y-0638",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "header",
+          "type": "CommandResultHeader",
+          "notes": "Complete shared command-result header preceding the single result row."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "target_id",
+          "type": "uint32_t",
+          "notes": "Target actor identifier for the single result row."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x02",
+          "name": "amount",
+          "type": "uint16_t",
+          "notes": "Amount value for the single result row."
+        },
+        {
+          "offset": "0x2E",
+          "size": "0x02",
+          "name": "world_master_text_id",
+          "type": "uint16_t",
+          "notes": "World-master text identifier for the single result row."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "effect_id",
+          "type": "uint32_t",
+          "notes": "Effect identifier for the single result row."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x01",
+          "name": "param",
+          "type": "uint8_t",
+          "notes": "Byte parameter paired with the single result row."
+        },
+        {
+          "offset": "0x35",
+          "size": "0x01",
+          "name": "hit_num",
+          "type": "uint8_t",
+          "notes": "Hit-number byte paired with the single result row."
+        },
+        {
+          "offset": "0x36",
+          "size": "0x02",
+          "name": "unknown_36",
+          "type": "unknown[0x02]",
+          "notes": "Closing payload span not interpreted by the documented single-result path."
+        }
+      ],
+      "notes": "Complete exact 0x38 application payload for s2c 0x0139 CommandResultX01, excluding the 0x10 game-message prefix. One CommandResultHeader is followed by the complete single-result scalar set and a two-byte closing span.",
+      "id": "BCS-S-0313"
     }
   ],
   "method": {
@@ -22675,6 +22840,13 @@
     "c448Outputs": "BCS-S-0308 through BCS-S-0310 in manifests/structs.json; no new local evidence archive.",
     "c448ExistingEvidence": "BCS-Y-0393/0544/0703 establish the three InventorySetBegin members and exact s2c 0x0146 extent. BCS-Y-0394/0560/0707 establish the InventoryBeginChange byte and exact s2c 0x016D extent. BCS-Y-0396/0555/0716 establish the InventoryRemoveX01 slot word and exact s2c 0x0152 extent. The retained payload and equipment catalogs corroborate all three dedicated paths.",
     "c448FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close all three payloads. No claim relies on a zero-result search.",
-    "c448Limits": "InventoryBeginChange+0x01 and InventoryRemoveX01+0x02 remain unknown-typed closing spans because retained consumers do not interpret them. InventorySetBegin is fully byte-accounted with no unknown field, but the higher-level domains of size and code remain unresolved. InventoryEndChange was screened but not started because its handler consumes no payload pointer and all eight payload bytes remain opaque."
+    "c448Limits": "InventoryBeginChange+0x01 and InventoryRemoveX01+0x02 remain unknown-typed closing spans because retained consumers do not interpret them. InventorySetBegin is fully byte-accounted with no unknown field, but the higher-level domains of size and code remain unresolved. InventoryEndChange was screened but not started because its handler consumes no payload pointer and all eight payload bytes remain opaque.",
+    "c449Topic": "C449 command result header and compact packets",
+    "c449Scripts": "No new headless export was required; retained command-result staging consumers, corrected payload decoding, and exact packet extents supplied the load-bearing evidence.",
+    "c449Inputs": "Shared CommandResultHeader, CommandResultX00Packet, and CommandResultX01Packet consumer paths and exact application-payload extents.",
+    "c449Outputs": "BCS-S-0311 through BCS-S-0313 in manifests/structs.json; no new local evidence archive.",
+    "c449ExistingEvidence": "BCS-Y-0408 and the retained data-dependency catalog establish the shared 0x28 header, including the corrected separate row_count and header_control_value words. BCS-Y-0395/0405/0640 establish the exact header-only s2c 0x013C payload. BCS-Y-0393/0406/0638 establish all six single-row values and exact s2c 0x0139 extent.",
+    "c449FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close the header and both compact payloads. No claim relies on a zero-result search.",
+    "c449Limits": "CommandResultHeader+0x08 remains an unknown-typed 0x18-byte block because retained consumers copy it without establishing internal member boundaries. CommandResultX01+0x36 remains an unknown-typed two-byte tail. header_control_value has known uint16_t storage and a distinct consumer but unresolved higher-level semantics. X10 and X18 were screened as follow-up structure-of-arrays packets but not started in this bounded batch."
   }
 }
