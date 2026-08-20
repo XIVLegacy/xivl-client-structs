@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 362,
+  "structCount": 363,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -24107,6 +24107,101 @@
       ],
       "notes": "Complete exact 0x10 application payload for c2s 0x01DA, excluding the 0x10 game-message prefix. Retained vtable and UI evidence identifies the owner as ItemSearchHistoryViewWidget and the operation as a retainer purchase or sale history query.",
       "id": "BCS-S-0362"
+    },
+    {
+      "name": "ItemSearchDirectPurchasePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0320",
+        "BCS-Y-0347",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unresolved.json",
+        "manifests/vtable_slot_resolution.json",
+        "tools/ghidra/logs/c469_itemsearch-direct-purchase.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "value_0",
+          "type": "uint32_t",
+          "notes": "First source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "value_1",
+          "type": "uint32_t",
+          "notes": "Second source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value_2",
+          "type": "uint32_t",
+          "notes": "Third source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value_3",
+          "type": "uint32_t",
+          "notes": "Fourth source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "value_4",
+          "type": "uint32_t",
+          "notes": "Fifth source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "value_5",
+          "type": "uint32_t",
+          "notes": "Sixth source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "widget_value",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchDirectPurchaseWidget +0x24C."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "value_7",
+          "type": "uint8_t",
+          "notes": "Byte copied from source-record offset +0x18."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "stack_count",
+          "type": "uint8_t",
+          "notes": "Stack-count byte copied from source-record offset +0x19."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x02",
+          "name": "quantity",
+          "type": "uint16_t",
+          "notes": "Purchase quantity copied from source-record offset +0x1A."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x20",
+          "name": "metadata",
+          "type": "uint64_t[4]",
+          "notes": "Exact packed four-qword metadata block copied from source-record offset +0x1C."
+        }
+      ],
+      "notes": "Complete exact 0x40 application payload for c2s 0x01DE, excluding the 0x10 game-message prefix. Retained vtable and UI evidence identifies the owner as ItemSearchDirectPurchaseWidget and the operation as a retainer direct-buy commit.",
+      "id": "BCS-S-0363"
     }
   ],
   "method": {
@@ -25158,6 +25253,16 @@
     "c468Outputs": "BCS-S-0361 and BCS-S-0362 in manifests/structs.json; no new local evidence archive.",
     "c468ExistingEvidence": "BCS-Y-0691 establishes three dword writes for the exact 0x20 emitted 0x01D9 record. BCS-Y-0695 establishes three value dwords and an explicit zero closing dword for the exact 0x20 emitted 0x01DA record. BCS-Y-0347, manifests/cluster_refinements_unresolved.json, and manifests/vtable_slot_resolution.json establish the PriceViewWidget and HistoryViewWidget ownership and request roles.",
     "c468FreshEvidence": "No fresh analysis read was required because retained positive emitter bodies and vtable ownership records close both layouts. No claim relies on a zero-result search.",
-    "c468Limits": "ItemSearchPriceRequestPacket+0x0C remains an unknown-typed closing dword because the retained emitter does not document an explicit write. The history request's context fields and zero-initialized value_3 retain broad names because the retained bodies do not establish their individual wire semantics. C2s 0x01DE was screened but not started because its helper-built direct-purchase layout is a separate larger record best handled with its builder in a dedicated batch."
+    "c468Limits": "ItemSearchPriceRequestPacket+0x0C remains an unknown-typed closing dword because the retained emitter does not document an explicit write. The history request's context fields and zero-initialized value_3 retain broad names because the retained bodies do not establish their individual wire semantics. C2s 0x01DE was screened but not started because its helper-built direct-purchase layout is a separate larger record best handled with its builder in a dedicated batch.",
+    "c469Topic": "C469 ItemSearch direct-purchase packet layout",
+    "c469Scripts": "ghidra/DumpVAs.java",
+    "c469ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c469Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c469_itemsearch-direct-purchase.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0085E1B0,0x0085D160' } -ScriptPath @('ghidra')",
+    "c469Inputs": "C2s 0x01DE virtual emitter 0x0085E1B0 and its dedicated record builder 0x0085D160.",
+    "c469Output": "tools/ghidra/logs/c469_itemsearch-direct-purchase.txt",
+    "c469StructOutput": "BCS-S-0363 in manifests/structs.json.",
+    "c469ExistingEvidence": "BCS-Y-0320 establishes the virtual emitter, source argument grouping, exact 0x50 emitted record extent, and c2s 0x01DE route. BCS-Y-0347, manifests/cluster_refinements_unresolved.json, and manifests/vtable_slot_resolution.json establish ItemSearchDirectPurchaseWidget ownership and the retainer direct-buy role.",
+    "c469FreshEvidence": "Builder 0x0085D160 writes six leading source dwords, one widget dword, two source bytes, one source word, and four packed qwords. These writes account for the complete exact 0x40 application payload.",
+    "c469Limits": "No unknown-typed field remains, but value_0 through value_5, widget_value, value_7, and metadata retain neutral or broad names because the emitter and builder do not establish their individual wire semantics. Stack_count and quantity use the retained ItemSearch attribution. DumpVAs supplies direct bodies and call lists only for the two requested functions."
   }
 }
