@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 315,
+  "structCount": 317,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -22101,6 +22101,156 @@
       ],
       "notes": "Complete exact 0x128 application payload for s2c 0x013B CommandResultX18, excluding the 0x10 game-message prefix. The eighteen-target stager transposes six structure-of-arrays regions into internal result rows; the exact packet extent leaves a four-byte closing span.",
       "id": "BCS-S-0315"
+    },
+    {
+      "name": "PartyMapMarkerEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0580",
+        "BCS-Y-0890",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "player_id",
+          "type": "uint32_t",
+          "notes": "Player identifier consumed by the marker update path."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Record span not interpreted by the documented marker consumer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "marker_value_08",
+          "type": "uint32_t",
+          "notes": "Per-player dword consumed by the marker path; narrower semantics remain unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "marker_value_0c",
+          "type": "uint32_t",
+          "notes": "Additional dword consumed by the marker path; narrower semantics remain unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "unknown_10",
+          "type": "unknown[0x04]",
+          "notes": "Record span not interpreted by the documented marker consumer."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "player_x",
+          "type": "float",
+          "notes": "Player map-marker X coordinate."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "player_y",
+          "type": "float",
+          "notes": "Player map-marker Y coordinate."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "player_z",
+          "type": "float",
+          "notes": "Player map-marker Z coordinate."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "player_orientation",
+          "type": "float",
+          "notes": "Player map-marker orientation."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "unknown_24",
+          "type": "unknown[0x04]",
+          "notes": "Closing record span not interpreted by the documented marker consumer."
+        }
+      ],
+      "notes": "Complete exact 0x28 marker record used by the sixteen-entry PartyMapMarkerUpdate array. The positive apply path establishes the stride and consumed dword and coordinate boundaries; three four-byte spans remain opaque.",
+      "id": "BCS-S-0316"
+    },
+    {
+      "name": "PartyMapMarkerUpdatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x298",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0580",
+        "BCS-Y-0890",
+        "BCS-S-0316",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json",
+        "manifests/pcap_opcode_evidence.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x008",
+          "name": "player_group_id",
+          "type": "uint64_t",
+          "notes": "Identifier of the player-party group receiving the marker update."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x004",
+          "name": "group_type",
+          "type": "uint32_t",
+          "notes": "Group-type value associated with the marker update."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x004",
+          "name": "unknown_00c",
+          "type": "unknown[0x04]",
+          "notes": "Header span not interpreted by the documented marker consumer."
+        },
+        {
+          "offset": "0x010",
+          "size": "0x280",
+          "name": "marker_entries",
+          "type": "PartyMapMarkerEntry[16]",
+          "notes": "Sixteen fixed-stride party map-marker records."
+        },
+        {
+          "offset": "0x290",
+          "size": "0x001",
+          "name": "marker_count",
+          "type": "uint8_t",
+          "notes": "Byte count consumed as the number of active marker records."
+        },
+        {
+          "offset": "0x291",
+          "size": "0x007",
+          "name": "unknown_291",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented marker consumer."
+        }
+      ],
+      "notes": "Complete exact 0x298 application payload for s2c 0x018D PartyMapMarkerUpdate, excluding the 0x10 game-message prefix. The payload contains a group header, sixteen exact marker records, a byte count, and a seven-byte closing span.",
+      "id": "BCS-S-0317"
     }
   ],
   "method": {
@@ -23005,6 +23155,13 @@
     "c450Outputs": "BCS-S-0314 and BCS-S-0315 in manifests/structs.json; no new local evidence archive.",
     "c450ExistingEvidence": "BCS-Y-0408 establishes the shared 0x28 header. BCS-Y-0410 and the retained 0x013A payload catalogs establish six ten-element arrays at +0x28 through +0xAA and the exact 0xB8 payload. BCS-Y-0415/0416 and the retained combat-damage catalogs establish the corresponding eighteen-element arrays at +0x28 through +0x112 and the exact 0x128 payload.",
     "c450FreshEvidence": "No fresh analysis read was required because existing positive consumers and exact packet-shape evidence close both layouts. No claim relies on a zero-result search.",
-    "c450Limits": "CommandResultX10+0xB4 and CommandResultX18+0x124 remain unknown-typed four-byte closing spans because the documented stagers do not interpret them. Both nested CommandResultHeader fields retain the internally opaque +0x08 block recorded by BCS-S-0311. No runtime capture exists for 0x013B, but its complete static shape is established by the positive eighteen-target stager and packet extent; no runtime-value claim is made."
+    "c450Limits": "CommandResultX10+0xB4 and CommandResultX18+0x124 remain unknown-typed four-byte closing spans because the documented stagers do not interpret them. Both nested CommandResultHeader fields retain the internally opaque +0x08 block recorded by BCS-S-0311. No runtime capture exists for 0x013B, but its complete static shape is established by the positive eighteen-target stager and packet extent; no runtime-value claim is made.",
+    "c451Topic": "C451 party map-marker packet and nested record",
+    "c451Scripts": "No new headless export was required; retained positive marker-apply evidence, the party subsystem layout, and exact packet extents supplied the load-bearing evidence.",
+    "c451Inputs": "PartyMapMarkerUpdatePacket, its sixteen-entry PartyMapMarkerEntry array, the direct handler and apply path, and exact application-payload extents.",
+    "c451Outputs": "BCS-S-0316 and BCS-S-0317 in manifests/structs.json; no new local evidence archive.",
+    "c451ExistingEvidence": "BCS-Y-0890 and the retained payload and party catalogs establish the 0x28 marker stride, player identifier, two additional consumed dwords, four float coordinates, sixteen-record capacity, marker-count byte, and exact 0x298 application payload. BCS-Y-0580 establishes the dedicated 0x018D handler path. Retained packet observations corroborate the fixed wire extent.",
+    "c451FreshEvidence": "No fresh analysis read was required because existing positive consumers, subsystem layout evidence, and packet-shape evidence close both records. No claim relies on a zero-result search.",
+    "c451Limits": "PartyMapMarkerEntry+0x04, +0x10, and +0x24 remain unknown-typed four-byte spans because the documented consumer does not interpret them. The typed dwords at +0x08 and +0x0C have unresolved higher-level semantics. PartyMapMarkerUpdate+0x0C remains an unknown-typed header dword and +0x291 remains an unknown-typed seven-byte tail. The zone-owned +0x4D8 gate belongs to the handler owner rather than this wire layout and remains outside this batch."
   }
 }
