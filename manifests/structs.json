@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 418,
+  "structCount": 419,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27061,6 +27061,42 @@
       ],
       "notes": "Complete exact 0x28 SoundCacheSound leaf layout. The owner allocates exactly 0x28 bytes, construction builds the complete SoundCache base and replaces its vftable, and the resulting object is inserted into the SoundCache tree. No derived tail exists at the allocation boundary.",
       "id": "BCS-S-0418"
+    },
+    {
+      "name": "ApplicationLuaScriptClientLuaActorImpl",
+      "namespace": "Application::Lua::Script::Client",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c501_lua-actor-impl-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::LuaActorImpl vftable at 0x00FDFB2C. Construction first installs the LuaActorImplInterface vftable before replacing it with the derived vftable."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "target_object",
+          "type": "void *",
+          "notes": "Pointer copied from the dereferenced owner slot supplied to construction. LuaActorImpl virtual wrappers forward this field or its address, but bounded evidence does not identify its concrete interface type."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "actor",
+          "type": "ApplicationLuaScriptClientControlActorBase *",
+          "notes": "Constructor-supplied actor pointer. Existing LuaActorImpl slot evidence dynamically casts this value from Control::ActorBase to narrower actor classes."
+        }
+      ],
+      "notes": "Complete exact 0x0C Application::Lua::Script::Client::LuaActorImpl layout. The sole factory fixes the allocation boundary, construction accounts for all three dwords, RTTI fixes the class identity, and existing virtual-slot consumers establish the closing dword as a Control::ActorBase pointer.",
+      "id": "BCS-S-0419"
     }
   ],
   "method": {
@@ -28398,6 +28434,16 @@
     "c500Outputs": "BCS-S-0418 in manifests/structs.json.",
     "c500ExistingEvidence": "C491 establishes the exact 0x28 allocation, successful construction through 0x00443350, and insertion of the resulting pointer into the SoundCache tree. The constructor calls the complete BCS-S-0400 base constructor and replaces only the primary vftable. C314 independently names that vftable as Component::Sound::SoundCacheSound.",
     "c500FreshEvidence": "No fresh reads were needed; this batch promotes the retained allocation, construction, insertion, and RTTI evidence into a complete zero-tail leaf layout.",
-    "c500Limits": "All unknown-typed fields are inherited unchanged through BCS-S-0400; no new direct unknown field is introduced. NilControl was screened but not started because retained decompilation omits its allocation argument and the object has lower immediate value than this closed SoundCache leaf. ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, and BootupElement remain incomplete for their previously recorded consumer, allocation, or member-boundary gaps."
+    "c500Limits": "All unknown-typed fields are inherited unchanged through BCS-S-0400; no new direct unknown field is introduced. NilControl was screened but not started because retained decompilation omits its allocation argument and the object has lower immediate value than this closed SoundCache leaf. ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, and BootupElement remain incomplete for their previously recorded consumer, allocation, or member-boundary gaps.",
+    "c501Topic": "C501 LuaActorImpl layout",
+    "c501Scripts": "ghidra/DumpVAs.java",
+    "c501ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c501Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c501_lua-actor-impl-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00759510,0x00759580,0x0076C8D0' } -ScriptPath @('ghidra')",
+    "c501Inputs": "LuaActorImpl constructor 0x00759510, destructor 0x00759580, and sole allocation factory 0x0076C8D0.",
+    "c501Output": "tools/ghidra/logs/c501_lua-actor-impl-layout.txt",
+    "c501StructOutput": "BCS-S-0419 in manifests/structs.json.",
+    "c501ExistingEvidence": "BCS-Y-0130 and BCS-Y-0131 preserve the constructor field map and exact 0x0C factory allocation. BCS-Y-0139 and related LuaActorImpl slot records establish that the closing field is passed as an Application::Lua::Script::Client::Control::ActorBase pointer and dynamically cast to narrower actor classes. C314 RTTI identifies vftable 0x00FDFB2C as Application::Lua::Script::Client::LuaActorImpl.",
+    "c501FreshEvidence": "The three-section export reproduces the exact 0x0C allocation, sole constructor call, primary and interface vftable writes, copied target pointer at +0x04, constructor-supplied closing dword at +0x08, and destructor vftable sequence.",
+    "c501Limits": "target_object remains a void pointer because bounded construction and virtual wrappers do not identify its concrete interface. DumpVAs supplies direct bodies and caller/callee lists only for the three requested functions and does not establish arbitrary reference topology. The factory decompiler omits explicit constructor arguments at the call expression, so the field-source mapping relies on the separately reproduced constructor body and the existing slot-consumer evidence; the exact allocation boundary does not rely on the omitted arguments. No candidate was started and left incomplete in this batch."
   }
 }
