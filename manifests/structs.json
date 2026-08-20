@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 458,
+  "structCount": 463,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -28877,6 +28877,313 @@
       ],
       "notes": "Complete exact 0x58 client-internal ExecuteDebugCommandReceiver layout. The heap factory fixes the allocation boundary, construction copy-initializes the inline debug-command string after the vftable, receive consumes the same string through the debug parser and callback path, and destruction releases it.",
       "id": "BCS-S-0458"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandLuaParamsContainer",
+      "namespace": "Application::Lua::Script::Client::Command",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0442",
+        "tools/ghidra/logs/c520_order-event-receiver-layouts.txt",
+        "BCS-Y-0726"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_00",
+          "type": "unknown[0x04]",
+          "notes": "Constructor- or clone-supplied context word. The bounded lifecycle does not classify its representation."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "serialized_params",
+          "type": "ApplicationLuaScriptClientCommandByteRangeVector",
+          "notes": "Owned serialized Lua-parameter bytes. Construction reserves and copies at most 0x80 bytes; teardown releases the range."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "notice_event",
+          "type": "bool",
+          "notes": "Initialized false and set true for the notice-event branch, which also seeds the first serialized parameter byte to one."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[0x03]",
+          "notes": "Unwritten closing bytes fixed by the parent receiver's exact allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x18 Lua-parameter container embedded at the end of KickClientOrderEventReceiver. Clone construction and teardown establish the context word, owned byte range, and notice-event byte; the exact parent allocation closes the three trailing bytes.",
+      "id": "BCS-S-0459"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandLuaParamRecordVector",
+      "namespace": "Application::Lua::Script::Client::Command",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c520_order-event-receiver-layouts.txt",
+        "BCS-Y-0727"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy_00",
+          "type": "unknown[0x04]",
+          "notes": "Unresolved vector policy word preceding the three observed pointers."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "begin",
+          "type": "void *",
+          "notes": "First parsed Lua-parameter record; receive and teardown use an eight-byte element stride."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "end",
+          "type": "void *",
+          "notes": "One-past-last parsed record pointer."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "capacity_end",
+          "type": "void *",
+          "notes": "Allocation boundary used when releasing the eight-byte record array."
+        }
+      ],
+      "notes": "Complete exact 0x10 vector header for parsed eight-byte Lua-parameter records. Copy construction, receive iteration, and teardown establish its three pointers and element stride; embedding at the end of the exact 0xDC receiver closes the header.",
+      "id": "BCS-S-0460"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkKickClientOrderEventReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x84",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0135",
+        "BCS-S-0271",
+        "BCS-S-0436",
+        "BCS-S-0459",
+        "tools/ghidra/logs/c520_order-event-receiver-layouts.txt",
+        "BCS-Y-0028",
+        "BCS-Y-0029",
+        "BCS-Y-0724",
+        "BCS-Y-0725",
+        "BCS-Y-0726"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "command_updater_base",
+          "type": "ApplicationLuaScriptClientCommandCommandUpdaterBase",
+          "notes": "Inherited CommandUpdaterBase prefix; construction replaces its vftable with the receiver vftable at 0x010574B0."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "trigger_actor_id",
+          "type": "uint32_t",
+          "notes": "Resolved copy of the packet trigger_actor_id."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "owner_actor_id",
+          "type": "uint32_t",
+          "notes": "Resolved or sentinel owner actor identifier used by the receive readiness gate."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "server_code",
+          "type": "uint32_t",
+          "notes": "Copy of the packet server_code dword."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x54",
+          "name": "event_name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline copy of the packet event_name."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x01",
+          "name": "event_type",
+          "type": "uint8_t",
+          "notes": "Copy of the packet event_type selector."
+        },
+        {
+          "offset": "0x69",
+          "size": "0x03",
+          "name": "padding_69",
+          "type": "unknown[0x03]",
+          "notes": "Unwritten alignment gap before the Lua-parameter container."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x18",
+          "name": "lua_params",
+          "type": "ApplicationLuaScriptClientCommandLuaParamsContainer",
+          "notes": "Owned serialized Lua parameters plus the notice-event discriminator consumed by the receive path."
+        }
+      ],
+      "notes": "Complete exact 0x84 KickClientOrderEventReceiver layout. The slot-one clone factory fixes the boundary; packet construction, clone construction, receive, and teardown account for the inherited base, actor identifiers, event metadata, inline name, and embedded Lua-parameter container.",
+      "id": "BCS-S-0461"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkStartServerOrderEventFunctionReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0xDC",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0135",
+        "BCS-S-0272",
+        "BCS-S-0436",
+        "BCS-S-0442",
+        "BCS-S-0460",
+        "tools/ghidra/logs/c520_order-event-receiver-layouts.txt",
+        "BCS-Y-0030",
+        "BCS-Y-0031",
+        "BCS-Y-0727"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "command_updater_base",
+          "type": "ApplicationLuaScriptClientCommandCommandUpdaterBase",
+          "notes": "Inherited CommandUpdaterBase prefix; construction replaces its vftable with the receiver vftable at 0x010574C8."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "trigger_actor_id",
+          "type": "uint32_t",
+          "notes": "Resolved copy of the packet trigger_actor_id."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "owner_actor_id",
+          "type": "uint32_t",
+          "notes": "Resolved copy of the packet owner_actor_id."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x54",
+          "name": "event_name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline copy of the packet event_name."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x54",
+          "name": "function_name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline copy of the packet function_name."
+        },
+        {
+          "offset": "0xB8",
+          "size": "0x01",
+          "name": "event_type",
+          "type": "uint8_t",
+          "notes": "Copy of the packet event_type selector."
+        },
+        {
+          "offset": "0xB9",
+          "size": "0x03",
+          "name": "padding_b9",
+          "type": "unknown[0x03]",
+          "notes": "Unwritten alignment gap before the serialized parameter range."
+        },
+        {
+          "offset": "0xBC",
+          "size": "0x10",
+          "name": "serialized_lua_params",
+          "type": "ApplicationLuaScriptClientCommandByteRangeVector",
+          "notes": "Owned copy of the packet Lua-parameter bytes."
+        },
+        {
+          "offset": "0xCC",
+          "size": "0x10",
+          "name": "parsed_lua_params",
+          "type": "ApplicationLuaScriptClientCommandLuaParamRecordVector",
+          "notes": "Parsed eight-byte parameter records iterated by the receive worker."
+        }
+      ],
+      "notes": "Complete exact 0xDC StartServerOrderEventFunctionReceiver layout. The slot-one clone factory fixes the boundary; packet and clone construction account for both actor identifiers, two inline strings, event type, serialized parameter range, and parsed record vector, while receive and teardown consume both vector tails.",
+      "id": "BCS-S-0462"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkEndClientOrderEventReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x64",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0135",
+        "BCS-S-0262",
+        "BCS-S-0436",
+        "tools/ghidra/logs/c520_order-event-receiver-layouts.txt",
+        "BCS-Y-0032",
+        "BCS-Y-0033"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "command_updater_base",
+          "type": "ApplicationLuaScriptClientCommandCommandUpdaterBase",
+          "notes": "Inherited CommandUpdaterBase prefix; construction replaces its vftable with the receiver vftable at 0x01057348."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "source_player_actor_id",
+          "type": "uint32_t",
+          "notes": "Resolved copy of the packet source_player_actor_id."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x01",
+          "name": "event_state",
+          "type": "uint8_t",
+          "notes": "Constructor-supplied event-state byte derived from the packet reserved byte and event selector; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x0D",
+          "size": "0x01",
+          "name": "event_type",
+          "type": "uint8_t",
+          "notes": "Converted copy of the packet event_type selector."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x02",
+          "name": "padding_0e",
+          "type": "unknown[0x02]",
+          "notes": "Unwritten alignment gap before the inline event name."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x54",
+          "name": "event_name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline copy of the packet event_name."
+        }
+      ],
+      "notes": "Complete exact 0x64 EndClientOrderEventReceiver layout. The slot-one clone factory fixes the boundary; packet construction and cloning account for the inherited base, source actor, two event-state bytes, alignment gap, and inline event name, while destruction releases the string.",
+      "id": "BCS-S-0463"
     }
   ],
   "method": {
@@ -30419,6 +30726,17 @@
     "c519StructOutputs": "BCS-S-0458 in manifests/structs.json.",
     "c519ExistingEvidence": "BCS-S-0135 supplies the exact 0x54 inline UTF-8 string layout. BCS-Y-0200 and BCS-Y-0265 through BCS-Y-0269 preserve the client-internal receiver identity, _onDebugInput role, lifecycle, wrapper, and factory.",
     "c519FreshEvidence": "The eight-section closing export reproduces the factory, complete lifecycle, receive method, LuaActorImpl wrapper, and both inline-string helpers. The factory allocates exactly 0x58 bytes. Construction copy-initializes the established string layout at +0x04, receive parses that string into debug-input records and fires _onDebugInput, and destruction releases the same subobject.",
-    "c519Limits": "The receiver has no top-level unknown-typed fields; unresolved internal string-state semantics remain those already recorded by BCS-S-0135. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. SetCommandEventConditionReceiver was screened but not started: its dead constructor has no factory or wrapper, and the retained 0x58-byte alternate array-entry stride does not by itself prove the receiver's exact closing boundary after fields through +0x59."
+    "c519Limits": "The receiver has no top-level unknown-typed fields; unresolved internal string-state semantics remain those already recorded by BCS-S-0135. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. SetCommandEventConditionReceiver was screened but not started: its dead constructor has no factory or wrapper, and the retained 0x58-byte alternate array-entry stride does not by itself prove the receiver's exact closing boundary after fields through +0x59.",
+    "c520Topic": "C520 order-event receiver layouts",
+    "c520Scripts": "ghidra/DumpVAs.java",
+    "c520ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c520Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c520_order-event-receiver-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0076C0D0,0x0089F530,0x0089F2B0,0x0089E800,0x0089E450,0x0089EC30,0x0089ECF0,0x0089E660,0x0089E200,0x0076C220,0x0089F430,0x0089F360,0x0089EA40,0x0089EB20,0x0089E8E0,0x007830F0,0x008A27F0,0x0077D7D0,0x0076C3B0,0x0089D180,0x0089D070,0x0089D100' }",
+    "c520Inputs": "The KickEvent, RunEventFunction, and EndEvent LuaActorImpl wrappers; all three slot-one clone factories, clone constructors, and destructors; Kick receive and Lua-parameter helpers; Start receive trampoline, worker, and vector helpers; and End packet constructor path.",
+    "c520Output": "tools/ghidra/logs/c520_order-event-receiver-layouts.txt",
+    "c520InstructionAudit": "A calibrated pefile and capstone walk confirms literal allocator arguments 0x84 at 0x0089F554, 0xDC at 0x0089F454, and 0x64 at 0x0089D1A4 immediately before the three slot-one factory allocator calls.",
+    "c520StructOutputs": "BCS-S-0459 through BCS-S-0463 in manifests/structs.json.",
+    "c520ExistingEvidence": "BCS-S-0135, BCS-S-0262, BCS-S-0271/0272, BCS-S-0436, and BCS-S-0442 supply the inline string, packet, base-class, and byte-range layouts. BCS-Y-0028 through BCS-Y-0033 and BCS-Y-0724 through BCS-Y-0727 preserve the receiver identities, factory/receive roles, and event-specific consumers.",
+    "c520FreshEvidence": "The twenty-two-section closing export reproduces the three packet wrappers, exact clone factories, clone constructors, destructors, receive paths, and load-bearing Lua-parameter/vector helpers. Literal allocations fix Kick at 0x84, Start at 0xDC, and End at 0x64. The same construction and teardown paths establish the embedded 0x18 Lua-parameter container and 0x10 parsed-record vector.",
+    "c520Limits": "LuaParamsContainer context_00 and both vector policy words remain unknown-typed because their bounded lifecycle does not classify their representations. Kick padding_69, Start padding_b9, End padding_0e, and the LuaParamsContainer tail remain unknown-typed alignment bytes. End event_state has established byte storage but unresolved higher-level semantics. DumpVAs supplies direct bodies and caller/callee lists only for the twenty-two requested functions and does not establish arbitrary reference topology. SendLogReceiver remains unscreened in this batch; SetCommandEventConditionReceiver retains the exact-boundary blocker recorded in C519. No promoted candidate was left incomplete."
   }
 }
