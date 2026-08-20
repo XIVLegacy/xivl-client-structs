@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 254,
+  "structCount": 256,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -19127,6 +19127,169 @@
       ],
       "notes": "Complete exact 0x24 non-block event-execution object embedded in each EventExecutionQueueNode. Base and derived construction, copy construction, context matching, virtual dispatch, one-shot callback handling, and teardown establish every member boundary.",
       "id": "BCS-S-0254"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionClientSideBlockEvent",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x2C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0473",
+        "BCS-Y-0475",
+        "manifests/event_block_execution_state.json",
+        "tools/ghidra/logs/c427_event-execution-block-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ExecutionClientSideBlockEvent vftable installed after base construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "event_object",
+          "type": "void *",
+          "notes": "Polymorphic Event::Base-derived object dispatched through virtual slots. The concrete leaf subclass varies by producer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "primary_context_key",
+          "type": "uint32_t",
+          "notes": "Primary four-byte execution context key copied by the shared base constructor."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "context_keys",
+          "type": "std::vector<uint32_t>",
+          "notes": "Owned vector of additional four-byte context keys constructed and destroyed by the shared execution-event base."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "end_notified",
+          "type": "bool",
+          "notes": "One-shot end-notification latch set by the EndEvent selector-zero path."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "abort_notified",
+          "type": "bool",
+          "notes": "One-shot abort-notification latch set by the remaining observed EndEvent notification paths."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x01",
+          "name": "owns_event_object",
+          "type": "bool",
+          "notes": "Shared-base ownership flag; teardown releases event_object only when this byte is true."
+        },
+        {
+          "offset": "0x1F",
+          "size": "0x01",
+          "name": "padding_1f",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the block-event state bytes."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "server_order_executed",
+          "type": "bool",
+          "notes": "Set when a server order successfully executes against this block event and tested by EndEvent handling."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "armed",
+          "type": "bool",
+          "notes": "Set after block dispatch and cleared by observed completion paths."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x01",
+          "name": "state_22",
+          "type": "uint8_t",
+          "notes": "Initialized to one by block-base construction and cleared by one EndEvent path; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x23",
+          "size": "0x01",
+          "name": "padding_23",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the derived pointer fields."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "unpacked_order_payload",
+          "type": "void *",
+          "notes": "Owned unpacked-order payload passed to block dispatch and released during derived teardown. Its concrete record type is unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "waiting_resume_checker",
+          "type": "ApplicationLuaScriptClientEventExecutionClientSideBlockEventClientOrderEventWaitingResumeChecker *",
+          "notes": "Non-null while the event coroutine is suspended awaiting a server client order; virtual methods install, test, and cancel this checker."
+        }
+      ],
+      "notes": "Complete exact 0x2C client-side block execution object. Exact allocation, layered construction, state-machine consumers, virtual field accessors, checker cancellation, block dispatch, and layered teardown establish every member boundary.",
+      "id": "BCS-S-0255"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionClientSideBlockEventClientOrderEventWaitingResumeChecker",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/event_block_execution_state.json",
+        "tools/ghidra/logs/c427_event-execution-block-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ClientOrderEventWaitingResumeChecker vftable installed after ResumeCheckerInterface base construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "owner",
+          "type": "ApplicationLuaScriptClientEventExecutionClientSideBlockEvent *",
+          "notes": "Owning block event supplied at construction and cleared when the pending wait is cancelled."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "resume_now",
+          "type": "bool",
+          "notes": "Initialized false and set true when cancellation makes the suspended coroutine resumable."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "resume_result",
+          "type": "uint8_t",
+          "notes": "Initialized to zero and filled with the cancellation result byte."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x0C allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x0C nested resume checker allocated by the block event. Construction and cancellation establish the owner and two byte-sized resume fields.",
+      "id": "BCS-S-0256"
     }
   ],
   "method": {
@@ -19857,6 +20020,15 @@
     "c426Output": "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt",
     "c426ExistingEvidence": "BCS-S-0038 and BCS-Y-0474/0476 supplied the exact 0x2C node allocation, list placement, embedded payload construction at +0x08, callback guard at node+0x25, and queue-walker context. The retained catalog left the payload type undefined and represented its later fields as overlapping siblings.",
     "c426FreshEvidence": "C426 establishes the exact 0x24 embedded ExecutionClientSideNonBlockEvent extent, its base and derived construction and copy boundaries, the 0x10 vector of four-byte context keys, one-shot callback and ownership flags, selector, exact node link directions, virtual dispatch, and independent embedded-object teardown before exact 0x2C node deallocation.",
-    "c426Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf class varies by producer; the higher-level meanings of primary_context_key, context_keys, state_1c, and event_selector remain bounded to their observed storage and use. Three alignment bytes remain unknown-typed. No claim relies on instructions omitted after a noreturn free."
+    "c426Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf class varies by producer; the higher-level meanings of primary_context_key, context_keys, state_1c, and event_selector remain bounded to their observed storage and use. Three alignment bytes remain unknown-typed. No claim relies on instructions omitted after a noreturn free.",
+    "c427Topic": "C427 client-side block event layouts",
+    "c427ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c427Script": "ghidra/DumpVAs.java",
+    "c427Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c427_event-execution-block-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00895860,0x008958E0,0x00896680,0x008966F0,0x008962C0,0x00896950,0x00896F70,0x00892670,0x00892680,0x00892690,0x008926A0,0x00893160,0x008934A0,0x00893520,0x008935B0,0x00893800,0x00899490,0x0089B040,0x00897310' } -ScriptPath @('ghidra')",
+    "c427Inputs": "Shared base and block constructors; derived teardown; block dispatch and unpacked-order consumer; server-order gate; block-event virtual accessors and canceller; EndEvent state consumers; exact checker allocator and constructor; exact 0x2C state-machine allocation.",
+    "c427Output": "tools/ghidra/logs/c427_event-execution-block-layout.txt",
+    "c427ExistingEvidence": "BCS-Y-0473 and BCS-Y-0475 supplied the exact block-event allocation and dispatch context. manifests/event_block_execution_state.json supplied the retained RTTI identities, derived field roles, vtable-slot attribution, and exact nested checker allocation.",
+    "c427FreshEvidence": "C427 revalidates the exact 0x2C block-event allocation, layered construction, all base and derived member boundaries, block dispatch and server-order state transitions, the typed checker pointer, exact 0x0C checker allocation, checker construction, cancellation fields, and layered teardown.",
+    "c427Limits": "DumpVAs supplies direct bodies and call lists only for the nineteen requested functions. Vtable-slot identity comes from the retained investigation snapshot rather than fresh data-reference coverage. The concrete Event::Base leaf and unpacked-order payload record types vary or remain unresolved, state_22 has no promoted higher-level meaning, and four alignment bytes remain unknown-typed. No negative topology claim relies on the export or on a zero-result search."
   }
 }
