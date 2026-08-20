@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 366,
+  "structCount": 369,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -24340,6 +24340,100 @@
       ],
       "notes": "Exact 0x18 application payload for c2s 0x01D8, excluding the 0x10 game-message prefix. Retained ownership and dispatch evidence identifies it as an ItemSearchListWidget state-machine request; individual value semantics remain unresolved.",
       "id": "BCS-S-0366"
+    },
+    {
+      "name": "ItemSearchCompactRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0327",
+        "manifests/search_subsystem.json",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "tools/ghidra/logs/c472_search-marketplace-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact closing application span; the dedicated emitter documents no explicit write."
+        }
+      ],
+      "notes": "Exact 0x08 application payload for c2s 0x01DB, excluding the 0x10 game-message prefix. Retained caller-family evidence places it in the ItemSearch marketplace path; its more specific operation remains unresolved.",
+      "id": "BCS-S-0367"
+    },
+    {
+      "name": "ItemSearchBulkRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x228",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0326",
+        "manifests/search_subsystem.json",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "tools/ghidra/logs/c472_search-marketplace-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x224",
+          "name": "payload",
+          "type": "uint32_t[137]",
+          "notes": "Exact 137-dword block copied from the caller-supplied source record."
+        }
+      ],
+      "notes": "Complete exact 0x228 application payload for c2s 0x01DC, excluding the 0x10 game-message prefix. Retained caller-family evidence places it in the ItemSearch marketplace path; the copied block remains semantically opaque.",
+      "id": "BCS-S-0368"
+    },
+    {
+      "name": "PcSearchQueryPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x108",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0325",
+        "manifests/pcap_grounded_c2s_validation.json",
+        "manifests/search_subsystem.json",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "tools/ghidra/logs/c472_search-marketplace-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter and observed as zero in the retained packet sample."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x104",
+          "name": "criteria",
+          "type": "uint32_t[65]",
+          "notes": "Exact 65-dword query block copied from the caller-supplied source record; the retained sample begins with values 3 and 0x00320102 before a zero-filled remainder."
+        }
+      ],
+      "notes": "Complete exact 0x108 application payload for c2s 0x01DD, excluding the 0x10 game-message prefix. Retained player-search attribution and one packet observation identify it as a search query without resolving the inner criteria schema.",
+      "id": "BCS-S-0369"
     }
   ],
   "method": {
@@ -25421,6 +25515,16 @@
     "c471StructOutputs": "BCS-S-0365 and BCS-S-0366 in manifests/structs.json.",
     "c471ExistingEvidence": "BCS-Y-0692 and BCS-Y-0694 establish the dedicated c2s 0x01D7 and 0x01D8 emitters and exact 0x18 and 0x28 emitted record extents. BCS-Y-0926, manifests/retainer_bazaar_subsystem.json, and manifests/schema_rescue.json establish their ItemSearchListWidget ownership and state-machine routes.",
     "c471FreshEvidence": "Emitter 0x00519440 copies the first dword of the selected 0x10-byte widget record into application +0x00. Emitter 0x0051AAC0 copies widget +0x1220 and +0x1224, an indexed table dword selected by +0x1228, then widget +0x1238 and +0x1234 into application +0x00 through +0x10. The exact emitted extents leave closing dwords at +0x04 and +0x14 respectively.",
-    "c471Limits": "ItemSearchListIndexedRequestPacket+0x04 and ItemSearchListStateRequestPacket+0x14 remain unknown-typed because neither dedicated emitter documents an explicit write to its closing span. The typed dwords retain broad names because widget storage offsets and indexed access do not establish individual wire semantics. The more specific 0x01D7 operation remains unresolved. DumpVAs supplies direct bodies and call lists only for the four requested functions."
+    "c471Limits": "ItemSearchListIndexedRequestPacket+0x04 and ItemSearchListStateRequestPacket+0x14 remain unknown-typed because neither dedicated emitter documents an explicit write to its closing span. The typed dwords retain broad names because widget storage offsets and indexed access do not establish individual wire semantics. The more specific 0x01D7 operation remains unresolved. DumpVAs supplies direct bodies and call lists only for the four requested functions.",
+    "c472Topic": "C472 search marketplace packet layouts",
+    "c472Scripts": "ghidra/DumpVAs.java",
+    "c472ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c472Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c472_search-marketplace-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004C7300,0x004C73D0,0x004C7490,0x004C7150,0x008746E0,0x00874750,0x00874570' } -ScriptPath @('ghidra')",
+    "c472Inputs": "C2s 0x01DD, 0x01DB, and 0x01DC emitters 0x004C7300, 0x004C73D0, and 0x004C7490; shared relay 0x004C7150; and direct callers 0x008746E0, 0x00874750, and 0x00874570.",
+    "c472Output": "tools/ghidra/logs/c472_search-marketplace-packets.txt",
+    "c472StructOutputs": "BCS-S-0367, BCS-S-0368, BCS-S-0369 in manifests/structs.json.",
+    "c472ExistingEvidence": "BCS-Y-0325 through BCS-Y-0327 and manifests/c2s_emit_sites.json establish all three emitters, opcodes, relay route, and exact 0x118, 0x18, and 0x238 emitted record extents. manifests/search_subsystem.json and manifests/retainer_bazaar_subsystem.json separate player-search 0x01DD from ItemSearch 0x01DB and 0x01DC. manifests/pcap_grounded_c2s_validation.json supplies one exact 0x108 application-payload observation for 0x01DD.",
+    "c472FreshEvidence": "Emitter 0x004C73D0 explicitly zeros application +0x00. Emitter 0x004C7490 explicitly zeros +0x00 and copies exactly 137 dwords at +0x04. Emitter 0x004C7300 explicitly zeros +0x00 and copies exactly 65 dwords at +0x04. The fixed emitted extents close the 0x228 and 0x108 application layouts and leave only the 0x01DB closing dword unwritten.",
+    "c472Limits": "ItemSearchCompactRequestPacket+0x04 remains unknown-typed because its dedicated emitter documents no explicit write. The 0x01DB operation remains unresolved. ItemSearchBulkRequestPacket.payload and PcSearchQueryPacket.criteria retain broad names because direct copies and one packet sample do not establish their inner schemas. DumpVAs supplies direct bodies and call lists only for the seven requested functions."
   }
 }
