@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 319,
+  "structCount": 321,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -22344,6 +22344,175 @@
       ],
       "notes": "Complete exact 0x78 application payload for s2c 0x018A SetActiveLinkshell, excluding the 0x10 game-message prefix. The positive consumer establishes the two eight-element arrays and reads only the low byte at +0x60; the remaining bytes stay unknown-typed.",
       "id": "BCS-S-0319"
+    },
+    {
+      "name": "GroupHeaderPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0564",
+        "BCS-Y-0874",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Location value associated with the group header."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Sequence identifier used to join subsequent group member packets."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "list_id",
+          "type": "uint64_t",
+          "notes": "List identifier staged by the group-header consumer."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Primary group index staged by the consumer."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x08",
+          "name": "secondary_list_id",
+          "type": "uint64_t",
+          "notes": "Second list-like identifier whose narrower role remains unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x08",
+          "name": "group_index_mirror",
+          "type": "uint64_t",
+          "notes": "Second group-index value, normally matching the primary group index."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "group_type_id",
+          "type": "uint32_t",
+          "notes": "Group-type identifier consumed by the header path."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x0C",
+          "name": "unknown_34",
+          "type": "unknown[0x0C]",
+          "notes": "Header span not interpreted by the documented consumer."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "uint32_t",
+          "notes": "Localized-name identifier, with the retained custom-name sentinel behavior."
+        },
+        {
+          "offset": "0x44",
+          "size": "0x20",
+          "name": "group_name",
+          "type": "char[32]",
+          "notes": "Fixed-width custom group name."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x10",
+          "name": "group_control_words",
+          "type": "uint32_t[4]",
+          "notes": "Four consumed group-side control words whose higher-level meanings remain unresolved."
+        },
+        {
+          "offset": "0x74",
+          "size": "0x04",
+          "name": "member_count",
+          "type": "uint32_t",
+          "notes": "Group member count consumed by the packet processor."
+        }
+      ],
+      "notes": "Complete exact 0x78 application payload for s2c 0x017C GroupHeader, excluding the 0x10 game-message prefix. This header establishes the sequence and group context used by the following begin, member, and end packets.",
+      "id": "BCS-S-0320"
+    },
+    {
+      "name": "SetGroupLayoutIdPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0579",
+        "BCS-Y-0889",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "group_id",
+          "type": "uint64_t",
+          "notes": "Group identifier for the per-member layout update."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "actor_id_or_handle",
+          "type": "uint32_t",
+          "notes": "Actor-facing identifier or handle consumed by the group layout path."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "uint32_t",
+          "notes": "Localized-name identifier used when a custom actor name is not selected."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "layout_id",
+          "type": "int32_t",
+          "notes": "Map layout identifier; -1 suppresses the layout update."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "layout_kind",
+          "type": "uint8_t",
+          "notes": "Layout-kind byte consumed by the update path."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "value_15",
+          "type": "uint8_t",
+          "notes": "Byte with established storage but unresolved higher-level meaning."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x22",
+          "name": "actor_name",
+          "type": "char[34]",
+          "notes": "Fixed-width actor name used for out-of-rendering-range party members."
+        }
+      ],
+      "notes": "Complete exact 0x38 application payload for s2c 0x018B SetGroupLayoutId, excluding the 0x10 game-message prefix. The packet updates per-member layout and name state used by the party UI.",
+      "id": "BCS-S-0321"
     }
   ],
   "method": {
@@ -23262,6 +23431,13 @@
     "c452Outputs": "BCS-S-0318 and BCS-S-0319 in manifests/structs.json; no new local evidence archive.",
     "c452ExistingEvidence": "BCS-Y-0396/0577/0887 and the retained payload catalogs establish eight 0x40 NamedGroupRecord rows, the +0x200 count byte, and the exact 0x208 bulk-group payload. BCS-Y-0396/0578/0888 establish the eight linkshell identifiers, eight paired group types, the low-byte +0x60 consumer, and the exact 0x78 active-linkshell payload.",
     "c452FreshEvidence": "No fresh analysis read was required because existing positive consumers, nested-record evidence, and packet-shape evidence close both layouts. No claim relies on a zero-result search.",
-    "c452Limits": "CreateNamedGroupMultiple+0x201 remains an unknown-typed seven-byte tail, and each nested NamedGroupRecord retains its existing unknown +0x12..+0x1F span. SetActiveLinkshell+0x61 remains an unknown-typed three-byte span because only the low byte at +0x60 is consumed; +0x64 remains an unknown-typed 0x14-byte tail. The higher-level role of +0x60 as both retained active index and iteration bound is not narrowed further."
+    "c452Limits": "CreateNamedGroupMultiple+0x201 remains an unknown-typed seven-byte tail, and each nested NamedGroupRecord retains its existing unknown +0x12..+0x1F span. SetActiveLinkshell+0x61 remains an unknown-typed three-byte span because only the low byte at +0x60 is consumed; +0x64 remains an unknown-typed 0x14-byte tail. The higher-level role of +0x60 as both retained active index and iteration bound is not narrowed further.",
+    "c453Topic": "C453 group header and layout packets",
+    "c453Scripts": "No new headless export was required; retained positive group consumers, subsystem layouts, and exact packet extents supplied the load-bearing evidence.",
+    "c453Inputs": "GroupHeaderPacket and SetGroupLayoutIdPacket dedicated handlers, downstream consumers, and exact application-payload extents.",
+    "c453Outputs": "BCS-S-0320 and BCS-S-0321 in manifests/structs.json; no new local evidence archive.",
+    "c453ExistingEvidence": "BCS-Y-0393/0564/0874 and the retained payload and party catalogs establish all GroupHeader scalar, name, control-word, and member-count boundaries plus the exact 0x78 extent. BCS-Y-0394/0579/0889 establish the complete SetGroupLayoutId identifier, layout, byte, and name boundaries plus the exact 0x38 extent.",
+    "c453FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close both layouts. No claim relies on a zero-result search.",
+    "c453Limits": "GroupHeader+0x34 remains an unknown-typed 0x0C-byte span because the documented consumer does not interpret it. secondary_list_id and the four group_control_words have known storage boundaries but unresolved higher-level meanings. SetGroupLayoutId contains no unknown-typed span, but actor_id_or_handle and value_15 retain unresolved semantics. The parent party catalog requests live validation for its semantic labels; this batch makes only structural claims."
   }
 }
