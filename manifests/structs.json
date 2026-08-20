@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 397,
+  "structCount": 398,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -26000,6 +26000,50 @@
       ],
       "notes": "Complete byte-accounted 0x1C 32-bit MSVC basic_string<wchar_t> storage layout. Independent default construction, assignment, erase, indexed access, buffer selection, heap teardown, and exact 0x1C range movement establish the two-byte element width and storage boundaries.",
       "id": "BCS-S-0397"
+    },
+    {
+      "name": "MsvcWideStringListNode32",
+      "namespace": "std",
+      "size": "0x28",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0397",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_00440be0.cpp",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_00440ce0.cpp",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_00440ed0.cpp"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "MsvcWideStringListNode32 *",
+          "notes": "Forward link written by the exact node allocator and followed by list teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "MsvcWideStringListNode32 *",
+          "notes": "Backward link written by the exact node allocator and restored on the circular sentinel during teardown."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value_policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading dword copied from the source value before the nested wide string. Its concrete policy representation is unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x1C",
+          "name": "value",
+          "type": "MsvcBasicStringWcharStorage32",
+          "notes": "Nested wide string copy-constructed from source +0x04. Teardown independently consumes its +0x04 storage, +0x14 length, and +0x18 capacity fields at node offsets +0x10, +0x20, and +0x24."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x28 doubly linked list node carrying a policy dword and one 32-bit MSVC wide string. Exact allocation and copy construction close the node boundary; list teardown independently confirms both links and the nested string offsets.",
+      "id": "BCS-S-0398"
     }
   ],
   "method": {
@@ -27238,6 +27282,13 @@
     "c489StructOutput": "BCS-S-0397 in manifests/structs.json.",
     "c489ExistingEvidence": "Retained exact-source records for 0x00404220, 0x00403FD0, 0x00440600, 0x00440850, 0x004409B0, 0x00449060, 0x00449540, and 0x00454E90 establish the +0x04 wchar_t[8] or heap-pointer storage, +0x14 length, +0x18 capacity, eight-element SSO threshold, empty capacity seven, and two-byte element addressing. Retained 0x00404760 source establishes exact 0x1C range movement while preserving the leading policy dword.",
     "c489FreshEvidence": "One batched read-only export reproduces all ten requested helpers. Construction and teardown write capacity seven, length zero, and a two-byte terminator at +0x04. Assignment, erase, buffer selection, and indexed access independently choose inline or heap storage at capacity eight and scale character offsets and allocation sizes by two. The range mover advances both endpoints by exactly 0x1C while exchanging bytes +0x04 through +0x1B.",
-    "c489Limits": "The leading +0x00 policy dword remains unknown because every bounded string helper skips it. The +0x04 storage remains unknown-typed because it is a 16-byte inline wide-character buffer in one mode and a pointer-bearing union in the other, and the catalog type grammar does not express that union. No enclosing consumer object was started because the retained callers do not close any additional member boundary. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference coverage."
+    "c489Limits": "The leading +0x00 policy dword remains unknown because every bounded string helper skips it. The +0x04 storage remains unknown-typed because it is a 16-byte inline wide-character buffer in one mode and a pointer-bearing union in the other, and the catalog type grammar does not express that union. No enclosing consumer object was started because the retained callers do not close any additional member boundary. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference coverage.",
+    "c490Topic": "C490 32-bit MSVC wide string list node",
+    "c490Scripts": "No new headless export was required; retained exact instruction source and the established wide-string layout supplied the load-bearing allocation and member boundaries.",
+    "c490Inputs": "Exact node copy constructor 0x00440BE0, wide-string list teardown 0x00440CE0, exact 0x28 node allocator 0x00440ED0, and BCS-S-0397.",
+    "c490Outputs": "BCS-S-0398 in manifests/structs.json; no new local evidence archive.",
+    "c490ExistingEvidence": "Retained exact source for 0x00440ED0 allocates 0x28 bytes, writes links at +0x00/+0x04, and copy-constructs the value at +0x08 through 0x00440BE0. That helper copies a leading dword and constructs a wide string at value +0x04. Retained 0x00440CE0 teardown independently reads node links and the nested string storage, length, and capacity at node +0x10/+0x20/+0x24. BCS-S-0397 establishes the nested string's complete 0x1C layout.",
+    "c490FreshEvidence": "No fresh analysis read was required because retained positive allocation, construction, and teardown instructions close all four fields and the exact node extent. No claim relies on a zero-result search.",
+    "c490Limits": "value_policy remains unknown-typed because it is copied but no bounded consumer establishes its representation. The narrow-string sibling was screened but not started: its teardown proves links and trailing string storage fields, but retained evidence does not establish whether the nested string begins at +0x0C or another boundary. The incomplete ApplicationMainElementSystemClientWorkRecord was not revisited because no new consumer evidence closes its initial string or remaining member boundaries."
   }
 }
