@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 378,
+  "structCount": 381,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -364,71 +364,104 @@
       "id": "BCS-S-0007",
       "name": "CharacterModifyRequest",
       "namespace": "FFXIV.Client.Network",
-      "size": "0x1C4",
+      "size": "0x1D0",
       "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-024"
+        "mdi-024",
+        "BCS-Y-0112",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x08",
+          "size": "0x04",
           "name": "sequence",
-          "type": "uint64_t",
-          "notes": "Per-request sequence number."
+          "type": "uint32_t",
+          "notes": "Per-request sequence dword written after the complete application payload is zero-initialized."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span between the sequence and character id; no narrower typed write is documented."
         },
         {
           "offset": "0x08",
           "size": "0x04",
           "name": "character_id",
           "type": "uint32_t",
-          "notes": "Target character id (0 when reserving a fresh slot)."
+          "notes": "Target character id copied from operation state."
         },
         {
           "offset": "0x0C",
           "size": "0x04",
           "name": "person_type",
           "type": "uint32_t",
-          "notes": "Specific value semantics not yet mapped."
+          "notes": "Operation-state dword whose narrower value semantics remain unresolved."
         },
         {
           "offset": "0x10",
           "size": "0x01",
           "name": "slot",
           "type": "uint8_t",
-          "notes": "Character slot index."
+          "notes": "Character slot index copied from operation state."
         },
         {
           "offset": "0x11",
           "size": "0x01",
           "name": "command",
           "type": "uint8_t",
-          "notes": "Sub-command. 0x01 = RESERVE, 0x02 = MAKE, 0x03 = RENAME, 0x04 = DELETE, 0x06 = RENAME_RETAINER. The client parser confirms these values. This is a u8 at offset 0x11, distinct from BCS-S-0006's u16 at offset 0x0A on the response side."
+          "notes": "Sub-command. Values 1, 2, 3, 4, and 6 select reserve, make, rename, delete, and retainer-rename paths; the high bit marks continuation in the segmented make path."
         },
         {
           "offset": "0x12",
           "size": "0x02",
           "name": "world_id",
           "type": "uint16_t",
-          "notes": "Target world id."
+          "notes": "Target world id copied from operation state."
         },
         {
           "offset": "0x14",
           "size": "0x20",
           "name": "character_name",
           "type": "char[32]",
-          "notes": "Character/retainer name. 32-byte ASCII, null-padded."
+          "notes": "Fixed-capacity character or retainer name copied with a 32-byte bound and explicitly terminated at +0x33."
         },
         {
           "offset": "0x34",
           "size": "0x190",
           "name": "character_info_encoded",
           "type": "char[400]",
-          "notes": "Base64-encoded CharaInfo blob for CMD_MAKE; empty/null-padded for the other commands."
+          "notes": "Fixed-capacity encoded character-information region used by reserve and make paths and explicitly terminated at +0x1C3."
+        },
+        {
+          "offset": "0x1C4",
+          "size": "0x04",
+          "name": "unknown_1C4",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span after the encoded character-information region."
+        },
+        {
+          "offset": "0x1C8",
+          "size": "0x01",
+          "name": "command_value_1C8",
+          "type": "uint8_t",
+          "notes": "Copied from operation state only for command 6; its narrower retainer-rename semantics remain unresolved."
+        },
+        {
+          "offset": "0x1C9",
+          "size": "0x07",
+          "name": "unknown_1C9",
+          "type": "unknown",
+          "notes": "Exact zero-initialized closing span with no narrower typed write."
         }
       ],
-      "notes": "452-byte c2s body for lobby opcode 0x0E (CharacterModify request). The client parser establishes the field widths and command code values. This is distinct from BCS-S-0006 CharacterModifyResponseRecord on the s2c side: same opcode, different layout, and a different command field offset and width (see MDI-024)."
+      "notes": "Complete exact 0x1D0 application payload for LobbyServerbound c2s 0x000B CharacterModifyPacket, excluding the 0x10 game-message prefix. Fresh builder evidence corrects the former 0x1C4 extent, uint64 sequence, and opcode 0x0E attribution: the emitted application is cleared for 0x1D0 bytes, carries a uint32 sequence at +0x00, and closes with the command-6 byte and zero-only tail through +0x1CF. The response remains s2c opcode 0x000E in BCS-S-0006."
     },
     {
       "id": "BCS-S-0008",
@@ -24867,6 +24900,169 @@
       ],
       "notes": "Complete exact 0x1D0 application payload for LobbyServerbound c2s 0x0006, excluding the 0x10 game-message prefix. It shares the compact SessionPacket header and two closing text regions while expanding the first text region to 384 bytes; its narrower operation remains unresolved.",
       "id": "BCS-S-0378"
+    },
+    {
+      "name": "LobbyGetCharactersPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0290",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from ServiceLogin operation state after the application payload is cleared."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized dword with no narrower typed write."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "request_value_08",
+          "type": "uint8_t",
+          "notes": "Byte copied from ServiceLogin operation state; semantic role unresolved."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "request_value_09",
+          "type": "uint8_t",
+          "notes": "Explicit constant 0x11."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "unknown_0A",
+          "type": "unknown",
+          "notes": "Exact zero-initialized halfword between written request values."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "request_value_0C",
+          "type": "uint32_t",
+          "notes": "Dword copied from ServiceLogin operation state; semantic role unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for LobbyServerbound c2s 0x0003 GetCharacters, excluding the 0x10 game-message prefix. The ServiceLogin operation clears the complete application record and expects s2c 0x000D CharacterList in response.",
+      "id": "BCS-S-0379"
+    },
+    {
+      "name": "LobbySelectCharacterPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0293",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from GameLogin operation state after the application payload is cleared."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized dword before the selected-character value."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "selected_character_value",
+          "type": "uint32_t",
+          "notes": "Dword copied from the selected character state; the exact id or index interpretation remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0C",
+          "type": "unknown",
+          "notes": "Exact zero-initialized dword before the trailing selection byte."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "selection_value",
+          "type": "uint8_t",
+          "notes": "Byte copied from selected character state; semantic role unresolved."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x07",
+          "name": "unknown_11",
+          "type": "unknown",
+          "notes": "Exact zero-initialized closing span with no narrower typed write."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for LobbyServerbound c2s 0x0004 SelectCharacterPacket, excluding the 0x10 game-message prefix. The GameLogin operation clears the complete record and expects s2c 0x000F in response.",
+      "id": "BCS-S-0380"
+    },
+    {
+      "name": "LobbySelectCharacterConfirmPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0112",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from CharaMake operation state after the application payload is cleared."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x0C",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span before the first copied selection-state block."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x20",
+          "name": "selection_state",
+          "type": "uint32_t[8]",
+          "notes": "Exact eight-dword block copied from CharaMake operation state +0x18."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x60",
+          "name": "confirmation_state",
+          "type": "uint32_t[24]",
+          "notes": "Exact 24-dword block copied from CharaMake operation state +0x38, closing the application extent."
+        }
+      ],
+      "notes": "Complete exact 0x90 application payload for LobbyServerbound c2s 0x000F SelectCharacterConfirm, excluding the 0x10 game-message prefix. The CharaMake operation clears the record, copies two exact state blocks, and expects s2c 0x0010 in response.",
+      "id": "BCS-S-0381"
     }
   ],
   "method": {
@@ -25998,6 +26194,16 @@
     "c476StructOutputs": "BCS-S-0375 through BCS-S-0378 in manifests/structs.json.",
     "c476ExistingEvidence": "BCS-Y-0286 establishes the four LobbyLogin operation branches, opcodes 0x01F5, 0x0005, 0x0006, and 0x01F6, and exact framed extents 0x38, 0xA0, 0x1E0, and 0x78. BCS-Y-0297 independently establishes the auxiliary 0x01F5 and 0x01F6 frontend-auth path. BCS-Y-0296 establishes the canonical Lobby packet allocator, while manifests/operation_opcode_map_outbound.json and the vendored opcode catalog retain channel and broad operation attribution.",
     "c476FreshEvidence": "The operation builder and auxiliary emitter independently close the 0x01F5 application at 0x28 as two dwords plus a 32-byte text region, and the 0x01F6 application at 0x68 by appending a 64-byte text region. The 0x0005 and 0x0006 branches clear their complete 0x90 and 0x1D0 application payloads, write the same dword and halfword header at +0x00..+0x0D, and perform bounded text copies at +0x10, +0x50/+0x190, and +0x70/+0x1B0 that close each extent exactly.",
-    "c476Limits": "LobbySessionPacket and LobbyExtendedSessionPacket retain unknown-typed spans at +0x04 and +0x0E because zero initialization does not establish their member types. Copied login strings retain broad names because their source accessors do not establish narrower wire semantics. No retained lobby packet capture corroborates values, and the specific role of c2s 0x0006 remains unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the three requested functions."
+    "c476Limits": "LobbySessionPacket and LobbyExtendedSessionPacket retain unknown-typed spans at +0x04 and +0x0E because zero initialization does not establish their member types. Copied login strings retain broad names because their source accessors do not establish narrower wire semantics. No retained lobby packet capture corroborates values, and the specific role of c2s 0x0006 remains unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the three requested functions.",
+    "c477Topic": "C477 Lobby operation packet layouts",
+    "c477Scripts": "ghidra/DumpVAs.java",
+    "c477ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c477Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c477_lobby-operation-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00DAA190,0x00DAA070,0x00DAA740,0x00DA2BE0' } -ScriptPath @('ghidra')",
+    "c477Inputs": "CharaMakeOperation sender 0x00DAA190; ServiceLoginOperation sender 0x00DAA070; GameLoginOperation sender 0x00DAA740; and canonical Lobby packet allocator 0x00DA2BE0.",
+    "c477Output": "tools/ghidra/logs/c477_lobby-operation-packets.txt",
+    "c477StructOutputs": "Corrected BCS-S-0007 and added BCS-S-0379 through BCS-S-0381 in manifests/structs.json.",
+    "c477ExistingEvidence": "BCS-Y-0112 establishes CharaMakeOperation emissions for c2s 0x000B and 0x000F with exact framed extents 0x1E0 and 0xA0. BCS-Y-0290 and BCS-Y-0293 establish ServiceLogin c2s 0x0003 and GameLogin c2s 0x0004 with exact framed extents 0x20 and 0x28. BCS-Y-0296 establishes the canonical Lobby allocator, while manifests/operation_opcode_map_outbound.json and the vendored opcode catalog retain the class, channel, and request/response attribution.",
+    "c477FreshEvidence": "The 0x000B builder clears the exact 0x1D0 application, writes a uint32 sequence, fixed character fields through +0x33, a 400-byte encoded region through +0x1C3, and only the command-6 byte at +0x1C8 in the closing tail. The 0x000F builder clears 0x90 bytes and copies exact 0x20 and 0x60 state blocks at +0x10 and +0x30. The 0x0003 and 0x0004 builders explicitly clear their complete 0x10 and 0x18 applications before their typed writes.",
+    "c477Limits": "Zero-only spans remain unknown-typed because initialization does not establish member types. Copied operation-state blocks and request values retain broad names where no consumer establishes narrower semantics. No retained Lobby packet sample corroborates values. DumpVAs supplies direct bodies and caller/callee lists only for the four requested functions."
   }
 }
