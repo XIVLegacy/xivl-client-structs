@@ -24,6 +24,18 @@ script that is not committed is not a recipe.
 Commit only compact exports containing names, symbols, signatures, offsets, or
 comments needed by a manifest.
 
+## VerifyActorRebuild.java
+
+`VerifyActorRebuild.java` is the fixed, decompiler-free exporter for check
+`actor-rebuild-receiver-field-v1`. It inspects only the named instruction and
+function addresses, validates program/language/compiler identity, and emits
+deterministic structured observations to `XIVL_RETAIL_OBSERVATIONS_OUT`. A
+usable output requires its explicit completion marker. The script must run
+read-only against a newly imported project for retail-input reproduction.
+
+The structured output is temporary private-analysis material. Pass it directly
+to `tools/verify_retail_actor_rebuild.py`; do not commit or upload it.
+
 ## DumpVAs.java
 
 Generic post-script: reads a comma-separated hex VA list from

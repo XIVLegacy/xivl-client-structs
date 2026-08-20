@@ -29,6 +29,8 @@ below are implementation modules.
 | Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
 | Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |
 | Query callers and callees | `python tools\callers.py TARGET` | Requires `build\callgraph.json`; generate it first with the documented `DumpCallGraph.java` -> `build_callgraph.py` pipeline |
+| Verify actor-rebuild observations | `python tools\verify_retail_actor_rebuild.py [options]` | Structured output from `ghidra/VerifyActorRebuild.java`, the expected check manifest, and the approved input declaration |
+| Test the retail-input contract | `python tools\test_retail_actor_rebuild.py` | Asset-free mutation and attestation-schema tests |
 
 ## Layout
 
@@ -122,6 +124,15 @@ representation. Reader's guide: `..\docs\ir-schema.md`.
 - `manifests\ir_overlay.json`: the curated companion, and the sole hand-maintained home for the two fields no source catalog records (type alignment, and the reading of a derived unknown span). Both populated and empty paths are bite-proved.
 
 ### Verification
+
+- `verify_retail_actor_rebuild.py`: validates the fixed structured observation
+  set for `actor-rebuild-receiver-field-v1`, cross-checks its target BCS entries
+  through `tools/_symbols_io.py`, and emits only the sanitized attestation
+  allowed by `schemas/retail-evidence-attestation-v1.schema.json`. It fails on
+  missing, duplicate, extra, malformed, or drifted observations.
+- `test_retail_actor_rebuild.py`: asset-free bite proofs for every expected
+  call target, field offset, and field value plus observation-set, BCS drift,
+  schema, failure-sanitization, and deterministic-output defects.
 
 - `verify_murmur2.py`: cross-checks backward-walking MurmurHash2 against the first-party `manifests\gam_hash_names.json` dataset and the vendored `data\vendor\captures\payload_samples.json` fixture. Fails loudly (exit 2) if either input is missing. 6/6 test vectors, 263/263 resolved (id, name) pairs, 60/60 s2c 0x0137 payload property ids.
 - `build_property_stream_hash_catalog.py`: enriches the canonical hash-name
