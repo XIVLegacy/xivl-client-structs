@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 457,
+  "structCount": 458,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -28843,6 +28843,40 @@
       ],
       "notes": "Complete exact 0x08 client-internal AttributeTypeEventLeaveReceiver layout. The heap factory fixes the allocation boundary, construction writes the vftable and one attribute-type byte, and receive forwards that byte through the leave path.",
       "id": "BCS-S-0457"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandSystemExecuteDebugCommandReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::System",
+      "size": "0x58",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0135",
+        "tools/ghidra/logs/c519_execute-debug-command-receiver-layout.txt",
+        "BCS-Y-0200",
+        "BCS-Y-0265",
+        "BCS-Y-0266",
+        "BCS-Y-0267",
+        "BCS-Y-0268",
+        "BCS-Y-0269"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ExecuteDebugCommandReceiver vftable at 0x010575EC."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x54",
+          "name": "debug_command",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline copy of the constructor-supplied debug command. Receive parses this string into debug-input records before firing the _onDebugInput Lua callback."
+        }
+      ],
+      "notes": "Complete exact 0x58 client-internal ExecuteDebugCommandReceiver layout. The heap factory fixes the allocation boundary, construction copy-initializes the inline debug-command string after the vftable, receive consumes the same string through the debug parser and callback path, and destruction releases it.",
+      "id": "BCS-S-0458"
     }
   ],
   "method": {
@@ -30374,6 +30408,17 @@
     "c518StructOutputs": "BCS-S-0454 through BCS-S-0457 in manifests/structs.json.",
     "c518ExistingEvidence": "BCS-Y-0164/0165, BCS-Y-0253 through BCS-Y-0262, and BCS-Y-0941/0942 preserve the four client-internal receiver identities, constructors, wrappers, factories, vftables, and receive roles.",
     "c518FreshEvidence": "The eighteen-section closing export reproduces all four factories, constructors, receive methods, and LuaActorImpl wrappers plus both trigger helpers. The trigger factories allocate exactly 0x0C and their constructors copy actor_id and reaction_id dwords to +0x04 and +0x08; receive resolves the actor and filters the reaction record. The attribute factories allocate exactly 0x08 and their constructors store one attribute_type byte at +0x04; receive forwards that byte through mirrored enter and leave helpers.",
-    "c518Limits": "The three closing bytes in each attribute receiver remain unknown-typed because construction leaves them unwritten and the exact allocation fixes their extent. Higher-level attribute_type values remain unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the eighteen requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c518Limits": "The three closing bytes in each attribute receiver remain unknown-typed because construction leaves them unwritten and the exact allocation fixes their extent. Higher-level attribute_type values remain unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the eighteen requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c519Topic": "C519 ExecuteDebugCommandReceiver layout",
+    "c519Scripts": "ghidra/DumpVAs.java",
+    "c519ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c519Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c519_execute-debug-command-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x007616F0,0x008A3C10,0x008A3C80,0x008A4FD0,0x008A4880,0x00759630,0x00447200,0x00446F50' }",
+    "c519Inputs": "ExecuteDebugCommandReceiver client-side factory 0x007616F0, constructor 0x008A3C10, destructor 0x008A3C80, scalar deleting destructor 0x008A4FD0, receive method 0x008A4880, LuaActorImpl wrapper 0x00759630, inline-string copy constructor 0x00447200, and inline-string destructor 0x00446F50.",
+    "c519Output": "tools/ghidra/logs/c519_execute-debug-command-receiver-layout.txt",
+    "c519InstructionAudit": "A calibrated pefile and capstone walk over the complete 0x007616F0 factory body confirms PUSH 0x58 at 0x00761716 immediately before the sole receiver allocator call at 0x00761718.",
+    "c519StructOutputs": "BCS-S-0458 in manifests/structs.json.",
+    "c519ExistingEvidence": "BCS-S-0135 supplies the exact 0x54 inline UTF-8 string layout. BCS-Y-0200 and BCS-Y-0265 through BCS-Y-0269 preserve the client-internal receiver identity, _onDebugInput role, lifecycle, wrapper, and factory.",
+    "c519FreshEvidence": "The eight-section closing export reproduces the factory, complete lifecycle, receive method, LuaActorImpl wrapper, and both inline-string helpers. The factory allocates exactly 0x58 bytes. Construction copy-initializes the established string layout at +0x04, receive parses that string into debug-input records and fires _onDebugInput, and destruction releases the same subobject.",
+    "c519Limits": "The receiver has no top-level unknown-typed fields; unresolved internal string-state semantics remain those already recorded by BCS-S-0135. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. SetCommandEventConditionReceiver was screened but not started: its dead constructor has no factory or wrapper, and the retained 0x58-byte alternate array-entry stride does not by itself prove the receiver's exact closing boundary after fields through +0x59."
   }
 }
