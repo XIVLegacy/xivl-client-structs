@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 244,
+  "structCount": 246,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -7747,16 +7747,16 @@
         {
           "offset": "0x0F8",
           "size": "0x00C",
-          "name": "helper_state_0f8",
-          "type": "unknown[0xC]",
-          "notes": "Helper-constructed state initialized by FUN_005454A0 and destroyed through FUN_00545430."
+          "name": "tree_0f8",
+          "type": "ApplicationMainElementFormTree70",
+          "notes": "Ordered-tree header initialized through FUN_005454A0 with an exact 0x70-byte sentinel specialization."
         },
         {
           "offset": "0x104",
           "size": "0x00C",
-          "name": "helper_state_104",
-          "type": "unknown[0xC]",
-          "notes": "Second helper state initialized by FUN_005454A0 and destroyed through FUN_00545430."
+          "name": "tree_104",
+          "type": "ApplicationMainElementFormTree70",
+          "notes": "Ordered-tree header initialized through FUN_005454A0 with an exact 0x70-byte sentinel specialization."
         },
         {
           "offset": "0x110",
@@ -18596,6 +18596,107 @@
       ],
       "notes": "Complete byte-accounted 0x10 group-reference record embedded at GroupBase+0x68 and also used as a temporary lookup result. Initialization, two producer variants, accessors, conversion, full-width copies, and wrapper creation establish the GroupBase pointer and closing eight-byte state pair. The intervening dword and the state-pair representation remain unknown.",
       "id": "BCS-S-0244"
+    },
+    {
+      "name": "ApplicationMainElementFormTreeNode70",
+      "namespace": "Application::Main::Element",
+      "size": "0x70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c421_form-tree70-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Tree parent link; the sentinel stores the root here and erase rebalancing updates it."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x60",
+          "name": "key_or_value",
+          "type": "unknown[0x60]",
+          "notes": "Inline key or value storage not partitioned by the bounded construction, clear, erase, or teardown paths."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 and read or updated by erase balancing."
+        },
+        {
+          "offset": "0x6D",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator, set to one on the sentinel, and used by traversal and erase."
+        },
+        {
+          "offset": "0x6E",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x70-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x70 ordered-tree node specialization used by two FormElement trees. Allocation, sentinel initialization, recursive clear, erase balancing, and exact-size deallocation establish the links and marker bytes; the inline key or value representation remains unknown.",
+      "id": "BCS-S-0245"
+    },
+    {
+      "name": "ApplicationMainElementFormTree70",
+      "namespace": "Application::Main::Element",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "BCS-S-0245",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c421_form-tree70-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Owned exact 0x70 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and decremented or cleared by erase and teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header used twice at FormElement+0xF8 and +0x104. Construction, recursive clear, erase, and teardown establish the exact 0x70 sentinel specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0246"
     }
   ],
   "method": {
@@ -19270,6 +19371,15 @@
     "c420Output": "tools/ghidra/logs/c420_group-reference-record.txt",
     "c420ExistingEvidence": "BCS-S-0089 and retained C330 evidence supplied the exact GroupBase+0x68 placement, 0x10 closing boundary, constructor identity, and zero initialization at record +0x00, +0x08, and +0x0C. Retained C280 and C298 evidence supplied complete temporary-record copies and GroupBase wrapper creation.",
     "c420FreshEvidence": "C420 establishes both producer variants, their list-node sources, the GroupBase pointer at +0x00, the separately accessed eight-byte state pair at +0x08, full 0x10 copies into newly created GroupBase objects, and the occupancy conversion path.",
-    "c420Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Record +0x04 remains unknown-typed because bounded initialization, failure, success, access, and wrapper-copy paths do not populate or interpret it. The two state-pair dwords remain unknown-typed because the bounded paths copy and return them without exposing their concrete representation. No noreturn _free path contributes to the layout."
+    "c420Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Record +0x04 remains unknown-typed because bounded initialization, failure, success, access, and wrapper-copy paths do not populate or interpret it. The two state-pair dwords remain unknown-typed because the bounded paths copy and return them without exposing their concrete representation. No noreturn _free path contributes to the layout.",
+    "c421Topic": "C421 FormElement 0x70-node tree layouts",
+    "c421ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c421Script": "ghidra/DumpVAs.java",
+    "c421Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c421_form-tree70-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0053AF60,0x005454A0,0x0053DE70,0x0053CCA0,0x00545430,0x00545320,0x00544CC0,0x00544D70' } -ScriptPath @('ghidra')",
+    "c421Inputs": "FormElement owner constructor; shared tree-constructor wrapper and inner constructor; exact sentinel allocator; tree teardown, clear, recursive node teardown, and erase-balancing paths.",
+    "c421Output": "tools/ghidra/logs/c421_form-tree70-layouts.txt",
+    "c421ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied both exact FormElement placements at +0xF8 and +0x104, their 0x0C boundaries, the shared constructor and teardown identities, and the owner constructor call order.",
+    "c421FreshEvidence": "C421 establishes exact 0x70 node allocation and deallocation, three tree links, self-linked sentinel initialization, count initialization and maintenance, red-black color at +0x6C, nil marker at +0x6D, recursive clear, and erase balancing.",
+    "c421Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x60-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free."
   }
 }
