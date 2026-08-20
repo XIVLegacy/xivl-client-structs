@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 412,
+  "structCount": 413,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -26826,6 +26826,69 @@
       ],
       "notes": "Full byte-accounted CommonResourceElement layout. The sole factory allocates exactly 0x98 bytes, and construction places one initialized derived dword immediately after the exact 0x94-byte RaptureElement base.",
       "id": "BCS-S-0412"
+    },
+    {
+      "name": "ApplicationNetworkLobbyCryptEngine",
+      "namespace": "Application::Network::LobbyProtoChannel::ServiceConsumerConnectionManager",
+      "size": "0x34",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0006",
+        "BCS-Y-0007",
+        "BCS-Y-0008",
+        "BCS-Y-0009",
+        "BCS-Y-0010",
+        "BCS-Y-1992",
+        "tools/ghidra/logs/c307_blowfish-key-wrappers.txt",
+        "tools/ghidra/logs/c307_lobbycryptengine-slots.txt",
+        "tools/ghidra/logs/c307_queued-lane-batch.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "LobbyCryptEngine primary vftable installed by construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "session_magic",
+          "type": "uint32_t",
+          "notes": "Constructor writes 0x12345678; this dword begins the 44-byte session material hashed during key setup."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "client_number",
+          "type": "uint32_t",
+          "notes": "Handshake preparation fills a zero value from the low 32 bits of time(), copies it into the request, and logs it as clientNumber."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "session_value_0c",
+          "type": "unknown",
+          "notes": "Constructor writes 1000 and key setup hashes it inside the 44-byte session material, but bounded consumers do not establish its representation or role."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x20",
+          "name": "ticket_data",
+          "type": "char[32]",
+          "notes": "Handshake preparation copies the fixed text 'Test Ticket Data' with a 32-byte strncpy; key setup hashes the complete fixed-width span."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "blowfish_key",
+          "type": "BF_KEY *",
+          "notes": "Constructor clears the pointer; key setup allocates the exact 0x1048-byte OpenSSL BF_KEY, encrypt and decrypt gate on it, and teardown frees it."
+        }
+      ],
+      "notes": "Full byte-accounted LobbyCryptEngine nested layout. Construction initializes the vftable, exact 44-byte session material, and closing Blowfish-key pointer. Embedding in ServiceConsumerConnectionManager begins at complete offset +0x80 and the next owner field is written at +0xB4, independently closing the 0x34 extent.",
+      "id": "BCS-S-0413"
     }
   ],
   "method": {
@@ -28125,6 +28188,16 @@
     "c496Outputs": "BCS-S-0411 and BCS-S-0412 in manifests/structs.json.",
     "c496ExistingEvidence": "C321 establishes exact 0x98 allocations for both owners. C320 establishes their RaptureElement base construction, RTTI-resolved primary and secondary vftables, and the complete derived dword at +0x94. CustomControlElement clears the dword; CommonResourceElement writes the all-bits-set sentinel during setup and clears it before returning.",
     "c496FreshEvidence": "No fresh reads were needed; this batch promotes the already-retained constructor, factory, and RTTI evidence into complete layouts.",
-    "c496Limits": "Both state_94 dwords remain unknown-typed because no retained consumer establishes their representations or semantics. BootupElement was screened but not started: its exact 0x130 allocation is known, but retained construction exposes only one byte in the derived tail and does not partition +0x98 through +0x12F. RemovableHeapBlock, the anonymous 0x28 constructor pair, the narrow-string list node, and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded allocation, ownership, or member-boundary gaps."
+    "c496Limits": "Both state_94 dwords remain unknown-typed because no retained consumer establishes their representations or semantics. BootupElement was screened but not started: its exact 0x130 allocation is known, but retained construction exposes only one byte in the derived tail and does not partition +0x98 through +0x12F. RemovableHeapBlock, the anonymous 0x28 constructor pair, the narrow-string list node, and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded allocation, ownership, or member-boundary gaps.",
+    "c497Topic": "C497 BootupElement audit and LobbyCryptEngine layout",
+    "c497Scripts": "ghidra/DumpVAs.java",
+    "c497ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c497Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c497_bootup-element-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x005333C0,0x0055EB70,0x0055EC70,0x0055C250' } -ScriptPath @('ghidra')",
+    "c497Inputs": "BootupElement exact factory 0x005333C0, constructor 0x0055EB70, destructor 0x0055EC70, and slot-8 stub 0x0055C250; retained C307 LobbyCryptEngine constructor, embedding constructor, cipher consumers, and teardown.",
+    "c497Output": "tools/ghidra/logs/c497_bootup-element-layout.txt",
+    "c497StructOutput": "BCS-S-0413 in manifests/structs.json uses retained C307 evidence; the fresh C497 BootupElement audit produced no promoted layout.",
+    "c497ExistingEvidence": "BCS-Y-0006 through BCS-Y-0010, BCS-Y-1992, and retained C307 exports establish the LobbyCryptEngine vftable, exact 44-byte session-material initialization, magic, client number, 32-byte ticket data, constant-initialized dword, and closing BF_KEY pointer. The ServiceConsumerConnectionManager constructor embeds the object at +0x80 and writes the next owner field at +0xB4, fixing its exact 0x34 boundary. Key setup, encrypt, decrypt, and teardown independently consume the pointer at relative +0x30.",
+    "c497FreshEvidence": "The fresh read-only export reproduces the exact 0x130 BootupElement factory, RaptureElement-derived constructor, derived vftables, byte clear at complete +0xA0, destructor vftable sequence, and slot-8 return stub. No fresh read contributes a field to BCS-S-0413.",
+    "c497Limits": "BootupElement remains incomplete because the fresh constructor, destructor, and stub do not establish the command-subobject offset or partition complete offsets +0x98 through +0x12F beyond the byte at +0xA0. LobbyCryptEngine session_value_0c remains unknown-typed because constant initialization and inclusion in the MD5 input do not establish its representation or role. DumpVAs supplies direct bodies and caller/callee lists only for the four requested BootupElement functions and does not establish arbitrary reference topology. No load-bearing claim relies on decompiler output after a noreturn _free. The narrow-string list node and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded member-boundary gaps."
   }
 }
