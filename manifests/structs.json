@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 396,
+  "structCount": 397,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -25956,6 +25956,50 @@
       ],
       "notes": "Complete byte-accounted 0x1C 32-bit MSVC basic_string<char> storage layout. Independent construction, assignment, buffer-unwrapping, range teardown, and vector-growth helpers establish the storage modes, length and capacity fields, and exact element stride.",
       "id": "BCS-S-0396"
+    },
+    {
+      "name": "MsvcBasicStringWcharStorage32",
+      "namespace": "std",
+      "size": "0x1C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c489_wide-string-layout.txt",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_00404220.cpp",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_00440600.cpp",
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_00449540.cpp"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "allocator_policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading policy storage skipped by the observed constructors, assignment helpers, accessors, and teardown. Its concrete allocator representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "storage",
+          "type": "unknown[0x10]",
+          "notes": "Dual-mode storage: capacities below eight use all 16 bytes as an inline wchar_t[8] buffer, while larger capacities use the first dword as a heap-buffer pointer. The manifest type remains opaque because it cannot express that union without asserting an unsupported concrete library type."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "length",
+          "type": "uint32_t",
+          "notes": "Current wide-character count. Assignment, erase, indexed access, and termination scale it by two when addressing storage."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "capacity",
+          "type": "uint32_t",
+          "notes": "Wide-character capacity. Empty construction writes seven; values below eight select inline storage and values at least eight select heap storage."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x1C 32-bit MSVC basic_string<wchar_t> storage layout. Independent default construction, assignment, erase, indexed access, buffer selection, heap teardown, and exact 0x1C range movement establish the two-byte element width and storage boundaries.",
+      "id": "BCS-S-0397"
     }
   ],
   "method": {
@@ -27184,6 +27228,16 @@
     "c488StructOutput": "BCS-S-0396 in manifests/structs.json.",
     "c488ExistingEvidence": "Retained exact-source records for 0x0043F4B0, 0x0043F660, 0x0043F830, 0x0043F970, 0x0043FA30, 0x00440080, and 0x0045A920 establish the +0x04 dual-mode storage, +0x14 length, +0x18 capacity, 0x10 SSO threshold, empty capacity 0x0F, and 0x1C range stride. The retained C136 call graph independently groups the same constructor, assignment, teardown, and vector helper family.",
     "c488FreshEvidence": "One batched read-only export reproduces all fourteen requested helpers. Assignment and buffer unwrap independently select inline storage at object +0x04 below capacity 0x10 or dereference the heap pointer at +0x04 otherwise; construction writes length zero and capacity 0x0F; range helpers advance by exactly 0x1C; vector growth computes and updates 0x1C-byte element boundaries.",
-    "c488Limits": "The leading +0x00 policy dword remains unknown because the bounded helpers skip it. The +0x04 storage remains unknown-typed because it is a 16-byte inline character buffer in one mode and a pointer-bearing union in the other, and the catalog type grammar does not express that union. No ClientWork record refinement was made: its separate constructor and destructor family still does not establish the initial string boundary or the remaining member boundaries. DumpVAs supplies direct bodies and caller/callee lists only for the fourteen requested functions and does not establish arbitrary reference coverage."
+    "c488Limits": "The leading +0x00 policy dword remains unknown because the bounded helpers skip it. The +0x04 storage remains unknown-typed because it is a 16-byte inline character buffer in one mode and a pointer-bearing union in the other, and the catalog type grammar does not express that union. No ClientWork record refinement was made: its separate constructor and destructor family still does not establish the initial string boundary or the remaining member boundaries. DumpVAs supplies direct bodies and caller/callee lists only for the fourteen requested functions and does not establish arbitrary reference coverage.",
+    "c489Topic": "C489 32-bit MSVC wide string layout",
+    "c489Scripts": "ghidra/DumpVAs.java",
+    "c489ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c489Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c489_wide-string-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00403EB0,0x00403FD0,0x00404220,0x00404760,0x00440600,0x00440850,0x004409B0,0x00449060,0x00449540,0x00454E90' } -ScriptPath @('ghidra')",
+    "c489Inputs": "Wide-string compact/reset helper 0x00403EB0, teardown 0x00403FD0, default constructor 0x00404220, 0x1C range mover 0x00404760, erase and assignment helpers 0x00440600/0x00440850/0x004409B0, buffer getter 0x00449060, indexed accessor 0x00449540, and pointer constructor 0x00454E90.",
+    "c489Output": "tools/ghidra/logs/c489_wide-string-layout.txt",
+    "c489StructOutput": "BCS-S-0397 in manifests/structs.json.",
+    "c489ExistingEvidence": "Retained exact-source records for 0x00404220, 0x00403FD0, 0x00440600, 0x00440850, 0x004409B0, 0x00449060, 0x00449540, and 0x00454E90 establish the +0x04 wchar_t[8] or heap-pointer storage, +0x14 length, +0x18 capacity, eight-element SSO threshold, empty capacity seven, and two-byte element addressing. Retained 0x00404760 source establishes exact 0x1C range movement while preserving the leading policy dword.",
+    "c489FreshEvidence": "One batched read-only export reproduces all ten requested helpers. Construction and teardown write capacity seven, length zero, and a two-byte terminator at +0x04. Assignment, erase, buffer selection, and indexed access independently choose inline or heap storage at capacity eight and scale character offsets and allocation sizes by two. The range mover advances both endpoints by exactly 0x1C while exchanging bytes +0x04 through +0x1B.",
+    "c489Limits": "The leading +0x00 policy dword remains unknown because every bounded string helper skips it. The +0x04 storage remains unknown-typed because it is a 16-byte inline wide-character buffer in one mode and a pointer-bearing union in the other, and the catalog type grammar does not express that union. No enclosing consumer object was started because the retained callers do not close any additional member boundary. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference coverage."
   }
 }
