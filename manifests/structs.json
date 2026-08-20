@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 451,
+  "structCount": 452,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -28585,6 +28585,61 @@
       ],
       "notes": "Complete exact 0x74 SetPushEventConditionWithTriggerBoxReceiver layout. The factory allocation fixes the boundary; construction accounts for every written region, and receive consumes every non-padding field. The copied state_60 dword remains unknown-typed because its packet representation is unresolved.",
       "id": "BCS-S-0451"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkSetEventStatusReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x5C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0135",
+        "tools/ghidra/logs/c516_set-event-status-receiver-layout.txt",
+        "BCS-S-0273",
+        "BCS-Y-0092",
+        "BCS-Y-0596",
+        "BCS-Y-0728",
+        "BCS-Y-0729",
+        "BCS-Y-0730"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "SetEventStatusReceiver vftable at 0x010573A0."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x54",
+          "name": "condition_name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Inline copy of the packet condition name. The receive path forwards its address to the event-status apply helper."
+        },
+        {
+          "offset": "0x58",
+          "size": "0x01",
+          "name": "condition_type",
+          "type": "uint8_t",
+          "notes": "Byte copy of the packet condition_type selector. The apply helper switches on this field before resolving the target event-status object."
+        },
+        {
+          "offset": "0x59",
+          "size": "0x01",
+          "name": "enabled",
+          "type": "uint8_t",
+          "notes": "Low byte copied from the packet uint32 enabled field and forwarded by value through the apply path."
+        },
+        {
+          "offset": "0x5A",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x5C allocation."
+        }
+      ],
+      "notes": "Complete exact 0x5C SetEventStatusReceiver layout. The heap factory fixes the allocation boundary, construction accounts for the inline condition name and two closing state bytes, receive consumes every non-padding field, and destruction releases the inline string.",
+      "id": "BCS-S-0452"
     }
   ],
   "method": {
@@ -30083,6 +30138,17 @@
     "c515StructOutputs": "BCS-S-0449 through BCS-S-0451 in manifests/structs.json.",
     "c515ExistingEvidence": "BCS-S-0135 supplies the exact 0x54 inline-string layout. BCS-S-0265 through BCS-S-0267 and BCS-Y-0737 through BCS-Y-0742, BCS-Y-1108 through BCS-Y-1110, and BCS-Y-1114 through BCS-Y-1116 preserve the packet inputs, receiver identities, receive methods, factories, and constructors.",
     "c515FreshEvidence": "The nine-section closing export reproduces all three factories, constructors, and receive methods. The factories pass literal sizes 0x6C, 0x74, and 0x74 to the allocator. Construction places the inline string at +0x04, two condition-state bytes at +0x58, copied or derived state from +0x5C onward, and leaves only the identified gaps unwritten; each receive method consumes every non-padding field.",
-    "c515Limits": "Circle and Fan tail_padding remain unknown-typed because their constructors leave +0x5A..+0x5B unwritten. TriggerBox additionally leaves padding_6e unwritten, while state_60 remains unknown-typed because it is copied from the unresolved packet dword at +0x0C. The higher-level meanings of condition_state_58 and condition_state_59 remain unresolved although their byte widths and receive paths are established. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c515Limits": "Circle and Fan tail_padding remain unknown-typed because their constructors leave +0x5A..+0x5B unwritten. TriggerBox additionally leaves padding_6e unwritten, while state_60 remains unknown-typed because it is copied from the unresolved packet dword at +0x0C. The higher-level meanings of condition_state_58 and condition_state_59 remain unresolved although their byte widths and receive paths are established. DumpVAs supplies direct bodies and caller/callee lists only for the nine requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c516Topic": "C516 SetEventStatusReceiver layout",
+    "c516Scripts": "ghidra/DumpVAs.java",
+    "c516ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c516Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c516_set-event-status-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00759D20,0x00761A80,0x0089D770,0x0089D800,0x0089D860,0x006E67C0,0x0078DDC0,0x0078DE00' }",
+    "c516Inputs": "LuaActorImpl wrapper 0x00759D20, heap factory 0x00761A80, constructor 0x0089D770, destructor 0x0089D800, receive method 0x0089D860, event-status apply helper 0x006E67C0, and byte-copy helpers 0x0078DDC0 and 0x0078DE00.",
+    "c516Output": "tools/ghidra/logs/c516_set-event-status-receiver-layout.txt",
+    "c516InstructionAudit": "A calibrated pefile and capstone walk over the complete 0x00761A80 factory body confirms PUSH 0x5C at 0x00761AAB before the sole receiver allocator call at 0x00761AB1. The wrapper and factory instruction streams also preserve the constructor argument order: packet condition_name at +0x05, condition_type byte at +0x04, and the low byte of enabled at +0x00.",
+    "c516StructOutputs": "BCS-S-0452 in manifests/structs.json.",
+    "c516ExistingEvidence": "BCS-S-0135 supplies the exact 0x54 inline-string layout. BCS-S-0273 supplies the exact SetEventStatus packet with enabled at +0x00, condition_type at +0x04, and condition_name at +0x05. BCS-Y-0092, BCS-Y-0596, and BCS-Y-0728 through BCS-Y-0730 preserve the LuaActorImpl slot, wire route, receiver identity, receive role, and event-status apply role.",
+    "c516FreshEvidence": "The eight-section closing export reproduces both construction paths, constructor, destructor, receive method, apply helper, and both byte-copy helpers. Construction places the inline string at +0x04, condition_type at +0x58, and the low enabled byte at +0x59. Receive forwards all three values, the apply helper switches on condition_type and forwards enabled, and destruction releases the inline string. The positive instruction audit fixes the object at exact size 0x5C.",
+    "c516Limits": "tail_padding remains unknown-typed because construction writes only through +0x59 and the exact allocation fixes two unread closing bytes. The receiver intentionally stores only the low byte of the packet's uint32 enabled field; this object layout does not narrow the wire field itself. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
