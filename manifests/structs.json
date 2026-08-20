@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 433,
+  "structCount": 435,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27608,6 +27608,69 @@
       ],
       "notes": "Complete exact 0x10 SetTargetTimeReceiver layout. The heap factory fixes the boundary, construction writes three complete dwords after the vftable, and the apply path consumes the two time components plus the low half of the closing dword.",
       "id": "BCS-S-0433"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkAddictLoginTimeKindReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c506_addict-system-stat-receiver-layouts-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::AddictLoginTimeKindReceiver vftable at 0x010572DC."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x01",
+          "name": "kind",
+          "type": "uint8_t",
+          "notes": "Constructor-supplied addiction-limit kind forwarded through the MyPlayer UI handler by the receive path."
+        },
+        {
+          "offset": "0x05",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[0x03]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x08 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x08 AddictLoginTimeKindReceiver layout. The heap factory fixes the boundary, construction writes the vftable and kind byte, and the receive path consumes that byte through the MyPlayer addiction-limit UI path.",
+      "id": "BCS-S-0434"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkChangeSystemStatReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c506_addict-system-stat-receiver-layouts-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::ChangeSystemStatReceiver vftable at 0x010572F4."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "system_stat",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied system-stat value. The apply chain writes it to the CharaBase system-state subobject and fires the on-change-system-flag path."
+        }
+      ],
+      "notes": "Complete exact 0x08 ChangeSystemStatReceiver layout. The heap factory fixes the boundary, construction writes the vftable and closing dword, and retained consumer evidence accounts for that dword in the system-flag update path.",
+      "id": "BCS-S-0435"
     }
   ],
   "method": {
@@ -28999,6 +29062,17 @@
     "c505StructOutputs": "BCS-S-0432 and BCS-S-0433 in manifests/structs.json.",
     "c505ExistingEvidence": "BCS-Y-0042/0043, BCS-Y-0088 through BCS-Y-0090, BCS-Y-0609, BCS-Y-1434, BCS-Y-0048/0049, BCS-Y-0115 through BCS-Y-0117, BCS-Y-0598, and BCS-Y-1446 preserve the two class identities, exact-size claims, constructor field maps, consumer roles, and factory relationships.",
     "c505FreshEvidence": "The ten-section closing export reproduces both wrappers, constructors, destructors, apply methods, and heap factories. HateStatusReceiver construction writes a dword at +0x04 and a word at +0x08, both consumed by its apply path. SetTargetTimeReceiver construction writes dwords at +0x04, +0x08, and +0x0C; its apply path consumes both time components and masks the closing dword to its low 16 bits. The direct instruction audit independently fixes the exact 0x0C and 0x10 allocation boundaries hidden by factory pseudocode.",
-    "c505Limits": "HateStatusReceiver tail_padding remains unknown-typed because construction does not write it and the exact allocation only fixes its extent. SetTargetTimeReceiver target_kind_upper remains unknown-typed because construction copies it as part of the closing dword but the observed apply path masks it away. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference topology. The factory decompiler omits both allocator arguments; exact sizes rely on the positive instruction audit. No candidate was started and left incomplete in this batch."
+    "c505Limits": "HateStatusReceiver tail_padding remains unknown-typed because construction does not write it and the exact allocation only fixes its extent. SetTargetTimeReceiver target_kind_upper remains unknown-typed because construction copies it as part of the closing dword but the observed apply path masks it away. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference topology. The factory decompiler omits both allocator arguments; exact sizes rely on the positive instruction audit. No candidate was started and left incomplete in this batch.",
+    "c506Topic": "C506 AddictLoginTimeKindReceiver and ChangeSystemStatReceiver layouts",
+    "c506Scripts": "ghidra/DumpVAs.java",
+    "c506ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c506Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c506_addict-system-stat-receiver-layouts-2.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075A0E0,0x0089C800,0x0089C860,0x0089C8B0,0x007625E0,0x0075A060,0x0089C9D0,0x0089CA30,0x0089CA80,0x00762520' } -ScriptPath @('ghidra')",
+    "c506Inputs": "AddictLoginTimeKindReceiver wrapper 0x0075A0E0, constructor 0x0089C800, destructor 0x0089C860, receive 0x0089C8B0, and heap factory 0x007625E0; ChangeSystemStatReceiver wrapper 0x0075A060, constructor 0x0089C9D0, destructor 0x0089CA30, apply 0x0089CA80, and heap factory 0x00762520.",
+    "c506Output": "tools/ghidra/logs/c506_addict-system-stat-receiver-layouts-2.txt",
+    "c506InstructionAudit": "A calibrated pefile and capstone scan found the known wrapper calls to both constructors and their alternate heap-factory calls. PUSH 8 at 0x00762606 immediately precedes the sole AddictLoginTimeKindReceiver allocator call at 0x00762608. PUSH 8 at 0x00762546 immediately precedes the sole ChangeSystemStatReceiver allocator call at 0x00762548.",
+    "c506StructOutputs": "BCS-S-0434 and BCS-S-0435 in manifests/structs.json.",
+    "c506ExistingEvidence": "BCS-Y-0108 through BCS-Y-0111, BCS-Y-0161/0166, BCS-Y-0608, BCS-Y-1426, BCS-Y-0182/0183, BCS-Y-0366, BCS-Y-0607, and BCS-Y-1428 preserve the two class identities, constructor and consumer roles, Lua callback paths, and factory relationships.",
+    "c506FreshEvidence": "The corrected ten-section closing export reproduces both wrappers, constructors, destructors, receive or apply methods, and heap factories. AddictLoginTimeKindReceiver construction writes one byte at +0x04 and its receive path forwards that byte through the MyPlayer addiction-limit handler. ChangeSystemStatReceiver construction writes the complete dword at +0x04 and its apply path reaches the established system-flag worker. The direct instruction audit independently fixes both exact 0x08 allocation boundaries hidden by factory pseudocode.",
+    "c506Limits": "AddictLoginTimeKindReceiver tail_padding remains unknown-typed because construction writes only the byte at +0x04 and the exact allocation fixes the closing bytes without another observed consumer. ChangeSystemStatReceiver has no unknown span. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference topology. The factory decompiler omits both allocator arguments; exact sizes rely on the positive instruction audit. The first C506 archive used interior address 0x00762540 for the ChangeSystemStatReceiver factory and is not cited; the corrected -2 archive uses function entry 0x00762520. No candidate was started and left incomplete in this batch."
   }
 }
