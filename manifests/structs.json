@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 214,
+  "structCount": 254,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -766,7 +766,8 @@
         "BCS-S-0203",
         "tools/ghidra/logs/c381_myplayer-owned-state.txt",
         "tools/ghidra/logs/c382_myplayer-owned-state-containers.txt",
-        "BCS-S-0209"
+        "BCS-S-0209",
+        "BCS-S-0032"
       ],
       "fields": [
         {
@@ -857,8 +858,8 @@
           "offset": "0x144",
           "size": "0x10",
           "name": "inventory_package_storage",
-          "type": "unknown[0x10]",
-          "notes": "Embedded vector header constructed by FUN_0072DEB0 with four 0x10-byte package records. Begin, end, and capacity pointers occupy +0x148, +0x14C, and +0x150; the exact container type is unresolved."
+          "type": "PlayerInventoryStorageContainer",
+          "notes": "Embedded exact four-bucket inventory container. Its begin, end, and capacity pointers occupy +0x148, +0x14C, and +0x150; each exact 0x10 bucket owns a 4-byte slot-ID vector."
         },
         {
           "offset": "0x154",
@@ -1906,64 +1907,47 @@
     {
       "name": "PlayerInventoryStorageContainer",
       "namespace": "Application::Lua::Script::Client::Control",
-      "size": "0x10 header; 0x10-byte bucket elements",
-      "confidence": "probable",
+      "size": "0x10",
+      "confidence": "structural",
       "sourceRefs": [
-        "manifests/control_class_napi_field_access_recursive.json",
-        "BCS-Y-0414"
+        "BCS-S-0012",
+        "BCS-Y-0414",
+        "tools/ghidra/logs/c336_myplayer-layout.txt",
+        "tools/ghidra/logs/c336_lua-derived-actor-fieldrefs.txt",
+        "tools/ghidra/logs/c413_myplayer-inventory-package-storage.txt",
+        "tools/ghidra/logs/c414_myplayer-inventory-bucket-lifetime.txt"
       ],
       "fields": [
         {
           "offset": "0x00",
           "size": "0x04",
-          "type": "unknown/unused",
-          "name": "reservedOrAllocatorTag",
-          "evidence": "The constructor passes ECX=this+0x144 to FUN_0072DEB0, while the vector helper initializes only +0x04/+0x08/+0x0c."
+          "name": "vector_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, producer, consumer, or teardown paths."
         },
         {
           "offset": "0x04",
           "size": "0x04",
-          "type": "InventoryPackageBucket*",
-          "name": "bucketBegin",
-          "evidence": "FUN_006EFBD0 reads [Player+0x148] through EBP+0x04 as the package-bucket vector begin pointer."
+          "name": "bucket_begin",
+          "type": "PlayerInventoryPackageBucket *",
+          "notes": "Beginning of the four-record package-bucket array allocated by the MyPlayer constructor."
         },
         {
           "offset": "0x08",
           "size": "0x04",
-          "type": "InventoryPackageBucket*",
-          "name": "bucketEnd",
-          "evidence": "FUN_006EFBD0 subtracts [Player+0x148] from [Player+0x14c] and divides by 0x10 for bucket count."
+          "name": "bucket_end",
+          "type": "PlayerInventoryPackageBucket *",
+          "notes": "One-past-last constructed bucket. Producer and Lua count paths subtract bucket_begin and divide by the exact 0x10 stride."
         },
         {
-          "offset": "0x0c",
+          "offset": "0x0C",
           "size": "0x04",
-          "type": "InventoryPackageBucket*",
-          "name": "bucketCapacityEnd",
-          "evidence": "FUN_0072DEB0 writes param_1+0x0c after allocating count*0x10 bytes for the bucket array."
-        },
-        {
-          "offset": "element+0x04",
-          "size": "0x04",
-          "type": "uint32_t*",
-          "name": "slotBegin",
-          "evidence": "Each 0x10-byte bucket has a nested 4-byte vector: FUN_006EFBD0 reads element+0x04 as begin."
-        },
-        {
-          "offset": "element+0x08",
-          "size": "0x04",
-          "type": "uint32_t*",
-          "name": "slotEnd",
-          "evidence": "FUN_006EFBD0 uses element+0x08 as end, rewrites it after compaction, append, and sort."
-        },
-        {
-          "offset": "element+0x0c",
-          "size": "0x04",
-          "type": "uint32_t*",
-          "name": "slotCapacityEnd",
-          "evidence": "FUN_006EFBD0 compares element+0x08 against element+0x0c before appending and calls FUN_007228E0 when growth is required."
+          "name": "bucket_capacity_end",
+          "type": "PlayerInventoryPackageBucket *",
+          "notes": "End of allocated bucket storage. Construction sets it to bucket_begin plus four exact 0x10 records."
         }
       ],
-      "notes": "Embedded storage-bucket vector at MyPlayer/PlayerBase +0x144; the handoff's PlayerBase+0x148/+0x14c pointers are the vector begin/end fields inside this header. MyPlayer constructor FUN_006F9140 calls FUN_0072DEB0 with ECX=this+0x144 and count 4, which allocates four 0x10-byte bucket records. No container-specific RTTI, BaseClassDescriptor, or vtable was found; the owner classes have PlayerBase/MyPlayer vtables, while this member uses STL-like vector helpers. EntrustItemReceiver worker FUN_006EFBD0 iterates the 0x10-byte buckets, clears each nested slot vector, reserves package capacities 0x23/0x41/0x1a/0x04 through FUN_007222D0, appends bitset-derived slot ids through FUN_007228E0, and sorts buckets with FUN_00720BB0. PlayerBase N-API _countStoredItem dispatches through PlayerBase stub FUN_0071E6C0 slot 0x1f0; the MyPlayer target FUN_00706580 indexes the same +0x148/+0x14c vector and returns the selected bucket's nested slot count. The apparent PlayerBase 0x148/0x14c N-API hits for _setTouchAttribute/_isTouching are vtable slot offsets, not direct storage field accesses.",
+      "notes": "Exact byte-accounted four-bucket inventory storage container embedded at MyPlayer+0x144. Construction, producer, Lua count consumer, and teardown establish the outer vector pointers, four-element count, and exact 0x10 bucket stride without assigning an unsupported standard-library template identity.",
       "id": "BCS-S-0032"
     },
     {
@@ -2260,49 +2244,37 @@
       "name": "EventExecutionQueueNode",
       "namespace": "FFXIV.Client.System.Event",
       "size": "0x2c",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
         "BCS-Y-0474",
-        "BCS-Y-0476"
+        "BCS-Y-0476",
+        "BCS-S-0254",
+        "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt"
       ],
       "fields": [
         {
           "offset": "0x00",
           "size": "0x04",
-          "type": "void*",
-          "name": "link0",
-          "evidence": "FUN_0089AF70 stores its first list argument at node+0x00; FUN_008955C0 iterates from the sentinel through this field."
+          "name": "next",
+          "type": "EventExecutionQueueNode *",
+          "notes": "Forward list link. The walker advances through this pointer and the sentinel insertion path repairs the previous tail's forward link."
         },
         {
           "offset": "0x04",
           "size": "0x04",
-          "type": "void*",
-          "name": "link1",
-          "evidence": "FUN_0089AF70 stores its second list argument at node+0x04; FUN_00896510 repairs the sentinel/list link after allocation."
+          "name": "previous",
+          "type": "EventExecutionQueueNode *",
+          "notes": "Backward list link initialized from the sentinel's prior tail during insertion."
         },
         {
           "offset": "0x08",
-          "size": "0x1c observed through helper construction",
-          "type": "EventExecutionPayload",
-          "name": "payload",
-          "evidence": "FUN_0089AF70 constructs this region through FUN_0089AEE0; FUN_008955C0 reads the callback pointer at *(node+0x08)+0x04."
-        },
-        {
-          "offset": "0x25",
-          "size": "0x01",
-          "type": "uint8_t",
-          "name": "callbackFired",
-          "evidence": "FUN_008955C0 checks node+0x25 and sets it to 1 before invoking the node payload callback."
-        },
-        {
-          "offset": "0x28",
-          "size": "0x04",
-          "type": "opaque tail",
-          "name": "mappedTail",
-          "evidence": "FUN_008955C0 passes node+0x28 as the third argument to FUN_006DE2D0 during list drain."
+          "size": "0x24",
+          "name": "event",
+          "type": "ApplicationLuaScriptClientEventExecutionClientSideNonBlockEvent",
+          "notes": "Embedded copy of the temporary non-block execution object. Queue traversal, callback dispatch, context mapping, teardown, and exact node deallocation operate on this full region."
         }
       ],
-      "notes": "Allocated by FUN_0089AF70 with size 0x2c and inserted by FUN_00896510 into the non-block execution list rooted at owner+0x14.",
+      "notes": "Complete exact 0x2C doubly linked queue node allocated and inserted by the non-block event path. The former overlapping payload, callback flag, and mapped tail are fields of the exact embedded 0x24 ExecutionClientSideNonBlockEvent object.",
       "id": "BCS-S-0038"
     },
     {
@@ -4485,7 +4457,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c308_actioncontroller-ctor.txt",
         "xivl-decomp:docs/actor/action-queue.md",
-        "xivl-decomp:include/actor/chara_actor.h"
+        "xivl-decomp:include/actor/chara_actor.h",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt"
       ],
       "fields": [
         {
@@ -4498,9 +4471,9 @@
         {
           "offset": "0x4",
           "size": "0x208",
-          "name": "buckets",
-          "type": "unknown[26][0x14]",
-          "notes": "Twenty-six 0x14-byte bucket objects constructed by eh_vector_constructor_iterator. FUN_00845430 walks the same array from controller+0x10 with a 0x14 stride."
+          "name": "action_queues",
+          "type": "ApplicationSegmentedPointerQueue[26]",
+          "notes": "Twenty-six exact 0x14 segmented pointer queues constructed as an array. FUN_00845430 walks the same array and dispatches the polymorphic queued action objects."
         },
         {
           "offset": "0x20C",
@@ -4517,7 +4490,7 @@
           "notes": "FUN_00845340 stores its constructor argument at dword index 0x8A."
         }
       ],
-      "notes": "Inline at CharaActor+0x2858. Constructor FUN_00845340 and destructor FUN_008453C0 both receive the member by LEA. The concrete object is observed through +0x22B; its exact sizeof is not claimed because the next CharaActor field is eight bytes later at +0x2A8C.",
+      "notes": "Inline at CharaActor+0x2858. Constructor FUN_00845340 and destructor FUN_008453C0 both receive the member by LEA. Within the byte-accounted observed extent, its vftable is followed by 26 exact segmented pointer queues, controller state, and the owning CharaActor pointer. The complete object size beyond +0x22B is not claimed because the next CharaActor field is eight bytes later at +0x2A8C.",
       "id": "BCS-S-0059"
     },
     {
@@ -5983,7 +5956,14 @@
         "tools/ghidra/logs/c321_direct-callers.txt",
         "tools/ghidra/logs/c321_child-callers.txt",
         "tools/ghidra/logs/c323_packet-element-layouts.txt",
-        "manifests/symbols.json"
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+        "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
+        "BCS-Y-1027",
+        "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+        "BCS-Y-0619",
+        "tools/ghidra/logs/c417_chara-movement-state-records.txt",
+        "BCS-Y-1838"
       ],
       "fields": [
         {
@@ -6143,9 +6123,9 @@
         {
           "offset": "0x188",
           "size": "0x088",
-          "name": "status_slot_table",
-          "type": "unknown[17][8]",
-          "notes": "Seventeen eight-byte entries initialized by the constructor. Each entry contains a dword plus a halfword; the concrete entry type is unresolved."
+          "name": "status_slot_records",
+          "type": "ApplicationMainElementCharaStatusSlotRecord[17]",
+          "notes": "Seventeen exact 0x08 records. Case 0xD0 writes at most sixteen packet records and places a 0xFFFF terminator in record N and the fixed seventeenth record; BCS-Y-0619 then copies the full 0x88-byte table."
         },
         {
           "offset": "0x210",
@@ -6172,8 +6152,8 @@
           "offset": "0x224",
           "size": "0x040",
           "name": "movement_state_records",
-          "type": "unknown[2][0x20]",
-          "notes": "Two 0x20-byte records initialized together by FUN_0058B4E0. The second record contains the live movement axes at +0x25C..+0x25F."
+          "type": "ApplicationMainElementCharaMovementStateRecord[2]",
+          "notes": "Two exact 0x20 records initialized identically by the owner constructor. Each contains paired three-lane float values and two unknown-typed zeroed dwords; the live input axes begin after this array at +0x264."
         },
         {
           "offset": "0x264",
@@ -6263,8 +6243,8 @@
           "offset": "0x290",
           "size": "0x120",
           "name": "status_effect_timer_slots",
-          "type": "unknown[6][0x30]",
-          "notes": "Six 0x30-byte timer slots constructed as an array. BCS-Y-1027 processes them as three rows of two slots."
+          "type": "ApplicationMainElementCharaStatusEffectTimerSlot[6]",
+          "notes": "Six exact 0x30 status-effect timer slots constructed as an array. BCS-Y-1027 processes them as two rows of three slots and selects the greatest remaining timer in each row."
         },
         {
           "offset": "0x3B0",
@@ -6353,9 +6333,9 @@
         {
           "offset": "0x878",
           "size": "0x208",
-          "name": "event_records",
-          "type": "unknown[26][0x14]",
-          "notes": "Twenty-six 0x14-byte records constructed with FUN_008462D0."
+          "name": "segmented_pointer_queues",
+          "type": "ApplicationSegmentedPointerQueue[26]",
+          "notes": "Twenty-six exact 0x14 segmented pointer queues constructed with the shared queue-header constructor. Their queued-object role within CharaElement remains unresolved."
         },
         {
           "offset": "0xA80",
@@ -7042,8 +7022,8 @@
           "offset": "0x094",
           "size": "0x00C",
           "name": "camera_input_state",
-          "type": "unknown[0xC]",
-          "notes": "Compact input record initialized by FUN_00566380 and published as a 0xC-byte payload by FUN_005624D0; its member semantics are unresolved."
+          "type": "ApplicationMainElementSystemCameraInputStateRecord",
+          "notes": "Compact input record initialized by FUN_00566380 and published as a complete 0xC-byte payload by FUN_005624D0."
         },
         {
           "offset": "0x0A0",
@@ -7678,9 +7658,9 @@
         {
           "offset": "0x094",
           "size": "0x004",
-          "name": "form_state",
-          "type": "uint32_t",
-          "notes": "Zero-initialized by FUN_0053AF60."
+          "name": "next_window_index",
+          "type": "int32_t",
+          "notes": "Zero-initialized, copied into each form-object tree node, and incremented after a successful window insertion."
         },
         {
           "offset": "0x098",
@@ -7748,23 +7728,23 @@
         {
           "offset": "0x0EC",
           "size": "0x00C",
-          "name": "helper_state_0ec",
-          "type": "unknown[0xC]",
-          "notes": "Helper-constructed state initialized by FUN_00542160 and destroyed through FUN_00541FA0."
+          "name": "tree_0ec",
+          "type": "ApplicationMainElementFormTree68",
+          "notes": "Ordered-tree header initialized through FUN_00542160 with an exact 0x68-byte sentinel specialization."
         },
         {
           "offset": "0x0F8",
           "size": "0x00C",
-          "name": "helper_state_0f8",
-          "type": "unknown[0xC]",
-          "notes": "Helper-constructed state initialized by FUN_005454A0 and destroyed through FUN_00545430."
+          "name": "tree_0f8",
+          "type": "ApplicationMainElementFormTree70",
+          "notes": "Ordered-tree header initialized through FUN_005454A0 with an exact 0x70-byte sentinel specialization."
         },
         {
           "offset": "0x104",
           "size": "0x00C",
-          "name": "helper_state_104",
-          "type": "unknown[0xC]",
-          "notes": "Second helper state initialized by FUN_005454A0 and destroyed through FUN_00545430."
+          "name": "tree_104",
+          "type": "ApplicationMainElementFormTree70",
+          "notes": "Ordered-tree header initialized through FUN_005454A0 with an exact 0x70-byte sentinel specialization."
         },
         {
           "offset": "0x110",
@@ -7818,9 +7798,9 @@
         {
           "offset": "0x1DC",
           "size": "0x00C",
-          "name": "helper_state_1dc",
-          "type": "unknown[0xC]",
-          "notes": "Helper-constructed state initialized by FUN_00542C20 and destroyed by FUN_00542B30."
+          "name": "tree_1dc",
+          "type": "ApplicationMainElementFormTree1C",
+          "notes": "Ordered-tree header initialized through FUN_00542C20 with an exact 0x1C-byte sentinel specialization."
         },
         {
           "offset": "0x1E8",
@@ -7852,10 +7832,17 @@
         },
         {
           "offset": "0x1F8",
-          "size": "0x010",
-          "name": "form_object_tree",
-          "type": "unknown[0x10]",
-          "notes": "Tree-header state constructed by FUN_00542270 and walked during event removal and teardown; concrete key and node types are unresolved."
+          "size": "0x00C",
+          "name": "tree_1f8",
+          "type": "ApplicationMainElementFormTree18",
+          "notes": "Ordered-tree header initialized through FUN_00542270 with an exact 0x18-byte sentinel specialization."
+        },
+        {
+          "offset": "0x204",
+          "size": "0x004",
+          "name": "unknown_204",
+          "type": "unknown",
+          "notes": "Closing dword of the former 0x10 unknown span; the bounded tree lifecycle and producer or consumer paths neither initialize nor interpret it."
         },
         {
           "offset": "0x208",
@@ -8818,9 +8805,9 @@
         {
           "offset": "0x68",
           "size": "0x10",
-          "name": "group_reference_storage",
-          "type": "unknown[0x10]",
-          "notes": "Embedded value initialized by FUN_006BFCD0 and passed to the matching no-op destructor FUN_006BFD00. The constructor clears dwords at relative +0x00, +0x08, and +0x0C; the value's concrete type and the relative +0x04 member remain unresolved."
+          "name": "group_reference",
+          "type": "ApplicationLuaScriptClientControlGroupReferenceRecord",
+          "notes": "Embedded group-reference value initialized by FUN_006BFCD0 and copied into newly created GroupBase objects by FUN_006E2240."
         }
       ],
       "notes": "Full byte-accounted GroupBase layout. Its clone factory allocates exactly 0x78 bytes. Direct instructions place LuaTentativeControl at +0x60 and the final 0x10-byte helper value at +0x68, which closes at the allocation boundary.",
@@ -9380,15 +9367,15 @@
           "offset": "0xB8",
           "size": "0x0C",
           "name": "lookup_state",
-          "type": "unknown[0x0C]",
-          "notes": "Embedded helper based at instruction 0x006F680D and initialized by FUN_0077C850. That helper writes relative +0x04 and +0x08, but its concrete container type is unresolved."
+          "type": "ApplicationLuaScriptClientControlSpreadSheetList",
+          "notes": "Exact embedded 0x0C circular-list container constructed by FUN_0077C850, retained by the adjacent loaded-data state, and cleared during SpreadSheet teardown."
         },
         {
           "offset": "0xC4",
           "size": "0x18",
           "name": "loaded_data_state",
-          "type": "unknown[0x18]",
-          "notes": "Final embedded helper based at instruction 0x006F6820 and initialized through FUN_00746860. Its observed writes and the exact allocation boundary establish the span, but not the concrete helper type."
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataState",
+          "notes": "Exact embedded loaded-data helper containing a 0x24-node R-B tree, a pointer to the preceding +0xB8 container, and two unresolved state dwords."
         }
       ],
       "notes": "Full byte-accounted SpreadSheet layout. Factory FUN_00747CD0 allocates exactly 0xDC bytes. Constructor instructions partition the derived tail at +0x60, +0xB4, +0xB8, and +0xC4, with the final helper closing at the allocation boundary.",
@@ -9484,7 +9471,13 @@
         "tools/ghidra/logs/c374_display-name-state-types.txt",
         "tools/ghidra/logs/c375_chara-display-name-ownership.txt",
         "tools/ghidra/logs/c376_chara-display-name-allocation.txt",
-        "BCS-S-0198"
+        "BCS-S-0198",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0215",
+        "tools/ghidra/logs/c409_chara-inline-state-records.txt",
+        "BCS-Y-1030"
       ],
       "fields": [
         {
@@ -9512,15 +9505,15 @@
           "offset": "0x68",
           "size": "0x70",
           "name": "inline_state_records",
-          "type": "unknown[0x70]",
-          "notes": "Two inline 0x38-byte records constructed by FUN_00712DD0 and destroyed by FUN_00712E90 through the MSVC vector constructor and destructor iterators. The record constructor initializes a handle-like value and embedded helper, but the concrete record type remains unresolved."
+          "type": "ApplicationLuaScriptClientControlCharaInlineStateRecord[2]",
+          "notes": "Two exact 0x38 records constructed and destroyed through the MSVC vector iterators. Fresh instruction evidence fixes the nested shared-state base at record +0x08."
         },
         {
           "offset": "0xD8",
           "size": "0x04",
-          "name": "owned_resource",
-          "type": "void *",
-          "notes": "Constructor-cleared polymorphic owned pointer. CharaBase teardown invokes virtual slot 0 with deleting flag 1 when non-null; the concrete pointed-to class remains unresolved."
+          "name": "item_manager",
+          "type": "ApplicationLuaScriptClientControlItemManager *",
+          "notes": "Constructor-cleared lazy owner. FUN_006F51A0 allocates the exact 0x78-byte ItemManager on first access, replaces any prior value through its deleting virtual, and stores it here; CharaBase teardown invokes the same deleting virtual."
         },
         {
           "offset": "0xDC",
@@ -9567,7 +9560,11 @@
         "tools/ghidra/logs/c335_lua-core-controls.txt",
         "tools/ghidra/logs/c335_lua-core-control-factories.txt",
         "tools/ghidra/logs/c335_lua-core-control-fieldrefs.txt",
-        "tools/ghidra/logs/c335_lua-core-control-teardown.txt"
+        "tools/ghidra/logs/c335_lua-core-control-teardown.txt",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0216"
       ],
       "fields": [
         {
@@ -9594,9 +9591,9 @@
         {
           "offset": "0x68",
           "size": "0x04",
-          "name": "owned_resource",
-          "type": "void *",
-          "notes": "Constructor-cleared polymorphic owned pointer. CutScene teardown invokes virtual slot 0 with deleting flag 1 when non-null; the concrete pointed-to class remains unresolved."
+          "name": "initialization_clip_arguments",
+          "type": "ApplicationLuaScriptClientControlCutSceneInitializationClipArguments *",
+          "notes": "Constructor-cleared owner. FUN_006FBE80 allocates exactly 0x68 bytes, constructs InitializationClipArguments, replaces any prior value through its deleting virtual, and stores it here; finalization and CutScene teardown release it through that virtual."
         },
         {
           "offset": "0x6C",
@@ -10698,7 +10695,9 @@
         "tools/ghidra/logs/c341_scene-packet-queue-ctor.txt",
         "tools/ghidra/logs/c344_thread-coordination.txt",
         "tools/ghidra/logs/c347_resource-excel-helpers.txt",
-        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c405_scene-callback-records.txt",
+        "BCS-S-0227"
       ],
       "fields": [
         {
@@ -10837,61 +10836,61 @@
         {
           "offset": "0x440",
           "size": "0x028",
-          "name": "callback_tree_0",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "draw_debug_3d_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Draw callback named DRAW_DEBUG_3D_RAPTURE, using the draw dispatch trampoline. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         },
         {
           "offset": "0x468",
           "size": "0x028",
-          "name": "callback_tree_1",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "draw_rapture_world_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Draw callback named DRAW_RAPTURE_WORLD_RAPTURE, using the draw dispatch trampoline. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         },
         {
           "offset": "0x490",
           "size": "0x028",
-          "name": "callback_tree_2",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "update_ai_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Update callback named UPDATE_AI_RAPTURE. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         },
         {
           "offset": "0x4B8",
           "size": "0x028",
-          "name": "callback_tree_3",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "update_model_physics_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Update callback named UPDATE_MODEL_PHYSICS_RAPTURE. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         },
         {
           "offset": "0x4E0",
           "size": "0x028",
-          "name": "callback_tree_4",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "update_reset_physics_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Update callback named UPDATE_RESET_PHYSICS_RAPTURE. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         },
         {
           "offset": "0x508",
           "size": "0x028",
-          "name": "callback_tree_5",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "update_modify_joint_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Update callback named UPDATE_MODIFY_JOINT_RAPTURE. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         },
         {
           "offset": "0x530",
           "size": "0x028",
-          "name": "callback_tree_6",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "update_camera_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Update callback named UPDATE_CAMERA_RAPTURE. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         },
         {
           "offset": "0x558",
           "size": "0x028",
-          "name": "callback_tree_7",
-          "type": "unknown[0x28]",
-          "notes": "Owned self-linked tree/list header initialized by the constructor and unlinked during teardown; node and key types are unresolved."
+          "name": "interval_debug_menu_callback",
+          "type": "ApplicationSceneSceneThreadCallbackRecord",
+          "notes": "Interval callback named INTERVAL_DEBUG_MENU_RAPTURE. The embedded exact 0x28 descriptor is self-linked during construction and unlinked during teardown."
         }
       ],
-      "notes": "Full byte-accounted SceneThreadImpl layout. SceneThread allocates exactly 0x580 bytes; constructor, queue/drain, readiness, resource and Excel module, RaptureWorld, and teardown evidence establish the queue, embedded service modules, module/context pointers, owned world, and eight closing 0x28-byte callback-tree headers. The large scene-driver base and several helper types remain unknown-typed.",
+      "notes": "Full byte-accounted SceneThreadImpl layout. SceneThread allocates exactly 0x580 bytes; constructor, queue/drain, readiness, resource and Excel module, RaptureWorld, and teardown evidence establish the queue, embedded service modules, module/context pointers, owned world, and eight closing 0x28 callback descriptors. The large scene-driver base and several helper types remain unknown-typed.",
       "id": "BCS-S-0121"
     },
     {
@@ -11122,7 +11121,8 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c347_resource-excel-helpers.txt",
-        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
       ],
       "fields": [
         {
@@ -11149,16 +11149,16 @@
         {
           "offset": "0x0C",
           "size": "0x0C",
-          "name": "container_0",
-          "type": "unknown[0x0C]",
-          "notes": "Self-linked container header with its sentinel at +0x10 and count at +0x14; key and node types are unresolved."
+          "name": "resource_tree_18",
+          "type": "ComponentResourceResourceTree18",
+          "notes": "Typed 0x0C resource tree with an exact 0x18 sentinel node and Resource pointer payload tail."
         },
         {
           "offset": "0x18",
           "size": "0x0C",
-          "name": "container_1",
-          "type": "unknown[0x0C]",
-          "notes": "Second self-linked container header with its sentinel at +0x1C and count at +0x20; key and node types are unresolved."
+          "name": "resource_tree_68",
+          "type": "ComponentResourceResourceTree68",
+          "notes": "Typed 0x0C resource tree with an exact 0x68 sentinel node and Resource pointer payload tail."
         }
       ],
       "notes": "Full byte-accounted ResourceModuleBase prefix. Its constructor initializes two state dwords and two independent self-linked container headers; ResourceModule's first derived field at +0x24 fixes the exact base boundary.",
@@ -11208,7 +11208,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c344_thread-coordination.txt",
         "tools/ghidra/logs/c347_resource-excel-helpers.txt",
-        "tools/ghidra/logs/c348_thread-coordination-rtti.txt"
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
       ],
       "fields": [
         {
@@ -11270,9 +11271,9 @@
         {
           "offset": "0x2C",
           "size": "0x0C",
-          "name": "container_2c",
-          "type": "unknown[0x0C]",
-          "notes": "Self-linked container header with sentinel at +0x30 and count at +0x34; key and node types are unresolved."
+          "name": "resource_tree",
+          "type": "ComponentResourceResourceTree68",
+          "notes": "Typed 0x0C resource tree with an exact 0x68 sentinel node; ExcelModule releases each node's Resource pointer during clear or teardown."
         },
         {
           "offset": "0x38",
@@ -13282,7 +13283,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
         "tools/ghidra/logs/c342_thread-primitives.txt",
-        "tools/ghidra/logs/c356_rapture-owned-modules.txt"
+        "tools/ghidra/logs/c356_rapture-owned-modules.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
       ],
       "fields": [
         {
@@ -13365,9 +13367,9 @@
         {
           "offset": "0x24",
           "size": "0x0C",
-          "name": "lookup_state",
-          "type": "unknown[0x0C]",
-          "notes": "Sentinel-backed lookup header initialized by FUN_0095E590; template and key/value types remain unresolved."
+          "name": "resource_tree",
+          "type": "ComponentResourceResourceTree18",
+          "notes": "Typed 0x0C resource tree with an exact 0x18 sentinel node; FontModule releases each node's Resource pointer during teardown."
         },
         {
           "offset": "0x30",
@@ -13589,8 +13591,8 @@
           "offset": "0x10",
           "size": "0x28",
           "name": "glyph_record",
-          "type": "unknown[0x28]",
-          "notes": "Cached 40-byte glyph result copied intact on a tree hit; its internal metric and atlas-coordinate split remains unresolved."
+          "type": "ComponentFontGlyphRecord",
+          "notes": "Cached glyph result written by the rasterizer and copied intact on a tree hit. BCS-S-0232 partitions all ten dwords."
         },
         {
           "offset": "0x38",
@@ -13614,7 +13616,7 @@
           "notes": "Closing alignment bytes at the exact 0x3C-byte allocation boundary."
         }
       ],
-      "notes": "Full byte-accounted glyph-cache R-B tree node. Allocation size, links, glyph key, 0x28-byte cached result, sentinel marker, and color byte are direct; the cached result remains deliberately unpartitioned.",
+      "notes": "Full byte-accounted glyph-cache R-B tree node. Allocation size, links, glyph key, typed 0x28-byte cached result, sentinel marker, and color byte are direct.",
       "id": "BCS-S-0164"
     },
     {
@@ -16868,6 +16870,2263 @@
       ],
       "notes": "Complete exact 0x34 RaptureReferenceResource lazily allocated into CharaActor+0x2B84. RTTI, base construction, inherited vector methods, and instruction-complete teardown account for both pointer-vector headers and the retained scene-service reference.",
       "id": "BCS-S-0214"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManager",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0187",
+        "tools/ghidra/logs/c221_get-equipping-slot.txt",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c398_owned-resource-components.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0108",
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0219",
+        "BCS-S-0222",
+        "tools/ghidra/logs/c402_item-manager-index-layouts.txt",
+        "tools/ghidra/logs/c403_item-manager-index-nodes.txt",
+        "BCS-S-0224",
+        "BCS-S-0226"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Control::ItemManager vftable at 0x00FD7618. Construction first installs the ItemSheet::LoadFinishedListenerInterface table before replacing it with this primary table."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "base_state",
+          "type": "unknown",
+          "notes": "Four bytes between the primary vftable and the first constructed subobject. No bounded constructor, update, or teardown path exposes their representation."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x0C",
+          "name": "item_index_a",
+          "type": "ApplicationLuaScriptClientControlItemManagerIndex",
+          "notes": "First embedded uint32-key item index. The reconciliation pass looks up keys from item_index_b in this tree and reads or replaces its item pointers."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x0C",
+          "name": "item_index_b",
+          "type": "ApplicationLuaScriptClientControlItemManagerIndex",
+          "notes": "Second embedded uint32-key item index. The reconciliation pass iterates and clears this tree while merging its item pointers into item_index_a."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "owned_item_state",
+          "type": "ApplicationLuaScriptClientControlItemManagerOwnedItemState *",
+          "notes": "Constructor-cleared owned pointer to the exact 0x10 action-list state. The owner gate dispatches its polymorphic payloads and drains, destroys, and frees the state when empty."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x3C",
+          "name": "item_runtime_state",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeState",
+          "notes": "Embedded exact 0x3C runtime helper containing a block-table core, two counted lists, and an ordered tree. Instruction-complete construction and teardown establish every nested base."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x01",
+          "name": "update_pending",
+          "type": "uint8_t",
+          "notes": "Initialized to 1 and set to 1 again by ItemManager vtable slot 1 after the paired item-update handlers run."
+        },
+        {
+          "offset": "0x61",
+          "size": "0x01",
+          "name": "state_61",
+          "type": "uint8_t",
+          "notes": "Constructor-cleared byte. No bounded consumer establishes narrower semantics."
+        },
+        {
+          "offset": "0x62",
+          "size": "0x02",
+          "name": "alignment_62",
+          "type": "unknown[2]",
+          "notes": "Unwritten alignment bytes between the two constructor-cleared byte fields and the following dwords."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "state_64",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword with unresolved representation and semantics."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x04",
+          "name": "state_68",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword with unresolved representation and semantics."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x0C",
+          "name": "item_update_tree",
+          "type": "ApplicationLuaScriptClientControlItemManagerUpdateTree",
+          "notes": "Queued update tree whose exact 0x20 nodes carry a kind token and inline 0x0C record. The ItemManager update pass dispatches the selected callbacks and then clears the tree."
+        }
+      ],
+      "notes": "Complete exact 0x78 ItemManager layout lazily allocated into CharaBase+0xD8. The allocation and recovered class vftable establish its identity and size; instruction-complete construction and teardown account for every subobject boundary, including the cleanup hidden after the decompiler's noreturn _free call. Existing item API evidence establishes the inventory and trade manager role. Both uint32-key item indexes, the owned action state, embedded runtime state, and queued update tree are now concrete layouts. At the direct outer-layout level, only base, alignment, and scalar-state semantics remain unknown-typed; nested policy and payload unknowns are recorded in their owning structs.",
+      "id": "BCS-S-0215"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlCutSceneInitializationClipArguments",
+      "namespace": "Application::Lua::Script::Client::Control::CutScene",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c396_owned-resource-producers.txt",
+        "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+        "tools/ghidra/logs/c398_owned-resource-components.txt",
+        "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+        "BCS-S-0109",
+        "BCS-S-0135"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Control::CutScene::InitializationClipArguments vftable at 0x00FD6178."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "clip_entries_policy",
+          "type": "unknown",
+          "notes": "Leading dword of the copied four-byte-stride range. Its allocator or policy representation is not exposed by construction or teardown."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "clip_entries_begin",
+          "type": "void *",
+          "notes": "Beginning of the copied four-byte-stride initialization-clip argument range. The concrete element type remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "clip_entries_end",
+          "type": "void *",
+          "notes": "One-past-last copied initialization-clip argument entry."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "clip_entries_capacity_end",
+          "type": "void *",
+          "notes": "One-past-end of allocated four-byte-stride entry storage."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x54",
+          "name": "clip_name",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Embedded established string layout constructed by FUN_00445CF0 and destroyed by FUN_00446F50. CutScene initialization and finalization paths pass this object as the clip identity."
+        }
+      ],
+      "notes": "Complete exact 0x68 polymorphic InitializationClipArguments object owned through CutScene+0x68. The exact allocation, recovered RTTI-backed vftable, constructor and destructor instructions, copied four-byte-stride range, and embedded string account for every byte.",
+      "id": "BCS-S-0216"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerListNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ApplicationLuaScriptClientControlItemManagerListNode *",
+          "notes": "Forward link. The exact 0x0C sentinel self-links this field, and erase relinks the successor through the predecessor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ApplicationLuaScriptClientControlItemManagerListNode *",
+          "notes": "Backward link. The exact 0x0C sentinel self-links this field, and erase relinks the predecessor through the successor."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown",
+          "notes": "Four-byte list value. The ItemManager-owned specialization interprets it as a polymorphic action pointer, but the two embedded runtime-list specializations do not expose their payload representation."
+        }
+      ],
+      "notes": "Complete exact 0x0C doubly linked list node used by ItemManager helpers. Sentinel construction, list drain, unlink, and exact-size deallocation account for all three dwords; only the owned-state specialization establishes a polymorphic pointer interpretation for the value.",
+      "id": "BCS-S-0217"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerList",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0217"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "list_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, drain, dispatch, or teardown paths. Its allocator or policy representation remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlItemManagerListNode *",
+          "notes": "Exact 0x0C sentinel whose next and previous links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes. Construction clears it and each observed erase decrements it."
+        }
+      ],
+      "notes": "Complete 0x0C counted doubly linked list header used by ItemManager helpers. Construction, traversal, erase, drain, and teardown establish the sentinel and count; the untouched leading policy dword remains honestly unknown-typed.",
+      "id": "BCS-S-0218"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerOwnedItemState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215",
+        "BCS-S-0218"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x0C",
+          "name": "pending_actions",
+          "type": "ApplicationLuaScriptClientControlItemManagerList",
+          "notes": "Owned polymorphic action list. ItemManager drains it by deleting each payload or dispatches each payload through vtable slot +0x24."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "dispatch_limit",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied upper bound on actions dispatched during one pass. Zero means the observed loop is limited only by the list becoming empty."
+        }
+      ],
+      "notes": "Complete exact 0x10 owned ItemManager action state. The factory allocation fixes the size, construction initializes the list and bound, and the owner gate, dispatch loop, drain, and teardown account for both fields.",
+      "id": "BCS-S-0219"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x14",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Left/minimum link, self-linked on the exact 0x14 sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Parent/root link, self-linked on the exact 0x14 sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Right/maximum link, self-linked on the exact 0x14 sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown",
+          "notes": "Four-byte node payload. The bounded constructor and teardown paths do not establish its concrete key or value type."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Initialized to 1 on the sentinel by the tree-node allocator."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Initialized to 1 for the sentinel and 0 by the raw node allocator before ordinary node construction."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x02",
+          "name": "alignment_12",
+          "type": "unknown[2]",
+          "notes": "Unwritten tail bytes completing the exact 0x14 node allocation."
+        }
+      ],
+      "notes": "Complete exact 0x14 ordered-tree node layout for ItemManager runtime state. Allocation, sentinel initialization, self-links, flag bytes, and exact-size teardown account for every byte; the four-byte payload remains unknown-typed.",
+      "id": "BCS-S-0220"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerRuntimeTree",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0220"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor or teardown paths. Its allocator or comparison-policy representation remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTreeNode *",
+          "notes": "Exact 0x14 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header embedded in ItemManager runtime state. Constructor and teardown establish the exact 0x14 sentinel specialization and count; the untouched leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0221"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerRuntimeState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x3C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0215",
+        "BCS-S-0218",
+        "BCS-S-0221"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "state_00",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded runtime-state constructor and destructor."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "block_table_policy",
+          "type": "unknown",
+          "notes": "Leading dword of the block-table core. Teardown starts at this exact base but does not expose its representation."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "block_table",
+          "type": "void **",
+          "notes": "Pointer array whose non-null entries refer to exact 0x10 allocations freed during teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "block_count",
+          "type": "uint32_t",
+          "notes": "Number of pointer-array slots traversed during teardown; initialized to zero."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "block_state",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword also cleared when the reference count reaches zero. The bounded paths do not establish whether it is a pointer, index, or scalar state."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "reference_count",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared count drained to zero before block-table teardown."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x0C",
+          "name": "runtime_list_a",
+          "type": "ApplicationLuaScriptClientControlItemManagerList",
+          "notes": "First counted list constructed and destroyed at this exact subobject base. Its payload role is not established by the bounded paths."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x0C",
+          "name": "runtime_list_b",
+          "type": "ApplicationLuaScriptClientControlItemManagerList",
+          "notes": "Second counted list constructed and destroyed at this exact subobject base. Its role relative to runtime_list_a remains unresolved."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x0C",
+          "name": "runtime_tree",
+          "type": "ApplicationLuaScriptClientControlItemManagerRuntimeTree",
+          "notes": "Ordered tree constructed and destroyed at the final exact subobject base."
+        }
+      ],
+      "notes": "Complete exact 0x3C ItemManager runtime-state layout. Instruction-level construction and teardown partition its block-table core, two counted lists, and one ordered tree, matching the enclosing ItemManager+0x24..+0x5F boundary.",
+      "id": "BCS-S-0222"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerIndexNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c402_item-manager-index-layouts.txt",
+        "tools/ghidra/logs/c403_item-manager-index-nodes.txt",
+        "BCS-S-0215"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationLuaScriptClientControlItemManagerIndexNode *",
+          "notes": "Left/minimum link, self-linked on the exact 0x18 sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationLuaScriptClientControlItemManagerIndexNode *",
+          "notes": "Parent/root link, self-linked on the exact 0x18 sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationLuaScriptClientControlItemManagerIndexNode *",
+          "notes": "Right/maximum link, self-linked on the exact 0x18 sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "key",
+          "type": "uint32_t",
+          "notes": "Unsigned lookup key compared directly by the shared lower-bound and insertion helpers."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "item",
+          "type": "void *",
+          "notes": "Indexed item pointer returned by lookup and transferred or replaced during ItemManager reconciliation. Its concrete pointed-to class remains unresolved."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 on the exact sentinel allocation."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Nil marker initialized to 1 for the sentinel and tested by lookup, iteration, and recursive teardown."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "alignment_16",
+          "type": "unknown[2]",
+          "notes": "Unwritten tail bytes completing the exact 0x18 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x18 uint32-key ItemManager index node. Sentinel allocation, lower-bound lookup, insertion access, reconciliation, iteration, and exact-size teardown account for every field; the item pointer's concrete target class remains unresolved.",
+      "id": "BCS-S-0223"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerIndex",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c402_item-manager-index-layouts.txt",
+        "tools/ghidra/logs/c403_item-manager-index-nodes.txt",
+        "BCS-S-0223"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, lookup, reconciliation, or teardown paths. Its allocator or comparison-policy representation remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlItemManagerIndexNode *",
+          "notes": "Exact 0x18 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by reconciliation or teardown."
+        }
+      ],
+      "notes": "Complete 0x0C uint32-key ordered-tree header used twice by ItemManager. Construction, lookup, reconciliation, iteration, clear, and teardown establish the sentinel and count; the untouched policy dword remains unknown-typed.",
+      "id": "BCS-S-0224"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerUpdateNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c402_item-manager-index-layouts.txt",
+        "tools/ghidra/logs/c403_item-manager-index-nodes.txt",
+        "BCS-S-0215"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationLuaScriptClientControlItemManagerUpdateNode *",
+          "notes": "Left/minimum link, self-linked on the exact 0x20 sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationLuaScriptClientControlItemManagerUpdateNode *",
+          "notes": "Parent/root link, self-linked on the exact 0x20 sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationLuaScriptClientControlItemManagerUpdateNode *",
+          "notes": "Right/maximum link, self-linked on the exact 0x20 sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "update_kind",
+          "type": "void *",
+          "notes": "Four-byte update-kind token compared against two fixed data addresses to select the paired item-package and trading-item callback paths. Its concrete enum or descriptor type is unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x0C",
+          "name": "update_record",
+          "type": "unknown[12]",
+          "notes": "Inline record passed to item lookup and the selected update callbacks. The bounded consumer exposes the exact extent but not its internal field partition."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 on the exact sentinel allocation."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Nil marker initialized to 1 for the sentinel and tested by iteration, erase, and recursive teardown."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x02",
+          "name": "alignment_1e",
+          "type": "unknown[2]",
+          "notes": "Unwritten tail bytes completing the exact 0x20 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x20 ItemManager update-tree node. Allocation, sentinel construction, update dispatch, iteration, erase, and exact-size recursive teardown establish the links, token, 0x0C inline record, and flag bytes; the record internals remain unknown-typed.",
+      "id": "BCS-S-0225"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlItemManagerUpdateTree",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c402_item-manager-index-layouts.txt",
+        "tools/ghidra/logs/c403_item-manager-index-nodes.txt",
+        "BCS-S-0225"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded constructor, dispatch, clear, or teardown paths. Its allocator or comparison-policy representation remains unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlItemManagerUpdateNode *",
+          "notes": "Exact 0x20 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of queued update nodes, initialized to zero and reset after dispatch or teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ItemManager update-tree header. Construction, dispatch iteration, erase, clear, and teardown establish the exact 0x20 sentinel specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0226"
+    },
+    {
+      "name": "ApplicationSceneSceneThreadCallbackRecord",
+      "namespace": "Application::Scene",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c339_scene-runtime-layouts.txt",
+        "tools/ghidra/logs/c405_scene-callback-records.txt",
+        "BCS-S-0121"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ApplicationSceneSceneThreadCallbackRecord *",
+          "notes": "Intrusive forward link initialized to the record itself and unlinked explicitly during SceneThreadImpl teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ApplicationSceneSceneThreadCallbackRecord *",
+          "notes": "Intrusive backward link initialized to the record itself and unlinked explicitly during SceneThreadImpl teardown."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "dispatch_trampoline",
+          "type": "void *",
+          "notes": "Code pointer selected by the record constructor. Draw records use LAB_004EB9A0; update and interval records use LAB_00A68EF0."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "owner",
+          "type": "ApplicationSceneSceneThreadImpl *",
+          "notes": "Back-reference to the containing SceneThreadImpl, passed explicitly to every record constructor."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "callback",
+          "type": "void *",
+          "notes": "Class-specific callback code pointer. Each of the eight records receives a distinct callback target."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "callback_context",
+          "type": "unknown",
+          "notes": "Constructor-supplied callback-context dword. All eight observed SceneThreadImpl records pass zero, so its concrete pointer or scalar representation is unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "schedule_order",
+          "type": "uint32_t",
+          "notes": "Ordering value derived from the named draw or update schedule anchor with a small signed adjustment."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "unknown",
+          "notes": "Constructor-supplied dword initialized to zero in all eight records. No bounded consumer establishes narrower semantics."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "name",
+          "type": "const char *",
+          "notes": "Pointer to the stable callback name literal, such as DRAW_RAPTURE_WORLD_RAPTURE or UPDATE_CAMERA_RAPTURE."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "state_24",
+          "type": "unknown",
+          "notes": "Final dword within the exact repeated 0x28 boundary. Neither record constructor nor the bounded teardown path initializes or interprets it."
+        }
+      ],
+      "notes": "Complete exact 0x28 intrusive SceneThread callback descriptor shared by two draw callbacks, five update callbacks, and one interval callback. Instruction-level construction fixes all eight destinations and argument mappings; teardown independently confirms the leading self-linked list node. Two state dwords remain honestly unknown-typed.",
+      "id": "BCS-S-0227"
+    },
+    {
+      "name": "ApplicationSegmentedPointerQueue",
+      "namespace": "Application",
+      "size": "0x14",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c302_00da-action-queue-boundary.txt",
+        "tools/ghidra/logs/c323_packet-element-layouts.txt",
+        "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+        "BCS-S-0059",
+        "BCS-S-0066"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy_state",
+          "type": "unknown",
+          "notes": "Leading dword within the exact repeated record boundary. The shared constructor leaves it untouched and the bounded queue consumers do not establish its representation."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "block_map",
+          "type": "void *",
+          "notes": "Pointer to a dynamically allocated map of pointer-block addresses. Each live block holds four queued-object pointers."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "block_count",
+          "type": "uint32_t",
+          "notes": "Number of block-map entries. Queue insertion and iteration use it as the wrap threshold for the computed block index."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "begin_offset",
+          "type": "uint32_t",
+          "notes": "Logical offset of the first queued pointer within the segmented storage."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "element_count",
+          "type": "uint32_t",
+          "notes": "Number of queued pointers. Append increments this value and teardown drains it to zero before releasing storage."
+        }
+      ],
+      "notes": "Complete exact 0x14 segmented pointer-queue header. The shared constructor, append helper, CharaActionController iterator, and teardown establish a map of four-pointer blocks plus logical begin and count fields. Both CharaActionController and CharaElement own arrays of 26 headers with this layout; their concrete queued-object classes are not assumed to match.",
+      "id": "BCS-S-0228"
+    },
+    {
+      "name": "ApplicationMainElementCharaStatusEffectTimerSlot",
+      "namespace": "Application::Main::Element::Chara",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c323_packet-element-layouts.txt",
+        "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
+        "BCS-Y-1027",
+        "BCS-S-0066"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "flags",
+          "type": "uint16_t",
+          "notes": "Constructor applies the fixed initial bit pattern while preserving unrelated bits. The tick reads bit 0 and bits 1 through 3 as state and variant selectors and bit 4 as a forwarded flag."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x01",
+          "name": "remaining_ticks",
+          "type": "uint8_t",
+          "notes": "Active timer value. The tick selects the greatest value across each three-slot row and decrements nonzero values."
+        },
+        {
+          "offset": "0x03",
+          "size": "0x01",
+          "name": "decrement_per_tick",
+          "type": "uint8_t",
+          "notes": "Amount subtracted from remaining_ticks with saturation at zero."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "value_04",
+          "type": "uint16_t",
+          "notes": "Constructor initializes this halfword to zero. The tick forwards it together with value_06 as one dword for variants 1 and 4; narrower semantics are unresolved."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "value_06",
+          "type": "uint16_t",
+          "notes": "Constructor initializes this halfword to 0xC000. The tick forwards it together with value_04; narrower semantics are unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "extended_payload_present",
+          "type": "uint8_t",
+          "notes": "Zero selects the compact variant-1/4 broadcast shape; nonzero selects the 0x28-byte extended shape."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x0F",
+          "name": "variant_payload_09",
+          "type": "unknown[15]",
+          "notes": "Remaining bytes of the variant payload beginning at +0x08. The extended path copies aligned portions of this region, but their concrete scalar partition and semantics are unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "value_18",
+          "type": "float",
+          "notes": "Constructor initializes this field from the retail float constant 1.0. Variants 1 through 4 forward the raw value in their state broadcasts; its role remains unresolved."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "unknown",
+          "notes": "Dword between directly consumed variant regions. The bounded constructor and tick do not establish its representation."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "variant_value_20",
+          "type": "unknown",
+          "notes": "Forwarded by extended variants 1 and 4 and by variants 2 and 3. Concrete scalar type and meaning are unresolved."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "variant_value_24",
+          "type": "unknown",
+          "notes": "Forwarded by extended variants 1 and 4 and by variants 2 and 3. Concrete scalar type and meaning are unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "variant_value_28",
+          "type": "unknown",
+          "notes": "Forwarded by extended variants 1 and 4 and by variant 2. Concrete scalar type and meaning are unresolved."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x04",
+          "name": "state_2c",
+          "type": "unknown",
+          "notes": "Final dword within the exact 0x30 array stride. The bounded constructor and tick do not establish its representation."
+        }
+      ],
+      "notes": "Complete exact 0x30 CharaElement status-effect timer slot. Six slots are constructed inline and processed as two rows of three: each row selects its greatest remaining timer, decrements active timers, and emits a variant-sized state broadcast. Header fields and variant access boundaries are explicit; payload semantics remain intentionally narrow.",
+      "id": "BCS-S-0229"
+    },
+    {
+      "name": "ApplicationMainElementCharaStatusSlotRecord",
+      "namespace": "Application::Main::Element::Chara",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+        "manifests/0x00D0_state_table_pipeline.json",
+        "BCS-Y-0619",
+        "BCS-S-0066"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "record_id",
+          "type": "uint32_t",
+          "notes": "Case 0xD0 copies this dword from packet+0x10+i*8; the constructor and BCS-Y-0619 clear it before whole-table copy."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "record_param",
+          "type": "uint16_t",
+          "notes": "Case 0xD0 copies this halfword from packet+0x14+i*8. The value 0xFFFF terminates the variable list, including the fixed seventeenth sentinel record."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "opaque_06",
+          "type": "unknown[2]",
+          "notes": "Copied as part of the helper's complete 0x88-byte table copy, but no retained scalar access establishes its type or whether it is payload or padding."
+        }
+      ],
+      "notes": "Exact 0x08 record used by CharaElement's 17-entry case-0xD0 table. The packet-facing path supplies up to sixteen records followed by a sentinel; the helper initializes and copies the same 17-record, 0x88-byte shape.",
+      "id": "BCS-S-0230"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlCharaInlineStateRecord",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c335_lua-core-control-factories.txt",
+        "tools/ghidra/logs/c409_chara-inline-state-records.txt",
+        "BCS-Y-1030",
+        "BCS-S-0108"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_00",
+          "type": "unknown",
+          "notes": "Constructed through FUN_00CC9310 and destroyed through FUN_00CC9330. The exact helper type is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "uint32_t",
+          "notes": "Zero-initialized by FUN_00712DD0."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "shared_state_base_08",
+          "type": "unknown",
+          "notes": "Base of the state region passed to FUN_0076F5A0 and FUN_0076F690. The cleanup reaches FUN_004D45E0 with this base, but its concrete representation is unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "state_values_0c",
+          "type": "uint32_t[4]",
+          "notes": "Four dwords at shared-state offsets +0x04 through +0x10, zero-initialized by BCS-Y-1030."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "context_1c",
+          "type": "unknown",
+          "notes": "Nested helper at shared-state +0x14, constructed through FUN_00CC9310 and destroyed through FUN_00CC9330. Its concrete type is unresolved."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x10",
+          "name": "state_values_20",
+          "type": "uint32_t[4]",
+          "notes": "Four dwords at shared-state offsets +0x18 through +0x24, zero-initialized by BCS-Y-1030."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x01",
+          "name": "state_flag_30",
+          "type": "uint8_t",
+          "notes": "Byte at shared-state +0x28, zero-initialized by BCS-Y-1030."
+        },
+        {
+          "offset": "0x31",
+          "size": "0x07",
+          "name": "tail_31",
+          "type": "unknown[7]",
+          "notes": "Bytes after the final constructor write and before the exact 0x38 array stride. No retained access distinguishes payload from padding."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x38 record used as a two-element inline array in CharaBase. The record owns two unresolved 4-byte helper regions around a shared zero-initialized dword-and-flag state shape; the exact stride supplies the closing boundary.",
+      "id": "BCS-S-0231"
+    },
+    {
+      "name": "ComponentFontGlyphRecord",
+      "namespace": "Component::Font",
+      "size": "0x28",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c359_font-data-layouts.txt",
+        "tools/ghidra/logs/c359_font-context-consumer.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "atlas_outer_index",
+          "type": "uint32_t",
+          "notes": "Outer atlas counter copied from the font context. It advances after the inner counter reaches four."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "atlas_inner_index",
+          "type": "uint32_t",
+          "notes": "Inner atlas counter copied from the font context. It advances after the current cell grid fills."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state",
+          "type": "uint32_t",
+          "notes": "Producer initializes this dword to zero; the retained evidence does not establish a narrower semantic name."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "baseline_offset",
+          "type": "int32_t",
+          "notes": "Text ascent minus the glyph origin Y coordinate."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "padded_width_primary",
+          "type": "uint32_t",
+          "notes": "Clamped glyph black-box width plus four; the same value is written independently at +0x18."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "cell_extent",
+          "type": "uint32_t",
+          "notes": "Configured font height plus two, used as the atlas cell extent."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "padded_width_secondary",
+          "type": "uint32_t",
+          "notes": "Second stored copy of the clamped glyph black-box width plus four; distinct downstream semantics are not established."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "padded_height",
+          "type": "uint32_t",
+          "notes": "Clamped glyph black-box height plus four."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "atlas_x",
+          "type": "uint32_t",
+          "notes": "Column within the current atlas grid multiplied by the cell extent."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "atlas_y",
+          "type": "uint32_t",
+          "notes": "Row within the current atlas grid multiplied by the cell extent."
+        }
+      ],
+      "notes": "Full byte-accounted cached glyph result. The rasterizer writes all ten dwords, and the cache-hit path copies exactly the same 0x28-byte extent from each tree node.",
+      "id": "BCS-S-0232"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x24",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+        "BCS-S-0105"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "link_00",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Tree link at +0x00, self-linked on the exact sentinel allocation. The bounded evidence does not distinguish its traversal role."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "link_04",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Tree link at +0x04, self-linked on the exact sentinel allocation. The bounded evidence does not distinguish its traversal role."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "link_08",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Tree link at +0x08, self-linked on the exact sentinel allocation. The bounded evidence does not distinguish its traversal role."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x14",
+          "name": "value",
+          "type": "unknown[0x14]",
+          "notes": "Tree key and payload span. The bounded constructor and teardown establish its extent but do not expose the member partition or concrete types."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "R-B tree color byte initialized to 1 by the exact node allocator."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Nil marker initialized to zero by the allocator and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "tail_22",
+          "type": "unknown[2]",
+          "notes": "Unwritten closing bytes at the exact 0x24 allocation boundary. The bounded evidence does not distinguish payload from padding."
+        }
+      ],
+      "notes": "Exact byte-accounted R-B tree node used by the SpreadSheet loaded-data state. Construction establishes the three links and marker bytes; the retained bounded paths do not partition the 0x14-byte key and payload span.",
+      "id": "BCS-S-0233"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataState",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c334_lua-service-controls.txt",
+        "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+        "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+        "BCS-S-0105"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading tree dword not initialized or interpreted by the bounded constructor and teardown paths."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "tree_sentinel",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetLoadedDataTreeNode *",
+          "notes": "Owned exact 0x24 sentinel. Construction self-links it and teardown clears and frees the tree."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "tree_count",
+          "type": "uint32_t",
+          "notes": "Tree element count initialized to zero and cleared during teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state",
+          "type": "uint32_t",
+          "notes": "Constructor-cleared dword that is cleared again before tree teardown; its semantic role is unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "source_container",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetList *",
+          "notes": "Points to the exact embedded circular-list container at the owning SpreadSheet+0xB8."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "tail_state",
+          "type": "unknown",
+          "notes": "Closing dword at the exact owner-supplied 0x18 boundary. No bounded producer or consumer establishes its representation."
+        }
+      ],
+      "notes": "Exact byte-accounted loaded-data helper embedded at SpreadSheet+0xC4. It owns an R-B tree, retains the preceding +0xB8 circular-list container, and has two unresolved state dwords.",
+      "id": "BCS-S-0234"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetListNode",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "BCS-S-0105",
+        "BCS-Y-1463",
+        "BCS-Y-0232"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "next",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetListNode *",
+          "notes": "Forward link initialized to self on the exact sentinel and followed during list teardown."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "previous",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetListNode *",
+          "notes": "Backward link initialized to self on the exact sentinel."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value",
+          "type": "unknown",
+          "notes": "Four-byte node payload. The retained SpreadSheet paths do not establish its concrete representation."
+        }
+      ],
+      "notes": "Exact byte-accounted circular-list node used by the SpreadSheet+0xB8 container. The shared allocator fixes the 0x0C size and self-links the sentinel; the owner-specific payload type remains unresolved.",
+      "id": "BCS-S-0235"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlSpreadSheetList",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "tools/ghidra/logs/c334_lua-service-controls.txt",
+        "tools/ghidra/logs/c334_lua-service-control-factories.txt",
+        "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+        "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+        "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+        "BCS-S-0105",
+        "BCS-S-0234",
+        "BCS-Y-1463",
+        "BCS-Y-0232"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "list_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the retained constructor, owner, loaded-data, or teardown paths."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationLuaScriptClientControlSpreadSheetListNode *",
+          "notes": "Owned exact 0x0C circular-list sentinel whose next and previous links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by the shared teardown."
+        }
+      ],
+      "notes": "Exact byte-accounted circular-list container embedded at SpreadSheet+0xB8 and retained by the adjacent loaded-data state at +0xC4.",
+      "id": "BCS-S-0236"
+    },
+    {
+      "name": "PlayerInventoryPackageBucket",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0032",
+        "BCS-Y-0414",
+        "tools/ghidra/logs/c413_myplayer-inventory-package-storage.txt",
+        "tools/ghidra/logs/c414_myplayer-inventory-bucket-lifetime.txt",
+        "tools/ghidra/logs/c415_myplayer-inventory-bucket-init.txt",
+        "tools/ghidra/logs/c416_myplayer-inventory-vector-init.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vector_policy",
+          "type": "unknown",
+          "notes": "Leading dword untouched by the bounded bucket constructor, producer, count consumer, and destructor paths."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "slot_id_begin",
+          "type": "uint32_t *",
+          "notes": "Beginning of the 4-byte slot-ID array. The producer compacts existing IDs and appends bitset-derived IDs here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "slot_id_end",
+          "type": "uint32_t *",
+          "notes": "One-past-last slot ID. The producer advances it in 4-byte steps and the Lua consumer derives the stored-item count from it."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "slot_id_capacity_end",
+          "type": "uint32_t *",
+          "notes": "End of allocated slot-ID storage. Reserve and append helpers compare it with slot_id_end using a 4-byte element width."
+        }
+      ],
+      "notes": "Exact byte-accounted inventory package bucket stored in the four-record MyPlayer inventory array. Construction, reserve, compaction, append, sort, count, and teardown independently establish the 0x10 stride and nested 4-byte slot-ID vector.",
+      "id": "BCS-S-0237"
+    },
+    {
+      "name": "ApplicationMainElementCharaMovementStateRecord",
+      "namespace": "Application::Main::Element::Chara",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0066",
+        "tools/ghidra/logs/c323_packet-element-layouts.txt",
+        "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+        "tools/ghidra/logs/c417_chara-movement-state-records.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x0C",
+          "name": "positive_values",
+          "type": "float[3]",
+          "notes": "Three float lanes initialized to 10000.0f from the retail constant at 0x00FA5124."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state_0c",
+          "type": "unknown",
+          "notes": "Constructor-cleared dword. The bounded evidence does not expose its representation or semantics."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x0C",
+          "name": "negative_values",
+          "type": "float[3]",
+          "notes": "Three float lanes initialized to -10000.0f from the retail constant at 0x00FA7B24."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "unknown",
+          "notes": "Constructor-cleared closing dword. The bounded evidence does not expose its representation or semantics."
+        }
+      ],
+      "notes": "Exact byte-accounted 0x20 movement-state record stored twice in CharaElement. The owner constructor initializes both records with the same paired three-lane positive and negative float values and two zeroed dwords. The adjacent live input axes begin after the two-record array at complete-object +0x264.",
+      "id": "BCS-S-0238"
+    },
+    {
+      "name": "ComponentResourceResourceTreeNode18",
+      "namespace": "Component::Resource",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Tree parent link; the sentinel stores the root here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "key_or_value",
+          "type": "unknown[0x04]",
+          "notes": "Four-byte key or value storage not interpreted by the bounded constructor, iteration, erase, or teardown paths."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "resource",
+          "type": "ComponentResourceResource *",
+          "notes": "Owned Resource pointer released when ResourceModuleBase or FontModule removes the node."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 on the sentinel and used by erase rebalancing."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x18-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x18 resource-tree node. Allocation, sentinel initialization, iteration, erase balancing, and owner teardown establish every structural field and the Resource pointer tail; the four-byte key or value representation remains unknown.",
+      "id": "BCS-S-0239"
+    },
+    {
+      "name": "ComponentResourceResourceTree18",
+      "namespace": "Component::Resource",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ComponentResourceResourceTreeNode18 *",
+          "notes": "Owned exact 0x18 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by erase or teardown."
+        }
+      ],
+      "notes": "Complete 0x0C resource-tree header used by ResourceModuleBase and FontModule. Construction, iteration, erase, and teardown establish the exact 0x18 sentinel specialization and count; the untouched policy dword remains unknown-typed.",
+      "id": "BCS-S-0240"
+    },
+    {
+      "name": "ComponentResourceResourceTreeNode68",
+      "namespace": "Component::Resource",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Tree parent link; the sentinel stores the root here."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x54",
+          "name": "key_or_value",
+          "type": "unknown[0x54]",
+          "notes": "Inline key or value storage whose concrete representation is not established by the bounded constructor, iteration, erase, or teardown paths."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "resource",
+          "type": "ComponentResourceResource *",
+          "notes": "Owned Resource pointer released by both ResourceModuleBase and ExcelModule consumers."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 on the sentinel and used by erase rebalancing."
+        },
+        {
+          "offset": "0x65",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator and set to one on the self-linked sentinel."
+        },
+        {
+          "offset": "0x66",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x68-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x68 resource-tree node. Allocation, sentinel initialization, iteration, erase balancing, and two owner teardown paths establish every structural field and the Resource pointer tail; the inline key or value representation remains unknown.",
+      "id": "BCS-S-0241"
+    },
+    {
+      "name": "ComponentResourceResourceTree68",
+      "namespace": "Component::Resource",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c347_resource-excel-helpers.txt",
+        "tools/ghidra/logs/c418_resource-tree-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ComponentResourceResourceTreeNode68 *",
+          "notes": "Owned exact 0x68 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and cleared by erase or teardown."
+        }
+      ],
+      "notes": "Complete 0x0C resource-tree header shared by ResourceModuleBase and ExcelModule. Construction, iteration, erase, and teardown establish the exact 0x68 sentinel specialization and count; the untouched policy dword remains unknown-typed.",
+      "id": "BCS-S-0242"
+    },
+    {
+      "name": "ApplicationMainElementSystemCameraInputStateRecord",
+      "namespace": "Application::Main::Element::System",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0069",
+        "tools/ghidra/logs/c324_system-event-elements.txt",
+        "tools/ghidra/logs/c324_system-event-elements-2.txt",
+        "tools/ghidra/logs/c419_camera-input-record.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "word_00",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor and cleared again before publication; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "word_02",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor and cleared again before publication; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "word_04",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "word_06",
+          "type": "unknown[0x02]",
+          "notes": "Sixteen-bit storage initialized to zero by the owner constructor; its representation and semantics are unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "state_08",
+          "type": "uint8_t",
+          "notes": "Byte initialized to 0x12 by the owner constructor; its semantic role is unresolved."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "opaque_09",
+          "type": "unknown[0x01]",
+          "notes": "Byte carried in the published payload but not initialized or interpreted by the bounded evidence."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x01",
+          "name": "flags_0a",
+          "type": "uint8_t",
+          "notes": "Flag byte whose low nibble is cleared by the owner constructor while the high nibble is preserved."
+        },
+        {
+          "offset": "0x0B",
+          "size": "0x01",
+          "name": "opaque_0b",
+          "type": "unknown[0x01]",
+          "notes": "Closing byte carried in the published payload but not initialized or interpreted by the bounded evidence."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x0C CameraElement input record. The constructor establishes four 16-bit slots, one initialized state byte, and one flag byte; the publisher clears the first two slots and transmits the complete record. Signedness and semantics of the four word slots and the two otherwise unobserved bytes remain unknown.",
+      "id": "BCS-S-0243"
+    },
+    {
+      "name": "ApplicationLuaScriptClientControlGroupReferenceRecord",
+      "namespace": "Application::Lua::Script::Client::Control",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0089",
+        "tools/ghidra/logs/c280_get-group-by-display-name.txt",
+        "tools/ghidra/logs/c298_get-group-by-display-name-4.txt",
+        "tools/ghidra/logs/c330_lua-tentative-layouts.txt",
+        "tools/ghidra/logs/c420_group-reference-record.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "group",
+          "type": "ApplicationLuaScriptClientControlGroupBase *",
+          "notes": "GroupBase pointer returned from matched group-list nodes, dereferenced by FUN_006BFD20, and copied into newly created GroupBase objects."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "opaque_04",
+          "type": "unknown[0x04]",
+          "notes": "Preserved by complete 0x10-byte copies but not initialized, populated, or interpreted by the bounded lifecycle, producer, and consumer paths."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "node_state_08",
+          "type": "unknown[0x04]",
+          "notes": "First dword of the eight-byte state pair sourced from matched list-node storage and returned together by FUN_006BFD10; its concrete representation is unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "node_state_0c",
+          "type": "unknown[0x04]",
+          "notes": "Second dword of the eight-byte state pair sourced from matched list-node storage and returned together by FUN_006BFD10; its concrete representation is unresolved."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x10 group-reference record embedded at GroupBase+0x68 and also used as a temporary lookup result. Initialization, two producer variants, accessors, conversion, full-width copies, and wrapper creation establish the GroupBase pointer and closing eight-byte state pair. The intervening dword and the state-pair representation remain unknown.",
+      "id": "BCS-S-0244"
+    },
+    {
+      "name": "ApplicationMainElementFormTreeNode70",
+      "namespace": "Application::Main::Element",
+      "size": "0x70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c421_form-tree70-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Tree parent link; the sentinel stores the root here and erase rebalancing updates it."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x60",
+          "name": "key_or_value",
+          "type": "unknown[0x60]",
+          "notes": "Inline key or value storage not partitioned by the bounded construction, clear, erase, or teardown paths."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 and read or updated by erase balancing."
+        },
+        {
+          "offset": "0x6D",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator, set to one on the sentinel, and used by traversal and erase."
+        },
+        {
+          "offset": "0x6E",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x70-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x70 ordered-tree node specialization used by two FormElement trees. Allocation, sentinel initialization, recursive clear, erase balancing, and exact-size deallocation establish the links and marker bytes; the inline key or value representation remains unknown.",
+      "id": "BCS-S-0245"
+    },
+    {
+      "name": "ApplicationMainElementFormTree70",
+      "namespace": "Application::Main::Element",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "BCS-S-0245",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c421_form-tree70-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationMainElementFormTreeNode70 *",
+          "notes": "Owned exact 0x70 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and decremented or cleared by erase and teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header used twice at FormElement+0xF8 and +0x104. Construction, recursive clear, erase, and teardown establish the exact 0x70 sentinel specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0246"
+    },
+    {
+      "name": "ApplicationMainElementFormTreeNode68",
+      "namespace": "Application::Main::Element",
+      "size": "0x68",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c422_form-tree68-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Tree parent link; the sentinel stores the root here and erase rebalancing updates it."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x58",
+          "name": "key_or_value",
+          "type": "unknown[0x58]",
+          "notes": "Inline key or value storage not partitioned by the bounded construction, clear, erase, or teardown paths."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 and read or updated by erase balancing."
+        },
+        {
+          "offset": "0x65",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator, set to one on the sentinel, and used by traversal and erase."
+        },
+        {
+          "offset": "0x66",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x68-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x68 ordered-tree node specialization used by FormElement. Allocation, sentinel initialization, recursive clear, erase balancing, and exact-size deallocation establish the links and marker bytes; the inline key or value representation remains unknown.",
+      "id": "BCS-S-0247"
+    },
+    {
+      "name": "ApplicationMainElementFormTree68",
+      "namespace": "Application::Main::Element",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "BCS-S-0247",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c422_form-tree68-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationMainElementFormTreeNode68 *",
+          "notes": "Owned exact 0x68 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and decremented or cleared by erase and teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header at FormElement+0xEC. Construction, recursive clear, erase, and teardown establish the exact 0x68 sentinel specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0248"
+    },
+    {
+      "name": "ApplicationMainElementFormTreeNode1C",
+      "namespace": "Application::Main::Element",
+      "size": "0x1C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c423_form-tree1c-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationMainElementFormTreeNode1C *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationMainElementFormTreeNode1C *",
+          "notes": "Tree parent link; the sentinel stores the root here and erase rebalancing updates it."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationMainElementFormTreeNode1C *",
+          "notes": "Tree link initialized to null by the exact node allocator and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x0C",
+          "name": "key_or_value",
+          "type": "unknown[0x0C]",
+          "notes": "Inline key or value storage not partitioned by the bounded construction, clear, erase, or teardown paths."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 and read or updated by erase balancing."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero by the allocator, set to one on the sentinel, and used by traversal and erase."
+        },
+        {
+          "offset": "0x1A",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x1C-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x1C ordered-tree node specialization used by FormElement. Allocation, sentinel initialization, recursive clear, erase balancing, and exact-size deallocation establish the links and marker bytes; the inline key or value representation remains unknown.",
+      "id": "BCS-S-0249"
+    },
+    {
+      "name": "ApplicationMainElementFormTree1C",
+      "namespace": "Application::Main::Element",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "BCS-S-0249",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c423_form-tree1c-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationMainElementFormTreeNode1C *",
+          "notes": "Owned exact 0x1C sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and decremented or cleared by erase and teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-tree header at FormElement+0x1DC. Construction, recursive clear, erase, and teardown establish the exact 0x1C sentinel specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0250"
+    },
+    {
+      "name": "ApplicationMainElementFormTreeNode18",
+      "namespace": "Application::Main::Element",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c424_form-tree18-layouts.txt",
+        "tools/ghidra/logs/c424_form-tree18-instruction-refs.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Tree link initialized by node construction and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Tree parent link; the sentinel stores the root here and erase rebalancing updates it."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "right",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Tree link initialized by node construction and self-linked on the sentinel."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "window_object",
+          "type": "void *",
+          "notes": "Nullable polymorphic window-object pointer used as the map key, copied into the node by insertion, and released through its first virtual slot before erasure."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "window_index",
+          "type": "int32_t",
+          "notes": "Signed window index copied from FormElement+0x094, compared with selected_window_index, and passed to the indexed window lookup."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black tree color byte initialized to 1 and read or updated by insertion and erase balancing."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "bool",
+          "notes": "Nil marker initialized to zero on ordinary nodes, set to one on the sentinel, and used by traversal and erase."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x18-byte allocation."
+        }
+      ],
+      "notes": "Complete exact 0x18 ordered-map node specialization used by FormElement. Construction and insertion establish the window-object key and signed window-index value; lifecycle, recursive clear, insertion and erase balancing, and exact-size deallocation establish the links and marker bytes.",
+      "id": "BCS-S-0251"
+    },
+    {
+      "name": "ApplicationMainElementFormTree18",
+      "namespace": "Application::Main::Element",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0074",
+        "BCS-S-0251",
+        "tools/ghidra/logs/c325_interactive-elements-3.txt",
+        "tools/ghidra/logs/c424_form-tree18-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "tree_policy",
+          "type": "unknown",
+          "notes": "Leading dword not initialized or interpreted by the bounded lifecycle paths; its allocator or comparison-policy representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sentinel",
+          "type": "ApplicationMainElementFormTreeNode18 *",
+          "notes": "Owned exact 0x18 sentinel whose left, parent, and right links are initialized to itself."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "count",
+          "type": "uint32_t",
+          "notes": "Number of non-sentinel nodes, initialized to zero and maintained by insertion, erase, and teardown."
+        }
+      ],
+      "notes": "Complete 0x0C ordered-map header at FormElement+0x1F8. Construction, insertion, traversal, recursive clear, erase, and teardown establish the exact 0x18 node specialization and count; the leading policy dword remains unknown-typed.",
+      "id": "BCS-S-0252"
+    },
+    {
+      "name": "ApplicationNetworkLobbyClientCharaMakeRetainerSnapshot",
+      "namespace": "Application::Network::LobbyClient",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0004",
+        "BCS-Y-0022",
+        "BCS-Y-0080",
+        "BCS-Y-0081",
+        "tools/ghidra/logs/c425_chara-make-retainer-snapshot.txt",
+        "tools/ghidra/logs/c425_chara-make-retainer-snapshot-instruction-refs.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "retainer_count",
+          "type": "uint32_t",
+          "notes": "Zero-extended retainer count copied from CharaMakeOperation+0x200; the retainer-list parser clears this dword and then stores the packet header count into it."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "source_retainers",
+          "type": "std::vector<RetainerListRecord>",
+          "notes": "Owned copy of the operation-level 0x30-stride retainer vector at CharaMakeOperation+0x204. Its begin, end, and capacity-end pointers occupy +0x08, +0x0C, and +0x10."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x10",
+          "name": "working_retainers",
+          "type": "std::vector<RetainerListRecord>",
+          "notes": "Separately owned working copy initialized from source_retainers. Consumers append synthetic records and update RetainerListRecord fields through its +0x18 begin and +0x1C end pointers."
+        }
+      ],
+      "notes": "Complete exact 0x24 cached CharaMake retainer snapshot. Construction copies the operation-level retainer count and vector, creates a separate working vector, consumers normalize that working copy, and teardown independently frees both vector allocations.",
+      "id": "BCS-S-0253"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionClientSideNonBlockEvent",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0474",
+        "BCS-Y-0476",
+        "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ExecutionClientSideNonBlockEvent vftable installed by construction and copy construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "event_object",
+          "type": "void *",
+          "notes": "Polymorphic Event::Base-derived object dispatched through virtual slot 1. The concrete leaf subclass varies by producer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "primary_context_key",
+          "type": "uint32_t",
+          "notes": "Primary 4-byte context key copied at construction and compared directly by the queue predicate."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "context_keys",
+          "type": "std::vector<uint32_t>",
+          "notes": "Owned vector of additional 4-byte context keys. Copy construction derives the exact four-byte stride; the queue predicate scans begin at +0x10 through end at +0x14."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "state_1c",
+          "type": "uint8_t",
+          "notes": "State byte initialized to zero and preserved by copy construction; its higher-level meaning is unresolved."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "callback_fired",
+          "type": "bool",
+          "notes": "One-shot callback guard. The queue walker tests this byte and sets it to one immediately before invoking the payload callback."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x01",
+          "name": "owns_event_object",
+          "type": "bool",
+          "notes": "Ownership flag initialized to false and preserved by copying; base teardown releases event_object only when this flag is true."
+        },
+        {
+          "offset": "0x1F",
+          "size": "0x01",
+          "name": "padding_1f",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte between the base flags and the derived selector."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x02",
+          "name": "event_selector",
+          "type": "uint16_t",
+          "notes": "Derived non-block selector copied from the constructor input and passed by address to the event virtual dispatch."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x24 embedded-object boundary."
+        }
+      ],
+      "notes": "Complete exact 0x24 non-block event-execution object embedded in each EventExecutionQueueNode. Base and derived construction, copy construction, context matching, virtual dispatch, one-shot callback handling, and teardown establish every member boundary.",
+      "id": "BCS-S-0254"
     }
   ],
   "method": {
@@ -17177,7 +19436,7 @@
     "c359InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\Users\\aeshu\\tools\\ghidra-projects\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{i.address:08x}: {i.mnemonic} {i.op_str}')) for i in md.disasm(p.get_data(0xc974d6-0x400000,160),0xc974d6)]\" and the same command with p.get_data(0xca9880-0x400000,160),0xca9880",
     "c359ExistingEvidence": "BCS-S-0160 and tools/ghidra/logs/c356_rapture-owned-modules.txt supplied the prior exact 0x44-byte allocation and FontModule +0x18 ownership edge.",
     "c359InstructionEvidence": "Configured retail instruction excerpts appended to C359 teardown evidence preserve the load-bearing FontModule +0x18 teardown after Ghidra's noreturn _free omission and the context's font-handle, tree-sentinel, and vector-storage cleanup placements.",
-    "c359Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. The rejected 0x00CA9880 export is explicitly excluded. Targeted RTTI returned every known target, but none is asserted as the 0x44-byte context identity. The context and its vector/tree names are descriptive structural names, not recovered C++ RTTI names. Glyph-record internals, 0x14-byte vector entry type, container policy state, static font-profile type, and closing padding remain unknown-typed rather than guessed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c359Limits": "DumpVAs supplies direct bodies and call lists only for requested valid functions. The rejected 0x00CA9880 export is explicitly excluded. Targeted RTTI returned every known target, but none is asserted as the 0x44-byte context identity. The context and its vector/tree names are descriptive structural names, not recovered C++ RTTI names. 0x14-byte vector entry type, container policy state, static font-profile type, and closing padding remain unknown-typed rather than guessed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
     "c359LookupInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c359_font-tree-lookup.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00CAB1F0' } -ScriptPath @('ghidra')",
     "c359LookupInputs": "Glyph-cache R-B tree lower-bound lookup establishing left, parent/root, right, key, and sentinel-marker placements",
     "c359LookupOutput": "tools/ghidra/logs/c359_font-tree-lookup.txt",
@@ -17371,6 +19630,233 @@
     "c387InstructionRecipe": "python -c \"import pefile; from capstone import *; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=Cs(CS_ARCH_X86,CS_MODE_32); spans=[(0x65f180,1942),(0x65f940,341),(0x80e8c0,176),(0x80e970,171),(0x8581b0,134),(0xa6aa40,245)]; [(print(f'-- {va:08x} --'),[print(f'{i.address:08x}  {i.mnemonic:<7} {i.op_str}') for i in md.disasm(p.get_data(va-p.OPTIONAL_HEADER.ImageBase,n),va)]) for va,n in spans]\"",
     "c387ExistingEvidence": "BCS-S-0060 and the C307-C308 archives supplied the exact 0x2BB0 CharaActor, its constructor and destructor, and four unresolved ownership or link slots. The C314 RTTI inventory already contained both concrete scene-class names but no layouts.",
     "c387InstructionEvidence": "Configured retail excerpts appended to C388, C389, and C394 preserve both exact allocations and owner stores, the distinct 0x0C factory object, every controller and reference-resource constructor placement, and all vector cleanup instructions hidden after noreturn _free calls in decompilation.",
-    "c387Limits": "FindFieldRefs is used only for positive hits and is calibrated by the known CharaVisual+0x2B5C field; no negative claim relies on its coverage or operand-position labels. DumpVAs supplies direct bodies and call lists only for requested functions. Controller vector policy dwords, effect-record payload, target element type, container schedule policy/state, reference-resource base state, and pointer-vector policy dwords remain unknown-typed or descriptively named. The +0x12F4 factory interface remains incomplete because no concrete class constructor or RTTI identity is exposed. No load-bearing claim relies on decompiler output after a noreturn _free call."
+    "c387Limits": "FindFieldRefs is used only for positive hits and is calibrated by the known CharaVisual+0x2B5C field; no negative claim relies on its coverage or operand-position labels. DumpVAs supplies direct bodies and call lists only for requested functions. Controller vector policy dwords, effect-record payload, target element type, container schedule policy/state, reference-resource base state, and pointer-vector policy dwords remain unknown-typed or descriptively named. The +0x12F4 factory interface remains incomplete because no concrete class constructor or RTTI identity is exposed. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c395Topic": "C395-C399 Lua control owned-resource layouts",
+    "c395ProjectMode": "All five headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c395Script": "ghidra/DumpVAs.java",
+    "c395Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c395_lua-control-owned-resources.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006E13F0,0x006F6900,0x006DEE90,0x005F5F70,0x006DEED0,0x006E3920,0x006E3A00,0x00707770,0x006E3890,0x00707870,0x006EBF30,0x006FCAA0,0x006DC570,0x006A7AC0,0x006DC560,0x006E19D0,0x006E19A0,0x006E01D0,0x006DBFA0,0x006F1A40' }",
+    "c395Inputs": "Class-specific WidgetBase and CutScene virtual methods plus the CharaBase owned-resource gate helper.",
+    "c395Output": "tools/ghidra/logs/c395_lua-control-owned-resources.txt",
+    "c396Script": "ghidra/DumpVAs.java",
+    "c396Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c396_owned-resource-producers.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F51A0,0x006DE710,0x006E2000,0x006F0840,0x006FA7E0,0x0070A350,0x007642D0,0x00767870,0x00772F60,0x00772FB0,0x00774700,0x00774AD0,0x006FB9C0,0x006FBCC0,0x006FBE80,0x00762D20,0x006E1DE0' }",
+    "c396Inputs": "Positive +0xD8 and +0x68 field-reference functions, including the exact lazy allocation and replacement paths.",
+    "c396Output": "tools/ghidra/logs/c396_owned-resource-producers.txt",
+    "c397Script": "ghidra/DumpVAs.java",
+    "c397Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c397_owned-resource-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F5100,0x00727640' }",
+    "c397Inputs": "ItemManager and CutScene::InitializationClipArguments constructors.",
+    "c397Output": "tools/ghidra/logs/c397_owned-resource-layouts.txt",
+    "c398Script": "ghidra/DumpVAs.java",
+    "c398Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c398_owned-resource-components.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00743400,0x00727750,0x00726120,0x006F3080,0x00742DF0,0x00726290,0x007036E0' }",
+    "c398Inputs": "Both deleting destructors, ItemManager embedded-helper constructors and update method, and the clip-argument range constructor.",
+    "c398Output": "tools/ghidra/logs/c398_owned-resource-components.txt",
+    "c399Script": "ghidra/DumpVAs.java",
+    "c399Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c399_owned-resource-teardown.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F5050,0x007276D0,0x006EE3E0,0x006EE480' }",
+    "c399Inputs": "Complete-object teardowns plus the two existing item lookup helpers used to check whether they supplied inner ItemManager types.",
+    "c399Output": "tools/ghidra/logs/c399_owned-resource-teardown.txt",
+    "c395InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [(print(f'{va:08X} BEGIN'),[print(f'{i.address:08X}: {i.mnemonic:<8} {i.op_str}') for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08X} END')) for va,n in [(0x006F5100,155),(0x00727640,139)]]\"; repeated for (0x006F5050,159) and (0x007276D0,127).",
+    "c395ExistingEvidence": "BCS-S-0108 and BCS-S-0109 supplied the CharaBase+0xD8 and CutScene+0x68 ownership slots. BCS-Y-0187 and the C204-C221 item API archives supplied the ItemManager role. The C314 RTTI inventory already contained the exact InitializationClipArguments identity. BCS-S-0135 supplied the established 0x54 inline-string layout.",
+    "c395InstructionEvidence": "Configured retail instructions appended to C397 preserve both concrete constructor destinations and every field boundary. Instructions appended to C399 preserve ItemManager cleanup after the noreturn _free call and both clip-argument container and string teardown placements.",
+    "c395Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. Existing broad field-reference archives are used only for positive producer and consumer hits; no negative claim relies on their coverage or operand labels. ItemManager helper representations, its +0x20 owned type, four state bytes/dwords, and the clip-entry element type remain unknown-typed. WidgetBase+0x60 remains unresolved because no producer or concrete allocation was observed in the bounded existing or fresh method set. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c400Topic": "C400-C401 ItemManager runtime layouts",
+    "c400ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c400Script": "ghidra/DumpVAs.java",
+    "c400Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c400_item-manager-runtime-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F3080,0x006F1AB0,0x0077C850,0x00778350,0x00727B50,0x0077CA50,0x0089BA70,0x0089BAD0,0x0089BBA0,0x006F1A40' }",
+    "c400Inputs": "ItemManager runtime-state constructor and destructor; list and tree constructors and sentinel allocators; owned-state constructor, destructor, dispatcher, and owner gate.",
+    "c400Output": "tools/ghidra/logs/c400_item-manager-runtime-layouts.txt",
+    "c401Script": "ghidra/DumpVAs.java",
+    "c401Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c401_item-manager-container-lifecycle.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0075F5B0,0x0089BA10,0x006F5100,0x006F5050,0x007251E0,0x006CE520,0x006CFB30,0x00778830' }",
+    "c401Inputs": "Exact owned-state allocator; alternate bounded-list constructor; ItemManager lifecycle; runtime list, tree, and block-table teardown helpers; exact 0x14 tree sentinel allocator.",
+    "c401Output": "tools/ghidra/logs/c401_item-manager-container-lifecycle.txt",
+    "c400InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); spans=[(0x006F3080,144),(0x006F1AB0,185),(0x0075F5B0,134),(0x0089BA70,89),(0x0089BAD0,197)]; [(print(f'{va:08X} BEGIN'),[print(f'{i.address:08X}: {i.mnemonic:<8} {i.op_str}') for i in md.disasm(p.get_data(va-0x400000,n),va)],print(f'{va:08X} END')) for va,n in spans]\"",
+    "c400ExistingEvidence": "BCS-S-0215 and the C395-C399 archives supplied the exact enclosing 0x78 ItemManager, the unresolved +0x20 ownership pointer, and the exact +0x24..+0x5F runtime-state boundary.",
+    "c400InstructionEvidence": "Configured retail instruction excerpts appended to C400 and C401 preserve the exact nested constructor and destructor destinations, the 0x10 owned-state allocation, the dispatch-limit write, and the 0x0C list-node links and deallocation size omitted or obscured by pseudocode.",
+    "c400Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. List and tree policy dwords, the concrete polymorphic action class, both runtime-list roles, the tree payload type, two runtime-core state dwords, and tree tail padding remain unknown-typed or descriptively named. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c402Topic": "C402-C403 ItemManager index layouts",
+    "c402ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c402Script": "ghidra/DumpVAs.java",
+    "c402Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c402_item-manager-index-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00726120,0x0071D700,0x006D5750,0x00742DF0,0x0071D580,0x00742D80,0x006F7880,0x007034E0,0x006F5100' }",
+    "c402Inputs": "Both ItemManager index constructors, shared index sentinel constructor, shared index destructor, update-tree constructor and destructor, both ItemManager update passes, and the ItemManager constructor.",
+    "c402Output": "tools/ghidra/logs/c402_item-manager-index-layouts.txt",
+    "c403Script": "ghidra/DumpVAs.java",
+    "c403Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c403_item-manager-index-nodes.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00719C00,0x00719790,0x00720660,0x0073E920,0x0072DC30,0x00652AF0,0x0071D420,0x00725DD0,0x006F76C0' }",
+    "c403Inputs": "Exact 0x18 and 0x20 node allocators; index and update-tree range erase; update-tree recursive clear and iterator advance; uint32-key lower-bound and insertion lookup; item reconciliation helper.",
+    "c403Output": "tools/ghidra/logs/c403_item-manager-index-nodes.txt",
+    "c402ExistingEvidence": "BCS-S-0215 and the C397-C399 archives supplied the exact 0x0C ItemManager+0x08, +0x14, and +0x6C helper boundaries and their paired lifecycle placements. C399 already preserves the instruction-complete owner teardown after the noreturn _free call.",
+    "c402Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. Both tree policy dwords, the concrete indexed item class, the update-kind descriptor type, the 0x0C update-record partition, and node tail padding remain unknown-typed or descriptively named. No load-bearing claim relies on decompiler output after a noreturn _free call.",
+    "c405Topic": "C405 SceneThread callback records",
+    "c405ProjectMode": "Both attempted headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c404RejectedInvocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c404_scene-callback-records.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x004EA870,0x004E93A0,0x004EBF80,0x004EC000,0x004EBF50,0x004E8AA0,0x004E8AB0,0x004E9700,0x004E8B50,0x004E8A20' }",
+    "c404Failure": "The first read-only archive requested two callback labels that are not function entries. It produced eight valid sections and two ERROR sections, failed the per-VA gate, and supports no claim.",
+    "c405Script": "ghidra/DumpVAs.java",
+    "c405Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c405_scene-callback-records.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x004EA870,0x004E93A0,0x004EBF80,0x004EC000,0x004EBF50,0x004E9700,0x004E8B50,0x004E8A20' }",
+    "c405Inputs": "SceneThreadImpl constructor and destructor; draw and update callback-record constructors; complete-object deleting destructor; three representative callback targets.",
+    "c405Output": "tools/ghidra/logs/c405_scene-callback-records.txt",
+    "c405InstructionRecipe": "python -c \"import pefile,capstone; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); va=0x004EA870; n=687; md=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32); [print(f'{i.address:08X}: {i.mnemonic:<8} {i.op_str}') for i in md.disasm(p.get_data(va-0x400000,n),va)]\"",
+    "c405ExistingEvidence": "BCS-S-0121 and the C339 archive supplied the exact eight repeated 0x28 SceneThreadImpl+0x440..+0x57F boundaries and their teardown unlink operations.",
+    "c405InstructionEvidence": "Configured retail instructions appended to C405 preserve every exact record destination and the complete push order mapping owner, callback, context, schedule order, name, and zero state into the shared constructors.",
+    "c405Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. The rejected C404 archive supports no claim. No negative topology claim relies on either export. Callback context representation and the +0x1C and +0x24 state dwords remain unknown-typed. The two non-entry callback labels are retained only as code-pointer values and are not treated as exported functions.",
+    "c406Topic": "C406 segmented pointer-queue layout",
+    "c406ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c406Script": "ghidra/DumpVAs.java",
+    "c406Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c406_chara-action-queue-buckets.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x008462D0,0x00CC3BF0,0x00845340,0x008781D0,0x00845430,0x005692F0,0x00845E80,0x00843B50' } -ScriptPath @('ghidra')",
+    "c406Inputs": "Shared 0x14 queue-header constructor and teardown; CharaActionController constructor and iterator; generic temporary queue use; pointer append helper; action-entry allocation and construction.",
+    "c406Output": "tools/ghidra/logs/c406_chara-action-queue-buckets.txt",
+    "c406ExistingEvidence": "BCS-S-0059 and C302 supplied the 26-record CharaActionController array, 0x14 stride, queue iteration, and polymorphic action-object use. BCS-S-0066 and C323 supplied the second 26-record array at CharaElement+0x878 using the same constructor and stride.",
+    "c406Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The leading policy dword and concrete queued-object types remain unknown. The teardown establishes the count and block-map fields before its first noreturn _free call; no load-bearing claim relies on omitted instructions after that call.",
+    "c407Topic": "C407 CharaElement status-effect timer slots",
+    "c407ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. Pre-run process checks found no live Ghidra or Java process.",
+    "c407Script": "ghidra/DumpVAs.java",
+    "c407Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c407_chara-status-timer-slots.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0058F130,0x006CE2E0,0x0058B4E0,0x005861B0,0x0058DF90,0x004D7980' } -ScriptPath @('ghidra')",
+    "c407Inputs": "Shared 0x30 timer-slot constructor and no-op destructor; CharaElement owner constructor; timer tick; per-actor frame caller; state-broadcast sink.",
+    "c407Output": "tools/ghidra/logs/c407_chara-status-timer-slots.txt",
+    "c407DataRecipe": "python -c \"import pefile,struct; p=pefile.PE(r'C:\\\\Users\\\\aeshu\\\\tools\\\\ghidra-projects\\\\ffxivgame.exe'); b=p.get_data(0x00f54f70-0x00400000,4); print(b.hex(),struct.unpack('<I',b)[0],struct.unpack('<f',b)[0])\"",
+    "c407DataEvidence": "The configured retail bytes at 0x00F54F70 are 00 00 80 3F, fixing the constructor value stored at slot+0x18 as float 1.0. The recipe and result are appended to C407.",
+    "c407ExistingEvidence": "BCS-S-0066 and C323 supplied the exact CharaElement+0x290 placement, six-element count, and 0x30 stride. BCS-Y-1027 supplied the established timer-tick role and per-frame caller.",
+    "c407Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x09 payload bytes and dwords at +0x1C and +0x20..+0x2C remain unknown-typed where the tick only copies raw values or does not consume them. No noreturn _free path contributes to this layout.",
+    "c408Topic": "C408 CharaElement status-slot records",
+    "c408ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c408Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c408_chara-status-slot-records.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0058B4E0,0x0058CCA0,0x0058ECB0' } -ScriptPath @('ghidra')",
+    "c408Inputs": "CharaElement owner constructor, case-0xD0 packet dispatcher, and the table initialization/copy helper.",
+    "c408Output": "tools/ghidra/logs/c408_chara-status-slot-records.txt",
+    "c408ExistingEvidence": "BCS-S-0066 and C323 supplied the +0x188 placement, 0x88 extent, 17-entry count, and observed dword-plus-halfword members. The 0x00D0 pipeline snapshot supplied the packet offsets and sentinel path.",
+    "c408Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on the export. The +0x06 bytes remain unknown-typed because the helper copies them only as part of the whole table. No noreturn _free path contributes to this layout.",
+    "c409Topic": "C409 CharaBase inline state records",
+    "c409ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c409Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c409_chara-inline-state-records.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006ECD80,0x00712DD0,0x00712E90,0x0076F5A0,0x0076F690,0x006ED2D0,0x0089FBF0' } -ScriptPath @('ghidra')",
+    "c409Inputs": "CharaBase owner constructor; inline record constructor and destructor; shared state constructor and destructor; two independent shared-state users.",
+    "c409Output": "tools/ghidra/logs/c409_chara-inline-state-records.txt",
+    "c409InstructionRecipe": "python -c with pefile and capstone against the configured retail image; disassemble 0x00712DD0 length 0x59, 0x00712E90 length 0x58, 0x0076F5A0 length 0x73, and 0x0076F690 length 0x58. The selected instruction lines and recipe are appended to the C409 archive.",
+    "c409ExistingEvidence": "BCS-S-0108 and C335 supplied the +0x68 placement, two-element count, 0x38 stride, and constructor/destructor identities. BCS-Y-1030 supplied the shared dword-and-byte initialization shape.",
+    "c409Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. The instruction stream is load-bearing only for the +0x08 shared-state base and nested +0x14 helper. No negative topology claim relies on the export. The two helper regions and seven tail bytes remain unknown-typed because retained evidence does not establish their concrete representations. No noreturn _free path contributes to this layout.",
+    "c410Topic": "C410 Font glyph record layout",
+    "c410ExistingEvidence": "C359 FUN_00CA95A0 supplied every producer write across the 0x28-byte result, including metrics and atlas counters. C359 FUN_00CA9920 supplied the cache-hit copy from node+0x10 through node+0x37. BCS-S-0164 supplied the enclosing tree-node boundary.",
+    "c410FreshReads": "None. The retained C359 archives already establish the complete record; no new Ghidra run was needed.",
+    "c410Limits": "The +0x08 dword is confirmed uint32_t storage initialized to zero, but its semantic role is unknown. The two independently stored padded-width copies remain separately named because retained evidence does not establish their distinct downstream roles. No negative topology claim or noreturn-truncated decompilation supports this layout.",
+    "c411Topic": "C411 SpreadSheet loaded-data state layouts",
+    "c411ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c411Script": "ghidra/DumpVAs.java",
+    "c411Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c411_spreadsheet-loaded-data-state.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006F67C0,0x006F6850,0x00746860,0x00746750,0x0071D5F0,0x00719AA0,0x007466E0,0x007885F0' } -ScriptPath @('ghidra')",
+    "c411Inputs": "SpreadSheet owner constructor and destructor; loaded-data state constructor and destructor; nested tree constructor; exact node allocator; independent tree-constructor user.",
+    "c411Output": "tools/ghidra/logs/c411_spreadsheet-loaded-data-state.txt",
+    "c411InstructionRecipe": "python -c with pefile and capstone against the configured retail image; disassemble 0x006F67C0 length 135, 0x006F6850 length 176, 0x00746860 length 90, 0x00746750 length 86, 0x0071D5F0 length 101, 0x00719AA0 length 139, and 0x007466E0 length 112. The selected instruction lines and exact recipe are appended to the C411 archive.",
+    "c411ExistingEvidence": "BCS-S-0105 and C334 supplied the exact SpreadSheet+0xC4 placement, 0x18 extent, owner constructor and destructor, and the initial calls into the nested helpers.",
+    "c411FreshEvidence": "C411 direct bodies and selected retail instructions establish the nested tree at +0x00, exact 0x24 node allocation, self-linked sentinel, count, state dword, source-container pointer, and teardown sizes.",
+    "c411Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The three tree-link roles, node key and payload partition, leading tree policy, source-container specialization, state semantics, and closing dword remain unknown-typed or descriptively named. No noreturn _free path contributes to either promoted layout.",
+    "c412Topic": "C412 SpreadSheet list layouts",
+    "c412ExistingEvidence": "BCS-Y-1463 and BCS-Y-0232 supply the SpreadSheet constructor, class identity, and data-table API role. C334 supplies the exact SpreadSheet+0xB8 placement and 0x0C boundary. C400 supplies the shared list constructor and exact 0x0C sentinel allocation. C401 supplies the circular-link reset, count clear, traversal, and exact 0x0C node frees. C411 supplies the adjacent loaded-data state pointer back to SpreadSheet+0xB8.",
+    "c412FreshReads": "None. The retained C334, C400, C401, and C411 archives already establish both complete physical layouts and the owner relationship.",
+    "c412Limits": "The leading list-policy dword and four-byte node payload remain unknown-typed because the retained bounded SpreadSheet paths do not initialize or interpret them. The shared helper topology establishes a circular list but does not identify the owner-specific payload class. No negative topology claim or noreturn-truncated decompilation supports these layouts.",
+    "c413Topic": "C413-C416 MyPlayer inventory package layouts",
+    "c413ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no Ghidra or Java process held the project.",
+    "c413Script": "ghidra/DumpVAs.java",
+    "c413Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c413_myplayer-inventory-package-storage.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006F9140,0x006F9310,0x0072DEB0,0x00728DC0,0x006EFBD0,0x007222D0,0x007228E0,0x00720BB0,0x00706580,0x00723B80' } -ScriptPath @('ghidra')",
+    "c413Inputs": "MyPlayer constructor and teardown; outer vector constructor, bucket-array constructor, inventory producer, reserve, append, sort, Lua count consumer, and outer teardown helper.",
+    "c413Output": "tools/ghidra/logs/c413_myplayer-inventory-package-storage.txt",
+    "c414Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c414_myplayer-inventory-bucket-lifetime.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00727010,0x0071DF80' } -ScriptPath @('ghidra')",
+    "c414Inputs": "Exact-stride bucket construction loop and per-bucket nested-vector teardown loop.",
+    "c414Output": "tools/ghidra/logs/c414_myplayer-inventory-bucket-lifetime.txt",
+    "c415Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c415_myplayer-inventory-bucket-init.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x007242C0' } -ScriptPath @('ghidra')",
+    "c415Inputs": "Per-bucket construction wrapper called by the exact-stride array constructor.",
+    "c415Output": "tools/ghidra/logs/c415_myplayer-inventory-bucket-init.txt",
+    "c416Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c416_myplayer-inventory-vector-init.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00723330' } -ScriptPath @('ghidra')",
+    "c416Inputs": "Nested 4-byte vector initializer used by every package bucket.",
+    "c416Output": "tools/ghidra/logs/c416_myplayer-inventory-vector-init.txt",
+    "c413ExistingEvidence": "BCS-S-0012 fixed the MyPlayer+0x144 placement and 0x10 owner boundary. BCS-S-0032 and BCS-Y-0414 supplied the four-bucket count, 0x10 bucket stride, reserve capacities, append and sort roles, and Lua count consumer.",
+    "c413FreshEvidence": "C413-C416 directly close outer construction and teardown, exact per-bucket construction and destruction, three pointer roles in each record, and the nested 4-byte element width.",
+    "c413Limits": "DumpVAs supplies direct bodies and call lists only for requested functions. No negative topology claim relies on these exports. The leading dword in both the outer container and each bucket remains unknown-typed because bounded construction, producer, consumer, and teardown paths do not initialize or interpret it. MyPlayer teardown decompilation omits the explicit +0x144 argument after an earlier noreturn _free; retained C336 instruction evidence places the call at this+0x144, while C413 confirms the callee and subsequent teardown body.",
+    "c417Topic": "C417 CharaElement movement-state records",
+    "c417ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c417Script": "ghidra/DumpVAs.java",
+    "c417Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c417_chara-movement-state-records.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0058B4E0,0x00589490' } -ScriptPath @('ghidra')",
+    "c417Inputs": "CharaElement owner constructor and the primary input-command listener reached through the +8 interface subobject.",
+    "c417Output": "tools/ghidra/logs/c417_chara-movement-state-records.txt",
+    "c417DataRecipe": "Read four bytes at VAs 0x00FA5124 and 0x00FA7B24 from the configured retail image and decode each as little-endian uint32 and IEEE-754 float32. The recipe and results are appended to C417.",
+    "c417DataEvidence": "0x00FA5124 is bytes 00 40 1C 46, float32 10000.0. 0x00FA7B24 is bytes 00 40 1C C6, float32 -10000.0.",
+    "c417ExistingEvidence": "BCS-S-0066 and retained C323/C408 constructor bodies supplied the exact CharaElement+0x224 placement, two-element count, 0x20 stride, and repeated initialization shape.",
+    "c417FreshEvidence": "C417 rechecked the constructor and established that the input listener receives CharaElement+8, correcting listener offsets +0x25C..+0x25F to complete-object +0x264..+0x267 outside the record array. Direct retail data reads fix the two replicated constructor constants as 10000.0f and -10000.0f.",
+    "c417Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on this export. The dwords at record +0x0C and +0x1C remain unknown-typed because the bounded constructor and input path do not expose their representation or semantics. The three-lane arrays are named by their initialized signs rather than an unsupported gameplay role.",
+    "c418Topic": "C418 resource-tree nested layouts",
+    "c418ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c418Script": "ghidra/DumpVAs.java",
+    "c418Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c418_resource-tree-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0095E590,0x0099B960,0x00C97C50,0x00C98C30,0x00C97AE0,0x00C989C0,0x00C97880,0x00C98340,0x00927440,0x009A0230,0x009A06D0,0x009AB440,0x00C97560,0x00C97400' } -ScriptPath @('ghidra')",
+    "c418Inputs": "Both exact sentinel allocators; ResourceModuleBase and ExcelModule constructors and teardowns; both resource-tree iteration and erase paths; the large-tree clear helper; FontModule construction and teardown as an independent small-tree owner.",
+    "c418Output": "tools/ghidra/logs/c418_resource-tree-layouts.txt",
+    "c418ExistingEvidence": "BCS-S-0126, BCS-S-0128, and retained C344/C347 evidence supplied all three exact 0x0C owner placements, self-linked sentinels, and zero counts. BCS-S-0160 and retained C359 evidence supplied the FontModule+0x24 placement and boundary.",
+    "c418FreshEvidence": "C418 establishes exact 0x18 and 0x68 sentinel allocations, link and flag fields, Resource pointer tails at node+0x10 and node+0x60, erase balancing, iteration, clear, and owner teardown behavior.",
+    "c418Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Both leading tree-policy dwords, the 0x18 node's four-byte key or value, the 0x68 node's 0x54-byte key or value, and both two-byte node tails remain unknown-typed because the bounded paths do not establish their representations. ResourceModuleBase teardown decompilation truncates after freeing the 0x68 sentinel; no claim about the later instruction stream relies on that omitted region.",
+    "c419Topic": "C419 CameraElement input record layout",
+    "c419ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c419Script": "ghidra/DumpVAs.java",
+    "c419Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c419_camera-input-record.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00566380,0x005624D0' } -ScriptPath @('ghidra')",
+    "c419Inputs": "CameraElement owner constructor and periodic publisher for event channel 1.",
+    "c419Output": "tools/ghidra/logs/c419_camera-input-record.txt",
+    "c419ExistingEvidence": "BCS-S-0069 and retained C324 evidence supplied the complete-object +0x94 placement, exact 0x0C payload boundary, constructor writes, and publication through event channel 1.",
+    "c419FreshEvidence": "C419 rechecked the constructor and publisher in one current read-only batch, confirming four 16-bit stores, the 0x12 byte initialization, the low-nibble clear, and complete 0x0C publication.",
+    "c419Limits": "DumpVAs supplies direct bodies and call lists only for the two requested functions. No negative topology claim relies on the export. The four 16-bit slots remain unknown-typed because their signedness and semantics are not exposed. Bytes +0x09 and +0x0B remain unknown-typed because neither bounded function initializes or interprets them. No claim relies on instructions omitted after a noreturn _free.",
+    "c420Topic": "C420 GroupBase group-reference record layout",
+    "c420ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c420Script": "ghidra/DumpVAs.java",
+    "c420Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c420_group-reference-record.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006DCFF0,0x006BFCD0,0x006BFD00,0x006C3F30,0x006C4050,0x006C4580,0x006C45A0,0x00701430,0x006E2240,0x006BFD10,0x006BFD20,0x006BFD30,0x006C2090,0x006C1510' } -ScriptPath @('ghidra')",
+    "c420Inputs": "GroupBase owner constructor; record initializer and no-op destructor; two group-list producer variants and wrappers; display-name and occupancy consumers; wrapper-object creator; three record accessors; and occupancy conversion lookup.",
+    "c420Output": "tools/ghidra/logs/c420_group-reference-record.txt",
+    "c420ExistingEvidence": "BCS-S-0089 and retained C330 evidence supplied the exact GroupBase+0x68 placement, 0x10 closing boundary, constructor identity, and zero initialization at record +0x00, +0x08, and +0x0C. Retained C280 and C298 evidence supplied complete temporary-record copies and GroupBase wrapper creation.",
+    "c420FreshEvidence": "C420 establishes both producer variants, their list-node sources, the GroupBase pointer at +0x00, the separately accessed eight-byte state pair at +0x08, full 0x10 copies into newly created GroupBase objects, and the occupancy conversion path.",
+    "c420Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. Record +0x04 remains unknown-typed because bounded initialization, failure, success, access, and wrapper-copy paths do not populate or interpret it. The two state-pair dwords remain unknown-typed because the bounded paths copy and return them without exposing their concrete representation. No noreturn _free path contributes to the layout.",
+    "c421Topic": "C421 FormElement 0x70-node tree layouts",
+    "c421ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c421Script": "ghidra/DumpVAs.java",
+    "c421Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c421_form-tree70-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0053AF60,0x005454A0,0x0053DE70,0x0053CCA0,0x00545430,0x00545320,0x00544CC0,0x00544D70' } -ScriptPath @('ghidra')",
+    "c421Inputs": "FormElement owner constructor; shared tree-constructor wrapper and inner constructor; exact sentinel allocator; tree teardown, clear, recursive node teardown, and erase-balancing paths.",
+    "c421Output": "tools/ghidra/logs/c421_form-tree70-layouts.txt",
+    "c421ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied both exact FormElement placements at +0xF8 and +0x104, their 0x0C boundaries, the shared constructor and teardown identities, and the owner constructor call order.",
+    "c421FreshEvidence": "C421 establishes exact 0x70 node allocation and deallocation, three tree links, self-linked sentinel initialization, count initialization and maintenance, red-black color at +0x6C, nil marker at +0x6D, recursive clear, and erase balancing.",
+    "c421Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x60-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free.",
+    "c422Topic": "C422 FormElement 0x68-node tree layouts",
+    "c422ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c422Script": "ghidra/DumpVAs.java",
+    "c422Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c422_form-tree68-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0053AF60,0x00542160,0x0053DEE0,0x0053CD50,0x00541FA0,0x0053F500,0x0053D900,0x0053EB20' } -ScriptPath @('ghidra')",
+    "c422Inputs": "FormElement owner constructor; tree-constructor wrapper and inner constructor; exact sentinel allocator; tree teardown, clear, recursive node teardown, and erase-balancing paths.",
+    "c422Output": "tools/ghidra/logs/c422_form-tree68-layouts.txt",
+    "c422ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied the exact FormElement+0xEC placement, its 0x0C boundary, the constructor and teardown identities, and the owner constructor and destructor call order.",
+    "c422FreshEvidence": "C422 establishes exact 0x68 node allocation and deallocation, three tree links, self-linked sentinel initialization, count initialization and maintenance, red-black color at +0x64, nil marker at +0x65, recursive clear, and erase balancing.",
+    "c422Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x58-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free.",
+    "c423Topic": "C423 FormElement 0x1C-node tree layouts",
+    "c423ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c423Script": "ghidra/DumpVAs.java",
+    "c423Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c423_form-tree1c-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0053AF60,0x00542C20,0x0053DF50,0x0053CE00,0x00542B30,0x00541130,0x0053CB90,0x0053FA80' } -ScriptPath @('ghidra')",
+    "c423Inputs": "FormElement owner constructor; tree-constructor wrapper and inner constructor; exact sentinel allocator; tree teardown, clear, recursive node teardown, and erase-balancing paths.",
+    "c423Output": "tools/ghidra/logs/c423_form-tree1c-layouts.txt",
+    "c423ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied the exact FormElement+0x1DC placement, its 0x0C boundary, the constructor and teardown identities, and the owner constructor and destructor call order.",
+    "c423FreshEvidence": "C423 establishes exact 0x1C node allocation and deallocation, three tree links, self-linked sentinel initialization, count initialization and maintenance, red-black color at +0x18, nil marker at +0x19, recursive clear, and erase balancing.",
+    "c423Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The leading tree-policy dword, the node's 0x0C-byte key or value region, and its two-byte tail remain unknown-typed because the bounded paths do not establish their representations. No claim relies on instructions omitted after a noreturn _free.",
+    "c424Topic": "C424 FormElement 0x18-node tree layouts",
+    "c424ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c424Scripts": "ghidra/DumpVAs.java and ghidra/FindFieldRefs.java",
+    "c424Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c424_form-tree18-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0053AF60,0x0053AC10,0x00542270,0x0053DFC0,0x0053CEB0,0x00542010,0x0053F5D0,0x0053C200,0x0053EE00,0x005387F0,0x005377C0,0x005409C0,0x0053F890,0x0053CFB0,0x0061EEC0' } -ScriptPath @('ghidra')",
+    "c424InstructionInvocation": "tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c424_form-tree18-instruction-refs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY='0xC,0x14,0x15' } -ScriptPath @('ghidra')",
+    "c424Inputs": "FormElement owner constructor and teardown; tree lifecycle, exact allocators, recursive clear, insertion and erase paths; window producer and routed-event consumer; post-free instruction reference at owner teardown VA 0x0053ADBE.",
+    "c424Outputs": "tools/ghidra/logs/c424_form-tree18-layouts.txt and tools/ghidra/logs/c424_form-tree18-instruction-refs.txt",
+    "c424ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied the FormElement+0x1F8 placement, its former 0x10 unknown boundary, the constructor and teardown identities, and owner traversal of the container.",
+    "c424FreshEvidence": "C424 establishes the exact 0x0C tree-header extent, separate owner dword at +0x204, exact 0x18 node allocation and deallocation, three tree links, window-object key at +0x0C, signed window-index value at +0x10, color at +0x14, nil marker at +0x15, sentinel and count initialization, insertion, traversal, recursive clear, and erase balancing. The instruction export positively confirms the owner +0x0C node access beyond the earlier noreturn-marked free path.",
+    "c424Limits": "DumpVAs supplies direct bodies and call lists only for the fifteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The concrete window-object class, the tree-policy dword, the node's two-byte tail, and FormElement+0x204 remain unknown because the bounded paths do not establish them.",
+    "c425Topic": "C425 CharaMake retainer snapshot layout",
+    "c425ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c425Scripts": "ghidra/DumpVAs.java and ghidra/FindFieldRefs.java",
+    "c425Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c425_chara-make-retainer-snapshot.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00DADCC0,0x004E13A0,0x00890EE0,0x00890FE0,0x004E5300,0x004E5290,0x004E14B0,0x004E1480,0x006AD1D0,0x00DADD40,0x004E0030,0x00DAD990,0x00DA4D80' } -ScriptPath @('ghidra')",
+    "c425InstructionInvocation": "tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c425_chara-make-retainer-snapshot-instruction-refs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY='0x8,0xC,0x10,0x18,0x1C,0x20' } -ScriptPath @('ghidra')",
+    "c425Inputs": "Retainer-list parser; snapshot allocator, constructor, consumers, and teardown; shared 0x30-stride vector copy and assignment helpers; positive instruction references for both owned vector pointer triples.",
+    "c425Outputs": "tools/ghidra/logs/c425_chara-make-retainer-snapshot.txt and tools/ghidra/logs/c425_chara-make-retainer-snapshot-instruction-refs.txt",
+    "c425ExistingEvidence": "BCS-S-0004 and BCS-Y-0022 establish the RetainerListRecord element layout, the operation-level vector at CharaMakeOperation+0x204, and the zero-extended count at +0x200. BCS-Y-0080 and BCS-Y-0081 establish the shared vector implementation, exact 0x24 allocation, and initial snapshot construction shape.",
+    "c425FreshEvidence": "C425 revalidates the exact allocation and closes all three snapshot members: count at +0x00, owned source vector at +0x04, and separately owned working vector at +0x14. Direct consumers append and update 0x30-stride RetainerListRecord values through the working vector, while teardown independently releases both vector allocations. Positive instructions confirm both pointer triples, including the first-vector cleanup reached after the decompiler-marked working-vector free.",
+    "c425Limits": "DumpVAs supplies direct bodies and call lists only for the thirteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The snapshot is fully byte-accounted; no claim assigns semantics beyond the confirmed count, RetainerListRecord element type, source-copy role, and consumer-mutated working-copy role.",
+    "c426Topic": "C426 non-block event execution layouts",
+    "c426ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c426Script": "ghidra/DumpVAs.java",
+    "c426Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c426_event-execution-nonblock-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0089AF70,0x0089AEE0,0x0089ACA0,0x0089AAC0,0x0089A910,0x00895860,0x008959C0,0x00895560,0x00895380,0x00896510,0x008955C0,0x00895400,0x0089ABE0,0x008963F0' } -ScriptPath @('ghidra')",
+    "c426Inputs": "Exact node allocator and insertion; embedded-object wrapper and base or derived copy constructors; four-byte vector copy constructor; base and derived construction and teardown; queue predicate, walker, dispatch, and full list teardown.",
+    "c426Output": "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt",
+    "c426ExistingEvidence": "BCS-S-0038 and BCS-Y-0474/0476 supplied the exact 0x2C node allocation, list placement, embedded payload construction at +0x08, callback guard at node+0x25, and queue-walker context. The retained catalog left the payload type undefined and represented its later fields as overlapping siblings.",
+    "c426FreshEvidence": "C426 establishes the exact 0x24 embedded ExecutionClientSideNonBlockEvent extent, its base and derived construction and copy boundaries, the 0x10 vector of four-byte context keys, one-shot callback and ownership flags, selector, exact node link directions, virtual dispatch, and independent embedded-object teardown before exact 0x2C node deallocation.",
+    "c426Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf class varies by producer; the higher-level meanings of primary_context_key, context_keys, state_1c, and event_selector remain bounded to their observed storage and use. Three alignment bytes remain unknown-typed. No claim relies on instructions omitted after a noreturn free."
   }
 }
