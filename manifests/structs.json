@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 398,
+  "structCount": 400,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -26044,6 +26044,117 @@
       ],
       "notes": "Complete byte-accounted 0x28 doubly linked list node carrying a policy dword and one 32-bit MSVC wide string. Exact allocation and copy construction close the node boundary; list teardown independently confirms both links and the nested string offsets.",
       "id": "BCS-S-0398"
+    },
+    {
+      "name": "ComponentSoundPointerArrayState",
+      "namespace": "Component::Sound",
+      "size": "0x14",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c491_sound-cache-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "policy",
+          "type": "unknown[0x04]",
+          "notes": "Leading storage skipped by the bounded teardown helper. Its concrete representation is unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "owned_pointers",
+          "type": "void **",
+          "notes": "Pointer-array storage. Teardown walks pointer_count entries, frees each non-null pointee, then frees this storage."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "pointer_count",
+          "type": "uint32_t",
+          "notes": "Number of four-byte entries walked in reverse during teardown."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "state_0c",
+          "type": "unknown[0x04]",
+          "notes": "Cleared when active_count reaches zero. No bounded consumer establishes its concrete type or role."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "active_count",
+          "type": "uint32_t",
+          "notes": "Unsigned count decremented to zero before pointer-array teardown proceeds."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x14 pointer-array state embedded in Component::Sound::SoundCache. Teardown establishes its storage pointer, four-byte entry stride, pointer count, closing active count, and the intervening state dword; the enclosing cache fixes its exact boundary at +0x1C.",
+      "id": "BCS-S-0399"
+    },
+    {
+      "name": "ComponentSoundSoundCache",
+      "namespace": "Component::Sound",
+      "size": "0x28",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c491_sound-cache-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Component::Sound::SoundCache vftable at 0x00F670B8. Derived SoundCacheSound replaces it with 0x00F67124."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "voice",
+          "type": "void *",
+          "notes": "Optional polymorphic voice object. Stop paths dispatch through its vtable and then clear the pointer; its concrete interface type is unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x14",
+          "name": "pointer_state",
+          "type": "ComponentSoundPointerArrayState",
+          "notes": "Embedded pointer-array state released by stop and complete-object teardown paths."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "state_1c",
+          "type": "unknown[0x04]",
+          "notes": "Optional value passed to a two-argument predicate and cleared by the stop path. Its concrete representation is unresolved."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "state_20",
+          "type": "unknown[0x04]",
+          "notes": "Constructor-cleared closing state dword with no narrower bounded consumer."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x01",
+          "name": "suppress_voice_callback",
+          "type": "bool",
+          "notes": "Constructor-cleared flag. Nonzero values suppress one voice callback and select an alternate virtual cleanup before the final callback."
+        },
+        {
+          "offset": "0x25",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[0x03]",
+          "notes": "Unwritten bytes closing the exact 0x28 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x28 Component::Sound::SoundCache layout. RTTI fixes the base and SoundCacheSound identities; construction, stop, pointer-array teardown, scalar destruction, and the exact SoundCacheSound allocation account for the full base footprint. The derived constructor adds no fields and only replaces the vftable.",
+      "id": "BCS-S-0400"
     }
   ],
   "method": {
@@ -27289,6 +27400,16 @@
     "c490Outputs": "BCS-S-0398 in manifests/structs.json; no new local evidence archive.",
     "c490ExistingEvidence": "Retained exact source for 0x00440ED0 allocates 0x28 bytes, writes links at +0x00/+0x04, and copy-constructs the value at +0x08 through 0x00440BE0. That helper copies a leading dword and constructs a wide string at value +0x04. Retained 0x00440CE0 teardown independently reads node links and the nested string storage, length, and capacity at node +0x10/+0x20/+0x24. BCS-S-0397 establishes the nested string's complete 0x1C layout.",
     "c490FreshEvidence": "No fresh analysis read was required because retained positive allocation, construction, and teardown instructions close all four fields and the exact node extent. No claim relies on a zero-result search.",
-    "c490Limits": "value_policy remains unknown-typed because it is copied but no bounded consumer establishes its representation. The narrow-string sibling was screened but not started: its teardown proves links and trailing string storage fields, but retained evidence does not establish whether the nested string begins at +0x0C or another boundary. The incomplete ApplicationMainElementSystemClientWorkRecord was not revisited because no new consumer evidence closes its initial string or remaining member boundaries."
+    "c490Limits": "value_policy remains unknown-typed because it is copied but no bounded consumer establishes its representation. The narrow-string sibling was screened but not started: its teardown proves links and trailing string storage fields, but retained evidence does not establish whether the nested string begins at +0x0C or another boundary. The incomplete ApplicationMainElementSystemClientWorkRecord was not revisited because no new consumer evidence closes its initial string or remaining member boundaries.",
+    "c491Topic": "C491 Component Sound SoundCache layouts",
+    "c491Scripts": "ghidra/DumpVAs.java",
+    "c491ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c491Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c491_sound-cache-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00442050,0x00442710,0x00442740,0x00442770,0x004427B0,0x00442840,0x00443350,0x00CC3B80' } -ScriptPath @('ghidra')",
+    "c491Inputs": "SoundCacheSound allocator/consumer 0x00442050, SoundCache scalar destructor 0x00442710, base constructor 0x00442740, flush and stop paths 0x00442770/0x004427B0, complete-object teardown 0x00442840, SoundCacheSound constructor 0x00443350, and embedded pointer-array teardown 0x00CC3B80.",
+    "c491Output": "tools/ghidra/logs/c491_sound-cache-layouts.txt",
+    "c491StructOutputs": "BCS-S-0399 and BCS-S-0400 in manifests/structs.json.",
+    "c491ExistingEvidence": "Retained C348 RTTI identifies vftables 0x00F670B8 and 0x00F67124 as Component::Sound::SoundCache and SoundCacheSound. Retained exact source records the 0x28 derived allocation, base and derived construction, stop consumers at +0x04/+0x1C/+0x24, and complete-object teardown.",
+    "c491FreshEvidence": "One batched read-only export reproduces all eight requested functions. The exact 0x28 allocation and field writes close SoundCache through +0x24. The embedded helper at 0x00CC3B80 independently establishes pointer storage, four-byte entries, pointer_count, state_0c, and active_count at embedded offsets +0x04/+0x08/+0x0C/+0x10; the following SoundCache +0x1C field closes that subobject at 0x14 bytes.",
+    "c491Limits": "The embedded leading policy and state_0c remain unknown-typed because bounded lifecycle code skips or only clears them. SoundCache state_1c and state_20 remain unknown-typed because the stop path does not establish their representations. The voice remains a void pointer because virtual dispatch does not identify its concrete interface. Tail padding is fixed only by the exact allocation. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. The narrow-string list node and ApplicationMainElementSystemClientWorkRecord remain incomplete for the previously recorded boundary reasons."
   }
 }
