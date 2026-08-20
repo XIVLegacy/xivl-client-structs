@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 252,
+  "structCount": 253,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -19015,6 +19015,45 @@
       ],
       "notes": "Complete 0x0C ordered-map header at FormElement+0x1F8. Construction, insertion, traversal, recursive clear, erase, and teardown establish the exact 0x18 node specialization and count; the leading policy dword remains unknown-typed.",
       "id": "BCS-S-0252"
+    },
+    {
+      "name": "ApplicationNetworkLobbyClientCharaMakeRetainerSnapshot",
+      "namespace": "Application::Network::LobbyClient",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0004",
+        "BCS-Y-0022",
+        "BCS-Y-0080",
+        "BCS-Y-0081",
+        "tools/ghidra/logs/c425_chara-make-retainer-snapshot.txt",
+        "tools/ghidra/logs/c425_chara-make-retainer-snapshot-instruction-refs.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "retainer_count",
+          "type": "uint32_t",
+          "notes": "Zero-extended retainer count copied from CharaMakeOperation+0x200; the retainer-list parser clears this dword and then stores the packet header count into it."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "source_retainers",
+          "type": "std::vector<RetainerListRecord>",
+          "notes": "Owned copy of the operation-level 0x30-stride retainer vector at CharaMakeOperation+0x204. Its begin, end, and capacity-end pointers occupy +0x08, +0x0C, and +0x10."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x10",
+          "name": "working_retainers",
+          "type": "std::vector<RetainerListRecord>",
+          "notes": "Separately owned working copy initialized from source_retainers. Consumers append synthetic records and update RetainerListRecord fields through its +0x18 begin and +0x1C end pointers."
+        }
+      ],
+      "notes": "Complete exact 0x24 cached CharaMake retainer snapshot. Construction copies the operation-level retainer count and vector, creates a separate working vector, consumers normalize that working copy, and teardown independently frees both vector allocations.",
+      "id": "BCS-S-0253"
     }
   ],
   "method": {
@@ -19726,6 +19765,16 @@
     "c424Outputs": "tools/ghidra/logs/c424_form-tree18-layouts.txt and tools/ghidra/logs/c424_form-tree18-instruction-refs.txt",
     "c424ExistingEvidence": "BCS-S-0074 and retained C325 evidence supplied the FormElement+0x1F8 placement, its former 0x10 unknown boundary, the constructor and teardown identities, and owner traversal of the container.",
     "c424FreshEvidence": "C424 establishes the exact 0x0C tree-header extent, separate owner dword at +0x204, exact 0x18 node allocation and deallocation, three tree links, window-object key at +0x0C, signed window-index value at +0x10, color at +0x14, nil marker at +0x15, sentinel and count initialization, insertion, traversal, recursive clear, and erase balancing. The instruction export positively confirms the owner +0x0C node access beyond the earlier noreturn-marked free path.",
-    "c424Limits": "DumpVAs supplies direct bodies and call lists only for the fifteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The concrete window-object class, the tree-policy dword, the node's two-byte tail, and FormElement+0x204 remain unknown because the bounded paths do not establish them."
+    "c424Limits": "DumpVAs supplies direct bodies and call lists only for the fifteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The concrete window-object class, the tree-policy dword, the node's two-byte tail, and FormElement+0x204 remain unknown because the bounded paths do not establish them.",
+    "c425Topic": "C425 CharaMake retainer snapshot layout",
+    "c425ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c425Scripts": "ghidra/DumpVAs.java and ghidra/FindFieldRefs.java",
+    "c425Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c425_chara-make-retainer-snapshot.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00DADCC0,0x004E13A0,0x00890EE0,0x00890FE0,0x004E5300,0x004E5290,0x004E14B0,0x004E1480,0x006AD1D0,0x00DADD40,0x004E0030,0x00DAD990,0x00DA4D80' } -ScriptPath @('ghidra')",
+    "c425InstructionInvocation": "tools\\ghidra\\run-headless.ps1 -Script FindFieldRefs.java -ReadOnly -Out tools\\ghidra\\logs\\c425_chara-make-retainer-snapshot-instruction-refs.txt -ScriptEnv @{ IMPLEMENTATION_OFFSET_QUERY='0x8,0xC,0x10,0x18,0x1C,0x20' } -ScriptPath @('ghidra')",
+    "c425Inputs": "Retainer-list parser; snapshot allocator, constructor, consumers, and teardown; shared 0x30-stride vector copy and assignment helpers; positive instruction references for both owned vector pointer triples.",
+    "c425Outputs": "tools/ghidra/logs/c425_chara-make-retainer-snapshot.txt and tools/ghidra/logs/c425_chara-make-retainer-snapshot-instruction-refs.txt",
+    "c425ExistingEvidence": "BCS-S-0004 and BCS-Y-0022 establish the RetainerListRecord element layout, the operation-level vector at CharaMakeOperation+0x204, and the zero-extended count at +0x200. BCS-Y-0080 and BCS-Y-0081 establish the shared vector implementation, exact 0x24 allocation, and initial snapshot construction shape.",
+    "c425FreshEvidence": "C425 revalidates the exact allocation and closes all three snapshot members: count at +0x00, owned source vector at +0x04, and separately owned working vector at +0x14. Direct consumers append and update 0x30-stride RetainerListRecord values through the working vector, while teardown independently releases both vector allocations. Positive instructions confirm both pointer triples, including the first-vector cleanup reached after the decompiler-marked working-vector free.",
+    "c425Limits": "DumpVAs supplies direct bodies and call lists only for the thirteen requested functions. FindFieldRefs supplies positive instruction matches but is not treated as exhaustive and supports no negative claim. The snapshot is fully byte-accounted; no claim assigns semantics beyond the confirmed count, RetainerListRecord element type, source-copy role, and consumer-mutated working-copy role."
   }
 }
