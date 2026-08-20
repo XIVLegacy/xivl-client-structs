@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 334,
+  "structCount": 336,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -23106,6 +23106,89 @@
       ],
       "notes": "Complete exact 0x08 application payload for s2c 0x0134 SetActorState, excluding the 0x10 game-message prefix. The third-router path isolates the low main-state byte and clears the adjacent byte before applying the state transition.",
       "id": "BCS-S-0334"
+    },
+    {
+      "name": "HamletDefenseScoreWireRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x108",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0392",
+        "BCS-Y-0611",
+        "BCS-Y-0949",
+        "BCS-Y-0950",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/data_dependency_catalog.json",
+        "tools/ghidra/logs/c459_hamlet-defense-wire.txt",
+        "tools/ghidra/logs/c459_hamlet-defense-wire-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "base_score",
+          "type": "int32_t",
+          "notes": "Base score copied into the converted runtime cache."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x001",
+          "name": "multiplier",
+          "type": "int8_t",
+          "notes": "Signed score multiplier copied into the runtime cache."
+        },
+        {
+          "offset": "0x005",
+          "size": "0x080",
+          "name": "entry_table_indices",
+          "type": "uint8_t[128]",
+          "notes": "One-based table indices; the first zero terminates conversion."
+        },
+        {
+          "offset": "0x085",
+          "size": "0x080",
+          "name": "entry_quantities",
+          "type": "uint8_t[128]",
+          "notes": "Quantities paired by index with the table-index array."
+        },
+        {
+          "offset": "0x105",
+          "size": "0x003",
+          "name": "unknown_105",
+          "type": "unknown[0x03]",
+          "notes": "Bytes copied by the exact receiver constructor but not read by the documented conversion helper."
+        }
+      ],
+      "notes": "Complete exact 0x108 input record for s2c 0x01A8 HamletDefenseScore. The receiver constructor copies 0x42 dwords, and the conversion helper splits the record into score controls and two paired 128-byte arrays.",
+      "id": "BCS-S-0335"
+    },
+    {
+      "name": "HamletDefenseScorePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x108",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0335",
+        "BCS-Y-0392",
+        "BCS-Y-0611",
+        "BCS-Y-0949",
+        "BCS-Y-0950",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/data_dependency_catalog.json",
+        "tools/ghidra/logs/c459_hamlet-defense-wire.txt",
+        "tools/ghidra/logs/c459_hamlet-defense-wire-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x108",
+          "name": "score",
+          "type": "HamletDefenseScoreWireRecord",
+          "notes": "Complete score input record copied into the receiver before conversion."
+        }
+      ],
+      "notes": "Complete decomp-confirmed 0x108 application payload for s2c 0x01A8 HamletDefenseScore, excluding the 0x10 game-message prefix. No packet capture currently corroborates this content-gated packet extent.",
+      "id": "BCS-S-0336"
     }
   ],
   "method": {
@@ -24066,6 +24149,19 @@
     "c458Outputs": "BCS-S-0334 in manifests/structs.json; no new local evidence archive.",
     "c458ExistingEvidence": "BCS-Y-0393/0404/0540 establish the exact 0x08 payload, the low-byte mask over the first dword, and the adjacent-byte clear. BCS-Y-0636 establishes the downstream primary-state setter that consumes the isolated state value.",
     "c458FreshEvidence": "No fresh analysis read was required because retained positive instructions and packet-shape evidence close the layout. No claim relies on a zero-result search.",
-    "c458Limits": "SetActorState+0x02 remains an unknown-typed six-byte closing span. cleared_state_byte has exact uint8_t storage and documented clearing behavior, but its original wire meaning is unresolved. The payload's retained semantic labels still request live revalidation. S2c 0x0132 was screened but not started because retained symbol and packet catalogs conflict on its payload size. TextSheetNoSourceX28 was screened but not started because the retained direct consumer does not establish every proposed field boundary and the receiver mapping has a competing variant."
+    "c458Limits": "SetActorState+0x02 remains an unknown-typed six-byte closing span. cleared_state_byte has exact uint8_t storage and documented clearing behavior, but its original wire meaning is unresolved. The payload's retained semantic labels still request live revalidation. S2c 0x0132 was screened but not started because retained symbol and packet catalogs conflict on its payload size. TextSheetNoSourceX28 was screened but not started because the retained direct consumer does not establish every proposed field boundary and the receiver mapping has a competing variant.",
+    "c459Topic": "C459 Hamlet defense wire correction",
+    "c459Scripts": "ghidra/DumpVAs.java",
+    "c459ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before either invocation.",
+    "c459PrimaryInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c459_hamlet-defense-wire.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075A870,0x008A1030,0x0089E420,0x006F2210,0x006F1480' } -ScriptPath @('ghidra')",
+    "c459PrimaryInputs": "LuaActorImpl slot-83 wrapper, receiver deleting destructor, receive method, runtime-cache swap helper, and wire-to-cache conversion helper",
+    "c459PrimaryOutput": "tools/ghidra/logs/c459_hamlet-defense-wire.txt",
+    "c459SupplementalInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c459_hamlet-defense-wire-2.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0089CEA0,0x0089CF10' } -ScriptPath @('ghidra')",
+    "c459SupplementalInputs": "HamletDefenseScoreReceiver constructor and non-deleting destructor",
+    "c459SupplementalOutput": "tools/ghidra/logs/c459_hamlet-defense-wire-2.txt",
+    "c459Outputs": "BCS-S-0335 and BCS-S-0336 in manifests/structs.json; corrected s2c 0x01A8 blocks in the mapped payload and data-dependency manifests.",
+    "c459ExistingEvidence": "BCS-Y-0392/0611/0949/0950 establish the opcode, receiver identity, apply path, separate 0x1C runtime-cache allocation, and absence of packet-capture corroboration. Existing C367 evidence establishes the conversion loop and runtime cache layout.",
+    "c459FreshEvidence": "The primary read confirms that the fill helper consumes base_score at +0x00, multiplier at +0x04, table indices at +0x05..+0x84, and paired quantities at +0x85..+0x104. The supplemental receiver constructor copies exactly 0x42 dwords, proving a 0x108 input-record boundary and leaving +0x105..+0x107 copied but unread.",
+    "c459Limits": "HamletDefenseScoreWireRecord+0x105 remains an unknown-typed three-byte tail because the constructor copies it but the documented conversion helper does not read it. A zero table index terminates conversion, so later array elements may be present but unprocessed; no negative value claim is made for them. The exact extent is decomp-confirmed but lacks packet-capture corroboration. DumpVAs supplies direct bodies and call lists only for the seven requested functions."
   }
 }
