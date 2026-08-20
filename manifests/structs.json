@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 440,
+  "structCount": 441,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27880,6 +27880,41 @@
       ],
       "notes": "Complete exact 0x110 HamletDefenseScoreReceiver layout. The heap factory fixes the boundary, construction copies the full closing payload, and the receive path forwards that payload intact.",
       "id": "BCS-S-0440"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkJobQuestCompleteTripleReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0263",
+        "BCS-S-0436",
+        "BCS-Y-0902",
+        "BCS-Y-0903",
+        "BCS-Y-0904",
+        "BCS-Y-0905",
+        "BCS-Y-0906",
+        "BCS-Y-0907",
+        "tools/ghidra/logs/c510_job-quest-complete-receiver-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "base",
+          "type": "ApplicationLuaScriptClientCommandCommandUpdaterBase",
+          "notes": "Complete CommandUpdaterBase prefix established by the shared base lifecycle and the first derived write at +0x08."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x18",
+          "name": "completion_payload",
+          "type": "JobQuestCompleteTripleReceiverPacket",
+          "notes": "Three consecutive eight-byte completion words copied by construction and forwarded intact to the real handler. Their exact widths are known, but their semantics remain unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x20 JobQuestCompleteTripleReceiver layout. The slot-one heap factory fixes the allocation boundary, construction copies the full 0x18 packet record after the 0x08 base, and the real handler forwards that record from +0x08.",
+      "id": "BCS-S-0441"
     }
   ],
   "method": {
@@ -29315,6 +29350,16 @@
     "c509StructOutputs": "BCS-S-0439 and BCS-S-0440 in manifests/structs.json.",
     "c509ExistingEvidence": "BCS-Y-0278, BCS-Y-0366/0367/0368, BCS-Y-0610/0611, BCS-Y-0947 through BCS-Y-0950, BCS-Y-1043/1044, and BCS-Y-1432/1433 preserve the receiver identities, apply roles, and downstream Hamlet state consumers. Retained C369 and C459 evidence supplied the initial worker model.",
     "c509FreshEvidence": "The twelve-section closing export reproduces both wrappers, constructors, destructors, receive methods, heap factories, and immediate workers. Supply construction copies 0x17C dwords beginning at +0x08 and its exact allocation is 0x5F8. Defense construction copies 0x42 dwords beginning at +0x08 and its exact allocation is 0x110. Each receive path forwards the copied block intact.",
-    "c509Limits": "Both state_04 words remain unknown-typed because construction leaves them unwritten and no observed consumer reads them. ranking_payload and defense_payload remain unknown-typed because their exact extents and block consumers are established but their internal member boundaries are not. DumpVAs supplies direct bodies and caller/callee lists only for the twelve requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c509Limits": "Both state_04 words remain unknown-typed because construction leaves them unwritten and no observed consumer reads them. ranking_payload and defense_payload remain unknown-typed because their exact extents and block consumers are established but their internal member boundaries are not. DumpVAs supplies direct bodies and caller/callee lists only for the twelve requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c510Topic": "C510 JobQuestCompleteTriple receiver layout",
+    "c510Scripts": "ghidra/DumpVAs.java",
+    "c510ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c510Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c510_job-quest-complete-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0089D270,0x0089D2F0,0x0089D350,0x0089E520,0x0076C690' } -ScriptPath @('ghidra')",
+    "c510Inputs": "JobQuestCompleteTripleReceiver constructor 0x0089D270, destructor 0x0089D2F0, slot-one heap factory 0x0089D350, real handler 0x0089E520, and LuaActorImpl wrapper 0x0076C690.",
+    "c510Output": "tools/ghidra/logs/c510_job-quest-complete-receiver-layout.txt",
+    "c510StructOutputs": "BCS-S-0441 in manifests/structs.json.",
+    "c510ExistingEvidence": "BCS-S-0436 supplies the exact 0x08 CommandUpdaterBase prefix. BCS-S-0263 and retained C431 evidence supply the exact 0x18 JobQuestCompleteTriple packet record. BCS-Y-0655 and BCS-Y-0902 through BCS-Y-0909 preserve the wire route, six-slot receiver identity, lifecycle roles, gated wrapper, and downstream JobQuestObject swapper.",
+    "c510FreshEvidence": "The five-section closing export reproduces the constructor, destructor, slot-one heap factory, real handler, and LuaActorImpl wrapper. The factory allocates exactly 0x20 bytes; construction copies three consecutive eight-byte words to +0x08, +0x10, and +0x18; and the real handler forwards this+0x08.",
+    "c510Limits": "The three packet words retain their existing semantically opaque names; this batch proves their exact nested placement but does not assign job or quest meanings. The nested CommandUpdaterBase state_04 remains unknown-typed for the reason recorded by BCS-S-0436. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
