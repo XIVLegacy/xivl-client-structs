@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 258,
+  "structCount": 261,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -19534,6 +19534,169 @@
       ],
       "notes": "Complete exact 0x2C server-side block execution object. Shared base and block construction, two exact allocations, EventStart staging, derived payload teardown, and the derived constructor establish every member boundary.",
       "id": "BCS-S-0258"
+    },
+    {
+      "name": "LinkedItemEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x06",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0706",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "linked_item_package_slot",
+          "type": "uint16_t",
+          "notes": "Linked-item package slot consumed from the first word of each equipment-link row."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "item_package_slot",
+          "type": "uint16_t",
+          "notes": "Underlying item-package slot consumed from the second word."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "item_package_code",
+          "type": "uint16_t",
+          "notes": "Item-package code word. The documented client staging path copies only its low byte, but the wire member occupies the full closing word."
+        }
+      ],
+      "notes": "Complete exact 0x06 equipment-linked-item wire row reused by the one-, eight-, sixteen-, thirty-two-, and sixty-four-row packet family. Direct client loads establish the three words, while the packet-family record counts establish the reusable stride.",
+      "id": "BCS-S-0259"
+    },
+    {
+      "name": "GroupMemberEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0877",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "actor_id",
+          "type": "uint32_t",
+          "notes": "Actor identifier loaded from the first dword of each member row."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "int32_t",
+          "notes": "Signed localized-name identifier consumed by the member conversion path."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "uint32_t",
+          "notes": "Four-byte member state copied by the consumer. Its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x01",
+          "name": "flag_0c",
+          "type": "uint8_t",
+          "notes": "Byte-sized member flag consumed separately from the online flag; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x0D",
+          "size": "0x01",
+          "name": "is_online",
+          "type": "bool",
+          "notes": "Online-state byte read by the member conversion path."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x20",
+          "name": "name",
+          "type": "char[32]",
+          "notes": "Fixed-width member name copied from the wire row."
+        },
+        {
+          "offset": "0x2E",
+          "size": "0x02",
+          "name": "reserved",
+          "type": "unknown[0x02]",
+          "notes": "Unconsumed bytes closing the exact 0x30 array stride."
+        }
+      ],
+      "notes": "Complete exact 0x30 group-member wire row used by the eight-member packet. Direct member conversion establishes fields through +0x2D, and the eight-row packet extent closes the two-byte tail.",
+      "id": "BCS-S-0260"
+    },
+    {
+      "name": "NamedGroupRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0887",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Eight-byte group index at the start of each named-group row."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "group_type_id",
+          "type": "uint32_t",
+          "notes": "Group-type identifier loaded by the named-group consumer."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "int32_t",
+          "notes": "Signed localized-name identifier consumed during group creation."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x02",
+          "name": "group_name_text_id",
+          "type": "uint16_t",
+          "notes": "Two-byte group-name text identifier in the fixed row prefix."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x0E",
+          "name": "reserved",
+          "type": "unknown[0x0E]",
+          "notes": "Unresolved bytes between the fixed identifiers and the group-name buffer."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x20",
+          "name": "group_name",
+          "type": "char[32]",
+          "notes": "Fixed-width group name consumed from the second half of the row."
+        }
+      ],
+      "notes": "Complete exact 0x40 named-group wire row used by CreateNamedGroupMultiple. The handler walks up to eight rows at this stride, and the row consumer establishes the identifier prefix and fixed name buffer.",
+      "id": "BCS-S-0261"
     }
   ],
   "method": {
@@ -20289,6 +20452,13 @@
     "c429Output": "tools/ghidra/logs/c429_event-execution-server-block-layout.txt",
     "c429ExistingEvidence": "BCS-Y-0432 and BCS-Y-1097 supplied the EventStart state-machine allocation context, exact +0x24 staging read, shared context vector, and downstream EventStart staging call. C314 supplied the concrete RTTI identity. C427 supplied the complete shared execution and block-base member boundaries and state roles.",
     "c429FreshEvidence": "C429 revalidates both exact 0x2C allocations and layered construction, installs the server-side vftable, initializes the owned +0x24 pointer and the derived +0x28 byte, forwards +0x24 through EventStart staging, and independently destroys and frees the +0x24 payload during derived teardown.",
-    "c429Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf, the +0x24 payload record type, the higher-level meanings of state_22 and state_28, and five alignment bytes remain unresolved. No load-bearing claim relies on decompiler output after a noreturn free."
+    "c429Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf, the +0x24 payload record type, the higher-level meanings of state_22 and state_28, and five alignment bytes remain unresolved. No load-bearing claim relies on decompiler output after a noreturn free.",
+    "c430Topic": "C430 reusable linked-item and group wire records",
+    "c430Scripts": "No new headless export was required; retained payload-decoding and subsystem catalogs supplied the load-bearing evidence.",
+    "c430Inputs": "LinkedItemList packet-family layouts, GroupMembersX08 member conversion, CreateNamedGroupMultiple row consumption, and their retained exact packet extents.",
+    "c430Outputs": "BCS-S-0259 through BCS-S-0261 in manifests/structs.json; no new local evidence archive.",
+    "c430ExistingEvidence": "BCS-Y-0394 and the equipment subsystem catalog establish the reusable three-word LinkedItemEntry across one-, eight-, sixteen-, thirty-two-, and sixty-four-row packets. BCS-Y-0395/0877 establish the 0x30 GroupMemberEntry fields through +0x2D and its eight-row use. BCS-Y-0396/0887 establish the 0x40 NamedGroupRecord identifier prefix, fixed name buffer, and eight-row use. Fixed packet extents close both group-record unknown spans.",
+    "c430FreshEvidence": "No fresh analysis read was required because the retained positive consumer and packet-stride evidence closes all three records. No claim relies on a zero-result search.",
+    "c430Limits": "The concrete meaning of GroupMemberEntry state_08 and flag_0c remains unresolved. Its final two bytes and NamedGroupRecord+0x12..+0x1F remain unknown-typed because the documented consumers do not interpret them. LinkedItemEntry semantic labels retain structural confidence because the equipment catalog calls for live confirmation even though all three word boundaries are direct."
   }
 }
