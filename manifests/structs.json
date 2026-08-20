@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 401,
+  "structCount": 405,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -26226,6 +26226,159 @@
       ],
       "notes": "Complete exact 0x5003C Component::Sound::SoundCacheStream. RTTI and constructor vftables identify the primary and adjusted interfaces. The play-sound allocator fixes the total extent; construction, reload, range serving, callback fallback, and destruction establish the base, two exact buffers, and closing counters without an unknown span.",
       "id": "BCS-S-0401"
+    },
+    {
+      "name": "ComponentSoundSoundModuleGainRecord",
+      "namespace": "Component::Sound",
+      "size": "0x08",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c316_mainmodule-prequeue-instructions.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c493_sound-module-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "factor",
+          "type": "float",
+          "notes": "First float in the exact eight-byte vector element; the indexed update path multiplies it by value."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "value",
+          "type": "float",
+          "notes": "Second float in the exact eight-byte vector element; the indexed update path writes it and then multiplies both fields."
+        }
+      ],
+      "notes": "Complete exact two-float record used by Component::Sound::SoundModule's indexed vector. Construction fills eight records from one two-float source, while the indexed updater uses an eight-byte stride and reads both floats as a product.",
+      "id": "BCS-S-0402"
+    },
+    {
+      "name": "ComponentSoundSoundModuleGainVector",
+      "namespace": "Component::Sound",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c316_mainmodule-prequeue-instructions.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c493_sound-module-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vector_policy",
+          "type": "unknown",
+          "notes": "Leading vector policy or allocator state skipped by the bounded initializer and indexed consumer."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "begin",
+          "type": "ComponentSoundSoundModuleGainRecord *",
+          "notes": "Beginning of the contiguous eight-byte record range."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "end",
+          "type": "ComponentSoundSoundModuleGainRecord *",
+          "notes": "One-past-last constructed record pointer."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "capacity_end",
+          "type": "ComponentSoundSoundModuleGainRecord *",
+          "notes": "End of allocated record storage."
+        }
+      ],
+      "notes": "Complete exact 0x10 vector storage. The shared initializer clears and populates begin, end, and capacity_end using an eight-byte element stride; SoundModule places the vector at +0x08 and its next member begins at +0x18.",
+      "id": "BCS-S-0403"
+    },
+    {
+      "name": "ComponentSoundSoundModule",
+      "namespace": "Component::Sound",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0097",
+        "tools/ghidra/logs/c316_mainmodule-prequeue-instructions.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c493_sound-module-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Component::Sound::SoundModule vftable 0x00F67038."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sound_owner",
+          "type": "void *",
+          "notes": "Constructor-supplied owner or service pointer; its concrete interface type is unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x10",
+          "name": "gain_vector",
+          "type": "ComponentSoundSoundModuleGainVector",
+          "notes": "Eight-record vector initialized from a shared two-float source and updated by indexed sound paths."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x0C",
+          "name": "cache_tree",
+          "type": "MsvcTreeHeaderStorage32",
+          "notes": "Self-linked ordered-tree header with a zero initial count. Teardown destroys non-null polymorphic payload pointers stored at node +0x10."
+        }
+      ],
+      "notes": "Complete exact 0x24 Component::Sound::SoundModule layout. RTTI fixes the class vftable, construction accounts for the owner, exact gain-vector storage, and tree header, and the RaptureSoundModule constructor places its first derived field at +0x24.",
+      "id": "BCS-S-0404"
+    },
+    {
+      "name": "ApplicationMiscRaptureSoundModule",
+      "namespace": "Application::Misc",
+      "size": "0x28",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0404",
+        "tools/ghidra/logs/c316_mainmodule-prequeue-instructions.txt",
+        "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
+        "tools/ghidra/logs/c493_sound-module-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x24",
+          "name": "sound_module",
+          "type": "ComponentSoundSoundModule",
+          "notes": "Complete SoundModule base. The derived constructor replaces its vftable with 0x00F90F9C."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x01",
+          "name": "state_24",
+          "type": "uint8_t",
+          "notes": "Constructor-supplied byte state; bounded consumers do not establish a narrower semantic name."
+        },
+        {
+          "offset": "0x25",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[3]",
+          "notes": "Unobserved closing bytes fixed by the next RaptureElement member at complete-object +0x950."
+        }
+      ],
+      "notes": "Complete exact 0x28 Application::Misc::RaptureSoundModule layout. The derived constructor adds one byte at +0x24; RaptureElement embeds the object at +0x928 and constructs its next member at +0x950, fixing three closing bytes without assigning speculative types.",
+      "id": "BCS-S-0405"
     }
   ],
   "method": {
@@ -27491,6 +27644,16 @@
     "c492StructOutput": "BCS-S-0401 in manifests/structs.json.",
     "c492ExistingEvidence": "BCS-S-0400 supplies the complete 0x28 SoundCache base. C348 RTTI identifies primary vftable 0x00F671A4 and adjusted vftables 0x00F67190/0x00F6717C as Component::Sound::SoundCacheStream and its stream-reader base. Retained exact instruction source records the 0x5003C allocation, constructor placements, two buffer bases, refill size, counters, and destructor vftable sequence.",
     "c492FreshEvidence": "One batched read-only export reproduces all eight requested functions. The play-sound path allocates exactly 0x5003C and calls the shared constructor. Construction places the adjusted interface at +0x28, owner and stream ID at +0x2C/+0x30, available_bytes at +0x50034, and base_position at +0x50038. Reload copies exactly 0x10000 bytes from +0x10034 to +0x34; the adjusted reader uses +0x10034 as its data base, requests 0x40000-byte refills, and addresses +0x50034/+0x50038 relative to the complete object after correcting its +0x28 this adjustment.",
-    "c492Limits": "stream_owner remains a void pointer because virtual dispatch does not identify its concrete interface. Buffer element semantics are byte-level only. No unknown-typed field is required in the new layout, but inherited unknown-typed fields remain inside BCS-S-0400. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. The anonymous 0x28 constructor pair, narrow-string list node, and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded ownership or boundary gaps."
+    "c492Limits": "stream_owner remains a void pointer because virtual dispatch does not identify its concrete interface. Buffer element semantics are byte-level only. No unknown-typed field is required in the new layout, but inherited unknown-typed fields remain inside BCS-S-0400. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. The anonymous 0x28 constructor pair, narrow-string list node, and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded ownership or boundary gaps.",
+    "c493Topic": "C493 Component SoundModule nested layouts",
+    "c493Scripts": "ghidra/DumpVAs.java",
+    "c493ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c493Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c493_sound-module-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00440E10,0x00442150,0x00442430,0x00442580,0x00442710,0x004DD790,0x004DD800,0x004DBF40' } -ScriptPath @('ghidra')",
+    "c493Inputs": "Vector initializer 0x00440E10, SoundModule teardown 0x00442150, indexed gain updater 0x00442430, SoundModule constructor 0x00442580, scalar destructor 0x00442710, RaptureSoundModule constructor 0x004DD790, derived teardown 0x004DD800, and RaptureElement constructor 0x004DBF40.",
+    "c493Output": "tools/ghidra/logs/c493_sound-module-layouts.txt",
+    "c493StructOutputs": "BCS-S-0402 through BCS-S-0405 in manifests/structs.json.",
+    "c493ExistingEvidence": "C348 RTTI identifies vftables 0x00F67038 and 0x00F90F9C as Component::Sound::SoundModule and Application::Misc::RaptureSoundModule. Retained C316 instructions place the derived object at RaptureElement +0x928 and the following member at +0x950, fixing its exact 0x28 boundary. Retained exact instruction source independently records the vector's eight-byte element operations and the constructors' member placements.",
+    "c493FreshEvidence": "One batched read-only export reproduces all eight requested functions. The shared initializer uses an exact eight-byte stride and writes the vector pointers at relative +0x04/+0x08/+0x0C. The indexed updater writes record +0x04 and multiplies both floats. SoundModule construction places that vector at +0x08 and a self-linked zero-count tree at +0x18. RaptureSoundModule construction installs its derived vftable and copies one byte at +0x24.",
+    "c493Limits": "sound_owner remains a void pointer because the constructor and bounded consumers do not identify its concrete interface. The vector policy dword remains unknown-typed because the initializer and indexed consumer skip it. RaptureSoundModule's final three bytes remain unknown-typed because only the enclosing next-member boundary fixes them. The tree node is not promoted because payload and sentinel accesses do not directly establish its allocation boundary or complete value schema. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. No load-bearing claim relies on decompiler output after a noreturn _free. The anonymous 0x28 constructor pair, narrow-string list node, and ApplicationMainElementSystemClientWorkRecord remain incomplete for their previously recorded ownership or boundary gaps."
   }
 }
