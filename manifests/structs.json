@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 394,
+  "structCount": 395,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -11864,7 +11864,9 @@
         "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
         "tools/ghidra/logs/c351_main-runtime.txt",
         "xivl-decomp:src/ffxivgame/_rosetta/FUN_00444150.cpp",
-        "xivl-decomp:src/ffxivgame/_rosetta/FUN_0044c710.cpp"
+        "xivl-decomp:src/ffxivgame/_rosetta/FUN_0044c710.cpp",
+        "tools/ghidra/logs/c486_config-entry.txt",
+        "tools/ghidra/logs/c487_config-entry-key.txt"
       ],
       "fields": [
         {
@@ -11885,8 +11887,8 @@
           "offset": "0x008",
           "size": "0x004",
           "name": "config_entries",
-          "type": "void *",
-          "notes": "Owned entry storage allocated by the Sqex::Misc::Config base constructor; the concrete entry type remains unresolved."
+          "type": "SqexMiscConfigEntry *",
+          "notes": "Owned array of config entries. The base constructor allocates config_entry_count*32 exact 0xBC-byte records and stores the first record here."
         },
         {
           "offset": "0x00C",
@@ -25846,6 +25848,70 @@
       ],
       "notes": "Complete exact 0x140 Lua current-frame/control object. Two independent producers allocate this extent and call the same constructor; construction and teardown close two inline strings, three vector headers, two sentinel-backed trees, one helper-owned subobject, an owned interface, back-reference lifetime, and the closing flag bytes.",
       "id": "BCS-S-0394"
+    },
+    {
+      "name": "SqexMiscConfigEntry",
+      "namespace": "Sqex::Misc",
+      "size": "0xBC",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0135",
+        "tools/ghidra/logs/c486_config-entry.txt",
+        "tools/ghidra/logs/c487_config-entry-key.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "state",
+          "type": "uint32_t",
+          "notes": "Default construction clears the tag. The two observed assignment paths set it to 1 for numeric entries and 2 for string-valued entries."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x54",
+          "name": "key",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Primary config key. Construction, equality search, conversion, assignment, and formatting use the established inline-string layout."
+        },
+        {
+          "offset": "0x58",
+          "size": "0x04",
+          "name": "value_58",
+          "type": "int32_t",
+          "notes": "First signed numeric value formatted for state-1 entries. Its higher-level role remains unresolved."
+        },
+        {
+          "offset": "0x5C",
+          "size": "0x04",
+          "name": "value_5c",
+          "type": "int32_t",
+          "notes": "Second signed numeric value formatted for state-1 entries. Its higher-level role remains unresolved."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "current_value",
+          "type": "int32_t",
+          "notes": "Current signed numeric value returned by the indexed getter and updated by the direct setter."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "pending_value",
+          "type": "int32_t",
+          "notes": "Initial numeric assignment mirrors this value to current_value; the state-1 reload helper later copies it into current_value."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x54",
+          "name": "string_value",
+          "type": "SqexMiscUtf8StringLayout",
+          "notes": "Secondary inline string assigned and formatted for state-2 entries."
+        }
+      ],
+      "notes": "Complete byte-accounted 0xBC config entry. The owner allocates count*32 entries at this exact stride and constructs each with two inline strings; assignment, lookup, formatting, getters, and setters establish the intervening numeric fields.",
+      "id": "BCS-S-0395"
     }
   ],
   "method": {
@@ -27053,6 +27119,17 @@
     "c484StructOutputs": "BCS-S-0390 through BCS-S-0394 in manifests/structs.json; corrected BCS-S-0036 owner/frame separation.",
     "c484ExistingEvidence": "BCS-Y-0461 through BCS-Y-0464 establish the owner wrapper, current-frame pointer at owner +0x2C, exact 0x140 replacement allocation, teardown, and status write at frame +0x138. BCS-S-0135 supplies the established 0x54 inline-string layout.",
     "c484FreshEvidence": "Two independent producers allocate exactly 0x140 and call the same constructor. Constructor and destructor instructions establish two inline strings, one dword vector at +0xC4, a helper-owned +0xD4 subobject, an owned +0xE8 interface, a 0x10-stride vector at +0xEC, two more dword vectors, two tree headers, back-reference lifetime, and seven closing flags. Exact helper allocations establish the 0x68 string-keyed object node and 0x14 compact value node, including link, color, nil, string, and owned-object boundaries.",
-    "c484Limits": "Base policy/state at +0x00/+0x04, helper-owned runtime state at +0xD4, vector policy dwords, tree policy dwords, compact-node value representation, and closing padding remain unknown-typed because bounded construction and teardown do not expose narrower representations. FrameRecordVector elements have exact 0x10 stride but unresolved class. owned_interface and object-node owned_object remain void pointers because virtual destruction does not identify their concrete interfaces. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions; the instruction audit covers only the listed defined byte ranges and does not establish wider reference topology."
+    "c484Limits": "Base policy/state at +0x00/+0x04, helper-owned runtime state at +0xD4, vector policy dwords, tree policy dwords, compact-node value representation, and closing padding remain unknown-typed because bounded construction and teardown do not expose narrower representations. FrameRecordVector elements have exact 0x10 stride but unresolved class. owned_interface and object-node owned_object remain void pointers because virtual destruction does not identify their concrete interfaces. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions; the instruction audit covers only the listed defined byte ranges and does not establish wider reference topology.",
+    "c486Topic": "C486 Sqex Misc Config entry layout",
+    "c486Scripts": "ghidra/DumpVAs.java",
+    "c486ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before either invocation.",
+    "c486Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c486_config-entry.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00443C30,0x00443C90,0x00443CF0,0x00443D50,0x00443DA0,0x00443DD0,0x00443E00,0x00443E40,0x00443E70,0x00443EA0,0x00444150,0x00444200,0x00444730' } -ScriptPath @('ghidra')",
+    "c487Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c487_config-entry-key.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00444090,0x00445CF0,0x00445D20,0x00445210,0x00447450' } -ScriptPath @('ghidra')",
+    "c486Inputs": "Config entry constructor/destructor 0x00443C30/0x00443C90, numeric and string assignment paths 0x00443CF0/0x00443D50, numeric reload/set/get paths 0x00443DA0/0x00443DD0/0x00443E40, string setter/getter 0x00443E00/0x00443E70, state getter 0x00443EA0, Config owner constructor/destructor 0x00444150/0x00444200, formatter 0x00444730, key search 0x00444090, string constructor/equality/conversion/assignment helpers 0x00445CF0/0x00445D20/0x00445210/0x00447450.",
+    "c486Outputs": "tools/ghidra/logs/c486_config-entry.txt and tools/ghidra/logs/c487_config-entry-key.txt.",
+    "c486StructOutput": "BCS-S-0395 in manifests/structs.json; BCS-S-0137 config_entries refined from void pointer to SqexMiscConfigEntry pointer.",
+    "c486ExistingEvidence": "BCS-S-0135 establishes the complete 0x54 inline-string layout. Retained constructor and consumer source under xivl-decomp:src/ffxivgame/_rosetta records the exact instruction offsets for the Config entry family. C348 RTTI and C351 retained evidence identify vftable 0x00F67290 as Sqex::Misc::Config and establish the existing SystemConfig base header.",
+    "c486FreshEvidence": "The Config owner allocates config_entry_count*32 records with exact 0xBC stride and constructs each through the same entry constructor. Entry construction initializes two inline-string subobjects at +0x04 and +0x68. Numeric assignment writes state 1 and signed dwords at +0x58/+0x5C/+0x60/+0x64; string assignment writes state 2 and the +0x68 string. Search, formatting, reload, direct getters, and setters independently consume those boundaries.",
+    "c486Limits": "The state tag is represented as uint32_t without asserting a named enum beyond observed values 0, 1, and 2. value_58 and value_5c retain offset-based names because format consumers prove signed width but not higher-level roles. A standalone Sqex::Misc::Config struct was not added: its constructor proves header fields through +0x0C, but no exact base-class extent is established. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions and does not establish arbitrary reference coverage."
   }
 }
