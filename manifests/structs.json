@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 334,
+  "structCount": 385,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -364,71 +364,104 @@
       "id": "BCS-S-0007",
       "name": "CharacterModifyRequest",
       "namespace": "FFXIV.Client.Network",
-      "size": "0x1C4",
+      "size": "0x1D0",
       "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-024"
+        "mdi-024",
+        "BCS-Y-0112",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x08",
+          "size": "0x04",
           "name": "sequence",
-          "type": "uint64_t",
-          "notes": "Per-request sequence number."
+          "type": "uint32_t",
+          "notes": "Per-request sequence dword written after the complete application payload is zero-initialized."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span between the sequence and character id; no narrower typed write is documented."
         },
         {
           "offset": "0x08",
           "size": "0x04",
           "name": "character_id",
           "type": "uint32_t",
-          "notes": "Target character id (0 when reserving a fresh slot)."
+          "notes": "Target character id copied from operation state."
         },
         {
           "offset": "0x0C",
           "size": "0x04",
           "name": "person_type",
           "type": "uint32_t",
-          "notes": "Specific value semantics not yet mapped."
+          "notes": "Operation-state dword whose narrower value semantics remain unresolved."
         },
         {
           "offset": "0x10",
           "size": "0x01",
           "name": "slot",
           "type": "uint8_t",
-          "notes": "Character slot index."
+          "notes": "Character slot index copied from operation state."
         },
         {
           "offset": "0x11",
           "size": "0x01",
           "name": "command",
           "type": "uint8_t",
-          "notes": "Sub-command. 0x01 = RESERVE, 0x02 = MAKE, 0x03 = RENAME, 0x04 = DELETE, 0x06 = RENAME_RETAINER. The client parser confirms these values. This is a u8 at offset 0x11, distinct from BCS-S-0006's u16 at offset 0x0A on the response side."
+          "notes": "Sub-command. Values 1, 2, 3, 4, and 6 select reserve, make, rename, delete, and retainer-rename paths; the high bit marks continuation in the segmented make path."
         },
         {
           "offset": "0x12",
           "size": "0x02",
           "name": "world_id",
           "type": "uint16_t",
-          "notes": "Target world id."
+          "notes": "Target world id copied from operation state."
         },
         {
           "offset": "0x14",
           "size": "0x20",
           "name": "character_name",
           "type": "char[32]",
-          "notes": "Character/retainer name. 32-byte ASCII, null-padded."
+          "notes": "Fixed-capacity character or retainer name copied with a 32-byte bound and explicitly terminated at +0x33."
         },
         {
           "offset": "0x34",
           "size": "0x190",
           "name": "character_info_encoded",
           "type": "char[400]",
-          "notes": "Base64-encoded CharaInfo blob for CMD_MAKE; empty/null-padded for the other commands."
+          "notes": "Fixed-capacity encoded character-information region used by reserve and make paths and explicitly terminated at +0x1C3."
+        },
+        {
+          "offset": "0x1C4",
+          "size": "0x04",
+          "name": "unknown_1C4",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span after the encoded character-information region."
+        },
+        {
+          "offset": "0x1C8",
+          "size": "0x01",
+          "name": "command_value_1C8",
+          "type": "uint8_t",
+          "notes": "Copied from operation state only for command 6; its narrower retainer-rename semantics remain unresolved."
+        },
+        {
+          "offset": "0x1C9",
+          "size": "0x07",
+          "name": "unknown_1C9",
+          "type": "unknown",
+          "notes": "Exact zero-initialized closing span with no narrower typed write."
         }
       ],
-      "notes": "452-byte c2s body for lobby opcode 0x0E (CharacterModify request). The client parser establishes the field widths and command code values. This is distinct from BCS-S-0006 CharacterModifyResponseRecord on the s2c side: same opcode, different layout, and a different command field offset and width (see MDI-024)."
+      "notes": "Complete exact 0x1D0 application payload for LobbyServerbound c2s 0x000B CharacterModifyPacket, excluding the 0x10 game-message prefix. Fresh builder evidence corrects the former 0x1C4 extent, uint64 sequence, and opcode 0x0E attribution: the emitted application is cleared for 0x1D0 bytes, carries a uint32 sequence at +0x00, and closes with the command-6 byte and zero-only tail through +0x1CF. The response remains s2c opcode 0x000E in BCS-S-0006."
     },
     {
       "id": "BCS-S-0008",
@@ -23106,6 +23139,2106 @@
       ],
       "notes": "Complete exact 0x08 application payload for s2c 0x0134 SetActorState, excluding the 0x10 game-message prefix. The third-router path isolates the low main-state byte and clears the adjacent byte before applying the state transition.",
       "id": "BCS-S-0334"
+    },
+    {
+      "name": "HamletDefenseScoreWireRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x108",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0392",
+        "BCS-Y-0611",
+        "BCS-Y-0949",
+        "BCS-Y-0950",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/data_dependency_catalog.json",
+        "tools/ghidra/logs/c459_hamlet-defense-wire.txt",
+        "tools/ghidra/logs/c459_hamlet-defense-wire-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "base_score",
+          "type": "int32_t",
+          "notes": "Base score copied into the converted runtime cache."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x001",
+          "name": "multiplier",
+          "type": "int8_t",
+          "notes": "Signed score multiplier copied into the runtime cache."
+        },
+        {
+          "offset": "0x005",
+          "size": "0x080",
+          "name": "entry_table_indices",
+          "type": "uint8_t[128]",
+          "notes": "One-based table indices; the first zero terminates conversion."
+        },
+        {
+          "offset": "0x085",
+          "size": "0x080",
+          "name": "entry_quantities",
+          "type": "uint8_t[128]",
+          "notes": "Quantities paired by index with the table-index array."
+        },
+        {
+          "offset": "0x105",
+          "size": "0x003",
+          "name": "unknown_105",
+          "type": "unknown[0x03]",
+          "notes": "Bytes copied by the exact receiver constructor but not read by the documented conversion helper."
+        }
+      ],
+      "notes": "Complete exact 0x108 input record for s2c 0x01A8 HamletDefenseScore. The receiver constructor copies 0x42 dwords, and the conversion helper splits the record into score controls and two paired 128-byte arrays.",
+      "id": "BCS-S-0335"
+    },
+    {
+      "name": "HamletDefenseScorePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x108",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0335",
+        "BCS-Y-0392",
+        "BCS-Y-0611",
+        "BCS-Y-0949",
+        "BCS-Y-0950",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/data_dependency_catalog.json",
+        "tools/ghidra/logs/c459_hamlet-defense-wire.txt",
+        "tools/ghidra/logs/c459_hamlet-defense-wire-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x108",
+          "name": "score",
+          "type": "HamletDefenseScoreWireRecord",
+          "notes": "Complete score input record copied into the receiver before conversion."
+        }
+      ],
+      "notes": "Complete decomp-confirmed 0x108 application payload for s2c 0x01A8 HamletDefenseScore, excluding the 0x10 game-message prefix. No packet capture currently corroborates this content-gated packet extent.",
+      "id": "BCS-S-0336"
+    },
+    {
+      "name": "EventStartPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0xB8",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0034",
+        "BCS-Y-0426",
+        "manifests/data_dependency_catalog.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xB8",
+          "name": "payload",
+          "type": "MapEventStartPayload",
+          "notes": "Complete application payload emitted by the canonical 0x012D builder."
+        }
+      ],
+      "notes": "Complete c2s 0x012D EventStart application payload, excluding the 0x10 game-message prefix. The canonical builder writes body size 0xC8 and stages the existing MapEventStartPayload at record+0x18; retained packet observations corroborate the fixed 0xD8 total message extent.",
+      "id": "BCS-S-0337"
+    },
+    {
+      "name": "InventoryEndChangePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0561",
+        "BCS-Y-0708",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unknown_00",
+          "type": "unknown[0x08]",
+          "notes": "Fixed closing payload whose internal member boundaries are not consumed by the documented end-change path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x016E InventoryEndChange, excluding the 0x10 game-message prefix. The dedicated handler signals the end of the inventory-change frame without receiving the application payload.",
+      "id": "BCS-S-0338"
+    },
+    {
+      "name": "MassSetItemModifierBeginPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0581",
+        "BCS-Y-0722",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unknown_00",
+          "type": "unknown[0x08]",
+          "notes": "Fixed opening payload whose internal member boundaries are not consumed by the documented begin-marker path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x018F MassSetItemModifierBegin, excluding the 0x10 game-message prefix. This marker opens the begin/body/end bulk-modifier sequence consumed by MassSetItemModifierPacket bodies.",
+      "id": "BCS-S-0339"
+    },
+    {
+      "name": "MassSetItemModifierEndPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0583",
+        "BCS-Y-0723",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unknown_00",
+          "type": "unknown[0x08]",
+          "notes": "Fixed closing payload whose internal member boundaries are not consumed by the documented end-marker path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0191 MassSetItemModifierEnd, excluding the 0x10 game-message prefix. This marker closes the begin/body/end bulk-modifier sequence.",
+      "id": "BCS-S-0340"
+    },
+    {
+      "name": "BlacklistRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-1071",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "BCS-Y-0396",
+        "manifests/data_dependency_catalog.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "client_state_value",
+          "type": "uint32_t",
+          "notes": "Client state dword copied from the emitter owner at +0xC40."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01CB, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x18 and sends the blacklist request through the generic map forwarder.",
+      "id": "BCS-S-0341"
+    },
+    {
+      "name": "FriendlistRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-1072",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_state_value",
+          "type": "uint32_t",
+          "notes": "Request-state dword copied from the emitter owner at +0xCB0."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01CE, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x18 and sends the friend-list request through the generic map forwarder.",
+      "id": "BCS-S-0342"
+    },
+    {
+      "name": "FriendStatusRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-1073",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_state_value",
+          "type": "uint32_t",
+          "notes": "Request-state dword copied from the same emitter-owner +0xCB0 field used by FriendlistRequestPacket."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01CF, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x18 and sends the friend-status request through the generic map forwarder.",
+      "id": "BCS-S-0343"
+    },
+    {
+      "name": "StartGMTicketRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-1074",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "zero_value",
+          "type": "uint32_t",
+          "notes": "The dedicated emitter explicitly initializes this dword to zero."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01D3, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x18 and sends the GM-ticket start request through the generic map forwarder.",
+      "id": "BCS-S-0344"
+    },
+    {
+      "name": "SocialListMutationRecord",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "value_0",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "value_1",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "value_2",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x08",
+          "name": "value_3",
+          "type": "uint64_t",
+          "notes": "Exact qword copied from the source social-list record; higher-level meaning unresolved."
+        }
+      ],
+      "notes": "Complete four-qword social-list mutation record shared by the retained add-blacklist, remove-blacklist, and add-friendlist emitters. The storage boundaries are exact; individual qword semantics remain unresolved.",
+      "id": "BCS-S-0345"
+    },
+    {
+      "name": "AddBlacklistPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0345",
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "record",
+          "type": "SocialListMutationRecord",
+          "notes": "Complete four-qword record copied by emitter 0x004C9DA0."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for c2s 0x01C9 AddBlacklist, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x30 and fills all four qwords.",
+      "id": "BCS-S-0346"
+    },
+    {
+      "name": "RemoveBlacklistPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0345",
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "record",
+          "type": "SocialListMutationRecord",
+          "notes": "Complete four-qword record copied by emitter 0x004B7D70."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for c2s 0x01CA RemoveBlacklist, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x30 and fills all four qwords.",
+      "id": "BCS-S-0347"
+    },
+    {
+      "name": "AddFriendlistPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0345",
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "record",
+          "type": "SocialListMutationRecord",
+          "notes": "Complete four-qword record copied by emitter 0x004CA1B0."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for c2s 0x01CC AddFriendlist, excluding the 0x10 game-message prefix. The dedicated emitter writes body size 0x30 and fills all four qwords.",
+      "id": "BCS-S-0348"
+    },
+    {
+      "name": "RecruitmentDetailRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c464_social-compose-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "value_0",
+          "type": "uint32_t",
+          "notes": "First dword copied from the selected recruitment record."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "value_1",
+          "type": "uint32_t",
+          "notes": "Second dword copied from the selected recruitment record."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value_2",
+          "type": "uint32_t",
+          "notes": "Third dword copied from the selected recruitment record."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0c",
+          "type": "unknown[0x04]",
+          "notes": "Emitted slot between the third and fifth source-record dwords without a documented explicit write."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "value_4",
+          "type": "uint32_t",
+          "notes": "Fifth dword copied from the selected recruitment record."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "value_5",
+          "type": "uint32_t",
+          "notes": "Sixth dword copied from the selected recruitment record."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for c2s 0x01C6, excluding the 0x10 game-message prefix. The caller assembles five values from a selected recruitment row, and the emitter preserves their source-record positions while leaving the fourth dword without an explicit write.",
+      "id": "BCS-S-0349"
+    },
+    {
+      "name": "MailComposeFieldUpdatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x888",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c464_social-compose-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "value_0",
+          "type": "uint32_t",
+          "notes": "First source-record dword copied directly into the emitted payload."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "value_1",
+          "type": "uint32_t",
+          "notes": "Second source-record dword copied directly into the emitted payload."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x080",
+          "name": "value_block_0",
+          "type": "uint32_t[32]",
+          "notes": "Exact 32-dword block copied from source-record dwords 2 through 33."
+        },
+        {
+          "offset": "0x088",
+          "size": "0x800",
+          "name": "value_block_1",
+          "type": "uint32_t[512]",
+          "notes": "Exact 512-dword block copied from source-record dwords 34 through 545."
+        }
+      ],
+      "notes": "Complete exact 0x888 application payload for c2s 0x01D5, excluding the 0x10 game-message prefix. The dedicated emitter copies two leading dwords, a 32-dword block, and a 512-dword block. The storage boundaries are exact; individual value semantics remain unresolved.",
+      "id": "BCS-S-0350"
+    },
+    {
+      "name": "TopicListRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c465_compact-social-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Dword obtained from the context provider's virtual slot +0x18 and copied into the payload."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01D0, excluding the 0x10 game-message prefix. Retained caller evidence identifies the packet as a Topic or bulletin-board list request.",
+      "id": "BCS-S-0351"
+    },
+    {
+      "name": "CallHelpRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c465_compact-social-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Explicit dword argument supplied by the direct Call UI consumer."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Dword obtained from the context provider's virtual slot +0x18 and copied into the payload."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01D1, excluding the 0x10 game-message prefix. Retained caller evidence identifies the packet as a Call or help request.",
+      "id": "BCS-S-0352"
+    },
+    {
+      "name": "MailComposeSendPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c465_compact-social-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Dword obtained from the context provider's virtual slot +0x18 and copied into the payload."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01D2, excluding the 0x10 game-message prefix. Retained caller evidence identifies the packet as a mail-compose send request.",
+      "id": "BCS-S-0353"
+    },
+    {
+      "name": "TopicSubmitPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c465_compact-social-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading request dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01D4, excluding the 0x10 game-message prefix. Retained caller evidence identifies the packet as a Topic or bulletin-board submit or update request.",
+      "id": "BCS-S-0354"
+    },
+    {
+      "name": "CallStatusPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c465_compact-social-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading request dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01D6, excluding the 0x10 game-message prefix. Retained caller evidence identifies the packet as a Call acknowledgement or status request.",
+      "id": "BCS-S-0355"
+    },
+    {
+      "name": "RecruitmentPostPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x1C0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0318",
+        "BCS-Y-0319",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c466_recruitment-builders.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "value_0",
+          "type": "uint32_t",
+          "notes": "First scalar argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "value_1",
+          "type": "uint32_t",
+          "notes": "Second scalar argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x004",
+          "name": "value_2",
+          "type": "uint32_t",
+          "notes": "Third scalar argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x00C",
+          "name": "value_group_0",
+          "type": "uint32_t[3]",
+          "notes": "Exact three-dword group copied from source-record dwords 3 through 5."
+        },
+        {
+          "offset": "0x018",
+          "size": "0x00C",
+          "name": "value_group_1",
+          "type": "uint32_t[3]",
+          "notes": "Exact three-dword group copied from source-record dwords 6 through 8."
+        },
+        {
+          "offset": "0x024",
+          "size": "0x00C",
+          "name": "value_group_2",
+          "type": "uint32_t[3]",
+          "notes": "Exact three-dword group copied from source-record dwords 9 through 11."
+        },
+        {
+          "offset": "0x030",
+          "size": "0x00C",
+          "name": "value_group_3",
+          "type": "uint32_t[3]",
+          "notes": "Exact three-dword group copied from source-record dwords 12 through 14."
+        },
+        {
+          "offset": "0x03C",
+          "size": "0x180",
+          "name": "value_block",
+          "type": "uint32_t[96]",
+          "notes": "Exact 96-dword block copied from source-record dword 15 onward."
+        },
+        {
+          "offset": "0x1BC",
+          "size": "0x004",
+          "name": "unknown_1bc",
+          "type": "unknown[0x04]",
+          "notes": "Closing application span not written by the dedicated builder."
+        }
+      ],
+      "notes": "Complete exact 0x1C0 application payload for c2s 0x01C3, excluding the 0x10 game-message prefix. Retained caller evidence identifies this as the recruitment listing post or start request. The builder preserves the source-record group boundaries but does not establish their individual wire semantics.",
+      "id": "BCS-S-0356"
+    },
+    {
+      "name": "RecruitmentUpdatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0318",
+        "BCS-Y-0319",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c466_recruitment-builders.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "value_0",
+          "type": "uint32_t",
+          "notes": "First scalar argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "value_1",
+          "type": "uint32_t",
+          "notes": "Second scalar argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value_2",
+          "type": "uint32_t",
+          "notes": "Third scalar argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value_3",
+          "type": "uint32_t",
+          "notes": "Fourth scalar argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "value_4",
+          "type": "uint8_t",
+          "notes": "First byte argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "value_5",
+          "type": "uint8_t",
+          "notes": "Second byte argument copied by the dedicated record builder."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x20",
+          "name": "value_block",
+          "type": "uint64_t[4]",
+          "notes": "Packed four-qword block copied from source-record offset +0x12."
+        },
+        {
+          "offset": "0x32",
+          "size": "0x06",
+          "name": "unknown_32",
+          "type": "unknown[0x06]",
+          "notes": "Closing application span not written by the dedicated builder."
+        }
+      ],
+      "notes": "Complete exact 0x38 application payload for c2s 0x01C7, excluding the 0x10 game-message prefix. Retained caller evidence identifies this as the recruitment attribute or listing update request. The builder preserves the packed source-record boundaries but does not establish their individual wire semantics.",
+      "id": "BCS-S-0357"
+    },
+    {
+      "name": "RecruitmentModeRequestRecord",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c467_recruitment-mode-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading request dword explicitly initialized to zero by both dedicated emitters."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Shared exact 0x08 application record used by the retained recruitment listing-view and edit-toggle emitters. Both emitters explicitly zero the leading dword and leave the closing dword without an explicit write.",
+      "id": "BCS-S-0358"
+    },
+    {
+      "name": "RecruitmentListingViewPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c467_recruitment-mode-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "request",
+          "type": "RecruitmentModeRequestRecord",
+          "notes": "Shared mode-request record emitted for the recruitment listing-view action."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01C4, excluding the 0x10 game-message prefix. Retained caller evidence identifies the operation as the recruitment listing-view or browse action.",
+      "id": "BCS-S-0359"
+    },
+    {
+      "name": "RecruitmentEditModePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0324",
+        "BCS-Y-0346",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unobserved.json",
+        "tools/ghidra/logs/c467_recruitment-mode-emitters.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "request",
+          "type": "RecruitmentModeRequestRecord",
+          "notes": "Shared mode-request record emitted for the recruitment edit-mode toggle."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x01C5, excluding the 0x10 game-message prefix. Retained caller evidence identifies the operation as the recruitment edit-mode toggle.",
+      "id": "BCS-S-0360"
+    },
+    {
+      "name": "ItemSearchPriceRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0691",
+        "BCS-Y-0695",
+        "BCS-Y-0347",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unresolved.json",
+        "manifests/vtable_slot_resolution.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "cached_value",
+          "type": "uint32_t",
+          "notes": "Cached dword read through the widget's nested state object and copied into the request."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Dword returned by the retained request-context helper and copied into the request."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "item_id",
+          "type": "uint32_t",
+          "notes": "Selected item identifier read from ItemSearchPriceViewWidget +0xC48."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0c",
+          "type": "unknown[0x04]",
+          "notes": "Closing emitted application span without a documented explicit member write."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for c2s 0x01D9, excluding the 0x10 game-message prefix. Retained vtable and UI evidence identifies the owner as ItemSearchPriceViewWidget and the operation as a server-side retainer price-listing query.",
+      "id": "BCS-S-0361"
+    },
+    {
+      "name": "ItemSearchHistoryRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0691",
+        "BCS-Y-0695",
+        "BCS-Y-0347",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unresolved.json",
+        "manifests/vtable_slot_resolution.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_value_0",
+          "type": "uint32_t",
+          "notes": "Dword returned by the first retained request-context helper."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "context_value_1",
+          "type": "uint32_t",
+          "notes": "Dword returned by the second retained request-context helper."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "history_key",
+          "type": "uint32_t",
+          "notes": "Item or history lookup key read from ItemSearchHistoryViewWidget +0x240."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value_3",
+          "type": "uint32_t",
+          "notes": "Closing dword explicitly initialized to zero by the dedicated emitter; higher-level meaning unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for c2s 0x01DA, excluding the 0x10 game-message prefix. Retained vtable and UI evidence identifies the owner as ItemSearchHistoryViewWidget and the operation as a retainer purchase or sale history query.",
+      "id": "BCS-S-0362"
+    },
+    {
+      "name": "ItemSearchDirectPurchasePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0320",
+        "BCS-Y-0347",
+        "manifests/c2s_emit_sites.json",
+        "manifests/cluster_refinements_unresolved.json",
+        "manifests/vtable_slot_resolution.json",
+        "tools/ghidra/logs/c469_itemsearch-direct-purchase.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "value_0",
+          "type": "uint32_t",
+          "notes": "First source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "value_1",
+          "type": "uint32_t",
+          "notes": "Second source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "value_2",
+          "type": "uint32_t",
+          "notes": "Third source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value_3",
+          "type": "uint32_t",
+          "notes": "Fourth source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "value_4",
+          "type": "uint32_t",
+          "notes": "Fifth source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "value_5",
+          "type": "uint32_t",
+          "notes": "Sixth source-record dword copied by the dedicated purchase builder."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "widget_value",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchDirectPurchaseWidget +0x24C."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "value_7",
+          "type": "uint8_t",
+          "notes": "Byte copied from source-record offset +0x18."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "stack_count",
+          "type": "uint8_t",
+          "notes": "Stack-count byte copied from source-record offset +0x19."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x02",
+          "name": "quantity",
+          "type": "uint16_t",
+          "notes": "Purchase quantity copied from source-record offset +0x1A."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x20",
+          "name": "metadata",
+          "type": "uint64_t[4]",
+          "notes": "Exact packed four-qword metadata block copied from source-record offset +0x1C."
+        }
+      ],
+      "notes": "Complete exact 0x40 application payload for c2s 0x01DE, excluding the 0x10 game-message prefix. Retained vtable and UI evidence identifies the owner as ItemSearchDirectPurchaseWidget and the operation as a retainer direct-buy commit.",
+      "id": "BCS-S-0363"
+    },
+    {
+      "name": "ItemSearchListQueryPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x118",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0693",
+        "BCS-Y-0926",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "manifests/schema_rescue.json",
+        "tools/ghidra/logs/c470_itemsearch-list-query.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "widget_value",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchListWidget +0x1220."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "zero_values",
+          "type": "uint32_t[4]",
+          "notes": "Four consecutive dwords explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Dword returned by the shared context helper, which reads source offset +0x20."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x100",
+          "name": "criteria",
+          "type": "uint8_t[256]",
+          "notes": "Exact zero-filled byte block populated from the shared source pointer using its recorded length excluding the terminator."
+        }
+      ],
+      "notes": "Complete exact 0x118 application payload for c2s 0x01DF, excluding the 0x10 game-message prefix. Retained widget and state-machine evidence identifies the owner as ItemSearchListWidget and the operation as a retainer item-search list query.",
+      "id": "BCS-S-0364"
+    },
+    {
+      "name": "ItemSearchListIndexedRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0692",
+        "BCS-Y-0926",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "manifests/schema_rescue.json",
+        "tools/ghidra/logs/c471_itemsearch-list-state.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "indexed_value",
+          "type": "uint32_t",
+          "notes": "First dword of the selected 0x10-byte ItemSearchListWidget record at the current index."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact closing application span; the dedicated emitter documents no explicit write."
+        }
+      ],
+      "notes": "Exact 0x08 application payload for c2s 0x01D7, excluding the 0x10 game-message prefix. Retained class and caller evidence places the request in the ItemSearchListWidget state-machine path; its more specific operation remains unresolved.",
+      "id": "BCS-S-0365"
+    },
+    {
+      "name": "ItemSearchListStateRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0694",
+        "BCS-Y-0926",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "manifests/schema_rescue.json",
+        "tools/ghidra/logs/c471_itemsearch-list-state.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "value_0",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchListWidget +0x1220."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "value_1",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchListWidget +0x1224."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "indexed_value",
+          "type": "uint32_t",
+          "notes": "Dword selected from the table at widget +0xE28 using the index at widget +0x1228."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "value_3",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchListWidget +0x1238."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "value_4",
+          "type": "uint32_t",
+          "notes": "Dword copied from ItemSearchListWidget +0x1234."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "unknown_14",
+          "type": "unknown",
+          "notes": "Exact closing application span; the dedicated emitter documents no explicit write."
+        }
+      ],
+      "notes": "Exact 0x18 application payload for c2s 0x01D8, excluding the 0x10 game-message prefix. Retained ownership and dispatch evidence identifies it as an ItemSearchListWidget state-machine request; individual value semantics remain unresolved.",
+      "id": "BCS-S-0366"
+    },
+    {
+      "name": "ItemSearchCompactRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0327",
+        "manifests/search_subsystem.json",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "tools/ghidra/logs/c472_search-marketplace-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact closing application span; the dedicated emitter documents no explicit write."
+        }
+      ],
+      "notes": "Exact 0x08 application payload for c2s 0x01DB, excluding the 0x10 game-message prefix. Retained caller-family evidence places it in the ItemSearch marketplace path; its more specific operation remains unresolved.",
+      "id": "BCS-S-0367"
+    },
+    {
+      "name": "ItemSearchBulkRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x228",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0326",
+        "manifests/search_subsystem.json",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "tools/ghidra/logs/c472_search-marketplace-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x224",
+          "name": "payload",
+          "type": "uint32_t[137]",
+          "notes": "Exact 137-dword block copied from the caller-supplied source record."
+        }
+      ],
+      "notes": "Complete exact 0x228 application payload for c2s 0x01DC, excluding the 0x10 game-message prefix. Retained caller-family evidence places it in the ItemSearch marketplace path; the copied block remains semantically opaque.",
+      "id": "BCS-S-0368"
+    },
+    {
+      "name": "PcSearchQueryPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x108",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0325",
+        "manifests/pcap_grounded_c2s_validation.json",
+        "manifests/search_subsystem.json",
+        "manifests/c2s_emit_sites.json",
+        "manifests/retainer_bazaar_subsystem.json",
+        "tools/ghidra/logs/c472_search-marketplace-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter and observed as zero in the retained packet sample."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x104",
+          "name": "criteria",
+          "type": "uint32_t[65]",
+          "notes": "Exact 65-dword query block copied from the caller-supplied source record; the retained sample begins with values 3 and 0x00320102 before a zero-filled remainder."
+        }
+      ],
+      "notes": "Complete exact 0x108 application payload for c2s 0x01DD, excluding the 0x10 game-message prefix. Retained player-search attribution and one packet observation identify it as a search query without resolving the inner criteria schema.",
+      "id": "BCS-S-0369"
+    },
+    {
+      "name": "MapOpcode0003StatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x220",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0313",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c473_map-bootstrap-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x10",
+          "name": "header_values",
+          "type": "uint32_t[4]",
+          "notes": "Four caller-supplied dwords copied as two adjacent qwords."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "value_14",
+          "type": "uint32_t",
+          "notes": "Caller-supplied dword written directly by the dedicated emitter."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x02",
+          "name": "value_18",
+          "type": "uint16_t",
+          "notes": "Caller-supplied word written directly by the dedicated emitter."
+        },
+        {
+          "offset": "0x1A",
+          "size": "0x02",
+          "name": "zero_1a",
+          "type": "uint16_t",
+          "notes": "Word explicitly initialized to zero by the dedicated emitter."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x200",
+          "name": "state_block",
+          "type": "uint32_t[128]",
+          "notes": "Exact 512-byte block copied from the zero-initialized source buffer loaded by the shared data helpers."
+        },
+        {
+          "offset": "0x21C",
+          "size": "0x04",
+          "name": "unknown_21c",
+          "type": "unknown",
+          "notes": "Exact closing application span; the dedicated emitter documents no explicit write."
+        }
+      ],
+      "notes": "Complete exact 0x220 application payload for MapServerbound c2s 0x0003, excluding the 0x10 game-message prefix. Retained evidence identifies a large Map-channel state push without establishing a more specific operation or the inner state-block schema.",
+      "id": "BCS-S-0370"
+    },
+    {
+      "name": "MapLanguageCodePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0308",
+        "BCS-Y-0314",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c473_map-bootstrap-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to zero by both witnessed emit sites."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "language_code",
+          "type": "uint32_t",
+          "notes": "Language-code dword supplied by the dedicated caller and independently read from Map-channel state by the tick emitter."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for MapServerbound c2s 0x0006 LanguageCodePacket, excluding the 0x10 game-message prefix. The dedicated emitter and the independent tick-state emitter produce the same two-dword layout.",
+      "id": "BCS-S-0371"
+    },
+    {
+      "name": "WorldOpcode00C8StatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x220",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0316",
+        "BCS-Y-0331",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c474_world-state-packet.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "header_values",
+          "type": "uint64_t[4]",
+          "notes": "Exact four-qword header copied from the emitter's zero-initialized source buffer."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x200",
+          "name": "state_block",
+          "type": "uint32_t[128]",
+          "notes": "Exact 512-byte block copied from the emitter's zero-initialized source buffer."
+        }
+      ],
+      "notes": "Complete exact 0x220 application payload for WorldServerbound c2s 0x00C8, excluding the 0x10 game-message prefix. Retained evidence identifies a large World-channel state push without establishing a more specific operation or either copied region's inner schema.",
+      "id": "BCS-S-0372"
+    },
+    {
+      "name": "WorldChatLoginHandshakePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0307",
+        "BCS-Y-0315",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c475_world-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "handshake_value",
+          "type": "uint32_t",
+          "notes": "Leading dword is zero in the callback emitter and 0x00003C6B in the dedicated handshake builder."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x24",
+          "name": "identity_data",
+          "type": "uint32_t[9]",
+          "notes": "Exact 36-byte identity block filled by the callback emitter from two qwords, an eight-byte type-descriptor header, and an eight-byte name prefix."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for WorldServerbound c2s 0x0002, excluding the 0x10 game-message prefix. Two independent Chat-channel paths emit the same opcode and extent with different leading handshake values; the callback path fills the complete identity block.",
+      "id": "BCS-S-0373"
+    },
+    {
+      "name": "WorldChatLoginFollowupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0315",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c475_world-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "request_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword explicitly initialized to one by the state-one emitter branch."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact closing application span; the emitter documents no explicit write."
+        }
+      ],
+      "notes": "Exact 0x08 application payload for WorldServerbound c2s 0x012C, excluding the 0x10 game-message prefix. Retained state-machine evidence identifies it as the second Chat-channel login step without establishing a more specific operation.",
+      "id": "BCS-S-0374"
+    },
+    {
+      "name": "LobbyFrontendAuthRequestPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0286",
+        "BCS-Y-0297",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c476_lobby-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Operation sequence copied by the state-machine path and incremented before emission by the auxiliary path."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "login_number",
+          "type": "int32_t",
+          "notes": "Auxiliary path converts a login string with atol; the operation path copies the corresponding state dword."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x20",
+          "name": "identity_text",
+          "type": "char[32]",
+          "notes": "Fixed-capacity text region cleared before a bounded 32-byte copy in the auxiliary path; the operation path emits it cleared."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for LobbyServerbound c2s 0x01F5, excluding the 0x10 game-message prefix. The LobbyLogin operation and an independent frontend-auth path emit the same opcode and extent.",
+      "id": "BCS-S-0375"
+    },
+    {
+      "name": "LobbyFrontendAuthNewSessionPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x68",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0286",
+        "BCS-Y-0297",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c476_lobby-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Operation sequence copied by the state-machine path and incremented before emission by the auxiliary path."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "login_number",
+          "type": "int32_t",
+          "notes": "Auxiliary path converts a login string with atol; the operation path copies the corresponding state dword."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x20",
+          "name": "identity_text",
+          "type": "char[32]",
+          "notes": "Fixed-capacity text region cleared before a bounded 32-byte copy in the auxiliary path; the operation path emits it cleared."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x40",
+          "name": "zone_login_text",
+          "type": "char[64]",
+          "notes": "Fixed-capacity text region cleared before a bounded 64-byte copy in both builders."
+        }
+      ],
+      "notes": "Complete exact 0x68 application payload for LobbyServerbound c2s 0x01F6, excluding the 0x10 game-message prefix. Retained routing identifies it as the frontend-auth new-session request; both independent builders close at the same boundary.",
+      "id": "BCS-S-0376"
+    },
+    {
+      "name": "LobbySessionPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0286",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c476_lobby-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from LobbyLogin operation state after the application payload is zero-initialized."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span with no narrower typed write or consumer in the retained evidence."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x02",
+          "name": "request_value_08",
+          "type": "uint16_t",
+          "notes": "Explicitly written as zero after payload initialization; semantic role unresolved."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "request_value_0A",
+          "type": "uint16_t",
+          "notes": "Explicitly written as 0x006E; semantic role unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x02",
+          "name": "request_value_0C",
+          "type": "uint16_t",
+          "notes": "Explicitly written as 0x1347; semantic role unresolved."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x02",
+          "name": "unknown_0E",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span between the written halfword header and the first text region."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x40",
+          "name": "session_text",
+          "type": "char[64]",
+          "notes": "Zero-initialized fixed-capacity region filled by a bounded 64-byte copy."
+        },
+        {
+          "offset": "0x50",
+          "size": "0x20",
+          "name": "login_text_1",
+          "type": "char[32]",
+          "notes": "Zero-initialized fixed-capacity region filled by a bounded 32-byte copy."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x20",
+          "name": "login_text_2",
+          "type": "char[32]",
+          "notes": "Zero-initialized fixed-capacity region filled by a bounded 32-byte copy."
+        }
+      ],
+      "notes": "Complete exact 0x90 application payload for LobbyServerbound c2s 0x0005 SessionPacket, excluding the 0x10 game-message prefix. The builder clears the complete application payload before writing its fixed header and three bounded text regions.",
+      "id": "BCS-S-0377"
+    },
+    {
+      "name": "LobbyExtendedSessionPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x1D0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0286",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c476_lobby-login-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from LobbyLogin operation state after the application payload is zero-initialized."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span with no narrower typed write or consumer in the retained evidence."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x02",
+          "name": "request_value_08",
+          "type": "uint16_t",
+          "notes": "Explicitly written as zero after payload initialization; semantic role unresolved."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "request_value_0A",
+          "type": "uint16_t",
+          "notes": "Explicitly written as 0x006E; semantic role unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x02",
+          "name": "request_value_0C",
+          "type": "uint16_t",
+          "notes": "Explicitly written as 0x1347; semantic role unresolved."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x02",
+          "name": "unknown_0E",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span between the written halfword header and the first text region."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x180",
+          "name": "session_text",
+          "type": "char[384]",
+          "notes": "Zero-initialized fixed-capacity region filled by a bounded 384-byte copy."
+        },
+        {
+          "offset": "0x190",
+          "size": "0x20",
+          "name": "login_text_1",
+          "type": "char[32]",
+          "notes": "Zero-initialized fixed-capacity region filled by a bounded 32-byte copy."
+        },
+        {
+          "offset": "0x1B0",
+          "size": "0x20",
+          "name": "login_text_2",
+          "type": "char[32]",
+          "notes": "Zero-initialized fixed-capacity region filled by a bounded 32-byte copy."
+        }
+      ],
+      "notes": "Complete exact 0x1D0 application payload for LobbyServerbound c2s 0x0006, excluding the 0x10 game-message prefix. It shares the compact SessionPacket header and two closing text regions while expanding the first text region to 384 bytes; its narrower operation remains unresolved.",
+      "id": "BCS-S-0378"
+    },
+    {
+      "name": "LobbyGetCharactersPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0290",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from ServiceLogin operation state after the application payload is cleared."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized dword with no narrower typed write."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "request_value_08",
+          "type": "uint8_t",
+          "notes": "Byte copied from ServiceLogin operation state; semantic role unresolved."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "request_value_09",
+          "type": "uint8_t",
+          "notes": "Explicit constant 0x11."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "unknown_0A",
+          "type": "unknown",
+          "notes": "Exact zero-initialized halfword between written request values."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "request_value_0C",
+          "type": "uint32_t",
+          "notes": "Dword copied from ServiceLogin operation state; semantic role unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for LobbyServerbound c2s 0x0003 GetCharacters, excluding the 0x10 game-message prefix. The ServiceLogin operation clears the complete application record and expects s2c 0x000D CharacterList in response.",
+      "id": "BCS-S-0379"
+    },
+    {
+      "name": "LobbySelectCharacterPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0293",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from GameLogin operation state after the application payload is cleared."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized dword before the selected-character value."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "selected_character_value",
+          "type": "uint32_t",
+          "notes": "Dword copied from the selected character state; the exact id or index interpretation remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0C",
+          "type": "unknown",
+          "notes": "Exact zero-initialized dword before the trailing selection byte."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "selection_value",
+          "type": "uint8_t",
+          "notes": "Byte copied from selected character state; semantic role unresolved."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x07",
+          "name": "unknown_11",
+          "type": "unknown",
+          "notes": "Exact zero-initialized closing span with no narrower typed write."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for LobbyServerbound c2s 0x0004 SelectCharacterPacket, excluding the 0x10 game-message prefix. The GameLogin operation clears the complete record and expects s2c 0x000F in response.",
+      "id": "BCS-S-0380"
+    },
+    {
+      "name": "LobbySelectCharacterConfirmPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0112",
+        "BCS-Y-0296",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c477_lobby-operation-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "sequence",
+          "type": "uint32_t",
+          "notes": "Copied from CharaMake operation state after the application payload is cleared."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x0C",
+          "name": "unknown_04",
+          "type": "unknown",
+          "notes": "Exact zero-initialized span before the first copied selection-state block."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x20",
+          "name": "selection_state",
+          "type": "uint32_t[8]",
+          "notes": "Exact eight-dword block copied from CharaMake operation state +0x18."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x60",
+          "name": "confirmation_state",
+          "type": "uint32_t[24]",
+          "notes": "Exact 24-dword block copied from CharaMake operation state +0x38, closing the application extent."
+        }
+      ],
+      "notes": "Complete exact 0x90 application payload for LobbyServerbound c2s 0x000F SelectCharacterConfirm, excluding the 0x10 game-message prefix. The CharaMake operation clears the record, copies two exact state blocks, and expects s2c 0x0010 in response.",
+      "id": "BCS-S-0381"
+    },
+    {
+      "name": "PartyChatMessagePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x208",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "BCS-Y-0306",
+        "BCS-Y-0309",
+        "manifests/autotranslate_wire_format_study.json",
+        "manifests/party_subsystem.json",
+        "manifests/pcap_opcode_coverage_matrix.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c478_party-group-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "chat_value",
+          "type": "uint32_t",
+          "notes": "Leading application dword supplied by the emitter caller; its narrower selector or routing semantics remain unresolved."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x200",
+          "name": "message",
+          "type": "char[512]",
+          "notes": "Fixed-capacity message buffer cleared before the current source-text length is copied, then copied in full into the outbound record."
+        },
+        {
+          "offset": "0x204",
+          "size": "0x04",
+          "name": "unknown_204",
+          "type": "unknown",
+          "notes": "Exact closing application span copied by the Chat forwarder but not explicitly written by the retained emitter."
+        }
+      ],
+      "notes": "Exact 0x208 application payload for WorldServerbound c2s 0x00C9 PartyChatMessagePacket, excluding the 0x10 game-message prefix. The emitter constructs an exact 0x218 game-message record, and the Chat forwarder copies exactly record_size minus 0x10 application bytes. Packet observations independently retain the full framed extent and party-chat attribution. The closing dword remains unknown-typed because the emitter writes only the leading value and 512-byte message region.",
+      "id": "BCS-S-0382"
+    },
+    {
+      "name": "GroupCreatedPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x28",
+      "confidence": "confirmed-pcap-derived",
+      "sourceRefs": [
+        "BCS-Y-0983",
+        "BCS-Y-0984",
+        "BCS-Y-0985",
+        "manifests/op0133_groupcreated_emitter.json",
+        "manifests/party_subsystem.json",
+        "manifests/pcap_opcode_coverage_matrix.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "data/vendor/opcodes/opcodes.json",
+        "tools/ghidra/logs/c478_party-group-packets.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "group_id",
+          "type": "uint32_t",
+          "notes": "First identifier dword copied from the builder input record."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "member_id",
+          "type": "uint32_t",
+          "notes": "Second identifier dword copied from the builder input record."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x20",
+          "name": "serialized_state",
+          "type": "uint8_t[32]",
+          "notes": "Exact 32-byte staging region cleared before the aggregator's serialized state is copied, then transferred in full to the packet."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for MapServerbound c2s 0x0133 GroupCreatedPacket, excluding the 0x10 game-message prefix. The group-state aggregator feeds the dedicated builder, which writes an exact 0x38 game-message record and sends it through the shared Map gating thunk. Packet observations independently retain the same framed extent and direction-specific group-created attribution.",
+      "id": "BCS-S-0383"
+    },
+    {
+      "name": "UpdateGroupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0244",
+        "BCS-Y-0329",
+        "BCS-Y-0380",
+        "BCS-Y-0382",
+        "BCS-Y-1778",
+        "BCS-Y-1782",
+        "BCS-Y-1783",
+        "manifests/c2s_payload_decoding.json",
+        "manifests/c2s_coverage_synthesis.json",
+        "manifests/data_dependency_catalog.json",
+        "manifests/party_subsystem.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "tools/ghidra/logs/c479_group-update-packet.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "context_value",
+          "type": "uint32_t",
+          "notes": "Producer-dependent context dword. The compact builder copies the CharaBase update value or teardown helper result; the full builder copies the actor-context value at +0x04."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "group_value",
+          "type": "uint32_t",
+          "notes": "Producer-dependent group dword. Teardown acknowledgements write Party group-type id 0x2711; the CharaBase path copies its group lookup result, and the full builder copies the GroupBase value returned by FUN_006BFD20."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "group_state_0",
+          "type": "uint32_t",
+          "notes": "First dword of the GroupReferenceRecord state pair in the full builder; explicitly zero in the compact acknowledgement builder."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "group_state_1",
+          "type": "uint32_t",
+          "notes": "Second dword of the GroupReferenceRecord state pair in the full builder; explicitly zero in the compact acknowledgement builder."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for MapServerbound c2s 0x0130 UpdateGroup, excluding the 0x10 game-message prefix. The compact CharaBase and teardown-acknowledgement builder writes two dwords followed by two zeros. The GroupBase update-member builder writes all four dwords, sourcing the closing pair from the embedded GroupReferenceRecord. Field names remain broad because the variants intentionally supply different higher-level values.",
+      "id": "BCS-S-0384"
+    },
+    {
+      "name": "ApplicationLuaScriptClientGroupSharedWorkMemberRecord",
+      "namespace": "Application::Lua::Script::Client::Group",
+      "size": "0x30",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-1792",
+        "BCS-Y-1793",
+        "BCS-Y-1794",
+        "BCS-Y-1796",
+        "tools/ghidra/logs/c480_group-shared-member.txt",
+        "tools/ghidra/logs/c480_group-shared-member-2.txt",
+        "tools/ghidra/logs/c480_group-shared-member-3.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x10",
+          "name": "value_bytes_0",
+          "type": "std::vector<uint8_t>",
+          "notes": "First independently owned byte vector. Its begin, end, and capacity-end pointers occupy +0x04, +0x08, and +0x0C. The property-copy pair at 0x006C9930 and 0x006C9AB0 reads and writes byte ranges selected by the property-key offset resolver."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x10",
+          "name": "value_bytes_1",
+          "type": "std::vector<uint8_t>",
+          "notes": "Second independently owned byte vector. Its begin, end, and capacity-end pointers occupy +0x14, +0x18, and +0x1C. The property-copy pair at 0x006C99B0 and 0x006C9B30 reads and writes byte ranges selected by the property-key offset resolver."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x10",
+          "name": "value_bytes_2",
+          "type": "std::vector<uint8_t>",
+          "notes": "Third independently owned byte vector. Its begin, end, and capacity-end pointers occupy +0x24, +0x28, and +0x2C. The property-copy pair at 0x006C9A30 and 0x006C9BB0 reads and writes byte ranges selected by the property-key offset resolver."
+        }
+      ],
+      "notes": "Complete byte-accounted 0x30 member record owned by Group::SharedWork lookup maps. Both creation paths allocate exactly 0x30 bytes and run the shared constructor. The constructor initializes three consecutive 0x10 vector objects, the length synchronizer resizes them independently from three group-wide source lengths, and six consumers perform bounded byte-range copies through the three vector lanes. The lane semantics and the property-key-to-byte-offset mapping remain unresolved, so the field names are intentionally ordinal.",
+      "id": "BCS-S-0385"
     }
   ],
   "method": {
@@ -24066,6 +26199,220 @@
     "c458Outputs": "BCS-S-0334 in manifests/structs.json; no new local evidence archive.",
     "c458ExistingEvidence": "BCS-Y-0393/0404/0540 establish the exact 0x08 payload, the low-byte mask over the first dword, and the adjacent-byte clear. BCS-Y-0636 establishes the downstream primary-state setter that consumes the isolated state value.",
     "c458FreshEvidence": "No fresh analysis read was required because retained positive instructions and packet-shape evidence close the layout. No claim relies on a zero-result search.",
-    "c458Limits": "SetActorState+0x02 remains an unknown-typed six-byte closing span. cleared_state_byte has exact uint8_t storage and documented clearing behavior, but its original wire meaning is unresolved. The payload's retained semantic labels still request live revalidation. S2c 0x0132 was screened but not started because retained symbol and packet catalogs conflict on its payload size. TextSheetNoSourceX28 was screened but not started because the retained direct consumer does not establish every proposed field boundary and the receiver mapping has a competing variant."
+    "c458Limits": "SetActorState+0x02 remains an unknown-typed six-byte closing span. cleared_state_byte has exact uint8_t storage and documented clearing behavior, but its original wire meaning is unresolved. The payload's retained semantic labels still request live revalidation. S2c 0x0132 was screened but not started because retained symbol and packet catalogs conflict on its payload size. TextSheetNoSourceX28 was screened but not started because the retained direct consumer does not establish every proposed field boundary and the receiver mapping has a competing variant.",
+    "c459Topic": "C459 Hamlet defense wire correction",
+    "c459Scripts": "ghidra/DumpVAs.java",
+    "c459ProjectMode": "Both headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before either invocation.",
+    "c459PrimaryInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c459_hamlet-defense-wire.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075A870,0x008A1030,0x0089E420,0x006F2210,0x006F1480' } -ScriptPath @('ghidra')",
+    "c459PrimaryInputs": "LuaActorImpl slot-83 wrapper, receiver deleting destructor, receive method, runtime-cache swap helper, and wire-to-cache conversion helper",
+    "c459PrimaryOutput": "tools/ghidra/logs/c459_hamlet-defense-wire.txt",
+    "c459SupplementalInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c459_hamlet-defense-wire-2.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0089CEA0,0x0089CF10' } -ScriptPath @('ghidra')",
+    "c459SupplementalInputs": "HamletDefenseScoreReceiver constructor and non-deleting destructor",
+    "c459SupplementalOutput": "tools/ghidra/logs/c459_hamlet-defense-wire-2.txt",
+    "c459Outputs": "BCS-S-0335 and BCS-S-0336 in manifests/structs.json; corrected s2c 0x01A8 blocks in the mapped payload and data-dependency manifests.",
+    "c459ExistingEvidence": "BCS-Y-0392/0611/0949/0950 establish the opcode, receiver identity, apply path, separate 0x1C runtime-cache allocation, and absence of packet-capture corroboration. Existing C367 evidence establishes the conversion loop and runtime cache layout.",
+    "c459FreshEvidence": "The primary read confirms that the fill helper consumes base_score at +0x00, multiplier at +0x04, table indices at +0x05..+0x84, and paired quantities at +0x85..+0x104. The supplemental receiver constructor copies exactly 0x42 dwords, proving a 0x108 input-record boundary and leaving +0x105..+0x107 copied but unread.",
+    "c459Limits": "HamletDefenseScoreWireRecord+0x105 remains an unknown-typed three-byte tail because the constructor copies it but the documented conversion helper does not read it. A zero table index terminates conversion, so later array elements may be present but unprocessed; no negative value claim is made for them. The exact extent is decomp-confirmed but lacks packet-capture corroboration. DumpVAs supplies direct bodies and call lists only for the seven requested functions.",
+    "c460Topic": "C460 EventStart packet and opaque 0x0132 boundary audit",
+    "c460Scripts": "ghidra/DumpVAs.java",
+    "c460ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c460Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c460_opaque-0132-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004D8860,0x00574FC0,0x0076CA90,0x00446F50,0x00447260,0x0075AEE0,0x00767B40,0x0076A3F0,0x0078DDE0' } -ScriptPath @('ghidra')",
+    "c460Inputs": "s2c 0x0132 event-family dispatcher, slot bridge, NullActorImpl slot-49 in-place factory, and its directly called construction, cache, staging, and registration helpers",
+    "c460Output": "tools/ghidra/logs/c460_opaque-0132-layout.txt",
+    "c460StructOutputs": "BCS-S-0337 in manifests/structs.json.",
+    "c460ExistingEvidence": "BCS-S-0034, BCS-Y-0426, and the retained data-dependency catalog establish the exact 0xB8 MapEventStartPayload, canonical builder writes, 0xC8 body size, 0xD8 total message extent, and packet observations. These existing positive records close the nested EventStartPacket layout without a fresh read.",
+    "c460FreshEvidence": "The read-only export confirms that s2c 0x0132 dispatch reaches NullActorImpl slot 49. The slot body consumes payload bytes +0 and +1, then constructs an in-place receiver at payload+2 before cache and registration calls. This explains the size dispute but does not establish the packet boundary.",
+    "c460Limits": "EventStartPacket adds no new unknown-typed field; its nested BCS-S-0034 payload retains the pre-existing unknown-typed and broadly named fields documented there. S2c 0x0132 remains incomplete because the live consumer proves only its first two bytes and an in-place object overlay at +2; it does not resolve the conflict between the 0x28 capture-derived payload and the stale 72-byte symbol note. DumpVAs supplies direct bodies and call lists only for the nine requested functions.",
+    "c461Topic": "C461 lifecycle marker packet layouts",
+    "c461Scripts": "No new headless export was required; retained dedicated-handler, packet-family, and exact packet-extent evidence supplied the load-bearing boundaries.",
+    "c461Inputs": "InventoryEndChangePacket and the MassSetItemModifier begin/end markers, their dedicated handlers, and exact application-payload extents.",
+    "c461Outputs": "BCS-S-0338 through BCS-S-0340 in manifests/structs.json; no new local evidence archive.",
+    "c461ExistingEvidence": "BCS-Y-0394/0561/0708 establish the 0x016E dedicated end-change path and exact 0x08 extent. BCS-Y-0396/0581/0722 and BCS-Y-0395/0583/0723 establish the 0x018F begin and 0x0191 end markers around the existing 0x0190 MassSetItemModifier body, with exact 0x08 application extents.",
+    "c461FreshEvidence": "No fresh analysis read was required because the retained positive dispatcher and packet-family evidence closes all three packet boundaries. No claim relies on a zero-result search.",
+    "c461Limits": "Each packet retains one unknown-typed 0x08 span because its dedicated lifecycle handler changes subsystem state without exposing stable application-payload member boundaries. The exact wire extent is known, but naming the bytes reserved or assigning scalar fields would be speculative.",
+    "c462Topic": "C462 compact social request packet layouts",
+    "c462Scripts": "No new headless export was required; retained confirmed emitter records and outbound catalogs supplied the load-bearing writes and exact emitted extents.",
+    "c462Inputs": "BlacklistRequestPacket, FriendlistRequestPacket, FriendStatusRequestPacket, and StartGMTicketRequestPacket dedicated emitters and application-payload extents.",
+    "c462Outputs": "BCS-S-0341 through BCS-S-0344 in manifests/structs.json; no new local evidence archive.",
+    "c462ExistingEvidence": "BCS-Y-1071 through BCS-Y-1074 establish four dedicated emitters, their opcodes, 0x18 emitted body sizes, and leading application dword writes. BCS-Y-1071 writes owner+0xC40 for 0x01CB; BCS-Y-1072/1073 both write owner+0xCB0 for 0x01CE/0x01CF; BCS-Y-1074 explicitly writes zero for 0x01D3. The retained outbound catalogs corroborate the routes and names.",
+    "c462FreshEvidence": "No fresh analysis read was required because the retained positive emitter writes and fixed body sizes close all four layouts. No claim relies on a zero-result search.",
+    "c462Limits": "Each packet retains an unknown-typed dword at +0x04 because the documented emitter does not preserve an explicit member write for that closing application span. The leading dword boundaries are exact, but client_state_value and request_state_value retain broad storage-source semantics.",
+    "c463Topic": "C463 social-list mutation record and packets",
+    "c463Scripts": "No new headless export was required; retained Tier-D emitter decoding and outbound subsystem attribution supplied the exact copies, emitted extents, and packet roles.",
+    "c463Inputs": "The c2s 0x01C9 AddBlacklist, 0x01CA RemoveBlacklist, and 0x01CC AddFriendlist emitters and their shared four-qword source record shape.",
+    "c463Outputs": "BCS-S-0345 through BCS-S-0348 in manifests/structs.json; no new local evidence archive.",
+    "c463ExistingEvidence": "BCS-Y-0324 and manifests/c2s_emit_sites.json establish body size 0x30 and four exact qword copies for emitters 0x004C9DA0, 0x004B7D70, and 0x004CA1B0. BCS-Y-0346 and the retained outbound map establish their social-list subsystem roles as AddBlacklist, RemoveBlacklist, and AddFriendlist.",
+    "c463FreshEvidence": "No fresh analysis read was required because the retained positive emitter copies and body sizes close the nested record and all three packet layouts. No claim relies on a zero-result search.",
+    "c463Limits": "The four uint64_t fields have exact widths and offsets but retain neutral value_0 through value_3 names because their higher-level meanings are unresolved. No new unknown-typed field is present. C2s 0x01C8 was screened but not started because retained sources disagree on its detailed recruitment role. C2s 0x01CD was screened but not started because retained caller metadata conflicts with a later dead-code reachability finding.",
+    "c464Topic": "C464 recruitment detail and mail compose packet layouts",
+    "c464Scripts": "ghidra/DumpVAs.java",
+    "c464ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c464Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c464_social-compose-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B7CC0,0x004B82A0,0x004BF4F0,0x004C2A20' } -ScriptPath @('ghidra')",
+    "c464Inputs": "Recruitment-detail and mail-compose emitters 0x004B7CC0 and 0x004B82A0 plus their direct UI consumers 0x004BF4F0 and 0x004C2A20.",
+    "c464Output": "tools/ghidra/logs/c464_social-compose-packets.txt",
+    "c464StructOutputs": "BCS-S-0349 and BCS-S-0350 in manifests/structs.json.",
+    "c464ExistingEvidence": "BCS-Y-0324, BCS-Y-0346, manifests/c2s_emit_sites.json, and manifests/cluster_refinements_unobserved.json establish the c2s 0x01C6 recruitment-detail role, c2s 0x01D5 mail-compose field-update role, exact emitted record sizes, and direct consumer ownership.",
+    "c464FreshEvidence": "The 0x01C6 emitter copies source dwords 0, 1, 2, 4, and 5 into their corresponding application slots and emits an exact 0x28 record. The 0x01D5 emitter copies two leading dwords, exactly 32 dwords, and exactly 512 dwords into an exact 0x898 record; this corrects the retained 513-dword loop note.",
+    "c464Limits": "RecruitmentDetailRequestPacket+0x0C remains an unknown-typed dword because the emitter does not write that slot. The copied mail-compose values have exact widths and boundaries but retain neutral names because the direct emitter and UI consumer do not establish individual wire semantics. DumpVAs supplies direct bodies and call lists only for the four requested functions.",
+    "c465Topic": "C465 compact Topic Call and Mail packet layouts",
+    "c465Scripts": "ghidra/DumpVAs.java",
+    "c465ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c465Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c465_compact-social-emitters.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B7F90,0x004B8030,0x004B80E0,0x004B8210,0x004B8370' } -ScriptPath @('ghidra')",
+    "c465Inputs": "Dedicated c2s 0x01D0, 0x01D1, 0x01D2, 0x01D4, and 0x01D6 emitters at 0x004B7F90, 0x004B8030, 0x004B80E0, 0x004B8210, and 0x004B8370.",
+    "c465Output": "tools/ghidra/logs/c465_compact-social-emitters.txt",
+    "c465StructOutputs": "BCS-S-0351 through BCS-S-0355 in manifests/structs.json.",
+    "c465ExistingEvidence": "BCS-Y-0324, BCS-Y-0346, manifests/c2s_emit_sites.json, and manifests/cluster_refinements_unobserved.json establish all five opcodes, exact 0x18 emitted record extents, direct callers, and Topic, Call, or Mail subsystem roles.",
+    "c465FreshEvidence": "The 0x01D0 and 0x01D2 emitters copy one dword returned by the context provider's virtual slot +0x18. The 0x01D1 emitter writes its explicit argument at application +0x00 and the provider dword at +0x04. The 0x01D4 and 0x01D6 emitters explicitly zero application +0x00. Each emitter writes an exact 0x18 record size.",
+    "c465Limits": "TopicListRequestPacket, MailComposeSendPacket, TopicSubmitPacket, and CallStatusPacket each retain an unknown-typed closing dword because their emitters do not document an explicit write to application +0x04. The typed dwords retain broad names because the direct emitters do not establish individual wire semantics. DumpVAs supplies direct bodies and call lists only for the five requested functions.",
+    "c466Topic": "C466 helper-built recruitment packet layouts",
+    "c466Scripts": "ghidra/DumpVAs.java",
+    "c466ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c466Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c466_recruitment-builders.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B7A20,0x004CFD10,0x004B7C10,0x004CFDA0' } -ScriptPath @('ghidra')",
+    "c466Inputs": "C2s 0x01C3 and 0x01C7 emitters 0x004B7A20 and 0x004B7C10 plus their dedicated record builders 0x004CFD10 and 0x004CFDA0.",
+    "c466Output": "tools/ghidra/logs/c466_recruitment-builders.txt",
+    "c466StructOutputs": "BCS-S-0356 and BCS-S-0357 in manifests/structs.json.",
+    "c466ExistingEvidence": "BCS-Y-0318, BCS-Y-0319, BCS-Y-0346, manifests/c2s_emit_sites.json, and manifests/cluster_refinements_unobserved.json establish both helper-built opcodes, exact 0x1D0 and 0x48 emitted record extents, source argument groupings, direct callers, and recruitment subsystem roles.",
+    "c466FreshEvidence": "Builder 0x004CFD10 writes three leading application dwords, four exact three-dword groups, and a 96-dword block. Builder 0x004CFDA0 writes four dwords, two bytes, and four packed qwords. Their fixed record-size headers leave exact unwritten tails of four and six bytes respectively.",
+    "c466Limits": "RecruitmentPostPacket+0x1BC remains an unknown-typed four-byte tail and RecruitmentUpdatePacket+0x32 remains an unknown-typed six-byte tail because the dedicated builders do not write those spans. All typed members retain neutral names because the emitters and builders do not establish individual wire semantics. DumpVAs supplies direct bodies and call lists only for the four requested functions.",
+    "c467Topic": "C467 recruitment mode request layouts",
+    "c467Scripts": "ghidra/DumpVAs.java",
+    "c467ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c467Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c467_recruitment-mode-emitters.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004B7AD0,0x004B7990' } -ScriptPath @('ghidra')",
+    "c467Inputs": "Dedicated c2s 0x01C4 listing-view emitter 0x004B7AD0 and c2s 0x01C5 edit-toggle emitter 0x004B7990.",
+    "c467Output": "tools/ghidra/logs/c467_recruitment-mode-emitters.txt",
+    "c467StructOutputs": "BCS-S-0358 through BCS-S-0360 in manifests/structs.json.",
+    "c467ExistingEvidence": "BCS-Y-0324, BCS-Y-0346, manifests/c2s_emit_sites.json, and manifests/cluster_refinements_unobserved.json establish both opcodes, exact 0x18 emitted record extents, direct callers, and listing-view or edit-toggle roles.",
+    "c467FreshEvidence": "Both dedicated emitters explicitly initialize application +0x00 to zero and emit an exact 0x18 record, establishing a shared 0x08 application shape.",
+    "c467Limits": "RecruitmentModeRequestRecord+0x04 remains an unknown-typed closing dword because neither emitter documents an explicit write to that span. The leading field retains a broad request_value name because zero initialization alone does not establish its wire semantics. C2s 0x01C8 was screened but not started because retained sources still disagree on its detailed recruitment role. DumpVAs supplies direct bodies and call lists only for the two requested functions.",
+    "c468Topic": "C468 ItemSearch price and history request layouts",
+    "c468Scripts": "No new headless export was required; retained confirmed emitter records and ItemSearch vtable attribution supplied the load-bearing writes, exact extents, and widget ownership.",
+    "c468Inputs": "C2s 0x01D9 ItemSearchPriceViewWidget emitter BCS-Y-0691 and c2s 0x01DA ItemSearchHistoryViewWidget emitter BCS-Y-0695, with retained ItemSearch subsystem attribution.",
+    "c468Outputs": "BCS-S-0361 and BCS-S-0362 in manifests/structs.json; no new local evidence archive.",
+    "c468ExistingEvidence": "BCS-Y-0691 establishes three dword writes for the exact 0x20 emitted 0x01D9 record. BCS-Y-0695 establishes three value dwords and an explicit zero closing dword for the exact 0x20 emitted 0x01DA record. BCS-Y-0347, manifests/cluster_refinements_unresolved.json, and manifests/vtable_slot_resolution.json establish the PriceViewWidget and HistoryViewWidget ownership and request roles.",
+    "c468FreshEvidence": "No fresh analysis read was required because retained positive emitter bodies and vtable ownership records close both layouts. No claim relies on a zero-result search.",
+    "c468Limits": "ItemSearchPriceRequestPacket+0x0C remains an unknown-typed closing dword because the retained emitter does not document an explicit write. The history request's context fields and zero-initialized value_3 retain broad names because the retained bodies do not establish their individual wire semantics. C2s 0x01DE was screened but not started because its helper-built direct-purchase layout is a separate larger record best handled with its builder in a dedicated batch.",
+    "c469Topic": "C469 ItemSearch direct-purchase packet layout",
+    "c469Scripts": "ghidra/DumpVAs.java",
+    "c469ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c469Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c469_itemsearch-direct-purchase.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0085E1B0,0x0085D160' } -ScriptPath @('ghidra')",
+    "c469Inputs": "C2s 0x01DE virtual emitter 0x0085E1B0 and its dedicated record builder 0x0085D160.",
+    "c469Output": "tools/ghidra/logs/c469_itemsearch-direct-purchase.txt",
+    "c469StructOutput": "BCS-S-0363 in manifests/structs.json.",
+    "c469ExistingEvidence": "BCS-Y-0320 establishes the virtual emitter, source argument grouping, exact 0x50 emitted record extent, and c2s 0x01DE route. BCS-Y-0347, manifests/cluster_refinements_unresolved.json, and manifests/vtable_slot_resolution.json establish ItemSearchDirectPurchaseWidget ownership and the retainer direct-buy role.",
+    "c469FreshEvidence": "Builder 0x0085D160 writes six leading source dwords, one widget dword, two source bytes, one source word, and four packed qwords. These writes account for the complete exact 0x40 application payload.",
+    "c469Limits": "No unknown-typed field remains, but value_0 through value_5, widget_value, value_7, and metadata retain neutral or broad names because the emitter and builder do not establish their individual wire semantics. Stack_count and quantity use the retained ItemSearch attribution. DumpVAs supplies direct bodies and call lists only for the two requested functions.",
+    "c470Topic": "C470 ItemSearch list query packet layout",
+    "c470Scripts": "ghidra/DumpVAs.java",
+    "c470ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c470Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c470_itemsearch-list-query.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0051A970,0x00525E50,0x00445210,0x004451F0,0x004B68A0' } -ScriptPath @('ghidra')",
+    "c470Inputs": "C2s 0x01DF emitter 0x0051A970, ItemSearchListWidget tick dispatcher 0x00525E50, shared source and length helpers 0x00445210 and 0x004451F0, and context-value helper 0x004B68A0.",
+    "c470Output": "tools/ghidra/logs/c470_itemsearch-list-query.txt",
+    "c470StructOutput": "BCS-S-0364 in manifests/structs.json.",
+    "c470ExistingEvidence": "BCS-Y-0693 and manifests/c2s_emit_sites.json establish the dedicated c2s 0x01DF emitter and exact 0x128 emitted record extent. BCS-Y-0926, manifests/retainer_bazaar_subsystem.json, and manifests/schema_rescue.json establish ItemSearchListWidget ownership, tick-state case 10 dispatch, and the retainer item-search list role.",
+    "c470FreshEvidence": "Emitter 0x0051A970 writes the widget dword, explicitly zeros four dwords, writes one context-helper dword, zero-fills 0x100 bytes, copies the shared source bytes using the recorded length excluding its terminator, and forwards the complete exact 0x118 application payload. Helpers 0x00445210 and 0x004451F0 prove the source pointer and length-minus-one reads; helper 0x004B68A0 proves a dword read at source +0x20.",
+    "c470Limits": "No unknown-typed field remains. widget_value and context_value retain broad names because the emitter does not establish their individual wire semantics. criteria remains a byte array because the shared source representation and its inner search-filter schema are not established. DumpVAs supplies direct bodies and call lists only for the five requested functions.",
+    "c471Topic": "C471 ItemSearch list state packet layouts",
+    "c471Scripts": "ghidra/DumpVAs.java",
+    "c471ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c471Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c471_itemsearch-list-state.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00519440,0x0051A4A0,0x0051AAC0,0x00525E50' } -ScriptPath @('ghidra')",
+    "c471Inputs": "C2s 0x01D7 emitter 0x00519440 and wrapper 0x0051A4A0, plus c2s 0x01D8 emitter 0x0051AAC0 and ItemSearchListWidget tick dispatcher 0x00525E50.",
+    "c471Output": "tools/ghidra/logs/c471_itemsearch-list-state.txt",
+    "c471StructOutputs": "BCS-S-0365 and BCS-S-0366 in manifests/structs.json.",
+    "c471ExistingEvidence": "BCS-Y-0692 and BCS-Y-0694 establish the dedicated c2s 0x01D7 and 0x01D8 emitters and exact 0x18 and 0x28 emitted record extents. BCS-Y-0926, manifests/retainer_bazaar_subsystem.json, and manifests/schema_rescue.json establish their ItemSearchListWidget ownership and state-machine routes.",
+    "c471FreshEvidence": "Emitter 0x00519440 copies the first dword of the selected 0x10-byte widget record into application +0x00. Emitter 0x0051AAC0 copies widget +0x1220 and +0x1224, an indexed table dword selected by +0x1228, then widget +0x1238 and +0x1234 into application +0x00 through +0x10. The exact emitted extents leave closing dwords at +0x04 and +0x14 respectively.",
+    "c471Limits": "ItemSearchListIndexedRequestPacket+0x04 and ItemSearchListStateRequestPacket+0x14 remain unknown-typed because neither dedicated emitter documents an explicit write to its closing span. The typed dwords retain broad names because widget storage offsets and indexed access do not establish individual wire semantics. The more specific 0x01D7 operation remains unresolved. DumpVAs supplies direct bodies and call lists only for the four requested functions.",
+    "c472Topic": "C472 search marketplace packet layouts",
+    "c472Scripts": "ghidra/DumpVAs.java",
+    "c472ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c472Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c472_search-marketplace-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004C7300,0x004C73D0,0x004C7490,0x004C7150,0x008746E0,0x00874750,0x00874570' } -ScriptPath @('ghidra')",
+    "c472Inputs": "C2s 0x01DD, 0x01DB, and 0x01DC emitters 0x004C7300, 0x004C73D0, and 0x004C7490; shared relay 0x004C7150; and direct callers 0x008746E0, 0x00874750, and 0x00874570.",
+    "c472Output": "tools/ghidra/logs/c472_search-marketplace-packets.txt",
+    "c472StructOutputs": "BCS-S-0367, BCS-S-0368, BCS-S-0369 in manifests/structs.json.",
+    "c472ExistingEvidence": "BCS-Y-0325 through BCS-Y-0327 and manifests/c2s_emit_sites.json establish all three emitters, opcodes, relay route, and exact 0x118, 0x18, and 0x238 emitted record extents. manifests/search_subsystem.json and manifests/retainer_bazaar_subsystem.json separate player-search 0x01DD from ItemSearch 0x01DB and 0x01DC. manifests/pcap_grounded_c2s_validation.json supplies one exact 0x108 application-payload observation for 0x01DD.",
+    "c472FreshEvidence": "Emitter 0x004C73D0 explicitly zeros application +0x00. Emitter 0x004C7490 explicitly zeros +0x00 and copies exactly 137 dwords at +0x04. Emitter 0x004C7300 explicitly zeros +0x00 and copies exactly 65 dwords at +0x04. The fixed emitted extents close the 0x228 and 0x108 application layouts and leave only the 0x01DB closing dword unwritten.",
+    "c472Limits": "ItemSearchCompactRequestPacket+0x04 remains unknown-typed because its dedicated emitter documents no explicit write. The 0x01DB operation remains unresolved. ItemSearchBulkRequestPacket.payload and PcSearchQueryPacket.criteria retain broad names because direct copies and one packet sample do not establish their inner schemas. DumpVAs supplies direct bodies and call lists only for the seven requested functions.",
+    "c473Topic": "C473 Map bootstrap packet layouts",
+    "c473Scripts": "ghidra/DumpVAs.java",
+    "c473ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c473Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c473_map-bootstrap-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004E0290,0x004E0320,0x004E20A0,0x004D8160,0x004B37F0,0x004E0240' } -ScriptPath @('ghidra')",
+    "c473Inputs": "MapServerbound 0x0006 and 0x0003 emitters 0x004E0290 and 0x004E0320; the independent 0x0006 tick emitter 0x004E20A0; direct callers 0x004B37F0 and 0x004D8160; and generic relay 0x004E0240.",
+    "c473Output": "tools/ghidra/logs/c473_map-bootstrap-packets.txt",
+    "c473StructOutputs": "BCS-S-0370 and BCS-S-0371 in manifests/structs.json.",
+    "c473ExistingEvidence": "BCS-Y-0313 and manifests/operation_opcode_map_outbound.json establish the MapServerbound 0x0003 emitter and exact 0x230 emitted extent. BCS-Y-0308, BCS-Y-0314, and the same manifest establish two MapServerbound 0x0006 emit sites, the LanguageCodePacket attribution, and exact 0x18 emitted extent. The vendored opcode catalog independently retains both channel bindings.",
+    "c473FreshEvidence": "Emitter 0x004E0320 explicitly zeros application +0x00, writes four caller dwords at +0x04, one dword at +0x14, one word at +0x18, zeros the word at +0x1A, and copies exactly 128 dwords at +0x1C; the fixed extent leaves the closing dword at +0x21C unwritten. Emitter 0x004E0290 and tick emitter 0x004E20A0 both zero application +0x00 and write the language-code dword at +0x04.",
+    "c473Limits": "MapOpcode0003StatePacket+0x21C remains unknown-typed because the dedicated emitter documents no explicit write. The 0x0003 operation, header-value semantics, and inner 512-byte state schema remain unresolved, so their names stay broad. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
+    "c474Topic": "C474 World state packet layout",
+    "c474Scripts": "ghidra/DumpVAs.java",
+    "c474ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c474Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c474_world-state-packet.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004E3750,0x004DF810,0x004D83E0,0x00445210,0x004451F0,0x00DB3E30' } -ScriptPath @('ghidra')",
+    "c474Inputs": "WorldServerbound 0x00C8 record builder 0x004E3750; emitter 0x004DF810; upstream caller 0x004D83E0; shared source pointer and length helpers 0x00445210 and 0x004451F0; and World-channel relay 0x00DB3E30.",
+    "c474Output": "tools/ghidra/logs/c474_world-state-packet.txt",
+    "c474StructOutputs": "BCS-S-0372 in manifests/structs.json.",
+    "c474ExistingEvidence": "BCS-Y-0316, BCS-Y-0331, and manifests/operation_opcode_map_outbound.json establish the WorldServerbound 0x00C8 builder and emitter, the exact 0x230 emitted extent, four-qword prefix, and 512-byte state block. The vendored opcode catalog independently retains the channel, direction, extent, and broad state-push role.",
+    "c474FreshEvidence": "Builder 0x004E3750 writes the opcode and 0x230 extent, copies exactly four qwords at record +0x18, then copies exactly 128 dwords at record +0x38. These map to application +0x00 and +0x20 and close the exact 0x220 application extent. Emitter 0x004DF810 zero-initializes both source buffers before copying their current contents and passes the completed record to relay 0x00DB3E30.",
+    "c474Limits": "The 32-byte header and 512-byte state block retain broad names because their source-buffer construction and the available consumers do not establish inner wire semantics. No retained packet sample corroborates individual values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
+    "c475Topic": "C475 World login packet layouts",
+    "c475Scripts": "ghidra/DumpVAs.java",
+    "c475ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c475Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c475_world-login-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004DF9A0,0x00DB4020,0x00DB41E0,0x00E40A60,0x00DB3E30' } -ScriptPath @('ghidra')",
+    "c475Inputs": "Two-state World login emitter 0x004DF9A0; dedicated 0x0002 handshake builder 0x00DB4020 and caller 0x00DB41E0; Chat packet allocation helper 0x00E40A60; and World-channel relay 0x00DB3E30.",
+    "c475Output": "tools/ghidra/logs/c475_world-login-packets.txt",
+    "c475StructOutputs": "BCS-S-0373 and BCS-S-0374 in manifests/structs.json.",
+    "c475ExistingEvidence": "BCS-Y-0307 establishes the dedicated WorldServerbound 0x0002 Chat handshake path, exact 0x38 emitted extent, and leading 0x3C6B value. BCS-Y-0315 and manifests/operation_opcode_map_outbound.json establish the callback emitter's state-zero 0x0002 branch and state-one 0x012C branch with exact 0x38 and 0x18 extents. The vendored opcode catalog retains both channel bindings and the sequential login-step role.",
+    "c475FreshEvidence": "Emitter 0x004DF9A0 writes the 0x0002 application as a zero dword at +0x00, two qwords at +0x04, an eight-byte type-descriptor header at +0x14, and an eight-byte name prefix at +0x1C, closing the exact 0x28 extent. Dedicated builder 0x00DB4020 independently writes 0x00003C6B to the leading 0x0002 application dword. The same callback emitter writes one at 0x012C application +0x00 and documents no write to the closing dword.",
+    "c475Limits": "WorldChatLoginFollowupPacket+0x04 remains unknown-typed because its emitter documents no explicit write. The 0x0002 identity block retains a broad name because copied static bytes do not establish individual wire semantics, and the two emit paths intentionally use different leading values. The more specific 0x012C operation remains unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions.",
+    "c476Topic": "C476 Lobby login packet layouts",
+    "c476Scripts": "ghidra/DumpVAs.java",
+    "c476ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c476Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c476_lobby-login-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00DA9880,0x004E2850,0x00DA2BE0' } -ScriptPath @('ghidra')",
+    "c476Inputs": "LobbyLoginOperation send state machine 0x00DA9880; auxiliary frontend-auth emitter 0x004E2850; and canonical Lobby packet allocator 0x00DA2BE0.",
+    "c476Output": "tools/ghidra/logs/c476_lobby-login-packets.txt",
+    "c476StructOutputs": "BCS-S-0375 through BCS-S-0378 in manifests/structs.json.",
+    "c476ExistingEvidence": "BCS-Y-0286 establishes the four LobbyLogin operation branches, opcodes 0x01F5, 0x0005, 0x0006, and 0x01F6, and exact framed extents 0x38, 0xA0, 0x1E0, and 0x78. BCS-Y-0297 independently establishes the auxiliary 0x01F5 and 0x01F6 frontend-auth path. BCS-Y-0296 establishes the canonical Lobby packet allocator, while manifests/operation_opcode_map_outbound.json and the vendored opcode catalog retain channel and broad operation attribution.",
+    "c476FreshEvidence": "The operation builder and auxiliary emitter independently close the 0x01F5 application at 0x28 as two dwords plus a 32-byte text region, and the 0x01F6 application at 0x68 by appending a 64-byte text region. The 0x0005 and 0x0006 branches clear their complete 0x90 and 0x1D0 application payloads, write the same dword and halfword header at +0x00..+0x0D, and perform bounded text copies at +0x10, +0x50/+0x190, and +0x70/+0x1B0 that close each extent exactly.",
+    "c476Limits": "LobbySessionPacket and LobbyExtendedSessionPacket retain unknown-typed spans at +0x04 and +0x0E because zero initialization does not establish their member types. Copied login strings retain broad names because their source accessors do not establish narrower wire semantics. No retained lobby packet capture corroborates values, and the specific role of c2s 0x0006 remains unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the three requested functions.",
+    "c477Topic": "C477 Lobby operation packet layouts",
+    "c477Scripts": "ghidra/DumpVAs.java",
+    "c477ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c477Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c477_lobby-operation-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00DAA190,0x00DAA070,0x00DAA740,0x00DA2BE0' } -ScriptPath @('ghidra')",
+    "c477Inputs": "CharaMakeOperation sender 0x00DAA190; ServiceLoginOperation sender 0x00DAA070; GameLoginOperation sender 0x00DAA740; and canonical Lobby packet allocator 0x00DA2BE0.",
+    "c477Output": "tools/ghidra/logs/c477_lobby-operation-packets.txt",
+    "c477StructOutputs": "Corrected BCS-S-0007 and added BCS-S-0379 through BCS-S-0381 in manifests/structs.json.",
+    "c477ExistingEvidence": "BCS-Y-0112 establishes CharaMakeOperation emissions for c2s 0x000B and 0x000F with exact framed extents 0x1E0 and 0xA0. BCS-Y-0290 and BCS-Y-0293 establish ServiceLogin c2s 0x0003 and GameLogin c2s 0x0004 with exact framed extents 0x20 and 0x28. BCS-Y-0296 establishes the canonical Lobby allocator, while manifests/operation_opcode_map_outbound.json and the vendored opcode catalog retain the class, channel, and request/response attribution.",
+    "c477FreshEvidence": "The 0x000B builder clears the exact 0x1D0 application, writes a uint32 sequence, fixed character fields through +0x33, a 400-byte encoded region through +0x1C3, and only the command-6 byte at +0x1C8 in the closing tail. The 0x000F builder clears 0x90 bytes and copies exact 0x20 and 0x60 state blocks at +0x10 and +0x30. The 0x0003 and 0x0004 builders explicitly clear their complete 0x10 and 0x18 applications before their typed writes.",
+    "c477Limits": "Zero-only spans remain unknown-typed because initialization does not establish member types. Copied operation-state blocks and request values retain broad names where no consumer establishes narrower semantics. No retained Lobby packet sample corroborates values. DumpVAs supplies direct bodies and caller/callee lists only for the four requested functions.",
+    "c478Topic": "C478 Party chat and group-created packet layouts",
+    "c478Scripts": "ghidra/DumpVAs.java",
+    "c478ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c478Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c478_party-group-packets.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004DF6D0,0x00DB3E30,0x0075E950,0x006C72E0,0x004D6D30' } -ScriptPath @('ghidra')",
+    "c478Inputs": "PartyChat emitter 0x004DF6D0 and Chat forwarder 0x00DB3E30; GroupCreated builder 0x0075E950, group-state aggregator 0x006C72E0, and Map gating thunk 0x004D6D30.",
+    "c478Output": "tools/ghidra/logs/c478_party-group-packets.txt",
+    "c478StructOutputs": "BCS-S-0382 and BCS-S-0383 in manifests/structs.json.",
+    "c478ExistingEvidence": "BCS-Y-0309 and manifests/autotranslate_wire_format_study.json establish WorldServerbound c2s 0x00C9, the 0x218 game-message extent, and PartyChat attribution; BCS-Y-0306 establishes the Chat forwarder's exact application-copy rule. BCS-Y-0984 and manifests/op0133_groupcreated_emitter.json establish MapServerbound c2s 0x0133, the 0x38 game-message extent, two leading identifier dwords, and 32 staged bytes; BCS-Y-0985 establishes the Group aggregator. Packet observations independently retain both framed extents and semantic attributions.",
+    "c478FreshEvidence": "PartyChat emitter 0x004DF6D0 writes the caller-supplied dword at application +0x00, clears a 0x200-byte local message buffer, copies the current text bytes into it, and transfers all 128 dwords to application +0x04. Chat forwarder 0x00DB3E30 copies the full 0x208 application extent, leaving the closing dword at +0x204 unwritten by the emitter. GroupCreated builder 0x0075E950 writes two dwords at application +0x00/+0x04 and copies two cleared 16-byte staging blocks to application +0x08, closing the exact 0x28 extent; aggregator 0x006C72E0 supplies the serialized state and gating thunk 0x004D6D30 routes the finished record.",
+    "c478Limits": "PartyChat+0x00 retains a broad name because the caller-supplied dword has no resolved consumer semantics. PartyChat+0x204 remains unknown-typed because the forwarder includes it in the application copy but the emitter documents no explicit write. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions.",
+    "c479Topic": "C479 complete group-update packet layout",
+    "c479Scripts": "ghidra/DumpVAs.java plus a read-only instruction-stream audit with pefile and capstone",
+    "c479ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c479Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c479_group-update-packet.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075E860,0x0075E8D0,0x006E42E0,0x006E2130,0x006DAE90,0x006DACD0' } -ScriptPath @('ghidra')",
+    "c479InstructionAudit": "A pefile and capstone walk decoded the complete defined byte ranges (0x006E42E0, 189), (0x006E2130, 157), (0x006DAE90, 436), (0x006DACD0, 432), (0x0075E860, 106), and (0x0075E8D0, 114) from the configured client image.",
+    "c479Inputs": "Compact 0x0130 builder 0x0075E860, full 0x0130 builder 0x0075E8D0, CharaBase producer 0x006E42E0, GroupBase producer 0x006E2130, and teardown acknowledgement producers 0x006DAE90 and 0x006DACD0.",
+    "c479Output": "tools/ghidra/logs/c479_group-update-packet.txt",
+    "c479StructOutput": "BCS-S-0384 in manifests/structs.json.",
+    "c479ExistingEvidence": "BCS-Y-0329/0380/0382 and the retained c2s payload catalogs establish MapServerbound opcode 0x0130, exact 0x20 game-message extent, two builder variants, and four exact dword slots. BCS-Y-1778/1782/1783 establish two Party teardown acknowledgement producers and group-type id 0x2711. BCS-S-0244 establishes the embedded GroupReferenceRecord and its closing state pair.",
+    "c479FreshEvidence": "Builder 0x0075E860 writes application +0x00/+0x04 from two producer values and explicitly zeros +0x08/+0x0C. Builder 0x0075E8D0 writes context +0x04 at application +0x00, the FUN_006BFD20 result at +0x04, and the two FUN_006BFD10 state dwords at +0x08/+0x0C. The instruction stream confirms both teardown callsites beyond `_free` boundaries annotated noreturn: each supplies a helper result at +0x00 and Party group-type id 0x2711 at +0x04.",
+    "c479Limits": "The four dword boundaries and storage widths are exact, but their names remain broad because the compact acknowledgement and full update variants intentionally source different higher-level values. The GroupReferenceRecord state-pair representation remains unresolved. No retained packet sample corroborates c2s 0x0130 values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions; the instruction audit covers their complete defined byte ranges and does not establish wider reference topology.",
+    "c480Topic": "C480 complete Group SharedWork member-record layout",
+    "c480Scripts": "ghidra/DumpVAs.java",
+    "c480ProjectMode": "All headless calls used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before each invocation.",
+    "c480Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c480_group-shared-member.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006C4930,0x006C8AC0,0x006C8C20,0x006C97A0,0x006C9930,0x006C99B0,0x006C9A30,0x006C9AB0,0x006C9B30,0x006C9BB0' } -ScriptPath @('ghidra')",
+    "c480FollowupInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c480_group-shared-member-2.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006C49B0,0x006C1510,0x006C1DD0' } -ScriptPath @('ghidra')",
+    "c480HelperInvocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c480_group-shared-member-3.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006D5AF0' } -ScriptPath @('ghidra')",
+    "c480Inputs": "Member constructor 0x006C4930, two allocation and lookup paths 0x006C8AC0/0x006C8C20/0x006C97A0, six lane-copy consumers 0x006C9930 through 0x006C9BB0, lane length synchronizer 0x006C49B0, owner resolver 0x006C1510, property-key offset resolver 0x006C1DD0, and byte-vector resize helper 0x006D5AF0.",
+    "c480Outputs": "tools/ghidra/logs/c480_group-shared-member.txt; tools/ghidra/logs/c480_group-shared-member-2.txt; tools/ghidra/logs/c480_group-shared-member-3.txt",
+    "c480StructOutput": "BCS-S-0385 in manifests/structs.json.",
+    "c480ExistingEvidence": "BCS-Y-1792/1793/1794 establish the unique SharedWork lookup/create funnel, exact 0x30 allocation, and shared constructor. BCS-Y-1796 establishes a six-method property-copy family and the first member-record lane. Retained SendLog parser notes independently identify 0x006D5AF0 as the shared byte-vector resize helper.",
+    "c480FreshEvidence": "The constructor initializes begin/end/capacity triples at +0x04/+0x08/+0x0C, +0x14/+0x18/+0x1C, and +0x24/+0x28/+0x2C. The length synchronizer independently resizes those three 0x10 subobjects from three source lengths. Three read consumers and three write consumers resolve a property key to a byte offset, bounds-check the matching lane by end-minus-begin, and copy an arbitrary byte count. The resize helper computes lengths and insertion positions directly in bytes, proving one-byte elements.",
+    "c480Limits": "The exact 0x30 boundary, three 0x10 vector partitions, pointer roles, and one-byte element width are direct. The three lanes intentionally retain ordinal names because their higher-level roles are not established. The property-key tree returns byte offsets, but the keys, element schemas, and lane semantics remain unresolved. DumpVAs provides direct bodies and caller/callee lists only for the requested functions and does not establish arbitrary reference coverage."
   }
 }
