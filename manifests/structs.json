@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 296,
+  "structCount": 299,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -21269,6 +21269,147 @@
       ],
       "notes": "Complete exact 0x08 application payload for s2c 0x01A7 SetPlayerDream, excluding the 0x10 game-message prefix. The direct handler consumes the leading dream and inn bytes and the fixed packet extent closes the six-byte tail.",
       "id": "BCS-S-0296"
+    },
+    {
+      "name": "GroupMembersBeginPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0565",
+        "BCS-Y-0875",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Group transfer location code consumed by the begin handler."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Group transfer sequence identifier consumed by the begin handler."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Destination group index for the incoming member sequence."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "member_count",
+          "type": "uint32_t",
+          "notes": "Declared member count for the framed transfer."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "unknown_1c",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented begin handler."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for s2c 0x017D GroupMembersBegin, excluding the 0x10 game-message prefix. The handler consumes the three uint64 framing values and member count, and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0297"
+    },
+    {
+      "name": "GroupMembersX08Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x198",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0567",
+        "BCS-Y-0877",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Group transfer location code shared with the begin and end framing packets."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Group transfer sequence identifier shared with the begin and end framing packets."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x180",
+          "name": "members",
+          "type": "GroupMemberEntry[8]",
+          "notes": "Eight fixed 0x30 group-member rows consumed by the append-members helper."
+        },
+        {
+          "offset": "0x190",
+          "size": "0x04",
+          "name": "member_count",
+          "type": "uint32_t",
+          "notes": "Packet member count; the documented helper consumes its low byte."
+        },
+        {
+          "offset": "0x194",
+          "size": "0x04",
+          "name": "unknown_194",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented append-members helper."
+        }
+      ],
+      "notes": "Complete exact 0x198 application payload for s2c 0x017F GroupMembersX08, excluding the 0x10 game-message prefix. The packet reuses the complete 0x30 GroupMemberEntry layout for eight rows between two framing values and the count word.",
+      "id": "BCS-S-0298"
+    },
+    {
+      "name": "GroupMembersEndPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0566",
+        "BCS-Y-0876",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Group transfer location code consumed by the end handler."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Group transfer sequence identifier consumed by the end handler."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Group index whose member transfer is being finalized."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for s2c 0x017E GroupMembersEnd, excluding the 0x10 game-message prefix. The end handler consumes three contiguous uint64 framing values with no trailing span.",
+      "id": "BCS-S-0299"
     }
   ],
   "method": {
@@ -22122,6 +22263,13 @@
     "c443Outputs": "BCS-S-0294 through BCS-S-0296 in manifests/structs.json; no new local evidence archive.",
     "c443ExistingEvidence": "BCS-Y-0643/0697/0699/1067/1070 and BCS-Y-0394 establish the indexed status staging update and exact s2c 0x0177 extent. BCS-Y-0414/0940 and BCS-Y-0391 establish the 32-byte item-storage bitstream consumer and exact s2c 0x01A5 extent. BCS-Y-0658 and BCS-Y-0396 establish the dream-id and inn-id reads and exact s2c 0x01A7 extent.",
     "c443FreshEvidence": "No fresh analysis read was required because existing positive consumer and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
-    "c443Limits": "SetActorStatus+0x04 remains an unknown-typed four-byte tail, SetPlayerItemStorage+0x20 remains an unknown-typed 16-byte tail, and SetPlayerDream+0x02 remains an unknown-typed six-byte tail because retained consumers do not interpret them. The actor-status path consumes only the low index byte, so no narrower wire type is inferred over the retained uint16 field. Individual item-storage bit meanings remain outside this layout. Semantic confidence remains structural because the parent payload batches still request live revalidation."
+    "c443Limits": "SetActorStatus+0x04 remains an unknown-typed four-byte tail, SetPlayerItemStorage+0x20 remains an unknown-typed 16-byte tail, and SetPlayerDream+0x02 remains an unknown-typed six-byte tail because retained consumers do not interpret them. The actor-status path consumes only the low index byte, so no narrower wire type is inferred over the retained uint16 field. Individual item-storage bit meanings remain outside this layout. Semantic confidence remains structural because the parent payload batches still request live revalidation.",
+    "c444Topic": "C444 group member transfer packet sequence",
+    "c444Scripts": "No new headless export was required; retained group handlers, nested-record evidence, payload decoding, and packet extents supplied the load-bearing evidence.",
+    "c444Inputs": "GroupMembersBeginPacket, GroupMembersX08Packet, GroupMembersEndPacket, and the existing complete GroupMemberEntry record.",
+    "c444Outputs": "BCS-S-0297 through BCS-S-0299 in manifests/structs.json; no new local evidence archive.",
+    "c444ExistingEvidence": "BCS-Y-0565/0875 and BCS-Y-0393 establish the begin framing fields and exact s2c 0x017D extent. BCS-Y-0567/0877 and BCS-Y-0395 establish the two framing values, eight 0x30 GroupMemberEntry rows, count word, and exact s2c 0x017F extent. BCS-Y-0566/0876 and BCS-Y-0393 establish the three end framing fields and exact s2c 0x017E extent. Existing BCS-S-0260 supplies the complete nested member-row type.",
+    "c444FreshEvidence": "No fresh analysis read was required because existing positive handlers and packet-shape evidence close all three payloads. No claim relies on a zero-result search.",
+    "c444Limits": "GroupMembersBegin+0x1C and GroupMembersX08+0x194 remain unknown-typed four-byte tails because retained consumers do not interpret them. GroupMembersX08 consumes only the low count byte, so no narrower wire type is inferred over the retained uint32 field. GroupMembersEnd is fully byte-accounted with no unknown field. Unknown members inside GroupMemberEntry retain the limits already recorded by BCS-S-0260. Semantic confidence remains structural because the parent payload batches still request live revalidation."
   }
 }
