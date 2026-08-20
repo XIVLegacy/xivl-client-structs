@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 254,
+  "structCount": 334,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -19127,6 +19127,3985 @@
       ],
       "notes": "Complete exact 0x24 non-block event-execution object embedded in each EventExecutionQueueNode. Base and derived construction, copy construction, context matching, virtual dispatch, one-shot callback handling, and teardown establish every member boundary.",
       "id": "BCS-S-0254"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionClientSideBlockEvent",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x2C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0473",
+        "BCS-Y-0475",
+        "manifests/event_block_execution_state.json",
+        "tools/ghidra/logs/c427_event-execution-block-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ExecutionClientSideBlockEvent vftable installed after base construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "event_object",
+          "type": "void *",
+          "notes": "Polymorphic Event::Base-derived object dispatched through virtual slots. The concrete leaf subclass varies by producer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "primary_context_key",
+          "type": "uint32_t",
+          "notes": "Primary four-byte execution context key copied by the shared base constructor."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "context_keys",
+          "type": "std::vector<uint32_t>",
+          "notes": "Owned vector of additional four-byte context keys constructed and destroyed by the shared execution-event base."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "end_notified",
+          "type": "bool",
+          "notes": "One-shot end-notification latch set by the EndEvent selector-zero path."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "abort_notified",
+          "type": "bool",
+          "notes": "One-shot abort-notification latch set by the remaining observed EndEvent notification paths."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x01",
+          "name": "owns_event_object",
+          "type": "bool",
+          "notes": "Shared-base ownership flag; teardown releases event_object only when this byte is true."
+        },
+        {
+          "offset": "0x1F",
+          "size": "0x01",
+          "name": "padding_1f",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the block-event state bytes."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "server_order_executed",
+          "type": "bool",
+          "notes": "Set when a server order successfully executes against this block event and tested by EndEvent handling."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "armed",
+          "type": "bool",
+          "notes": "Set after block dispatch and cleared by observed completion paths."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x01",
+          "name": "state_22",
+          "type": "uint8_t",
+          "notes": "Initialized to one by block-base construction and cleared by one EndEvent path; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x23",
+          "size": "0x01",
+          "name": "padding_23",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the derived pointer fields."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "unpacked_order_payload",
+          "type": "void *",
+          "notes": "Owned unpacked-order payload passed to block dispatch and released during derived teardown. Its concrete record type is unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "waiting_resume_checker",
+          "type": "ApplicationLuaScriptClientEventExecutionClientSideBlockEventClientOrderEventWaitingResumeChecker *",
+          "notes": "Non-null while the event coroutine is suspended awaiting a server client order; virtual methods install, test, and cancel this checker."
+        }
+      ],
+      "notes": "Complete exact 0x2C client-side block execution object. Exact allocation, layered construction, state-machine consumers, virtual field accessors, checker cancellation, block dispatch, and layered teardown establish every member boundary.",
+      "id": "BCS-S-0255"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionClientSideBlockEventClientOrderEventWaitingResumeChecker",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/event_block_execution_state.json",
+        "tools/ghidra/logs/c427_event-execution-block-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ClientOrderEventWaitingResumeChecker vftable installed after ResumeCheckerInterface base construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "owner",
+          "type": "ApplicationLuaScriptClientEventExecutionClientSideBlockEvent *",
+          "notes": "Owning block event supplied at construction and cleared when the pending wait is cancelled."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "resume_now",
+          "type": "bool",
+          "notes": "Initialized false and set true when cancellation makes the suspended coroutine resumable."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "resume_result",
+          "type": "uint8_t",
+          "notes": "Initialized to zero and filled with the cancellation result byte."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unobserved bytes closing the exact 0x0C allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x0C nested resume checker allocated by the block event. Construction and cancellation establish the owner and two byte-sized resume fields.",
+      "id": "BCS-S-0256"
+    },
+    {
+      "name": "InventoryItemRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0395",
+        "BCS-Y-0702",
+        "manifests/data_dependency_catalog.json",
+        "tools/ghidra/logs/c147_inventory-state-final-2.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "unique_id",
+          "type": "uint64_t",
+          "notes": "Wire item-instance identifier read as two consecutive dwords by the shared deserializer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "quantity",
+          "type": "int32_t",
+          "notes": "Signed item quantity consumed by the shared inventory update path."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "item_id",
+          "type": "uint32_t",
+          "notes": "Static item identifier."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x02",
+          "name": "slot_or_link_slot",
+          "type": "uint16_t",
+          "notes": "Inventory slot or linked-item slot selected by the receiving operation."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x01",
+          "name": "dealing_value",
+          "type": "uint8_t",
+          "notes": "Byte-sized dealing value copied by the shared deserializer."
+        },
+        {
+          "offset": "0x13",
+          "size": "0x01",
+          "name": "dealing_mode",
+          "type": "uint8_t",
+          "notes": "Byte-sized dealing mode copied by the shared deserializer."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "dealing_attached_1",
+          "type": "int32_t",
+          "notes": "First signed dealing attachment value."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "dealing_attached_2",
+          "type": "int32_t",
+          "notes": "Second signed dealing attachment value."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "dealing_attached_3",
+          "type": "int32_t",
+          "notes": "Third signed dealing attachment value."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "tags",
+          "type": "uint8_t[4]",
+          "notes": "Four item-tag selector bytes in the reusable wire record."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "tag_values",
+          "type": "uint8_t[4]",
+          "notes": "Four values paired with the item-tag selector bytes."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x01",
+          "name": "quality",
+          "type": "uint8_t",
+          "notes": "Item quality byte copied by the shared deserializer."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x01",
+          "name": "modifier_present",
+          "type": "bool",
+          "notes": "Controls whether the following 0x40-byte modifier region is copied."
+        },
+        {
+          "offset": "0x2A",
+          "size": "0x40",
+          "name": "modifier_data",
+          "type": "unknown[0x40]",
+          "notes": "Conditionally copied modifier record. Its exact extent is established, but no internal member layout is promoted."
+        },
+        {
+          "offset": "0x6A",
+          "size": "0x06",
+          "name": "reserved",
+          "type": "unknown[0x06]",
+          "notes": "Unconsumed bytes closing the exact 0x70 wire-record stride."
+        }
+      ],
+      "notes": "Complete exact 0x70 inventory-item wire record reused by the one-, eight-, sixteen-, and thirty-two-row inventory-list packets. The shared deserializer establishes the member boundaries through +0x69, while packet sizes close the six-byte tail.",
+      "id": "BCS-S-0257"
+    },
+    {
+      "name": "ApplicationLuaScriptClientEventExecutionServerSideBlockEvent",
+      "namespace": "Application::Lua::Script::Client::Event",
+      "size": "0x2C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-Y-0432",
+        "BCS-Y-1097",
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c427_event-execution-block-layout.txt",
+        "tools/ghidra/logs/c429_event-execution-server-block-layout.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ExecutionServerSideBlockEvent vftable installed after shared block-base construction."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "event_object",
+          "type": "void *",
+          "notes": "Polymorphic Event::Base-derived object dispatched through virtual slots. The concrete leaf subclass varies by producer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "primary_context_key",
+          "type": "uint32_t",
+          "notes": "Primary four-byte execution context key copied by the shared base constructor and passed to EventStart staging."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x10",
+          "name": "context_keys",
+          "type": "std::vector<uint32_t>",
+          "notes": "Owned vector of additional four-byte context keys constructed and destroyed by the shared execution-event base; the server-side staging path passes this vector to the chat buffer iterator."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x01",
+          "name": "end_notified",
+          "type": "bool",
+          "notes": "Shared execution-base one-shot end-notification latch initialized to false."
+        },
+        {
+          "offset": "0x1D",
+          "size": "0x01",
+          "name": "abort_notified",
+          "type": "bool",
+          "notes": "Shared execution-base one-shot abort-notification latch initialized to false."
+        },
+        {
+          "offset": "0x1E",
+          "size": "0x01",
+          "name": "owns_event_object",
+          "type": "bool",
+          "notes": "Shared-base ownership flag; teardown releases event_object only when this byte is true."
+        },
+        {
+          "offset": "0x1F",
+          "size": "0x01",
+          "name": "padding_1f",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the block-event state bytes."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "server_order_executed",
+          "type": "bool",
+          "notes": "Shared block-base state byte initialized to false and set when a server order successfully executes."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "armed",
+          "type": "bool",
+          "notes": "Shared block-base latch initialized to false and cleared by observed completion paths."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x01",
+          "name": "state_22",
+          "type": "uint8_t",
+          "notes": "Initialized to one by block-base construction; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x23",
+          "size": "0x01",
+          "name": "padding_23",
+          "type": "unknown[0x01]",
+          "notes": "Unobserved alignment byte before the derived pointer field."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "event_start_payload",
+          "type": "void *",
+          "notes": "Owned EventStart staging payload. The staging consumer forwards it with primary_context_key, and derived teardown destroys its nested allocation before freeing it. Its concrete record type is unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x01",
+          "name": "state_28",
+          "type": "uint8_t",
+          "notes": "Derived byte initialized to zero. No bounded consumer establishes its higher-level meaning."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x03",
+          "name": "tail_padding",
+          "type": "unknown[0x03]",
+          "notes": "Unobserved bytes closing the exact 0x2C allocation boundary."
+        }
+      ],
+      "notes": "Complete exact 0x2C server-side block execution object. Shared base and block construction, two exact allocations, EventStart staging, derived payload teardown, and the derived constructor establish every member boundary.",
+      "id": "BCS-S-0258"
+    },
+    {
+      "name": "LinkedItemEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x06",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0706",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "linked_item_package_slot",
+          "type": "uint16_t",
+          "notes": "Linked-item package slot consumed from the first word of each equipment-link row."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "item_package_slot",
+          "type": "uint16_t",
+          "notes": "Underlying item-package slot consumed from the second word."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "item_package_code",
+          "type": "uint16_t",
+          "notes": "Item-package code word. The documented client staging path copies only its low byte, but the wire member occupies the full closing word."
+        }
+      ],
+      "notes": "Complete exact 0x06 equipment-linked-item wire row reused by the one-, eight-, sixteen-, thirty-two-, and sixty-four-row packet family. Direct client loads establish the three words, while the packet-family record counts establish the reusable stride.",
+      "id": "BCS-S-0259"
+    },
+    {
+      "name": "GroupMemberEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0877",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "actor_id",
+          "type": "uint32_t",
+          "notes": "Actor identifier loaded from the first dword of each member row."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "int32_t",
+          "notes": "Signed localized-name identifier consumed by the member conversion path."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "state_08",
+          "type": "uint32_t",
+          "notes": "Four-byte member state copied by the consumer. Its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x01",
+          "name": "flag_0c",
+          "type": "uint8_t",
+          "notes": "Byte-sized member flag consumed separately from the online flag; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x0D",
+          "size": "0x01",
+          "name": "is_online",
+          "type": "bool",
+          "notes": "Online-state byte read by the member conversion path."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x20",
+          "name": "name",
+          "type": "char[32]",
+          "notes": "Fixed-width member name copied from the wire row."
+        },
+        {
+          "offset": "0x2E",
+          "size": "0x02",
+          "name": "reserved",
+          "type": "unknown[0x02]",
+          "notes": "Unconsumed bytes closing the exact 0x30 array stride."
+        }
+      ],
+      "notes": "Complete exact 0x30 group-member wire row used by the eight-member packet. Direct member conversion establishes fields through +0x2D, and the eight-row packet extent closes the two-byte tail.",
+      "id": "BCS-S-0260"
+    },
+    {
+      "name": "NamedGroupRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0887",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Eight-byte group index at the start of each named-group row."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "group_type_id",
+          "type": "uint32_t",
+          "notes": "Group-type identifier loaded by the named-group consumer."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "int32_t",
+          "notes": "Signed localized-name identifier consumed during group creation."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x02",
+          "name": "group_name_text_id",
+          "type": "uint16_t",
+          "notes": "Two-byte group-name text identifier in the fixed row prefix."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x0E",
+          "name": "reserved",
+          "type": "unknown[0x0E]",
+          "notes": "Unresolved bytes between the fixed identifiers and the group-name buffer."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x20",
+          "name": "group_name",
+          "type": "char[32]",
+          "notes": "Fixed-width group name consumed from the second half of the row."
+        }
+      ],
+      "notes": "Complete exact 0x40 named-group wire row used by CreateNamedGroupMultiple. The handler walks up to eight rows at this stride, and the row consumer establishes the identifier prefix and fixed name buffer.",
+      "id": "BCS-S-0261"
+    },
+    {
+      "name": "EndEventPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0032",
+        "BCS-Y-0033",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "source_player_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor handle for the player ending the event."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "reserved_zero",
+          "type": "uint32_t",
+          "notes": "Zero dword occupying the event-owner position; no event-owner actor id is serialized in this packet."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "event_type",
+          "type": "uint8_t",
+          "notes": "Byte-sized event selector forwarded by the receiver."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x27",
+          "name": "event_name",
+          "type": "char[39]",
+          "notes": "Null-terminated event name stored in the remainder of the exact application payload."
+        }
+      ],
+      "notes": "Complete exact 0x30 application payload for s2c 0x0131 EndEvent, excluding the 0x10 game-message prefix. Receiver construction and forwarding establish the actor, selector, and event-name boundaries; the fixed packet extent closes the name buffer.",
+      "id": "BCS-S-0262"
+    },
+    {
+      "name": "JobQuestCompleteTripleReceiverPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0391",
+        "BCS-Y-0902",
+        "BCS-Y-0903",
+        "BCS-Y-0905",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "completion_word_0",
+          "type": "uint64_t",
+          "notes": "First consecutive eight-byte completion subrecord copied into receiver storage. Its internal meaning remains unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "completion_word_1",
+          "type": "uint64_t",
+          "notes": "Second consecutive eight-byte completion subrecord copied into receiver storage. Its internal meaning remains unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "completion_word_2",
+          "type": "uint64_t",
+          "notes": "Third consecutive eight-byte completion subrecord copied into receiver storage. Its internal meaning remains unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for s2c 0x01A2 JobQuestCompleteTriple, excluding the 0x10 game-message prefix. Receiver construction copies exactly three consecutive eight-byte subrecords and the receiver-map body shape closes the payload.",
+      "id": "BCS-S-0263"
+    },
+    {
+      "name": "DeleteGroupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "control_number",
+          "type": "uint64_t",
+          "notes": "Group control number; the documented client path treats zero as an empty delete request."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "group_id",
+          "type": "uint64_t",
+          "notes": "Primary group identifier consumed by the delete path."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "zero_group_id",
+          "type": "uint64_t",
+          "notes": "Eight-byte group-id position documented as zero in the retained tuple."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x08",
+          "name": "confirmed_group_id",
+          "type": "uint64_t",
+          "notes": "Closing group identifier checked by the delete-group consumer."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for s2c 0x0143 DeleteGroup, excluding the 0x10 game-message prefix. The delete-group consumer reads four consecutive eight-byte tuple members, accounting for the entire payload.",
+      "id": "BCS-S-0264"
+    },
+    {
+      "name": "SetPushEventConditionWithCircle",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "radius",
+          "type": "float",
+          "notes": "Circle radius consumed by the push-condition receiver."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "constant_44533088",
+          "type": "uint32_t",
+          "notes": "Raw constant word 0x44533088 supplied by this packet form; its higher-level role remains unresolved."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "height_or_range_100",
+          "type": "float",
+          "notes": "Float value fixed to 100.0 by the documented packet form; retained evidence does not distinguish height from range semantics."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0c",
+          "type": "unknown[0x04]",
+          "notes": "Exact reserved span not interpreted by the documented receiver path."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x01",
+          "name": "outwards_flag",
+          "type": "uint8_t",
+          "notes": "Direction flag forwarded by the receiver."
+        },
+        {
+          "offset": "0x11",
+          "size": "0x01",
+          "name": "reserved_zero",
+          "type": "uint8_t",
+          "notes": "Byte documented as zero in this packet form."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x01",
+          "name": "silent",
+          "type": "uint8_t",
+          "notes": "Silent-mode byte forwarded by the receiver."
+        },
+        {
+          "offset": "0x13",
+          "size": "0x24",
+          "name": "condition_name",
+          "type": "char[36]",
+          "notes": "Fixed condition-name buffer."
+        },
+        {
+          "offset": "0x37",
+          "size": "0x01",
+          "name": "unknown_37",
+          "type": "unknown[0x01]",
+          "notes": "Closing payload byte not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x38 application payload for s2c 0x016F SetPushEventConditionWithCircle, excluding the 0x10 game-message prefix. Retained receiver and packet-shape evidence establishes every field boundary and the fixed payload extent.",
+      "id": "BCS-S-0265"
+    },
+    {
+      "name": "SetPushEventConditionWithFan",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "radius",
+          "type": "float",
+          "notes": "Fan radius consumed by the push-condition receiver."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "angle_min_raw",
+          "type": "uint32_t",
+          "notes": "Raw angle-bound word fixed to 0xBFC90FDB by the documented packet form; no float interpretation is promoted."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "angle_max_raw",
+          "type": "uint32_t",
+          "notes": "Raw angle-bound word fixed to 0x3F860A92 by the documented packet form; no float interpretation is promoted."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "source_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor handle used as the fan source."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "range_10",
+          "type": "float",
+          "notes": "Float value fixed to 10.0 by the documented packet form."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "unknown_14",
+          "type": "unknown[0x04]",
+          "notes": "Exact reserved span not interpreted by the documented receiver path."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x01",
+          "name": "outwards_flag",
+          "type": "uint8_t",
+          "notes": "Direction flag forwarded by the receiver."
+        },
+        {
+          "offset": "0x19",
+          "size": "0x01",
+          "name": "reserved_zero",
+          "type": "uint8_t",
+          "notes": "Byte documented as zero in this packet form."
+        },
+        {
+          "offset": "0x1A",
+          "size": "0x01",
+          "name": "silent",
+          "type": "uint8_t",
+          "notes": "Silent-mode byte forwarded by the receiver."
+        },
+        {
+          "offset": "0x1B",
+          "size": "0x24",
+          "name": "condition_name",
+          "type": "char[36]",
+          "notes": "Fixed condition-name buffer."
+        },
+        {
+          "offset": "0x3F",
+          "size": "0x01",
+          "name": "unknown_3f",
+          "type": "unknown[0x01]",
+          "notes": "Closing payload byte not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x40 application payload for s2c 0x0170 SetPushEventConditionWithFan, excluding the 0x10 game-message prefix. Retained receiver and packet-shape evidence establishes every field boundary and the fixed payload extent.",
+      "id": "BCS-S-0266"
+    },
+    {
+      "name": "SetPushEventConditionWithTriggerBox",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "background_object",
+          "type": "uint32_t",
+          "notes": "Background-object word forwarded by the trigger-box receiver."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "layout",
+          "type": "uint32_t",
+          "notes": "Layout word forwarded by the trigger-box receiver."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "actor_constant_4",
+          "type": "uint32_t",
+          "notes": "Actor-related word documented as the constant 4; its higher-level role remains unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x08",
+          "name": "unknown_0c",
+          "type": "unknown[0x08]",
+          "notes": "Exact reserved span not interpreted by the documented receiver path."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "outwards_flag",
+          "type": "uint8_t",
+          "notes": "Direction flag forwarded by the receiver."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "box_type",
+          "type": "uint8_t",
+          "notes": "Trigger-box type selector."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x01",
+          "name": "silent",
+          "type": "uint8_t",
+          "notes": "Silent-mode byte forwarded by the receiver."
+        },
+        {
+          "offset": "0x17",
+          "size": "0x20",
+          "name": "condition_name",
+          "type": "char[32]",
+          "notes": "Fixed condition-name buffer."
+        },
+        {
+          "offset": "0x37",
+          "size": "0x01",
+          "name": "reserved_37",
+          "type": "uint8_t",
+          "notes": "Separating byte retained as typed storage; its meaning remains unresolved."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x04",
+          "name": "react_name",
+          "type": "char[4]",
+          "notes": "Fixed reaction-name buffer."
+        },
+        {
+          "offset": "0x3C",
+          "size": "0x04",
+          "name": "unknown_3c",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x40 application payload for s2c 0x0175 SetPushEventConditionWithTriggerBox, excluding the 0x10 game-message prefix. Retained receiver and packet-shape evidence establishes every field boundary and the fixed payload extent.",
+      "id": "BCS-S-0267"
+    },
+    {
+      "name": "SetTalkEventCondition",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0743",
+        "BCS-Y-0930",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "selector_00",
+          "type": "uint8_t",
+          "notes": "Byte-sized selector forwarded by the talk-condition receiver; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "is_disabled",
+          "type": "uint8_t",
+          "notes": "Disabled-state byte forwarded through the talk-condition helper."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x24",
+          "name": "condition_name",
+          "type": "char[36]",
+          "notes": "Fixed condition-name buffer consumed by the receiver."
+        },
+        {
+          "offset": "0x26",
+          "size": "0x02",
+          "name": "unknown_26",
+          "type": "unknown[0x02]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x012E SetTalkEventCondition, excluding the 0x10 game-message prefix. The retained receiver forwards the two selector bytes and condition-name buffer, while the fixed packet extent closes the two-byte tail.",
+      "id": "BCS-S-0268"
+    },
+    {
+      "name": "SetNoticeEventCondition",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0733",
+        "BCS-Y-0734",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "selector_00",
+          "type": "uint8_t",
+          "notes": "Low selector byte dispatched by the notice-condition receiver; retained observations include 1 and 0x0E."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "selector_01",
+          "type": "uint8_t",
+          "notes": "Second byte-sized selector; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x24",
+          "name": "condition_name",
+          "type": "char[36]",
+          "notes": "Fixed condition-name buffer consumed by the receiver."
+        },
+        {
+          "offset": "0x26",
+          "size": "0x02",
+          "name": "unknown_26",
+          "type": "unknown[0x02]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x016B SetNoticeEventCondition, excluding the 0x10 game-message prefix. The retained receiver dispatches on the selector bytes and condition-name buffer, while the fixed packet extent closes the two-byte tail.",
+      "id": "BCS-S-0269"
+    },
+    {
+      "name": "SetEmoteEventCondition",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0735",
+        "BCS-Y-0736",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "selector_00",
+          "type": "uint8_t",
+          "notes": "Byte-sized selector forwarded by the emote-condition receiver; its higher-level meaning remains unresolved."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x02",
+          "name": "emote_id",
+          "type": "uint16_t",
+          "notes": "Misaligned emote identifier consumed at payload+0x01; retained observations include 0x82, 0x76, and 0x6E."
+        },
+        {
+          "offset": "0x03",
+          "size": "0x24",
+          "name": "condition_name",
+          "type": "char[36]",
+          "notes": "Fixed condition-name buffer consumed by the receiver."
+        },
+        {
+          "offset": "0x27",
+          "size": "0x01",
+          "name": "unknown_27",
+          "type": "unknown[0x01]",
+          "notes": "Closing payload byte not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x016C SetEmoteEventCondition, excluding the 0x10 game-message prefix. The retained receiver forwards the selector, misaligned emote id, and condition-name buffer, while the fixed packet extent closes the final byte.",
+      "id": "BCS-S-0270"
+    },
+    {
+      "name": "KickEventPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x70",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0028",
+        "BCS-Y-0029",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "trigger_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor handle for the event trigger."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "owner_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor handle for the event owner."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "event_type",
+          "type": "uint8_t",
+          "notes": "Byte-sized event selector forwarded by the receiver."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x01",
+          "name": "magic_17",
+          "type": "uint8_t",
+          "notes": "Raw byte retained under the descriptive magic17 label; its value semantics and higher-level role remain unresolved."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "magic_75dc",
+          "type": "uint16_t",
+          "notes": "Raw halfword retained under the descriptive magic75dc label; its value semantics and higher-level role remain unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "server_code",
+          "type": "uint32_t",
+          "notes": "Server code forwarded by the event receiver."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x20",
+          "name": "event_name",
+          "type": "char[32]",
+          "notes": "Fixed event-name buffer preceding the Lua-parameter stream."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x40",
+          "name": "lua_params",
+          "type": "uint8_t[64]",
+          "notes": "Serialized Lua-parameter byte stream occupying the exact payload remainder; its internal variable records are not promoted as fields."
+        }
+      ],
+      "notes": "Complete exact 0x70 application payload for s2c 0x012F KickEvent, excluding the 0x10 game-message prefix. Retained receiver construction establishes the actor, event, name, and Lua-parameter boundaries; the packet extent closes the stream buffer.",
+      "id": "BCS-S-0271"
+    },
+    {
+      "name": "RunEventFunctionPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0030",
+        "BCS-Y-0031",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "trigger_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor handle for the event trigger."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "owner_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor handle for the event owner."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "event_type",
+          "type": "uint8_t",
+          "notes": "Byte-sized event selector forwarded by the receiver."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x20",
+          "name": "event_name",
+          "type": "char[32]",
+          "notes": "Fixed event-name buffer."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x20",
+          "name": "function_name",
+          "type": "char[32]",
+          "notes": "Fixed function-name buffer immediately following the event name."
+        },
+        {
+          "offset": "0x49",
+          "size": "0x47",
+          "name": "lua_params",
+          "type": "uint8_t[71]",
+          "notes": "Serialized Lua-parameter byte stream occupying the exact observed payload remainder; its internal variable records are not promoted as fields."
+        }
+      ],
+      "notes": "Complete exact 0x90 application payload for s2c 0x0130 RunEventFunction, excluding the 0x10 game-message prefix. Retained receiver construction establishes both actor ids, the selector, and the two fixed names; observed packet extent closes the 0x47-byte Lua-parameter remainder.",
+      "id": "BCS-S-0272"
+    },
+    {
+      "name": "SetEventStatusPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0728",
+        "BCS-Y-0729",
+        "BCS-Y-0390",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "enabled",
+          "type": "uint32_t",
+          "notes": "Four-byte enabled state; retained evidence rules out a byte-sized representation."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x01",
+          "name": "condition_type",
+          "type": "uint8_t",
+          "notes": "Condition selector with retained values 1 talk, 2 push, 3 emote, and 5 notice."
+        },
+        {
+          "offset": "0x05",
+          "size": "0x23",
+          "name": "condition_name",
+          "type": "char[35]",
+          "notes": "Condition-name storage occupying the exact physical payload remainder."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x0136 SetEventStatus, excluding the 0x10 game-message prefix. The receiver directly consumes the uint32 enabled state, byte selector, and condition-name storage, accounting for the complete payload.",
+      "id": "BCS-S-0273"
+    },
+    {
+      "name": "SetCurrentMountGoobbuePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0936",
+        "BCS-Y-1046",
+        "BCS-Y-0391",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "appearance_id",
+          "type": "uint8_t",
+          "notes": "One-byte goobbue mount appearance value stored by the MyPlayer helper."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x01A0 SetCurrentMountGoobbue, excluding the 0x10 game-message prefix. The receiver consumes the leading appearance byte and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0274"
+    },
+    {
+      "name": "SetChocoboNamePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0938",
+        "BCS-Y-1041",
+        "BCS-Y-0391",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "chocobo_name",
+          "type": "char[32]",
+          "notes": "Fixed padded chocobo-name buffer forwarded to the MyPlayer helper."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for s2c 0x0198 SetChocoboName, excluding the 0x10 game-message prefix. The receiver forwards the fixed name storage and the observed packet extent closes the buffer exactly.",
+      "id": "BCS-S-0275"
+    },
+    {
+      "name": "SetHasGoobbuePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-1047",
+        "BCS-Y-1137",
+        "BCS-Y-0391",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "ownership_flags",
+          "type": "uint8_t",
+          "notes": "Ownership flag byte stored on MyPlayer; bit 0 denotes goobbue ownership and triggers the acquisition callback when set."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x01A1 SetHasGoobbue, excluding the 0x10 game-message prefix. The receiver consumes the leading ownership byte and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0276"
+    },
+    {
+      "name": "AchievementEarnedPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0038",
+        "BCS-Y-0039",
+        "BCS-Y-0391",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "achievement_id",
+          "type": "uint32_t",
+          "notes": "Achievement identifier consumed by the MyPlayer achievement helper."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x019E AchievementEarned, excluding the 0x10 game-message prefix. The receiver consumes the leading achievement id and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0277"
+    },
+    {
+      "name": "SendAchievementRatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0040",
+        "BCS-Y-0041",
+        "BCS-Y-0391",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "achievement_id",
+          "type": "uint32_t",
+          "notes": "Achievement identifier forwarded by the rate receiver."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "progress_count",
+          "type": "uint32_t",
+          "notes": "Progress count forwarded to the achievement-rate helper."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "progress_flags",
+          "type": "uint32_t",
+          "notes": "Progress flag word forwarded to the achievement-rate helper; individual bit meanings remain unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "unknown_0c",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for s2c 0x019F SendAchievementRate, excluding the 0x10 game-message prefix. The receiver forwards three consecutive uint32 values and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0278"
+    },
+    {
+      "name": "SetActorTargetAnimatedPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0049",
+        "BCS-Y-0116",
+        "BCS-Y-0391",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "target_actor_id",
+          "type": "uint32_t",
+          "notes": "Object-id style actor handle forwarded to the target-animation receiver path."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x00D3 SetActorTargetAnimated, excluding the 0x10 game-message prefix. The receiver consumes the leading target actor id and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0279"
+    },
+    {
+      "name": "SetActorIsZoningPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0392",
+        "BCS-Y-0944",
+        "BCS-Y-1814",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "is_zoning",
+          "type": "uint8_t",
+          "notes": "Flag byte forwarded to the actor zoning-state helper."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x017B SetActorIsZoning, excluding the 0x10 game-message prefix. The receiver consumes the leading zoning flag and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0280"
+    },
+    {
+      "name": "SetRetainerStarPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0183",
+        "BCS-Y-0392",
+        "BCS-Y-0607",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "is_starred",
+          "type": "uint8_t",
+          "notes": "Retainer-search star flag consumed by the system-stat receiver path."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x018E SetRetainerStar, excluding the 0x10 game-message prefix. The receiver consumes the leading retainer-search star flag and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0281"
+    },
+    {
+      "name": "SetActorSubStatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0121",
+        "BCS-Y-0122",
+        "BCS-Y-0389",
+        "BCS-Y-0443",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "breakage",
+          "type": "uint8_t",
+          "notes": "Breakage-state byte in the retained packet layout."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "chant_id",
+          "type": "uint8_t",
+          "notes": "Chant identifier byte in the retained packet layout."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x01",
+          "name": "guard",
+          "type": "uint8_t",
+          "notes": "Guard-state byte in the retained packet layout."
+        },
+        {
+          "offset": "0x03",
+          "size": "0x01",
+          "name": "waste",
+          "type": "uint8_t",
+          "notes": "Waste-state byte in the retained packet layout."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x01",
+          "name": "mode",
+          "type": "uint8_t",
+          "notes": "Sub-stat mode or border value written into the actor sub-state record by the receiver path."
+        },
+        {
+          "offset": "0x05",
+          "size": "0x01",
+          "name": "unknown_05",
+          "type": "unknown[0x01]",
+          "notes": "Byte not interpreted by the documented receiver path."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "motion_pack",
+          "type": "uint16_t",
+          "notes": "Motion-pack value in the retained packet layout."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0144 SetActorSubState, excluding the 0x10 game-message prefix. The retained wire layout establishes seven contiguous members, and the receiver path positively consumes the mode byte.",
+      "id": "BCS-S-0282"
+    },
+    {
+      "name": "SetActorIconPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0045",
+        "BCS-Y-0119",
+        "BCS-Y-0146",
+        "BCS-Y-0389",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "icon_code",
+          "type": "uint32_t",
+          "notes": "Packed actor icon and network-state flags; retained evidence identifies AFK, disconnecting, and GM bits."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0145 SetActorIcon, excluding the 0x10 game-message prefix. The receiver consumes the leading packed icon-code word and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0283"
+    },
+    {
+      "name": "SetEnmityIndicatorPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0043",
+        "BCS-Y-0090",
+        "BCS-Y-0389",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "target_actor_id",
+          "type": "uint32_t",
+          "notes": "Object-id style target handle written into the NPC enmity state."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "hate_amount",
+          "type": "uint16_t",
+          "notes": "Percentage-style enmity indicator written beside the target handle."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "unknown_06",
+          "type": "unknown[0x02]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0195 SetEnmityIndicator, excluding the 0x10 game-message prefix. The receiver consumes the leading target actor id and hate amount and the fixed packet extent closes the two-byte tail.",
+      "id": "BCS-S-0284"
+    },
+    {
+      "name": "SetGrandCompanyPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0389",
+        "BCS-Y-0932",
+        "BCS-Y-1363",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "current_allegiance",
+          "type": "uint8_t",
+          "notes": "Current grand-company allegiance written into player state."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "rank_limsa",
+          "type": "uint8_t",
+          "notes": "Limsa Lominsa grand-company rank written into player state."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x01",
+          "name": "rank_gridania",
+          "type": "uint8_t",
+          "notes": "Gridania grand-company rank written into player state."
+        },
+        {
+          "offset": "0x03",
+          "size": "0x01",
+          "name": "rank_uldah",
+          "type": "uint8_t",
+          "notes": "Ul'dah grand-company rank written into player state."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0194 SetGrandCompany, excluding the 0x10 game-message prefix. The receiver consumes four leading affiliation and rank bytes and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0285"
+    },
+    {
+      "name": "SetPlayerTitlePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0037",
+        "BCS-Y-0084",
+        "BCS-Y-0389",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "title_id",
+          "type": "uint32_t",
+          "notes": "Low title-identifier word consumed and written into player state."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Upper payload word not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x019D SetPlayerTitle, excluding the 0x10 game-message prefix. The receiver consumes the leading title-id word and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0286"
+    },
+    {
+      "name": "SetCurrentJobPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0047",
+        "BCS-Y-0100",
+        "BCS-Y-0102",
+        "BCS-Y-0103",
+        "BCS-Y-0389",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "job_id",
+          "type": "uint8_t",
+          "notes": "Current job identifier consumed and written into player state."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x01A4 SetCurrentJob, excluding the 0x10 game-message prefix. The receiver consumes the leading job-id byte and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0287"
+    },
+    {
+      "name": "SetActorNamePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0160",
+        "BCS-Y-0389",
+        "BCS-Y-0732",
+        "BCS-Y-1365",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "display_name_id",
+          "type": "uint32_t",
+          "notes": "Display-name identifier; the receiver normalizes zero to the no-id sentinel before storage."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x20",
+          "name": "custom_name",
+          "type": "char[32]",
+          "notes": "Fixed custom-name area copied in full before the receiver constructs its string state."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x01",
+          "name": "display_name_kind",
+          "type": "uint8_t",
+          "notes": "Low-byte display-name kind selector consumed by the receiver path."
+        },
+        {
+          "offset": "0x25",
+          "size": "0x03",
+          "name": "unknown_25",
+          "type": "unknown[0x03]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x013D SetActorName, excluding the 0x10 game-message prefix. The receiver consumes the identifier, fixed 32-byte name area, and kind byte; the fixed packet extent closes the three-byte tail.",
+      "id": "BCS-S-0288"
+    },
+    {
+      "name": "SetActorStatusAllPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0051",
+        "BCS-Y-0124",
+        "BCS-Y-0147",
+        "BCS-Y-0389",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "status_ids",
+          "type": "uint16_t[20]",
+          "notes": "Fixed snapshot of twenty status identifiers consumed by the actor sub-stat status update path."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x0179 SetActorStatusAll, excluding the 0x10 game-message prefix. Retained constructor and worker evidence establishes a fixed array of twenty uint16 status identifiers with no trailing span.",
+      "id": "BCS-S-0289"
+    },
+    {
+      "name": "SetCurrentMountChocoboPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0389",
+        "BCS-Y-0934",
+        "BCS-Y-1361",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "rental_expire_time",
+          "type": "uint32_t",
+          "notes": "Rental-expiration value in the retained packet layout."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x01",
+          "name": "rental_minutes_left",
+          "type": "uint8_t",
+          "notes": "Remaining rental-minutes value in the retained packet layout."
+        },
+        {
+          "offset": "0x05",
+          "size": "0x01",
+          "name": "chocobo_appearance",
+          "type": "uint8_t",
+          "notes": "Mount appearance or grade byte consumed and written into MyPlayer state."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "unknown_06",
+          "type": "unknown[0x02]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0197 SetCurrentMountChocobo, excluding the 0x10 game-message prefix. The retained wire layout establishes the rental fields and appearance byte, and the receiver positively consumes the appearance value.",
+      "id": "BCS-S-0290"
+    },
+    {
+      "name": "SetAchievementPointsPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0035",
+        "BCS-Y-0087",
+        "BCS-Y-0389",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "achievement_points",
+          "type": "uint32_t",
+          "notes": "Low achievement-point word consumed and forwarded to the MyPlayer writer."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Upper payload word not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x019C SetAchievementPoints, excluding the 0x10 game-message prefix. The receiver consumes the leading achievement-point word and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0291"
+    },
+    {
+      "name": "GameMessageWithActor1Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x10",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0251",
+        "BCS-Y-0392",
+        "BCS-Y-0956",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "actor_id",
+          "type": "uint32_t",
+          "notes": "Object-id style handle for the single actor-scoped log subject."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "text_id",
+          "type": "uint16_t",
+          "notes": "Text-sheet identifier consumed by the SendLog parser family."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x01",
+          "name": "log_flag",
+          "type": "uint8_t",
+          "notes": "Log presentation flag consumed by the SendLog parser family."
+        },
+        {
+          "offset": "0x07",
+          "size": "0x01",
+          "name": "reserved_zero",
+          "type": "uint8_t",
+          "notes": "Reserved byte documented as zero in the retained packet layout."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "lua_params",
+          "type": "uint8_t[8]",
+          "notes": "One fixed eight-byte Lua-parameter slot; its internal tagged representation is not promoted here."
+        }
+      ],
+      "notes": "Complete exact 0x10 application payload for s2c 0x0157 GameMessageWithActor1, excluding the 0x10 game-message prefix. Retained capture and SendLog parser evidence establishes the actor, text, flag, reserved, and single parameter-slot boundaries.",
+      "id": "BCS-S-0292"
+    },
+    {
+      "name": "SendAddictionLimitMessagePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0108",
+        "BCS-Y-0109",
+        "BCS-Y-0111",
+        "BCS-Y-0392",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "addiction_limit_kind",
+          "type": "uint8_t",
+          "notes": "Limit kind mapped by the helper into one of three notification tiers."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0192 SendAddictionLimitMessage, excluding the 0x10 game-message prefix. The receiver consumes the leading kind byte and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0293"
+    },
+    {
+      "name": "SetActorStatusPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0643",
+        "BCS-Y-0697",
+        "BCS-Y-0699",
+        "BCS-Y-1067",
+        "BCS-Y-1070",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "index",
+          "type": "uint16_t",
+          "notes": "Status staging index; the documented apply path consumes its low byte."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "status_code",
+          "type": "uint16_t",
+          "notes": "Status identifier written into the selected actor staging slot."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented dispatcher path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0177 SetActorStatus, excluding the 0x10 game-message prefix. The third-router path consumes the status index and code and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0294"
+    },
+    {
+      "name": "SetPlayerItemStoragePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x30",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0391",
+        "BCS-Y-0414",
+        "BCS-Y-0940",
+        "manifests/data_dependency_catalog.json",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x20",
+          "name": "item_storage_bitstream",
+          "type": "uint8_t[32]",
+          "notes": "Stored-item enabled-flag bitstream iterated into item-storage category vectors by the receiver helper."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x10",
+          "name": "unknown_20",
+          "type": "unknown[0x10]",
+          "notes": "Closing payload span not interpreted by the documented receiver path."
+        }
+      ],
+      "notes": "Complete exact 0x30 application payload for s2c 0x01A5 SetPlayerItemStorage, excluding the 0x10 game-message prefix. The receiver helper consumes the leading 32-byte enabled-item bitstream and the fixed packet extent closes the 16-byte tail.",
+      "id": "BCS-S-0295"
+    },
+    {
+      "name": "SetPlayerDreamPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0658",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "dream_id",
+          "type": "uint8_t",
+          "notes": "Dream identifier masked to six bits before storage in player state."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "inn_id",
+          "type": "uint8_t",
+          "notes": "Inn identifier consumed by the direct state-update path."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x06",
+          "name": "unknown_02",
+          "type": "unknown[0x06]",
+          "notes": "Closing payload span not interpreted by the documented dispatcher path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x01A7 SetPlayerDream, excluding the 0x10 game-message prefix. The direct handler consumes the leading dream and inn bytes and the fixed packet extent closes the six-byte tail.",
+      "id": "BCS-S-0296"
+    },
+    {
+      "name": "GroupMembersBeginPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0565",
+        "BCS-Y-0875",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Group transfer location code consumed by the begin handler."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Group transfer sequence identifier consumed by the begin handler."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Destination group index for the incoming member sequence."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "member_count",
+          "type": "uint32_t",
+          "notes": "Declared member count for the framed transfer."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "unknown_1c",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented begin handler."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for s2c 0x017D GroupMembersBegin, excluding the 0x10 game-message prefix. The handler consumes the three uint64 framing values and member count, and the fixed packet extent closes the four-byte tail.",
+      "id": "BCS-S-0297"
+    },
+    {
+      "name": "GroupMembersX08Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x198",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0567",
+        "BCS-Y-0877",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Group transfer location code shared with the begin and end framing packets."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Group transfer sequence identifier shared with the begin and end framing packets."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x180",
+          "name": "members",
+          "type": "GroupMemberEntry[8]",
+          "notes": "Eight fixed 0x30 group-member rows consumed by the append-members helper."
+        },
+        {
+          "offset": "0x190",
+          "size": "0x04",
+          "name": "member_count",
+          "type": "uint32_t",
+          "notes": "Packet member count; the documented helper consumes its low byte."
+        },
+        {
+          "offset": "0x194",
+          "size": "0x04",
+          "name": "unknown_194",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented append-members helper."
+        }
+      ],
+      "notes": "Complete exact 0x198 application payload for s2c 0x017F GroupMembersX08, excluding the 0x10 game-message prefix. The packet reuses the complete 0x30 GroupMemberEntry layout for eight rows between two framing values and the count word.",
+      "id": "BCS-S-0298"
+    },
+    {
+      "name": "GroupMembersEndPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0566",
+        "BCS-Y-0876",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Group transfer location code consumed by the end handler."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Group transfer sequence identifier consumed by the end handler."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Group index whose member transfer is being finalized."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for s2c 0x017E GroupMembersEnd, excluding the 0x10 game-message prefix. The end handler consumes three contiguous uint64 framing values with no trailing span.",
+      "id": "BCS-S-0299"
+    },
+    {
+      "name": "ContentMemberEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x0C",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0881",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "actor_id",
+          "type": "uint32_t",
+          "notes": "Content-group member actor identifier consumed by the append pipeline."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "layout_id",
+          "type": "uint32_t",
+          "notes": "Content-group layout identifier paired with the member actor."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "unknown_08",
+          "type": "unknown[0x04]",
+          "notes": "Third row dword has no stable semantic interpretation in the retained consumer evidence."
+        }
+      ],
+      "notes": "Complete fixed 0x0C member row used by the content-group append packets. Retained decoding establishes the actor and layout identifiers; the third dword remains semantically unknown.",
+      "id": "BCS-S-0300"
+    },
+    {
+      "name": "ContentMembersX08Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0571",
+        "BCS-Y-0881",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/schema_rescue.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Content-group transfer location code consumed by the X08 handler."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Content-group transfer sequence identifier consumed by the X08 handler."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x60",
+          "name": "entries",
+          "type": "ContentMemberEntry[8]",
+          "notes": "Eight fixed 0x0C content-member rows passed to the shared append pipeline."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x01",
+          "name": "entry_count",
+          "type": "uint8_t",
+          "notes": "Low-byte entry count read directly by the X08 append helper."
+        },
+        {
+          "offset": "0x71",
+          "size": "0x07",
+          "name": "unknown_71",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented X08 helper."
+        }
+      ],
+      "notes": "Complete exact 0x78 application payload for s2c 0x0183 ContentMembersX08, excluding the 0x10 game-message prefix. The packet carries two framing values, eight complete ContentMemberEntry rows, and a byte count before the fixed closing span.",
+      "id": "BCS-S-0301"
+    },
+    {
+      "name": "InventoryListX01Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x70",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0545",
+        "BCS-Y-0704",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x70",
+          "name": "item",
+          "type": "InventoryItemRecord",
+          "notes": "Single complete inventory-item row consumed by the X01 handler."
+        }
+      ],
+      "notes": "Complete exact 0x70 application payload for s2c 0x0148 InventoryListX01, excluding the 0x10 game-message prefix. The payload is one complete InventoryItemRecord.",
+      "id": "BCS-S-0302"
+    },
+    {
+      "name": "InventoryListX08Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x388",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0546",
+        "BCS-Y-0705",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x380",
+          "name": "items",
+          "type": "InventoryItemRecord[8]",
+          "notes": "Eight complete 0x70 inventory-item rows consumed by the X08 handler."
+        },
+        {
+          "offset": "0x380",
+          "size": "0x04",
+          "name": "item_count",
+          "type": "uint32_t",
+          "notes": "Packet item count; the documented handler consumes its low byte."
+        },
+        {
+          "offset": "0x384",
+          "size": "0x04",
+          "name": "unknown_384",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented X08 handler."
+        }
+      ],
+      "notes": "Complete exact 0x388 application payload for s2c 0x0149 InventoryListX08, excluding the 0x10 game-message prefix. Eight complete InventoryItemRecord rows are followed by the retained count word and a four-byte closing span.",
+      "id": "BCS-S-0303"
+    },
+    {
+      "name": "InventoryListX16Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x700",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0547",
+        "BCS-Y-0709",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x700",
+          "name": "items",
+          "type": "InventoryItemRecord[16]",
+          "notes": "Sixteen complete 0x70 inventory-item rows consumed by the X16 handler."
+        }
+      ],
+      "notes": "Complete exact 0x700 application payload for s2c 0x014A InventoryListX16, excluding the 0x10 game-message prefix. The payload is sixteen complete InventoryItemRecord rows.",
+      "id": "BCS-S-0304"
+    },
+    {
+      "name": "InventoryListX32Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0xE00",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0548",
+        "BCS-Y-0710",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0xE00",
+          "name": "items",
+          "type": "InventoryItemRecord[32]",
+          "notes": "Thirty-two complete 0x70 inventory-item rows consumed by the X32 handler."
+        }
+      ],
+      "notes": "Complete exact 0xE00 application payload for s2c 0x014B InventoryListX32, excluding the 0x10 game-message prefix. The payload is thirty-two complete InventoryItemRecord rows.",
+      "id": "BCS-S-0305"
+    },
+    {
+      "name": "LinkedItemListX01Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0550",
+        "BCS-Y-0712",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x06",
+          "name": "entry",
+          "type": "LinkedItemEntry",
+          "notes": "Single complete linked-item row consumed by the X01 handler."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "unknown_06",
+          "type": "unknown[0x02]",
+          "notes": "Closing payload span not interpreted by the documented X01 handler."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x014D LinkedItemListX01, excluding the 0x10 game-message prefix. One complete LinkedItemEntry is followed by the fixed two-byte closing span.",
+      "id": "BCS-S-0306"
+    },
+    {
+      "name": "LinkedItemListX08Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0551",
+        "BCS-Y-0706",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x30",
+          "name": "entries",
+          "type": "LinkedItemEntry[8]",
+          "notes": "Eight complete 0x06 linked-item rows consumed by the X08 handler."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "item_count",
+          "type": "uint32_t",
+          "notes": "Packet item count; the documented handler consumes its low byte."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x04",
+          "name": "unknown_34",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented X08 handler."
+        }
+      ],
+      "notes": "Complete exact 0x38 application payload for s2c 0x014E LinkedItemListX08, excluding the 0x10 game-message prefix. Eight complete LinkedItemEntry rows are followed by the retained count word and a four-byte closing span.",
+      "id": "BCS-S-0307"
+    },
+    {
+      "name": "InventorySetBeginPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0544",
+        "BCS-Y-0703",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "source_actor_id",
+          "type": "uint32_t",
+          "notes": "Source actor identifier for the inventory-set frame."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "size",
+          "type": "uint16_t",
+          "notes": "Inventory-set size value consumed by the deep handler."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "code",
+          "type": "uint16_t",
+          "notes": "Inventory-set code word; the documented client path compares its low byte."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0146 InventorySetBegin, excluding the 0x10 game-message prefix. The deep handler consumes the actor id and two closing words with no trailing span.",
+      "id": "BCS-S-0308"
+    },
+    {
+      "name": "InventoryBeginChangePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0560",
+        "BCS-Y-0707",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "change_code",
+          "type": "uint8_t",
+          "notes": "Inventory-change code forwarded by the dedicated deep handler."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x07",
+          "name": "unknown_01",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented begin-change handler."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x016D InventoryBeginChange, excluding the 0x10 game-message prefix. The handler consumes the leading change byte and the fixed packet extent closes the seven-byte tail.",
+      "id": "BCS-S-0309"
+    },
+    {
+      "name": "InventoryRemoveX01Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0555",
+        "BCS-Y-0716",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/equipment_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x02",
+          "name": "slot",
+          "type": "uint16_t",
+          "notes": "Inventory slot removed by the X01 handler."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x06",
+          "name": "unknown_02",
+          "type": "unknown[0x06]",
+          "notes": "Closing payload span not interpreted by the documented remove handler."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0152 InventoryRemoveX01, excluding the 0x10 game-message prefix. The handler consumes the leading slot word and the fixed packet extent closes the six-byte tail.",
+      "id": "BCS-S-0310"
+    },
+    {
+      "name": "CommandResultHeader",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0395",
+        "BCS-Y-0408",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "source_actor_id",
+          "type": "uint32_t",
+          "notes": "Actor identifier that originated the command result."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "animation_id",
+          "type": "uint32_t",
+          "notes": "Animation identifier staged by the shared command-result header consumer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x18",
+          "name": "unknown_08",
+          "type": "unknown[0x18]",
+          "notes": "Copied pre-action header block whose internal member boundaries are not established."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x02",
+          "name": "row_count",
+          "type": "uint16_t",
+          "notes": "Row-loop bound staged by the shared command-result consumer."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "header_control_value",
+          "type": "uint16_t",
+          "notes": "Separately copied and consumed header-side control word; narrower semantics remain unresolved."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x02",
+          "name": "command_id",
+          "type": "uint16_t",
+          "notes": "Command identifier consumed by the shared result path."
+        },
+        {
+          "offset": "0x26",
+          "size": "0x02",
+          "name": "flags",
+          "type": "uint16_t",
+          "notes": "Command-result flag word consumed by the shared header path."
+        }
+      ],
+      "notes": "Complete exact 0x28 header shared by the CommandResultX00, X01, X10, and X18 application payloads. Positive staging consumers establish the scalar boundaries and the separate +0x20/+0x22 words; the copied +0x08 block remains internally opaque.",
+      "id": "BCS-S-0311"
+    },
+    {
+      "name": "CommandResultX00Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0405",
+        "BCS-Y-0408",
+        "BCS-Y-0640",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "header",
+          "type": "CommandResultHeader",
+          "notes": "Complete shared command-result header with no result rows."
+        }
+      ],
+      "notes": "Complete exact 0x28 application payload for s2c 0x013C CommandResultX00, excluding the 0x10 game-message prefix. The payload is exactly one CommandResultHeader.",
+      "id": "BCS-S-0312"
+    },
+    {
+      "name": "CommandResultX01Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0406",
+        "BCS-Y-0408",
+        "BCS-Y-0638",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "header",
+          "type": "CommandResultHeader",
+          "notes": "Complete shared command-result header preceding the single result row."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "target_id",
+          "type": "uint32_t",
+          "notes": "Target actor identifier for the single result row."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x02",
+          "name": "amount",
+          "type": "uint16_t",
+          "notes": "Amount value for the single result row."
+        },
+        {
+          "offset": "0x2E",
+          "size": "0x02",
+          "name": "world_master_text_id",
+          "type": "uint16_t",
+          "notes": "World-master text identifier for the single result row."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "effect_id",
+          "type": "uint32_t",
+          "notes": "Effect identifier for the single result row."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x01",
+          "name": "param",
+          "type": "uint8_t",
+          "notes": "Byte parameter paired with the single result row."
+        },
+        {
+          "offset": "0x35",
+          "size": "0x01",
+          "name": "hit_num",
+          "type": "uint8_t",
+          "notes": "Hit-number byte paired with the single result row."
+        },
+        {
+          "offset": "0x36",
+          "size": "0x02",
+          "name": "unknown_36",
+          "type": "unknown[0x02]",
+          "notes": "Closing payload span not interpreted by the documented single-result path."
+        }
+      ],
+      "notes": "Complete exact 0x38 application payload for s2c 0x0139 CommandResultX01, excluding the 0x10 game-message prefix. One CommandResultHeader is followed by the complete single-result scalar set and a two-byte closing span.",
+      "id": "BCS-S-0313"
+    },
+    {
+      "name": "CommandResultX10Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0xB8",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0407",
+        "BCS-Y-0408",
+        "BCS-Y-0410",
+        "BCS-Y-0639",
+        "BCS-S-0311",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "header",
+          "type": "CommandResultHeader",
+          "notes": "Complete shared command-result header preceding the ten-row sparse arrays."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x28",
+          "name": "target_ids",
+          "type": "uint32_t[10]",
+          "notes": "Target actor identifiers transposed into the internal result rows."
+        },
+        {
+          "offset": "0x50",
+          "size": "0x14",
+          "name": "amounts",
+          "type": "uint16_t[10]",
+          "notes": "Amount values transposed into the internal result rows."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x14",
+          "name": "world_master_text_ids",
+          "type": "uint16_t[10]",
+          "notes": "World-master text identifiers transposed into the internal result rows."
+        },
+        {
+          "offset": "0x78",
+          "size": "0x28",
+          "name": "effect_ids",
+          "type": "uint32_t[10]",
+          "notes": "Effect identifiers transposed into the internal result rows."
+        },
+        {
+          "offset": "0xA0",
+          "size": "0x0A",
+          "name": "params",
+          "type": "uint8_t[10]",
+          "notes": "Byte parameters transposed into the internal result rows."
+        },
+        {
+          "offset": "0xAA",
+          "size": "0x0A",
+          "name": "hit_nums",
+          "type": "uint8_t[10]",
+          "notes": "Hit-number bytes transposed into the internal result rows."
+        },
+        {
+          "offset": "0xB4",
+          "size": "0x04",
+          "name": "unknown_b4",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented ten-result path."
+        }
+      ],
+      "notes": "Complete exact 0xB8 application payload for s2c 0x013A CommandResultX10, excluding the 0x10 game-message prefix. The ten-target stager transposes six structure-of-arrays regions into internal result rows; the exact packet extent leaves a four-byte closing span.",
+      "id": "BCS-S-0314"
+    },
+    {
+      "name": "CommandResultX18Packet",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x128",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0408",
+        "BCS-Y-0415",
+        "BCS-Y-0416",
+        "BCS-S-0311",
+        "manifests/data_dependency_catalog.json",
+        "manifests/combat_damage_followup_findings.json",
+        "manifests/battle_result_field_semantics.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x28",
+          "name": "header",
+          "type": "CommandResultHeader",
+          "notes": "Complete shared command-result header preceding the eighteen-row sparse arrays."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x48",
+          "name": "target_ids",
+          "type": "uint32_t[18]",
+          "notes": "Target actor identifiers transposed into the internal result rows."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x24",
+          "name": "amounts",
+          "type": "uint16_t[18]",
+          "notes": "Amount values transposed into the internal result rows."
+        },
+        {
+          "offset": "0x94",
+          "size": "0x24",
+          "name": "world_master_text_ids",
+          "type": "uint16_t[18]",
+          "notes": "World-master text identifiers transposed into the internal result rows."
+        },
+        {
+          "offset": "0xB8",
+          "size": "0x48",
+          "name": "effect_ids",
+          "type": "uint32_t[18]",
+          "notes": "Effect identifiers transposed into the internal result rows."
+        },
+        {
+          "offset": "0x100",
+          "size": "0x12",
+          "name": "params",
+          "type": "uint8_t[18]",
+          "notes": "Byte parameters transposed into the internal result rows."
+        },
+        {
+          "offset": "0x112",
+          "size": "0x12",
+          "name": "hit_nums",
+          "type": "uint8_t[18]",
+          "notes": "Hit-number bytes transposed into the internal result rows."
+        },
+        {
+          "offset": "0x124",
+          "size": "0x04",
+          "name": "unknown_124",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented eighteen-result path."
+        }
+      ],
+      "notes": "Complete exact 0x128 application payload for s2c 0x013B CommandResultX18, excluding the 0x10 game-message prefix. The eighteen-target stager transposes six structure-of-arrays regions into internal result rows; the exact packet extent leaves a four-byte closing span.",
+      "id": "BCS-S-0315"
+    },
+    {
+      "name": "PartyMapMarkerEntry",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x28",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0580",
+        "BCS-Y-0890",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "player_id",
+          "type": "uint32_t",
+          "notes": "Player identifier consumed by the marker update path."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Record span not interpreted by the documented marker consumer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "marker_value_08",
+          "type": "uint32_t",
+          "notes": "Per-player dword consumed by the marker path; narrower semantics remain unresolved."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "marker_value_0c",
+          "type": "uint32_t",
+          "notes": "Additional dword consumed by the marker path; narrower semantics remain unresolved."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "unknown_10",
+          "type": "unknown[0x04]",
+          "notes": "Record span not interpreted by the documented marker consumer."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "player_x",
+          "type": "float",
+          "notes": "Player map-marker X coordinate."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "player_y",
+          "type": "float",
+          "notes": "Player map-marker Y coordinate."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "player_z",
+          "type": "float",
+          "notes": "Player map-marker Z coordinate."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "player_orientation",
+          "type": "float",
+          "notes": "Player map-marker orientation."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "unknown_24",
+          "type": "unknown[0x04]",
+          "notes": "Closing record span not interpreted by the documented marker consumer."
+        }
+      ],
+      "notes": "Complete exact 0x28 marker record used by the sixteen-entry PartyMapMarkerUpdate array. The positive apply path establishes the stride and consumed dword and coordinate boundaries; three four-byte spans remain opaque.",
+      "id": "BCS-S-0316"
+    },
+    {
+      "name": "PartyMapMarkerUpdatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x298",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0580",
+        "BCS-Y-0890",
+        "BCS-S-0316",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json",
+        "manifests/pcap_opcode_evidence.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x008",
+          "name": "player_group_id",
+          "type": "uint64_t",
+          "notes": "Identifier of the player-party group receiving the marker update."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x004",
+          "name": "group_type",
+          "type": "uint32_t",
+          "notes": "Group-type value associated with the marker update."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x004",
+          "name": "unknown_00c",
+          "type": "unknown[0x04]",
+          "notes": "Header span not interpreted by the documented marker consumer."
+        },
+        {
+          "offset": "0x010",
+          "size": "0x280",
+          "name": "marker_entries",
+          "type": "PartyMapMarkerEntry[16]",
+          "notes": "Sixteen fixed-stride party map-marker records."
+        },
+        {
+          "offset": "0x290",
+          "size": "0x001",
+          "name": "marker_count",
+          "type": "uint8_t",
+          "notes": "Byte count consumed as the number of active marker records."
+        },
+        {
+          "offset": "0x291",
+          "size": "0x007",
+          "name": "unknown_291",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented marker consumer."
+        }
+      ],
+      "notes": "Complete exact 0x298 application payload for s2c 0x018D PartyMapMarkerUpdate, excluding the 0x10 game-message prefix. The payload contains a group header, sixteen exact marker records, a byte count, and a seven-byte closing span.",
+      "id": "BCS-S-0317"
+    },
+    {
+      "name": "CreateNamedGroupMultiplePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x208",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0577",
+        "BCS-Y-0887",
+        "BCS-S-0261",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x200",
+          "name": "groups",
+          "type": "NamedGroupRecord[8]",
+          "notes": "Eight fixed-stride named-group records consumed by the bulk group-registration path."
+        },
+        {
+          "offset": "0x200",
+          "size": "0x001",
+          "name": "group_count",
+          "type": "uint8_t",
+          "notes": "Low-byte row count used to bound the named-group loop."
+        },
+        {
+          "offset": "0x201",
+          "size": "0x007",
+          "name": "unknown_201",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented bulk consumer."
+        }
+      ],
+      "notes": "Complete exact 0x208 application payload for s2c 0x0189 CreateNamedGroupMultiple, excluding the 0x10 game-message prefix. The consumer walks up to eight existing NamedGroupRecord rows and uses the byte at +0x200 as the row count.",
+      "id": "BCS-S-0318"
+    },
+    {
+      "name": "SetActiveLinkshellPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0578",
+        "BCS-Y-0888",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x40",
+          "name": "linkshell_group_ids",
+          "type": "uint64_t[8]",
+          "notes": "Eight linkshell group identifiers consumed as fixed eight-byte rows."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x20",
+          "name": "linkshell_group_types",
+          "type": "uint32_t[8]",
+          "notes": "Group-type values paired by index with the linkshell identifiers."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x01",
+          "name": "active_linkshell_index",
+          "type": "uint8_t",
+          "notes": "Low byte consumed by the active-linkshell path; retained evidence describes it as the active index and loop bound."
+        },
+        {
+          "offset": "0x61",
+          "size": "0x03",
+          "name": "unknown_61",
+          "type": "unknown[0x03]",
+          "notes": "Bytes adjacent to the consumed low byte whose storage is not established by the documented path."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x14",
+          "name": "unknown_64",
+          "type": "unknown[0x14]",
+          "notes": "Closing payload span not interpreted by the documented active-linkshell consumer."
+        }
+      ],
+      "notes": "Complete exact 0x78 application payload for s2c 0x018A SetActiveLinkshell, excluding the 0x10 game-message prefix. The positive consumer establishes the two eight-element arrays and reads only the low byte at +0x60; the remaining bytes stay unknown-typed.",
+      "id": "BCS-S-0319"
+    },
+    {
+      "name": "GroupHeaderPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x78",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0564",
+        "BCS-Y-0874",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "location_code",
+          "type": "uint64_t",
+          "notes": "Location value associated with the group header."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "sequence_id",
+          "type": "uint64_t",
+          "notes": "Sequence identifier used to join subsequent group member packets."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "list_id",
+          "type": "uint64_t",
+          "notes": "List identifier staged by the group-header consumer."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x08",
+          "name": "group_index",
+          "type": "uint64_t",
+          "notes": "Primary group index staged by the consumer."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x08",
+          "name": "secondary_list_id",
+          "type": "uint64_t",
+          "notes": "Second list-like identifier whose narrower role remains unresolved."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x08",
+          "name": "group_index_mirror",
+          "type": "uint64_t",
+          "notes": "Second group-index value, normally matching the primary group index."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "group_type_id",
+          "type": "uint32_t",
+          "notes": "Group-type identifier consumed by the header path."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x0C",
+          "name": "unknown_34",
+          "type": "unknown[0x0C]",
+          "notes": "Header span not interpreted by the documented consumer."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "uint32_t",
+          "notes": "Localized-name identifier, with the retained custom-name sentinel behavior."
+        },
+        {
+          "offset": "0x44",
+          "size": "0x20",
+          "name": "group_name",
+          "type": "char[32]",
+          "notes": "Fixed-width custom group name."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x10",
+          "name": "group_control_words",
+          "type": "uint32_t[4]",
+          "notes": "Four consumed group-side control words whose higher-level meanings remain unresolved."
+        },
+        {
+          "offset": "0x74",
+          "size": "0x04",
+          "name": "member_count",
+          "type": "uint32_t",
+          "notes": "Group member count consumed by the packet processor."
+        }
+      ],
+      "notes": "Complete exact 0x78 application payload for s2c 0x017C GroupHeader, excluding the 0x10 game-message prefix. This header establishes the sequence and group context used by the following begin, member, and end packets.",
+      "id": "BCS-S-0320"
+    },
+    {
+      "name": "SetGroupLayoutIdPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x38",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0579",
+        "BCS-Y-0889",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "group_id",
+          "type": "uint64_t",
+          "notes": "Group identifier for the per-member layout update."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "actor_id_or_handle",
+          "type": "uint32_t",
+          "notes": "Actor-facing identifier or handle consumed by the group layout path."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "uint32_t",
+          "notes": "Localized-name identifier used when a custom actor name is not selected."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "layout_id",
+          "type": "int32_t",
+          "notes": "Map layout identifier; -1 suppresses the layout update."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x01",
+          "name": "layout_kind",
+          "type": "uint8_t",
+          "notes": "Layout-kind byte consumed by the update path."
+        },
+        {
+          "offset": "0x15",
+          "size": "0x01",
+          "name": "value_15",
+          "type": "uint8_t",
+          "notes": "Byte with established storage but unresolved higher-level meaning."
+        },
+        {
+          "offset": "0x16",
+          "size": "0x22",
+          "name": "actor_name",
+          "type": "char[34]",
+          "notes": "Fixed-width actor name used for out-of-rendering-range party members."
+        }
+      ],
+      "notes": "Complete exact 0x38 application payload for s2c 0x018B SetGroupLayoutId, excluding the 0x10 game-message prefix. The packet updates per-member layout and name state used by the party UI.",
+      "id": "BCS-S-0321"
+    },
+    {
+      "name": "SetCutsceneBookPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x130",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0396",
+        "BCS-Y-0587",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/bundled_small_client_receivers.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "control_flags",
+          "type": "uint32_t",
+          "notes": "Control flags inserted as special cutscene-book keys by the apply path."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x002",
+          "name": "snpc_actor_id_offset",
+          "type": "int16_t",
+          "notes": "Signed companion actor-identifier offset copied into retained SNPC state."
+        },
+        {
+          "offset": "0x006",
+          "size": "0x001",
+          "name": "snpc_skin",
+          "type": "uint8_t",
+          "notes": "Companion skin selector copied into retained SNPC state."
+        },
+        {
+          "offset": "0x007",
+          "size": "0x001",
+          "name": "snpc_personality",
+          "type": "uint8_t",
+          "notes": "Companion personality selector copied into retained SNPC state."
+        },
+        {
+          "offset": "0x008",
+          "size": "0x101",
+          "name": "cutscene_flag_bits",
+          "type": "uint8_t[257]",
+          "notes": "Packed cutscene flags walked byte-by-byte and bit-by-bit in ascending order."
+        },
+        {
+          "offset": "0x109",
+          "size": "0x020",
+          "name": "snpc_name",
+          "type": "char[32]",
+          "notes": "Fixed-width companion name copied into retained SNPC state."
+        },
+        {
+          "offset": "0x129",
+          "size": "0x007",
+          "name": "unknown_129",
+          "type": "unknown[0x07]",
+          "notes": "Closing payload span not interpreted by the documented consumer."
+        }
+      ],
+      "notes": "Complete exact 0x130 application payload for s2c 0x01A3 SetCutsceneBook, excluding the 0x10 game-message prefix. The consumer materializes the packed flags as ordered cutscene keys and updates the companion SNPC fields.",
+      "id": "BCS-S-0322"
+    },
+    {
+      "name": "SetSpecialEventWorkPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x18",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0585",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/high_switch_enumeration.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "unknown_00",
+          "type": "unknown[0x01]",
+          "notes": "Leading payload byte not interpreted by the documented handler."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "event_flag_bits",
+          "type": "uint8_t",
+          "notes": "Packed byte expanded into eight one-bit special-event flags."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x02",
+          "name": "event_work_0",
+          "type": "uint16_t",
+          "notes": "First special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "event_work_1",
+          "type": "uint16_t",
+          "notes": "Second special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x02",
+          "name": "event_work_2",
+          "type": "uint16_t",
+          "notes": "Third special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x02",
+          "name": "event_work_3",
+          "type": "uint16_t",
+          "notes": "Fourth special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "event_work_4",
+          "type": "uint16_t",
+          "notes": "Fifth special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x02",
+          "name": "event_work_5",
+          "type": "uint16_t",
+          "notes": "Sixth special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x02",
+          "name": "event_work_6",
+          "type": "uint16_t",
+          "notes": "Seventh special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x02",
+          "name": "event_work_7",
+          "type": "uint16_t",
+          "notes": "Eighth special-event work value forwarded by the handler."
+        },
+        {
+          "offset": "0x12",
+          "size": "0x06",
+          "name": "unknown_12",
+          "type": "unknown[0x06]",
+          "notes": "Closing payload span not interpreted by the documented handler."
+        }
+      ],
+      "notes": "Complete exact 0x18 application payload for s2c 0x0196 SetSpecialEventWork, excluding the 0x10 game-message prefix. The dedicated handler expands one flag byte and forwards eight event-work words.",
+      "id": "BCS-S-0323"
+    },
+    {
+      "name": "UpdatePlayerPositionPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x20",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0375",
+        "BCS-Y-0388",
+        "manifests/data_dependency_catalog.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "timestamp",
+          "type": "uint64_t",
+          "notes": "Time value populated through the 64-bit time helper before emission."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "x",
+          "type": "float",
+          "notes": "Player X coordinate written by the position builder."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "y",
+          "type": "float",
+          "notes": "Player Y coordinate written by the position builder."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "z",
+          "type": "float",
+          "notes": "Player Z coordinate written by the position builder."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "rotation",
+          "type": "float",
+          "notes": "Player rotation written by the position builder."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x02",
+          "name": "movement_state",
+          "type": "uint16_t",
+          "notes": "Movement-state value copied into the final payload word."
+        },
+        {
+          "offset": "0x1A",
+          "size": "0x06",
+          "name": "unknown_1A",
+          "type": "unknown[0x06]",
+          "notes": "Remaining bytes carried by the final eight-byte copy without established member boundaries."
+        }
+      ],
+      "notes": "Complete exact 0x20 application payload for c2s 0x00CA UpdatePlayerPosition, excluding the 0x10 game-message prefix. The builder writes the time, coordinates, rotation, and movement state before emission.",
+      "id": "BCS-S-0324"
+    },
+    {
+      "name": "SetTargetPacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0388",
+        "BCS-Y-0988",
+        "manifests/data_dependency_catalog.json",
+        "manifests/operation_opcode_map_outbound.json",
+        "manifests/c2s_remaining_emitters.json",
+        "tools/ghidra/logs/c168_settargetcharacter.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "actor_id",
+          "type": "uint32_t",
+          "notes": "Target actor identifier written by both retained builder variants."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "attack_target",
+          "type": "uint32_t",
+          "notes": "Second target-control dword written by both retained builder variants."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x00CD SetTarget, excluding the 0x10 game-message prefix. Two builders produce the same pair of target dwords.",
+      "id": "BCS-S-0325"
+    },
+    {
+      "name": "UpdateItemPackagePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0382",
+        "BCS-Y-0388",
+        "manifests/data_dependency_catalog.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "actor_id",
+          "type": "uint32_t",
+          "notes": "Actor identifier written by the item-package request builder."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x01",
+          "name": "package_id",
+          "type": "uint8_t",
+          "notes": "Item-package identifier; the builder writes only this low byte."
+        },
+        {
+          "offset": "0x05",
+          "size": "0x03",
+          "name": "unknown_05",
+          "type": "unknown[0x03]",
+          "notes": "Closing payload bytes not initialized as named members by the documented builder."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x0131 UpdateItemPackage, excluding the 0x10 game-message prefix. The builder writes one actor dword and one package byte.",
+      "id": "BCS-S-0326"
+    },
+    {
+      "name": "ItemWorkUpdatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.C2S",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0383",
+        "BCS-Y-0388",
+        "manifests/data_dependency_catalog.json",
+        "manifests/operation_opcode_map_outbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "item_or_actor_id",
+          "type": "uint32_t",
+          "notes": "Item- or actor-facing identifier written by the work-update builder."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x02",
+          "name": "work_id",
+          "type": "uint16_t",
+          "notes": "Work selector written by the work-update builder."
+        },
+        {
+          "offset": "0x06",
+          "size": "0x01",
+          "name": "work_value",
+          "type": "uint8_t",
+          "notes": "Work value written by the work-update builder."
+        },
+        {
+          "offset": "0x07",
+          "size": "0x01",
+          "name": "unknown_07",
+          "type": "unknown[0x01]",
+          "notes": "Closing payload byte not initialized as a named member by the documented builder."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for c2s 0x0132 ItemWorkUpdate, excluding the 0x10 game-message prefix. The clientbound opcode with the same numeric value is a distinct packet family.",
+      "id": "BCS-S-0327"
+    },
+    {
+      "name": "MassSetItemModifierRecord",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x48",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0951",
+        "BCS-Y-0952",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "target_id",
+          "type": "uint32_t",
+          "notes": "Target identifier copied into the active modifier record."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "sub_id",
+          "type": "uint32_t",
+          "notes": "Secondary identifier copied into the active modifier record."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x40",
+          "name": "modifier_words",
+          "type": "uint32_t[16]",
+          "notes": "Sixteen modifier dwords copied into a freshly allocated 64-byte buffer."
+        }
+      ],
+      "notes": "Complete 0x48 consumed record at the start of s2c 0x0190 MassSetItemModifier. The record writer reads both identifiers and all sixteen modifier words.",
+      "id": "BCS-S-0328"
+    },
+    {
+      "name": "MassSetItemModifierPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x68",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0328",
+        "BCS-Y-0393",
+        "BCS-Y-0582",
+        "BCS-Y-0721",
+        "BCS-Y-0951",
+        "BCS-Y-0952",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/mass_set_item_modifier_cluster.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x48",
+          "name": "record",
+          "type": "MassSetItemModifierRecord",
+          "notes": "Consumed modifier record handled by the dedicated record writer."
+        },
+        {
+          "offset": "0x48",
+          "size": "0x20",
+          "name": "unknown_48",
+          "type": "unknown[0x20]",
+          "notes": "Closing application-payload span not read by the documented handler path."
+        }
+      ],
+      "notes": "Complete exact 0x68 application payload for s2c 0x0190 MassSetItemModifier, excluding the 0x10 game-message prefix. The packet is the repeated body in the begin/body/end bulk-modifier sequence.",
+      "id": "BCS-S-0329"
+    },
+    {
+      "name": "SetOccupancyGroupPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x40",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0395",
+        "BCS-Y-0575",
+        "BCS-Y-0885",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x10",
+          "name": "unknown_00",
+          "type": "unknown[0x10]",
+          "notes": "Group-header span passed through the property-updater path without stable internal boundaries in the retained direct decode."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "occupancy_work",
+          "type": "uint32_t[2]",
+          "notes": "Two occupancy-work dwords consumed by the group property updater."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "localized_name_id",
+          "type": "uint32_t",
+          "notes": "Localized-name identifier consumed alongside the occupancy name."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x24",
+          "name": "occupancy_name",
+          "type": "char[36]",
+          "notes": "Fixed-width occupancy-group name consumed by the updater."
+        }
+      ],
+      "notes": "Complete exact 0x40 application payload for s2c 0x0187 SetOccupancyGroup, excluding the 0x10 game-message prefix. The packet drives group occupancy or claim state through the SharedWork property-updater path.",
+      "id": "BCS-S-0330"
+    },
+    {
+      "name": "SetActorPropertyPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x88",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0170",
+        "BCS-Y-0392",
+        "manifests/data_dependency_catalog.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "running_byte_total",
+          "type": "uint8_t",
+          "notes": "Number of valid bytes in the following property stream."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x87",
+          "name": "property_stream",
+          "type": "uint8_t[135]",
+          "notes": "Fixed-capacity variable property stream containing tags, property identifiers, values, and target markers."
+        }
+      ],
+      "notes": "Complete exact 0x88 application payload for s2c 0x0137 SetActorProperty, excluding the 0x10 game-message prefix. Only running_byte_total bytes of the fixed-capacity stream are logically populated.",
+      "id": "BCS-S-0331"
+    },
+    {
+      "name": "SynchGroupWorkValuesPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0394",
+        "BCS-Y-0563",
+        "BCS-Y-0873",
+        "BCS-Y-1795",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/party_subsystem.json",
+        "manifests/sharedwork_gate_audit.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x08",
+          "name": "list_id",
+          "type": "uint64_t",
+          "notes": "Group-list identifier consumed before the property-stream update."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x01",
+          "name": "running_byte_total",
+          "type": "uint8_t",
+          "notes": "Number of valid bytes copied from the following property stream."
+        },
+        {
+          "offset": "0x09",
+          "size": "0x87",
+          "name": "property_stream",
+          "type": "uint8_t[135]",
+          "notes": "Fixed-capacity stream of tag, property-id, and tag-dependent value records."
+        }
+      ],
+      "notes": "Complete exact 0x90 application payload for s2c 0x017A SynchGroupWorkValues, excluding the 0x10 game-message prefix. The apply path copies running_byte_total stream bytes and applies them to group SharedWork state.",
+      "id": "BCS-S-0332"
+    },
+    {
+      "name": "HamletSupplyRankingPacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x5F0",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-S-0194",
+        "BCS-Y-0392",
+        "BCS-Y-0948",
+        "manifests/data_dependency_catalog.json",
+        "manifests/receiver_opcode_map_inbound.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x5F0",
+          "name": "entries",
+          "type": "ApplicationLuaScriptClientControlHamletSupplyRankingWireRecord[20]",
+          "notes": "Twenty fixed 0x4C supply-ranking records consumed by the ranking helper."
+        }
+      ],
+      "notes": "Complete decomp-inferred 0x5F0 application payload for s2c 0x01A6 HamletSupplyRanking, excluding the 0x10 game-message prefix. The content-gated receiver iterates exactly twenty wire records; no packet capture currently corroborates the extent.",
+      "id": "BCS-S-0333"
+    },
+    {
+      "name": "SetActorStatePacket",
+      "namespace": "FFXIV.Client.Network.Wire.S2C",
+      "size": "0x08",
+      "confidence": "structural",
+      "sourceRefs": [
+        "BCS-Y-0393",
+        "BCS-Y-0404",
+        "BCS-Y-0540",
+        "BCS-Y-0636",
+        "manifests/data_dependency_catalog.json",
+        "manifests/unmapped_payload_decoding.json",
+        "manifests/fun_0058cca0_walk.json"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x01",
+          "name": "main_state",
+          "type": "uint8_t",
+          "notes": "Low state byte isolated from the first payload dword and forwarded to the primary-state setter."
+        },
+        {
+          "offset": "0x01",
+          "size": "0x01",
+          "name": "cleared_state_byte",
+          "type": "uint8_t",
+          "notes": "Second payload byte explicitly cleared before the temporary state record reaches the helper; its wire-level meaning is unresolved."
+        },
+        {
+          "offset": "0x02",
+          "size": "0x06",
+          "name": "unknown_02",
+          "type": "unknown[0x06]",
+          "notes": "Closing payload span whose internal boundaries are not established by the documented state path."
+        }
+      ],
+      "notes": "Complete exact 0x08 application payload for s2c 0x0134 SetActorState, excluding the 0x10 game-message prefix. The third-router path isolates the low main-state byte and clears the adjacent byte before applying the state transition.",
+      "id": "BCS-S-0334"
     }
   ],
   "method": {
@@ -19857,6 +23836,236 @@
     "c426Output": "tools/ghidra/logs/c426_event-execution-nonblock-layout.txt",
     "c426ExistingEvidence": "BCS-S-0038 and BCS-Y-0474/0476 supplied the exact 0x2C node allocation, list placement, embedded payload construction at +0x08, callback guard at node+0x25, and queue-walker context. The retained catalog left the payload type undefined and represented its later fields as overlapping siblings.",
     "c426FreshEvidence": "C426 establishes the exact 0x24 embedded ExecutionClientSideNonBlockEvent extent, its base and derived construction and copy boundaries, the 0x10 vector of four-byte context keys, one-shot callback and ownership flags, selector, exact node link directions, virtual dispatch, and independent embedded-object teardown before exact 0x2C node deallocation.",
-    "c426Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf class varies by producer; the higher-level meanings of primary_context_key, context_keys, state_1c, and event_selector remain bounded to their observed storage and use. Three alignment bytes remain unknown-typed. No claim relies on instructions omitted after a noreturn free."
+    "c426Limits": "DumpVAs supplies direct bodies and call lists only for the fourteen requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf class varies by producer; the higher-level meanings of primary_context_key, context_keys, state_1c, and event_selector remain bounded to their observed storage and use. Three alignment bytes remain unknown-typed. No claim relies on instructions omitted after a noreturn free.",
+    "c427Topic": "C427 client-side block event layouts",
+    "c427ProjectMode": "Every headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c427Script": "ghidra/DumpVAs.java",
+    "c427Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c427_event-execution-block-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00895860,0x008958E0,0x00896680,0x008966F0,0x008962C0,0x00896950,0x00896F70,0x00892670,0x00892680,0x00892690,0x008926A0,0x00893160,0x008934A0,0x00893520,0x008935B0,0x00893800,0x00899490,0x0089B040,0x00897310' } -ScriptPath @('ghidra')",
+    "c427Inputs": "Shared base and block constructors; derived teardown; block dispatch and unpacked-order consumer; server-order gate; block-event virtual accessors and canceller; EndEvent state consumers; exact checker allocator and constructor; exact 0x2C state-machine allocation.",
+    "c427Output": "tools/ghidra/logs/c427_event-execution-block-layout.txt",
+    "c427ExistingEvidence": "BCS-Y-0473 and BCS-Y-0475 supplied the exact block-event allocation and dispatch context. manifests/event_block_execution_state.json supplied the retained RTTI identities, derived field roles, vtable-slot attribution, and exact nested checker allocation.",
+    "c427FreshEvidence": "C427 revalidates the exact 0x2C block-event allocation, layered construction, all base and derived member boundaries, block dispatch and server-order state transitions, the typed checker pointer, exact 0x0C checker allocation, checker construction, cancellation fields, and layered teardown.",
+    "c427Limits": "DumpVAs supplies direct bodies and call lists only for the nineteen requested functions. Vtable-slot identity comes from the retained investigation snapshot rather than fresh data-reference coverage. The concrete Event::Base leaf and unpacked-order payload record types vary or remain unresolved, state_22 has no promoted higher-level meaning, and four alignment bytes remain unknown-typed. No negative topology claim relies on the export or on a zero-result search.",
+    "c428Topic": "C428 reusable inventory item wire record",
+    "c428Scripts": "No new headless export was required; the retained C147 DumpVAs archive and tracked payload-decoding catalogs supplied the load-bearing evidence.",
+    "c428Inputs": "InventoryListX01/X08/X16/X32 payload layouts, the shared InventoryItemRecord deserializer finding, and the retained one-row wrapper decompilation.",
+    "c428Outputs": "BCS-S-0257 in manifests/structs.json; no new local evidence archive.",
+    "c428ExistingEvidence": "BCS-Y-0394/0395 establish reuse at exact 0x70 stride across four packet array sizes. BCS-Y-0702 and manifests/data_dependency_catalog.json supply all deserialized member widths and offsets. The retained C147 archive confirms the one-row packet wrapper calls the shared deserializer once.",
+    "c428FreshEvidence": "No fresh Ghidra read was made because a Java process was present at the exclusive-project preflight. Existing positive evidence was sufficient, so the investigation did not rely on a zero-result search or a negative project claim.",
+    "c428Limits": "The 0x40 modifier region remains opaque, and the final six bytes are unconsumed by the documented client parser. The layout claims their exact extents only. At C428, the adjacent ExecutionServerSideBlockEvent candidate remained incomplete because its derived +0x28 field was not yet established.",
+    "c429Topic": "C429 server-side block event layout",
+    "c429ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset after confirming no analysis-tool or Java process held the project.",
+    "c429Script": "ghidra/DumpVAs.java",
+    "c429Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c429_event-execution-server-block-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00895950,0x00895A30,0x00893DA0,0x008954E0,0x00895860,0x008958E0,0x0089E660,0x00893290' } -ScriptPath @('ghidra')",
+    "c429Inputs": "Server-side block-event constructor and state-machine allocator; EventStart staging consumer; derived teardown; shared execution and block constructors; owned-payload teardown and replacement helpers.",
+    "c429Output": "tools/ghidra/logs/c429_event-execution-server-block-layout.txt",
+    "c429ExistingEvidence": "BCS-Y-0432 and BCS-Y-1097 supplied the EventStart state-machine allocation context, exact +0x24 staging read, shared context vector, and downstream EventStart staging call. C314 supplied the concrete RTTI identity. C427 supplied the complete shared execution and block-base member boundaries and state roles.",
+    "c429FreshEvidence": "C429 revalidates both exact 0x2C allocations and layered construction, installs the server-side vftable, initializes the owned +0x24 pointer and the derived +0x28 byte, forwards +0x24 through EventStart staging, and independently destroys and frees the +0x24 payload during derived teardown.",
+    "c429Limits": "DumpVAs supplies direct bodies and call lists only for the eight requested functions. No negative topology claim relies on the export. The concrete Event::Base leaf, the +0x24 payload record type, the higher-level meanings of state_22 and state_28, and five alignment bytes remain unresolved. No load-bearing claim relies on decompiler output after a noreturn free.",
+    "c430Topic": "C430 reusable linked-item and group wire records",
+    "c430Scripts": "No new headless export was required; retained payload-decoding and subsystem catalogs supplied the load-bearing evidence.",
+    "c430Inputs": "LinkedItemList packet-family layouts, GroupMembersX08 member conversion, CreateNamedGroupMultiple row consumption, and their retained exact packet extents.",
+    "c430Outputs": "BCS-S-0259 through BCS-S-0261 in manifests/structs.json; no new local evidence archive.",
+    "c430ExistingEvidence": "BCS-Y-0394 and the equipment subsystem catalog establish the reusable three-word LinkedItemEntry across one-, eight-, sixteen-, thirty-two-, and sixty-four-row packets. BCS-Y-0395/0877 establish the 0x30 GroupMemberEntry fields through +0x2D and its eight-row use. BCS-Y-0396/0887 establish the 0x40 NamedGroupRecord identifier prefix, fixed name buffer, and eight-row use. Fixed packet extents close both group-record unknown spans.",
+    "c430FreshEvidence": "No fresh analysis read was required because the retained positive consumer and packet-stride evidence closes all three records. No claim relies on a zero-result search.",
+    "c430Limits": "The concrete meaning of GroupMemberEntry state_08 and flag_0c remains unresolved. Its final two bytes and NamedGroupRecord+0x12..+0x1F remain unknown-typed because the documented consumers do not interpret them. LinkedItemEntry semantic labels retain structural confidence because the equipment catalog calls for live confirmation even though all three word boundaries are direct.",
+    "c431Topic": "C431 complete event, quest, and group packet payloads",
+    "c431Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c431Inputs": "EndClientOrderEventReceiver construction and forwarding for s2c 0x0131; JobQuestCompleteTripleReceiver construction and receiver-map body shape for s2c 0x01A2; and the direct DeleteGroup tuple consumer for s2c 0x0143.",
+    "c431Outputs": "BCS-S-0262 through BCS-S-0264 in manifests/structs.json; no new local evidence archive.",
+    "c431ExistingEvidence": "BCS-Y-0032/0033 and BCS-Y-0390 establish the exact EndEvent actor, selector, and name boundaries. BCS-Y-0391 and BCS-Y-0902/0903/0905 establish the exact three-word JobQuestCompleteTriple receiver input. BCS-Y-0396 establishes the complete four-qword DeleteGroup tuple. Retained packet and receiver body shapes close all three application-payload extents.",
+    "c431FreshEvidence": "No fresh analysis read was required because existing positive consumers account for every byte of all three payloads. No claim relies on a zero-result search.",
+    "c431Limits": "The three JobQuestCompleteTriple qwords remain semantically opaque despite their exact widths and positions. EndEvent field roles retain structural confidence because the parent batch still requests live revalidation. DeleteGroup semantic labels are limited to the retained consumer's tuple roles. All three layouts are fully byte-accounted and contain no unknown-typed spans.",
+    "c432Topic": "C432 complete push-event condition packet payloads",
+    "c432Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c432Inputs": "SetPushEventConditionWithCircle, SetPushEventConditionWithFan, and SetPushEventConditionWithTriggerBox receiver inputs and their exact application-payload extents.",
+    "c432Outputs": "BCS-S-0265 through BCS-S-0267 in manifests/structs.json; no new local evidence archive.",
+    "c432ExistingEvidence": "BCS-Y-0390 and the retained data-dependency, mapped-payload, and inbound-receiver catalogs establish the exact receiver destinations, all named member widths and offsets, constant values, fixed string buffers, and packet extents for s2c 0x016F, 0x0170, and 0x0175.",
+    "c432FreshEvidence": "No fresh analysis read was required because existing positive consumer and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c432Limits": "The circle +0x0C and +0x37 bytes, fan +0x14 and +0x3F bytes, and trigger-box +0x0C and +0x3C bytes remain unknown-typed because retained consumers do not interpret them. Trigger-box +0x37 has known byte storage but unresolved meaning. The fan angle bounds remain raw uint32_t words rather than inferred floats. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c433Topic": "C433 compact event-condition packet payloads",
+    "c433Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c433Inputs": "SetTalkEventCondition, SetNoticeEventCondition, and SetEmoteEventCondition receiver inputs and their exact application-payload extents.",
+    "c433Outputs": "BCS-S-0268 through BCS-S-0270 in manifests/structs.json; no new local evidence archive.",
+    "c433ExistingEvidence": "BCS-Y-0743/0930, BCS-Y-0733/0734, and BCS-Y-0735/0736 establish the three receiver identities and positive consumer paths. BCS-Y-0390 and the retained mapped-payload catalogs establish every consumed member width and offset, the misaligned emote-id access, fixed condition-name buffers, and exact packet extents for s2c 0x012E, 0x016B, and 0x016C.",
+    "c433FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c433Limits": "The Talk and Notice +0x26 tails and Emote +0x27 tail remain unknown-typed because retained consumers do not interpret them. Talk and Emote +0x00 and Notice +0x01 have known byte storage but unresolved meanings. Notice +0x00 is bounded to an observed low selector with values including 1 and 0x0E. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c434Topic": "C434 complete event-flow packet payloads",
+    "c434Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c434Inputs": "KickEventPacket, RunEventFunctionPacket, and SetEventStatusPacket receiver inputs and their exact application-payload extents.",
+    "c434Outputs": "BCS-S-0271 through BCS-S-0273 in manifests/structs.json; no new local evidence archive.",
+    "c434ExistingEvidence": "BCS-Y-0028/0029, BCS-Y-0030/0031, and BCS-Y-0728/0729 establish the three receiver identities and positive consumer paths. BCS-Y-0390 and the retained mapped-payload catalogs establish every fixed member boundary, both serialized Lua-parameter buffer starts, and exact packet extents for s2c 0x012F, 0x0130, and 0x0136.",
+    "c434FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c434Limits": "The KickEvent magic17 and magic75dc fields at +0x09 and +0x0A have known scalar storage but only descriptive retained labels; their value semantics and higher-level roles remain unresolved. The two Lua-parameter fields are exact byte buffers whose internal variable-record formats are not promoted. RunEventFunction's 0x47-byte stream extent is bounded to the retained observed packet size. All three layouts are fully byte-accounted and contain no unknown-typed fields. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c435Topic": "C435 player mount-state packet payloads",
+    "c435Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c435Inputs": "SetCurrentMountGoobbuePacket, SetChocoboNamePacket, and SetHasGoobbuePacket receiver inputs and their exact application-payload extents.",
+    "c435Outputs": "BCS-S-0274 through BCS-S-0276 in manifests/structs.json; no new local evidence archive.",
+    "c435ExistingEvidence": "BCS-Y-0936/1046, BCS-Y-0938/1041, and BCS-Y-1047/1137 establish the three receiver identities and positive MyPlayer consumer paths. BCS-Y-0391 and the retained mapped-payload catalogs establish the leading goobbue bytes, fixed 32-byte chocobo-name buffer, bit-0 ownership use, and exact packet extents for s2c 0x01A0, 0x0198, and 0x01A1.",
+    "c435FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c435Limits": "SetCurrentMountGoobbue+0x01 and SetHasGoobbue+0x01 remain unknown-typed seven-byte tails because retained consumers only read the leading byte. The higher-level appearance-id value domain and ownership-byte bits other than bit 0 remain unresolved. SetChocoboName is fully byte-accounted with no unknown span. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c436Topic": "C436 achievement update packet payloads",
+    "c436Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c436Inputs": "AchievementEarnedPacket and SendAchievementRatePacket receiver inputs and their exact application-payload extents.",
+    "c436Outputs": "BCS-S-0277 through BCS-S-0278 in manifests/structs.json; no new local evidence archive.",
+    "c436ExistingEvidence": "BCS-Y-0038/0039 and BCS-Y-0040/0041 establish both receiver identities and positive achievement-helper consumer paths. BCS-Y-0391 and the retained mapped-payload catalogs establish the achievement id, progress count, progress flags, and exact packet extents for s2c 0x019E and 0x019F.",
+    "c436FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes both payloads. No claim relies on a zero-result search.",
+    "c436Limits": "AchievementEarned+0x04 and SendAchievementRate+0x0C remain unknown-typed four-byte tails because retained consumers do not interpret them. The individual progress_flags bit meanings remain unresolved. Both layouts retain structural confidence because the parent receiver batch still requests live revalidation.",
+    "c437Topic": "C437 compact actor-state packet payloads",
+    "c437Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c437Inputs": "SetActorTargetAnimatedPacket, SetActorIsZoningPacket, and SetRetainerStarPacket receiver inputs and their exact application-payload extents.",
+    "c437Outputs": "BCS-S-0279 through BCS-S-0281 in manifests/structs.json; no new local evidence archive.",
+    "c437ExistingEvidence": "BCS-Y-0049/0116, BCS-Y-0944/1814, and BCS-Y-0183/0607 establish the receiver or helper identities and positive consumer paths. BCS-Y-0391/0392 and the retained mapped-payload catalogs establish the consumed target id or flag fields and exact packet extents for s2c 0x00D3, 0x017B, and 0x018E.",
+    "c437FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c437Limits": "SetActorTargetAnimated+0x04 remains an unknown-typed four-byte tail, while SetActorIsZoning+0x01 and SetRetainerStar+0x01 remain unknown-typed seven-byte tails, because retained consumers do not interpret them. The nonzero value domains of both state bytes remain unresolved. Semantic confidence remains structural because the parent receiver batches still request live revalidation.",
+    "c438Topic": "C438 compact actor presentation packet payloads",
+    "c438Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c438Inputs": "SetActorSubStatePacket, SetActorIconPacket, and SetEnmityIndicatorPacket receiver inputs and their exact application-payload extents.",
+    "c438Outputs": "BCS-S-0282 through BCS-S-0284 in manifests/structs.json; no new local evidence archive.",
+    "c438ExistingEvidence": "BCS-Y-0121/0122/0443, BCS-Y-0045/0119/0146, and BCS-Y-0043/0090 establish the receiver identities and positive actor-state consumer paths. BCS-Y-0389 and the retained bound-payload catalogs establish all scalar widths and offsets and exact packet extents for s2c 0x0144, 0x0145, and 0x0195.",
+    "c438FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c438Limits": "SetActorSubState+0x05 remains an unknown-typed byte, SetActorIcon+0x04 remains an unknown-typed four-byte tail, and SetEnmityIndicator+0x06 remains an unknown-typed two-byte tail because retained consumers do not interpret them. Breakage, chant_id, guard, waste, and motion_pack retain their packet-layout labels without stronger consumer semantics. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c439Topic": "C439 compact player identity packet payloads",
+    "c439Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c439Inputs": "SetGrandCompanyPacket, SetPlayerTitlePacket, and SetCurrentJobPacket receiver inputs and their exact application-payload extents.",
+    "c439Outputs": "BCS-S-0285 through BCS-S-0287 in manifests/structs.json; no new local evidence archive.",
+    "c439ExistingEvidence": "BCS-Y-0932/1363, BCS-Y-0037/0084, and BCS-Y-0047/0100/0102/0103 establish the receiver identities and positive PlayerBase consumer paths. BCS-Y-0389 and the retained bound-payload catalogs establish every consumed scalar width and offset and exact packet extents for s2c 0x0194, 0x019D, and 0x01A4.",
+    "c439FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c439Limits": "SetGrandCompany+0x04 and SetPlayerTitle+0x04 remain unknown-typed four-byte tails, while SetCurrentJob+0x01 remains an unknown-typed seven-byte tail, because retained consumers do not interpret them. The title layout promotes only the low consumed uint32_t rather than inferring a wider serialized type, and the job layout promotes only the consumed low byte. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c440Topic": "C440 actor name and status snapshot payloads",
+    "c440Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c440Inputs": "SetActorNamePacket and SetActorStatusAllPacket receiver inputs, fixed buffers and arrays, and exact application-payload extents.",
+    "c440Outputs": "BCS-S-0288 through BCS-S-0289 in manifests/structs.json; no new local evidence archive.",
+    "c440ExistingEvidence": "BCS-Y-0160/0732/1365 establishes the display-name receiver path and its identifier, 32-byte name copy, and low kind byte. BCS-Y-0051/0124/0147 establishes the status receiver and worker path. BCS-Y-0389 and the retained bound-payload catalogs close the exact 0x28 extents and the twenty-element uint16 status array for s2c 0x013D and 0x0179.",
+    "c440FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes both payloads. No claim relies on a zero-result search.",
+    "c440Limits": "SetActorName+0x25 remains an unknown-typed three-byte tail because retained consumers do not interpret it. The display_name_kind value domain remains unresolved. SetActorStatusAll is fully byte-accounted with no unknown-typed field, but individual status-id semantics remain external to this wire layout. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c441Topic": "C441 compact chocobo and achievement payloads",
+    "c441Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c441Inputs": "SetCurrentMountChocoboPacket and SetAchievementPointsPacket receiver inputs and their exact application-payload extents.",
+    "c441Outputs": "BCS-S-0290 through BCS-S-0291 in manifests/structs.json; no new local evidence archive.",
+    "c441ExistingEvidence": "BCS-Y-0934/1361 establishes the chocobo-grade receiver path and its consumed appearance byte. BCS-Y-0035/0087 establishes the achievement-point receiver and MyPlayer writer path. BCS-Y-0389 and the retained bound-payload catalogs establish the rental fields, low achievement-point word, and exact packet extents for s2c 0x0197 and 0x019C.",
+    "c441FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes both payloads. No claim relies on a zero-result search.",
+    "c441Limits": "SetCurrentMountChocobo+0x06 remains an unknown-typed two-byte tail, and SetAchievementPoints+0x04 remains an unknown-typed four-byte tail, because retained consumers do not interpret them. The rental fields retain their packet-layout labels without a positive client consumer, and the achievement layout promotes only the consumed low uint32_t rather than inferring a wider serialized type. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c442Topic": "C442 actor log and limit message payloads",
+    "c442Scripts": "No new headless export was required; retained receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c442Inputs": "GameMessageWithActor1Packet and SendAddictionLimitMessagePacket receiver inputs and their exact application-payload extents.",
+    "c442Outputs": "BCS-S-0292 through BCS-S-0293 in manifests/structs.json; no new local evidence archive.",
+    "c442ExistingEvidence": "BCS-Y-0251/0956 and BCS-Y-0392 establish the SendLog receiver/parser path, fixed actor1 message members, single eight-byte parameter slot, and exact s2c 0x0157 extent. BCS-Y-0108/0109/0111 and BCS-Y-0392 establish the addiction-limit kind consumer, its tier mapping, and exact s2c 0x0192 extent.",
+    "c442FreshEvidence": "No fresh analysis read was required because existing positive receiver and packet-shape evidence closes both payloads. No claim relies on a zero-result search.",
+    "c442Limits": "SendAddictionLimitMessage+0x01 remains an unknown-typed seven-byte tail because retained consumers do not interpret it. GameMessageWithActor1 is fully byte-accounted, but the internal tagged representation of its eight-byte Lua-parameter slot is not promoted. TextSheetNoSourceX28Packet was reviewed but not started because retained evidence preserves competing receiver interpretations for opcode 0x0166. Semantic confidence remains structural because the parent receiver batch still requests live revalidation.",
+    "c443Topic": "C443 direct actor and player state payloads",
+    "c443Scripts": "No new headless export was required; retained dispatcher, receiver, payload-decoding, and packet-shape catalogs supplied the load-bearing evidence.",
+    "c443Inputs": "SetActorStatusPacket, SetPlayerItemStoragePacket, and SetPlayerDreamPacket consumer paths and exact application-payload extents.",
+    "c443Outputs": "BCS-S-0294 through BCS-S-0296 in manifests/structs.json; no new local evidence archive.",
+    "c443ExistingEvidence": "BCS-Y-0643/0697/0699/1067/1070 and BCS-Y-0394 establish the indexed status staging update and exact s2c 0x0177 extent. BCS-Y-0414/0940 and BCS-Y-0391 establish the 32-byte item-storage bitstream consumer and exact s2c 0x01A5 extent. BCS-Y-0658 and BCS-Y-0396 establish the dream-id and inn-id reads and exact s2c 0x01A7 extent.",
+    "c443FreshEvidence": "No fresh analysis read was required because existing positive consumer and packet-shape evidence closes all three payloads. No claim relies on a zero-result search.",
+    "c443Limits": "SetActorStatus+0x04 remains an unknown-typed four-byte tail, SetPlayerItemStorage+0x20 remains an unknown-typed 16-byte tail, and SetPlayerDream+0x02 remains an unknown-typed six-byte tail because retained consumers do not interpret them. The actor-status path consumes only the low index byte, so no narrower wire type is inferred over the retained uint16 field. Individual item-storage bit meanings remain outside this layout. Semantic confidence remains structural because the parent payload batches still request live revalidation.",
+    "c444Topic": "C444 group member transfer packet sequence",
+    "c444Scripts": "No new headless export was required; retained group handlers, nested-record evidence, payload decoding, and packet extents supplied the load-bearing evidence.",
+    "c444Inputs": "GroupMembersBeginPacket, GroupMembersX08Packet, GroupMembersEndPacket, and the existing complete GroupMemberEntry record.",
+    "c444Outputs": "BCS-S-0297 through BCS-S-0299 in manifests/structs.json; no new local evidence archive.",
+    "c444ExistingEvidence": "BCS-Y-0565/0875 and BCS-Y-0393 establish the begin framing fields and exact s2c 0x017D extent. BCS-Y-0567/0877 and BCS-Y-0395 establish the two framing values, eight 0x30 GroupMemberEntry rows, count word, and exact s2c 0x017F extent. BCS-Y-0566/0876 and BCS-Y-0393 establish the three end framing fields and exact s2c 0x017E extent. Existing BCS-S-0260 supplies the complete nested member-row type.",
+    "c444FreshEvidence": "No fresh analysis read was required because existing positive handlers and packet-shape evidence close all three payloads. No claim relies on a zero-result search.",
+    "c444Limits": "GroupMembersBegin+0x1C and GroupMembersX08+0x194 remain unknown-typed four-byte tails because retained consumers do not interpret them. GroupMembersX08 consumes only the low count byte, so no narrower wire type is inferred over the retained uint32 field. GroupMembersEnd is fully byte-accounted with no unknown field. Unknown members inside GroupMemberEntry retain the limits already recorded by BCS-S-0260. Semantic confidence remains structural because the parent payload batches still request live revalidation.",
+    "c445Topic": "C445 content member transfer packet layout",
+    "c445Scripts": "ghidra/DumpVAs.java",
+    "c445ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No process held the project before invocation.",
+    "c445Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c445_content-member-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00576320,0x006C3100,0x006C3150' } -ScriptPath @('ghidra')",
+    "c445Inputs": "s2c 0x0183 dispatcher thunk 0x00576320, ContentMembersX08 append helper 0x006C3100, and ContentMembersX16 sibling calibration helper 0x006C3150",
+    "c445Output": "tools/ghidra/logs/c445_content-member-layout.txt",
+    "c445ExistingEvidence": "BCS-Y-0393 and the retained payload catalogs establish the exact 0x78 application-payload extent, two uint64 framing values, eight 0x0C rows, actor and layout dwords within each row, and the byte-count position. BCS-Y-0571 and BCS-Y-0881 establish the dispatcher and SharedWork append identities.",
+    "c445FreshEvidence": "The read-only X08 helper body passes rows from payload+0x10 and reads the count byte at payload+0x70. The adjacent X16 helper supplies a positive sibling-shape calibration with the same framing extraction and a constant count of 16.",
+    "c445Limits": "The third ContentMemberEntry dword remains unknown-typed because retained decoding provides no stable semantic interpretation. ContentMembersX08+0x71 remains an unknown-typed seven-byte tail because the helper reads only the byte at +0x70. The fresh export covers only the three requested functions and supplies no negative reference-topology claim.",
+    "c446Topic": "C446 inventory list packet family",
+    "c446Scripts": "No new headless export was required; retained inventory handlers, payload decoding, packet extents, and the existing nested record supplied the load-bearing evidence.",
+    "c446Inputs": "InventoryListX01Packet, InventoryListX08Packet, InventoryListX16Packet, InventoryListX32Packet, and existing BCS-S-0257 InventoryItemRecord.",
+    "c446Outputs": "BCS-S-0302 through BCS-S-0305 in manifests/structs.json; no new local evidence archive.",
+    "c446ExistingEvidence": "BCS-Y-0394/0395 and the retained payload catalogs establish exact packet extents and fixed 0x70 row counts for s2c 0x0148 through 0x014B. BCS-Y-0545 through BCS-Y-0548 and BCS-Y-0704/0705/0709/0710 establish the dedicated dispatcher paths. Existing BCS-S-0257 supplies the complete nested inventory-item row type.",
+    "c446FreshEvidence": "No fresh analysis read was required because existing positive handlers, packet-shape evidence, and nested-record evidence close all four payloads. No claim relies on a zero-result search.",
+    "c446Limits": "InventoryListX08+0x384 remains an unknown-typed four-byte tail because the retained handler does not interpret it. The X08 handler consumes only the low item-count byte, so no narrower wire type is inferred over the retained uint32_t field. X01, X16, and X32 have no packet-level unknown spans. Unknown members inside InventoryItemRecord retain the limits already recorded by BCS-S-0257.",
+    "c447Topic": "C447 linked item list packet pair",
+    "c447Scripts": "No new headless export was required; retained linked-item handlers, payload decoding, packet extents, and the existing nested record supplied the load-bearing evidence.",
+    "c447Inputs": "LinkedItemListX01Packet, LinkedItemListX08Packet, and existing BCS-S-0259 LinkedItemEntry.",
+    "c447Outputs": "BCS-S-0306 and BCS-S-0307 in manifests/structs.json; no new local evidence archive.",
+    "c447ExistingEvidence": "BCS-Y-0396 and the retained payload catalogs establish the three X01 words and exact s2c 0x014D extent. BCS-Y-0394 establishes eight 0x06 rows, the count word, and exact s2c 0x014E extent. BCS-Y-0550/0551 and BCS-Y-0712/0706 establish the dedicated dispatcher paths. Existing BCS-S-0259 supplies the complete nested linked-item row type.",
+    "c447FreshEvidence": "No fresh analysis read was required because existing positive handlers, packet-shape evidence, and nested-record evidence close both payloads. No claim relies on a zero-result search.",
+    "c447Limits": "LinkedItemListX01+0x06 and LinkedItemListX08+0x34 remain unknown-typed closing spans because retained consumers do not interpret them. The X08 handler consumes only the low item-count byte, so no narrower wire type is inferred over the retained uint32_t field. X16, X32, and X64 linked-item variants were screened but not started because retained evidence does not establish their exact packet extents.",
+    "c448Topic": "C448 compact inventory control packets",
+    "c448Scripts": "No new headless export was required; retained inventory handlers, payload decoding, and exact packet extents supplied the load-bearing evidence.",
+    "c448Inputs": "InventorySetBeginPacket, InventoryBeginChangePacket, and InventoryRemoveX01Packet consumer paths and exact application-payload extents.",
+    "c448Outputs": "BCS-S-0308 through BCS-S-0310 in manifests/structs.json; no new local evidence archive.",
+    "c448ExistingEvidence": "BCS-Y-0393/0544/0703 establish the three InventorySetBegin members and exact s2c 0x0146 extent. BCS-Y-0394/0560/0707 establish the InventoryBeginChange byte and exact s2c 0x016D extent. BCS-Y-0396/0555/0716 establish the InventoryRemoveX01 slot word and exact s2c 0x0152 extent. The retained payload and equipment catalogs corroborate all three dedicated paths.",
+    "c448FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close all three payloads. No claim relies on a zero-result search.",
+    "c448Limits": "InventoryBeginChange+0x01 and InventoryRemoveX01+0x02 remain unknown-typed closing spans because retained consumers do not interpret them. InventorySetBegin is fully byte-accounted with no unknown field, but the higher-level domains of size and code remain unresolved. InventoryEndChange was screened but not started because its handler consumes no payload pointer and all eight payload bytes remain opaque.",
+    "c449Topic": "C449 command result header and compact packets",
+    "c449Scripts": "No new headless export was required; retained command-result staging consumers, corrected payload decoding, and exact packet extents supplied the load-bearing evidence.",
+    "c449Inputs": "Shared CommandResultHeader, CommandResultX00Packet, and CommandResultX01Packet consumer paths and exact application-payload extents.",
+    "c449Outputs": "BCS-S-0311 through BCS-S-0313 in manifests/structs.json; no new local evidence archive.",
+    "c449ExistingEvidence": "BCS-Y-0408 and the retained data-dependency catalog establish the shared 0x28 header, including the corrected separate row_count and header_control_value words. BCS-Y-0395/0405/0640 establish the exact header-only s2c 0x013C payload. BCS-Y-0393/0406/0638 establish all six single-row values and exact s2c 0x0139 extent.",
+    "c449FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close the header and both compact payloads. No claim relies on a zero-result search.",
+    "c449Limits": "CommandResultHeader+0x08 remains an unknown-typed 0x18-byte block because retained consumers copy it without establishing internal member boundaries. CommandResultX01+0x36 remains an unknown-typed two-byte tail. header_control_value has known uint16_t storage and a distinct consumer but unresolved higher-level semantics. X10 and X18 were screened as follow-up structure-of-arrays packets but not started in this bounded batch.",
+    "c450Topic": "C450 command-result sparse-array packets",
+    "c450Scripts": "No new headless export was required; retained positive stager evidence and exact packet extents supplied the load-bearing evidence.",
+    "c450Inputs": "CommandResultX10Packet and CommandResultX18Packet stager paths, shared BCS-S-0311 CommandResultHeader, and exact application-payload extents.",
+    "c450Outputs": "BCS-S-0314 and BCS-S-0315 in manifests/structs.json; no new local evidence archive.",
+    "c450ExistingEvidence": "BCS-Y-0408 establishes the shared 0x28 header. BCS-Y-0410 and the retained 0x013A payload catalogs establish six ten-element arrays at +0x28 through +0xAA and the exact 0xB8 payload. BCS-Y-0415/0416 and the retained combat-damage catalogs establish the corresponding eighteen-element arrays at +0x28 through +0x112 and the exact 0x128 payload.",
+    "c450FreshEvidence": "No fresh analysis read was required because existing positive consumers and exact packet-shape evidence close both layouts. No claim relies on a zero-result search.",
+    "c450Limits": "CommandResultX10+0xB4 and CommandResultX18+0x124 remain unknown-typed four-byte closing spans because the documented stagers do not interpret them. Both nested CommandResultHeader fields retain the internally opaque +0x08 block recorded by BCS-S-0311. No runtime capture exists for 0x013B, but its complete static shape is established by the positive eighteen-target stager and packet extent; no runtime-value claim is made.",
+    "c451Topic": "C451 party map-marker packet and nested record",
+    "c451Scripts": "No new headless export was required; retained positive marker-apply evidence, the party subsystem layout, and exact packet extents supplied the load-bearing evidence.",
+    "c451Inputs": "PartyMapMarkerUpdatePacket, its sixteen-entry PartyMapMarkerEntry array, the direct handler and apply path, and exact application-payload extents.",
+    "c451Outputs": "BCS-S-0316 and BCS-S-0317 in manifests/structs.json; no new local evidence archive.",
+    "c451ExistingEvidence": "BCS-Y-0890 and the retained payload and party catalogs establish the 0x28 marker stride, player identifier, two additional consumed dwords, four float coordinates, sixteen-record capacity, marker-count byte, and exact 0x298 application payload. BCS-Y-0580 establishes the dedicated 0x018D handler path. Retained packet observations corroborate the fixed wire extent.",
+    "c451FreshEvidence": "No fresh analysis read was required because existing positive consumers, subsystem layout evidence, and packet-shape evidence close both records. No claim relies on a zero-result search.",
+    "c451Limits": "PartyMapMarkerEntry+0x04, +0x10, and +0x24 remain unknown-typed four-byte spans because the documented consumer does not interpret them. The typed dwords at +0x08 and +0x0C have unresolved higher-level semantics. PartyMapMarkerUpdate+0x0C remains an unknown-typed header dword and +0x291 remains an unknown-typed seven-byte tail. The zone-owned +0x4D8 gate belongs to the handler owner rather than this wire layout and remains outside this batch.",
+    "c452Topic": "C452 named-group and active-linkshell packets",
+    "c452Scripts": "No new headless export was required; retained positive group consumers, the existing nested record, and exact packet extents supplied the load-bearing evidence.",
+    "c452Inputs": "CreateNamedGroupMultiplePacket with existing BCS-S-0261 NamedGroupRecord, SetActiveLinkshellPacket, their dedicated handlers and consumers, and exact application-payload extents.",
+    "c452Outputs": "BCS-S-0318 and BCS-S-0319 in manifests/structs.json; no new local evidence archive.",
+    "c452ExistingEvidence": "BCS-Y-0396/0577/0887 and the retained payload catalogs establish eight 0x40 NamedGroupRecord rows, the +0x200 count byte, and the exact 0x208 bulk-group payload. BCS-Y-0396/0578/0888 establish the eight linkshell identifiers, eight paired group types, the low-byte +0x60 consumer, and the exact 0x78 active-linkshell payload.",
+    "c452FreshEvidence": "No fresh analysis read was required because existing positive consumers, nested-record evidence, and packet-shape evidence close both layouts. No claim relies on a zero-result search.",
+    "c452Limits": "CreateNamedGroupMultiple+0x201 remains an unknown-typed seven-byte tail, and each nested NamedGroupRecord retains its existing unknown +0x12..+0x1F span. SetActiveLinkshell+0x61 remains an unknown-typed three-byte span because only the low byte at +0x60 is consumed; +0x64 remains an unknown-typed 0x14-byte tail. The higher-level role of +0x60 as both retained active index and iteration bound is not narrowed further.",
+    "c453Topic": "C453 group header and layout packets",
+    "c453Scripts": "No new headless export was required; retained positive group consumers, subsystem layouts, and exact packet extents supplied the load-bearing evidence.",
+    "c453Inputs": "GroupHeaderPacket and SetGroupLayoutIdPacket dedicated handlers, downstream consumers, and exact application-payload extents.",
+    "c453Outputs": "BCS-S-0320 and BCS-S-0321 in manifests/structs.json; no new local evidence archive.",
+    "c453ExistingEvidence": "BCS-Y-0393/0564/0874 and the retained payload and party catalogs establish all GroupHeader scalar, name, control-word, and member-count boundaries plus the exact 0x78 extent. BCS-Y-0394/0579/0889 establish the complete SetGroupLayoutId identifier, layout, byte, and name boundaries plus the exact 0x38 extent.",
+    "c453FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close both layouts. No claim relies on a zero-result search.",
+    "c453Limits": "GroupHeader+0x34 remains an unknown-typed 0x0C-byte span because the documented consumer does not interpret it. secondary_list_id and the four group_control_words have known storage boundaries but unresolved higher-level meanings. SetGroupLayoutId contains no unknown-typed span, but actor_id_or_handle and value_15 retain unresolved semantics. The parent party catalog requests live validation for its semantic labels; this batch makes only structural claims.",
+    "c454Topic": "C454 event state packet layouts",
+    "c454Scripts": "No new headless export was required; retained positive event-state consumers and exact packet extents supplied the load-bearing evidence.",
+    "c454Inputs": "SetCutsceneBookPacket and SetSpecialEventWorkPacket dedicated handlers, downstream consumers, and exact application-payload extents.",
+    "c454Outputs": "BCS-S-0322 and BCS-S-0323 in manifests/structs.json; no new local evidence archive.",
+    "c454ExistingEvidence": "BCS-Y-0396/0587 and the retained payload and bundled-receiver catalogs establish the SetCutsceneBook control fields, 0x101-byte packed flag array, 32-byte SNPC name, and exact 0x130 extent. BCS-Y-0395/0585 establish the SetSpecialEventWork flag byte, eight uint16_t work values, and exact 0x18 extent.",
+    "c454FreshEvidence": "No fresh analysis read was required because existing positive consumers and packet-shape evidence close both layouts. No claim relies on a zero-result search.",
+    "c454Limits": "SetCutsceneBook+0x129 remains an unknown-typed seven-byte tail. SetSpecialEventWork+0x00 and +0x12 remain unknown-typed one-byte and six-byte spans because the documented handler does not interpret them. Achievement packet candidates were screened but not started because their retained handlers are null-stub trampolines and their semantic labels still require live revalidation.",
+    "c455Topic": "C455 compact serverbound builder layouts",
+    "c455Scripts": "No new headless export was required; retained builder decoding, outbound mappings, and an existing SetTarget read-only archive supplied the load-bearing evidence.",
+    "c455Inputs": "UpdatePlayerPositionPacket, SetTargetPacket, UpdateItemPackagePacket, and ItemWorkUpdatePacket builders and exact application-payload extents.",
+    "c455Outputs": "BCS-S-0324 through BCS-S-0327 in manifests/structs.json; no new local evidence archive.",
+    "c455ExistingEvidence": "BCS-Y-0375/0388 establish the 0x00CA timestamp, four floats, movement word, and exact 0x20 extent. BCS-Y-0388/0988 and the C168 archive establish both 0x00CD dwords and exact 0x08 extent. BCS-Y-0382/0388 establish the 0x0131 actor dword, package byte, and exact 0x08 extent. BCS-Y-0383/0388 establish the 0x0132 identifier, work selector, work value, and exact 0x08 extent.",
+    "c455FreshEvidence": "No fresh analysis read was required because retained positive builders close all four layouts. No claim relies on a zero-result search.",
+    "c455Limits": "UpdatePlayerPosition+0x1A remains an unknown-typed six-byte span within the final eight-byte copy. UpdateItemPackage+0x05 and ItemWorkUpdate+0x07 remain unknown-typed closing spans because the builders do not initialize them as named members. SetTarget is fully byte-accounted, but attack_target retains the broad semantic label from the retained builder decoding. LockTarget was screened but not started because its second dword lacks an explicit write in the retained evidence.",
+    "c456Topic": "C456 modifier record and occupancy layouts",
+    "c456Scripts": "No new headless export was required; retained record-writer, group-updater, payload-decoding, and exact packet-extent evidence supplied the load-bearing boundaries.",
+    "c456Inputs": "MassSetItemModifierRecord, its parent MassSetItemModifierPacket, and SetOccupancyGroupPacket consumer paths and exact application-payload extents.",
+    "c456Outputs": "BCS-S-0328 through BCS-S-0330 in manifests/structs.json; no new local evidence archive.",
+    "c456ExistingEvidence": "BCS-Y-0393/0951/0952 establish the two modifier identifiers and sixteen-dword block consumed as an exact 0x48 record; the retained payload catalogs establish the parent packet's exact 0x68 application extent. BCS-Y-0395/0575/0885 establish the SetOccupancyGroup updater path, the two occupancy-work dwords, localized-name dword, 36-byte name, and exact 0x40 extent.",
+    "c456FreshEvidence": "No fresh analysis read was required because retained positive consumers and packet-shape evidence close all three layouts. No claim relies on a zero-result search.",
+    "c456Limits": "MassSetItemModifier+0x48 remains an unknown-typed 0x20-byte tail because the documented record writer reads only the first 0x48 application bytes. SetOccupancyGroup+0x00 remains an unknown-typed 0x10-byte header because the retained direct decode passes that span onward without stable internal boundaries. Semantic labels for occupancy ownership remain structural pending live revalidation. MapServerbound c2s 0x0130 was screened but not started because its four dwords have exact widths but conflicting higher-level use labels across retained evidence.",
+    "c457Topic": "C457 property streams and ranking packet",
+    "c457Scripts": "No new headless export was required; retained property-stream consumers, the existing Hamlet wire record, and exact or decomp-inferred packet extents supplied the load-bearing evidence.",
+    "c457Inputs": "SetActorPropertyPacket, SynchGroupWorkValuesPacket, HamletSupplyRankingPacket, and existing BCS-S-0194 Hamlet supply-ranking wire records.",
+    "c457Outputs": "BCS-S-0331 through BCS-S-0333 in manifests/structs.json; no new local evidence archive.",
+    "c457ExistingEvidence": "BCS-Y-0170/0392 establish the SetActorProperty length byte, 135-byte stream capacity, and exact 0x88 extent. BCS-Y-0394/0563/0873/1795 establish the SynchGroupWorkValues list identifier, length byte, 135-byte stream capacity, and exact 0x90 extent. BCS-Y-0392/0948 and BCS-S-0194 establish twenty exact 0x4C ranking records and the decomp-inferred 0x5F0 HamletSupplyRanking extent.",
+    "c457FreshEvidence": "No fresh analysis read was required because retained positive consumers and the existing nested wire record close all three layouts. No claim relies on a zero-result search.",
+    "c457Limits": "The two property_stream arrays have exact byte capacities, but their internal record boundaries remain variable and tag-dependent; only running_byte_total bytes are logically valid. HamletSupplyRanking has no packet-level unknown span, but each nested BCS-S-0194 record retains two unknown-typed 0x20-byte text sources and one unread closing byte. Its size is decomp-inferred because no packet capture is available. HamletDefenseScore was screened but not started because its incoming 0x1C record remains unsplit and the existing same-sized BCS-S-0193 is a converted runtime cache rather than the wire record.",
+    "c458Topic": "C458 actor state packet layout",
+    "c458Scripts": "No new headless export was required; retained third-router decoding, the primary-state setter, and the exact packet extent supplied the load-bearing evidence.",
+    "c458Inputs": "SetActorStatePacket third-router path, temporary state-record handling, primary-state setter, and exact application-payload extent.",
+    "c458Outputs": "BCS-S-0334 in manifests/structs.json; no new local evidence archive.",
+    "c458ExistingEvidence": "BCS-Y-0393/0404/0540 establish the exact 0x08 payload, the low-byte mask over the first dword, and the adjacent-byte clear. BCS-Y-0636 establishes the downstream primary-state setter that consumes the isolated state value.",
+    "c458FreshEvidence": "No fresh analysis read was required because retained positive instructions and packet-shape evidence close the layout. No claim relies on a zero-result search.",
+    "c458Limits": "SetActorState+0x02 remains an unknown-typed six-byte closing span. cleared_state_byte has exact uint8_t storage and documented clearing behavior, but its original wire meaning is unresolved. The payload's retained semantic labels still request live revalidation. S2c 0x0132 was screened but not started because retained symbol and packet catalogs conflict on its payload size. TextSheetNoSourceX28 was screened but not started because the retained direct consumer does not establish every proposed field boundary and the receiver mapping has a competing variant."
   }
 }
