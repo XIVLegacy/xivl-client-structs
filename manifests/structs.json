@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 431,
+  "structCount": 433,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -27517,6 +27517,97 @@
       ],
       "notes": "Complete exact 0x08 ChangeActorSubStatModeBorderReceiver layout. The slow-path factory fixes the boundary, construction writes the vftable and border byte, and the apply path consumes that byte after a CharaBase type check.",
       "id": "BCS-S-0431"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkHateStatusReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c505_hate-target-time-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::HateStatusReceiver vftable at 0x0105733C."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "hate_value",
+          "type": "uint32_t",
+          "notes": "Constructor-copied hate value. The apply path writes it to NpcBase+0x154 after an ActorBase-to-NpcBase RTTI cast."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x02",
+          "name": "hate_flag",
+          "type": "uint16_t",
+          "notes": "Constructor-supplied hate flag. The apply path writes it to NpcBase+0x158."
+        },
+        {
+          "offset": "0x0A",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x0C allocation."
+        }
+      ],
+      "notes": "Complete exact 0x0C HateStatusReceiver layout. The heap factory fixes the boundary, construction accounts for the vftable and two values, and the apply path consumes both values as adjacent NpcBase state.",
+      "id": "BCS-S-0432"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkSetTargetTimeReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/symbols.json",
+        "tools/ghidra/logs/c505_hate-target-time-receiver-layouts.txt"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Lua::Script::Client::Command::Network::SetTargetTimeReceiver vftable at 0x010573F4."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "target_time_high",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied high time component. The apply path multiplies it by 1000 before adding target_time_low."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "target_time_low",
+          "type": "uint32_t",
+          "notes": "Constructor-supplied low time component added to target_time_high times 1000 before comparison with the current clock."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x02",
+          "name": "target_kind",
+          "type": "uint16_t",
+          "notes": "Low half of the constructor-supplied closing dword. The apply path masks the dword with 0xFFFF and forwards this value to both timing paths."
+        },
+        {
+          "offset": "0x0E",
+          "size": "0x02",
+          "name": "target_kind_upper",
+          "type": "unknown[0x02]",
+          "notes": "Upper half of the constructor-supplied closing dword. The observed apply path masks these bytes away, so their narrower role remains unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x10 SetTargetTimeReceiver layout. The heap factory fixes the boundary, construction writes three complete dwords after the vftable, and the apply path consumes the two time components plus the low half of the closing dword.",
+      "id": "BCS-S-0433"
     }
   ],
   "method": {
@@ -28897,6 +28988,17 @@
     "c504StructOutputs": "BCS-S-0428 through BCS-S-0431 in manifests/structs.json.",
     "c504ExistingEvidence": "BCS-Y-0121/0122, BCS-Y-0931 through BCS-Y-0938, BCS-Y-0943/0944, BCS-Y-1338/1341/1345/1347, BCS-Y-1360/1363/1364, BCS-Y-1420, and BCS-Y-1814 preserve the four class identities, constructor field maps, consumer roles, and factory relationships.",
     "c504FreshEvidence": "The twelve-section export reproduces all four factories, constructors, and consumers. ChocoboReceiver construction writes a dword at +0x04 and bytes at +0x08/+0x09, all forwarded together by its consumer. GrandCompanyReceiver writes and forwards four bytes at +0x04 through +0x07. The remaining two constructors and consumers use one byte at +0x04. The direct instruction audit supplies one exact 0x0C and three exact 0x08 allocation boundaries hidden by factory pseudocode.",
-    "c504Limits": "ChocoboReceiver tail_padding and the two one-byte receiver tail_padding fields remain unknown-typed because construction does not write them and the exact allocations only fix their extents. ChocoboReceiver state_04/state_08/state_09 and GrandCompanyReceiver state_04 through state_07 have established widths and grouped consumer paths, but their narrower per-field semantics remain unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the twelve requested functions and does not establish arbitrary reference topology. The factory decompiler omits all four allocator arguments; exact sizes rely on the positive instruction audit. No candidate was started and left incomplete in this batch."
+    "c504Limits": "ChocoboReceiver tail_padding and the two one-byte receiver tail_padding fields remain unknown-typed because construction does not write them and the exact allocations only fix their extents. ChocoboReceiver state_04/state_08/state_09 and GrandCompanyReceiver state_04 through state_07 have established widths and grouped consumer paths, but their narrower per-field semantics remain unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the twelve requested functions and does not establish arbitrary reference topology. The factory decompiler omits all four allocator arguments; exact sizes rely on the positive instruction audit. No candidate was started and left incomplete in this batch.",
+    "c505Topic": "C505 HateStatusReceiver and SetTargetTimeReceiver layouts",
+    "c505Scripts": "ghidra/DumpVAs.java",
+    "c505ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c505Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c505_hate-target-time-receiver-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0075A160,0x0089CF60,0x0089CFD0,0x0089D030,0x007626A0,0x00759F50,0x0089DFA0,0x0089E010,0x008A04B0,0x007623A0' } -ScriptPath @('ghidra')",
+    "c505Inputs": "HateStatusReceiver wrapper 0x0075A160, constructor 0x0089CF60, destructor 0x0089CFD0, apply 0x0089D030, and heap factory 0x007626A0; SetTargetTimeReceiver wrapper 0x00759F50, constructor 0x0089DFA0, destructor 0x0089E010, apply 0x008A04B0, and heap factory 0x007623A0.",
+    "c505Output": "tools/ghidra/logs/c505_hate-target-time-receiver-layouts.txt",
+    "c505InstructionAudit": "A pefile and capstone walk decoded the complete defined factory bodies from the configured client image. PUSH 0x0C at 0x007626CB immediately precedes the sole HateStatusReceiver allocator call at 0x007626D1. PUSH 0x10 at 0x007623C6 immediately precedes the sole SetTargetTimeReceiver allocator call at 0x007623C8.",
+    "c505StructOutputs": "BCS-S-0432 and BCS-S-0433 in manifests/structs.json.",
+    "c505ExistingEvidence": "BCS-Y-0042/0043, BCS-Y-0088 through BCS-Y-0090, BCS-Y-0609, BCS-Y-1434, BCS-Y-0048/0049, BCS-Y-0115 through BCS-Y-0117, BCS-Y-0598, and BCS-Y-1446 preserve the two class identities, exact-size claims, constructor field maps, consumer roles, and factory relationships.",
+    "c505FreshEvidence": "The ten-section export reproduces both wrappers, constructors, destructors, apply methods, and heap factories. HateStatusReceiver construction writes a dword at +0x04 and a word at +0x08, both consumed by its apply path. SetTargetTimeReceiver construction writes dwords at +0x04, +0x08, and +0x0C; its apply path consumes both time components and masks the closing dword to its low 16 bits. The direct instruction audit independently fixes the exact 0x0C and 0x10 allocation boundaries hidden by factory pseudocode.",
+    "c505Limits": "HateStatusReceiver tail_padding remains unknown-typed because construction does not write it and the exact allocation only fixes its extent. SetTargetTimeReceiver target_kind_upper remains unknown-typed because construction copies it as part of the closing dword but the observed apply path masks it away. DumpVAs supplies direct bodies and caller/callee lists only for the ten requested functions and does not establish arbitrary reference topology. The factory decompiler omits both allocator arguments; exact sizes rely on the positive instruction audit. No candidate was started and left incomplete in this batch."
   }
 }
