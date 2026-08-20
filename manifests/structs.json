@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 452,
+  "structCount": 453,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -28640,6 +28640,55 @@
       ],
       "notes": "Complete exact 0x5C SetEventStatusReceiver layout. The heap factory fixes the allocation boundary, construction accounts for the inline condition name and two closing state bytes, receive consumes every non-padding field, and destruction releases the inline string.",
       "id": "BCS-S-0452"
+    },
+    {
+      "name": "ApplicationLuaScriptClientCommandNetworkAchievementAchievedCountReceiver",
+      "namespace": "Application::Lua::Script::Client::Command::Network",
+      "size": "0x10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c517_achievement-achieved-count-receiver-layout.txt",
+        "BCS-S-0278",
+        "BCS-Y-0040",
+        "BCS-Y-0041",
+        "BCS-Y-0143",
+        "BCS-Y-0652",
+        "BCS-Y-1131",
+        "BCS-Y-1132",
+        "BCS-Y-1641"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "AchievementAchievedCountReceiver vftable at 0x010572D0."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "achievement_id",
+          "type": "uint32_t",
+          "notes": "Copy of the packet achievement_id dword, forwarded to the achievement-rate Lua callback path."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "progress_count",
+          "type": "uint32_t",
+          "notes": "Copy of the packet progress_count dword, forwarded to the achievement-rate Lua callback path."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "progress_flags",
+          "type": "uint32_t",
+          "notes": "Copy of the packet progress_flags dword, forwarded to the achievement-rate Lua callback path; individual bit meanings remain unresolved."
+        }
+      ],
+      "notes": "Complete exact 0x10 AchievementAchievedCountReceiver layout. The LuaActorImpl wrapper's stack partition fixes the object boundary immediately before its security cookie, construction copies three packet dwords after the vftable, and receive forwards all three values through the achievement-rate callback path.",
+      "id": "BCS-S-0453"
     }
   ],
   "method": {
@@ -30149,6 +30198,17 @@
     "c516StructOutputs": "BCS-S-0452 in manifests/structs.json.",
     "c516ExistingEvidence": "BCS-S-0135 supplies the exact 0x54 inline-string layout. BCS-S-0273 supplies the exact SetEventStatus packet with enabled at +0x00, condition_type at +0x04, and condition_name at +0x05. BCS-Y-0092, BCS-Y-0596, and BCS-Y-0728 through BCS-Y-0730 preserve the LuaActorImpl slot, wire route, receiver identity, receive role, and event-status apply role.",
     "c516FreshEvidence": "The eight-section closing export reproduces both construction paths, constructor, destructor, receive method, apply helper, and both byte-copy helpers. Construction places the inline string at +0x04, condition_type at +0x58, and the low enabled byte at +0x59. Receive forwards all three values, the apply helper switches on condition_type and forwards enabled, and destruction releases the inline string. The positive instruction audit fixes the object at exact size 0x5C.",
-    "c516Limits": "tail_padding remains unknown-typed because construction writes only through +0x59 and the exact allocation fixes two unread closing bytes. The receiver intentionally stores only the low byte of the packet's uint32 enabled field; this object layout does not narrow the wire field itself. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c516Limits": "tail_padding remains unknown-typed because construction writes only through +0x59 and the exact allocation fixes two unread closing bytes. The receiver intentionally stores only the low byte of the packet's uint32 enabled field; this object layout does not narrow the wire field itself. DumpVAs supplies direct bodies and caller/callee lists only for the eight requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c517Topic": "C517 AchievementAchievedCountReceiver layout",
+    "c517Scripts": "ghidra/DumpVAs.java",
+    "c517ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c517Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ScriptPath ghidra -ReadOnly -Out tools\\ghidra\\logs\\c517_achievement-achieved-count-receiver-layout.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0075A630,0x0089C700,0x0089C770,0x0089C7C0,0x00704690' }",
+    "c517Inputs": "LuaActorImpl wrapper 0x0075A630, constructor 0x0089C700, destructor 0x0089C770, receive method 0x0089C7C0, and _onReceiveAchievementRate Lua callback firer 0x00704690.",
+    "c517Output": "tools/ghidra/logs/c517_achievement-achieved-count-receiver-layout.txt",
+    "c517InstructionAudit": "A calibrated pefile and capstone walk over the complete 0x0075A630 wrapper body establishes the stable stack partition. The receiver starts at ESP+0x08 for construction, receive, and destruction, while the security cookie starts immediately at ESP+0x18. The constructor writes the vftable and three dwords through receiver+0x0C, so the exact receiver span is 0x10 bytes with no closing gap.",
+    "c517StructOutputs": "BCS-S-0453 in manifests/structs.json.",
+    "c517ExistingEvidence": "BCS-S-0278 supplies the exact SendAchievementRate packet and its achievement_id, progress_count, and progress_flags fields. BCS-Y-0040/0041, BCS-Y-0143, BCS-Y-0652, BCS-Y-1131/1132, and BCS-Y-1641 preserve the receiver identity, wire route, LuaActorImpl slot, constructor field map, lifecycle, and achievement-rate callback role.",
+    "c517FreshEvidence": "The five-section closing export reproduces the wrapper, constructor, destructor, receive method, and Lua callback firer. Construction copies the first three packet dwords into receiver +0x04, +0x08, and +0x0C; receive forwards the same three dwords. The positive wrapper instruction audit fixes the exact object boundary at 0x10 and resolves the prior C502 blocker.",
+    "c517Limits": "Individual progress_flags bit meanings remain unresolved, but the field's uint32 storage and positive callback path are established. The packet's separate unknown_0c dword is not copied into this receiver. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
   }
 }
