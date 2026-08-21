@@ -38,8 +38,11 @@ The environment secret is `RETAIL_INPUTS_TOKEN`. It is a fine-grained token
 selected only for `XIVLegacy/xivl-retail-client-inputs`, with Contents read-only
 and a maximum owner-approved lifetime of 366 days. The environment variable
 `RETAIL_INPUTS_REPOSITORY` is exactly
-`XIVLegacy/xivl-retail-client-inputs`. Rotation replaces the secret with a token
-having the same or narrower repository and permission scope.
+`XIVLegacy/xivl-retail-client-inputs`. The same token may be stored in another
+explicitly granted retail-input lane only when that lane uses this same private
+repository and permission scope. Rotation or revocation must update every
+sharing environment before another retail run, using the same or narrower
+repository and permission scope.
 
 The workflow's `GITHUB_TOKEN` remains Contents read-only and checks out the
 public dispatch commit without persisting credentials. The private token is
