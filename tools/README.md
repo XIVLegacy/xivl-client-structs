@@ -128,7 +128,7 @@ representation. Reader's guide: `..\docs\ir-schema.md`.
 - `verify_retail_actor_rebuild.py`: validates the fixed structured observation
   set for `actor-rebuild-receiver-field-v1`, cross-checks its target BCS entries
   through `tools/_symbols_io.py`, and emits only the sanitized attestation
-  allowed by `schemas/retail-evidence-attestation-v1.schema.json`. It fails on
+  allowed by `schemas/retail-evidence-attestation.schema.json`. It fails on
   missing, duplicate, extra, malformed, or drifted observations.
 - `test_retail_actor_rebuild.py`: asset-free bite proofs for every expected
   call target, field offset, and field value plus observation-set, BCS drift,

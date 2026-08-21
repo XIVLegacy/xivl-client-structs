@@ -15,7 +15,7 @@ complete semantic interpretation of the actor-rebuild transaction.
 | Check | `actor-rebuild-receiver-field-v1` |
 | Input manifest | `manifests/retail_inputs.json` |
 | Expected observations | `manifests/retail_actor_rebuild_check.json` |
-| Attestation schema | `schemas/retail-evidence-attestation-v1.schema.json` |
+| Attestation schema | `schemas/retail-evidence-attestation.schema.json` |
 | Passing attestation | `manifests/retail_evidence/actor-rebuild-receiver-field-v1.json` |
 | Protected environment | `retail-evidence` |
 | Private input repository | `XIVLegacy/xivl-private-assets` |
