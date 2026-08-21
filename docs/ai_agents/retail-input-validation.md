@@ -11,7 +11,7 @@ interpretation of the actor-rebuild transaction.
 | Item | Grant |
 |---|---|
 | Public repository | `XIVLegacy/xivl-client-structs` |
-| Workflow | `.github/workflows/retail-actor-rebuild.yml` |
+| Workflow | `.github/workflows/retail-checks.yml` |
 | Check | `actor-rebuild-receiver-field-v1` |
 | Input manifest | `manifests/retail_inputs.json` |
 | Expected observations | `manifests/retail_actor_rebuild_check.json` |
