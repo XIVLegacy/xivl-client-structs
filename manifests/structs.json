@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 465,
+  "structCount": 468,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -29309,6 +29309,295 @@
       ],
       "notes": "Complete exact 0x2C SendLogReceiver layout shared by opcodes 0x0157 through 0x016A. The heap factory fixes the allocation boundary; construction, all fourteen body parsers, apply, and teardown account for the tagged sender, common message fields, and owned serialized-parameter range.",
       "id": "BCS-S-0465"
+    },
+    {
+      "name": "ComponentLuaGameEngineLuaSchedulerUsTreeNode",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x30",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c522_lua-scheduler-layouts.txt",
+        "BCS-Y-1693",
+        "BCS-Y-1728",
+        "BCS-Y-1729"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentLuaGameEngineLuaSchedulerUsTreeNode *",
+          "notes": "Left child link; the scheduler constructor self-links it in the empty head node."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentLuaGameEngineLuaSchedulerUsTreeNode *",
+          "notes": "Right child link used as the root-side traversal link and self-linked in the empty head node."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentLuaGameEngineLuaSchedulerUsTreeNode *",
+          "notes": "Parent link; the scheduler constructor self-links it in the empty head node."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "tree_state_0c",
+          "type": "unknown[0x04]",
+          "notes": "Tree-node state whose representation is not established by the bounded allocation and tick paths."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x08",
+          "name": "scheduled_time",
+          "type": "uint64_t",
+          "notes": "Unsigned time key compared against the scheduler's current microsecond-derived time during ready-node traversal."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "child_list_state",
+          "type": "unknown[0x04]",
+          "notes": "State word preceding the per-time child-list head; the bounded consumer does not classify its representation."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "child_list_head",
+          "type": "void *",
+          "notes": "Head pointer for the scheduled-callback list drained at this time key."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "child_count",
+          "type": "uint32_t",
+          "notes": "Count decremented when a scheduled child is removed; zero triggers removal of the tree node."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "node_state_24",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload word whose representation is not established by the bounded consumer."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black-tree color byte initialized by the common node allocator."
+        },
+        {
+          "offset": "0x29",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Nil/head marker: allocation initializes zero, the scheduler marks its empty head as one, and traversal stops on one."
+        },
+        {
+          "offset": "0x2A",
+          "size": "0x06",
+          "name": "tail_padding",
+          "type": "unknown[0x06]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x30 node allocation."
+        }
+      ],
+      "notes": "Complete exact 0x30 primary scheduler time-tree node. The dedicated allocator fixes the boundary; scheduler construction establishes the self-linked nil head, while the tick consumer accounts for the 64-bit time key, scheduled-child list, count, and red-black-tree links and markers.",
+      "id": "BCS-S-0466"
+    },
+    {
+      "name": "ComponentLuaGameEngineSmallTreeNode",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x24",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c522_lua-scheduler-layouts.txt",
+        "BCS-Y-1693",
+        "BCS-Y-1730"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "left",
+          "type": "ComponentLuaGameEngineSmallTreeNode *",
+          "notes": "Left child link; scheduler construction self-links it in the empty head node."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "right",
+          "type": "ComponentLuaGameEngineSmallTreeNode *",
+          "notes": "Right child link; scheduler construction self-links it in the empty head node."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "parent",
+          "type": "ComponentLuaGameEngineSmallTreeNode *",
+          "notes": "Parent link; scheduler construction self-links it in the empty head node."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x14",
+          "name": "payload",
+          "type": "unknown[0x14]",
+          "notes": "Shared small-tree key and payload span. The allocator is reused by five trees, so the scheduler path does not establish one concrete member partition for every use."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x01",
+          "name": "color",
+          "type": "uint8_t",
+          "notes": "Red-black-tree color byte initialized by the common node allocator."
+        },
+        {
+          "offset": "0x21",
+          "size": "0x01",
+          "name": "is_nil",
+          "type": "uint8_t",
+          "notes": "Nil/head marker initialized to zero by the allocator and set to one for the scheduler's empty head."
+        },
+        {
+          "offset": "0x22",
+          "size": "0x02",
+          "name": "tail_padding",
+          "type": "unknown[0x02]",
+          "notes": "Unwritten closing bytes fixed by the exact 0x24 node allocation."
+        }
+      ],
+      "notes": "Complete exact 0x24 small red-black-tree node shared by five Lua-engine trees. The common allocator fixes the boundary and initializes the links and marker bytes; scheduler construction establishes one empty self-linked head instance without assigning scheduler-specific semantics to the shared payload.",
+      "id": "BCS-S-0467"
+    },
+    {
+      "name": "ComponentLuaGameEngineLuaScheduler",
+      "namespace": "Component::Lua::GameEngine",
+      "size": "0x40",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "BCS-S-0466",
+        "BCS-S-0467",
+        "tools/ghidra/logs/c360_gameengine-owned-services.txt",
+        "tools/ghidra/logs/c522_lua-scheduler-layouts.txt",
+        "BCS-Y-1691",
+        "BCS-Y-1693",
+        "BCS-Y-1699",
+        "BCS-Y-1728"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "owner",
+          "type": "void *",
+          "notes": "Constructor-supplied parent GameEngine pointer."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "state_04",
+          "type": "unknown[0x04]",
+          "notes": "Unwritten scheduler word whose representation is not established by the bounded lifecycle."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x08",
+          "name": "elapsed_time_us",
+          "type": "uint64_t",
+          "notes": "Initialized from the timer epoch globals and refreshed as current timer minus that epoch before the primary tree tick."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "us_tree_state",
+          "type": "unknown[0x04]",
+          "notes": "Leading state word for the primary time tree; teardown passes the container beginning here to the tree drain."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "us_tree_head",
+          "type": "ComponentLuaGameEngineLuaSchedulerUsTreeNode *",
+          "notes": "Owned self-linked nil head for the primary 0x30-node time tree."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "us_tree_count",
+          "type": "uint32_t",
+          "notes": "Primary tree node count, initialized to zero and supplied to tree removal."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x04",
+          "name": "us_tree_tail_state",
+          "type": "unknown[0x04]",
+          "notes": "Unwritten closing word before the secondary tree container."
+        },
+        {
+          "offset": "0x20",
+          "size": "0x04",
+          "name": "secondary_tree_state",
+          "type": "unknown[0x04]",
+          "notes": "Leading state word for the secondary tree; teardown passes the container beginning here to its tree drain."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x04",
+          "name": "secondary_tree_head",
+          "type": "ComponentLuaGameEngineSmallTreeNode *",
+          "notes": "Owned self-linked nil head allocated from the shared 0x24 small-node family."
+        },
+        {
+          "offset": "0x28",
+          "size": "0x04",
+          "name": "secondary_tree_count",
+          "type": "uint32_t",
+          "notes": "Secondary tree count initialized to zero."
+        },
+        {
+          "offset": "0x2C",
+          "size": "0x04",
+          "name": "secondary_tree_tail_state",
+          "type": "unknown[0x04]",
+          "notes": "Unwritten closing word before the auxiliary record vector."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x04",
+          "name": "auxiliary_records_begin",
+          "type": "void *",
+          "notes": "Begin pointer of an owned vector whose tick-side element stride is 0x60."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x04",
+          "name": "auxiliary_records_end",
+          "type": "void *",
+          "notes": "End pointer of the owned 0x60-stride auxiliary record vector."
+        },
+        {
+          "offset": "0x38",
+          "size": "0x04",
+          "name": "auxiliary_records_capacity_end",
+          "type": "void *",
+          "notes": "Capacity-end pointer of the owned 0x60-stride auxiliary record vector."
+        },
+        {
+          "offset": "0x3C",
+          "size": "0x04",
+          "name": "tail_state",
+          "type": "unknown[0x04]",
+          "notes": "Unwritten closing word fixed by the exact 0x40 allocation."
+        }
+      ],
+      "notes": "Complete exact 0x40 Lua scheduler layout owned by GameEngine. The parent factory fixes the allocation boundary; construction, timer refresh, primary-tree tick, and teardown account for the owner, elapsed time, two owned tree heads, their counts, and the auxiliary 0x60-stride record vector.",
+      "id": "BCS-S-0468"
     }
   ],
   "method": {
@@ -30873,6 +31162,17 @@
     "c521StructOutputs": "BCS-S-0464 and BCS-S-0465 in manifests/structs.json.",
     "c521ExistingEvidence": "BCS-S-0442 supplies the exact byte-range vector. BCS-Y-0248 through BCS-Y-0252 preserve the receiver identity, lifecycle, apply role, and LuaActorImpl wrapper; BCS-Y-0956 through BCS-Y-0974 preserve the parser, sender-installer, and sender-resolver roles; BCS-Y-1023 preserves the heap-factory role.",
     "c521FreshEvidence": "The twenty-seven-section export reproduces the heap and stack construction paths, complete lifecycle, all body parser shapes, tagged-sender lifecycle, and apply-side parameter unpacker. Construction partitions the tagged sender at +0x08, common message state at +0x14 through +0x1A, and the owned byte range at +0x1C. Literal allocation fixes the receiver at 0x2C, while the following +0x14 field fixes the sender variant at 0x0C.",
-    "c521Limits": "SendLogReceiver context_04 and the sender variant reference_value remain unknown-typed because their extents and ownership behavior are established but their concrete representations are not. The sender tail and receiver padding_1b remain unknown-typed alignment bytes. The nested byte-range policy_00 retains the unknown type recorded by BCS-S-0442. DumpVAs supplies direct bodies and caller/callee lists only for the twenty-seven requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch."
+    "c521Limits": "SendLogReceiver context_04 and the sender variant reference_value remain unknown-typed because their extents and ownership behavior are established but their concrete representations are not. The sender tail and receiver padding_1b remain unknown-typed alignment bytes. The nested byte-range policy_00 retains the unknown type recorded by BCS-S-0442. DumpVAs supplies direct bodies and caller/callee lists only for the twenty-seven requested functions and does not establish arbitrary reference topology. No candidate was started and left incomplete in this batch.",
+    "c522Topic": "C522 Lua scheduler and tree-node layouts",
+    "c522Scripts": "ghidra/DumpVAs.java",
+    "c522ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c522Invocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c522_lua-scheduler-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00CDC410,0x00CF58E0,0x00CF51A0,0x00D0A870,0x00CF5800,0x00CF6080,0x00CF59A0,0x00CF63E0,0x00CEF510,0x00CEEE70' } -ScriptPath @('ghidra')",
+    "c522Inputs": "GameEngine constructor 0x00CDC410, LuaScheduler constructor 0x00CF58E0, primary and shared-small node allocators 0x00CF51A0 and 0x00D0A870, scheduler teardown 0x00CF5800, primary tick 0x00CF6080, auxiliary-record consumer 0x00CF59A0, timer refresh 0x00CF63E0, screened unrelated timer scheduler 0x00CEF510, and shared small-tree enqueue consumer 0x00CEEE70.",
+    "c522Output": "tools/ghidra/logs/c522_lua-scheduler-layouts.txt",
+    "c522InstructionAudit": "Direct constructor and allocator calls preserve literal sizes 0x40, 0x30, and 0x24. The primary tick's marker test establishes is_nil at node +0x29; the adjacent +0x28 byte is the red-black-tree color, correcting the earlier approximate note that reversed those roles.",
+    "c522StructOutputs": "BCS-S-0466 through BCS-S-0468 in manifests/structs.json.",
+    "c522ExistingEvidence": "BCS-Y-1691, BCS-Y-1693, and BCS-Y-1699 preserve the GameEngine ownership, scheduler construction, and timer-refresh roles. BCS-Y-1728 through BCS-Y-1730 preserve the primary tick and both node-allocation leads. Retained C360 evidence supplies the parent allocation context, and the decompiled workspace corpus independently preserves the low-level allocation helper used by both node factories.",
+    "c522FreshEvidence": "The ten-section export reproduces the exact parent allocation, scheduler construction and teardown, both node allocators, timer refresh, primary tree traversal, auxiliary-vector consumption, and two screened adjacent consumers. Construction partitions the scheduler's two tree containers and vector header; the primary tick partitions the 0x30 node's time key, child list, count, and marker bytes.",
+    "c522Limits": "Scheduler state_04, both tree state pairs, and tail_state remain unknown-typed because bounded construction and teardown establish their extents but not their representations. The auxiliary vector element boundary is 0x60, but its record layout is not promoted. UsTreeNode tree_state_0c, child_list_state, and node_state_24 remain unknown-typed; SmallTreeNode payload remains unknown-typed because its allocator is shared by five trees with different uses. FUN_00CEF510 was screened and rejected as a scheduler consumer because its base-relative fields and 0x30-node marker do not match this scheduler's secondary tree. SetCommandEventConditionReceiver, ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, BootupElement, and NilControl retain their previously recorded exact-boundary or member-partition blockers."
   }
 }
