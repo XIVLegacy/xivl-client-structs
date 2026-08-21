@@ -21,7 +21,7 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_INPUT = REPO / "tools" / "fixtures" / "retail_actor_rebuild_observations.json"
 DEFAULT_CHECK = REPO / "manifests" / "retail_actor_rebuild_check.json"
 DEFAULT_RETAIL_INPUTS = REPO / "manifests" / "retail_inputs.json"
-DEFAULT_SCHEMA = REPO / "schemas" / "retail-evidence-attestation-v1.schema.json"
+DEFAULT_SCHEMA = REPO / "schemas" / "retail-evidence-attestation.schema.json"
 
 CHECK_ID = "actor-rebuild-receiver-field-v1"
 INPUT_ID = "ffxivgame-1.23b"
