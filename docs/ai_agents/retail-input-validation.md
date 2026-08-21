@@ -29,9 +29,9 @@ another check requires an explicit manifest amendment and owner review.
 Credentialed execution is manual `workflow_dispatch` from protected `main`
 only. The non-secret preflight rejects any other ref before the credentialed
 job starts. The job uses the `retail-evidence` environment, whose deployment
-branch rule selects only `main` and whose reviewer is `Aeshur`; self-review is
-allowed for this pilot. A repository administrator must not bypass the
-environment protection rule.
+branch rule selects protected branches, currently only `main`; it has no
+reviewer requirement. A repository administrator must not bypass the environment
+protection rule.
 
 The environment secret is `RETAIL_INPUTS_TOKEN`. It is a fine-grained token
 selected only for `XIVLegacy/xivl-private-assets`, with Contents read-only
