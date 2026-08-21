@@ -232,11 +232,11 @@ jobs:
           set -euo pipefail
           umask 077
           private_root="${RUNNER_TEMP}/retail-evidence-private"
-          safe_root="${GITHUB_WORKSPACE}/_safe"
+          staging_root="${GITHUB_WORKSPACE}/_retail-staging"
           project_root="${private_root}/project"
           observations="${private_root}/observations.json"
           mutated="${private_root}/observations-mutated.json"
-          mkdir -p "${safe_root}" "${project_root}"
+          mkdir -p "${staging_root}" "${project_root}"
 
           java_path="$(find "${private_root}/toolchain/jdk" -type f -path '*/bin/java' -print -quit)"
           java_home="$(dirname "$(dirname "${java_path}")")"
@@ -266,7 +266,7 @@ jobs:
             > "${private_root}/verify.log" 2>&1
 
           python tools/verify_retail_actor_rebuild.py --input "${observations}" \
-            > "${safe_root}/retail-evidence-attestation.json" \
+            > "${staging_root}/retail-evidence-attestation.json" \
             2> "${private_root}/verifier.log"
 
           OBSERVATIONS="${observations}" MUTATED="${mutated}" python - <<'PY'
@@ -309,16 +309,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          safe_root="${GITHUB_WORKSPACE}/_safe"
-          mkdir -p "${safe_root}"
+          staging_root="${GITHUB_WORKSPACE}/_retail-staging"
+          mkdir -p "${staging_root}"
           set +e
           python tools/verify_retail_actor_rebuild.py \
             --input "${RUNNER_TEMP}/retail-evidence-private/missing-observations.json" \
-            > "${safe_root}/retail-evidence-attestation.json" 2> /dev/null
+            > "${staging_root}/retail-evidence-attestation.json" 2> /dev/null
           status=$?
           set -e
           test "${status}" -ne 0
-          ATTESTATION="${safe_root}/retail-evidence-attestation.json" python - <<'PY'
+          ATTESTATION="${staging_root}/retail-evidence-attestation.json" python - <<'PY'
           import json
           import os
           from pathlib import Path
@@ -342,19 +342,19 @@ jobs:
           rm -rf -- "${RUNNER_TEMP}/retail-evidence-private"
 
       - name: Validate the only retained file
-        if: always() && hashFiles('_safe/retail-evidence-attestation.json') != ''
+        if: always() && hashFiles('_retail-staging/retail-evidence-attestation.json') != ''
         shell: bash
         run: |
           set -euo pipefail
-          test "$(find _safe -maxdepth 1 -type f | wc -l)" = "1"
-          test -f _safe/retail-evidence-attestation.json
+          test "$(find _retail-staging -maxdepth 1 -type f | wc -l)" = "1"
+          test -f _retail-staging/retail-evidence-attestation.json
           python - <<'PY'
           import json
           from pathlib import Path
 
           import tools._schema_check as schema_check
 
-          path = Path("_safe/retail-evidence-attestation.json")
+          path = Path("_retail-staging/retail-evidence-attestation.json")
           document = json.loads(path.read_text(encoding="utf-8"))
           schema = schema_check.load_schema(
               Path("schemas/retail-evidence-attestation.schema.json")
@@ -363,11 +363,11 @@ jobs:
           PY
 
       - name: Upload the sanitized attestation
-        if: always() && hashFiles('_safe/retail-evidence-attestation.json') != ''
+        if: always() && hashFiles('_retail-staging/retail-evidence-attestation.json') != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: retail-actor-rebuild-attestation
-          path: _safe/retail-evidence-attestation.json
+          path: _retail-staging/retail-evidence-attestation.json
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
