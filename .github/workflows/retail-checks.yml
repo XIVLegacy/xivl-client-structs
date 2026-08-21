@@ -84,20 +84,35 @@ jobs:
           test -n "${RETAIL_INPUTS_TOKEN}"
 
           request() {
-            local endpoint="$1"
-            local output="$2"
-            curl --silent --fail --location --max-time 180 \
+            local label="$1"
+            local endpoint="$2"
+            local output="$3"
+            local http_status
+            local curl_status
+
+            set +e
+            http_status="$(curl --silent --fail --location --max-time 180 \
               --max-filesize 24000000 \
               --header "Authorization: Bearer ${RETAIL_INPUTS_TOKEN}" \
               --header "Accept: application/vnd.github+json" \
               --header "X-GitHub-Api-Version: 2022-11-28" \
               --output "${output}" \
+              --write-out '%{http_code}' \
               "https://api.github.com/repos/${repository}/${endpoint}" \
-              2>> "${api_root}/curl.log"
+              2>> "${api_root}/curl.log")"
+            curl_status=$?
+            set -e
+
+            if test "${curl_status}" -ne 0 || [[ "${http_status}" != 2?? ]]; then
+              rm -f -- "${output}"
+              printf 'Private API %s failed (curl %s, HTTP %s)\n' \
+                "${label}" "${curl_status}" "${http_status}" >&2
+              return 1
+            fi
           }
 
-          request "git/commits/${commit}" "${api_root}/commit.json"
-          request "compare/${commit}...main" "${api_root}/compare.json"
+          request commit "git/commits/${commit}" "${api_root}/commit.json"
+          request compare "compare/${commit}...main" "${api_root}/compare.json"
 
           PRIVATE_ROOT="${private_root}" API_ROOT="${api_root}" \
           PINNED_COMMIT="${commit}" python - <<'PY'
@@ -120,7 +135,7 @@ jobs:
           PY
 
           IFS= read -r tree_sha < "${private_root}/tree-sha"
-          request "git/trees/${tree_sha}" "${api_root}/tree.json"
+          request tree "git/trees/${tree_sha}" "${api_root}/tree.json"
           PRIVATE_ROOT="${private_root}" API_ROOT="${api_root}" \
           EXPECTED_PATH="${expected_path}" python - <<'PY'
           import json
@@ -144,7 +159,7 @@ jobs:
           PY
 
           IFS= read -r blob_sha < "${private_root}/blob-sha"
-          request "git/blobs/${blob_sha}" "${api_root}/blob.json"
+          request blob "git/blobs/${blob_sha}" "${api_root}/blob.json"
           API_ROOT="${api_root}" INPUT_ROOT="${input_root}" \
           BLOB_SHA="${blob_sha}" python - <<'PY'
           import base64
