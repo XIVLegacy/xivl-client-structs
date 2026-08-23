@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 472,
+  "structCount": 473,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -29762,6 +29762,47 @@
       ],
       "notes": "Complete exact 0x04 EndSceneTask layout. Two independent pool factories allocate a vftable-only object, and the virtual Process method invokes the D3D9 EndScene device slot without task payload.",
       "id": "BCS-S-0472"
+    },
+    {
+      "name": "SqexCDevEngineDwRenderInterfaceD3d9RaptureQueryIssueTask",
+      "namespace": "SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture",
+      "size": "0x0C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt",
+        "BCS-Y-2070",
+        "BCS-Y-2071",
+        "BCS-Y-2072",
+        "BCS-Y-2073",
+        "BCS-Y-2074",
+        "BCS-Y-2075",
+        "BCS-Y-2076"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "QueryIssueTask vftable at 0x00F649D0; slot +0x04 is the Process method BCS-Y-2076."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "query",
+          "type": "void *",
+          "notes": "Pointer to the query object whose vtable slot +0x18 is invoked. The concrete interface type is not directly established by the retained binary evidence."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "issue_flags",
+          "type": "uint32_t",
+          "notes": "Flag dword passed unchanged to the query object's Issue operation."
+        }
+      ],
+      "notes": "Complete exact 0x0C QueryIssueTask layout. Four independent pool factories allocate and populate the exact extent, two stack wrappers construct the same record, and the virtual Process method forwards both payload fields to the query object's Issue operation.",
+      "id": "BCS-S-0473"
     }
   ],
   "method": {
@@ -31359,6 +31400,18 @@
     "c524ExistingEvidence": "The decompiled workspace corpus independently preserves both pool factories for every task and the ClearTask stack-temporary construction path, including exact allocation extents and vftable literals.",
     "c524FreshEvidence": "The eleven-section export reproduces all seven pool factories and wrappers, the three named Process methods, and the common slot-zero stub. Clear Process consumes all four stored fields through D3D9 vtable offset +0xAC; BeginScene and EndScene Process use +0xA4 and +0xA8 without payload. Embedded diagnostics directly name each task and API operation.",
     "c524Limits": "The common vftable slot-zero stub returns zero but its higher-level contract remains unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions and does not establish arbitrary reference topology. Adjacent DrawPrimitive, DrawPrimitiveUP, DrawIndexedPrimitiveUP, StretchRect, QueryIssue, query-wait, and buffer-update task layouts remain screened but unpromoted pending their own fresh semantic closure.",
-    "c524InstructionAudit": "A calibrated pefile and capstone walk over the complete 0x00434110, 0x004374F0, 0x00438A00, and 0x00435B50 bodies confirms scalar floating-point loads/stores for task +0x10 in all three construction paths and x87 load/forwarding in Process."
+    "c524InstructionAudit": "A calibrated pefile and capstone walk over the complete 0x00434110, 0x004374F0, 0x00438A00, and 0x00435B50 bodies confirms scalar floating-point loads/stores for task +0x10 in all three construction paths and x87 load/forwarding in Process.",
+    "c525Topic": "C525 complete QueryIssueTask layout",
+    "c525Scripts": "ghidra/DumpVAs.java plus calibrated pefile vftable-word and capstone instruction audits",
+    "c525ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c525Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c525_render-query-tasks.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00434370,0x00434D00,0x00437750,0x004380A0,0x00438BE0,0x00438C10,0x00435EF0,0x00AB7340' } -ScriptPath @('ghidra')",
+    "c525Inputs": "Four QueryIssueTask pool factories 0x00434370/0x00434D00/0x00437750/0x004380A0, stack wrappers 0x00438BE0/0x00438C10, Process 0x00435EF0, and common slot-zero stub 0x00AB7340.",
+    "c525Output": "tools/ghidra/logs/c525_render-query-tasks.txt",
+    "c525VtableAudit": "A calibrated pefile read of retail image words maps 0x00F649D0 to {0x00AB7340,0x00435EF0}.",
+    "c525InstructionAudit": "A calibrated pefile and capstone walk decoded the complete defined byte ranges for all four pool factories, both stack wrappers, and Process. All heap paths pass literal size 0x0C to the allocator; both stack paths reserve 0x0C; Process reads +0x04 and +0x08 and dispatches through query-object vtable offset +0x18.",
+    "c525StructOutput": "BCS-S-0473 in manifests/structs.json.",
+    "c525ExistingEvidence": "The decompiled workspace corpus independently preserves four exact 0x0C pool factories and two exact 0x0C stack constructions, all using vftable 0x00F649D0 and the same two payload offsets.",
+    "c525FreshEvidence": "The eight-section export reproduces all six construction paths, Process, and the common slot-zero stub. The vtable-word audit directly maps 0x00F649D0 slot +0x04 to Process 0x00435EF0; its embedded diagnostics directly name Query::Issue and QueryIssueTask::Process.",
+    "c525Limits": "The query field remains void-pointer typed because the concrete COM interface is inferred from dispatch shape rather than directly named by the retained evidence. The common vftable slot-zero stub returns zero but its higher-level contract remains unresolved. DumpVAs does not establish arbitrary reference topology. The adjacent query-wait task remains unpromoted because no direct class identity is available. DrawPrimitive, DrawPrimitiveUP, DrawIndexedPrimitiveUP, StretchRect, and buffer-update tasks retain their recorded semantic or member-boundary blockers."
   }
 }
