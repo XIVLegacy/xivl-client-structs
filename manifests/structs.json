@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 473,
+  "structCount": 475,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -29803,6 +29803,123 @@
       ],
       "notes": "Complete exact 0x0C QueryIssueTask layout. Four independent pool factories allocate and populate the exact extent, two stack wrappers construct the same record, and the virtual Process method forwards both payload fields to the query object's Issue operation.",
       "id": "BCS-S-0473"
+    },
+    {
+      "name": "SqexCDevEngineDwRenderInterfaceD3d9RaptureUpdateVertexBufferTask",
+      "namespace": "SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt",
+        "BCS-Y-2077",
+        "BCS-Y-2078",
+        "BCS-Y-2079"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "UpdateVertexBufferTask vftable at 0x00F649E0; slot +0x04 is the Process method BCS-Y-2079."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "vertex_buffer",
+          "type": "void *",
+          "notes": "Pointer to the vertex buffer object whose Lock and Unlock slots are invoked. The concrete COM interface type is not directly named by the retained binary evidence."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "source_data",
+          "type": "void *",
+          "notes": "Source byte pointer passed to memcpy after Lock returns its destination pointer."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "offset_to_lock",
+          "type": "uint32_t",
+          "notes": "Byte offset passed as the first Lock argument after the buffer object."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "size_to_lock",
+          "type": "uint32_t",
+          "notes": "Byte count passed to Lock and reused as the memcpy size."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "lock_flags",
+          "type": "uint32_t",
+          "notes": "Flag dword passed as the final Lock argument."
+        }
+      ],
+      "notes": "Complete exact 0x18 UpdateVertexBufferTask layout. Two independent hybrid dispatchers reproduce both stack and queued constructions, a third instruction-audited serial path reproduces the stack construction, and Process consumes every payload field through the D3D9 buffer Lock-copy-Unlock sequence.",
+      "id": "BCS-S-0474"
+    },
+    {
+      "name": "SqexCDevEngineDwRenderInterfaceD3d9RaptureUpdateIndexBufferTask",
+      "namespace": "SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture",
+      "size": "0x18",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt",
+        "BCS-Y-2080",
+        "BCS-Y-2081",
+        "BCS-Y-2082",
+        "BCS-Y-2083"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "UpdateIndexBufferTask vftable at 0x00F649E8; slot +0x04 is the Process method BCS-Y-2083."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "index_buffer",
+          "type": "void *",
+          "notes": "Pointer to the index buffer object whose Lock and Unlock slots are invoked. The concrete COM interface type is not directly named by the retained binary evidence."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "source_data",
+          "type": "void *",
+          "notes": "Source byte pointer passed to memcpy after Lock returns its destination pointer."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "offset_to_lock",
+          "type": "uint32_t",
+          "notes": "Byte offset passed as the first Lock argument after the buffer object."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "size_to_lock",
+          "type": "uint32_t",
+          "notes": "Byte count passed to Lock and reused as the memcpy size."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "lock_flags",
+          "type": "uint32_t",
+          "notes": "Flag dword passed as the final Lock argument."
+        }
+      ],
+      "notes": "Complete exact 0x18 UpdateIndexBufferTask layout. Two independent hybrid dispatchers reproduce both stack and queued constructions, the serial dispatcher independently constructs the same stack task, and Process consumes every payload field through the D3D9 buffer Lock-copy-Unlock sequence.",
+      "id": "BCS-S-0475"
     }
   ],
   "method": {
@@ -31412,6 +31529,18 @@
     "c525StructOutput": "BCS-S-0473 in manifests/structs.json.",
     "c525ExistingEvidence": "The decompiled workspace corpus independently preserves four exact 0x0C pool factories and two exact 0x0C stack constructions, all using vftable 0x00F649D0 and the same two payload offsets.",
     "c525FreshEvidence": "The eight-section export reproduces all six construction paths, Process, and the common slot-zero stub. The vtable-word audit directly maps 0x00F649D0 slot +0x04 to Process 0x00435EF0; its embedded diagnostics directly name Query::Issue and QueryIssueTask::Process.",
-    "c525Limits": "The query field remains void-pointer typed because the concrete COM interface is inferred from dispatch shape rather than directly named by the retained evidence. The common vftable slot-zero stub returns zero but its higher-level contract remains unresolved. DumpVAs does not establish arbitrary reference topology. The adjacent query-wait task remains unpromoted because no direct class identity is available. DrawPrimitive, DrawPrimitiveUP, DrawIndexedPrimitiveUP, StretchRect, and buffer-update tasks retain their recorded semantic or member-boundary blockers."
+    "c525Limits": "The query field remains void-pointer typed because the concrete COM interface is inferred from dispatch shape rather than directly named by the retained evidence. The common vftable slot-zero stub returns zero but its higher-level contract remains unresolved. DumpVAs does not establish arbitrary reference topology. The adjacent query-wait task remains unpromoted because no direct class identity is available. DrawPrimitive, DrawPrimitiveUP, DrawIndexedPrimitiveUP, StretchRect, and buffer-update tasks retain their recorded semantic or member-boundary blockers.",
+    "c526Topic": "C526 complete UpdateVertexBufferTask and UpdateIndexBufferTask layouts",
+    "c526Scripts": "ghidra/DumpVAs.java plus calibrated pefile vftable-word and capstone instruction audits",
+    "c526ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c526Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c526_buffer-update-tasks-2.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00434880,0x00437C20,0x00435F50,0x00434AC0,0x00437E60,0x00438E70,0x00435FE0,0x00AB7340' } -ScriptPath @('ghidra')",
+    "c526Inputs": "UpdateVertexBufferTask hybrid dispatchers 0x00434880/0x00437C20 and Process 0x00435F50; UpdateIndexBufferTask hybrid dispatchers 0x00434AC0/0x00437E60, serial dispatcher 0x00438E70, and Process 0x00435FE0; common slot-zero stub 0x00AB7340.",
+    "c526Output": "tools/ghidra/logs/c526_buffer-update-tasks-2.txt",
+    "c526VtableAudit": "A calibrated pefile read maps 0x00F649E0 to {0x00AB7340,0x00435F50} and 0x00F649E8 to {0x00AB7340,0x00435FE0}.",
+    "c526InstructionAudit": "A calibrated pefile and capstone walk decoded both complete 140-byte Process bodies and the complete 360-byte undefined-function range 0x00438D00..0x00438E67. Each Process passes task +0x0C, +0x10, a stack-local output pointer, and +0x14 to buffer vtable slot +0x2C, then passes the returned pointer, task +0x08, and +0x10 to memcpy before invoking buffer slot +0x30. The 0x00438D00 serial path independently constructs an exact 0x18 UpdateVertexBufferTask on the stack and calls 0x00435F50.",
+    "c526StructOutputs": "BCS-S-0474 and BCS-S-0475 in manifests/structs.json.",
+    "c526ExistingEvidence": "The decompiled workspace corpus preserves both complete Process instruction streams, all four 572-byte hybrid dispatcher bodies, and the complete 360-byte UpdateIndexBufferTask serial dispatcher.",
+    "c526FreshEvidence": "The eight-section export reproduces four hybrid dispatchers, the defined index serial dispatcher, both directly named Process methods, and the common slot-zero stub. Every queued construction allocates exactly 0x18 bytes; every stack construction reserves the same extent. Embedded diagnostics directly name both task classes and their buffer Unlock operations.",
+    "c526Limits": "The vertex_buffer and index_buffer fields remain void-pointer typed because the concrete COM interface names are inferred from D3D9 dispatch shape rather than directly named as field types. Ghidra has no defined function at 0x00438D00, so the exact serial vertex dispatcher is retained only as a complete pefile/capstone instruction audit and is not promoted as a symbol. DumpVAs does not establish arbitrary reference topology. StretchRect, DrawPrimitiveUP, DrawPrimitive, DrawIndexedPrimitiveUP, and query-wait remain outside this coherent batch."
   }
 }
