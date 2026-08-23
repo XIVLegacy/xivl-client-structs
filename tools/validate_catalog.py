@@ -321,12 +321,12 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
 
 
 def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
-    """Lock the 0x0137 handler-object and pending-storage boundary."""
+    """Lock the 0x0137 handler-object, population, and pending-storage boundary."""
     findings: list[Finding] = []
     if not isinstance(doc, dict):
         return [Finding("ERROR", "property-stream", "manifest must be an object")]
     if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
-        2, "2026-08-23", "1.23b", "catalog_epoch_and_apply_storage_complete"
+        3, "2026-08-23", "1.23b", "catalog_registry_population_complete"
     ):
         findings.append(Finding("ERROR", "property-stream.metadata", "snapshot metadata drifted"))
 
@@ -354,7 +354,7 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
     )
     expected_storage = (
         "0x0C", "0x0C", "0x10",
-        "Component::Lua::GameEngine::Work::Memory::SyncWriterBase*",
+        "polymorphic SyncWriter handler*",
         "0x00775652", 1, "0x04", "FUN_00D30C70", "0x0C", "0x10",
     )
     if storage_tuple != expected_storage:
@@ -368,6 +368,89 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         ("u32", "FUN_00D2F9B0", 4), ("float32", "FUN_00D2FA20", 4)
     ]:
         findings.append(Finding("ERROR", "property-stream.applyStorage", "typed writer set drifted"))
+    population = storage.get("registryPopulation", {})
+    if not isinstance(population, dict):
+        findings.append(Finding("ERROR", "property-stream.registryPopulation", "must be an object"))
+    else:
+        population_tuple = (
+            population.get("ownerType"), population.get("ownerConstructor"),
+            population.get("insertMapOffset"), population.get("insertNodeKeyOffset"),
+            population.get("insertNodeValueOffset"), population.get("insertPair"),
+        )
+        expected_population = (
+            "Application::Lua::Script::Client::ActorWorkSync", "FUN_0076DC40",
+            "0x0C", "0x0C", "0x10",
+            "u32 property hash -> writer handler owning the selected concrete SyncWriter",
+        )
+        if population_tuple != expected_population:
+            findings.append(Finding("ERROR", "property-stream.registryPopulation",
+                                    "registry owner or insert layout drifted"))
+        hash_derivation = population.get("hashDerivation", {})
+        if not isinstance(hash_derivation, dict) or (
+            hash_derivation.get("pathBuilder"), hash_derivation.get("hashWrapper"),
+            hash_derivation.get("hashFunction"), hash_derivation.get("algorithm"),
+        ) != (
+            "FUN_00D278D0", "FUN_00D31540", "FUN_00D31490",
+            "seed-0 backward MurmurHash2 over the canonical property path",
+        ):
+            findings.append(Finding("ERROR", "property-stream.registryPopulation",
+                                    "hash derivation drifted"))
+        dispatch = population.get("factoryDispatch", {})
+        scalar_rows = dispatch.get("scalarWriters", []) if isinstance(dispatch, dict) else []
+        scalar_tuples = [
+            (row.get("informationType"), row.get("factory"),
+             row.get("writerType"), row.get("constructor"))
+            for row in scalar_rows if isinstance(row, dict)
+        ] if isinstance(scalar_rows, list) else []
+        expected_scalars = [
+            ("BooleanInformation", "FUN_00D2BC30", "SyncWriterBoolean", "FUN_00D2FB80"),
+            ("Integer8Information", "FUN_00D2BDB0", "SyncWriterInteger8", "FUN_00D2FBD0"),
+            ("Integer16Information", "FUN_00D2BF40", "SyncWriterInteger16", "FUN_00D2FC10"),
+            ("Integer24Information", "FUN_00D2C0D0", "SyncWriterInteger24", "FUN_00D2FC50"),
+            ("Integer32Information", "FUN_00D2C260", "SyncWriterInteger32", "FUN_00D2FC90"),
+            ("FloatInformation", "FUN_00D2C3F0", "SyncWriterFloat", "FUN_00D2FCD0"),
+            ("StringInformation", "FUN_00D2C580", "SyncWriterString", "FUN_00D304D0"),
+            ("ActorInformation", "FUN_00D2CA40", "SyncWriterActor", "FUN_00D30110"),
+            ("IndividualIndexInformation", "FUN_00D2CC70", "SyncWriterIndividualIndex",
+             "FUN_00D2FD50"),
+        ]
+        if not isinstance(dispatch, dict) or (
+            dispatch.get("informationVtableSlot"),
+            dispatch.get("informationVtableByteOffset"), dispatch.get("arrayFactory"),
+        ) != (8, "0x20", "FUN_00D22030") or scalar_tuples != expected_scalars:
+            findings.append(Finding("ERROR", "property-stream.registryPopulation",
+                                    "scalar factory dispatch drifted"))
+        array_rows = dispatch.get("arrayWriters", []) if isinstance(dispatch, dict) else []
+        array_tuples = [
+            (row.get("writerType"), row.get("constructor"))
+            for row in array_rows if isinstance(row, dict)
+        ] if isinstance(array_rows, list) else []
+        if array_tuples != [
+            ("SyncWriterArray", "FUN_00D305A0"),
+            ("SyncWriterActorArray", "FUN_00D30770"),
+            ("SyncWriterArrayPartial", "FUN_00D309C0"),
+            ("SyncWriterArrayEndianAdjust<short>", "FUN_00D30710"),
+            ("SyncWriterArrayEndianAdjust<int>", "FUN_00D30730"),
+            ("SyncWriterArrayEndianAdjust<float>", "FUN_00D30750"),
+        ]:
+            findings.append(Finding("ERROR", "property-stream.registryPopulation",
+                                    "array factory dispatch drifted"))
+        if population.get("registrationRoute") != [
+            "FUN_00D126F0/FUN_00D12670", "FUN_00CE4720", "FUN_00CCB810",
+            "SyncContainer vtable slot 18 (FUN_00CFD610)",
+            "ActorWorkSync listener slot 1 (FUN_00766DA0)", "FUN_006D45A0",
+        ]:
+            findings.append(Finding("ERROR", "property-stream.registryPopulation",
+                                    "registration route drifted"))
+        handler = population.get("handlerSurface", {})
+        if not isinstance(handler, dict) or (
+            handler.get("wrappedApplyThunk"), handler.get("applyDispatch"),
+        ) != (
+            "FUN_00CFECE0",
+            "The adapter's vtable slot 1 forwards to inner-writer vtable slot 1.",
+        ):
+            findings.append(Finding("ERROR", "property-stream.registryPopulation",
+                                    "handler adapter boundary drifted"))
     pending = storage.get("pendingStream", {})
     if not isinstance(pending, dict) or (
         pending.get("managerMapOffset"), pending.get("mapNodeSize"),
@@ -382,6 +465,15 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
         "xivl-decomp:asm/ffxivgame/00375890_FUN_00775890.s",
         "xivl-decomp:asm/ffxivgame/00375a30_FUN_00775a30.s",
+        "xivl-decomp:asm/ffxivgame/0036dc40_FUN_0076dc40.s",
+        "xivl-decomp:asm/ffxivgame/00366da0_FUN_00766da0.s",
+        "xivl-decomp:asm/ffxivgame/002d45a0_FUN_006d45a0.s",
+        "xivl-decomp:asm/ffxivgame/009278d0_FUN_00d278d0.s",
+        "xivl-decomp:asm/ffxivgame/00931540_FUN_00d31540.s",
+        "xivl-decomp:asm/ffxivgame/00931490_FUN_00d31490.s",
+        "xivl-decomp:asm/ffxivgame/00922030_FUN_00d22030.s",
+        "xivl-decomp:asm/ffxivgame/008fd610_FUN_00cfd610.s",
+        "xivl-decomp:asm/ffxivgame/008fece0_FUN_00cfece0.s",
     }
     source_refs = doc.get("sourceRefs", [])
     if not isinstance(source_refs, list) or not required_refs.issubset(source_refs):
