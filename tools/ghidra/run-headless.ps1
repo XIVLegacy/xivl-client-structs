@@ -39,8 +39,6 @@ param(
     # Forbid saving program changes. Use for every read-only script.
     [switch]$ReadOnly,
 
-    [switch]$Analyze,
-
     [string]$GhidraHome = $env:BCS_GHIDRA_HOME,
     [string]$ProjectDir = $env:BCS_GHIDRA_PROJECTS,
     [string]$ProjectName = $env:BCS_GHIDRA_PROJECT,
@@ -100,7 +98,7 @@ $applied = @{
 foreach ($k in $ScriptEnv.Keys) { $applied[$k] = [string]$ScriptEnv[$k] }
 
 $headlessArgs = @($ProjectDir, $ProjectName, '-process', $Program)
-if (-not $Analyze) { $headlessArgs += '-noanalysis' }
+$headlessArgs += '-noanalysis'
 if ($ReadOnly)     { $headlessArgs += '-readOnly' }
 $headlessArgs += @('-scriptPath', ($ScriptPath -join ';'), '-postScript', $Script)
 

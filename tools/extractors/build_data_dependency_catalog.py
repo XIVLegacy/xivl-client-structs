@@ -19,7 +19,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 from _regen_guard import add_force_arg, check_regen_safe  # noqa: E402
-NAPI_MAP = REPO_ROOT / "manifests" / "control_class_napi_map.json"
 NAPI_FIELD_ACCESS = REPO_ROOT / "manifests" / "control_class_napi_field_access.json"
 NAPI_FIELD_ACCESS_RECURSIVE = REPO_ROOT / "manifests" / "control_class_napi_field_access_recursive.json"
 VTABLE_RESOLVED_EVIDENCE = REPO_ROOT / "manifests" / "vtable_resolved_evidence.json"

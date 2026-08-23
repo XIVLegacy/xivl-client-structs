@@ -161,22 +161,33 @@ def _retail_input_errors(document: Any) -> list[str]:
     return [] if document == expected else ["retail input grant drifted"]
 
 
-def _git_commit() -> str:
+ZERO_COMMIT = "0" * 40
+
+
+def _git_commit(repo: Path = REPO) -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=REPO, check=True,
+            ["git", "rev-parse", "HEAD"], cwd=repo, check=True,
             capture_output=True, text=True,
         )
         commit = result.stdout.strip()
     except (OSError, subprocess.SubprocessError):
-        commit = "0" * 40
-    return commit if re.fullmatch(r"[0-9a-f]{40}", commit) else "0" * 40
+        return None
+    return commit if re.fullmatch(r"[0-9a-f]{40}", commit) else None
 
 
-def build_attestation(status: str) -> dict[str, Any]:
+def build_attestation(status: str, public_commit: str | None) -> dict[str, Any]:
+    if public_commit is None:
+        if status == "pass":
+            raise VerificationError("passing attestation requires a public commit")
+        public_commit = ZERO_COMMIT
+    if not re.fullmatch(r"[0-9a-f]{40}", public_commit):
+        raise VerificationError("public commit is malformed")
+    if status == "pass" and public_commit == ZERO_COMMIT:
+        raise VerificationError("passing attestation requires a public commit")
     return {
         "schemaVersion": SCHEMA_VERSION,
-        "publicRepositoryCommit": _git_commit(),
+        "publicRepositoryCommit": public_commit,
         "approvedInputSha256": INPUT_SHA256,
         "toolVersions": dict(TOOL_VERSIONS),
         "check": {"id": CHECK_ID, "version": 1},
@@ -231,19 +242,19 @@ def verify(
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, dest="input_path")
-    parser.add_argument("--check", type=Path, default=DEFAULT_CHECK, dest="check_path")
-    parser.add_argument("--retail-inputs", type=Path, default=DEFAULT_RETAIL_INPUTS)
-    parser.add_argument("--symbols", type=Path, default=_symbols_io.SYMBOLS_PATH)
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     try:
-        errors = verify(args.input_path, args.check_path, args.retail_inputs, args.symbols)
+        errors = verify(args.input_path)
     except (VerificationError, OSError, KeyError, TypeError, ValueError):
         errors = ["verification input is malformed"]
-    attestation = build_attestation("pass" if not errors else "fail")
+    public_commit = _git_commit()
+    if public_commit is None:
+        errors.append("public repository commit is unavailable")
+    attestation = build_attestation("pass" if not errors else "fail", public_commit)
     try:
         schema = _schema_check.load_schema(DEFAULT_SCHEMA)
         schema_errors = _schema_check.validate(attestation, schema)
@@ -251,7 +262,7 @@ def main(argv: list[str] | None = None) -> int:
         schema_errors = ["schema unavailable"]
     if schema_errors:
         errors.append("attestation schema rejected output")
-        attestation = build_attestation("fail")
+        attestation = build_attestation("fail", public_commit)
     print(json.dumps(attestation, ensure_ascii=True, sort_keys=True, separators=(",", ":")))
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)

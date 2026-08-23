@@ -69,7 +69,7 @@ def _all_event_starts(captures_repo: Path) -> list[dict[str, object]]:
     return events
 
 
-def build(captures_repo: Path, client_data_repo: Path, manifest: dict) -> dict:
+def build(captures_repo: Path, client_data_repo: Path) -> dict:
     samples_path = captures_repo / "derived" / "payload_samples.json"
     actors_path = client_data_repo / "manifests" / "staticactor_class_paths.json"
     commands_path = client_data_repo / "csv" / "gameCommand.csv"
@@ -340,7 +340,6 @@ def main() -> int:
         relationship = build(
             args.captures_repo.resolve(),
             args.client_data_repo.resolve(),
-            manifest,
         )
         if args.check:
             if manifest.get("commandIdRelationship") != relationship:

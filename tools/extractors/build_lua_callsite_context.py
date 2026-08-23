@@ -180,17 +180,6 @@ def _token_text(source: str, tokens: list[Token], first: int, last: int) -> str:
     return source[tokens[first].start:tokens[last].end]
 
 
-def _previous_boundary(tokens: list[Token], index: int) -> int:
-    boundaries = {";", "=", "return", "local", "then", "do", "else", "elseif", "function"}
-    cursor = index - 1
-    while cursor >= 0:
-        token = tokens[cursor]
-        if token.value in boundaries or token.value in {"(", "[", "{", ","}:
-            return cursor + 1
-        cursor -= 1
-    return 0
-
-
 def _receiver(source: str, tokens: list[Token], index: int) -> str | None:
     """Return the written receiver expression for dot/colon member calls."""
     if index < 1 or tokens[index - 1].value not in {".", ":"}:
@@ -354,13 +343,15 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
     napi_path = scripts_repo / "lua" / "napi_index.json"
     script_manifest_path = scripts_repo / "manifests" / "scripts.json"
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
-    napi = json.loads(napi_path.read_text(encoding="utf-8"))
+    json.loads(napi_path.read_text(encoding="utf-8"))
     script_manifest = json.loads(script_manifest_path.read_text(encoding="utf-8"))
     api_contract = json.loads(api_contract_path.read_text(encoding="utf-8"))
     manifest_rows = {row["relativePath"]: row for row in script_manifest["scripts"]}
     target_set = set(TARGETS)
     if len(target_set) != len(TARGETS):
         raise ValueError("target list contains duplicate names")
+    if len(TARGETS) != 19:
+        raise ValueError("callsite context must contain exactly 19 targets")
 
     rows: dict[str, dict[str, Any]] = {
         name: {
@@ -479,12 +470,6 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
         ],
     }
     document["contractSha256"] = _json_sha256({"targets": target_rows, "totals": totals})
-    # Keep the explicit target order stable while guarding against accidental
-    # additions to the output table.
-    if [row["name"] for row in target_rows] != list(TARGETS):
-        raise ValueError("target order drifted")
-    if len(target_rows) != 19 or len({row["name"] for row in target_rows}) != 19:
-        raise ValueError("callsite context must contain exactly 19 unique targets")
     return document
 
 

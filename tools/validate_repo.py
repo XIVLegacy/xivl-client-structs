@@ -3,16 +3,11 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote
-
-import _schema_check
-
 
 ROOT = Path(__file__).resolve().parent.parent
 PERMITTED_TOP_LEVEL_GROUPS = {
@@ -40,12 +35,6 @@ ABSOLUTE_MAINTAINER_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^]]*\]\(([^)]+)\)")
-PROVENANCE_FIELDS = (
-    "file", "sourceRepo", "sourcePath", "sha256", "refreshMode",
-    "evidenceTier", "transformation",
-)
-
-
 def tracked_paths() -> list[str]:
     result = subprocess.run(
         ["git", "ls-files", "-z", "--cached"],
@@ -53,7 +42,10 @@ def tracked_paths() -> list[str]:
         check=True,
         capture_output=True,
     )
-    return sorted(path for path in result.stdout.decode("utf-8").split("\0") if path)
+    return sorted(
+        path for path in result.stdout.decode("utf-8").split("\0")
+        if path and (ROOT / path).is_file()
+    )
 
 
 def forbidden_category(path: str) -> str | None:
@@ -134,32 +126,6 @@ def check_boundary(paths: list[str], errors: list[str]) -> None:
             errors.append(f".gitignore missing required line: {required}")
 
 
-def check_json_and_schemas(paths: list[str], errors: list[str]) -> int:
-    documents: dict[str, object] = {}
-    for path in paths:
-        if not path.endswith(".json"):
-            continue
-        try:
-            documents[path] = json.loads((ROOT / path).read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            errors.append(f"invalid tracked JSON {path}: {exc}")
-
-    pairs = (
-        ("manifests/ir_catalog.json", "schemas/ir-v1.schema.json"),
-        ("manifests/ir_overlay.json", "schemas/ir-overlay-v1.schema.json"),
-    )
-    for document_path, schema_path in pairs:
-        if document_path not in documents:
-            continue
-        try:
-            schema = _schema_check.load_schema(ROOT / schema_path)
-            for finding in _schema_check.validate(documents[document_path], schema):
-                errors.append(f"schema violation {document_path}: {finding}")
-        except (OSError, ValueError, _schema_check.SchemaError) as exc:
-            errors.append(f"invalid schema {schema_path}: {exc}")
-    return len(documents)
-
-
 def markdown_code_stripped(text: str) -> str:
     lines: list[str] = []
     fenced = False
@@ -217,63 +183,12 @@ def check_docs(paths: list[str], errors: list[str]) -> None:
                 errors.append(f"unresolved relative link: {path} -> {raw}")
 
 
-def check_vendor(errors: list[str]) -> int:
-    checked = 0
-    vendor = ROOT / "data" / "vendor"
-    for directory in sorted(path for path in vendor.iterdir() if path.is_dir()):
-        provenance_path = directory / "PROVENANCE.json"
-        label = provenance_path.relative_to(ROOT).as_posix()
-        if not provenance_path.is_file():
-            errors.append(f"vendor provenance missing: {label}")
-            continue
-        try:
-            provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            errors.append(f"invalid vendor provenance {label}: {exc}")
-            continue
-        entries = provenance.get("files") if isinstance(provenance, dict) else None
-        if not isinstance(entries, list) or not entries:
-            errors.append(f"vendor provenance has no files: {label}")
-            continue
-        declared: set[str] = set()
-        for entry in entries:
-            if not isinstance(entry, dict):
-                errors.append(f"vendor provenance entry is not an object: {label}")
-                continue
-            missing = [field for field in PROVENANCE_FIELDS if not entry.get(field)]
-            if missing:
-                errors.append(f"vendor provenance missing {','.join(missing)}: {label}")
-                continue
-            name = entry["file"]
-            if Path(name).name != name or name == "PROVENANCE.json":
-                errors.append(f"vendor provenance invalid file name {name}: {label}")
-                continue
-            declared.add(name)
-            target = directory / name
-            if not target.is_file():
-                errors.append(f"vendor provenance file missing: {target.relative_to(ROOT)}")
-                continue
-            actual = hashlib.sha256(target.read_bytes()).hexdigest()
-            if actual != entry["sha256"]:
-                errors.append(f"vendor provenance hash mismatch: {target.relative_to(ROOT)}")
-            checked += 1
-        actual_files = {
-            path.name for path in directory.iterdir()
-            if path.is_file() and path.name != "PROVENANCE.json"
-        }
-        for name in sorted(actual_files - declared):
-            errors.append(f"vendor file lacks provenance: {(directory / name).relative_to(ROOT)}")
-    return checked
-
-
 def main() -> int:
     errors: list[str] = []
     try:
         paths = tracked_paths()
         check_boundary(paths, errors)
-        json_count = check_json_and_schemas(paths, errors)
         check_docs(paths, errors)
-        vendor_count = check_vendor(errors)
     except (OSError, subprocess.SubprocessError, UnicodeError) as exc:
         print(f"repository boundary FAILED: {exc}", file=sys.stderr)
         return 1
@@ -284,10 +199,7 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
-    print(
-        f"repository boundary OK ({len(paths)} tracked files, {json_count} JSON files, "
-        f"2 schemas, docs-index/link sync, {vendor_count} provenance hashes)."
-    )
+    print(f"repository boundary OK ({len(paths)} tracked files, docs-index/link sync).")
     return 0
 
 

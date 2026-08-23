@@ -21,7 +21,6 @@ from .rtti_dumper import RttiEntry
 class VtableFunction:
     index: int
     address: int
-    estimated_size: int
     stack_param_bytes: int
     is_pure_virtual: bool
     is_stub: bool
@@ -35,7 +34,7 @@ def analyze_vtable(exe_bytes: bytes, vtable_va: int, entry_count: int) -> list[V
     for i in range(entry_count):
         func_va = struct.unpack_from("<I", exe_bytes, vt_off + i * 4)[0]
         if func_va < TEXT_VA_START or func_va >= TEXT_VA_END:
-            results.append(VtableFunction(i, func_va, 0, 0, False, False, None))
+            results.append(VtableFunction(i, func_va, 0, False, False, None))
             continue
 
         func_off = func_va - IMAGE_BASE
@@ -44,7 +43,7 @@ def analyze_vtable(exe_bytes: bytes, vtable_va: int, entry_count: int) -> list[V
         is_stub = size <= 6 and not is_pure
         stack_params = count_stack_parameters(exe_bytes, func_off)
         sig = build_signature(exe_bytes, func_off, func_va, stack_params)
-        results.append(VtableFunction(i, func_va, size, stack_params, is_pure, is_stub, sig))
+        results.append(VtableFunction(i, func_va, stack_params, is_pure, is_stub, sig))
 
     return results
 

@@ -323,7 +323,7 @@ def _opcode_is_in_multi_group(blob: str, op_s: int, op_e: int) -> bool:
     return False
 
 
-def _forward_bound_wire_name(blob: str, op_s: int, op_e: int) -> str | None:
+def _forward_bound_wire_name(blob: str, op_e: int) -> str | None:
     """Return the wire-name token that is the FIRST capitalized neighbor
     AFTER the opcode, only if the intervening glue is binding-only
     (whitespace, `:`, `=`, `->`). Reject if `,`, `;`, `)`, `(`, or a bare
@@ -372,7 +372,7 @@ def _bound_wire_names_for_opcode(opcode_hex: str,
     for (op_s, op_e) in _opcode_match_spans(opcode_hex, blob):
         if _opcode_is_in_multi_group(blob, op_s, op_e):
             continue
-        fwd = _forward_bound_wire_name(blob, op_s, op_e)
+        fwd = _forward_bound_wire_name(blob, op_e)
         if fwd is not None:
             names.add(fwd)
         bwd = _backward_bound_wire_name(blob, op_s, op_e)
@@ -513,18 +513,11 @@ def _run_attribution(argv: list[str]) -> int:
         help="Emit machine-readable JSON report on stdout.",
     )
     parser.add_argument(
-        "--apply", action="store_true",
-        help="Reserved compatibility no-op.",
-    )
-    parser.add_argument(
         "--invariant", choices=("rtti", "case_handler", "wire_name", "all"),
         default="all",
         help="Run only one invariant (default: all).",
     )
     args = parser.parse_args(argv)
-
-    if args.apply:
-        print("--apply is reserved; no write performed.", file=sys.stderr)
 
     symbols_doc = _load_json(SYMBOLS_PATH)
     matrix_doc = _load_json(MATRIX_PATH)

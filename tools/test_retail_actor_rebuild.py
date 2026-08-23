@@ -137,10 +137,37 @@ def main() -> int:
         check("retail grant expansion fails", _fails(directory, retail_inputs=retail))
 
         schema = _schema_check.load_schema(SCHEMA)
-        attestation = verifier.build_attestation("pass")
+        unsupported_schema = _write(
+            directory / "unsupported-schema.json",
+            {"$schema": "https://json-schema.org/draft/2020-12/schema", "contains": {}},
+        )
+        try:
+            _schema_check.load_schema(unsupported_schema)
+        except _schema_check.SchemaError:
+            unsupported_rejected = True
+        else:
+            unsupported_rejected = False
+        check("unsupported schema keyword fails closed", unsupported_rejected)
+        public_commit = verifier._git_commit()
+        check("test checkout has a public commit", public_commit is not None)
+        check("git-less checkout has no public commit", verifier._git_commit(directory) is None)
+        attestation = verifier.build_attestation("pass", public_commit)
         check("passing attestation satisfies schema", not _schema_check.validate(attestation, schema))
         attestation["observations"] = []
         check("unexpected attestation field fails", bool(_schema_check.validate(attestation, schema)))
+        zero_failure = verifier.build_attestation("fail", None)
+        check("zero commit is limited to failed attestations",
+              zero_failure["publicRepositoryCommit"] == verifier.ZERO_COMMIT
+              and not _schema_check.validate(zero_failure, schema)
+              and bool(_schema_check.validate(
+                  {**zero_failure, "result": {"status": "pass"}}, schema)))
+        try:
+            verifier.build_attestation("pass", None)
+        except verifier.VerificationError:
+            missing_commit_rejected = True
+        else:
+            missing_commit_rejected = False
+        check("passing attestation requires a public commit", missing_commit_rejected)
 
         failed = copy.deepcopy(baseline)
         failed["observations"][0]["immediate"] = 99
