@@ -53,6 +53,7 @@ LUA_API_CONTRACT_PATH = REPO / "manifests" / "lua_api_contract.json"
 CAST_CHANT_PRESENTATION_PATH = REPO / "manifests" / "cast_chant_presentation.json"
 COMBAT_COMMAND_EMISSION_PATH = REPO / "manifests" / "combat_command_emission.json"
 GAM_HASH_NAMES_PATH = REPO / "manifests" / "gam_hash_names.json"
+PROPERTY_STREAM_HASH_CATALOG_PATH = REPO / "manifests" / "property_stream_hash_catalog.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -169,7 +170,7 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
     if not isinstance(doc, dict):
         return [Finding("ERROR", "cast-chant", "manifest must be an object")]
     if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
-        1, "2026-08-14", "1.23b", "bounded_static_and_capture_closure"
+        2, "2026-08-23", "1.23b", "bounded_syncwriter_storage_closure"
     ):
         findings.append(Finding("ERROR", "cast-chant.metadata", "snapshot metadata drifted"))
 
@@ -177,7 +178,7 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "captures": {"repository": "XIVLegacy/xivl-captures", "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4"},
         "clientData": {"repository": "XIVLegacy/xivl-client-data", "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6"},
         "clientScripts": {"repository": "XIVLegacy/xivl-client-scripts", "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b"},
-        "decomp": {"repository": "XIVLegacy/xivl-decomp", "commit": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"},
+        "decomp": {"repository": "XIVLegacy/xivl-decomp", "commit": "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb"},
     }
     if doc.get("sourceSnapshots") != expected_snapshots:
         findings.append(Finding("ERROR", "cast-chant.sourceSnapshots", "source snapshot drifted"))
@@ -222,11 +223,25 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
 
     expected_route = [
         "FUN_004D8860", "FUN_00575070", "FUN_00759ED0", "FUN_0089E550",
-        "FUN_00775A30", "FUN_00775180", "property-entry indirect call at 0x00775652",
+        "FUN_00775A30", "FUN_00775180", "SyncWriter vtable slot 1 (+0x04) at 0x00775652",
         "FUN_00774220", "FUN_00773F10", "FUN_00CC7A90 _onUpdateWork",
     ]
     if gauge.get("propertyRoute") != expected_route:
         findings.append(Finding("ERROR", "cast-chant.propertyRoute", "native route drifted"))
+
+    expected_boundary = (
+        "FUN_00775180 lower-bounds the context property map at +0x0C by property hash, "
+        "loads a SyncWriter pointer from map-node +0x10, and calls SyncWriter vtable slot 1 "
+        "(+0x04) at 0x00775652. The shared slot increments the u16 dirty counter at writer+0x0C "
+        "and dispatches typed slot 6; the u32 and float variants write writer-local +0x10. "
+        "These are not fixed CharaBase or PlayerBase offsets."
+    )
+    if gauge.get("firstNativeBoundary") != expected_boundary:
+        findings.append(Finding("ERROR", "cast-chant.firstNativeBoundary", "SyncWriter boundary drifted"))
+    if gauge.get("handlerStorageBoundary") != (
+        "manifests/property_stream_hash_catalog.json#applyStorageBoundary"
+    ):
+        findings.append(Finding("ERROR", "cast-chant.handlerStorage", "canonical boundary ref drifted"))
 
     cross_check = gauge.get("captureCrossCheck", {})
     if not isinstance(cross_check, dict) or (
@@ -278,12 +293,13 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
     unresolved = doc.get("unresolved", [])
     if not isinstance(rejected, list) or not isinstance(unresolved, list):
         findings.append(Finding("ERROR", "cast-chant.boundaries", "boundary sets must be arrays"))
-    elif len(rejected) != 6 or len(unresolved) != 6:
+    elif len(rejected) != 7 or len(unresolved) != 6:
         findings.append(Finding("ERROR", "cast-chant.boundaries",
                                 "rejected-import or unresolved boundary set drifted"))
     source_refs = doc.get("sourceRefs", [])
     required_refs = {
         "manifests/gam_hash_names.json",
+        "manifests/property_stream_hash_catalog.json#applyStorageBoundary",
         "manifests/data_dependency_catalog.json#s2c_0x0137",
         "manifests/receiver_opcode_map_inbound.json",
         "manifests/selector_mapping_findings.json",
@@ -301,6 +317,75 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         findings.append(Finding("ERROR", "cast-chant.sourceRefs", "required evidence citation missing"))
     elif any("agent-islands" in ref or "agent-config" in ref for ref in source_refs):
         findings.append(Finding("ERROR", "cast-chant.sourceRefs", "private island citation found"))
+    return findings
+
+
+def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
+    """Lock the 0x0137 handler-object and pending-storage boundary."""
+    findings: list[Finding] = []
+    if not isinstance(doc, dict):
+        return [Finding("ERROR", "property-stream", "manifest must be an object")]
+    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
+        2, "2026-08-23", "1.23b", "catalog_epoch_and_apply_storage_complete"
+    ):
+        findings.append(Finding("ERROR", "property-stream.metadata", "snapshot metadata drifted"))
+
+    snapshots = doc.get("sourceSnapshots", {})
+    if not isinstance(snapshots, dict) or (
+        snapshots.get("clientStructs", {}).get("commit"),
+        snapshots.get("captures", {}).get("commit"),
+        snapshots.get("decomp", {}).get("commit"),
+    ) != (
+        "3384717be917c0c9464c33bcf17c723769af77da",
+        "54a24c87faa4e3cebde808b74d80b6f1bee4b013",
+        "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb",
+    ):
+        findings.append(Finding("ERROR", "property-stream.sourceSnapshots", "source snapshot drifted"))
+
+    storage = doc.get("applyStorageBoundary", {})
+    if not isinstance(storage, dict):
+        return findings + [Finding("ERROR", "property-stream.applyStorage", "must be an object")]
+    storage_tuple = (
+        storage.get("contextPropertyMapOffset"), storage.get("mapNodeKeyOffset"),
+        storage.get("mapNodeValueOffset"), storage.get("mapNodeValueType"),
+        storage.get("applyCallsite"), storage.get("applyVtableSlot"),
+        storage.get("applyVtableByteOffset"), storage.get("sharedApplyThunk"),
+        storage.get("dirtyCounterOffset"), storage.get("typedValueOffset"),
+    )
+    expected_storage = (
+        "0x0C", "0x0C", "0x10",
+        "Component::Lua::GameEngine::Work::Memory::SyncWriterBase*",
+        "0x00775652", 1, "0x04", "FUN_00D30C70", "0x0C", "0x10",
+    )
+    if storage_tuple != expected_storage:
+        findings.append(Finding("ERROR", "property-stream.applyStorage", "handler layout drifted"))
+    typed_writers = storage.get("typedWriters", [])
+    typed_writer_tuples = [
+        (row.get("valueType"), row.get("function"), row.get("width"))
+        for row in typed_writers if isinstance(row, dict)
+    ] if isinstance(typed_writers, list) else []
+    if typed_writer_tuples != [
+        ("u32", "FUN_00D2F9B0", 4), ("float32", "FUN_00D2FA20", 4)
+    ]:
+        findings.append(Finding("ERROR", "property-stream.applyStorage", "typed writer set drifted"))
+    pending = storage.get("pendingStream", {})
+    if not isinstance(pending, dict) or (
+        pending.get("managerMapOffset"), pending.get("mapNodeSize"),
+        pending.get("mapNodeValueOffset"), pending.get("recordStride"),
+        pending.get("initialReserveRecords"),
+    ) != ("0x0C", "0x24", "0x10", "0x10", 8):
+        findings.append(Finding("ERROR", "property-stream.pendingStream", "pending layout drifted"))
+    required_refs = {
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:config/ffxivgame.vtable_slots.jsonl",
+        "xivl-decomp:docs/net/sync-writer.md",
+        "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
+        "xivl-decomp:asm/ffxivgame/00375890_FUN_00775890.s",
+        "xivl-decomp:asm/ffxivgame/00375a30_FUN_00775a30.s",
+    }
+    source_refs = doc.get("sourceRefs", [])
+    if not isinstance(source_refs, list) or not required_refs.issubset(source_refs):
+        findings.append(Finding("ERROR", "property-stream.sourceRefs", "required evidence missing"))
     return findings
 
 
@@ -1861,6 +1946,7 @@ LUA_API_CONTRACT_CHECK_COUNT = 1
 CAST_CHANT_PRESENTATION_CHECK_COUNT = 1
 COMBAT_COMMAND_EMISSION_CHECK_COUNT = 1
 GAM_HASH_NAMES_CHECK_COUNT = 1
+PROPERTY_STREAM_HASH_CATALOG_CHECK_COUNT = 1
 
 
 def main() -> int:
@@ -1924,6 +2010,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {GAM_HASH_NAMES_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        property_stream_hash_catalog_doc = _load_json(PROPERTY_STREAM_HASH_CATALOG_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {PROPERTY_STREAM_HASH_CATALOG_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -1959,6 +2050,8 @@ def main() -> int:
                       check_combat_command_emission(combat_command_emission_doc)),
         SectionResult("property stream hash catalog", GAM_HASH_NAMES_CHECK_COUNT,
                       check_gam_hash_names(gam_hash_names_doc)),
+        SectionResult("property stream apply storage", PROPERTY_STREAM_HASH_CATALOG_CHECK_COUNT,
+                      check_property_stream_hash_catalog(property_stream_hash_catalog_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
     ]

@@ -1,8 +1,8 @@
 {
-  "version": 1,
-  "generated": "2026-08-14",
+  "version": 2,
+  "generated": "2026-08-23",
   "gameVersion": "1.23b",
-  "status": "bounded_static_and_capture_closure",
+  "status": "bounded_syncwriter_storage_closure",
   "scope": "Separates active cast-gauge timing, local command cast-time data, cast-ready battle-result VFX selection, and SubStat Chant state. It does not infer live server behavior, packet-to-action causality, or a shared cast/chant type enum.",
   "dependencies": {
     "package1": "manifests/battle_result_field_semantics.json",
@@ -24,7 +24,7 @@
     },
     "decomp": {
       "repository": "XIVLegacy/xivl-decomp",
-      "commit": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"
+      "commit": "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb"
     }
   },
   "activeCastGauge": {
@@ -46,12 +46,13 @@
       "FUN_0089E550",
       "FUN_00775A30",
       "FUN_00775180",
-      "property-entry indirect call at 0x00775652",
+      "SyncWriter vtable slot 1 (+0x04) at 0x00775652",
       "FUN_00774220",
       "FUN_00773F10",
       "FUN_00CC7A90 _onUpdateWork"
     ],
-    "firstNativeBoundary": "FUN_00775180 resolves a property registry entry, then calls the function pointer at propertyEntry+4. The retained native evidence does not identify fixed CharaBase or PlayerBase offsets for these four property names.",
+    "firstNativeBoundary": "FUN_00775180 lower-bounds the context property map at +0x0C by property hash, loads a SyncWriter pointer from map-node +0x10, and calls SyncWriter vtable slot 1 (+0x04) at 0x00775652. The shared slot increments the u16 dirty counter at writer+0x0C and dispatches typed slot 6; the u32 and float variants write writer-local +0x10. These are not fixed CharaBase or PlayerBase offsets.",
+    "handlerStorageBoundary": "manifests/property_stream_hash_catalog.json#applyStorageBoundary",
     "properties": [
       {
         "name": "playerWork.castCommandClient",
@@ -154,7 +155,7 @@
   "package2Boundary": "The c2s 0x012D EventStart path carries generic eventName and Lua parameter data. It does not expose a stable scalar gameCommand id or the active cast-gauge deadline.",
   "unresolved": [
     "The time unit and epoch used by castEndClient and worldMaster._getServerTime.",
-    "The property-entry function that maps each 0x0137 hash to a concrete native storage offset.",
+    "The construction-time registry population that selects the concrete SyncWriter subclass for each property hash; the apply path exposes only the common SyncWriter pointer boundary.",
     "The semantics of the getForceCastTimeForCaster override and multiplier values.",
     "A universal packet-level castCommandClient-to-command causality join beyond the one captured same-integer cross-check.",
     "The final selector-to-Rapture clip class behind FUN_00812B50's indirect call.",
@@ -166,10 +167,12 @@
     "Do not treat effect category 0x6f or visual selector 8 as a command-sheet column.",
     "Do not infer a stable command id from c2s 0x012D payload +0x08 or from its opaque eventName/Lua blob.",
     "Do not treat s2c 0x0144's historical chantId label as action-cast presentation state.",
-    "Do not claim RaptureCastResultClip or RaptureChantSyncClip is the active cast-bar consumer."
+    "Do not claim RaptureCastResultClip or RaptureChantSyncClip is the active cast-bar consumer.",
+    "Do not model 0x0137 property hashes as fixed CharaBase or PlayerBase offsets; the apply path targets per-field SyncWriter objects."
   ],
   "sourceRefs": [
     "manifests/gam_hash_names.json",
+    "manifests/property_stream_hash_catalog.json#applyStorageBoundary",
     "manifests/data_dependency_catalog.json#s2c_0x0137",
     "manifests/receiver_opcode_map_inbound.json",
     "manifests/selector_mapping_findings.json",
