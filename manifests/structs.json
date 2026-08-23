@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 468,
+  "structCount": 469,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -29598,6 +29598,72 @@
       ],
       "notes": "Complete exact 0x40 Lua scheduler layout owned by GameEngine. The parent factory fixes the allocation boundary; construction, timer refresh, primary-tree tick, and teardown account for the owner, elapsed time, two owned tree heads, their counts, and the auxiliary 0x60-stride record vector.",
       "id": "BCS-S-0468"
+    },
+    {
+      "name": "SqexCDevEngineDwRenderInterfaceD3d9RaptureDrawIndexedPrimitiveTask",
+      "namespace": "SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture",
+      "size": "0x1C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c523_pooled-event-message.txt",
+        "BCS-Y-2056",
+        "BCS-Y-2057",
+        "BCS-Y-2058",
+        "BCS-Y-2059"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "DrawIndexedPrimitiveTask vftable at 0x00F649B8; slot +0x04 is the Process method BCS-Y-2059."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "primitive_type",
+          "type": "uint32_t",
+          "notes": "D3DPRIMITIVETYPE value forwarded as DrawIndexedPrimitive argument one."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "base_vertex_index",
+          "type": "int32_t",
+          "notes": "Signed base vertex index forwarded as DrawIndexedPrimitive argument two."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "minimum_vertex_index",
+          "type": "uint32_t",
+          "notes": "Minimum vertex index forwarded as DrawIndexedPrimitive argument three."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "vertex_count",
+          "type": "uint32_t",
+          "notes": "Vertex count forwarded as DrawIndexedPrimitive argument four."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "start_index",
+          "type": "uint32_t",
+          "notes": "Starting index forwarded as DrawIndexedPrimitive argument five."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x04",
+          "name": "primitive_count",
+          "type": "uint32_t",
+          "notes": "Primitive count forwarded as DrawIndexedPrimitive argument six."
+        }
+      ],
+      "notes": "Complete exact 0x1C DrawIndexedPrimitiveTask layout. Two independent pool factories allocate the exact extent and populate the same vftable plus six dwords; a stack wrapper constructs the same record, and the virtual Process method forwards every field in order to the D3D9 DrawIndexedPrimitive device slot.",
+      "id": "BCS-S-0469"
     }
   ],
   "method": {
@@ -31173,6 +31239,16 @@
     "c522StructOutputs": "BCS-S-0466 through BCS-S-0468 in manifests/structs.json.",
     "c522ExistingEvidence": "BCS-Y-1691, BCS-Y-1693, and BCS-Y-1699 preserve the GameEngine ownership, scheduler construction, and timer-refresh roles. BCS-Y-1728 through BCS-Y-1730 preserve the primary tick and both node-allocation leads. Retained C360 evidence supplies the parent allocation context, and the decompiled workspace corpus independently preserves the low-level allocation helper used by both node factories.",
     "c522FreshEvidence": "The ten-section export reproduces the exact parent allocation, scheduler construction and teardown, both node allocators, timer refresh, primary tree traversal, auxiliary-vector consumption, and two screened adjacent consumers. Construction partitions the scheduler's two tree containers and vector header; the primary tick partitions the 0x30 node's time key, child list, count, and marker bytes.",
-    "c522Limits": "Scheduler state_04, both tree state pairs, and tail_state remain unknown-typed because bounded construction and teardown establish their extents but not their representations. The auxiliary vector element boundary is 0x60, but its record layout is not promoted. UsTreeNode tree_state_0c, child_list_state, and node_state_24 remain unknown-typed; SmallTreeNode payload remains unknown-typed because its allocator is shared by five trees with different uses. FUN_00CEF510 was screened and rejected as a scheduler consumer because its base-relative fields and 0x30-node marker do not match this scheduler's secondary tree. SetCommandEventConditionReceiver, ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, BootupElement, and NilControl retain their previously recorded exact-boundary or member-partition blockers."
+    "c522Limits": "Scheduler state_04, both tree state pairs, and tail_state remain unknown-typed because bounded construction and teardown establish their extents but not their representations. The auxiliary vector element boundary is 0x60, but its record layout is not promoted. UsTreeNode tree_state_0c, child_list_state, and node_state_24 remain unknown-typed; SmallTreeNode payload remains unknown-typed because its allocator is shared by five trees with different uses. FUN_00CEF510 was screened and rejected as a scheduler consumer because its base-relative fields and 0x30-node marker do not match this scheduler's secondary tree. SetCommandEventConditionReceiver, ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, BootupElement, and NilControl retain their previously recorded exact-boundary or member-partition blockers.",
+    "c523Topic": "C523 complete DrawIndexedPrimitiveTask layout",
+    "c523Scripts": "ghidra/DumpVAs.java",
+    "c523ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c523Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c523_pooled-event-message.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00434280,0x00437660,0x00438AF0,0x00435D60,0x0043C2D0,0x00AB7340' } -ScriptPath @('ghidra')",
+    "c523Inputs": "Two pool factories 0x00434280 and 0x00437660, stack-temporary wrapper 0x00438AF0, DrawIndexedPrimitiveTask Process method 0x00435D60, shared submission helper 0x0043C2D0, and the common vftable slot-zero stub 0x00AB7340.",
+    "c523Output": "tools/ghidra/logs/c523_pooled-event-message.txt",
+    "c523StructOutput": "BCS-S-0469 in manifests/structs.json.",
+    "c523ExistingEvidence": "The decompiled workspace corpus independently preserves the two complete pool-factory instruction streams and the stack-temporary construction shape, including vftable 0x00F649B8 and exact 0x1C extents.",
+    "c523FreshEvidence": "The six-section export reproduces both exact 0x1C pool allocations, all six field stores, the stack wrapper's direct Process call, and the Process method. Process reads +0x04 through +0x18 in order and passes them to the device vtable slot +0x148; its embedded diagnostic names DrawIndexedPrimitiveTask::Process and DrawIndexedPrimitive.",
+    "c523Limits": "The vftable slot-zero stub returns zero but its higher-level contract remains unresolved. The shared submission helper is only a thin forwarding wrapper, and DumpVAs does not establish arbitrary reference topology. Adjacent render-task layouts were screened as a family but not promoted in this batch. SetCommandEventConditionReceiver, ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, BootupElement, NilControl, the scheduled child node, and the scheduler auxiliary record retain their previously recorded boundary or member-partition blockers."
   }
 }
