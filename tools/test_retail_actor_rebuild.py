@@ -23,6 +23,8 @@ CHECK = REPO / "manifests" / "retail_actor_rebuild_check.json"
 RETAIL_INPUTS = REPO / "manifests" / "retail_inputs.json"
 SCHEMA = REPO / "schemas" / "retail-evidence-attestation.schema.json"
 VERIFY = REPO / "tools" / "verify_retail_actor_rebuild.py"
+WORKFLOW = REPO / ".github" / "workflows" / "retail-checks.yml"
+SHARED_ACTION_SHA = "4920dece45e88fcb14424de1f5c4fdee94ae6d02"
 PASSED: list[str] = []
 FAILED: list[str] = []
 
@@ -66,6 +68,72 @@ def _run_cli(path: Path) -> subprocess.CompletedProcess[str]:
 
 def main() -> int:
     baseline = _load(FIXTURE)
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    check(
+        "shared retail actions are pinned",
+        workflow.count(
+            f"XIVLegacy/xivl-tools/.github/actions/fetch-retail-input@{SHARED_ACTION_SHA}"
+        ) == 1
+        and workflow.count(
+            f"XIVLegacy/xivl-tools/.github/actions/setup-retail-toolchain@{SHARED_ACTION_SHA}"
+        ) == 1
+        and workflow.count(
+            f"XIVLegacy/xivl-tools/.github/actions/finalize-retail-attestation@{SHARED_ACTION_SHA}"
+        ) == 1,
+    )
+    check(
+        "shared fetch locks the local executable grant",
+        "commit: aeb52f6dbde95a793ee6d52be28de9f28a885b15" in workflow
+        and "path: ffxivgame.exe" in workflow
+        and 'size: "15996808"' in workflow
+        and "sha256: 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9" in workflow
+        and "token: ${{ secrets.RETAIL_INPUTS_TOKEN }}" in workflow
+        and "RETAIL_INPUTS_REPOSITORY" not in workflow,
+    )
+    check(
+        "shared toolchain enables Ghidra",
+        "include-ghidra: true" in workflow
+        and "https://github.com/adoptium/temurin21-binaries" not in workflow
+        and "https://github.com/NationalSecurityAgency/ghidra" not in workflow,
+    )
+    check(
+        "analysis consumes the shared toolchain output",
+        'headless="${{ steps.toolchain.outputs.analyze-headless }}"' in workflow
+        and "ghidra_12.1.3_PUBLIC" not in workflow,
+    )
+    check(
+        "local verifier remains the analysis and retained boundary",
+        workflow.count("tools/verify_retail_actor_rebuild.py") >= 2
+        and 'verify_retail_actor_rebuild.py --input "${observations}"' in workflow
+        and '"${RUNNER_TEMP}/retail-evidence-private/missing-observations.json"' in workflow,
+    )
+    check(
+        "retained validation follows shared finalization",
+        "id: finalize" in workflow
+        and "id: retained" in workflow
+        and "if: always() && !cancelled() && steps.finalize.outcome == 'success'" in workflow
+        and "hashFiles" not in workflow,
+    )
+    check(
+        "artifact upload requires finalization and retention",
+        "if: always() && !cancelled() && steps.finalize.outcome == 'success'"
+        " && steps.retained.outcome == 'success'" in workflow,
+    )
+    check(
+        "final failure preserves every retail gate",
+        "steps.fetch.outcome != 'success' || steps.toolchain.outcome != 'success'"
+        " || steps.analysis.outcome != 'success' || steps.finalize.outcome != 'success'"
+        " || steps.retained.outcome != 'success'"
+        in workflow,
+    )
+    check(
+        "artifact upload relies on shared action defaults",
+        "if-no-files-found: error" in workflow
+        and "retention-days: 30" in workflow
+        and "compression-level:" not in workflow
+        and "overwrite:" not in workflow
+        and "include-hidden-files:" not in workflow,
+    )
     with tempfile.TemporaryDirectory(prefix="retail-actor-rebuild-test-") as raw:
         directory = Path(raw)
         check("canonical fixture passes", not _fails(directory, baseline))

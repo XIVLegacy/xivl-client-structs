@@ -19,6 +19,7 @@ complete semantic interpretation of the actor-rebuild transaction.
 | Passing attestation | `manifests/retail_evidence/actor-rebuild-receiver-field.json` |
 | Protected environment | `retail-evidence` |
 | Private input repository | `XIVLegacy/xivl-private-assets` |
+| Shared actions | `XIVLegacy/xivl-tools` at `4920dece45e88fcb14424de1f5c4fdee94ae6d02` |
 
 The private repository contains only the canonical `ffxivgame.exe`. The input
 manifest pins its repository-relative path, immutable private commit, byte
@@ -36,13 +37,14 @@ protection rule.
 
 The environment secret is `RETAIL_INPUTS_TOKEN`. It is a fine-grained token
 selected only for `XIVLegacy/xivl-private-assets`, with Contents read-only
-and a maximum owner-approved lifetime of 366 days. The environment variable
-`RETAIL_INPUTS_REPOSITORY` is exactly
-`XIVLegacy/xivl-private-assets`. The same token may be stored in another
-explicitly granted retail-input lane only when that lane uses this same private
-repository and permission scope. Rotation or revocation must update every
-sharing environment before another retail run, using the same or narrower
-repository and permission scope.
+and a maximum owner-approved lifetime of 366 days. The pinned
+`fetch-retail-input` action fixes the private repository and API boundary; this
+check supplies only the token and its manifest-pinned commit, path, size, and
+SHA-256 declarations. The same token may be stored in another explicitly
+granted retail-input workflow only when that workflow uses this same private repository
+and permission scope. Rotation or revocation must update every sharing
+environment before another retail run, using the same or narrower repository
+and permission scope.
 
 The workflow's `GITHUB_TOKEN` remains Contents read-only and checks out the
 public dispatch commit without persisting credentials. The private token is
@@ -58,7 +60,8 @@ fails the check closed.
 
 ## Toolchain and retention
 
-The workflow pins Ghidra 12.1.3 archive
+The shared `setup-retail-toolchain` action at the pinned `xivl-tools` commit
+installs the fixed Temurin JDK and Ghidra. It pins the Ghidra 12.1.3 archive
 `ghidra_12.1.3_PUBLIC_20260817.zip` at SHA-256
 `93a5d11a9ad510622acaaf908c556a7b9b764d338e78a7567f3689bf5081fd54`.
 It pins the Eclipse Temurin JDK `21.0.12.1+1` x64 Linux HotSpot archive at
@@ -68,10 +71,12 @@ Third-party actions use full commit SHAs. The pilot uses no dependency or
 Ghidra-project cache.
 
 Only the schema-valid sanitized attestation may be uploaded, as one exact file
-with 30-day retention. The input, API response, raw observations, Ghidra
+after both the shared finalizer and the workflow-local retained-file/schema check
+pass, with 30-day retention. The input, API response, raw observations, Ghidra
 project, imported program, analysis database, private logs, instruction text,
 bytes, and decompiled output remain temporary and are deleted on every outcome.
-If a failure occurs before a safe attestation exists, no artifact is uploaded.
+If failure-attestation generation, finalization, or retained validation fails,
+no artifact is uploaded.
 
 ## Claim boundary
 
@@ -102,7 +107,11 @@ For a future claim:
 Local execution requires an explicit path to the approved executable. Verify
 the input manifest identity first, create a new temporary Ghidra project, run
 `ghidra/VerifyActorRebuild.java` read-only, and pass its structured output to
-`tools/verify_retail_actor_rebuild.py`. Never reuse a maintainer project for the
+the workflow's `tools/verify_retail_actor_rebuild.py` check. The shared actions
+cover
+only input retrieval, toolchain setup, and final scratch/envelope validation;
+the grant declarations, observation recipe, verifier, and retained schema
+check remain local to this workflow. Never reuse a maintainer project for the
 clean-import rehearsal.
 
 On suspected token exposure, cancel the run, revoke the token, delete any
