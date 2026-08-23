@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 469,
+  "structCount": 472,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -29664,6 +29664,104 @@
       ],
       "notes": "Complete exact 0x1C DrawIndexedPrimitiveTask layout. Two independent pool factories allocate the exact extent and populate the same vftable plus six dwords; a stack wrapper constructs the same record, and the virtual Process method forwards every field in order to the D3D9 DrawIndexedPrimitive device slot.",
       "id": "BCS-S-0469"
+    },
+    {
+      "name": "SqexCDevEngineDwRenderInterfaceD3d9RaptureClearTask",
+      "namespace": "SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture",
+      "size": "0x14",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt",
+        "BCS-Y-2060",
+        "BCS-Y-2061",
+        "BCS-Y-2062",
+        "BCS-Y-2063"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "ClearTask vftable at 0x00F64990; slot +0x04 is the Process method BCS-Y-2063."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "clear_flags",
+          "type": "uint32_t",
+          "notes": "D3DCLEAR flag mask forwarded as Clear argument three after the hardcoded zero rectangle count and null rectangle pointer."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "color",
+          "type": "uint32_t",
+          "notes": "D3DCOLOR value forwarded as Clear argument four."
+        },
+        {
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "stencil",
+          "type": "uint32_t",
+          "notes": "Stencil clear value forwarded as Clear argument six."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x04",
+          "name": "depth",
+          "type": "float",
+          "notes": "Depth clear value forwarded as Clear argument five."
+        }
+      ],
+      "notes": "Complete exact 0x14 ClearTask layout. Two independent pool factories allocate and populate the exact extent, a stack wrapper constructs the same record, and the virtual Process method forwards all four fields to the D3D9 Clear device slot with a zero rectangle count and null rectangle pointer.",
+      "id": "BCS-S-0470"
+    },
+    {
+      "name": "SqexCDevEngineDwRenderInterfaceD3d9RaptureBeginSceneTask",
+      "namespace": "SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture",
+      "size": "0x04",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt",
+        "BCS-Y-2064",
+        "BCS-Y-2065",
+        "BCS-Y-2066"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "BeginSceneTask vftable at 0x00F64998; slot +0x04 is the Process method BCS-Y-2066."
+        }
+      ],
+      "notes": "Complete exact 0x04 BeginSceneTask layout. Two independent pool factories allocate a vftable-only object, and the virtual Process method invokes the D3D9 BeginScene device slot without task payload.",
+      "id": "BCS-S-0471"
+    },
+    {
+      "name": "SqexCDevEngineDwRenderInterfaceD3d9RaptureEndSceneTask",
+      "namespace": "SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture",
+      "size": "0x04",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt",
+        "BCS-Y-2067",
+        "BCS-Y-2068",
+        "BCS-Y-2069"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "EndSceneTask vftable at 0x00F649A0; slot +0x04 is the Process method BCS-Y-2069."
+        }
+      ],
+      "notes": "Complete exact 0x04 EndSceneTask layout. Two independent pool factories allocate a vftable-only object, and the virtual Process method invokes the D3D9 EndScene device slot without task payload.",
+      "id": "BCS-S-0472"
     }
   ],
   "method": {
@@ -31249,6 +31347,18 @@
     "c523StructOutput": "BCS-S-0469 in manifests/structs.json.",
     "c523ExistingEvidence": "The decompiled workspace corpus independently preserves the two complete pool-factory instruction streams and the stack-temporary construction shape, including vftable 0x00F649B8 and exact 0x1C extents.",
     "c523FreshEvidence": "The six-section export reproduces both exact 0x1C pool allocations, all six field stores, the stack wrapper's direct Process call, and the Process method. Process reads +0x04 through +0x18 in order and passes them to the device vtable slot +0x148; its embedded diagnostic names DrawIndexedPrimitiveTask::Process and DrawIndexedPrimitive.",
-    "c523Limits": "The vftable slot-zero stub returns zero but its higher-level contract remains unresolved. The shared submission helper is only a thin forwarding wrapper, and DumpVAs does not establish arbitrary reference topology. Adjacent render-task layouts were screened as a family but not promoted in this batch. SetCommandEventConditionReceiver, ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, BootupElement, NilControl, the scheduled child node, and the scheduler auxiliary record retain their previously recorded boundary or member-partition blockers."
+    "c523Limits": "The vftable slot-zero stub returns zero but its higher-level contract remains unresolved. The shared submission helper is only a thin forwarding wrapper, and DumpVAs does not establish arbitrary reference topology. Adjacent render-task layouts were screened as a family but not promoted in this batch. SetCommandEventConditionReceiver, ApplicationMainElementSystemClientWorkRecord, RemovableHeapBlock, the narrow-string list node, BootupElement, NilControl, the scheduled child node, and the scheduler auxiliary record retain their previously recorded boundary or member-partition blockers.",
+    "c524Topic": "C524 complete Clear, BeginScene, and EndScene task layouts",
+    "c524Scripts": "ghidra/DumpVAs.java plus a calibrated pefile vftable-word audit",
+    "c524ProjectMode": "The closing headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
+    "c524Invocation": "$env:BCS_GHIDRA_HOME='C:\\Users\\aeshu\\tools\\ghidra_12.1_PUBLIC'; $env:BCS_GHIDRA_PROJECTS='C:\\Users\\aeshu\\tools\\ghidra-projects'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.8-hotspot'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c524_render-task-layouts.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00434110,0x004374F0,0x00438A00,0x00435B50,0x00434180,0x00437560,0x00435BC0,0x004341D0,0x004375B0,0x00435C20,0x00AB7340' } -ScriptPath @('ghidra')",
+    "c524Inputs": "ClearTask pool factories 0x00434110/0x004374F0, stack wrapper 0x00438A00, and Process 0x00435B50; BeginSceneTask factories 0x00434180/0x00437560 and Process 0x00435BC0; EndSceneTask factories 0x004341D0/0x004375B0 and Process 0x00435C20; common slot-zero stub 0x00AB7340.",
+    "c524Output": "tools/ghidra/logs/c524_render-task-layouts.txt",
+    "c524VtableAudit": "A calibrated pefile read of retail image words maps 0x00F64990 to {0x00AB7340,0x00435B50}, 0x00F64998 to {0x00AB7340,0x00435BC0}, and 0x00F649A0 to {0x00AB7340,0x00435C20}.",
+    "c524StructOutputs": "BCS-S-0470, BCS-S-0471, and BCS-S-0472 in manifests/structs.json.",
+    "c524ExistingEvidence": "The decompiled workspace corpus independently preserves both pool factories for every task and the ClearTask stack-temporary construction path, including exact allocation extents and vftable literals.",
+    "c524FreshEvidence": "The eleven-section export reproduces all seven pool factories and wrappers, the three named Process methods, and the common slot-zero stub. Clear Process consumes all four stored fields through D3D9 vtable offset +0xAC; BeginScene and EndScene Process use +0xA4 and +0xA8 without payload. Embedded diagnostics directly name each task and API operation.",
+    "c524Limits": "The common vftable slot-zero stub returns zero but its higher-level contract remains unresolved. DumpVAs supplies direct bodies and caller/callee lists only for the requested functions and does not establish arbitrary reference topology. Adjacent DrawPrimitive, DrawPrimitiveUP, DrawIndexedPrimitiveUP, StretchRect, QueryIssue, query-wait, and buffer-update task layouts remain screened but unpromoted pending their own fresh semantic closure.",
+    "c524InstructionAudit": "A calibrated pefile and capstone walk over the complete 0x00434110, 0x004374F0, 0x00438A00, and 0x00435B50 bodies confirms scalar floating-point loads/stores for task +0x10 in all three construction paths and x87 load/forwarding in Process."
   }
 }
