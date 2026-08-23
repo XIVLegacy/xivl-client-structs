@@ -836,7 +836,7 @@
     {
       "opcodeHex": "0x0143",
       "opcode": 323,
-      "name": "_0x0143Handler (PartyMember-related, exact name unconfirmed)",
+      "name": "DeleteGroup",
       "direction_c2s": false,
       "direction_s2c": true,
       "channel": "Zone (MapClientbound)",
@@ -845,10 +845,10 @@
       "primary_handler": "0x00576240 (16-byte wrapper) -> FUN_006C5DE0",
       "pattern": "C (16-byte wrapper - reads zone+0x1783c into local_9d0, then forwards (zone_ctx, &zone_id, packet+0x10) to FUN_00576240)",
       "case_body_pattern": "Same shape as 0x17C: passes zone+0x1783c (zone id or session ref) alongside packet body to the Group system. Distinct from 0x17C: 0x17C captures the SEH gate and lock, 0x143 simply passes the zone-id arg.",
-      "catalog_status": "uncataloged",
-      "existing_bcs_y_id": null,
-      "proposed_bcs_y_id": "BCS-Y-0721-DRAFT",
-      "notes": "Included in this manifest because the case body's shape (zone-id arg + packet body to FUN_006C5xxx Group cluster) matches the party/group family even though bahamut_opcodes has no name binding. The wrapper FUN_00576240 calls FUN_006C5DE0 - adjacent to FUN_006C5DF0 (the 0x18B SetGroupLayoutId callee). Both targets are in the Group::PropertyUpdater pipeline cluster. Speculative: 0x143 may be a PropertyUpdater-driven member field update separate from the Linkshell/Layout opcodes."
+      "catalog_status": "cataloged",
+      "existing_bcs_y_id": "BCS-Y-0543; BCS-Y-0891; BCS-Y-2143; BCS-Y-2144",
+      "proposed_bcs_y_id": null,
+      "notes": "Fresh C531 evidence identifies this as DeleteGroup. FUN_00576240 -> FUN_006C5DE0 -> FUN_006C5150 validates the four-qword group tuple, constructs Group::BreakupBuilder through FUN_006D6F10, and queues it through FUN_007238B0. This supersedes the earlier PropertyUpdater hypothesis but does not prove the exact registry or SharedWork state removed."
     }
   ],
   "rtti_findings": {
@@ -970,7 +970,7 @@
     "group_system_decomp.md 'open question' about runtime registration of ZoneProtoDownCallbackInterface is RESOLVED in network_dispatch_dual_paths.md: there IS no runtime registration. The dispatcher uses DummyCallback whose per-opcode slots are 3-byte `ret 0xc` stubs. Group-family opcodes (0x017A / 0x0133 IN / 0x017C-F / 0x0183) are consumed by Group::PacketProcessor's queue-walk + dual subdecoder, NOT by per-opcode vtable callbacks. This is why FUN_004DC690 dispatches them DIRECTLY (bypassing the ZoneProtoChannel dispatch table) - the FUN_005763xx trampolines are the client's actual handlers."
   ],
   "open_questions": [
-    "0x0143 unnamed handler: case body in FUN_004DC690 has the same shape as 0x17C (zone+0x1783c reference + packet body forwarded to FUN_006C5xxx Group cluster) but bahamut_opcodes.json has no name. Speculative: a Group::PropertyUpdater member-field update separate from 0x18A (Linkshell) and 0x18B (LayoutId). Needs PCAP correlation + payload decomp.",
+    "0x0143 DeleteGroup now reaches a confirmed Group::BreakupBuilder command, but the exact Group registry entry and SharedWork state removed by that command remain unresolved.",
     "FUN_006CD790 (0x188 CreateNamedGroup callee) and FUN_006CD7B0 (0x189 CreateNamedGroupMultiple callee) are in a different cluster from the SharedWork append callees (0x006C2Fxx-0x006C31xx). What is the group-registry data structure these write into? Likely the per-zone groups list in zone+0x???? (separate from the per-group SharedWork instances). Needs reverse search of writes to whatever array FUN_006CD790 touches.",
     "0x017A property-stream MurmurHash2 ids - the property path -> id mapping in gam-property-registry.md should be cross-validated against the s2c property writes observed in pcap.",
     "0x18B SetGroupLayoutId - the exact semantics of the fields at offsets +20 and +21 remain unresolved; the current names are layoutKind and unknown2. Resolution needs expanded pcap correlation across more captures.",

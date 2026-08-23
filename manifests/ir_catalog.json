@@ -17,7 +17,7 @@
     },
     {
       "path": "manifests/lua_to_opcode.json",
-      "sha256": "7bf4ae8362f26b925e254edddcd6cfe007ef7e7fb9ce64ddccc31b4d047653ef"
+      "sha256": "6258d14d431b081f219f9ddcac7f14b08080713bf8196c7b43caf3d40b381169"
     },
     {
       "path": "manifests/operation_opcode_map_outbound.json",
@@ -25,7 +25,7 @@
     },
     {
       "path": "manifests/pcap_opcode_coverage_matrix.json",
-      "sha256": "cd7ae51987f675afb55f2be510d82c73df9854581f475ee0031d6ba47465ffc6"
+      "sha256": "a34a7eb78a5fed049b19c1ef505e1440e5737482c38b7bd769561e861706d666"
     },
     {
       "path": "manifests/receiver_field_writes.json",
@@ -45,7 +45,7 @@
     },
     {
       "path": "manifests/symbols.json",
-      "sha256": "3a413fd83907656ee96e2ef983cf7489f92da402651a2b7690c8b0de9afb1649"
+      "sha256": "c89235436ee9d8bebbc03fcff2a6f266c3eb5bcd7c9a935b0c26b43db84f5c47"
     }
   ],
   "dimensions": {
@@ -103,7 +103,7 @@
   },
   "counts": {
     "types": 490,
-    "symbols": 2127,
+    "symbols": 2131,
     "citations": 1531,
     "members": 3210,
     "unknownSpans": 12,
@@ -78982,7 +78982,7 @@
         "EV-0969",
         "EV-1522"
       ],
-      "notes": "**Third call path to `_onUpdateWork` (FUN_00773F10) via SyncMemoryReceiver: 0x0137 SetActorProperty -> FUN_00775180 -> FUN_00774220 -> FUN_00773F10.** Complements the two call paths already documented in BCS-Y-0188 (Group::EntryLinkShellBuilder::vftable[12]) and BCS-Y-0193 (Control::CharaBase::vftable[12]). FindAllReferences scan on FUN_00773F10 returns TWO callers: (a) FUN_00583440 (the EntryLinkShellBuilder path) and (b) FUN_00774220 (called from FUN_00775180 = SyncMemoryReceiver::apply sub-handler per BCS-Y-0170). So 0x0137 SetActorProperty packets trigger `_onUpdateWork` per property record processed by the SyncMemory stream consumer. **Implication for bahamut server-side emit**: 0x0137 packets will fire `_onUpdateWork` callbacks on the client per property record; combined with the per-property-id MurmurHash2Backward resolution (BCS-Y-0075) this means each property update in a 0x0137 burst can trigger a corresponding `_onUpdateWork('/path/to/property')` Lua callback. Identified via FindAllReferences on FUN_00773F10 from the harvest entry. Reconciliation: BCS-Y-0193's claim that the firer is 'FUN_00773D90' may be a typo - the canonical firer per the ScanLuaCallbackNames harvest and per my decomp is FUN_00773F10. [apply-log fix] Address shifted from 0x00373F10 to 0x00773F10 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [comprehensive-lua-fire-site-inventory] **LUA FIRE SITE INVENTORY**: this function is one of 79 Lua fire sites that call FUN_00CC7A90 (LuaCallbackDispatcher BCS-Y-0399). Fires event(s): `_onUpdateWork`. Body: 780b. Gate-checked via FUN_00CC7280 ([[BCS-Y-1580]]): False. Polymorphic-dispatch via FUN_00CD7A30 ([[BCS-Y-1581]]): False."
+      "notes": "[Tier C531 2026-08-23] Conditional SyncMemory `_onUpdateWork` fire site. The 0x0137 path is [[BCS-Y-0170]] FUN_0089E550 -> FUN_00775A30 -> FUN_00775180 -> FUN_00774220 -> this function. FUN_00774220 calls this site only when its target flag at +0x2D is nonzero, so the evidence proves that property application can fire `_onUpdateWork`, not that every record does so. This function constructs `_onUpdateWork` and calls the Lua callback dispatcher [[BCS-Y-0399]]. Fresh read-only decomp archived in tools/ghidra/logs/c531_guildleve-work-sync.txt."
     },
     {
       "id": "BCS-Y-0200",
@@ -91693,7 +91693,7 @@
     },
     {
       "id": "BCS-Y-0891",
-      "name": "GroupPropertyUpdater_UnnamedOp0143_FUN_006C5DE0",
+      "name": "Group_DeleteGroupIngress_FUN_006C5DE0",
       "kind": "function",
       "address": {
         "kind": "scalar",
@@ -91703,11 +91703,11 @@
         ]
       },
       "addressCorroboration": "not-applicable",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "citations": [
         "EV-0887"
       ],
-      "notes": "[schema-rescue schema rescue] Group PropertyUpdater callee for s2c 0x0143 (name unknown - bahamut_opcodes has no binding). Adjacent to FUN_006C5DF0 (0x018B SetGroupLayoutId callee). Both in Group::PropertyUpdater cluster. Speculative member-field update. The party-subsystem pass opcode_table 0x0143 ultimate_callee."
+      "notes": "[Tier C531 2026-08-23] Confirmed s2c 0x0143 DeleteGroup ingress reached from [[BCS-Y-0543]]. Tail-calls FUN_006C5150, which validates the four-qword group tuple and queues an Application::Lua::Script::Client::Group::BreakupBuilder. The earlier PropertyUpdater classification was disproven by the direct BreakupBuilder vftable write. This path does not by itself prove exact Group registry erasure, SharedWork destruction, or director teardown. Fresh read-only decomp archived in tools/ghidra/logs/c531_delete-group.txt."
     },
     {
       "id": "BCS-Y-0892",
@@ -116507,6 +116507,78 @@
         "EV-1348"
       ],
       "notes": "[Tier C530 2026-08-23] SetRenderTargetTask virtual Process method from vftable 0x00F64978 slot +0x04. It calls device slot +0x94 with the stored render-target index and surface pointer. Embedded diagnostics directly name SetRenderTarget and SetRenderTargetTask::Process."
+    },
+    {
+      "id": "BCS-Y-2141",
+      "name": "EndClientOrderEventReceiver_ReceiveAlwaysSuccess_FUN_0089D200",
+      "kind": "function",
+      "address": {
+        "kind": "scalar",
+        "raw": "0x0089D200",
+        "values": [
+          "0x0089D200"
+        ]
+      },
+      "addressCorroboration": "not-applicable",
+      "confidence": "confirmed",
+      "citations": [
+        "EV-0774"
+      ],
+      "notes": "[Tier C531 2026-08-23] EndClientOrderEventReceiver vftable slot 2 receive method. Writes success unconditionally and returns; the queued apply path is separate. Fresh read-only decomp archived in tools/ghidra/logs/c531_guildleve-event-lifecycle.txt."
+    },
+    {
+      "id": "BCS-Y-2142",
+      "name": "EndEvent_ContextAndSelectorDispatcher_FUN_008A13A0",
+      "kind": "function",
+      "address": {
+        "kind": "scalar",
+        "raw": "0x008A13A0",
+        "values": [
+          "0x008A13A0"
+        ]
+      },
+      "addressCorroboration": "not-applicable",
+      "confidence": "confirmed",
+      "citations": [
+        "EV-0772"
+      ],
+      "notes": "[Tier C531 2026-08-23] EndEvent apply target. Dispatches event types 0..5 through an inlined selector switch and types 50..55 to cleanup; other types return. Selectors 0, 1, and 4 route to name-matched close/notify helpers, while selector 5 routes to the only helper that can free an event slot. Current Ghidra has no separate function at the older 0x008A09E0 locator. Fresh read-only decomp archived in tools/ghidra/logs/c531_guildleve-event-lifecycle.txt."
+    },
+    {
+      "id": "BCS-Y-2143",
+      "name": "DeleteGroup_ValidateAndQueueBreakup_FUN_006C5150",
+      "kind": "function",
+      "address": {
+        "kind": "scalar",
+        "raw": "0x006C5150",
+        "values": [
+          "0x006C5150"
+        ]
+      },
+      "addressCorroboration": "not-applicable",
+      "confidence": "confirmed",
+      "citations": [
+        "EV-0955"
+      ],
+      "notes": "[Tier C531 2026-08-23] Downstream consumer for s2c 0x0143 DeleteGroup via [[BCS-Y-0891]]. Validates the packet's four-qword group tuple, allocates a 0x38-byte command object, constructs it with FUN_006D6F10, and submits it through FUN_007238B0. This proves BreakupBuilder command submission, not exact registry erasure or SharedWork destruction. Fresh read-only decomp archived in tools/ghidra/logs/c531_delete-group.txt."
+    },
+    {
+      "id": "BCS-Y-2144",
+      "name": "Group_BreakupBuilder_ctor_FUN_006D6F10",
+      "kind": "function",
+      "address": {
+        "kind": "scalar",
+        "raw": "0x006D6F10",
+        "values": [
+          "0x006D6F10"
+        ]
+      },
+      "addressCorroboration": "not-applicable",
+      "confidence": "confirmed",
+      "citations": [
+        "EV-0887"
+      ],
+      "notes": "[Tier C531 2026-08-23] Constructor reached from s2c 0x0143 DeleteGroup consumer FUN_006C5150. Calls the Group command-builder base constructor and installs Application::Lua::Script::Client::Group::BreakupBuilder::vftable at 0x00FD42A4. Fresh read-only decomp archived in tools/ghidra/logs/c531_delete-group.txt."
     }
   ],
   "citations": [
@@ -125366,7 +125438,8 @@
       "path": "manifests/event_block_execution_state.json",
       "referencedBy": [
         "BCS-S-0255",
-        "BCS-S-0256"
+        "BCS-S-0256",
+        "BCS-Y-2142"
       ]
     },
     {
@@ -125408,7 +125481,8 @@
         "BCS-Y-0740",
         "BCS-Y-0741",
         "BCS-Y-0742",
-        "BCS-Y-0743"
+        "BCS-Y-0743",
+        "BCS-Y-2141"
       ]
     },
     {
@@ -127862,7 +127936,8 @@
         "BCS-Y-0926",
         "BCS-Y-0927",
         "BCS-Y-0928",
-        "BCS-Y-0929"
+        "BCS-Y-0929",
+        "BCS-Y-2144"
       ]
     },
     {
@@ -128882,7 +128957,8 @@
         "BCS-Y-0406",
         "BCS-Y-0407",
         "BCS-Y-0409",
-        "BCS-Y-0410"
+        "BCS-Y-0410",
+        "BCS-Y-2143"
       ]
     },
     {
@@ -140524,7 +140600,9 @@
         "luaBindings": [],
         "symbols": [
           "BCS-Y-0543",
-          "BCS-Y-0891"
+          "BCS-Y-0891",
+          "BCS-Y-2143",
+          "BCS-Y-2144"
         ],
         "sources": [
           "coverage-matrix"

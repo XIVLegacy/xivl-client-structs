@@ -6,7 +6,7 @@
   "imageBase": "0x00400000",
   "addressConvention": "absolute Ghidra VA",
   "scope": "Client-side event block-execution state: what a 0x0130 RunEventFunction needs in order to run, what a 0x0131 EndEvent actually tears down, and the shared event-command queue both are submitted through. Opened against a live defect where ending an event server-side while a client-function call is outstanding leaves the client unable to render any later event until relog.",
-  "evidenceLog": "tools/ghidra/logs/evt_block_execution_state.txt",
+  "evidenceLog": "tools/ghidra/logs/evt_block_execution_state.txt; corrected by tools/ghidra/logs/c531_guildleve-event-lifecycle.txt",
   "method": [
     "Read-only headless Ghidra via tools/ghidra/run-headless.ps1: DumpFunctionDecomp.java, DumpFunctionListing.java, DumpMemRange.java, FindAllReferencesToAddress.java, FindSymbolByName.java.",
     "Entered from the dispatch chain in manifests/event_dialog_subsystem.json; walked parser -> receiver ctor -> submit wrapper -> command queue -> per-frame drain -> receiver Apply -> event-context method -> event vtable.",
@@ -164,13 +164,15 @@
       "key": "*(byte*)(receiver + 0x0D) = packet+0x08 event type",
       "tables": "byte table at 0x008A149C (102 entries), dword table at 0x008A1464 (14 entries)",
       "bands": {
-        "0..5": "invoke - all six slots are the identical body 'MOV ECX,[EAX+0x18]; JMP FUN_008A09E0'",
+        "0..5": "invoke - all six slots enter the selector block beginning at 0x008A09E0 inside FUN_008A13A0",
         "50..55": "cleanup - CALL FUN_008A10C0",
         "everything else": "RET, no-op"
       }
     },
     "dispatchStage2": {
-      "function": "FUN_008A09E0",
+      "function": "FUN_008A13A0",
+      "inlinedBlockVa": "0x008A09E0",
+      "locatorCorrection": "A fresh DumpVAs query for 0x008A09E0 reports no function at or containing the VA; the current database decompiles this selector block as part of FUN_008A13A0.",
       "key": "*(byte*)(receiver + 0x0C) = packet+0x04 selector byte; anything above 5 falls to a bare RET",
       "jumpTable": "0x008A0A3C",
       "cases": {
@@ -243,8 +245,7 @@
     "EventCommandSubmit_EndEvent_FUN_00785AA0",
     "EventCommandSubmit_KickEvent_FUN_007858C0",
     "RunEventFunction_Executor_FUN_00896F70",
-    "EndEvent_TypeDispatcher_FUN_008A13A0",
-    "EndEvent_VariantDispatcher_FUN_008A09E0",
+    "EndEvent_ContextAndSelectorDispatcher_FUN_008A13A0",
     "EndEvent_Teardown_NameMatched_FUN_008934A0",
     "EndEvent_Teardown_Unconditional_FUN_00893800",
     "ExecutionClientSideBlockEvent_vftable_0x01057080",
