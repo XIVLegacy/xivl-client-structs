@@ -95,19 +95,34 @@ Historical manifest records reference an earlier, unrelated `FindOffsetWriters.j
 
 Exports every reference recorded by Ghidra analysis to one or more addresses,
 or resolves exact or substring queries against all defined-string data and
-exports each match and its references. A usable report ends with `COMPLETE:`;
-`INCOMPLETE:` output cannot support a negative. The reference database can omit
-computed, indirect, dynamically dispatched, or unanalyzed-region references,
-so zero results establish only the directly encoded reference class represented
-by the analyzed database.
+exports each exact string address and its code/data references. Reference rows
+include the containing function or section, making them reproducible registrar
+or implementation candidates without attributing either role.
+
+Always use the dedicated wrapper. It requires explicit targets and a new output
+path, forces `-ReadOnly`, applies hard query/match/reference bounds, and verifies
+the terminal completion marker and internal counts. Cancellation, failure, or a
+limit hit produces `INCOMPLETE:` output that cannot support a negative. The
+reference database can omit computed, indirect, dynamically dispatched, or
+unanalyzed-region references, so zero results establish only the directly
+encoded reference class represented by the analyzed database.
 
 ```powershell
-tools\ghidra\run-headless.ps1 -Script FindReferences.java -ReadOnly `
-    -Out tools\ghidra\logs\out.txt `
-    -ScriptEnv @{ XIVL_REFERENCE_MODE = 'ADDRESS'; XIVL_REFERENCE_ADDRESSES = '0x0076C220,0x004E0240' } `
-    -ScriptPath @('ghidra')
+tools\ghidra\export-references.ps1 `
+    -Addresses '0x0076C220','0x004E0240' `
+    -Out tools\ghidra\logs\address-refs.txt
 ```
 
-For string queries, set `XIVL_REFERENCE_MODE` to `STRING`, provide newline-
-separated literals in `XIVL_REFERENCE_STRINGS`, and optionally set
-`XIVL_STRING_MATCH` to `SUBSTRING`; its default is `EXACT`.
+String mode accepts explicit literals of any nonzero length, including names
+shorter than four characters. Exact matching is the default:
+
+```powershell
+tools\ghidra\export-references.ps1 `
+    -Strings '_onLoop','a' `
+    -Out tools\ghidra\logs\named-string-refs.txt
+```
+
+Use `-StringMatch SUBSTRING` only when the wider match set is intentional.
+`-MaxMatches` and `-MaxReferences` may lower the built-in aggregate bounds;
+exceeding a bound fails the verified pipeline rather than silently truncating
+the report.
