@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2131,
+  "symbolCount": 2136,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -2392,14 +2392,15 @@
     },
     {
       "id": "BCS-Y-0231",
-      "name": "Control::Global::vftable_slot2_8API_lua_dispatch_FUN_007582E0",
+      "name": "Control::Global::vftable_slot2_lua_registrar_owner_FUN_007582E0",
       "kind": "global",
       "address": "0x00FD60AC",
       "confidence": "confirmed",
       "sourceRefs": [
-        "mdi-019"
+        "mdi-019",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**`Application::Lua::Script::Client::Control::Global::vftable` @ VA 0x00FD60AC.** Slot 2 = FUN_007582E0 dispatches 8 Lua APIs covering global lookup and string utilities: `_getActorByName, _getQuestActorForCutSceneReplay, _getStaticActor, _getUTF8StringByteLength, _getUTF8StringLength, _isExistActor, _isExistStaticActor, _isInstanceOf`. Control::Global is the global utility namespace exposed to Lua - actor lookup by name/ID, RTTI-style `_isInstanceOf` for type checks, UTF-8 string utility helpers. The `_isInstanceOf` plus Control::Debug's `_getClassName` suggest scripts have programmatic access to the Lua-bound class hierarchy (i.e. scripts can write generic code that adapts to actor type). Identified. | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x00BD60AC to 0x00FD60AC (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=notes_va; count=1."
+      "notes": "Application::Lua::Script::Client::Control::Global has a 34-slot primary vftable at 0x00FD60AC (RTTI TypeDescriptor 0x012C27C0). Slot 2, stored at 0x00FD60B4, is FUN_007582E0. Its guarded direct-callee list includes the confirmed _defineClass registrar at 0x0073C270, _defineBaseClass registrar at 0x0073C3C0, and _isInstanceOf registrar at 0x00753470. Those registrars pass their handler addresses to FUN_00726E00; the handlers are invoked indirectly and are not callback fire sites."
     },
     {
       "id": "BCS-Y-0232",
@@ -4138,9 +4139,10 @@
         "tools/extractors/extend_corpus_remaining_control.py",
         "tools/extractors/build_substruct_cross_ref.py",
         "tools/extractors/build_flat_cross_ref.py",
-        "tools/extractors/extract_symmetric_bindings.py"
+        "tools/extractors/extract_symmetric_bindings.py",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**the bridge-growth-and-ceiling pass: remaining Control-class corpus closure**. Batch-walked the six remaining Control-class `vftable[2]` switchboards using the bridge-growth-and-ceiling pass/23f/23g corpus-extension method and merged WidgetBase, WorldMaster, Debug, DesktopWidget, Global, and SpreadSheet into `control_class_napi_map.json` plus `control_class_napi_field_access_recursive.json`.\n\n**Switchboards walked and count corrections:**\n- WidgetBase @ FUN_00754A60 (BCS-Y-0225): 19 APIs, not 14. Added `_setFilename`, `_loadForm`, `_countChildWidgets`, `_clearAllList`, `_updateList`.\n- WorldMaster @ FUN_00754C70 (BCS-Y-0226): 17 APIs, not 9. Added `_loadWord`, `_runCharaSchedulerTutorial`, `_waitForCharaSchedulerTutorialFinished`, `_lookAtPlayerTutorial`, `_cancelLookAtPlayerTutorial`, `_cancelAimCameraTutorial`, `_cancelTransformIntoChocobo`, `_cancelAimCameraChocobo`.\n- Debug @ FUN_00757CE0 (BCS-Y-0229): 15 APIs, not 13. Added `_getLocalizedDisplayName`, `_deleteQuestActorForPreview`.\n- DesktopWidget @ FUN_00757EA0 (BCS-Y-0230): 37 APIs, not 27. Added `_clearLogPool`, `_initTargetCursors`, `_lockTargetCursorControl`, `_unlockTargetCursorControl`, `_resetUserConfig`, `_waitForItemSearchWidget`, `_waitForTargetTutorial`, `_waitForCameraTutorial`, `_createWidgetInWidgetContainer`, `_deleteCreatingWidgetInWidgetContainer`.\n- Global @ FUN_007582E0 (BCS-Y-0231): 10 APIs, not 8. Added `_createActor`, `_canCreateActorByName`.\n- SpreadSheet @ FUN_00758670 (BCS-Y-0232): 9 APIs, not 3. Added `_setFilename`, `_loadKeyTemporarily`, `_loadKeySemipermanently`, `_loadAllKeyPermanently`, `_loadKeyAsync`, `_loadMultiKeyAsync`.\n\n**Decomp evidence collected:**\n- 107 firer decomps from `remaining_firers_decomp.txt`.\n- 107 impl decomps from `remaining_impls_decomp.txt`; 25 of 107 impl entries required `DumpFunctionDecompAutoCreate.java` because they were LAB/DAT-style targets or not pre-existing function entries.\n- 77 of 107 impls have direct-offset evidence in the direct-only field-access pass: WidgetBase 13/19, WorldMaster 14/17, Debug 10/15, DesktopWidget 28/37, Global 4/10, SpreadSheet 8/9.\n\n**Bridge cross-ref outcome:** 0 new indirect bindings. Re-running `build_substruct_cross_ref.py`, `build_flat_cross_ref.py`, and `extract_symmetric_bindings.py` produced no new promotions and no unexpected opcode propagation. The direct reads are UI/global/data-table state or NAPI argument-vector scaffolding; the current `receiverWriteIndex` has no matching WidgetBase, DesktopWidget, WorldMaster, Global, Debug, or SpreadSheet chain keys.\n\n**Bridge metrics delta:**\n- corpus API count: 257 -> 364 (+107)\n- corpus class count: 9 -> 15 (+6)\n- confirmedBindings: unchanged at 23\n- luaNamesWithIndirectBinding: unchanged at 22\n- inboundOpcodesIndirectlyResolved: unchanged at 10\n- inboundOpcodesGap: unchanged at 30\n\n**Conclusion:** The read-side Control-class corpus is now closed for all switchboards tracked in this repository's `control_class_napi_map` scope. The last three corpus-extension waves (Area/Group, Item, Actor, and remaining UI/global classes) confirm the bottleneck has moved to write-side receiver indexing rather than missing readers."
+      "notes": "**the bridge-growth-and-ceiling pass: remaining Control-class corpus closure**. Batch-walked the six remaining Control-class `vftable[2]` switchboards using the bridge-growth-and-ceiling pass/23f/23g corpus-extension method and merged WidgetBase, WorldMaster, Debug, DesktopWidget, Global, and SpreadSheet into `control_class_napi_map.json` plus `control_class_napi_field_access_recursive.json`.\n\n**Switchboards walked and count corrections:**\n- WidgetBase @ FUN_00754A60 (BCS-Y-0225): 19 APIs, not 14. Added `_setFilename`, `_loadForm`, `_countChildWidgets`, `_clearAllList`, `_updateList`.\n- WorldMaster @ FUN_00754C70 (BCS-Y-0226): 17 APIs, not 9. Added `_loadWord`, `_runCharaSchedulerTutorial`, `_waitForCharaSchedulerTutorialFinished`, `_lookAtPlayerTutorial`, `_cancelLookAtPlayerTutorial`, `_cancelAimCameraTutorial`, `_cancelTransformIntoChocobo`, `_cancelAimCameraChocobo`.\n- Debug @ FUN_00757CE0 (BCS-Y-0229): 15 APIs, not 13. Added `_getLocalizedDisplayName`, `_deleteQuestActorForPreview`.\n- DesktopWidget @ FUN_00757EA0 (BCS-Y-0230): 37 APIs, not 27. Added `_clearLogPool`, `_initTargetCursors`, `_lockTargetCursorControl`, `_unlockTargetCursorControl`, `_resetUserConfig`, `_waitForItemSearchWidget`, `_waitForTargetTutorial`, `_waitForCameraTutorial`, `_createWidgetInWidgetContainer`, `_deleteCreatingWidgetInWidgetContainer`.\n- Global @ FUN_007582E0 (BCS-Y-2145): 10 APIs in this map, not 8. Added `_createActor`, `_canCreateActorByName`.\n- SpreadSheet @ FUN_00758670 (BCS-Y-0232): 9 APIs, not 3. Added `_setFilename`, `_loadKeyTemporarily`, `_loadKeySemipermanently`, `_loadAllKeyPermanently`, `_loadKeyAsync`, `_loadMultiKeyAsync`.\n\n**Decomp evidence collected:**\n- 107 firer decomps from `remaining_firers_decomp.txt`.\n- 107 impl decomps from `remaining_impls_decomp.txt`; 25 of 107 impl entries required `DumpFunctionDecompAutoCreate.java` because they were LAB/DAT-style targets or not pre-existing function entries.\n- 77 of 107 impls have direct-offset evidence in the direct-only field-access pass: WidgetBase 13/19, WorldMaster 14/17, Debug 10/15, DesktopWidget 28/37, Global 4/10, SpreadSheet 8/9.\n\n**Bridge cross-ref outcome:** 0 new indirect bindings. Re-running `build_substruct_cross_ref.py`, `build_flat_cross_ref.py`, and `extract_symmetric_bindings.py` produced no new promotions and no unexpected opcode propagation. The direct reads are UI/global/data-table state or NAPI argument-vector scaffolding; the current `receiverWriteIndex` has no matching WidgetBase, DesktopWidget, WorldMaster, Global, Debug, or SpreadSheet chain keys.\n\n**Bridge metrics delta:**\n- corpus API count: 257 -> 364 (+107)\n- corpus class count: 9 -> 15 (+6)\n- confirmedBindings: unchanged at 23\n- luaNamesWithIndirectBinding: unchanged at 22\n- inboundOpcodesIndirectlyResolved: unchanged at 10\n- inboundOpcodesGap: unchanged at 30\n\n**Conclusion:** The read-side Control-class corpus is now closed for all switchboards tracked in this repository's `control_class_napi_map` scope. The last three corpus-extension waves (Area/Group, Item, Actor, and remaining UI/global classes) confirm the bottleneck has moved to write-side receiver indexing rather than missing readers."
     },
     {
       "id": "BCS-Y-0372",
@@ -5513,16 +5515,17 @@
     },
     {
       "id": "BCS-Y-0484",
-      "name": "LuaNApi__defineClass_FUN_006DCC30",
+      "name": "LuaNApiHandler__defineClass_FUN_006DCC30",
       "kind": "function",
       "address": "0x006DCC30",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/corpus_napi_residual_findings.json",
         "tools/extractors/survey_corpus_napi_residual.py",
-        "manifests/lua_api_index.json"
+        "manifests/lua_api_index.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**the high-signal-napi-attribution-findings pass: corpus-missed N-API attribution for `_defineClass`**.\n\nGhidra evidence: the literal C-string `\"_defineClass\"` lives in .rdata at VA 0x00FD7354 with exactly ONE xref - at VA inside the registration body FUN_0073c270. That body is the standard Lua N-API registration prologue: it builds args via FUN_0072bec0, calls the binder FUN_00726e00(param_1, FUN_006dcc30, 0, args, class) to construct the binding object, passes the literal name through FUN_00447260 (Lua string-builder helper), then calls FUN_00cccad0(local_60, binding, param_2) to finalize.\n\nThe second positional argument to the binder - `FUN_006dcc30` - is the actual implementation function that runs every time a Lua script invokes the N-API. The registration body runs once at engine init.\n\nFrom the corpus-napi-residual-findings pass corpus survey: `_defineClass` is called 2435 times across 2435 shipped scripts.\n\nPer `lua_class_registry.md`, the Lua-side wrapper is `_defineClass_inl` (defined in actorbaseclass_u.lua) which returns a `(self, \"_defineClass_cpp\")` 2-tuple; the engine dispatch reaches this C++ impl. Bridges with `_defineBaseClass` (paired; same binder FUN_00726E00 and args-builder FUN_0072BEC0)."
+      "notes": "Registered handler wrapper for _defineClass. Global registrar owner FUN_007582E0 directly calls per-name registrar FUN_0073C270, whose exact string reference is 0x0073C359 -> 0x00FD7354 and whose binder argument is FUN_006DCC30. The handler has no recorded direct callers because Lua dispatch is indirect. It directly calls inner implementation FUN_0078C2A0, which reads child and parent from two 0x10-byte argument slots, links them through FUN_00CC7050, and follows FUN_00CC71F0 -> FUN_00CD9C10 to create/find the registry record and clear +0x7C. This is registration and invocation plumbing, not a callback fire site."
     },
     {
       "id": "BCS-Y-0485",
@@ -5552,16 +5555,17 @@
     },
     {
       "id": "BCS-Y-0487",
-      "name": "LuaNApi__defineBaseClass_FUN_006DCCA0",
+      "name": "LuaNApiHandler__defineBaseClass_FUN_006DCCA0",
       "kind": "function",
       "address": "0x006DCCA0",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/corpus_napi_residual_findings.json",
         "tools/extractors/survey_corpus_napi_residual.py",
-        "manifests/lua_api_index.json"
+        "manifests/lua_api_index.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**the high-signal-napi-attribution-findings pass: corpus-missed N-API attribution for `_defineBaseClass`**.\n\nGhidra evidence: the literal C-string `\"_defineBaseClass\"` lives in .rdata at VA 0x00FD7364 with exactly ONE xref - at VA inside the registration body FUN_0073c3c0. That body is the standard Lua N-API registration prologue: it builds args via FUN_0072bec0, calls the binder FUN_00726e00(param_1, FUN_006dcca0, 0, args, class) to construct the binding object, passes the literal name through FUN_00447260 (Lua string-builder helper), then calls FUN_00cccad0(local_60, binding, param_2) to finalize.\n\nThe second positional argument to the binder - `FUN_006dcca0` - is the actual implementation function that runs every time a Lua script invokes the N-API. The registration body runs once at engine init.\n\nFrom the corpus-napi-residual-findings pass corpus survey: `_defineBaseClass` is called 139 times across 139 shipped scripts."
+      "notes": "Registered handler wrapper for _defineBaseClass. Global registrar owner FUN_007582E0 directly calls per-name registrar FUN_0073C3C0, whose exact string reference is 0x0073C4A9 -> 0x00FD7364 and whose binder argument is FUN_006DCCA0. The handler has no recorded direct callers because Lua dispatch is indirect. It directly calls inner implementation FUN_0078C330, which reads child and parent from two 0x10-byte argument slots, links them through FUN_00CC7050, and follows FUN_00CC71E0 -> FUN_00CD9BC0 to create/find the registry record and clear +0x7B. This is registration and invocation plumbing, not a callback fire site."
     },
     {
       "id": "BCS-Y-0488",
@@ -5881,16 +5885,17 @@
     },
     {
       "id": "BCS-Y-0512",
-      "name": "LuaNApi__defineClassInner_FUN_0078C2A0_and__defineBaseClassInner_FUN_0078C330",
+      "name": "LuaNApiInner__defineClass_FUN_0078C2A0_and__defineBaseClass_FUN_0078C330",
       "kind": "function-cluster",
-      "address": "0x0078C2A0",
+      "address": "0x0078C2A0;0x0078C330",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/class_registry_bridge.json",
         "manifests/symbols.json#BCS-Y-0484",
-        "manifests/symbols.json#BCS-Y-0487"
+        "manifests/symbols.json#BCS-Y-0487",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Inner impls of `_defineClass` (FUN_0078C2A0, called by BCS-Y-0484 shim FUN_006DCC30) and `_defineBaseClass` (FUN_0078C330, called by BCS-Y-0487 shim FUN_006DCCA0). BYTE-IDENTICAL structure at 134 bytes each, differing only in the final helper called: _defineClass dispatches to FUN_00CC71F0 (utility class register), _defineBaseClass dispatches to FUN_00CC71E0 (BaseClass register). Both follow the same pattern: (1) read Lua arg-vector at `*(int*)(state+0x10)+4` (16-byte stride array); (2) pull arg[0] (child class table) via FUN_0071CE70(vec, 0, &state); (3) pull arg[1] (parent class table) via FUN_0071CE70(vec+0x10, 1, &state); (4) call FUN_00CC7050(child, parent) to link the parent-child relationship in the registry; (5) call the type-specific register helper on the child. Bounds-check the arg vector via `(end-begin)>>4` count comparison, raising via FUN_009d22b4 on underflow. The shared parent-child link helper FUN_00CC7050 is the engine's single chokepoint where Lua inheritance is recorded - load-bearing for any future class-hierarchy traversal. | [hygiene systematic-rva-not-va-address-shift-edge] Stored address is canonical. The trailing FUN_ token in name is a sibling cross-reference to 0x0078C330 (_defineBaseClassInner sibling, byte-identical 134-byte structure), NOT this entry's own VA. The first FUN_ token in name matches stored address. The systematic-rva-not-va-address-shift pass heuristic (which takes LAST FUN_ token in name) flagged this as evidence_disagrees but no shift is required."
+      "notes": "Paired inner implementations reached directly from the registered wrappers: FUN_006DCC30 -> FUN_0078C2A0 for _defineClass and FUN_006DCCA0 -> FUN_0078C330 for _defineBaseClass. Both read child and parent from two 0x10-byte argument slots and link them through FUN_00CC7050. FUN_0078C2A0 then uses the utility-class path FUN_00CC71F0 -> FUN_00CD9C10, which clears registry-record +0x7C; FUN_0078C330 uses the BaseClass path FUN_00CC71E0 -> FUN_00CD9BC0, which clears +0x7B."
     },
     {
       "id": "BCS-Y-0513",
@@ -5995,39 +6000,42 @@
     },
     {
       "id": "BCS-Y-0521",
-      "name": "LGEKeywordRegistrar_globalSave_FUN_006da450",
+      "name": "GroupSharedWork_GetName__globalSave_FUN_006DA450",
       "kind": "function",
       "address": "0x006da450",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/lge_builtin_name_registrars.json",
-        "manifests/corpus_napi_residual_findings.json"
+        "manifests/corpus_napi_residual_findings.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Static initializer (no callers, CRT-init invoked) that registers the LGE keyword '_globalSave' into a shared registry at DAT_00f67298 via FUN_00447260(\"_globalSave\", DAT_00f67298). String literal at .rdata 0x00fd43f4. One of three adjacent scope-name registrars at 0x70-byte stride (FUN_006da450/4c0/530 for _globalSave/_globalTemp/_memberSave). Per the lge-class-system-consolidated-doc pass (notes:lua-class-system), the three-scope memory model uses save/temp/sync tags at +0x30 of the dispatch marker; these '_globalX' variants are the PROCESS-WIDE counterparts, distinct from instance-scoped _save/_temp/_sync tags. Confirms via .rdata that _globalSave is a first-class LGE keyword (not a user-Lua method or alias)."
+      "notes": "Application::Lua::Script::Client::Group::SharedWork vftable slot 5. The only recorded reference to FUN_006DA450 is the function pointer at 0x00FD4348, within the RTTI-confirmed 28-slot SharedWork vftable at 0x00FD4334. The function constructs _globalSave from string VA 0x00FD43F4 into the caller-supplied string result and returns it. It is a virtual name getter with no direct callers, not a static initializer, registrar, registered handler, or callback fire site."
     },
     {
       "id": "BCS-Y-0522",
-      "name": "LGEKeywordRegistrar_globalTemp_FUN_006da4c0",
+      "name": "GroupSharedWork_GetName__globalTemp_FUN_006DA4C0",
       "kind": "function",
       "address": "0x006da4c0",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/lge_builtin_name_registrars.json",
-        "manifests/corpus_napi_residual_findings.json"
+        "manifests/corpus_napi_residual_findings.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Static initializer registering LGE keyword '_globalTemp' into DAT_00f67298 via FUN_00447260(\"_globalTemp\", DAT_00f67298). String literal at .rdata 0x00fd4400 (12 bytes after _globalSave). Same pattern as BCS-Y-0521; represents the process-wide temporary scope (cleared between operations) as opposed to the persistent _globalSave or per-instance _memberSave."
+      "notes": "Application::Lua::Script::Client::Group::SharedWork vftable slot 6. The only recorded reference to FUN_006DA4C0 is the function pointer at 0x00FD434C, within the RTTI-confirmed 28-slot SharedWork vftable at 0x00FD4334. The function constructs _globalTemp from string VA 0x00FD4400 into the caller-supplied string result and returns it. It is a virtual name getter with no direct callers, not a static initializer, registrar, registered handler, or callback fire site."
     },
     {
       "id": "BCS-Y-0523",
-      "name": "LGEKeywordRegistrar_memberSave_FUN_006da530",
+      "name": "GroupSharedWork_GetName__memberSave_FUN_006DA530",
       "kind": "function",
       "address": "0x006da530",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/lge_builtin_name_registrars.json",
-        "manifests/corpus_napi_residual_findings.json"
+        "manifests/corpus_napi_residual_findings.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Static initializer registering LGE keyword '_memberSave' into DAT_00f67298 via FUN_00447260(\"_memberSave\", DAT_00f67298). String literal at .rdata 0x00fd440c (12 bytes after _globalTemp). Third member of the scope-name registrar cluster. Confirms that '_memberSave' is an LGE first-class keyword distinct from the instance-scoped '_save' tag - presumably the explicit-save-scope accessor used when LGE code needs to disambiguate which scope a member belongs to (vs. the default own>save>sync priority lookup in BCS-Y-0516 FUN_00d16cd0)."
+      "notes": "Application::Lua::Script::Client::Group::SharedWork vftable slot 7. The only recorded reference to FUN_006DA530 is the function pointer at 0x00FD4350, within the RTTI-confirmed 28-slot SharedWork vftable at 0x00FD4334. The function constructs _memberSave from string VA 0x00FD440C into the caller-supplied string result and returns it. It is a virtual name getter with no direct callers, not a static initializer, registrar, registered handler, or callback fire site."
     },
     {
       "id": "BCS-Y-0524",
@@ -10178,9 +10186,10 @@
       "address": "0x00FD4334",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/schema_rescue.json"
+        "manifests/schema_rescue.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "[schema-rescue schema rescue] RTTI vftable for Application::Lua::Script::Client::Group::SharedWork. 28 RTTI slots. Work-table populated by 0x017F..0x186 GroupMembers/ContentMembers append handlers and read by 0x018B SetGroupLayoutId / 0x0187 SetOccupancyGroup property updates. 3 parallel 16-byte-stride member arrays (MemberInfo/Property/WorkSync pipelines). The party-subsystem pass existing_bcs_y_links. | [hygiene systematic-rva-not-va-address-shift RVA+0x00400000 cross-checked against rtti_extraction_OUR.txt] Address shifted from 0x00BD4334 to 0x00FD4334 (+0x00400000) per systematic RTTI cross-check audit. addr+0x00400000=0x00FD4334 matches RTTI vftable for Application::Lua::Script::Client::Group::SharedWork",
+      "notes": "RTTI vftable for Application::Lua::Script::Client::Group::SharedWork at 0x00FD4334 (TypeDescriptor 0x012BFA88), with 28 slots. Slots 5, 6, and 7 are virtual name getters FUN_006DA450 (_globalSave), FUN_006DA4C0 (_globalTemp), and FUN_006DA530 (_memberSave); each function's only recorded reference is its vftable pointer. The work table is populated by the 0x017F..0x0186 GroupMembers/ContentMembers paths and carries the Group member, property, and WorkSync pipelines.",
       "id": "BCS-Y-0893"
     },
     {
@@ -26285,6 +26294,66 @@
       ],
       "notes": "[Tier C531 2026-08-23] Constructor reached from s2c 0x0143 DeleteGroup consumer FUN_006C5150. Calls the Group command-builder base constructor and installs Application::Lua::Script::Client::Group::BreakupBuilder::vftable at 0x00FD42A4. Fresh read-only decomp archived in tools/ghidra/logs/c531_delete-group.txt.",
       "id": "BCS-Y-2144"
+    },
+    {
+      "name": "Control_Global_NApiRegistrarOwner_FUN_007582E0",
+      "kind": "function",
+      "address": "0x007582E0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/symbols.json#BCS-Y-0231"
+      ],
+      "notes": "Control::Global vftable slot 2 and owner of the class's guarded registration sequence. It directly calls the confirmed _defineClass registrar at 0x0073C270, _defineBaseClass registrar at 0x0073C3C0, and _isInstanceOf registrar at 0x00753470. The function itself has no direct callers because its only recorded reference is the primary Global vftable entry at 0x00FD60B4.",
+      "id": "BCS-Y-2145"
+    },
+    {
+      "name": "LuaNApiRegistrar__defineClass_FUN_0073C270",
+      "kind": "function",
+      "address": "0x0073C270",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/symbols.json#BCS-Y-0484"
+      ],
+      "notes": "Per-name registrar for _defineClass. Its sole direct caller is Global registrar owner FUN_007582E0. It passes registered handler FUN_006DCC30 to FUN_00726E00 and associates exact string VA 0x00FD7354 before finalization.",
+      "id": "BCS-Y-2146"
+    },
+    {
+      "name": "LuaNApiRegistrar__defineBaseClass_FUN_0073C3C0",
+      "kind": "function",
+      "address": "0x0073C3C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/symbols.json#BCS-Y-0487"
+      ],
+      "notes": "Per-name registrar for _defineBaseClass. Its sole direct caller is Global registrar owner FUN_007582E0. It passes registered handler FUN_006DCCA0 to FUN_00726E00 and associates exact string VA 0x00FD7364 before finalization.",
+      "id": "BCS-Y-2147"
+    },
+    {
+      "name": "LuaNApiRegistrar__isInstanceOf_FUN_00753470",
+      "kind": "function",
+      "address": "0x00753470",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/control_class_napi_field_access_recursive.json"
+      ],
+      "notes": "Per-name registrar for _isInstanceOf. Its sole direct caller is Global registrar owner FUN_007582E0. It passes registered handler FUN_006FF210 to FUN_00726E00 and associates exact string VA 0x00FD8314 before finalization.",
+      "id": "BCS-Y-2148"
+    },
+    {
+      "name": "LuaNApiHandler__isInstanceOf_FUN_006FF210",
+      "kind": "function",
+      "address": "0x006FF210",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/control_class_napi_field_access_recursive.json"
+      ],
+      "notes": "Registered handler for Global _isInstanceOf, stored by registrar FUN_00753470 and therefore reached indirectly with no recorded direct callers. It rejects a first argument whose tag is not 4, extracts its LuaControl pointer plus a requested class name, returns true for ActorBaseClass, uses MSVC __RTDynamicCast for CharaBaseClass, PlayerBaseClass, NpcBaseClass, AreaBaseClass, DirectorBaseClass, and DesktopWidget, and otherwise checks the object's LGE class-registry chain by name through FUN_00CC7210. It packages the result as a Lua boolean and has no network-send or callback-fire path.",
+      "id": "BCS-Y-2149"
     }
   ]
 }
