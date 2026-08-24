@@ -1,9 +1,9 @@
 {
   "version": 1,
   "gameVersion": "1.23b",
-  "generated": "2026-08-23",
+  "generated": "2026-08-24",
   "status": "bounded_retail_evidence",
-  "scope": "Guildleve work synchronization, UI completion, event retirement, group breakup, and DirectorBase lifecycle boundaries.",
+  "scope": "Guildleve journal command emission, work synchronization, UI completion, event retirement, group breakup, and DirectorBase lifecycle boundaries.",
   "method": {
     "inputIdentity": {
       "program": "ffxivgame.exe",
@@ -31,6 +31,16 @@
         "output": "tools/ghidra/logs/c531_delete-group.txt",
         "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c531_delete-group.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004DC690,0x00576240,0x006C5DE0,0x006C5150,0x006D6F10,0x006D6E90,0x007238B0' } -ScriptPath @('ghidra')",
         "verifiedSections": 7
+      },
+      {
+        "output": "tools/ghidra/logs/c532_guildleve-journal-command.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c532_guildleve-journal-command.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0070A010,0x00898480,0x006E8B30,0x006E8C90,0x00893380,0x00893400,0x006E2FB0,0x006EE680,0x0075E3A0,0x00776760,0x004D6D30,0x004E0240' } -ScriptPath @('ghidra')",
+        "verifiedSections": 12
+      },
+      {
+        "output": "tools/ghidra/logs/c532_guildleve-journal-command-next.txt; tools/ghidra/logs/c532_guildleve-journal-command-payload.txt",
+        "command": "Two read-only DumpVAs replays over the command-event state machines, raw EventStart wrapper, Lua-parameter staging, and non-block enqueue helpers; exact VA sets are retained in each archive header.",
+        "verifiedSections": 15
       }
     ],
     "captureQueries": [
@@ -54,7 +64,12 @@
       }
     ],
     "hashMethod": "Exact backward MurmurHash2 with seed zero, gated by tools/verify_murmur2.py and observed property records.",
-    "boundedNegativeMethod": "The two completion hashes do not occur as encoded literals in the C531 0x0137 decomp sections. The committed reference exporter finds address and defined-string references, not arbitrary immediate literals, so no whole-program immediate-reference claim is made."
+    "boundedNegativeMethod": "The two completion hashes do not occur as encoded literals in the C531 0x0137 decomp sections. The committed reference exporter finds address and defined-string references, not arbitrary immediate literals, so no whole-program immediate-reference claim is made.",
+    "journalCommandSourceSnapshots": {
+      "clientScriptsCommit": "4398870ec049798db6b109767cc0b261a6f48d07",
+      "clientDataCommit": "7ab89367d92b3be696c26320ac7f0b6e0ba935ef",
+      "capturesCommit": "d5bfad61dfcaffa73772e4a69cdfbf1698faf3e9"
+    }
   },
   "corrections": [
     {
@@ -297,6 +312,56 @@
       "doesNotProve": "Similar property-stream encoding does not make 0x017A capable of writing guildleveWork or a prerequisite for 0x0137."
     },
     {
+      "question": "How does journal command 24241 reach the wire for subindices 2-5?",
+      "anchors": [
+        "/Command/System/JournalCommand static actor 24241 / 0xA0F05EB1",
+        "BCS-Y-1989 MyPlayer slot 42 FUN_0070A010",
+        "BCS-Y-0432 EventStart state-machine cluster",
+        "BCS-Y-0428 raw EventStart wrapper",
+        "BCS-Y-0426 EventStart builder FUN_00776760",
+        "c2s 0x012D"
+      ],
+      "path": "JournalDetailWidget confirmation -> DesktopWidget.executeJournalCommand -> PlayerBaseClass.command(24241 actor, journalID, subindex, nil, nil) -> MyPlayer `_executeCommand_cpp` slot 42 FUN_0070A010 -> FUN_00898480 command-event dispatch -> commandRequest callback/server-call route -> MyPlayer `_doServerOnCommand_cpp` slot 46 FUN_006E8C90 -> FUN_006E2FB0 -> FUN_0075E1C0 -> FUN_0089E0D0 -> FUN_00776760 builds c2s 0x012D -> FUN_004D6D30 -> FUN_004E0240 -> FUN_00DAE010",
+      "support": [
+        "xivl-client-scripts:docs/guildleve-journal-lifecycle.md",
+        "xivl-client-scripts:lua/scripts/widget/ask/journaldetailwidget.lua",
+        "xivl-client-scripts:lua/scripts/widget/desktopwidget_connector.lua",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass.lua",
+        "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua",
+        "xivl-client-data:csv/command.csv row 24241",
+        "xivl-client-data:manifests/staticactor_class_paths.json row 24241",
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/c532_guildleve-journal-command.txt",
+        "tools/ghidra/logs/c532_guildleve-journal-command-next.txt",
+        "tools/ghidra/logs/c532_guildleve-journal-command-payload.txt"
+      ],
+      "evidenceTier": "retail_binary_script_and_client_data",
+      "confidence": "confirmed_with_opaque_parameter_blob",
+      "proves": "Subindices 2 regional Break, 3 local Break, 4 regional Retry, and 5 local Retry share the generic serverbound 0x012D EventStart carrier. Command row 24241 is a SystemCommandBaseClass with priority -1, so the Lua event name is commandRequest. The static command actor identity is 0xA0F05EB1. Lua preserves journalID before subindex and supplies two trailing nil values into the native command-event serializer. The builder writes a 200-byte record with a 128-byte Lua-parameter tail.",
+      "doesNotProve": "The exact byte encoding of journalID, subindex, and the two nil values inside the 128-byte tail remains unresolved. The bounded retained capture catalogs expose no sequence decoded as JournalCommand 24241 Break or Retry, so the exact wire bytes and any response ordering are not pcap-confirmed. The common envelope does not define authoritative Break, Retry, allowance, retention, or failure policy."
+    },
+    {
+      "question": "What client-visible state changes when Break or Retry is submitted?",
+      "anchors": [
+        "journalID and subindex forwarding",
+        "playerWork.commandBurstBlocker",
+        "playerWork.requestBurstBlocker",
+        "journal detail widget closure",
+        "work.guildleveId[*] bounded negative"
+      ],
+      "path": "successful client eligibility -> command-event submission returns true -> MyPlayer command-event machinery updates generic +0x128 state -> PlayerBaseClass sets commandBurstBlocker=1 and records the commandRequest throttle window -> JournalDetailWidget closes; journal done/checked/id fields remain read-only inputs in the traced submission path",
+      "support": [
+        "xivl-client-scripts:lua/scripts/command/system/journalcommand.lua",
+        "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua",
+        "xivl-client-scripts:lua/scripts/widget/ask/journaldetailwidget.lua",
+        "tools/ghidra/logs/c532_guildleve-journal-command.txt"
+      ],
+      "evidenceTier": "retail_script_and_binary_bounded_negative",
+      "confidence": "confirmed_submission_effects",
+      "proves": "Break and Retry have the same proven immediate client effects: a generic MyPlayer command-event state write, request throttling, and conditional detail-widget closure. Retry is enabled only for a failed retained entry with positive offerLimit. No branch specific to subindices 2-5 appears in the traced native submission path.",
+      "doesNotProve": "The MyPlayer +0x128 write is not identified as guildleve state. Widget closure does not clear a journal ID, and no traced submission helper writes work.guildleveId, work.guildleveChecked, or work.guildleveDone. A later server-driven property update could change those fields, but no retained Break or Retry response sequence binds such a mutation to command 24241."
+    },
+    {
       "question": "Does retail evidence settle abandon-versus-discard or accepted-guildleve retention?",
       "anchors": [
         "no preserved AbandonGuildleve callsite",
@@ -356,6 +421,11 @@
       "id": 8,
       "question": "What exact minimal sequence can Bahamut implement without invented behavior?",
       "verdict": "For success, Bahamut can implement the directly observed director UI update: one 0x0137 with signal=0xFF/startTime=0 to the known director. The captured content-group breakup, currentContentGroup clear, one effective 0x00CB actor removal, and 0x0131 selector 5 are evidenced retirement mechanisms and an exact single-sample order, but this lane cannot promote their scene-transition order into a universal recipe. 0x0143 remains a group-lifecycle decision and 0x0131 alone cannot remove the actor. For abandonment, the exact minimal new packet sequence is empty: do not send the success 0x0137 or invent an abandonment-specific cleanup order; use only generic cleanup already required by independently established server lifecycles."
+    },
+    {
+      "id": 9,
+      "question": "What is established for JournalCommand 24241 subindices 2-5?",
+      "verdict": "The client maps 2/3 to regional/local Break and 4/5 to regional/local Retry, preserves (journalID, subindex, nil, nil), and submits all four through commandRequest on serverbound EventStart 0x012D for static actor 0xA0F05EB1. Immediate client effects are request throttles and conditional widget closure, not a proven journal-ID or done/checked write. The first unresolved boundary is the exact 128-byte Lua-parameter encoding and the absent server response sequence; therefore neither Break journal removal nor Retry state mutation or response ordering is established."
     }
   ],
   "implementableWithoutInventedSemantics": [
@@ -365,6 +435,7 @@
     "Keep s2c 0x0143 bound to Group breakup. The final success sample's two distinct tuples name the director-containing content group, but do not prove director ownership or a universal emission rule.",
     "Bind one effective s2c 0x00CB to the known director actor/control's observed disappearance; do not copy the retail duplicate or generalize its scene-transition placement.",
     "Bind s2c 0x0131 selector 5 to event-execution retirement only. Its placement after actor removal is observed once and is not a universal ordering rule.",
+    "Encode JournalCommand 24241 as generic c2s 0x012D commandRequest intent for static actor 0xA0F05EB1 only after independently reproducing the common Lua-parameter serializer; do not invent a command-specific opcode or response policy.",
     "For active-attempt abandonment, add no abandonment-specific packet sequence from this lane; only generic cleanup independently required by existing group, actor, and event lifecycles is justified."
   ],
   "remainingUnknowns": [
@@ -377,6 +448,8 @@
     "A captured failure signal or decoded failed-completion sequence.",
     "A captured and decoded active-attempt abandon sequence.",
     "A captured and decoded accepted-guildleve discard sequence.",
+    "The exact 128-byte EventStart Lua-parameter tail for command(24241, journalID, subindex, nil, nil).",
+    "A captured Break or Retry response sequence that binds command 24241 to journal-ID, done/checked, offer-limit, or director-lifecycle mutation.",
     "Retail policy for accepted-leve retention and retry after abandon or failure."
   ]
 }
