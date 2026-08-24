@@ -13,7 +13,7 @@
       "addressConvention": "absolute Ghidra VA",
       "ghidraVersion": "12.1.3",
       "clientScriptsCommit": "a3047bf205f1b8998648969a95bbe2f94190d176",
-      "capturesCommit": "b573698d757ff9947c46b897072c8ec188bc2194",
+      "capturesCommit": "d5bfad61dfcaffa73772e4a69cdfbf1698faf3e9",
       "catalogBaseCommit": "9bd4310d8cd7c4a3dac1a1772ccfb377545c1a39"
     },
     "readOnlyGhidraRecipes": [
@@ -36,7 +36,15 @@
     "captureQueries": [
       {
         "command": "python ..\\xivl-captures\\tools\\extractors\\extract_wire_order.py ..\\xivl-captures\\sources\\pcap-1.23b\\objects\\party_battle_leve.pcapng --direction s2c --around 0x0143 --before 0 --after 8",
-        "result": "13400 s2c subevents and 7 anchors; completion cluster has 0x0143 at indices 13075 and 13076, 0x0137 at 13077, and 0x0131 at 13082."
+        "result": "13400 s2c subevents and 7 anchors; the final group-retirement cluster has distinct 0x0143 tuples at indices 13075 and 13076, a player currentContentGroup-clearing 0x0137 at 13077, director 0x00CB at 13080/13081, and 0x0131 at 13082."
+      },
+      {
+        "command": "python ..\\xivl-captures\\tools\\extractors\\extract_wire_order.py ..\\xivl-captures\\sources\\pcap-1.23b\\objects\\party_battle_leve.pcapng --direction s2c",
+        "result": "Raw reconstructed s2c order, reconciled with outer-frame timestamps using xivl-captures/docs/pcap-decoding.md, places the GuildleveDirector finish 0x0137 at party capture index 12900 and timestamp 1356930512569 for source actor 0x45100D44. The same actor receives duplicate 0x00CB records at indices 13080/13081 and timestamp 1356930536061, 23.492 seconds later; 0x0131 selector 5 follows at index 13082 and timestamp 1356930536075."
+      },
+      {
+        "command": "python ..\\xivl-captures\\tools\\extractors\\extract_property_stream_catalog.py --check",
+        "result": "The catalog check passes. Bounded raw-packet reconciliation finds exactly one retained packet containing guildleveWork.signal raw ff and guildleveWork.startTime zero: party_battle_leve.pcapng frame 3374, source 0x45100D44. local_leve_complete.pcapng contains no guildleveWork signal/startTime packet and no packet-derived GuildleveDirector identity."
       }
     ],
     "negativeLookupRecipes": [
@@ -151,19 +159,64 @@
       "question": "Is DeleteGroup universally required for guildleve teardown, and what ordering is observed?",
       "anchors": [
         "party_battle_leve.pcapng sha256 6327e5e1f5cbd51a9baaa9bcbacf53ca51c50a98fe4b66ae3e6bdecd9198089f",
+        "content group 0x2880000000000822",
         "s2c 0x0143",
+        "s2c 0x00CB",
         "s2c 0x0131"
       ],
-      "path": "party capture subevents 13075/13076: duplicate 0x0143 -> subevent 13077: 0x0137 -> subevent 13082: 0x0131; local_leve_complete contains no 0x0143",
+      "path": "party capture content-group snapshots type 30001 retain actor 0x45100D44 while membership falls 5 -> 4 -> 3; subevents 13075/13076 carry distinct DeleteGroup tuples {control 7, group 0x2880000000000822, zero, confirmed group 0x2880000000000822} and {control 4, same group tuple} -> subevent 13077 clears charaWork.currentContentGroup -> 13080/13081 remove actor 0x45100D44 -> 13082 EndEvent selector 5. local_leve_complete contains no 0x0143 and no director-finish update.",
       "support": [
         "xivl-captures:catalog/scenarios/battlecraft-leve-accept-and-complete/file-inventory.csv",
         "xivl-captures:catalog/scenarios/battlecraft-leve-accept-and-complete/evidence-map.md",
+        "xivl-captures:studies/director-wire-identity/derived/group-packets.csv",
+        "xivl-captures:studies/director-wire-identity/derived/group-members.csv",
         "captureQueries in this manifest"
       ],
       "evidenceTier": "retail_pcap_observed",
       "confidence": "confirmed_observation",
-      "proves": "In the party-battle completion sample, DeleteGroup precedes the final property update and EndEvent. One completion scenario omits DeleteGroup.",
-      "doesNotProve": "Co-occurrence and order do not establish causality, universal necessity, or safe duplicate semantics."
+      "proves": "The final 0x0143 packets delete an identified content group that contains the director actor; they are two different control-number variants for the same group, not duplicates. Five earlier 0x0143 packets in the same capture retire other group IDs outside final completion, and the completion-labeled local capture has none. DeleteGroup therefore tracks an existing group lifecycle rather than guildleve completion universally.",
+      "doesNotProve": "The capture does not prove that both control-number tuples exist for every content group, that a solo director owns a group, or that copying either tuple to another group is safe."
+    },
+    {
+      "question": "What complete success-retirement order is retail-observed for the GuildleveDirector actor?",
+      "anchors": [
+        "party_battle_leve.pcapng subevent 12900",
+        "director actor/control 0x45100D44",
+        "party_battle_leve.pcapng subevents 13075..13082",
+        "local_leve_complete.pcapng sha256 4f0793f354140478725bf2c30642a3458a854460f47fb11a7af635c8881d95cd bounded negative"
+      ],
+      "path": "t-821 ms: type-30001 content-group snapshot 0x2880000000000822 contains director 0x45100D44, player 0x029B2941, peer 0x029B27D3, and content actor 0x45100D5B -> t+0 ms: 0x0137 to 0x45100D44 writes signal=0xFF and startTime=0 -> t+19175 ms: the same content group contains director, player, and 0x45100D5B -> t+23229 ms: a separate type-10001 party snapshot contains only the two players -> t+23462 ms: two distinct 0x0143 tuples retire content group 0x2880000000000822 -> t+23487 ms: 0x0137 from player 0x029B2941 clears charaWork.currentContentGroup -> t+23487 ms: duplicate 0x00CB removes content actor 0x45100D5B -> t+23492 ms: duplicate 0x00CB removes director actor 0x45100D44 -> t+23506 ms: 0x0131 selector 5 from player 0x029B2941 retires talkDefault event state -> bulk actor removal and actor reconstruction continue",
+      "support": [
+        "xivl-captures:studies/property-stream-hash-catalog/derived/property-records.csv",
+        "xivl-captures:studies/director-wire-identity/derived/group-members.csv",
+        "captureQueries in this manifest",
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/event_block_execution_state.json"
+      ],
+      "evidenceTier": "retail_pcap_and_binary",
+      "confidence": "single_sample_confirmed_order",
+      "proves": "The only retained director-finish sample removes the director 23.492 seconds after the UI-finish update, during a bulk scene/zone rebuild, and sends EndEvent after actor removal. DeleteGroup names the content group rather than the distinct player-party group. The two identical 0x00CB records are real subevents after TCP reconstruction; the first successful lookup/destruction makes the second a no-op in the cataloged receiver.",
+      "doesNotProve": "The fixed delay, the scene transition, duplicate RemoveActor, director ownership of the content group, or actor-removal-before-EndEvent order is universal. The local completion capture supplies no second director-retirement sequence, so this order is not generalized beyond the party sample."
+    },
+    {
+      "question": "Which observed packet invokes GuildleveBaseClass.processUIFinalize?",
+      "anchors": [
+        "DirectorBase vtable slot 5 FUN_006F6D30",
+        "BCS-Y-1530 FUN_006F6900",
+        "DirectorBase slot 0 FUN_00721370",
+        "GuildleveBaseClass.processUIFinalize"
+      ],
+      "path": "DirectorBase slot 5 FUN_006F6D30 -> FUN_006F6900 -> gated Lua `_onFinalize` -> DirectorBaseClass finalization -> GuildleveBaseClass.processUIFinalize; observed 0x00CB instead enters FUN_004DC690 case 0xCB -> actor lookup -> dynamic slot 0 scalar-deleting destructor",
+      "support": [
+        "manifests/symbols.json BCS-Y-0208, BCS-Y-0526, BCS-Y-1530, and BCS-Y-1578",
+        "manifests/onfinalize_drill.json",
+        "manifests/actor_vtable5_drill.json",
+        "tools/ghidra/logs/c531_guildleve-event-lifecycle.txt"
+      ],
+      "evidenceTier": "retail_binary_and_script",
+      "confidence": "confirmed_negative_mapping",
+      "proves": "No observed retirement packet receiver is proven to invoke processUIFinalize. That Lua method belongs to the separate slot-5 `_onFinalize` path; 0x0137 updates work, 0x0131 retires event execution state, 0x0143 queues group breakup, and 0x00CB invokes slot-0 destruction.",
+      "doesNotProve": "The capture cannot observe a later engine-scheduled slot-5 callback, and the upstream policy that schedules DirectorBase Lua finalization remains unbound to a server packet."
     },
     {
       "question": "How does s2c 0x0137 reach guildleve Lua and UI updates?",
@@ -266,51 +319,60 @@
   "verdicts": [
     {
       "id": 1,
-      "question": "Can EndDirector reuse generic retail client teardown?",
-      "verdict": "Only as a composition of distinct generic mechanisms, not as EndEvent alone. EndEvent retires event execution state; DirectorBase Lua finalization and generic actor destruction are separate. No exact server-facing EndDirector sequence or ordering is proven."
+      "question": "What is the retail-observed success retirement sequence?",
+      "verdict": "One party sample proves this order only: director 0x45100D44 receives 0x0137 signal=0xFF/startTime=0; 23.462 seconds later the director-containing content group receives two distinct 0x0143 control-number variants; 25 ms later player currentContentGroup is cleared; 5 ms later the director receives duplicate 0x00CB removal; 14 ms later 0x0131 selector 5 retires the event slot. Bulk actor teardown/rebuild surrounds the tail. No second capture repeats this sequence."
     },
     {
       "id": 2,
-      "question": "Is a separate DeleteGroup message required?",
-      "verdict": "Not universally. 0x0143 is the distinct retail Group::BreakupBuilder ingress and precedes EndEvent in the party sample, but another guildleve completion capture omits it. Whether a server lifecycle should emit it is an owner policy call; no evidence makes it a universal guildleve teardown step."
+      "question": "Which step invokes GuildleveBaseClass.processUIFinalize?",
+      "verdict": "None of the observed packet receivers is proven to invoke it. processUIFinalize is reached through the separate DirectorBase slot-5 `_onFinalize` Lua path. The observed 0x00CB receiver calls dynamic slot 0 for destruction, and the cataloged DirectorBase destructor does not call the slot-5 finalize wrapper."
     },
     {
       "id": 3,
-      "question": "Do 0x0137 property writes trigger guildleve Lua/UI updates by themselves?",
-      "verdict": "They can. The confirmed 0x0137 apply path conditionally fires `_onUpdateWork`, and raw signal 0xFF is signed -1 in Lua and reaches the generic Guildleve UI `finish` branch. This does not finalize or destroy the director."
+      "question": "Is actor removal required to finalize the Lua director?",
+      "verdict": "No such requirement is evidenced. Actor removal/object destruction and DirectorBase Lua finalization are separate native mechanisms. Conversely, removing the actor is required for the observed actor disappearance, because 0x0131 only retires event execution state."
     },
     {
       "id": 4,
-      "question": "Is 0x017A relevant to GuildleveDirector work?",
-      "verdict": "No direct relevance is evidenced. It updates Group SharedWork only; 0x0137 SyncMemory updates guildleveWork through a separate path."
+      "question": "Is 0x0131 alone sufficient?",
+      "verdict": "No. Its receiver retires or closes an event-execution slot and contains no 0x0137 work update, DirectorBase finalize call, actor/control detachment, object destructor, or group breakup. In the only observed sequence, it follows the finish update, conditional group cleanup, and director actor removal."
     },
     {
       "id": 5,
-      "question": "Is there an evidenced EndGuildleve(false) or failure representation?",
-      "verdict": "No. The client script has a failed UI-state value 4, but no retained packet sequence or alternate signal maps it to EndGuildleve(false). Signal 0xFF drives generic `finish`, not a success/failure boolean."
+      "question": "Is 0x0143 required, conditional on a group, or unrelated?",
+      "verdict": "Conditional on a real group lifecycle. The final tuples name the content-group ID whose type-30001 member list contains the director. Five earlier 0x0143 packets retire other group IDs outside final completion, while local_leve_complete has no 0x0143. Do not emit it for an ungrouped director or copy the captured control numbers/group ID."
     },
     {
       "id": 6,
-      "question": "Does retail evidence settle accepted-guildleve retention after AbandonGuildleve?",
-      "verdict": "No. Active-attempt abandonment, accepted-journal retention, and journal discard remain unbound in the preserved client and capture corpus."
+      "question": "Is the success sequence safe to reuse after active-attempt abandonment?",
+      "verdict": "No retail-equivalent abandonment sequence is established. No retained abandonment capture exists, so the success 0x0137, group packets, actor removal, EndEvent, their ordering, the captured delay, and the zone rebuild cannot be prescribed for abandonment from this lane. The narrowest safe result is no new abandonment-specific protocol behavior; after authoritative abandonment state is applied, Bahamut may use only generic cleanup already justified by its independent group, actor, and event lifecycles."
     },
     {
       "id": 7,
-      "question": "Which Bahamut contract questions remain owner policy calls?",
-      "verdict": "Success/failure API shape, accepted-leve retention, abandon-versus-discard semantics, retry eligibility, whether to emit DeleteGroup for each server group lifecycle, and the exact server ordering for finalization plus actor removal remain owner policy unless new retail evidence is supplied."
+      "question": "Which ordering details remain unobservable?",
+      "verdict": "Whether success normally waits before teardown; whether director removal normally precedes EndEvent outside a scene transition; when or whether the engine schedules slot-5 Lua finalization; whether every content group receives one or multiple DeleteGroup control-number variants; and the abandonment ordering are unobservable. Cross-direction arrival order is also unavailable because the capture decoder preserves order only within each reconstructed direction and connection block."
+    },
+    {
+      "id": 8,
+      "question": "What exact minimal sequence can Bahamut implement without invented behavior?",
+      "verdict": "For success, Bahamut can implement the directly observed director UI update: one 0x0137 with signal=0xFF/startTime=0 to the known director. The captured content-group breakup, currentContentGroup clear, one effective 0x00CB actor removal, and 0x0131 selector 5 are evidenced retirement mechanisms and an exact single-sample order, but this lane cannot promote their scene-transition order into a universal recipe. 0x0143 remains a group-lifecycle decision and 0x0131 alone cannot remove the actor. For abandonment, the exact minimal new packet sequence is empty: do not send the success 0x0137 or invent an abandonment-specific cleanup order; use only generic cleanup already required by independently established server lifecycles."
     }
   ],
   "implementableWithoutInventedSemantics": [
     "Bind s2c 0x0137 to SyncMemoryReceiver FUN_0089E550, not SendLog FUN_0089FBF0.",
-    "Encode the observed completion UI update as guildleveWork.signal raw 0xFF plus startTime zero, while describing it only as generic client UI finish.",
+    "For successful completion, encode the observed director-targeted UI update as guildleveWork.signal raw 0xFF plus startTime zero, while describing it only as generic client UI finish.",
     "Keep s2c 0x017A Group SharedWork synchronization separate from guildleveWork.",
-    "Bind s2c 0x0143 to Group breakup and do not treat it as EndEvent or universal guildleve teardown.",
-    "Bind s2c 0x0131 to event-execution retirement and do not claim it finalizes or destroys a Guildleve director."
+    "Keep s2c 0x0143 bound to Group breakup. The final success sample's two distinct tuples name the director-containing content group, but do not prove director ownership or a universal emission rule.",
+    "Bind one effective s2c 0x00CB to the known director actor/control's observed disappearance; do not copy the retail duplicate or generalize its scene-transition placement.",
+    "Bind s2c 0x0131 selector 5 to event-execution retirement only. Its placement after actor removal is observed once and is not a universal ordering rule.",
+    "For active-attempt abandonment, add no abandonment-specific packet sequence from this lane; only generic cleanup independently required by existing group, actor, and event lifecycles is justified."
   ],
   "remainingUnknowns": [
     "The upstream actor/control registry lookup that selects the LuaActorImpl target for s2c 0x0137.",
     "Exact Group registry and SharedWork state removed by BreakupBuilder.",
-    "A retail-proven server sequence that combines event retirement, Lua finalization, actor/control detachment, and destruction.",
+    "The engine trigger and timing for DirectorBase slot-5 Lua finalization and GuildleveBaseClass.processUIFinalize.",
+    "Whether director actor removal precedes EndEvent outside the observed scene/zone transition.",
+    "Whether the observed 23.492-second delay is player/UI dwell, transition timing, or a required lifecycle delay.",
     "Whether repeated EndEvent or DeleteGroup receipt is semantically idempotent.",
     "A captured failure signal or decoded failed-completion sequence.",
     "A captured and decoded active-attempt abandon sequence.",
