@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2042,
+  "symbolCount": 2136,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -2057,7 +2057,7 @@
         "mdi-019",
         "xivl-opcodes:data/client_receivers.json"
       ],
-      "notes": "**Third call path to `_onUpdateWork` (FUN_00773F10) via SyncMemoryReceiver: 0x0137 SetActorProperty -> FUN_00775180 -> FUN_00774220 -> FUN_00773F10.** Complements the two call paths already documented in BCS-Y-0188 (Group::EntryLinkShellBuilder::vftable[12]) and BCS-Y-0193 (Control::CharaBase::vftable[12]). FindAllReferences scan on FUN_00773F10 returns TWO callers: (a) FUN_00583440 (the EntryLinkShellBuilder path) and (b) FUN_00774220 (called from FUN_00775180 = SyncMemoryReceiver::apply sub-handler per BCS-Y-0170). So 0x0137 SetActorProperty packets trigger `_onUpdateWork` per property record processed by the SyncMemory stream consumer. **Implication for bahamut server-side emit**: 0x0137 packets will fire `_onUpdateWork` callbacks on the client per property record; combined with the per-property-id MurmurHash2Backward resolution (BCS-Y-0075) this means each property update in a 0x0137 burst can trigger a corresponding `_onUpdateWork('/path/to/property')` Lua callback. Identified via FindAllReferences on FUN_00773F10 from the harvest entry. Reconciliation: BCS-Y-0193's claim that the firer is 'FUN_00773D90' may be a typo - the canonical firer per the ScanLuaCallbackNames harvest and per my decomp is FUN_00773F10. [apply-log fix] Address shifted from 0x00373F10 to 0x00773F10 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [comprehensive-lua-fire-site-inventory] **LUA FIRE SITE INVENTORY**: this function is one of 79 Lua fire sites that call FUN_00CC7A90 (LuaCallbackDispatcher BCS-Y-0399). Fires event(s): `_onUpdateWork`. Body: 780b. Gate-checked via FUN_00CC7280 ([[BCS-Y-1580]]): False. Polymorphic-dispatch via FUN_00CD7A30 ([[BCS-Y-1581]]): False."
+      "notes": "[Tier C531] Conditional SyncMemory `_onUpdateWork` fire site. The 0x0137 path is [[BCS-Y-0170]] FUN_0089E550 -> FUN_00775A30 -> FUN_00775180 -> FUN_00774220 -> this function. FUN_00774220 calls this site only when its target flag at +0x2D is nonzero, so the evidence proves that property application can fire `_onUpdateWork`, not that every record does so. This function constructs `_onUpdateWork` and calls the Lua callback dispatcher [[BCS-Y-0399]]. Fresh read-only decomp archived in tools/ghidra/logs/c531_guildleve-work-sync.txt."
     },
     {
       "id": "BCS-Y-0200",
@@ -2392,14 +2392,15 @@
     },
     {
       "id": "BCS-Y-0231",
-      "name": "Control::Global::vftable_slot2_8API_lua_dispatch_FUN_007582E0",
+      "name": "Control::Global::vftable_slot2_lua_registrar_owner_FUN_007582E0",
       "kind": "global",
       "address": "0x00FD60AC",
       "confidence": "confirmed",
       "sourceRefs": [
-        "mdi-019"
+        "mdi-019",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**`Application::Lua::Script::Client::Control::Global::vftable` @ VA 0x00FD60AC.** Slot 2 = FUN_007582E0 dispatches 8 Lua APIs covering global lookup and string utilities: `_getActorByName, _getQuestActorForCutSceneReplay, _getStaticActor, _getUTF8StringByteLength, _getUTF8StringLength, _isExistActor, _isExistStaticActor, _isInstanceOf`. Control::Global is the global utility namespace exposed to Lua - actor lookup by name/ID, RTTI-style `_isInstanceOf` for type checks, UTF-8 string utility helpers. The `_isInstanceOf` plus Control::Debug's `_getClassName` suggest scripts have programmatic access to the Lua-bound class hierarchy (i.e. scripts can write generic code that adapts to actor type). Identified. | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x00BD60AC to 0x00FD60AC (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=notes_va; count=1."
+      "notes": "Application::Lua::Script::Client::Control::Global has a 34-slot primary vftable at 0x00FD60AC (RTTI TypeDescriptor 0x012C27C0). Slot 2, stored at 0x00FD60B4, is FUN_007582E0. Its guarded direct-callee list includes the confirmed _defineClass registrar at 0x0073C270, _defineBaseClass registrar at 0x0073C3C0, and _isInstanceOf registrar at 0x00753470. Those registrars pass their handler addresses to FUN_00726E00; the handlers are invoked indirectly and are not callback fire sites."
     },
     {
       "id": "BCS-Y-0232",
@@ -4138,9 +4139,10 @@
         "tools/extractors/extend_corpus_remaining_control.py",
         "tools/extractors/build_substruct_cross_ref.py",
         "tools/extractors/build_flat_cross_ref.py",
-        "tools/extractors/extract_symmetric_bindings.py"
+        "tools/extractors/extract_symmetric_bindings.py",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**the bridge-growth-and-ceiling pass: remaining Control-class corpus closure**. Batch-walked the six remaining Control-class `vftable[2]` switchboards using the bridge-growth-and-ceiling pass/23f/23g corpus-extension method and merged WidgetBase, WorldMaster, Debug, DesktopWidget, Global, and SpreadSheet into `control_class_napi_map.json` plus `control_class_napi_field_access_recursive.json`.\n\n**Switchboards walked and count corrections:**\n- WidgetBase @ FUN_00754A60 (BCS-Y-0225): 19 APIs, not 14. Added `_setFilename`, `_loadForm`, `_countChildWidgets`, `_clearAllList`, `_updateList`.\n- WorldMaster @ FUN_00754C70 (BCS-Y-0226): 17 APIs, not 9. Added `_loadWord`, `_runCharaSchedulerTutorial`, `_waitForCharaSchedulerTutorialFinished`, `_lookAtPlayerTutorial`, `_cancelLookAtPlayerTutorial`, `_cancelAimCameraTutorial`, `_cancelTransformIntoChocobo`, `_cancelAimCameraChocobo`.\n- Debug @ FUN_00757CE0 (BCS-Y-0229): 15 APIs, not 13. Added `_getLocalizedDisplayName`, `_deleteQuestActorForPreview`.\n- DesktopWidget @ FUN_00757EA0 (BCS-Y-0230): 37 APIs, not 27. Added `_clearLogPool`, `_initTargetCursors`, `_lockTargetCursorControl`, `_unlockTargetCursorControl`, `_resetUserConfig`, `_waitForItemSearchWidget`, `_waitForTargetTutorial`, `_waitForCameraTutorial`, `_createWidgetInWidgetContainer`, `_deleteCreatingWidgetInWidgetContainer`.\n- Global @ FUN_007582E0 (BCS-Y-0231): 10 APIs, not 8. Added `_createActor`, `_canCreateActorByName`.\n- SpreadSheet @ FUN_00758670 (BCS-Y-0232): 9 APIs, not 3. Added `_setFilename`, `_loadKeyTemporarily`, `_loadKeySemipermanently`, `_loadAllKeyPermanently`, `_loadKeyAsync`, `_loadMultiKeyAsync`.\n\n**Decomp evidence collected:**\n- 107 firer decomps from `remaining_firers_decomp.txt`.\n- 107 impl decomps from `remaining_impls_decomp.txt`; 25 of 107 impl entries required `DumpFunctionDecompAutoCreate.java` because they were LAB/DAT-style targets or not pre-existing function entries.\n- 77 of 107 impls have direct-offset evidence in the direct-only field-access pass: WidgetBase 13/19, WorldMaster 14/17, Debug 10/15, DesktopWidget 28/37, Global 4/10, SpreadSheet 8/9.\n\n**Bridge cross-ref outcome:** 0 new indirect bindings. Re-running `build_substruct_cross_ref.py`, `build_flat_cross_ref.py`, and `extract_symmetric_bindings.py` produced no new promotions and no unexpected opcode propagation. The direct reads are UI/global/data-table state or NAPI argument-vector scaffolding; the current `receiverWriteIndex` has no matching WidgetBase, DesktopWidget, WorldMaster, Global, Debug, or SpreadSheet chain keys.\n\n**Bridge metrics delta:**\n- corpus API count: 257 -> 364 (+107)\n- corpus class count: 9 -> 15 (+6)\n- confirmedBindings: unchanged at 23\n- luaNamesWithIndirectBinding: unchanged at 22\n- inboundOpcodesIndirectlyResolved: unchanged at 10\n- inboundOpcodesGap: unchanged at 30\n\n**Conclusion:** The read-side Control-class corpus is now closed for all switchboards tracked in this repository's `control_class_napi_map` scope. The last three corpus-extension waves (Area/Group, Item, Actor, and remaining UI/global classes) confirm the bottleneck has moved to write-side receiver indexing rather than missing readers."
+      "notes": "**the bridge-growth-and-ceiling pass: remaining Control-class corpus closure**. Batch-walked the six remaining Control-class `vftable[2]` switchboards using the bridge-growth-and-ceiling pass/23f/23g corpus-extension method and merged WidgetBase, WorldMaster, Debug, DesktopWidget, Global, and SpreadSheet into `control_class_napi_map.json` plus `control_class_napi_field_access_recursive.json`.\n\n**Switchboards walked and count corrections:**\n- WidgetBase @ FUN_00754A60 (BCS-Y-0225): 19 APIs, not 14. Added `_setFilename`, `_loadForm`, `_countChildWidgets`, `_clearAllList`, `_updateList`.\n- WorldMaster @ FUN_00754C70 (BCS-Y-0226): 17 APIs, not 9. Added `_loadWord`, `_runCharaSchedulerTutorial`, `_waitForCharaSchedulerTutorialFinished`, `_lookAtPlayerTutorial`, `_cancelLookAtPlayerTutorial`, `_cancelAimCameraTutorial`, `_cancelTransformIntoChocobo`, `_cancelAimCameraChocobo`.\n- Debug @ FUN_00757CE0 (BCS-Y-0229): 15 APIs, not 13. Added `_getLocalizedDisplayName`, `_deleteQuestActorForPreview`.\n- DesktopWidget @ FUN_00757EA0 (BCS-Y-0230): 37 APIs, not 27. Added `_clearLogPool`, `_initTargetCursors`, `_lockTargetCursorControl`, `_unlockTargetCursorControl`, `_resetUserConfig`, `_waitForItemSearchWidget`, `_waitForTargetTutorial`, `_waitForCameraTutorial`, `_createWidgetInWidgetContainer`, `_deleteCreatingWidgetInWidgetContainer`.\n- Global @ FUN_007582E0 (BCS-Y-2145): 10 APIs in this map, not 8. Added `_createActor`, `_canCreateActorByName`.\n- SpreadSheet @ FUN_00758670 (BCS-Y-0232): 9 APIs, not 3. Added `_setFilename`, `_loadKeyTemporarily`, `_loadKeySemipermanently`, `_loadAllKeyPermanently`, `_loadKeyAsync`, `_loadMultiKeyAsync`.\n\n**Decomp evidence collected:**\n- 107 firer decomps from `remaining_firers_decomp.txt`.\n- 107 impl decomps from `remaining_impls_decomp.txt`; 25 of 107 impl entries required `DumpFunctionDecompAutoCreate.java` because they were LAB/DAT-style targets or not pre-existing function entries.\n- 77 of 107 impls have direct-offset evidence in the direct-only field-access pass: WidgetBase 13/19, WorldMaster 14/17, Debug 10/15, DesktopWidget 28/37, Global 4/10, SpreadSheet 8/9.\n\n**Bridge cross-ref outcome:** 0 new indirect bindings. Re-running `build_substruct_cross_ref.py`, `build_flat_cross_ref.py`, and `extract_symmetric_bindings.py` produced no new promotions and no unexpected opcode propagation. The direct reads are UI/global/data-table state or NAPI argument-vector scaffolding; the current `receiverWriteIndex` has no matching WidgetBase, DesktopWidget, WorldMaster, Global, Debug, or SpreadSheet chain keys.\n\n**Bridge metrics delta:**\n- corpus API count: 257 -> 364 (+107)\n- corpus class count: 9 -> 15 (+6)\n- confirmedBindings: unchanged at 23\n- luaNamesWithIndirectBinding: unchanged at 22\n- inboundOpcodesIndirectlyResolved: unchanged at 10\n- inboundOpcodesGap: unchanged at 30\n\n**Conclusion:** The read-side Control-class corpus is now closed for all switchboards tracked in this repository's `control_class_napi_map` scope. The last three corpus-extension waves (Area/Group, Item, Actor, and remaining UI/global classes) confirm the bottleneck has moved to write-side receiver indexing rather than missing readers."
     },
     {
       "id": "BCS-Y-0372",
@@ -5513,16 +5515,17 @@
     },
     {
       "id": "BCS-Y-0484",
-      "name": "LuaNApi__defineClass_FUN_006DCC30",
+      "name": "LuaNApiHandler__defineClass_FUN_006DCC30",
       "kind": "function",
       "address": "0x006DCC30",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/corpus_napi_residual_findings.json",
         "tools/extractors/survey_corpus_napi_residual.py",
-        "manifests/lua_api_index.json"
+        "manifests/lua_api_index.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**the high-signal-napi-attribution-findings pass: corpus-missed N-API attribution for `_defineClass`**.\n\nGhidra evidence: the literal C-string `\"_defineClass\"` lives in .rdata at VA 0x00FD7354 with exactly ONE xref - at VA inside the registration body FUN_0073c270. That body is the standard Lua N-API registration prologue: it builds args via FUN_0072bec0, calls the binder FUN_00726e00(param_1, FUN_006dcc30, 0, args, class) to construct the binding object, passes the literal name through FUN_00447260 (Lua string-builder helper), then calls FUN_00cccad0(local_60, binding, param_2) to finalize.\n\nThe second positional argument to the binder - `FUN_006dcc30` - is the actual implementation function that runs every time a Lua script invokes the N-API. The registration body runs once at engine init.\n\nFrom the corpus-napi-residual-findings pass corpus survey: `_defineClass` is called 2435 times across 2435 shipped scripts.\n\nPer `lua_class_registry.md`, the Lua-side wrapper is `_defineClass_inl` (defined in actorbaseclass_u.lua) which returns a `(self, \"_defineClass_cpp\")` 2-tuple; the engine dispatch reaches this C++ impl. Bridges with `_defineBaseClass` (paired; same binder FUN_00726E00 and args-builder FUN_0072BEC0)."
+      "notes": "Registered handler wrapper for _defineClass. Global registrar owner FUN_007582E0 directly calls per-name registrar FUN_0073C270, whose exact string reference is 0x0073C359 -> 0x00FD7354 and whose binder argument is FUN_006DCC30. The handler has no recorded direct callers because Lua dispatch is indirect. It directly calls inner implementation FUN_0078C2A0, which reads child and parent from two 0x10-byte argument slots, links them through FUN_00CC7050, and follows FUN_00CC71F0 -> FUN_00CD9C10 to create/find the registry record and clear +0x7C. This is registration and invocation plumbing, not a callback fire site."
     },
     {
       "id": "BCS-Y-0485",
@@ -5552,16 +5555,17 @@
     },
     {
       "id": "BCS-Y-0487",
-      "name": "LuaNApi__defineBaseClass_FUN_006DCCA0",
+      "name": "LuaNApiHandler__defineBaseClass_FUN_006DCCA0",
       "kind": "function",
       "address": "0x006DCCA0",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/corpus_napi_residual_findings.json",
         "tools/extractors/survey_corpus_napi_residual.py",
-        "manifests/lua_api_index.json"
+        "manifests/lua_api_index.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "**the high-signal-napi-attribution-findings pass: corpus-missed N-API attribution for `_defineBaseClass`**.\n\nGhidra evidence: the literal C-string `\"_defineBaseClass\"` lives in .rdata at VA 0x00FD7364 with exactly ONE xref - at VA inside the registration body FUN_0073c3c0. That body is the standard Lua N-API registration prologue: it builds args via FUN_0072bec0, calls the binder FUN_00726e00(param_1, FUN_006dcca0, 0, args, class) to construct the binding object, passes the literal name through FUN_00447260 (Lua string-builder helper), then calls FUN_00cccad0(local_60, binding, param_2) to finalize.\n\nThe second positional argument to the binder - `FUN_006dcca0` - is the actual implementation function that runs every time a Lua script invokes the N-API. The registration body runs once at engine init.\n\nFrom the corpus-napi-residual-findings pass corpus survey: `_defineBaseClass` is called 139 times across 139 shipped scripts."
+      "notes": "Registered handler wrapper for _defineBaseClass. Global registrar owner FUN_007582E0 directly calls per-name registrar FUN_0073C3C0, whose exact string reference is 0x0073C4A9 -> 0x00FD7364 and whose binder argument is FUN_006DCCA0. The handler has no recorded direct callers because Lua dispatch is indirect. It directly calls inner implementation FUN_0078C330, which reads child and parent from two 0x10-byte argument slots, links them through FUN_00CC7050, and follows FUN_00CC71E0 -> FUN_00CD9BC0 to create/find the registry record and clear +0x7B. This is registration and invocation plumbing, not a callback fire site."
     },
     {
       "id": "BCS-Y-0488",
@@ -5746,9 +5750,11 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/lge_bootstrap_attribution.json",
-        "manifests/alt_binding_recon.json"
+        "manifests/alt_binding_recon.json",
+        "tools/ghidra/logs/c533_lua-callback-native-attribution.txt",
+        "tools/ghidra/logs/c533_lua-callback-native-attribution-asm.txt"
       ],
-      "notes": "Lua Game Engine (LGE) bootstrap function. 1978 bytes, 18 cclosure pushes. The alt-binding-recon pass recon flagged this as the largest unattributed `large_class_init` template; the lge-bootstrap-attribution pass drilled via new DumpAddrOperandsInFunc.java Ghidra utility that scans every instruction operand recovering both string args and impl-function VAs (defeating the decompiler-arg-strip issue). The function embeds and loads a literal Lua wrapper script at .rdata 0x0110e680 (which redefines `require` to call `_luaGameEngineRequire`, adds `__lge_isAlive` and `__lge_returnNil`, and nukes `collectgarbage`), then installs: (a) 13 named globals as C cclosures - `_luaGameEngineRequire` (impl FUN_00d08a10, matches existing BCS-Y-0480), `_luaGameEngineLoad` (FUN_00d08180, NEW), `_luaGameEngineRequireEnd` (FUN_00d08e50, NEW), `__lge_getWork` (FUN_00d094a0, NEW), `assert` (FUN_00d08ed0, NEW - LUA STDLIB OVERRIDE), `error` (FUN_00d090c0, NEW - STDLIB OVERRIDE), `type` (FUN_00d09240, NEW - STDLIB OVERRIDE), `pcall` (FUN_00d093b0, NEW - STDLIB OVERRIDE), `_pcall` (alias of stock pcall preserved before override), `_time` (FUN_00d082a0, NEW), `_clock` (FUN_00d082a0 - SAME impl as _time, likely upvalue-discriminated), `__lge_setLoopInterval` (FUN_00d083b0, NEW), `__lge_syncById` (FUN_00d09810, NEW), `__lge_getIndividualIndex` (FUN_00d098d0, NEW); (b) `_onLoop` userdata metatable with 4 metamethods - __index (FUN_00d085b0), __newindex (FUN_00d07eb0), __eq (FUN_00d08890), __gc (FUN_00d08070); (c) the LGE root table's __newindex metamethod (FUN_00d099b0 - resolves a the alt-binding-recon pass recon unknown: FUN_00d099b0 was the 'parametric_template' with 3 literal-string calls; it is actually this root-table __newindex handler). ARCHITECTURAL IMPLICATION: FFXIV 1.x ships REPLACED versions of 4 Lua stdlib functions (`assert`/`error`/`pcall`/`type`) - any script behavior analysis must account for this. Original `pcall` is preserved as `_pcall`. Two thin caller functions: FUN_00cd9d80 (240 bytes) and FUN_00cd9e80 (170 bytes) are shim factories - allocate+init then call FUN_00cd8990 - confirming the alt-binding-recon pass recon's inheritance-pair hypothesis. Recovered Lua stdlib helper function names: FUN_00cf3360=lua_pushstring, FUN_00cf32e0=lua_pushcclosure, FUN_00cf3400=lua_settable, FUN_00cf3a70=lua_setglobal/setfield, FUN_00cf3ad0=lua_createtable, FUN_00cf4680=luaL_loadstring, FUN_00cf4010=lua_pcall.\n\n[lua-scheduler-enqueue-path-identified-+ AMENDMENT - NEW LUA-CALLABLE IDENTIFIED] The LGE bootstrap installs an additional Lua-callable function not previously cataloged: [[Lge_Lua_callable_time_getter_FUN_00D082A0]] (BCS-Y-1731 NEW, 264 bytes). Found via FindAllReferencesToAddress on FUN_00D082A0 - 2 DATA references inside this function at 0x00CD9017 and 0x00CD9037 (cclosure-registration block). The function is a TIME GETTER (returns seconds-since-epoch via QueryPerformanceCounter / DAT_00F909C8 frequency). Exact Lua name TBD - candidates: `_lge_getTime`, `_lge_clock`, `_lge_now`. Adds to the LGE bootstrap's 13 named-global cclosure inventory. | [merged from [[BCS-Y-0401]]] Engine loop callback firer for `_onLoop`. The callback harvest records `_onLoop` with caller FUN_00CD8990 and the firer-map scan maps `_onLoop` to 0x00CD8990. Decoded scripts show `_onLoop` declared on multiple class prototype tables, including player/playerbaseclass.lua and npc/npcbaseclass.lua equivalents. This is a non-opcode, engine-scheduler callback: C++ fires by name, Lua registers the handler by prototype assignment. | [duplicate-address resolution] Mixed corrected-attribution group: this is the whole LGE bootstrap, while [[BCS-Y-0501]], [[BCS-Y-1409]], [[BCS-Y-1813]] retain distinct bootstrap, NilControl, and class-registration perspectives; [[BCS-Y-0401]] was a refuted callback-firer attribution."
+      "notes": "Lua Game Engine (LGE) bootstrap function. 1978 bytes, 18 cclosure pushes. The alt-binding-recon pass recon flagged this as the largest unattributed `large_class_init` template; the lge-bootstrap-attribution pass drilled via new DumpAddrOperandsInFunc.java Ghidra utility that scans every instruction operand recovering both string args and impl-function VAs (defeating the decompiler-arg-strip issue). The function embeds and loads a literal Lua wrapper script at .rdata 0x0110e680 (which redefines `require` to call `_luaGameEngineRequire`, adds `__lge_isAlive` and `__lge_returnNil`, and nukes `collectgarbage`), then installs: (a) 13 named globals as C cclosures - `_luaGameEngineRequire` (impl FUN_00d08a10, matches existing BCS-Y-0480), `_luaGameEngineLoad` (FUN_00d08180, NEW), `_luaGameEngineRequireEnd` (FUN_00d08e50, NEW), `__lge_getWork` (FUN_00d094a0, NEW), `assert` (FUN_00d08ed0, NEW - LUA STDLIB OVERRIDE), `error` (FUN_00d090c0, NEW - STDLIB OVERRIDE), `type` (FUN_00d09240, NEW - STDLIB OVERRIDE), `pcall` (FUN_00d093b0, NEW - STDLIB OVERRIDE), `_pcall` (alias of stock pcall preserved before override), `_time` (FUN_00d082a0, NEW), `_clock` (FUN_00d082a0 - SAME impl as _time, likely upvalue-discriminated), `__lge_setLoopInterval` (FUN_00d083b0, NEW), `__lge_syncById` (FUN_00d09810, NEW), `__lge_getIndividualIndex` (FUN_00d098d0, NEW); (b) `_onLoop` userdata metatable with 4 metamethods - __index (FUN_00d085b0), __newindex (FUN_00d07eb0), __eq (FUN_00d08890), __gc (FUN_00d08070); (c) the LGE root table's __newindex metamethod (FUN_00d099b0 - resolves a the alt-binding-recon pass recon unknown: FUN_00d099b0 was the 'parametric_template' with 3 literal-string calls; it is actually this root-table __newindex handler). ARCHITECTURAL IMPLICATION: FFXIV 1.x ships REPLACED versions of 4 Lua stdlib functions (`assert`/`error`/`pcall`/`type`) - any script behavior analysis must account for this. Original `pcall` is preserved as `_pcall`. Two thin caller functions: FUN_00cd9d80 (240 bytes) and FUN_00cd9e80 (170 bytes) are shim factories - allocate+init then call FUN_00cd8990 - confirming the alt-binding-recon pass recon's inheritance-pair hypothesis. Recovered Lua stdlib helper function names: FUN_00cf3360=lua_pushstring, FUN_00cf32e0=lua_pushcclosure, FUN_00cf3400=lua_settable, FUN_00cf3a70=lua_setglobal/setfield, FUN_00cf3ad0=lua_createtable, FUN_00cf4680=luaL_loadstring, FUN_00cf4010=lua_pcall.\n\n[lua-scheduler-enqueue-path-identified-+ AMENDMENT - NEW LUA-CALLABLE IDENTIFIED] The LGE bootstrap installs an additional Lua-callable function not previously cataloged: [[Lge_Lua_callable_time_getter_FUN_00D082A0]] (BCS-Y-1731 NEW, 264 bytes). Found via FindAllReferencesToAddress on FUN_00D082A0 - 2 DATA references inside this function at 0x00CD9017 and 0x00CD9037 (cclosure-registration block). The function is a TIME GETTER (returns seconds-since-epoch via QueryPerformanceCounter / DAT_00F909C8 frequency). Exact Lua name TBD - candidates: `_lge_getTime`, `_lge_clock`, `_lge_now`. Adds to the LGE bootstrap's 13 named-global cclosure inventory. | [Tier C533] The verified exact-string export records the sole `_onLoop` string at 0x0110E7F0 and its sole analyzed reference at 0x00CD8B08 inside this function. Direct assembly shows that name entering the table-creation sequence, followed by cclosure targets FUN_00D085B0 (`__index`), FUN_00D07EB0 (`__newindex`), FUN_00D08890 (`__eq`), and FUN_00D08070 (`__gc`). This proves the `_onLoop` registrar and metatable-handler identities; it refutes the older callback-firer reading preserved only by superseded [[BCS-Y-0401]]. Fresh read-only decomp and assembly: tools/ghidra/logs/c533_lua-callback-native-attribution.txt and tools/ghidra/logs/c533_lua-callback-native-attribution-asm.txt."
     },
     {
       "id": "BCS-Y-0502",
@@ -5879,16 +5885,17 @@
     },
     {
       "id": "BCS-Y-0512",
-      "name": "LuaNApi__defineClassInner_FUN_0078C2A0_and__defineBaseClassInner_FUN_0078C330",
+      "name": "LuaNApiInner__defineClass_FUN_0078C2A0_and__defineBaseClass_FUN_0078C330",
       "kind": "function-cluster",
-      "address": "0x0078C2A0",
+      "address": "0x0078C2A0;0x0078C330",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/class_registry_bridge.json",
         "manifests/symbols.json#BCS-Y-0484",
-        "manifests/symbols.json#BCS-Y-0487"
+        "manifests/symbols.json#BCS-Y-0487",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Inner impls of `_defineClass` (FUN_0078C2A0, called by BCS-Y-0484 shim FUN_006DCC30) and `_defineBaseClass` (FUN_0078C330, called by BCS-Y-0487 shim FUN_006DCCA0). BYTE-IDENTICAL structure at 134 bytes each, differing only in the final helper called: _defineClass dispatches to FUN_00CC71F0 (utility class register), _defineBaseClass dispatches to FUN_00CC71E0 (BaseClass register). Both follow the same pattern: (1) read Lua arg-vector at `*(int*)(state+0x10)+4` (16-byte stride array); (2) pull arg[0] (child class table) via FUN_0071CE70(vec, 0, &state); (3) pull arg[1] (parent class table) via FUN_0071CE70(vec+0x10, 1, &state); (4) call FUN_00CC7050(child, parent) to link the parent-child relationship in the registry; (5) call the type-specific register helper on the child. Bounds-check the arg vector via `(end-begin)>>4` count comparison, raising via FUN_009d22b4 on underflow. The shared parent-child link helper FUN_00CC7050 is the engine's single chokepoint where Lua inheritance is recorded - load-bearing for any future class-hierarchy traversal. | [hygiene systematic-rva-not-va-address-shift-edge] Stored address is canonical. The trailing FUN_ token in name is a sibling cross-reference to 0x0078C330 (_defineBaseClassInner sibling, byte-identical 134-byte structure), NOT this entry's own VA. The first FUN_ token in name matches stored address. The systematic-rva-not-va-address-shift pass heuristic (which takes LAST FUN_ token in name) flagged this as evidence_disagrees but no shift is required."
+      "notes": "Paired inner implementations reached directly from the registered wrappers: FUN_006DCC30 -> FUN_0078C2A0 for _defineClass and FUN_006DCCA0 -> FUN_0078C330 for _defineBaseClass. Both read child and parent from two 0x10-byte argument slots and link them through FUN_00CC7050. FUN_0078C2A0 then uses the utility-class path FUN_00CC71F0 -> FUN_00CD9C10, which clears registry-record +0x7C; FUN_0078C330 uses the BaseClass path FUN_00CC71E0 -> FUN_00CD9BC0, which clears +0x7B."
     },
     {
       "id": "BCS-Y-0513",
@@ -5993,39 +6000,42 @@
     },
     {
       "id": "BCS-Y-0521",
-      "name": "LGEKeywordRegistrar_globalSave_FUN_006da450",
+      "name": "GroupSharedWork_GetName__globalSave_FUN_006DA450",
       "kind": "function",
       "address": "0x006da450",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/lge_builtin_name_registrars.json",
-        "manifests/corpus_napi_residual_findings.json"
+        "manifests/corpus_napi_residual_findings.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Static initializer (no callers, CRT-init invoked) that registers the LGE keyword '_globalSave' into a shared registry at DAT_00f67298 via FUN_00447260(\"_globalSave\", DAT_00f67298). String literal at .rdata 0x00fd43f4. One of three adjacent scope-name registrars at 0x70-byte stride (FUN_006da450/4c0/530 for _globalSave/_globalTemp/_memberSave). Per the lge-class-system-consolidated-doc pass (notes:lua-class-system), the three-scope memory model uses save/temp/sync tags at +0x30 of the dispatch marker; these '_globalX' variants are the PROCESS-WIDE counterparts, distinct from instance-scoped _save/_temp/_sync tags. Confirms via .rdata that _globalSave is a first-class LGE keyword (not a user-Lua method or alias)."
+      "notes": "Application::Lua::Script::Client::Group::SharedWork vftable slot 5. The only recorded reference to FUN_006DA450 is the function pointer at 0x00FD4348, within the RTTI-confirmed 28-slot SharedWork vftable at 0x00FD4334. The function constructs _globalSave from string VA 0x00FD43F4 into the caller-supplied string result and returns it. It is a virtual name getter with no direct callers, not a static initializer, registrar, registered handler, or callback fire site."
     },
     {
       "id": "BCS-Y-0522",
-      "name": "LGEKeywordRegistrar_globalTemp_FUN_006da4c0",
+      "name": "GroupSharedWork_GetName__globalTemp_FUN_006DA4C0",
       "kind": "function",
       "address": "0x006da4c0",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/lge_builtin_name_registrars.json",
-        "manifests/corpus_napi_residual_findings.json"
+        "manifests/corpus_napi_residual_findings.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Static initializer registering LGE keyword '_globalTemp' into DAT_00f67298 via FUN_00447260(\"_globalTemp\", DAT_00f67298). String literal at .rdata 0x00fd4400 (12 bytes after _globalSave). Same pattern as BCS-Y-0521; represents the process-wide temporary scope (cleared between operations) as opposed to the persistent _globalSave or per-instance _memberSave."
+      "notes": "Application::Lua::Script::Client::Group::SharedWork vftable slot 6. The only recorded reference to FUN_006DA4C0 is the function pointer at 0x00FD434C, within the RTTI-confirmed 28-slot SharedWork vftable at 0x00FD4334. The function constructs _globalTemp from string VA 0x00FD4400 into the caller-supplied string result and returns it. It is a virtual name getter with no direct callers, not a static initializer, registrar, registered handler, or callback fire site."
     },
     {
       "id": "BCS-Y-0523",
-      "name": "LGEKeywordRegistrar_memberSave_FUN_006da530",
+      "name": "GroupSharedWork_GetName__memberSave_FUN_006DA530",
       "kind": "function",
       "address": "0x006da530",
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/lge_builtin_name_registrars.json",
-        "manifests/corpus_napi_residual_findings.json"
+        "manifests/corpus_napi_residual_findings.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "Static initializer registering LGE keyword '_memberSave' into DAT_00f67298 via FUN_00447260(\"_memberSave\", DAT_00f67298). String literal at .rdata 0x00fd440c (12 bytes after _globalTemp). Third member of the scope-name registrar cluster. Confirms that '_memberSave' is an LGE first-class keyword distinct from the instance-scoped '_save' tag - presumably the explicit-save-scope accessor used when LGE code needs to disambiguate which scope a member belongs to (vs. the default own>save>sync priority lookup in BCS-Y-0516 FUN_00d16cd0)."
+      "notes": "Application::Lua::Script::Client::Group::SharedWork vftable slot 7. The only recorded reference to FUN_006DA530 is the function pointer at 0x00FD4350, within the RTTI-confirmed 28-slot SharedWork vftable at 0x00FD4334. The function constructs _memberSave from string VA 0x00FD440C into the caller-supplied string result and returns it. It is a virtual name getter with no direct callers, not a static initializer, registrar, registered handler, or callback fire site."
     },
     {
       "id": "BCS-Y-0524",
@@ -10149,14 +10159,14 @@
       "id": "BCS-Y-0890"
     },
     {
-      "name": "GroupPropertyUpdater_UnnamedOp0143_FUN_006C5DE0",
+      "name": "Group_DeleteGroupIngress_FUN_006C5DE0",
       "kind": "function",
       "address": "0x006C5DE0",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
         "manifests/schema_rescue.json"
       ],
-      "notes": "[schema-rescue schema rescue] Group PropertyUpdater callee for s2c 0x0143 (name unknown - bahamut_opcodes has no binding). Adjacent to FUN_006C5DF0 (0x018B SetGroupLayoutId callee). Both in Group::PropertyUpdater cluster. Speculative member-field update. The party-subsystem pass opcode_table 0x0143 ultimate_callee.",
+      "notes": "[Tier C531] Confirmed s2c 0x0143 DeleteGroup ingress reached from [[BCS-Y-0543]]. Tail-calls FUN_006C5150, which validates the four-qword group tuple and queues an Application::Lua::Script::Client::Group::BreakupBuilder. The earlier PropertyUpdater classification was disproven by the direct BreakupBuilder vftable write. This path does not by itself prove exact Group registry erasure, SharedWork destruction, or director teardown. Fresh read-only decomp archived in tools/ghidra/logs/c531_delete-group.txt.",
       "id": "BCS-Y-0891"
     },
     {
@@ -10176,9 +10186,10 @@
       "address": "0x00FD4334",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/schema_rescue.json"
+        "manifests/schema_rescue.json",
+        "manifests/lge_primitive_registrar_closure.json"
       ],
-      "notes": "[schema-rescue schema rescue] RTTI vftable for Application::Lua::Script::Client::Group::SharedWork. 28 RTTI slots. Work-table populated by 0x017F..0x186 GroupMembers/ContentMembers append handlers and read by 0x018B SetGroupLayoutId / 0x0187 SetOccupancyGroup property updates. 3 parallel 16-byte-stride member arrays (MemberInfo/Property/WorkSync pipelines). The party-subsystem pass existing_bcs_y_links. | [hygiene systematic-rva-not-va-address-shift RVA+0x00400000 cross-checked against rtti_extraction_OUR.txt] Address shifted from 0x00BD4334 to 0x00FD4334 (+0x00400000) per systematic RTTI cross-check audit. addr+0x00400000=0x00FD4334 matches RTTI vftable for Application::Lua::Script::Client::Group::SharedWork",
+      "notes": "RTTI vftable for Application::Lua::Script::Client::Group::SharedWork at 0x00FD4334 (TypeDescriptor 0x012BFA88), with 28 slots. Slots 5, 6, and 7 are virtual name getters FUN_006DA450 (_globalSave), FUN_006DA4C0 (_globalTemp), and FUN_006DA530 (_memberSave); each function's only recorded reference is its vftable pointer. The work table is populated by the 0x017F..0x0186 GroupMembers/ContentMembers paths and carries the Group member, property, and WorkSync pipelines.",
       "id": "BCS-Y-0893"
     },
     {
@@ -20449,9 +20460,10 @@
         "tools/ghidra/logs/c99_schedule_fn.txt",
         "tools/ghidra/logs/c99_deeper.txt",
         "tools/ghidra/logs/c99_ms_dispatcher.txt",
-        "manifests/lua_dispatch_architecture.json"
+        "manifests/lua_dispatch_architecture.json",
+        "tools/ghidra/logs/c522_lua-scheduler-layouts.txt"
       ],
-      "notes": "[component] **Lua scheduler constructor** (191 body bytes, sole caller [[Component_Lua_GameEngine_constructor_FUN_00CDC410]] BCS-Y-1691 NEW). Initializes a scheduler object with the following layout: +0x00 = param_2 (parent GameEngine ptr), +0x08/+0x0C = epoch from globals DAT_01377FB0/FB4 (64-bit timestamp - read by [[LuaSchedulerTickUs_FUN_00CF63E0]] BCS-Y-1699 NEW), +0x14 = us-queue head node (from FUN_00CF51A0, leaf-flag at +0x29), +0x18 = us-queue count (0), +0x24 = ms-list head node (from FUN_00D0A870, leaf-flag at +0x21), +0x28 = ms-list count (0), +0x30/+0x34/+0x38 = zeros (probably 3-pointer block for a vector of 0x60-sized elements). Total object size: 0x40 (64 bytes, per FUN_00CDC410's alloc size for this field). **Has 2 distinct queues**: us-resolution (FUN_00CF6080 iterates this) AND ms-resolution (FUN_00CEF510 iterates this) - explains the 2 scheduled-dispatch paths discovered here.\n\n[lua-scheduler-enqueue-path-identified-+ AMENDMENT - QUEUE STRUCTURE REFINED] Full scheduler layout established + queues confirmed as RED-BLACK TREES (not lists as the approximated). Layout: +0x00 = config pointer (param_2), +0x08/+0x0C = epoch from DAT_01377FB0/FB4, **+0x14 = us-TREE head** (R-B tree, 0x30-byte node, allocated via [[LuaSchedulerUs_tree_node_alloc_FUN_00CF51A0]] BCS-Y-1729 NEW; color byte at +0x29), +0x18 = 0 (count?), **+0x24 = ms-TREE head** (R-B tree, 0x24-byte node, allocated via [[LuaSchedulerMs_tree_node_alloc_FUN_00D0A870]] BCS-Y-1730 NEW; color byte at +0x21), +0x28 = 0, +0x30..+0x38 = auxiliary vector<event_payload> at 0x60 bytes per element (used by [[LuaSchedulerUs_tick_body_FUN_00CF6080]] BCS-Y-1728 NEW). Total size 0x40 (64) bytes. The 'us-queue/ms-list' naming was approximate - both are actually R-B trees keyed by absolute time. Enqueue path for ms-tree: [[LuaSchedulerMs_enqueue_core_FUN_00CEEE70]] (BCS-Y-1725 NEW). Enqueue path for us-tree: UNIDENTIFIED (deferred follow-up)."
+      "notes": "[component] **Lua scheduler constructor** (191 body bytes, sole caller [[Component_Lua_GameEngine_constructor_FUN_00CDC410]] BCS-Y-1691 NEW). Initializes a scheduler object with the following layout: +0x00 = param_2 (parent GameEngine ptr), +0x08/+0x0C = epoch from globals DAT_01377FB0/FB4 (64-bit timestamp - read by [[LuaSchedulerTickUs_FUN_00CF63E0]] BCS-Y-1699 NEW), +0x14 = us-queue head node (from FUN_00CF51A0, leaf-flag at +0x29), +0x18 = us-queue count (0), +0x24 = secondary-tree head node (from FUN_00D0A870, leaf-flag at +0x21), +0x28 = secondary-tree count (0), +0x30/+0x34/+0x38 = zeros (probably 3-pointer block for a vector of 0x60-sized elements). Total object size: 0x40 (64 bytes, per FUN_00CDC410's alloc size for this field). The object owns two tree containers. FUN_00CF6080 directly consumes the primary tree; C522 screened FUN_00CEF510 and rejected it as a consumer of this scheduler because its base-relative fields and 0x30-node marker do not match the secondary tree.\n\n[lua-scheduler-enqueue-path-identified-+ AMENDMENT - QUEUE STRUCTURE REFINED] Full scheduler layout established + queues confirmed as RED-BLACK TREES (not lists as the approximated). Layout: +0x00 = config pointer (param_2), +0x08/+0x0C = epoch from DAT_01377FB0/FB4, **+0x14 = us-TREE head** (R-B tree, 0x30-byte node, allocated via [[LuaSchedulerUs_tree_node_alloc_FUN_00CF51A0]] BCS-Y-1729 NEW; is_nil byte at +0x29), +0x18 = 0 (count?), **+0x24 = secondary-tree head** (R-B tree, 0x24-byte node, allocated via [[LuaSchedulerMs_tree_node_alloc_FUN_00D0A870]] BCS-Y-1730 NEW; is_nil byte at +0x21), +0x28 = 0, +0x30..+0x38 = auxiliary vector<event_payload> at 0x60 bytes per element (used by [[LuaSchedulerUs_tick_body_FUN_00CF6080]] BCS-Y-1728 NEW). Total size 0x40 (64) bytes. The earlier 'us-queue/ms-list' naming was approximate. The primary container is an R-B time tree; the secondary container is also an R-B tree, but its key and higher-level role remain unresolved. Enqueue paths for both scheduler-owned trees remain unidentified.\n\n[Tier C522] Fresh construction, teardown, and primary-tick evidence fixes the scheduler at 0x40 and corrects the node marker roles: +0x29/+0x21 is is_nil, while +0x28/+0x20 is color. Evidence: tools/ghidra/logs/c522_lua-scheduler-layouts.txt."
     },
     {
       "id": "BCS-Y-1694",
@@ -21010,9 +21022,10 @@
         "tools/ghidra/logs/c108_scheduler_decomp.txt",
         "tools/ghidra/logs/c108_enqueue_api.txt",
         "tools/ghidra/logs/c108_xrefs.txt",
-        "manifests/scheduler_enqueue.json"
+        "manifests/scheduler_enqueue.json",
+        "tools/ghidra/logs/c522_lua-scheduler-layouts.txt"
       ],
-      "notes": "[lua-scheduler-enqueue-path-identified-+] **US-scheduler tick body** (856 bytes, sole caller [[LuaSchedulerTickUs_FUN_00CF63E0]] BCS-Y-1699). Drains ready entries from the us-tree at scheduler+0x14. Body: (1) compute current time = (epoch / 1000) (us scale to ms align for comparison via __aulldiv); (2) traverse R-B tree from head, walking via `cVar4 == '\\0'` color check + key comparison (puVar3[5]=hi, puVar3[4]=lo) until reach leftmost ready node; (3) for each ready tree node: process its child list at puVar3[7], for each child invoke [[LuaScheduledDispatch_entry_FUN_00CF5EC0]] (BCS-Y-1686) which fires the callback, then free the child via FUN_0044D350(48 bytes); (4) if tree node's child count drops to 0, remove tree node via FUN_00D02220 + FUN_00D02650; (5) process auxiliary vector at scheduler+0x30..+0x38 (vector<event_payload> of size 0x60 each) via FUN_00CF59A0 invocations + bulk-free at end. **US-tree node layout**: +0x0/+0x4/+0x8 = left/right/parent (R-B); +0x10/+0x14 = key (64-bit absolute us time); +0x18 = ?; +0x1C = child list head; +0x20 = ?; +0x29 = color byte. **Supersedes the BCS-Y-1687 'us_queue_iterator' label**: that entry name was approximate - this IS the iterator body."
+      "notes": "[lua-scheduler-enqueue-path-identified-+] **US-scheduler tick body** (856 bytes, sole caller [[LuaSchedulerTickUs_FUN_00CF63E0]] BCS-Y-1699). Drains ready entries from the us-tree at scheduler+0x14. Body: (1) compute current time = (epoch / 1000) (us scale to ms align for comparison via __aulldiv); (2) traverse R-B tree from head, walking via the `cVar4 == '\\0'` non-nil check + key comparison (puVar3[5]=hi, puVar3[4]=lo) until reach leftmost ready node; (3) for each ready tree node: process its child list at puVar3[7], for each child invoke [[LuaScheduledDispatch_entry_FUN_00CF5EC0]] (BCS-Y-1686) which fires the callback, then free the child via FUN_0044D350(48 bytes); (4) if tree node's child count drops to 0, remove tree node via FUN_00D02220 + FUN_00D02650; (5) process auxiliary vector at scheduler+0x30..+0x38 (vector<event_payload> of size 0x60 each) via FUN_00CF59A0 invocations + bulk-free at end. **US-tree node layout**: +0x0/+0x4/+0x8 = left/right/parent (R-B); +0x10/+0x14 = key (64-bit absolute us time); +0x18 = ?; +0x1C = child list head; +0x20 = child count; +0x29 = is_nil byte. **Supersedes the BCS-Y-1687 'us_queue_iterator' label**: that entry name was approximate - this IS the iterator body.\n\n[Tier C522] The traversal test identifies +0x29 as is_nil rather than color; the adjacent +0x28 byte is color. Evidence: tools/ghidra/logs/c522_lua-scheduler-layouts.txt."
     },
     {
       "id": "BCS-Y-1729",
@@ -21024,9 +21037,10 @@
         "tools/ghidra/logs/c108_scheduler_decomp.txt",
         "tools/ghidra/logs/c108_enqueue_api.txt",
         "tools/ghidra/logs/c108_xrefs.txt",
-        "manifests/scheduler_enqueue.json"
+        "manifests/scheduler_enqueue.json",
+        "tools/ghidra/logs/c522_lua-scheduler-layouts.txt"
       ],
-      "notes": "[lua-scheduler-enqueue-path-identified-+] **US-tree head/node allocator** (59 bytes, sole caller [[LuaScheduler_constructor_FUN_00CF58E0]] BCS-Y-1693). Allocates a 0x30 (48) byte R-B tree node via FUN_0044D500(0x30, 0, 0x15). Initializes: +0x0 = 0 (left), +0x4 = 0 (right), +0x8 = 0 (parent), +0x28 = byte 1 (sentinel marker), +0x29 = byte 0 (color = black for sentinel). The scheduler ctor immediately overrides offsets 0/4/8 to self-ref the head as a doubly-linked sentinel (R-B tree empty state) and flips +0x29 to 1 (red? per the sentinel convention). **R-B tree node memory layout** (0x30 bytes): +0x0/+0x4/+0x8 = left/right/parent; +0xC = ?; +0x10/+0x14 = key (64-bit time); +0x18..+0x28 = payload (16 bytes); +0x28 = sentinel-marker byte; +0x29 = color byte; +0x2A..+0x2F = padding/reserved."
+      "notes": "[lua-scheduler-enqueue-path-identified-+] **US-tree head/node allocator** (59 bytes, sole caller [[LuaScheduler_constructor_FUN_00CF58E0]] BCS-Y-1693). Allocates a 0x30 (48) byte R-B tree node via FUN_0044D500(0x30, 0, 0x15). Initializes: +0x0 = 0 (left), +0x4 = 0 (right), +0x8 = 0 (parent), +0x28 = byte 1 (color), +0x29 = byte 0 (is_nil). The scheduler ctor immediately overrides offsets 0/4/8 to self-ref the head as a doubly-linked sentinel (R-B tree empty state) and sets +0x29 to 1 to mark the empty nil head. **R-B tree node memory layout** (0x30 bytes): +0x0/+0x4/+0x8 = left/right/parent; +0xC = ?; +0x10/+0x14 = key (64-bit time); +0x18..+0x28 = payload (16 bytes); +0x28 = color byte; +0x29 = is_nil byte; +0x2A..+0x2F = padding/reserved.\n\n[Tier C522] The primary tick stops when +0x29 is one, directly establishing is_nil at +0x29 and color at +0x28. Evidence: tools/ghidra/logs/c522_lua-scheduler-layouts.txt."
     },
     {
       "id": "BCS-Y-1730",
@@ -21038,9 +21052,10 @@
         "tools/ghidra/logs/c108_scheduler_decomp.txt",
         "tools/ghidra/logs/c108_enqueue_api.txt",
         "tools/ghidra/logs/c108_xrefs.txt",
-        "manifests/scheduler_enqueue.json"
+        "manifests/scheduler_enqueue.json",
+        "tools/ghidra/logs/c522_lua-scheduler-layouts.txt"
       ],
-      "notes": "[lua-scheduler-enqueue-path-identified-+] **MS-tree head/node allocator** (59 bytes, **5 distinct callers**). Allocates a 0x24 (36) byte R-B tree node via FUN_0044D500(0x24, 0, 0x15). Initializes: +0x0 = 0 (left), +0x4 = 0 (right), +0x8 = 0 (parent), +0x20 = byte 1 (sentinel marker), +0x21 = byte 0 (color = black for sentinel). Callers: [[LuaScheduler_constructor_FUN_00CF58E0]] (BCS-Y-1693, primary use - creates ms-tree head), FUN_00CE63B0, FUN_00CE64A0, FUN_00CE65B0, FUN_00D0A6F0 (4 OTHER R-B tree initializers reusing the same node type for unrelated trees in the Lua-bridge codebase). **R-B tree node memory layout** (0x24 bytes): +0x0/+0x4/+0x8 = left/right/parent; +0xC = ?; +0x10/+0x14 = key (32-bit ms time + 32-bit aux); +0x18..+0x20 = payload (8 bytes); +0x20 = sentinel-marker byte; +0x21 = color byte; +0x22..+0x23 = padding. Smaller than the us-tree node because ms precision needs less time-storage space."
+      "notes": "[lua-scheduler-enqueue-path-identified-+] **MS-tree head/node allocator** (59 bytes, **5 distinct callers**). Allocates a 0x24 (36) byte R-B tree node via FUN_0044D500(0x24, 0, 0x15). Initializes: +0x0 = 0 (left), +0x4 = 0 (right), +0x8 = 0 (parent), +0x20 = byte 1 (color), +0x21 = byte 0 (is_nil). Callers: [[LuaScheduler_constructor_FUN_00CF58E0]] (BCS-Y-1693, primary use - creates ms-tree head), FUN_00CE63B0, FUN_00CE64A0, FUN_00CE65B0, FUN_00D0A6F0 (4 OTHER R-B tree initializers reusing the same node type for unrelated trees in the Lua-bridge codebase). **R-B tree node memory layout** (0x24 bytes): +0x0/+0x4/+0x8 = left/right/parent; +0xC = ?; +0x10/+0x14 = key (32-bit ms time + 32-bit aux); +0x18..+0x20 = payload (8 bytes); +0x20 = color byte; +0x21 = is_nil byte; +0x22..+0x23 = padding. The allocator is shared by five trees, so the scheduler path alone does not assign one key or payload partition to every use.\n\n[Tier C522] Scheduler construction sets +0x21 to one on the empty head, correcting the marker roles to color at +0x20 and is_nil at +0x21. Evidence: tools/ghidra/logs/c522_lua-scheduler-layouts.txt."
     },
     {
       "id": "BCS-Y-1731",
@@ -25300,6 +25315,1045 @@
       ],
       "notes": "[Tier C321] Direct constructor evidence for Application::Main::Element::Window::LuaDebug::LuaDebugOut. The body calls parent ctor [[BCS-Y-1334]] and then instructions 0x0068D58B and 0x0068D591 install RTTI-resolved class vftables at this+0x0=0x00FC60E0 and this+0x8=0x00FC5FBC. Its only direct caller, FUN_005338C0, is a heap factory and installs no descendant class vftable, so this branch stops here within direct-call coverage. Confidence is confirmed because the parent call, vftable stores, and RTTI base array are direct. Evidence: tools/ghidra/logs/c321_direct-callers.txt, tools/ghidra/logs/c321_child-callers.txt, and tools/ghidra/logs/c321_subtree-rtti.txt.",
       "id": "BCS-Y-2055"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawIndexedPrimitiveTask_pool_factory_FUN_00434280",
+      "kind": "function",
+      "address": "0x00434280",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c523_pooled-event-message.txt"
+      ],
+      "notes": "[Tier C523] Pool factory for the exact 0x1C DrawIndexedPrimitiveTask. It allocates 0x1C bytes, installs vftable 0x00F649B8, copies six caller dwords to +0x04 through +0x18, and submits the result through FUN_0043C2D0; allocation failure submits null. Fresh DumpVAs evidence reproduces the complete 114-byte body and direct allocator/submission callees.",
+      "id": "BCS-Y-2056"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawIndexedPrimitiveTask_pool_factory_FUN_00437660",
+      "kind": "function",
+      "address": "0x00437660",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c523_pooled-event-message.txt"
+      ],
+      "notes": "[Tier C523] Second pool factory for the exact 0x1C DrawIndexedPrimitiveTask. Its complete 114-byte body matches the field construction performed by FUN_00434280: vftable 0x00F649B8 plus six caller dwords at +0x04 through +0x18, followed by FUN_0043C2D0 submission or a null submission on allocation failure.",
+      "id": "BCS-Y-2057"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawIndexedPrimitiveTask_stack_dispatch_FUN_00438AF0",
+      "kind": "function",
+      "address": "0x00438AF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c523_pooled-event-message.txt"
+      ],
+      "notes": "[Tier C523] Stack-temporary dispatch wrapper for DrawIndexedPrimitiveTask. Its complete 78-byte instruction stream reserves 0x1C bytes, writes vftable 0x00F649B8 and six caller dwords across +0x04 through +0x18, then invokes [[BCS-Y-2059]] with the temporary and the wrapper context at +0x04.",
+      "id": "BCS-Y-2058"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawIndexedPrimitiveTask_Process_FUN_00435D60",
+      "kind": "function",
+      "address": "0x00435D60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c523_pooled-event-message.txt"
+      ],
+      "notes": "[Tier C523] DrawIndexedPrimitiveTask virtual Process method from vftable 0x00F649B8 slot +0x04. The body calls the supplied D3D9 device through vtable offset +0x148 with task fields +0x04, +0x08, +0x0C, +0x10, +0x14, and +0x18 in order. Its embedded failure path names SQEX::CDev::Engine::Dw::RenderInterface::D3d9::Rapture::DrawIndexedPrimitiveTask::Process and reports a failed DrawIndexedPrimitive result.",
+      "id": "BCS-Y-2059"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_ClearTask_pool_factory_FUN_00434110",
+      "kind": "function",
+      "address": "0x00434110",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] Pool factory for the exact 0x14 ClearTask. It allocates 0x14 bytes, installs vftable 0x00F64990, copies four caller dwords to +0x04 through +0x10, and submits the task through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2060"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_ClearTask_pool_factory_FUN_004374F0",
+      "kind": "function",
+      "address": "0x004374F0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] Second pool factory for the exact 0x14 ClearTask. Its complete 104-byte body independently reproduces vftable 0x00F64990 and the same four caller fields at +0x04 through +0x10 before FUN_0043C2D0 submission.",
+      "id": "BCS-Y-2061"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_ClearTask_stack_dispatch_FUN_00438A00",
+      "kind": "function",
+      "address": "0x00438A00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] Stack-temporary ClearTask wrapper. Its complete 66-byte instruction stream reserves 0x14 bytes, installs vftable 0x00F64990, writes the same four fields, and directly invokes [[BCS-Y-2063]] with the task and wrapper context at +0x04.",
+      "id": "BCS-Y-2062"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_ClearTask_Process_FUN_00435B50",
+      "kind": "function",
+      "address": "0x00435B50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] ClearTask virtual Process method from vftable 0x00F64990 slot +0x04. It calls the supplied D3D9 device through vtable offset +0xAC with hardcoded rectangle count zero and null rectangle pointer, followed by task +0x04, +0x08, +0x10, and +0x0C. The embedded failure diagnostic directly names ClearTask::Process and Clear.",
+      "id": "BCS-Y-2063"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_BeginSceneTask_pool_factory_FUN_00434180",
+      "kind": "function",
+      "address": "0x00434180",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] Pool factory for the exact 0x04 BeginSceneTask. It allocates four bytes, installs vftable 0x00F64998, and submits the vftable-only task through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2064"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_BeginSceneTask_pool_factory_FUN_00437560",
+      "kind": "function",
+      "address": "0x00437560",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] Second pool factory for the exact 0x04 BeginSceneTask. Its complete 68-byte body independently allocates four bytes, installs vftable 0x00F64998, and submits the task or null through FUN_0043C2D0.",
+      "id": "BCS-Y-2065"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_BeginSceneTask_Process_FUN_00435BC0",
+      "kind": "function",
+      "address": "0x00435BC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] BeginSceneTask virtual Process method from vftable 0x00F64998 slot +0x04. It calls the supplied D3D9 device through vtable offset +0xA4 with no task payload. The embedded failure diagnostic directly names BeginSceneTask::Process and BeginScene.",
+      "id": "BCS-Y-2066"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_EndSceneTask_pool_factory_FUN_004341D0",
+      "kind": "function",
+      "address": "0x004341D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] Pool factory for the exact 0x04 EndSceneTask. It allocates four bytes, installs vftable 0x00F649A0, and submits the vftable-only task through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2067"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_EndSceneTask_pool_factory_FUN_004375B0",
+      "kind": "function",
+      "address": "0x004375B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] Second pool factory for the exact 0x04 EndSceneTask. Its complete 68-byte body independently allocates four bytes, installs vftable 0x00F649A0, and submits the task or null through FUN_0043C2D0.",
+      "id": "BCS-Y-2068"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_EndSceneTask_Process_FUN_00435C20",
+      "kind": "function",
+      "address": "0x00435C20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c524_render-task-layouts.txt"
+      ],
+      "notes": "[Tier C524] EndSceneTask virtual Process method from vftable 0x00F649A0 slot +0x04. It calls the supplied D3D9 device through vtable offset +0xA8 with no task payload. The embedded failure diagnostic directly names EndSceneTask::Process and EndScene.",
+      "id": "BCS-Y-2069"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_QueryIssueTask_pool_factory_FUN_00434370",
+      "kind": "function",
+      "address": "0x00434370",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt"
+      ],
+      "notes": "[Tier C525] Pool factory for the exact 0x0C QueryIssueTask. It allocates 0x0C bytes, installs vftable 0x00F649D0, copies the query object and issue flags to +0x04 and +0x08, and submits the task through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2070"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_QueryIssueTask_pool_factory_FUN_00434D00",
+      "kind": "function",
+      "address": "0x00434D00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt"
+      ],
+      "notes": "[Tier C525] Second pool factory for the exact 0x0C QueryIssueTask. It dereferences the caller's query-pointer argument, stores the resulting pointer at +0x04 and issue flags at +0x08, then submits through FUN_0043C2D0 before a second 16-byte-stride element dispatch.",
+      "id": "BCS-Y-2071"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_QueryIssueTask_pool_factory_FUN_00437750",
+      "kind": "function",
+      "address": "0x00437750",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt"
+      ],
+      "notes": "[Tier C525] Third pool factory for the exact 0x0C QueryIssueTask. Its complete body independently allocates 0x0C bytes, installs vftable 0x00F649D0, copies both payload dwords, and submits the task or null through FUN_0043C2D0.",
+      "id": "BCS-Y-2072"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_QueryIssueTask_pool_factory_FUN_004380A0",
+      "kind": "function",
+      "address": "0x004380A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt"
+      ],
+      "notes": "[Tier C525] Fourth pool factory for the exact 0x0C QueryIssueTask. It dereferences the caller's query-pointer argument, stores the query pointer and flags at +0x04/+0x08, and submits through FUN_0043C2D0 before a second 16-byte-stride element dispatch.",
+      "id": "BCS-Y-2073"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_QueryIssueTask_stack_dispatch_FUN_00438BE0",
+      "kind": "function",
+      "address": "0x00438BE0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt"
+      ],
+      "notes": "[Tier C525] Stack-temporary QueryIssueTask wrapper. It reserves exactly 0x0C bytes, installs vftable 0x00F649D0, dereferences the query-pointer argument into +0x04, writes flags at +0x08, and directly invokes [[BCS-Y-2076]].",
+      "id": "BCS-Y-2074"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_QueryIssueTask_stack_dispatch_FUN_00438C10",
+      "kind": "function",
+      "address": "0x00438C10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt"
+      ],
+      "notes": "[Tier C525] Second stack-temporary QueryIssueTask wrapper. It reserves exactly 0x0C bytes, installs vftable 0x00F649D0, stores its query pointer and issue flags at +0x04/+0x08, and directly invokes [[BCS-Y-2076]].",
+      "id": "BCS-Y-2075"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_QueryIssueTask_Process_FUN_00435EF0",
+      "kind": "function",
+      "address": "0x00435EF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c525_render-query-tasks.txt"
+      ],
+      "notes": "[Tier C525] QueryIssueTask virtual Process method from vftable 0x00F649D0 slot +0x04. It reads the query object from task +0x04 and issue flags from +0x08, then dispatches the flags through query-object vtable offset +0x18. Embedded diagnostics directly name Query::Issue and QueryIssueTask::Process.",
+      "id": "BCS-Y-2076"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_UpdateVertexBufferTask_hybrid_dispatch_FUN_00434880",
+      "kind": "function",
+      "address": "0x00434880",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt"
+      ],
+      "notes": "[Tier C526] UpdateVertexBufferTask hybrid dispatcher over 0x14-byte pending records. One path constructs an exact 0x18 stack task and calls [[BCS-Y-2079]] directly; the queued path allocates 0x18 bytes, installs vftable 0x00F649E0, copies source bytes through FUN_00417A70, populates +0x04 through +0x14, and submits through FUN_0043C2D0.",
+      "id": "BCS-Y-2077"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_UpdateVertexBufferTask_hybrid_dispatch_FUN_00437C20",
+      "kind": "function",
+      "address": "0x00437C20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt"
+      ],
+      "notes": "[Tier C526] Second UpdateVertexBufferTask hybrid dispatcher. Its complete 572-byte body independently reproduces both the exact 0x18 stack construction with a direct [[BCS-Y-2079]] call and the exact 0x18 queued allocation submitted through FUN_0043C2D0.",
+      "id": "BCS-Y-2078"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_UpdateVertexBufferTask_Process_FUN_00435F50",
+      "kind": "function",
+      "address": "0x00435F50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt"
+      ],
+      "notes": "[Tier C526] UpdateVertexBufferTask virtual Process method from vftable 0x00F649E0 slot +0x04. It invokes the vertex-buffer Lock slot +0x2C with task offset, size, a stack-local output pointer, and flags; copies task source data to the returned destination for the stored size; then invokes Unlock at +0x30. Embedded diagnostics directly name VertexBuffer::Unlock and UpdateVertexBufferTask::Process.",
+      "id": "BCS-Y-2079"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_UpdateIndexBufferTask_hybrid_dispatch_FUN_00434AC0",
+      "kind": "function",
+      "address": "0x00434AC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt"
+      ],
+      "notes": "[Tier C526] UpdateIndexBufferTask hybrid dispatcher over 0x14-byte pending records. One path constructs an exact 0x18 stack task and calls [[BCS-Y-2083]] directly; the queued path allocates 0x18 bytes, installs vftable 0x00F649E8, copies source bytes through FUN_00417A70, populates +0x04 through +0x14, and submits through FUN_0043C2D0.",
+      "id": "BCS-Y-2080"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_UpdateIndexBufferTask_hybrid_dispatch_FUN_00437E60",
+      "kind": "function",
+      "address": "0x00437E60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt"
+      ],
+      "notes": "[Tier C526] Second UpdateIndexBufferTask hybrid dispatcher. Its complete 572-byte body independently reproduces both the exact 0x18 stack construction with a direct [[BCS-Y-2083]] call and the exact 0x18 queued allocation submitted through FUN_0043C2D0.",
+      "id": "BCS-Y-2081"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_UpdateIndexBufferTask_serial_dispatch_FUN_00438E70",
+      "kind": "function",
+      "address": "0x00438E70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt"
+      ],
+      "notes": "[Tier C526] Serial pending-record dispatcher for UpdateIndexBufferTask. Its complete 360-byte body constructs the exact 0x18 task on the stack from a selected 0x14-byte record, installs vftable 0x00F649E8, and directly invokes [[BCS-Y-2083]] before erasing the record.",
+      "id": "BCS-Y-2082"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_UpdateIndexBufferTask_Process_FUN_00435FE0",
+      "kind": "function",
+      "address": "0x00435FE0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c526_buffer-update-tasks-2.txt"
+      ],
+      "notes": "[Tier C526] UpdateIndexBufferTask virtual Process method from vftable 0x00F649E8 slot +0x04. It invokes the index-buffer Lock slot +0x2C with task offset, size, a stack-local output pointer, and flags; copies task source data to the returned destination for the stored size; then invokes Unlock at +0x30. Embedded diagnostics directly name IndexBuffer::Unlock and UpdateIndexBufferTask::Process.",
+      "id": "BCS-Y-2083"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawPrimitiveTask_pool_factory_FUN_00434220",
+      "kind": "function",
+      "address": "0x00434220",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] Pool factory for the exact 0x10 DrawPrimitiveTask. It allocates 0x10 bytes, installs vftable 0x00F649A8, copies primitive type, start vertex, and primitive count to +0x04/+0x08/+0x0C, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2084"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawPrimitiveTask_pool_factory_FUN_00437600",
+      "kind": "function",
+      "address": "0x00437600",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] Second pool factory for the exact 0x10 DrawPrimitiveTask. Its complete 93-byte body independently reproduces the vftable and three payload stores before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2085"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawPrimitiveTask_Process_FUN_00435C80",
+      "kind": "function",
+      "address": "0x00435C80",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] DrawPrimitiveTask virtual Process method from vftable 0x00F649A8 slot +0x04. It forwards task +0x04, +0x08, and +0x0C in order to the D3D9 DrawPrimitive device slot +0x144. Embedded diagnostics directly name DrawPrimitive and DrawPrimitiveTask::Process.",
+      "id": "BCS-Y-2086"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawPrimitiveUPTask_pool_factory_FUN_004344B0",
+      "kind": "function",
+      "address": "0x004344B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] Pool factory for the exact 0x14 DrawPrimitiveUPTask. It derives the vertex byte count, copies the caller data through FUN_00417A70, allocates 0x14 bytes, installs vftable 0x00F649B0, stores primitive type/count, stride, and copied-data pointer, and submits through FUN_0043C2D0.",
+      "id": "BCS-Y-2087"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawPrimitiveUPTask_pool_factory_FUN_00437880",
+      "kind": "function",
+      "address": "0x00437880",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] Second pool factory for the exact 0x14 DrawPrimitiveUPTask. Its complete 158-byte body independently reproduces copied vertex storage, vftable 0x00F649B0, and all four payload fields before task or null submission.",
+      "id": "BCS-Y-2088"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawPrimitiveUPTask_stack_dispatch_FUN_00438AB0",
+      "kind": "function",
+      "address": "0x00438AB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] Stack-temporary DrawPrimitiveUPTask wrapper. It reserves exactly 0x14 bytes, installs vftable 0x00F649B0, maps primitive type/count, stride, and vertex-data pointer to +0x04/+0x08/+0x0C/+0x10, and directly invokes [[BCS-Y-2090]].",
+      "id": "BCS-Y-2089"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawPrimitiveUPTask_Process_FUN_00435CF0",
+      "kind": "function",
+      "address": "0x00435CF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] DrawPrimitiveUPTask virtual Process method from vftable 0x00F649B0 slot +0x04. It forwards primitive type, primitive count, vertex-data pointer, and stride from task +0x04/+0x08/+0x10/+0x0C to device slot +0x14C. Embedded diagnostics directly name DrawPrimitiveUP and DrawPrimitiveUPTask::Process.",
+      "id": "BCS-Y-2090"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawIndexedPrimitiveUPTask_stack_dispatch_FUN_00438B40",
+      "kind": "function",
+      "address": "0x00438B40",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] Stack-temporary DrawIndexedPrimitiveUPTask wrapper. It reserves exactly 0x24 bytes, installs vftable 0x00F649C0, maps all eight API arguments into the task's storage order through +0x20, and directly invokes [[BCS-Y-2092]].",
+      "id": "BCS-Y-2091"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_DrawIndexedPrimitiveUPTask_Process_FUN_00435DD0",
+      "kind": "function",
+      "address": "0x00435DD0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c527_draw-call-tasks-2.txt"
+      ],
+      "notes": "[Tier C527] DrawIndexedPrimitiveUPTask virtual Process method from vftable 0x00F649C0 slot +0x04. It forwards all eight stored fields in D3D9 API order to device slot +0x150, including the noncontiguous index-format, stride, index-data, and vertex-data fields. Embedded diagnostics directly name DrawIndexedPrimitiveUP and DrawIndexedPrimitiveUPTask::Process.",
+      "id": "BCS-Y-2092"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetViewportTask_pool_factory_FUN_00434050",
+      "kind": "function",
+      "address": "0x00434050",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Pool factory for the exact 0x1C SetViewportTask. It allocates 0x1C bytes, installs vftable 0x00F64980, copies the complete 24-byte D3D viewport payload to +0x04, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2093"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetViewportTask_pool_factory_FUN_00437430",
+      "kind": "function",
+      "address": "0x00437430",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Second pool factory for the exact 0x1C SetViewportTask. Its complete 105-byte body independently reproduces the vftable and 24-byte viewport copy before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2094"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetViewportTask_stack_dispatch_FUN_00438980",
+      "kind": "function",
+      "address": "0x00438980",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Stack-temporary SetViewportTask wrapper. It reserves exactly 0x1C bytes, copies all 24 viewport bytes after vftable 0x00F64980, and directly invokes [[BCS-Y-2096]].",
+      "id": "BCS-Y-2095"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetViewportTask_Process_FUN_00435A90",
+      "kind": "function",
+      "address": "0x00435A90",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] SetViewportTask virtual Process method from vftable 0x00F64980 slot +0x04. It passes task +0x04 as the complete D3DVIEWPORT9 record to device slot +0xBC. Embedded diagnostics directly name SetViewport and SetViewportTask::Process.",
+      "id": "BCS-Y-2096"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetDepthStencilSurfaceTask_pool_factory_FUN_004340C0",
+      "kind": "function",
+      "address": "0x004340C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Pool factory for the exact 0x08 SetDepthStencilSurfaceTask. It allocates eight bytes, installs vftable 0x00F64988, stores the surface pointer at +0x04, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2097"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetDepthStencilSurfaceTask_pool_factory_FUN_004374A0",
+      "kind": "function",
+      "address": "0x004374A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Second pool factory for the exact 0x08 SetDepthStencilSurfaceTask. Its complete 79-byte body independently reproduces the vftable and surface-pointer field before task or null submission.",
+      "id": "BCS-Y-2098"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetDepthStencilSurfaceTask_stack_dispatch_FUN_004389D0",
+      "kind": "function",
+      "address": "0x004389D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Stack-temporary SetDepthStencilSurfaceTask wrapper. It reserves exactly eight bytes, installs vftable 0x00F64988, stores the surface pointer at +0x04, and directly invokes [[BCS-Y-2100]].",
+      "id": "BCS-Y-2099"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetDepthStencilSurfaceTask_Process_FUN_00435AF0",
+      "kind": "function",
+      "address": "0x00435AF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] SetDepthStencilSurfaceTask virtual Process method from vftable 0x00F64988 slot +0x04. It forwards task +0x04 to the D3D9 SetDepthStencilSurface device slot +0x9C. Embedded diagnostics directly name SetDepthStencilSurface and SetDepthStencilSurfaceTask::Process.",
+      "id": "BCS-Y-2100"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_StretchRectTask_initializer_FUN_004352E0",
+      "kind": "function",
+      "address": "0x004352E0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] StretchRectTask initializer. It installs vftable 0x00F649C8, stores source and destination surfaces at +0x04/+0x08, zeroes both 16-byte rectangle blocks, stores filter +0x2C and zero presence flags +0x30/+0x31, then conditionally copies each supplied rectangle and sets its flag.",
+      "id": "BCS-Y-2101"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_StretchRectTask_pool_factory_FUN_00434300",
+      "kind": "function",
+      "address": "0x00434300",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Pool factory for the exact 0x34 StretchRectTask. It allocates 0x34 bytes and invokes [[BCS-Y-2101]] with source/destination surfaces, optional rectangle pointers, and filter before submitting through FUN_0043C2D0.",
+      "id": "BCS-Y-2102"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_StretchRectTask_pool_factory_FUN_004376E0",
+      "kind": "function",
+      "address": "0x004376E0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] Second pool factory for the exact 0x34 StretchRectTask. Its complete 98-byte body independently allocates the same extent and calls [[BCS-Y-2101]] with all five inputs before task or null submission.",
+      "id": "BCS-Y-2103"
+    },
+    {
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_StretchRectTask_Process_FUN_00435E50",
+      "kind": "function",
+      "address": "0x00435E50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c528_surface-state-tasks-2.txt"
+      ],
+      "notes": "[Tier C528] StretchRectTask virtual Process method from vftable 0x00F649C8 slot +0x04. It uses the two presence flags to select inline rectangle pointers or null, then forwards source surface, source rectangle, destination surface, destination rectangle, and filter to device slot +0x88. Embedded diagnostics directly name StretchRect and StretchRectTask::Process.",
+      "id": "BCS-Y-2104"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetTextureTask_pool_factory_FUN_00433D80",
+      "address": "0x00433D80",
+      "notes": "[Tier C529] Pool factory for the exact 0x0C SetTextureTask. It allocates 0x0C bytes, installs vftable 0x00F64940, stores texture stage and texture pointer at +0x04/+0x08, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2105"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetTextureTask_pool_factory_FUN_00437160",
+      "address": "0x00437160",
+      "notes": "[Tier C529] Second pool factory for the exact 0x0C SetTextureTask. Its complete body independently reproduces vftable 0x00F64940 and the same texture stage and texture pointer at +0x04/+0x08 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2106"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetTextureTask_stack_dispatch_FUN_004387E0",
+      "address": "0x004387E0",
+      "notes": "[Tier C529] Stack-temporary SetTextureTask wrapper. Its complete instruction stream constructs the exact 0x0C record with vftable 0x00F64940 and texture stage and texture pointer at +0x04/+0x08, then directly invokes [[BCS-Y-2108]].",
+      "id": "BCS-Y-2107"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetTextureTask_Process_FUN_00435780",
+      "address": "0x00435780",
+      "notes": "[Tier C529] SetTextureTask virtual Process method from vftable 0x00F64940 slot +0x04. It calls device slot +0x104 with the texture stage and texture pointer. Embedded diagnostics directly name SetTexture and SetTextureTask::Process.",
+      "id": "BCS-Y-2108"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexDeclarationTask_pool_factory_FUN_00433DE0",
+      "address": "0x00433DE0",
+      "notes": "[Tier C529] Pool factory for the exact 0x08 SetVertexDeclarationTask. It allocates 0x08 bytes, installs vftable 0x00F64948, stores vertex-declaration pointer at +0x04, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2109"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexDeclarationTask_pool_factory_FUN_004371C0",
+      "address": "0x004371C0",
+      "notes": "[Tier C529] Second pool factory for the exact 0x08 SetVertexDeclarationTask. Its complete body independently reproduces vftable 0x00F64948 and the same vertex-declaration pointer at +0x04 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2110"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexDeclarationTask_stack_dispatch_FUN_00438820",
+      "address": "0x00438820",
+      "notes": "[Tier C529] Stack-temporary SetVertexDeclarationTask wrapper. Its complete instruction stream constructs the exact 0x08 record with vftable 0x00F64948 and vertex-declaration pointer at +0x04, then directly invokes [[BCS-Y-2112]].",
+      "id": "BCS-Y-2111"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexDeclarationTask_Process_FUN_004357E0",
+      "address": "0x004357E0",
+      "notes": "[Tier C529] SetVertexDeclarationTask virtual Process method from vftable 0x00F64948 slot +0x04. It calls device slot +0x15C with the vertex-declaration pointer. Embedded diagnostics directly name SetVertexDeclaration and SetVertexDeclarationTask::Process.",
+      "id": "BCS-Y-2112"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetIndicesTask_pool_factory_FUN_00433F00",
+      "address": "0x00433F00",
+      "notes": "[Tier C529] Pool factory for the exact 0x08 SetIndicesTask. It allocates 0x08 bytes, installs vftable 0x00F64960, stores index-buffer pointer at +0x04, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2113"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetIndicesTask_pool_factory_FUN_004372E0",
+      "address": "0x004372E0",
+      "notes": "[Tier C529] Second pool factory for the exact 0x08 SetIndicesTask. Its complete body independently reproduces vftable 0x00F64960 and the same index-buffer pointer at +0x04 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2114"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetIndicesTask_stack_dispatch_FUN_004388C0",
+      "address": "0x004388C0",
+      "notes": "[Tier C529] Stack-temporary SetIndicesTask wrapper. Its complete instruction stream constructs the exact 0x08 record with vftable 0x00F64960 and index-buffer pointer at +0x04, then directly invokes [[BCS-Y-2116]].",
+      "id": "BCS-Y-2115"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetIndicesTask_Process_FUN_00435910",
+      "address": "0x00435910",
+      "notes": "[Tier C529] SetIndicesTask virtual Process method from vftable 0x00F64960 slot +0x04. It calls device slot +0x1A0 with the index-buffer pointer. Embedded diagnostics directly name SetIndices and SetIndicesTask::Process.",
+      "id": "BCS-Y-2116"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexShaderTask_pool_factory_FUN_00433F50",
+      "address": "0x00433F50",
+      "notes": "[Tier C529] Pool factory for the exact 0x08 SetVertexShaderTask. It allocates 0x08 bytes, installs vftable 0x00F64968, stores vertex-shader pointer at +0x04, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2117"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexShaderTask_pool_factory_FUN_00437330",
+      "address": "0x00437330",
+      "notes": "[Tier C529] Second pool factory for the exact 0x08 SetVertexShaderTask. Its complete body independently reproduces vftable 0x00F64968 and the same vertex-shader pointer at +0x04 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2118"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexShaderTask_stack_dispatch_FUN_004388F0",
+      "address": "0x004388F0",
+      "notes": "[Tier C529] Stack-temporary SetVertexShaderTask wrapper. Its complete instruction stream constructs the exact 0x08 record with vftable 0x00F64968 and vertex-shader pointer at +0x04, then directly invokes [[BCS-Y-2120]].",
+      "id": "BCS-Y-2119"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetVertexShaderTask_Process_FUN_00435970",
+      "address": "0x00435970",
+      "notes": "[Tier C529] SetVertexShaderTask virtual Process method from vftable 0x00F64968 slot +0x04. It calls device slot +0x170 with the vertex-shader pointer. Embedded diagnostics directly name SetVertexShader and SetVertexShaderTask::Process.",
+      "id": "BCS-Y-2120"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetPixelShaderTask_pool_factory_FUN_00433FA0",
+      "address": "0x00433FA0",
+      "notes": "[Tier C529] Pool factory for the exact 0x08 SetPixelShaderTask. It allocates 0x08 bytes, installs vftable 0x00F64970, stores pixel-shader pointer at +0x04, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2121"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetPixelShaderTask_pool_factory_FUN_00437380",
+      "address": "0x00437380",
+      "notes": "[Tier C529] Second pool factory for the exact 0x08 SetPixelShaderTask. Its complete body independently reproduces vftable 0x00F64970 and the same pixel-shader pointer at +0x04 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2122"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetPixelShaderTask_stack_dispatch_FUN_00438920",
+      "address": "0x00438920",
+      "notes": "[Tier C529] Stack-temporary SetPixelShaderTask wrapper. Its complete instruction stream constructs the exact 0x08 record with vftable 0x00F64970 and pixel-shader pointer at +0x04, then directly invokes [[BCS-Y-2124]].",
+      "id": "BCS-Y-2123"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c529_binding-state-tasks-2.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetPixelShaderTask_Process_FUN_004359D0",
+      "address": "0x004359D0",
+      "notes": "[Tier C529] SetPixelShaderTask virtual Process method from vftable 0x00F64970 slot +0x04. It calls device slot +0x1AC with the pixel-shader pointer. Embedded diagnostics directly name SetPixelShader and SetPixelShaderTask::Process.",
+      "id": "BCS-Y-2124"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetScissorRectTask_pool_factory_FUN_00433D20",
+      "address": "0x00433D20",
+      "notes": "[Tier C530] Pool factory for the exact 0x14 SetScissorRectTask. It allocates 0x14 bytes, installs vftable 0x00F64938, stores the complete 16-byte RECT at +0x04, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2125"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetScissorRectTask_pool_factory_FUN_00437100",
+      "address": "0x00437100",
+      "notes": "[Tier C530] Second pool factory for the exact 0x14 SetScissorRectTask. Its complete body independently reproduces vftable 0x00F64938 and the same the complete 16-byte RECT at +0x04 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2126"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetScissorRectTask_stack_dispatch_FUN_004387A0",
+      "address": "0x004387A0",
+      "notes": "[Tier C530] Stack-temporary SetScissorRectTask wrapper. Its complete instruction stream constructs the exact 0x14 record with vftable 0x00F64938 and the complete 16-byte RECT at +0x04, then directly invokes [[BCS-Y-2128]].",
+      "id": "BCS-Y-2127"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetScissorRectTask_Process_FUN_00435720",
+      "address": "0x00435720",
+      "notes": "[Tier C530] SetScissorRectTask virtual Process method from vftable 0x00F64938 slot +0x04. It calls device slot +0x12C with the address of the inline rectangle. The embedded diagnostic directly names SetScissorRectTask::Process; its operation label contains the retail SetScissorRest typo.",
+      "id": "BCS-Y-2128"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceTask_pool_factory_FUN_00433E30",
+      "address": "0x00433E30",
+      "notes": "[Tier C530] Pool factory for the exact 0x14 SetStreamSourceTask. It allocates 0x14 bytes, installs vftable 0x00F64950, stores stream number, byte offset, stride, and vertex-buffer pointer at +0x04/+0x08/+0x0C/+0x10, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2129"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceTask_pool_factory_FUN_00437210",
+      "address": "0x00437210",
+      "notes": "[Tier C530] Second pool factory for the exact 0x14 SetStreamSourceTask. Its complete body independently reproduces vftable 0x00F64950 and the same stream number, byte offset, stride, and vertex-buffer pointer at +0x04/+0x08/+0x0C/+0x10 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2130"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceTask_stack_dispatch_FUN_00438850",
+      "address": "0x00438850",
+      "notes": "[Tier C530] Stack-temporary SetStreamSourceTask wrapper. Its complete instruction stream constructs the exact 0x14 record with vftable 0x00F64950 and stream number, byte offset, stride, and vertex-buffer pointer at +0x04/+0x08/+0x0C/+0x10, then directly invokes [[BCS-Y-2132]].",
+      "id": "BCS-Y-2131"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceTask_Process_FUN_00435840",
+      "address": "0x00435840",
+      "notes": "[Tier C530] SetStreamSourceTask virtual Process method from vftable 0x00F64950 slot +0x04. It calls device slot +0x190 with the stored stream number, vertex-buffer pointer, byte offset, and stride in D3D9 API order. Embedded diagnostics directly name SetStreamSource and SetStreamSourceTask::Process.",
+      "id": "BCS-Y-2132"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceFreqTask_pool_factory_FUN_00433EA0",
+      "address": "0x00433EA0",
+      "notes": "[Tier C530] Pool factory for the exact 0x0C SetStreamSourceFreqTask. It allocates 0x0C bytes, installs vftable 0x00F64958, stores stream number and frequency setting at +0x04/+0x08, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2133"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceFreqTask_pool_factory_FUN_00437280",
+      "address": "0x00437280",
+      "notes": "[Tier C530] Second pool factory for the exact 0x0C SetStreamSourceFreqTask. Its complete body independently reproduces vftable 0x00F64958 and the same stream number and frequency setting at +0x04/+0x08 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2134"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceFreqTask_stack_dispatch_FUN_00438890",
+      "address": "0x00438890",
+      "notes": "[Tier C530] Stack-temporary SetStreamSourceFreqTask wrapper. Its complete instruction stream constructs the exact 0x0C record with vftable 0x00F64958 and stream number and frequency setting at +0x04/+0x08, then directly invokes [[BCS-Y-2136]].",
+      "id": "BCS-Y-2135"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetStreamSourceFreqTask_Process_FUN_004358B0",
+      "address": "0x004358B0",
+      "notes": "[Tier C530] SetStreamSourceFreqTask virtual Process method from vftable 0x00F64958 slot +0x04. It calls device slot +0x198 with the stored stream number and frequency setting. Embedded diagnostics directly name SetStreamSourceFreq and SetStreamSourceFreqTask::Process.",
+      "id": "BCS-Y-2136"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetRenderTargetTask_pool_factory_FUN_00433FF0",
+      "address": "0x00433FF0",
+      "notes": "[Tier C530] Pool factory for the exact 0x0C SetRenderTargetTask. It allocates 0x0C bytes, installs vftable 0x00F64978, stores render-target index and surface pointer at +0x04/+0x08, and submits through FUN_0043C2D0 or submits null on allocation failure.",
+      "id": "BCS-Y-2137"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetRenderTargetTask_pool_factory_FUN_004373D0",
+      "address": "0x004373D0",
+      "notes": "[Tier C530] Second pool factory for the exact 0x0C SetRenderTargetTask. Its complete body independently reproduces vftable 0x00F64978 and the same render-target index and surface pointer at +0x04/+0x08 before task or null submission through FUN_0043C2D0.",
+      "id": "BCS-Y-2138"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetRenderTargetTask_stack_dispatch_FUN_00438950",
+      "address": "0x00438950",
+      "notes": "[Tier C530] Stack-temporary SetRenderTargetTask wrapper. Its complete instruction stream constructs the exact 0x0C record with vftable 0x00F64978 and render-target index and surface pointer at +0x04/+0x08, then directly invokes [[BCS-Y-2140]].",
+      "id": "BCS-Y-2139"
+    },
+    {
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c530_render-pipeline-state-tasks.txt"
+      ],
+      "name": "Sqex_CDev_Engine_Dw_RenderInterface_D3d9_Rapture_SetRenderTargetTask_Process_FUN_00435A30",
+      "address": "0x00435A30",
+      "notes": "[Tier C530] SetRenderTargetTask virtual Process method from vftable 0x00F64978 slot +0x04. It calls device slot +0x94 with the stored render-target index and surface pointer. Embedded diagnostics directly name SetRenderTarget and SetRenderTargetTask::Process.",
+      "id": "BCS-Y-2140"
+    },
+    {
+      "name": "EndClientOrderEventReceiver_ReceiveAlwaysSuccess_FUN_0089D200",
+      "kind": "function",
+      "address": "0x0089D200",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/event_dialog_subsystem.json"
+      ],
+      "notes": "[Tier C531] EndClientOrderEventReceiver vftable slot 2 receive method. Writes success unconditionally and returns; the queued apply path is separate. Fresh read-only decomp archived in tools/ghidra/logs/c531_guildleve-event-lifecycle.txt.",
+      "id": "BCS-Y-2141"
+    },
+    {
+      "name": "EndEvent_ContextAndSelectorDispatcher_FUN_008A13A0",
+      "kind": "function",
+      "address": "0x008A13A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/event_block_execution_state.json"
+      ],
+      "notes": "[Tier C531] EndEvent apply target. Dispatches event types 0..5 through an inlined selector switch and types 50..55 to cleanup; other types return. Selectors 0, 1, and 4 route to name-matched close/notify helpers, while selector 5 routes to the only helper that can free an event slot. Current Ghidra has no separate function at the older 0x008A09E0 locator. Fresh read-only decomp archived in tools/ghidra/logs/c531_guildleve-event-lifecycle.txt.",
+      "id": "BCS-Y-2142"
+    },
+    {
+      "name": "DeleteGroup_ValidateAndQueueBreakup_FUN_006C5150",
+      "kind": "function",
+      "address": "0x006C5150",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/unmapped_payload_decoding.json"
+      ],
+      "notes": "[Tier C531] Downstream consumer for s2c 0x0143 DeleteGroup via [[BCS-Y-0891]]. Validates the packet's four-qword group tuple, allocates a 0x38-byte command object, constructs it with FUN_006D6F10, and submits it through FUN_007238B0. This proves BreakupBuilder command submission, not exact registry erasure or SharedWork destruction. Fresh read-only decomp archived in tools/ghidra/logs/c531_delete-group.txt.",
+      "id": "BCS-Y-2143"
+    },
+    {
+      "name": "Group_BreakupBuilder_ctor_FUN_006D6F10",
+      "kind": "function",
+      "address": "0x006D6F10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/schema_rescue.json"
+      ],
+      "notes": "[Tier C531] Constructor reached from s2c 0x0143 DeleteGroup consumer FUN_006C5150. Calls the Group command-builder base constructor and installs Application::Lua::Script::Client::Group::BreakupBuilder::vftable at 0x00FD42A4. Fresh read-only decomp archived in tools/ghidra/logs/c531_delete-group.txt.",
+      "id": "BCS-Y-2144"
+    },
+    {
+      "name": "Control_Global_NApiRegistrarOwner_FUN_007582E0",
+      "kind": "function",
+      "address": "0x007582E0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/symbols.json#BCS-Y-0231"
+      ],
+      "notes": "Control::Global vftable slot 2 and owner of the class's guarded registration sequence. It directly calls the confirmed _defineClass registrar at 0x0073C270, _defineBaseClass registrar at 0x0073C3C0, and _isInstanceOf registrar at 0x00753470. The function itself has no direct callers because its only recorded reference is the primary Global vftable entry at 0x00FD60B4.",
+      "id": "BCS-Y-2145"
+    },
+    {
+      "name": "LuaNApiRegistrar__defineClass_FUN_0073C270",
+      "kind": "function",
+      "address": "0x0073C270",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/symbols.json#BCS-Y-0484"
+      ],
+      "notes": "Per-name registrar for _defineClass. Its sole direct caller is Global registrar owner FUN_007582E0. It passes registered handler FUN_006DCC30 to FUN_00726E00 and associates exact string VA 0x00FD7354 before finalization.",
+      "id": "BCS-Y-2146"
+    },
+    {
+      "name": "LuaNApiRegistrar__defineBaseClass_FUN_0073C3C0",
+      "kind": "function",
+      "address": "0x0073C3C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/symbols.json#BCS-Y-0487"
+      ],
+      "notes": "Per-name registrar for _defineBaseClass. Its sole direct caller is Global registrar owner FUN_007582E0. It passes registered handler FUN_006DCCA0 to FUN_00726E00 and associates exact string VA 0x00FD7364 before finalization.",
+      "id": "BCS-Y-2147"
+    },
+    {
+      "name": "LuaNApiRegistrar__isInstanceOf_FUN_00753470",
+      "kind": "function",
+      "address": "0x00753470",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/control_class_napi_field_access_recursive.json"
+      ],
+      "notes": "Per-name registrar for _isInstanceOf. Its sole direct caller is Global registrar owner FUN_007582E0. It passes registered handler FUN_006FF210 to FUN_00726E00 and associates exact string VA 0x00FD8314 before finalization.",
+      "id": "BCS-Y-2148"
+    },
+    {
+      "name": "LuaNApiHandler__isInstanceOf_FUN_006FF210",
+      "kind": "function",
+      "address": "0x006FF210",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/lge_primitive_registrar_closure.json",
+        "manifests/control_class_napi_field_access_recursive.json"
+      ],
+      "notes": "Registered handler for Global _isInstanceOf, stored by registrar FUN_00753470 and therefore reached indirectly with no recorded direct callers. It rejects a first argument whose tag is not 4, extracts its LuaControl pointer plus a requested class name, returns true for ActorBaseClass, uses MSVC __RTDynamicCast for CharaBaseClass, PlayerBaseClass, NpcBaseClass, AreaBaseClass, DirectorBaseClass, and DesktopWidget, and otherwise checks the object's LGE class-registry chain by name through FUN_00CC7210. It packages the result as a Lua boolean and has no network-send or callback-fire path.",
+      "id": "BCS-Y-2149"
     }
   ]
 }

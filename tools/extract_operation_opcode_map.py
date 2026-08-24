@@ -47,9 +47,8 @@ def _implementation_anchor(op: dict) -> object:
 
 
 def _implementation_confidence(op: dict) -> object:
-    """Translate the pinned sibling status at the import boundary."""
-    value = op.get("confidence")
-    return "implemented" if value == "implemented" else value
+    """Read the pinned sibling confidence at the import boundary."""
+    return op.get("confidence")
 
 
 def _load_opcodes() -> dict:

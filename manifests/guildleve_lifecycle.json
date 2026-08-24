@@ -1,0 +1,522 @@
+{
+  "version": 1,
+  "gameVersion": "1.23b",
+  "status": "bounded_retail_evidence",
+  "scope": "Guildleve journal command emission, work synchronization, UI completion, event retirement, group breakup, and DirectorBase lifecycle boundaries.",
+  "method": {
+    "inputIdentity": {
+      "program": "ffxivgame.exe",
+      "size": 15996808,
+      "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+      "imageBase": "0x00400000",
+      "addressConvention": "absolute Ghidra VA",
+      "ghidraVersion": "12.1.3",
+      "clientScriptsCommit": "a3047bf205f1b8998648969a95bbe2f94190d176",
+      "capturesCommit": "d5bfad61dfcaffa73772e4a69cdfbf1698faf3e9",
+      "catalogBaseCommit": "9bd4310d8cd7c4a3dac1a1772ccfb377545c1a39"
+    },
+    "readOnlyGhidraRecipes": [
+      {
+        "output": "tools/ghidra/logs/c531_guildleve-event-lifecycle.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c531_guildleve-event-lifecycle.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004D8860,0x00575050,0x0076C3B0,0x0089D070,0x00785AA0,0x0089D180,0x0089D200,0x0089E2D0,0x008A13A0,0x006E1080,0x006E10A0,0x006E10C0,0x006E10E0,0x008934A0,0x00893520,0x008935B0,0x00893800,0x006F6900,0x006F6D30,0x00721370' } -ScriptPath @('ghidra')",
+        "verifiedSections": 20
+      },
+      {
+        "output": "tools/ghidra/logs/c531_guildleve-work-sync.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c531_guildleve-work-sync.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00575070,0x00759ED0,0x0089F4C0,0x0089E550,0x00775A30,0x00775180,0x00774220,0x00773F10,0x006F1D00,0x006C9910,0x006C96B0,0x006C84A0,0x006C1510' } -ScriptPath @('ghidra')",
+        "verifiedSections": 13
+      },
+      {
+        "output": "tools/ghidra/logs/c531_delete-group.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c531_delete-group.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004DC690,0x00576240,0x006C5DE0,0x006C5150,0x006D6F10,0x006D6E90,0x007238B0' } -ScriptPath @('ghidra')",
+        "verifiedSections": 7
+      },
+      {
+        "output": "tools/ghidra/logs/c532_guildleve-journal-command.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c532_guildleve-journal-command.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0070A010,0x00898480,0x006E8B30,0x006E8C90,0x00893380,0x00893400,0x006E2FB0,0x006EE680,0x0075E3A0,0x00776760,0x004D6D30,0x004E0240' } -ScriptPath @('ghidra')",
+        "verifiedSections": 12
+      },
+      {
+        "output": "tools/ghidra/logs/c532_guildleve-journal-command-next.txt; tools/ghidra/logs/c532_guildleve-journal-command-payload.txt",
+        "command": "Two read-only DumpVAs replays over the command-event state machines, raw EventStart wrapper, Lua-parameter staging, and non-block enqueue helpers; exact VA sets are retained in each archive header.",
+        "verifiedSections": 15
+      },
+      {
+        "output": "$env:TEMP\\c533_guildleve-tail-contract.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out $env:TEMP\\c533_guildleve-tail-contract.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006E2FB0,0x0078F790,0x00790ED0,0x007933A0,0x007923C0,0x007915E0,0x00792470,0x00790400,0x0089EC30,0x0075E1C0,0x0089E0D0,0x00776760,0x0073D1E0,0x00CC9D60,0x00CF8980,0x00CF3840,0x00CF3670,0x00CFAC40' } -ScriptPath @('ghidra')",
+        "verifiedSections": 18
+      }
+    ],
+    "captureQueries": [
+      {
+        "command": "python ..\\xivl-captures\\tools\\extractors\\extract_wire_order.py ..\\xivl-captures\\sources\\pcap-1.23b\\objects\\party_battle_leve.pcapng --direction s2c --around 0x0143 --before 0 --after 8",
+        "result": "13400 s2c subevents and 7 anchors; the final group-retirement cluster has distinct 0x0143 tuples at indices 13075 and 13076, a player currentContentGroup-clearing 0x0137 at 13077, director 0x00CB at 13080/13081, and 0x0131 at 13082."
+      },
+      {
+        "command": "python ..\\xivl-captures\\tools\\extractors\\extract_wire_order.py ..\\xivl-captures\\sources\\pcap-1.23b\\objects\\party_battle_leve.pcapng --direction s2c",
+        "result": "Raw reconstructed s2c order, reconciled with outer-frame timestamps using xivl-captures/docs/pcap-decoding.md, places the GuildleveDirector finish 0x0137 at party capture index 12900 and timestamp 1356930512569 for source actor 0x45100D44. The same actor receives duplicate 0x00CB records at indices 13080/13081 and timestamp 1356930536061, 23.492 seconds later; 0x0131 selector 5 follows at index 13082 and timestamp 1356930536075."
+      },
+      {
+        "command": "python ..\\xivl-captures\\tools\\extractors\\extract_property_stream_catalog.py --check",
+        "result": "The catalog check passes. Bounded raw-packet reconciliation finds exactly one retained packet containing guildleveWork.signal raw ff and guildleveWork.startTime zero: party_battle_leve.pcapng frame 3374, source 0x45100D44. local_leve_complete.pcapng contains no guildleveWork signal/startTime packet and no packet-derived GuildleveDirector identity."
+      }
+    ],
+    "negativeLookupRecipes": [
+      {
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out $env:TEMP\\c531_endevent_stale_locator.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x008A09E0' } -ScriptPath @('ghidra')",
+        "result": "ERROR: no function at or containing VA"
+      }
+    ],
+    "hashMethod": "Exact backward MurmurHash2 with seed zero, gated by tools/verify_murmur2.py and observed property records.",
+    "boundedNegativeMethod": "The two completion hashes do not occur as encoded literals in the C531 0x0137 decomp sections. The committed reference exporter finds address and defined-string references, not arbitrary immediate literals, so no whole-program immediate-reference claim is made.",
+    "journalCommandSourceSnapshots": {
+      "clientScriptsCommit": "4398870ec049798db6b109767cc0b261a6f48d07",
+      "clientDataCommit": "7ab89367d92b3be696c26320ac7f0b6e0ba935ef",
+      "capturesCommit": "d5bfad61dfcaffa73772e4a69cdfbf1698faf3e9"
+    }
+  },
+  "journalCommandLuaTail": {
+    "scope": "command(24241, journalID, subindex, nil, nil) after the event name and owner arguments have been consumed",
+    "length": 128,
+    "builderRecordOffset": "0x49",
+    "applicationPayloadOffset": "0x31",
+    "prefixLength": 13,
+    "prefixTemplate": "00 JJ JJ JJ JJ 00 SS SS SS SS 05 05 0F",
+    "fields": [
+      {
+        "tailOffset": "0x00",
+        "length": 5,
+        "argument": "journalID",
+        "wireType": "0x00 integer",
+        "encoding": "unchanged 32-bit integer bit pattern in big-endian byte order"
+      },
+      {
+        "tailOffset": "0x05",
+        "length": 5,
+        "argument": "subindex",
+        "wireType": "0x00 integer",
+        "encoding": "unchanged 32-bit integer bit pattern in big-endian byte order"
+      },
+      {
+        "tailOffset": "0x0A",
+        "length": 1,
+        "argument": "nil",
+        "wireType": "0x05 nil",
+        "encoding": "explicit nil tag; not omitted"
+      },
+      {
+        "tailOffset": "0x0B",
+        "length": 1,
+        "argument": "nil",
+        "wireType": "0x05 nil",
+        "encoding": "explicit nil tag; not omitted"
+      },
+      {
+        "tailOffset": "0x0C",
+        "length": 1,
+        "argument": "stream terminator",
+        "wireType": "0x0F end",
+        "encoding": "final scalar-stream sentinel"
+      },
+      {
+        "tailOffset": "0x0D",
+        "length": 115,
+        "argument": "unused tail capacity",
+        "wireType": "zero padding",
+        "encoding": "zero-filled through offset 0x7F"
+      }
+    ],
+    "subindexBytes": {
+      "2_regional_break": "00 00 00 02",
+      "3_local_break": "00 00 00 03",
+      "4_regional_retry": "00 00 00 04",
+      "5_local_retry": "00 00 00 05"
+    },
+    "typeSelection": "The _executeCommand signature consumes Utf8String event name, LuaControl owner, then Variable arguments. Variable classifies a Lua number as integer when it equals its integer conversion; journalID and subindices 2-5 therefore use the integer stack operator. Internal FunctionCallValueList type 0 emits wire tag 0x00 plus four bytes. Internal type 6 is Nil and emits wire tag 0x05.",
+    "streamRule": "Initialization writes an 0x0F sentinel. Before each scalar, the writer rewinds over the current sentinel; after the scalar it appends a new sentinel. Therefore no 0x0F separators remain between these four arguments and only the final 0x0F is transmitted.",
+    "bounds": "The serializer zeroes a 128-byte destination, initializes the 0x0F sentinel, visits arguments from index 2 in source order, and the packet path copies exactly 128 bytes. This tuple consumes 13 bytes and leaves 115 zero bytes, so it does not approach the fixed boundary.",
+    "confidence": "confirmed_reproduced_retail_binary"
+  },
+  "corrections": [
+    {
+      "priorClaim": "0x0137 applies through FUN_0089FBF0.",
+      "correctedClaim": "0x0137 applies through SyncMemoryReceiver FUN_0089E550 (BCS-Y-0170). FUN_0089FBF0 (BCS-Y-0251) is SendLogReceiver for 0x0157..0x016A."
+    },
+    {
+      "priorClaim": "EndEvent selector dispatch is a separate function at 0x008A09E0.",
+      "correctedClaim": "The current program database has the selector switch inlined in FUN_008A13A0 (BCS-Y-2142); 0x008A09E0 is not a function entry."
+    },
+    {
+      "priorClaim": "The 0x0143 callee FUN_006C5DE0 is a probable Group PropertyUpdater.",
+      "correctedClaim": "FUN_006C5DE0 (BCS-Y-0891) reaches a consumer that constructs and queues Group::BreakupBuilder."
+    }
+  ],
+  "evidenceMatrix": [
+    {
+      "question": "What is the complete 0x0131 EndEvent dispatch and receiver path?",
+      "anchors": [
+        "s2c 0x0131",
+        "LuaActorImpl vtable slot 58",
+        "BCS-Y-0280 0x004D8860",
+        "BCS-Y-0593 0x00575050",
+        "BCS-Y-2141 0x0089D200",
+        "BCS-Y-2142 0x008A13A0"
+      ],
+      "path": "FUN_004D8860 -> FUN_00575050 -> FUN_0076C3B0 -> FUN_0089D070/FUN_00785AA0 -> FUN_0089D180 queued clone -> FUN_0089D200 receive -> FUN_0089E2D0 apply -> FUN_008A13A0 effect",
+      "support": [
+        "manifests/event_dialog_subsystem.json",
+        "manifests/event_condition_consumer_findings.json",
+        "tools/ghidra/logs/c531_guildleve-event-lifecycle.txt"
+      ],
+      "evidenceTier": "retail_binary_reproduced",
+      "confidence": "confirmed",
+      "proves": "The receiver accepts unconditionally, resolves the packet source actor, and submits that actor's event execution context to the EndEvent dispatcher.",
+      "doesNotProve": "It does not identify the target as a Guildleve director or prove duplicate receipt is semantically idempotent."
+    },
+    {
+      "question": "What does EndEvent retire, and does it finalize or destroy a director?",
+      "anchors": [
+        "BCS-Y-2142 0x008A13A0",
+        "FUN_008934A0",
+        "FUN_00893520",
+        "FUN_008935B0",
+        "FUN_00893800"
+      ],
+      "path": "FUN_008A13A0 event-type switch -> selector 0/1 close and cancel pending call, selector 4 notify, selector 5 delete/null auxiliary context and conditionally free the event slot",
+      "support": [
+        "manifests/event_block_execution_state.json",
+        "tools/ghidra/logs/c531_guildleve-event-lifecycle.txt"
+      ],
+      "evidenceTier": "retail_binary_reproduced",
+      "confidence": "confirmed",
+      "proves": "EndEvent retires or closes client event-execution state. Selector 5 is the only observed variant that can free the event slot.",
+      "doesNotProve": "The chain contains no DirectorBase vtable call, Lua callback, actor/control detachment, marker cleanup, or director destructor. Repeated packets are observable, but downstream idempotence is not established."
+    },
+    {
+      "question": "Which DirectorBase lifecycle operations are distinct?",
+      "anchors": [
+        "BCS-Y-0208 DirectorBase vftable 0x00FD5D6C",
+        "slot 0 FUN_00721370",
+        "slot 5 FUN_006F6D30",
+        "slot 11 FUN_006E1F70",
+        "BCS-Y-1530 FUN_006F6900"
+      ],
+      "path": "slot 5 FUN_006F6D30 -> FUN_006F6900 -> gated Lua `_onFinalize`; slot 0 FUN_00721370 -> ActorBase teardown and optional free; generic s2c 0x00CB RemoveActor separately calls dynamic vtable slot 0",
+      "support": [
+        "manifests/symbols.json",
+        "manifests/onfinalize_drill.json",
+        "docs/client-architecture.md",
+        "xivl-client-scripts:lua/scripts/director/directorbaseclass.lua",
+        "xivl-client-scripts:lua/scripts/director/guildleve/guildlevebaseclass.lua",
+        "tools/ghidra/logs/c531_guildleve-event-lifecycle.txt"
+      ],
+      "evidenceTier": "retail_binary_and_script",
+      "confidence": "confirmed",
+      "proves": "Lua finalization, object destruction, event retirement, and actor removal are separate mechanisms. Guildleve processUIFinalize clears the minimap marker and emits UI cancel.",
+      "doesNotProve": "The destructor does not call the finalize wrapper, and no single server-facing EndDirector operation or required ordering among these mechanisms is established."
+    },
+    {
+      "question": "What does s2c 0x0143 DeleteGroup do?",
+      "anchors": [
+        "s2c 0x0143",
+        "BCS-Y-0543 0x00576240",
+        "BCS-Y-0891 0x006C5DE0",
+        "BCS-Y-2143 0x006C5150",
+        "BCS-Y-2144 0x006D6F10",
+        "Group::BreakupBuilder vftable 0x00FD42A4"
+      ],
+      "path": "FUN_004DC690 -> FUN_00576240 -> FUN_006C5DE0 -> FUN_006C5150 validates four qwords -> allocates 0x38 bytes -> FUN_006D6F10 installs BreakupBuilder vftable -> FUN_007238B0 queues command",
+      "support": [
+        "manifests/structs.json BCS-S-0264",
+        "manifests/unmapped_payload_decoding.json",
+        "tools/ghidra/logs/c531_delete-group.txt"
+      ],
+      "evidenceTier": "retail_binary_reproduced",
+      "confidence": "confirmed",
+      "proves": "0x0143 is the retail DeleteGroup ingress and queues a Group::BreakupBuilder command using the packet's group tuple.",
+      "doesNotProve": "The bounded trace does not prove the exact registry node erased, SharedWork destruction or invalidation, director removal, or equivalence to EndEvent."
+    },
+    {
+      "question": "Is DeleteGroup universally required for guildleve teardown, and what ordering is observed?",
+      "anchors": [
+        "party_battle_leve.pcapng sha256 6327e5e1f5cbd51a9baaa9bcbacf53ca51c50a98fe4b66ae3e6bdecd9198089f",
+        "content group 0x2880000000000822",
+        "s2c 0x0143",
+        "s2c 0x00CB",
+        "s2c 0x0131"
+      ],
+      "path": "party capture content-group snapshots type 30001 retain actor 0x45100D44 while membership falls 5 -> 4 -> 3; subevents 13075/13076 carry distinct DeleteGroup tuples {control 7, group 0x2880000000000822, zero, confirmed group 0x2880000000000822} and {control 4, same group tuple} -> subevent 13077 clears charaWork.currentContentGroup -> 13080/13081 remove actor 0x45100D44 -> 13082 EndEvent selector 5. local_leve_complete contains no 0x0143 and no director-finish update.",
+      "support": [
+        "xivl-captures:catalog/scenarios/battlecraft-leve-accept-and-complete/file-inventory.csv",
+        "xivl-captures:catalog/scenarios/battlecraft-leve-accept-and-complete/evidence-map.md",
+        "xivl-captures:studies/director-wire-identity/derived/group-packets.csv",
+        "xivl-captures:studies/director-wire-identity/derived/group-members.csv",
+        "captureQueries in this manifest"
+      ],
+      "evidenceTier": "retail_pcap_observed",
+      "confidence": "confirmed_observation",
+      "proves": "The final 0x0143 packets delete an identified content group that contains the director actor; they are two different control-number variants for the same group, not duplicates. Five earlier 0x0143 packets in the same capture retire other group IDs outside final completion, and the completion-labeled local capture has none. DeleteGroup therefore tracks an existing group lifecycle rather than guildleve completion universally.",
+      "doesNotProve": "The capture does not prove that both control-number tuples exist for every content group, that a solo director owns a group, or that copying either tuple to another group is safe."
+    },
+    {
+      "question": "What complete success-retirement order is retail-observed for the GuildleveDirector actor?",
+      "anchors": [
+        "party_battle_leve.pcapng subevent 12900",
+        "director actor/control 0x45100D44",
+        "party_battle_leve.pcapng subevents 13075..13082",
+        "local_leve_complete.pcapng sha256 4f0793f354140478725bf2c30642a3458a854460f47fb11a7af635c8881d95cd bounded negative"
+      ],
+      "path": "t-821 ms: type-30001 content-group snapshot 0x2880000000000822 contains director 0x45100D44, player 0x029B2941, peer 0x029B27D3, and content actor 0x45100D5B -> t+0 ms: 0x0137 to 0x45100D44 writes signal=0xFF and startTime=0 -> t+19175 ms: the same content group contains director, player, and 0x45100D5B -> t+23229 ms: a separate type-10001 party snapshot contains only the two players -> t+23462 ms: two distinct 0x0143 tuples retire content group 0x2880000000000822 -> t+23487 ms: 0x0137 from player 0x029B2941 clears charaWork.currentContentGroup -> t+23487 ms: duplicate 0x00CB removes content actor 0x45100D5B -> t+23492 ms: duplicate 0x00CB removes director actor 0x45100D44 -> t+23506 ms: 0x0131 selector 5 from player 0x029B2941 retires talkDefault event state -> bulk actor removal and actor reconstruction continue",
+      "support": [
+        "xivl-captures:studies/property-stream-hash-catalog/derived/property-records.csv",
+        "xivl-captures:studies/director-wire-identity/derived/group-members.csv",
+        "captureQueries in this manifest",
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/event_block_execution_state.json"
+      ],
+      "evidenceTier": "retail_pcap_and_binary",
+      "confidence": "single_sample_confirmed_order",
+      "proves": "The only retained director-finish sample removes the director 23.492 seconds after the UI-finish update, during a bulk scene/zone rebuild, and sends EndEvent after actor removal. DeleteGroup names the content group rather than the distinct player-party group. The two identical 0x00CB records are real subevents after TCP reconstruction; the first successful lookup/destruction makes the second a no-op in the cataloged receiver.",
+      "doesNotProve": "The fixed delay, the scene transition, duplicate RemoveActor, director ownership of the content group, or actor-removal-before-EndEvent order is universal. The local completion capture supplies no second director-retirement sequence, so this order is not generalized beyond the party sample."
+    },
+    {
+      "question": "Which observed packet invokes GuildleveBaseClass.processUIFinalize?",
+      "anchors": [
+        "DirectorBase vtable slot 5 FUN_006F6D30",
+        "BCS-Y-1530 FUN_006F6900",
+        "DirectorBase slot 0 FUN_00721370",
+        "GuildleveBaseClass.processUIFinalize"
+      ],
+      "path": "DirectorBase slot 5 FUN_006F6D30 -> FUN_006F6900 -> gated Lua `_onFinalize` -> DirectorBaseClass finalization -> GuildleveBaseClass.processUIFinalize; observed 0x00CB instead enters FUN_004DC690 case 0xCB -> actor lookup -> dynamic slot 0 scalar-deleting destructor",
+      "support": [
+        "manifests/symbols.json BCS-Y-0208, BCS-Y-0526, BCS-Y-1530, and BCS-Y-1578",
+        "manifests/onfinalize_drill.json",
+        "manifests/actor_vtable5_drill.json",
+        "tools/ghidra/logs/c531_guildleve-event-lifecycle.txt"
+      ],
+      "evidenceTier": "retail_binary_and_script",
+      "confidence": "confirmed_negative_mapping",
+      "proves": "No observed retirement packet receiver is proven to invoke processUIFinalize. That Lua method belongs to the separate slot-5 `_onFinalize` path; 0x0137 updates work, 0x0131 retires event execution state, 0x0143 queues group breakup, and 0x00CB invokes slot-0 destruction.",
+      "doesNotProve": "The capture cannot observe a later engine-scheduled slot-5 callback, and the upstream policy that schedules DirectorBase Lua finalization remains unbound to a server packet."
+    },
+    {
+      "question": "How does s2c 0x0137 reach guildleve Lua and UI updates?",
+      "anchors": [
+        "s2c 0x0137",
+        "BCS-Y-0170 0x0089E550",
+        "BCS-Y-0199 0x00773F10",
+        "LuaActorImpl vtable slot 60"
+      ],
+      "path": "FUN_004D8860 -> FUN_00575070 -> FUN_00759ED0 -> SyncMemoryReceiver FUN_0089E550 -> FUN_00775A30 -> FUN_00775180 -> FUN_00774220 -> conditional FUN_00773F10 -> Lua `_onUpdateWork` -> GuildleveBaseClass.processUpdateWork",
+      "support": [
+        "manifests/receiver_opcode_map_inbound.json",
+        "manifests/symbols.json BCS-Y-0170 and BCS-Y-0199",
+        "xivl-client-scripts:lua/scripts/director/directorbaseclass.lua",
+        "xivl-client-scripts:lua/scripts/director/guildleve/guildlevebaseclass.lua",
+        "tools/ghidra/logs/c531_guildleve-work-sync.txt"
+      ],
+      "evidenceTier": "retail_binary_and_script",
+      "confidence": "confirmed_with_gate",
+      "proves": "FUN_00575070 invokes vtable slot 60 on the LuaActorImpl supplied by the event-family dispatcher, while FUN_00CC9320 wraps the accompanying packet-side value. Typed property application can then fire `_onUpdateWork`; GuildleveBaseClass reacts to guildleveWork start, signal, objective/UI-state, and marker tags with content-widget or minimap updates.",
+      "doesNotProve": "The bounded trace does not establish the upstream registry lookup that selected that LuaActorImpl or equate it with a native GuildleveDirector class. FUN_00774220 gates the fire on target flag +0x2D, so not every record is proven to invoke Lua. The path does not call `_onFinalize`, EndEvent, DeleteGroup, or a destructor."
+    },
+    {
+      "question": "What does the observed signal=0xff and startTime=0 completion update mean?",
+      "anchors": [
+        "guildleveWork.signal hash 0xAFEDF257",
+        "guildleveWork.startTime hash 0xD2C67973",
+        "signal wire type u8 / Lua type integer8"
+      ],
+      "path": "0x0137 writes raw signal 0xFF and startTime 0 -> signed Lua signal reads -1 -> processUpdateWork tag `signal` emits content-widget `finish` and refreshes the minimap marker",
+      "support": [
+        "manifests/gam_hash_names.json",
+        "xivl-captures:studies/property-stream-hash-catalog/derived/property-records.csv",
+        "xivl-client-scripts:lua/scripts/director/guildleve/guildlevebaseclass.lua"
+      ],
+      "evidenceTier": "retail_pcap_and_script",
+      "confidence": "confirmed",
+      "proves": "The observed values are sufficient for the GuildleveBaseClass generic UI finish branch when the 0x0137 callback path fires.",
+      "doesNotProve": "The generic `finish` branch does not encode success versus failure, finalize the director, retire event state, delete a group, or settle accepted-leve journal retention."
+    },
+    {
+      "question": "What client-observable outcome vocabulary exists?",
+      "anchors": [
+        "guildleveWork.uiState[0] hash 0x5E86025A",
+        "guildleveWork.uiState[1] hash 0x5BBBC40B",
+        "guildleveWork.uiState[3] hash 0xB3507930",
+        "Lua UI values cleared=2, unfailed=3, failed=4"
+      ],
+      "path": "0x0137 typed fields -> `_onUpdateWork` -> processUpdateWork compares objective/UI state; separate Lua helpers can assign cleared, unfailed, or failed values",
+      "support": [
+        "manifests/gam_hash_names.json",
+        "xivl-client-scripts:lua/scripts/director/guildleve/guildlevebaseclass.lua",
+        "xivl-captures:studies/property-stream-hash-catalog/derived/property-records.csv"
+      ],
+      "evidenceTier": "retail_script_and_pcap",
+      "confidence": "confirmed_vocabulary",
+      "proves": "The client script distinguishes objective/UI states including failed=4. Retained completion-like records show cleared=2 and signal 0xFF.",
+      "doesNotProve": "No retained packet sequence binds failed=4, unfailed=3, or any alternate signal to EndGuildleve(false), active-attempt abandonment, timeout, or journal discard."
+    },
+    {
+      "question": "Can s2c 0x017A update GuildleveDirector work?",
+      "anchors": [
+        "s2c 0x017A",
+        "BCS-Y-0873 0x006C9910",
+        "BCS-Y-1795 0x006C96B0",
+        "Group::SharedWork"
+      ],
+      "path": "FUN_006C9910 -> FUN_006C96B0 checks SharedWork active through FUN_006C1510 -> copies packet+9 bytes sized by packet+8 -> FUN_006C84A0 applies Group SharedWork properties",
+      "support": [
+        "manifests/sharedwork_gate_audit.json",
+        "manifests/director_group_wire_identity.json",
+        "docs/client-architecture.md",
+        "tools/ghidra/logs/c531_guildleve-work-sync.txt"
+      ],
+      "evidenceTier": "retail_binary_reproduced",
+      "confidence": "confirmed",
+      "proves": "0x017A is confined to Group SharedWork and is distinct from the 0x0137 SyncMemory path.",
+      "doesNotProve": "Similar property-stream encoding does not make 0x017A capable of writing guildleveWork or a prerequisite for 0x0137."
+    },
+    {
+      "question": "How does journal command 24241 reach the wire for subindices 2-5?",
+      "anchors": [
+        "/Command/System/JournalCommand static actor 24241 / 0xA0F05EB1",
+        "BCS-Y-1989 MyPlayer slot 42 FUN_0070A010",
+        "BCS-Y-0432 EventStart state-machine cluster",
+        "BCS-Y-0428 raw EventStart wrapper",
+        "BCS-Y-0426 EventStart builder FUN_00776760",
+        "Lua tail integer tag 0x00 / nil tag 0x05 / terminator 0x0F",
+        "c2s 0x012D"
+      ],
+      "path": "JournalDetailWidget confirmation -> DesktopWidget.executeJournalCommand -> PlayerBaseClass.command(24241 actor, journalID, subindex, nil, nil) -> MyPlayer `_executeCommand_cpp` slot 42 FUN_0070A010 -> FUN_00898480 command-event dispatch -> commandRequest callback/server-call route -> MyPlayer `_doServerOnCommand_cpp` slot 46 FUN_006E8C90 -> FUN_006E2FB0 zeroes 128 bytes -> FUN_0078F790 initializes the scalar stream -> FUN_00790ED0/FUN_007933A0 encode arguments 2 onward in order -> FUN_00790400 finalizes -> FUN_0075E1C0 -> FUN_0089E0D0 -> FUN_00776760 copies the tail into c2s 0x012D -> FUN_004D6D30 -> FUN_004E0240 -> FUN_00DAE010",
+      "support": [
+        "xivl-client-scripts:docs/guildleve-journal-lifecycle.md",
+        "xivl-client-scripts:lua/scripts/widget/ask/journaldetailwidget.lua",
+        "xivl-client-scripts:lua/scripts/widget/desktopwidget_connector.lua",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass.lua",
+        "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua",
+        "xivl-client-data:csv/command.csv row 24241",
+        "xivl-client-data:manifests/staticactor_class_paths.json row 24241",
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/c532_guildleve-journal-command.txt",
+        "tools/ghidra/logs/c532_guildleve-journal-command-next.txt",
+        "tools/ghidra/logs/c532_guildleve-journal-command-payload.txt",
+        "method.readOnlyGhidraRecipes c533_guildleve-tail-contract"
+      ],
+      "evidenceTier": "retail_binary_script_and_client_data",
+      "confidence": "confirmed_exact_parameter_tail",
+      "proves": "Subindices 2 regional Break, 3 local Break, 4 regional Retry, and 5 local Retry share the generic serverbound 0x012D EventStart carrier. Command row 24241 is a SystemCommandBaseClass with priority -1, so the Lua event name is commandRequest. The static command actor identity is 0xA0F05EB1. At application payload offset 0x31, the exact 128-byte tail begins `00 <journalID:be32> 00 <subindex:be32> 05 05 0F`, followed by 115 zero bytes. Both numeric values retain their 32-bit bit patterns; the only transform is big-endian byte order. Each explicit nil is transmitted as 0x05 rather than omitted.",
+      "doesNotProve": "The bounded retained capture catalogs expose no sequence decoded as JournalCommand 24241 Break or Retry, so the derived bytes are not pcap-confirmed and no server response is correlated. The common envelope does not define authoritative Break, Retry, allowance, retention, or failure policy."
+    },
+    {
+      "question": "What client-visible state changes when Break or Retry is submitted?",
+      "anchors": [
+        "journalID and subindex forwarding",
+        "playerWork.commandBurstBlocker",
+        "playerWork.requestBurstBlocker",
+        "journal detail widget closure",
+        "work.guildleveId[*] bounded negative"
+      ],
+      "path": "successful client eligibility -> command-event submission returns true -> MyPlayer command-event machinery updates generic +0x128 state -> PlayerBaseClass records the commandRequest throttle window and sets commandBurstBlocker=1 -> JournalDetailWidget closes; journal done/checked/id fields remain read-only inputs in the traced submission path",
+      "support": [
+        "xivl-client-scripts:lua/scripts/command/system/journalcommand.lua",
+        "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua",
+        "xivl-client-scripts:lua/scripts/widget/ask/journaldetailwidget.lua",
+        "tools/ghidra/logs/c532_guildleve-journal-command.txt"
+      ],
+      "evidenceTier": "retail_script_and_binary_bounded_negative",
+      "confidence": "confirmed_submission_effects",
+      "proves": "Break and Retry have the same proven immediate client effects: a generic MyPlayer command-event state write, request throttling, and conditional detail-widget closure. The first evidence-backed ordering boundary is local submission acceptance: the native command return precedes request-window recording, commandBurstBlocker assignment, and conditional widget closure. Retry is enabled only for a failed retained entry with positive offerLimit. No branch specific to subindices 2-5 appears in the traced native submission path.",
+      "doesNotProve": "The local return is not a correlated server acknowledgement. The MyPlayer +0x128 write is not identified as guildleve state. Widget closure does not clear a journal ID, and no traced submission helper writes work.guildleveId, work.guildleveChecked, or work.guildleveDone. The first unresolved response boundary begins after c2s 0x012D submission: no retained Break or Retry sequence identifies the first s2c response or binds one to command 24241."
+    },
+    {
+      "question": "Does retail evidence settle abandon-versus-discard or accepted-guildleve retention?",
+      "anchors": [
+        "no preserved AbandonGuildleve callsite",
+        "work.guildleveChecked[*]",
+        "work.guildleveDone[*]"
+      ],
+      "path": "preserved scripts and capture catalogs -> no named abandon/discard API or decoded packet selector; observed checked/done flag transitions lack a proven policy mapping",
+      "support": [
+        "manifests/lua_callsite_context.json",
+        "manifests/quest_subsystem.json",
+        "manifests/gam_hash_names.json",
+        "xivl-captures:studies/property-stream-hash-catalog/derived/property-records.csv"
+      ],
+      "evidenceTier": "bounded_negative_preserved_corpus",
+      "confidence": "confirmed_absence_in_scope",
+      "proves": "The preserved corpus does not expose a client binding or capture-decoded sequence that settles accepted-leve retention.",
+      "doesNotProve": "Absence from the preserved corpus does not prove the retail server lacked distinct abandon and discard policies."
+    }
+  ],
+  "verdicts": [
+    {
+      "id": 1,
+      "question": "What is the retail-observed success retirement sequence?",
+      "verdict": "One party sample proves this order only: director 0x45100D44 receives 0x0137 signal=0xFF/startTime=0; 23.462 seconds later the director-containing content group receives two distinct 0x0143 control-number variants; 25 ms later player currentContentGroup is cleared; 5 ms later the director receives duplicate 0x00CB removal; 14 ms later 0x0131 selector 5 retires the event slot. Bulk actor teardown/rebuild surrounds the tail. No second capture repeats this sequence."
+    },
+    {
+      "id": 2,
+      "question": "Which step invokes GuildleveBaseClass.processUIFinalize?",
+      "verdict": "None of the observed packet receivers is proven to invoke it. processUIFinalize is reached through the separate DirectorBase slot-5 `_onFinalize` Lua path. The observed 0x00CB receiver calls dynamic slot 0 for destruction, and the cataloged DirectorBase destructor does not call the slot-5 finalize wrapper."
+    },
+    {
+      "id": 3,
+      "question": "Is actor removal required to finalize the Lua director?",
+      "verdict": "No such requirement is evidenced. Actor removal/object destruction and DirectorBase Lua finalization are separate native mechanisms. Conversely, removing the actor is required for the observed actor disappearance, because 0x0131 only retires event execution state."
+    },
+    {
+      "id": 4,
+      "question": "Is 0x0131 alone sufficient?",
+      "verdict": "No. Its receiver retires or closes an event-execution slot and contains no 0x0137 work update, DirectorBase finalize call, actor/control detachment, object destructor, or group breakup. In the only observed sequence, it follows the finish update, conditional group cleanup, and director actor removal."
+    },
+    {
+      "id": 5,
+      "question": "Is 0x0143 required, conditional on a group, or unrelated?",
+      "verdict": "Conditional on a real group lifecycle. The final tuples name the content-group ID whose type-30001 member list contains the director. Five earlier 0x0143 packets retire other group IDs outside final completion, while local_leve_complete has no 0x0143. Do not emit it for an ungrouped director or copy the captured control numbers/group ID."
+    },
+    {
+      "id": 6,
+      "question": "Is the success sequence safe to reuse after active-attempt abandonment?",
+      "verdict": "No retail-equivalent abandonment sequence is established. No retained abandonment capture exists, so the success 0x0137, group packets, actor removal, EndEvent, their ordering, the captured delay, and the zone rebuild cannot be prescribed for abandonment from this lane. The narrowest safe result is no new abandonment-specific protocol behavior; after authoritative abandonment state is applied, Bahamut may use only generic cleanup already justified by its independent group, actor, and event lifecycles."
+    },
+    {
+      "id": 7,
+      "question": "Which ordering details remain unobservable?",
+      "verdict": "Whether success normally waits before teardown; whether director removal normally precedes EndEvent outside a scene transition; when or whether the engine schedules slot-5 Lua finalization; whether every content group receives one or multiple DeleteGroup control-number variants; and the abandonment ordering are unobservable. Cross-direction arrival order is also unavailable because the capture decoder preserves order only within each reconstructed direction and connection block."
+    },
+    {
+      "id": 8,
+      "question": "What exact minimal sequence can Bahamut implement without invented behavior?",
+      "verdict": "For success, Bahamut can implement the directly observed director UI update: one 0x0137 with signal=0xFF/startTime=0 to the known director. The captured content-group breakup, currentContentGroup clear, one effective 0x00CB actor removal, and 0x0131 selector 5 are evidenced retirement mechanisms and an exact single-sample order, but this lane cannot promote their scene-transition order into a universal recipe. 0x0143 remains a group-lifecycle decision and 0x0131 alone cannot remove the actor. For abandonment, the exact minimal new packet sequence is empty: do not send the success 0x0137 or invent an abandonment-specific cleanup order; use only generic cleanup already required by independently established server lifecycles."
+    },
+    {
+      "id": 9,
+      "question": "What is established for JournalCommand 24241 subindices 2-5?",
+      "verdict": "The client maps 2/3 to regional/local Break and 4/5 to regional/local Retry and submits all four through commandRequest on serverbound EventStart 0x012D for static actor 0xA0F05EB1. The exact tail at application payload +0x31 is `00 <journalID:be32> 00 <subindex:be32> 05 05 0F` plus 115 zero bytes. Immediate client effects are request throttles and conditional widget closure; the command return is the first supported local ordering boundary, not a server acknowledgement. The first unresolved response boundary is immediately after 0x012D submission because no first s2c response or state mutation is correlated. Therefore neither Break journal removal nor Retry state mutation or server-response ordering is established."
+    }
+  ],
+  "implementableWithoutInventedSemantics": [
+    "Bind s2c 0x0137 to SyncMemoryReceiver FUN_0089E550, not SendLog FUN_0089FBF0.",
+    "For successful completion, encode the observed director-targeted UI update as guildleveWork.signal raw 0xFF plus startTime zero, while describing it only as generic client UI finish.",
+    "Keep s2c 0x017A Group SharedWork synchronization separate from guildleveWork.",
+    "Keep s2c 0x0143 bound to Group breakup. The final success sample's two distinct tuples name the director-containing content group, but do not prove director ownership or a universal emission rule.",
+    "Bind one effective s2c 0x00CB to the known director actor/control's observed disappearance; do not copy the retail duplicate or generalize its scene-transition placement.",
+    "Bind s2c 0x0131 selector 5 to event-execution retirement only. Its placement after actor removal is observed once and is not a universal ordering rule.",
+    "Encode JournalCommand 24241 as generic c2s 0x012D commandRequest intent for static actor 0xA0F05EB1 with tail `00 <journalID:be32> 00 <subindex:be32> 05 05 0F` and zero padding through 128 bytes; do not invent a command-specific opcode or response policy.",
+    "For active-attempt abandonment, add no abandonment-specific packet sequence from this lane; only generic cleanup independently required by existing group, actor, and event lifecycles is justified."
+  ],
+  "remainingUnknowns": [
+    "The upstream actor/control registry lookup that selects the LuaActorImpl target for s2c 0x0137.",
+    "Exact Group registry and SharedWork state removed by BreakupBuilder.",
+    "The engine trigger and timing for DirectorBase slot-5 Lua finalization and GuildleveBaseClass.processUIFinalize.",
+    "Whether director actor removal precedes EndEvent outside the observed scene/zone transition.",
+    "Whether the observed 23.492-second delay is player/UI dwell, transition timing, or a required lifecycle delay.",
+    "Whether repeated EndEvent or DeleteGroup receipt is semantically idempotent.",
+    "A captured failure signal or decoded failed-completion sequence.",
+    "A captured and decoded active-attempt abandon sequence.",
+    "A captured and decoded accepted-guildleve discard sequence.",
+    "A captured Break or Retry response sequence that binds command 24241 to journal-ID, done/checked, offer-limit, or director-lifecycle mutation.",
+    "Retail policy for accepted-leve retention and retry after abandon or failure."
+  ]
+}

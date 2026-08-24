@@ -191,7 +191,7 @@ def scan_a3_orphaned_manifests(ledger_path: pathlib.Path):
             continue
         orphans.append({"manifest": mf.name, "files": [mf.name]})
 
-    return orphans, len(manifest_files), len(manifest_files)
+    return orphans, len(manifest_files)
 
 
 # Validate `repo:path` citations by shape. Provenance hashes establish byte identity.
@@ -282,7 +282,7 @@ def scan_a3_sourcerefs(symbols, structs):
 
     return {
         "categories": dict(categories),
-        "backslash_examples": backslash_paths[:20],
+        "backslash_examples": backslash_paths[:10],
         "absolute_examples": absolute_paths[:20],
         "citation_examples": citation_examples,
         "live_parent_paths": live_parent_paths,
@@ -549,12 +549,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run repository-local catalog hygiene scans.")
     parser.add_argument(
-        "--ledger", type=pathlib.Path,
+        "--phase-ledger", type=pathlib.Path,
+        dest="phase_ledger",
         help=("Optional maintainer investigation ledger used only for the advisory "
               "A3 orphaned-manifest scan."),
     )
     args = parser.parse_args(argv)
-    ledger_path = args.ledger
+    ledger_path = args.phase_ledger
     if ledger_path is not None:
         if not ledger_path.is_absolute():
             ledger_path = REPO / ledger_path
@@ -594,9 +595,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print("\n--- A3: orphaned manifests (no ledger entry) ---\n")
     if ledger_path is None:
-        print("not run: pass --ledger PATH to check the maintainer ledger")
+        print("not run: pass --phase-ledger PATH to check the maintainer ledger")
     else:
-        orphans, total_files, _ = scan_a3_orphaned_manifests(ledger_path)
+        orphans, total_files = scan_a3_orphaned_manifests(ledger_path)
         print(f"manifest files total: {total_files}")
         print(f"orphaned manifests (no ledger entry): {len(orphans)}")
         for o in orphans:
@@ -612,8 +613,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nabsolute-path examples ({len(a3['absolute_examples'])} total shown up to 20):")
     for ex in a3["absolute_examples"]:
         print(f"  {ex['id']}: {ex['ref']}")
-    print(f"\nrepo-relative-backslash examples ({len(a4['backslash_examples'])} total shown up to 20):")
-    for ex in a4["backslash_examples"][:10]:
+    print(f"\nrepo-relative-backslash examples ({len(a3['backslash_examples'])} total shown up to 10):")
+    for ex in a3["backslash_examples"]:
         print(f"  {ex['id']}: {ex['ref']}")
     print(f"\ncitation examples ({a3['categories'].get('citation', 0)} total shown up to 10):")
     for ex in a3["citation_examples"]:

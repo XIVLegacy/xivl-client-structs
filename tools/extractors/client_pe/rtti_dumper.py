@@ -6,7 +6,7 @@ the COL pointer at vtable[-1]. Also extracts base-class chains via
 the ClassHierarchyDescriptor.
 
 Output: list of RttiEntry tuples (mangled, demangled, td_va, col_va,
-vtable_va, first_entry, vtable_count, base_classes).
+vtable_va, vtable_count, base_classes).
 """
 from __future__ import annotations
 
@@ -24,7 +24,6 @@ class RttiEntry:
     type_descriptor_va: int
     complete_object_locator_va: int | None = None
     vtable_va: int | None = None
-    first_vtable_entry: int | None = None
     vtable_entry_count: int | None = None
     base_classes: list[str] = field(default_factory=list)
 
@@ -55,7 +54,6 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
 
         col_va: int | None = None
         vtable_va: int | None = None
-        first_entry: int | None = None
         vtable_count: int | None = None
 
         td_bytes = struct.pack("<I", td_va)
@@ -74,7 +72,6 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
                             first = struct.unpack_from("<I", data, j + 4)[0]
                             if TEXT_VA_START <= first < TEXT_VA_END:
                                 vtable_va = candidate_vt
-                                first_entry = first
                                 count = 0
                                 for k in range(500):
                                     entry = struct.unpack_from("<I", data, j + 4 + k * 4)[0]
@@ -122,7 +119,6 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
             type_descriptor_va=td_va,
             complete_object_locator_va=col_va,
             vtable_va=vtable_va,
-            first_vtable_entry=first_entry,
             vtable_entry_count=vtable_count,
             base_classes=base_classes,
         ))

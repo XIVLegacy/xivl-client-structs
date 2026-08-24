@@ -23,6 +23,8 @@ CHECK = REPO / "manifests" / "retail_actor_rebuild_check.json"
 RETAIL_INPUTS = REPO / "manifests" / "retail_inputs.json"
 SCHEMA = REPO / "schemas" / "retail-evidence-attestation.schema.json"
 VERIFY = REPO / "tools" / "verify_retail_actor_rebuild.py"
+WORKFLOW = REPO / ".github" / "workflows" / "retail-checks.yml"
+SHARED_ACTION_SHA = "4920dece45e88fcb14424de1f5c4fdee94ae6d02"
 PASSED: list[str] = []
 FAILED: list[str] = []
 
@@ -66,6 +68,72 @@ def _run_cli(path: Path) -> subprocess.CompletedProcess[str]:
 
 def main() -> int:
     baseline = _load(FIXTURE)
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+    check(
+        "shared retail actions are pinned",
+        workflow.count(
+            f"XIVLegacy/xivl-tools/.github/actions/fetch-retail-input@{SHARED_ACTION_SHA}"
+        ) == 1
+        and workflow.count(
+            f"XIVLegacy/xivl-tools/.github/actions/setup-retail-toolchain@{SHARED_ACTION_SHA}"
+        ) == 1
+        and workflow.count(
+            f"XIVLegacy/xivl-tools/.github/actions/finalize-retail-attestation@{SHARED_ACTION_SHA}"
+        ) == 1,
+    )
+    check(
+        "shared fetch locks the local executable grant",
+        "commit: aeb52f6dbde95a793ee6d52be28de9f28a885b15" in workflow
+        and "path: ffxivgame.exe" in workflow
+        and 'size: "15996808"' in workflow
+        and "sha256: 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9" in workflow
+        and "token: ${{ secrets.RETAIL_INPUTS_TOKEN }}" in workflow
+        and "RETAIL_INPUTS_REPOSITORY" not in workflow,
+    )
+    check(
+        "shared toolchain enables Ghidra",
+        "include-ghidra: true" in workflow
+        and "https://github.com/adoptium/temurin21-binaries" not in workflow
+        and "https://github.com/NationalSecurityAgency/ghidra" not in workflow,
+    )
+    check(
+        "analysis consumes the shared toolchain output",
+        'headless="${{ steps.toolchain.outputs.analyze-headless }}"' in workflow
+        and "ghidra_12.1.3_PUBLIC" not in workflow,
+    )
+    check(
+        "local verifier remains the analysis and retained boundary",
+        workflow.count("tools/verify_retail_actor_rebuild.py") >= 2
+        and 'verify_retail_actor_rebuild.py --input "${observations}"' in workflow
+        and '"${RUNNER_TEMP}/retail-evidence-private/missing-observations.json"' in workflow,
+    )
+    check(
+        "retained validation follows shared finalization",
+        "id: finalize" in workflow
+        and "id: retained" in workflow
+        and "if: always() && !cancelled() && steps.finalize.outcome == 'success'" in workflow
+        and "hashFiles" not in workflow,
+    )
+    check(
+        "artifact upload requires finalization and retention",
+        "if: always() && !cancelled() && steps.finalize.outcome == 'success'"
+        " && steps.retained.outcome == 'success'" in workflow,
+    )
+    check(
+        "final failure preserves every retail gate",
+        "steps.fetch.outcome != 'success' || steps.toolchain.outcome != 'success'"
+        " || steps.analysis.outcome != 'success' || steps.finalize.outcome != 'success'"
+        " || steps.retained.outcome != 'success'"
+        in workflow,
+    )
+    check(
+        "artifact upload relies on shared action defaults",
+        "if-no-files-found: error" in workflow
+        and "retention-days: 30" in workflow
+        and "compression-level:" not in workflow
+        and "overwrite:" not in workflow
+        and "include-hidden-files:" not in workflow,
+    )
     with tempfile.TemporaryDirectory(prefix="retail-actor-rebuild-test-") as raw:
         directory = Path(raw)
         check("canonical fixture passes", not _fails(directory, baseline))
@@ -137,10 +205,37 @@ def main() -> int:
         check("retail grant expansion fails", _fails(directory, retail_inputs=retail))
 
         schema = _schema_check.load_schema(SCHEMA)
-        attestation = verifier.build_attestation("pass")
+        unsupported_schema = _write(
+            directory / "unsupported-schema.json",
+            {"$schema": "https://json-schema.org/draft/2020-12/schema", "contains": {}},
+        )
+        try:
+            _schema_check.load_schema(unsupported_schema)
+        except _schema_check.SchemaError:
+            unsupported_rejected = True
+        else:
+            unsupported_rejected = False
+        check("unsupported schema keyword fails closed", unsupported_rejected)
+        public_commit = verifier._git_commit()
+        check("test checkout has a public commit", public_commit is not None)
+        check("git-less checkout has no public commit", verifier._git_commit(directory) is None)
+        attestation = verifier.build_attestation("pass", public_commit)
         check("passing attestation satisfies schema", not _schema_check.validate(attestation, schema))
         attestation["observations"] = []
         check("unexpected attestation field fails", bool(_schema_check.validate(attestation, schema)))
+        zero_failure = verifier.build_attestation("fail", None)
+        check("zero commit is limited to failed attestations",
+              zero_failure["publicRepositoryCommit"] == verifier.ZERO_COMMIT
+              and not _schema_check.validate(zero_failure, schema)
+              and bool(_schema_check.validate(
+                  {**zero_failure, "result": {"status": "pass"}}, schema)))
+        try:
+            verifier.build_attestation("pass", None)
+        except verifier.VerificationError:
+            missing_commit_rejected = True
+        else:
+            missing_commit_rejected = False
+        check("passing attestation requires a public commit", missing_commit_rejected)
 
         failed = copy.deepcopy(baseline)
         failed["observations"][0]["immediate"] = 99
