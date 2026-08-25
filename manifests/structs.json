@@ -470,82 +470,75 @@
       "size": "0x1D0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "maintainer-ledger",
+        "manifests/lobby_character_list_projection.json",
         "mdi-014"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x08",
-          "name": "header_unknown",
-          "type": "byte[8]",
-          "notes": "Not read by FUN_00DA76B0 per-record loop. For record 0 these bytes are also at body+0..7 (since records are tightly packed starting at body+0). The chara-list outer init-path flag at record+8 and record count at record+9 are read off RECORD 0 only; other records' bytes at the same offsets are unused by the parser."
+          "size": "0x04",
+          "name": "logged_u32",
+          "type": "uint32_t",
+          "notes": "Record 0 only. BCS-Y-0017 reads this value and sends it to a numeric logger before calling FUN_00DA76B0; its semantic role remains opaque."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "opaque_04",
+          "type": "byte[4]",
+          "notes": "Not read by the bounded opcode-0x000D route."
         },
         {
           "offset": "0x08",
           "size": "0x01",
-          "name": "init_flags",
+          "name": "control_flags",
           "type": "uint8_t",
-          "notes": "Record 0 only: low bits of this byte (masked & 0xFE) control the first-call init path in FUN_00DA76B0 (BCS-Y-0019). 0 means initialize the slot vector from this+0x1D0 before processing records."
+          "notes": "Record 0 only. When bits 1..7 are all clear, FUN_00DA76B0 clears the existing slot vector before processing. The parser returns the inverse of bit 0; a set bit makes the outer ServiceLoginOperation handler call FUN_00DA5030 and return 0."
         },
         {
           "offset": "0x09",
           "size": "0x01",
           "name": "record_count",
           "type": "uint8_t",
-          "notes": "Record 0 only: total number of per-character records in this packet. FUN_00DA76B0 loops local_306 from 0 while local_306 < this byte, so the client reads a single byte. The server and the parity baseline write a u32 count at this offset; the two readings are wire-identical for counts below 256 and the client caps the list at 8 entries, so this is a width annotation rather than a contradiction. The u8 width is what the parser actually consumes."
+          "notes": "Record 0 only. Read as a byte by the outer numeric logger and as FUN_00DA76B0's loop bound. The parser receives no payload length and does not validate count against the available bytes."
         },
         {
           "offset": "0x0A",
-          "size": "0x0E",
-          "name": "header_remainder",
-          "type": "byte[14]",
-          "notes": "Not read by the per-record loop."
+          "size": "0x0A",
+          "name": "opaque_0A",
+          "type": "byte[10]",
+          "notes": "Not read by the bounded opcode-0x000D route."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x04",
+          "name": "equality_key",
+          "type": "uint32_t",
+          "notes": "Bulk-copied to destination+0x04. FUN_00DA9550 compares it with +0x04 of each 0x30-stride operation record; no domain noun is established."
         },
         {
           "offset": "0x18",
           "size": "0x01",
-          "name": "slot_key",
+          "name": "slot_key_and_flags",
           "type": "uint8_t",
-          "notes": "Slot key, low 6 bits (masked with 0x3F). FUN_00DA76B0 walks the existing slot vector at this+0x1D4..this+0x1D8 (entries at stride 0x2E0) looking for an entry whose entry+8 byte matches this value."
+          "notes": "FUN_00DA76B0 uses bits 0..5 as the lookup key. On insertion, nonzero upper bits cause every destination slot byte at +0x08 to be masked with 0x3F."
         },
         {
           "offset": "0x19",
-          "size": "0x07",
-          "name": "options_and_pad",
-          "type": "byte[7]",
-          "notes": "record+0x19 is the per-character options byte (doRename bit 0x02, isLegacy bit 0x08 in the server / parity-baseline builder). Not read by the 0x0D parser, but confirmed positionally by the 0x0E handler FUN_00DA79D0 (BCS-Y-0024), whose CMD_RENAME path writes its own do_rename byte into the matched slot entry at entry+0x09 - and slot entry byte X is record byte 0x10+X, so entry+0x09 is record+0x19. Bytes 0x1A..0x1F are the u16 zero pad and the u32 current zone id in the server frame; neither is read by this parser."
-        },
-        {
-          "offset": "0x20",
-          "size": "0x20",
-          "name": "name",
-          "type": "char[32]",
-          "notes": "Character name, fixed 0x20 bytes of padded ASCII. Not read by the 0x0D parser itself (which bulk-copies record+0x10 onward into the slot entry), but pinned here by the 0x0E handler FUN_00DA79D0 (BCS-Y-0024): its CMD_RENAME path copies 8 dwords (0x20 bytes) from CharacterModify body+0x20 into the matched slot entry at entry+0x10 (`piVar12 = piVar4 + 4` on an int*). Because the 0x0D parser fills a slot entry by copying 0x1D0 bytes starting at record+0x10, slot entry+0x10 IS record+0x20. Supersedes the earlier reading that placed the name at record+0x50: that offset holds a concatenable tail string (see appearance_tail_string), which a fixed-width name could never be. Agrees with the server / parity-baseline entry+0x10 name once the 0x10 frame shift is applied."
-        },
-        {
-          "offset": "0x40",
-          "size": "0x10",
-          "name": "world_name_and_length_prefix",
-          "type": "byte[16]",
-          "notes": "Not read by FUN_00DA76B0. In the server / parity-baseline entry frame (entry = record+0x10) this span is the 0x0E-byte padded ASCII world name at entry+0x30 (record+0x40..0x4D) followed by the 7-bit-encoded length prefix of the appearance blob at entry+0x3E (record+0x4E). A two-byte prefix there is what puts the blob itself at record+0x50, where the parser does read it. Offsets inside this span are frame-aligned from the server builder, not parser-read."
+          "size": "0x37",
+          "name": "opaque_19",
+          "type": "byte[55]",
+          "notes": "Bulk-copied from record+0x19 to destination+0x09 but not otherwise interpreted by the bounded route."
         },
         {
           "offset": "0x50",
           "size": "variable",
-          "name": "appearance_tail_string",
+          "name": "append_c_string",
           "type": "char[]",
-          "notes": "NUL-terminated tail string, variable length within the record bounds. On a slot key match, FUN_00DA76B0 (BCS-Y-0019) strlens this string (length includes the terminator), finds the end of the existing slot entry's string starting at entry+0x40, and APPENDS these bytes there. Slot entry byte X is record byte 0x10+X, so entry+0x40 is record+0x50: the parser is concatenating this same logical field across successive records that share a slot key, which is how a blob longer than one record is paged in. That concatenation is the reason this cannot be the character name - a fixed 0x20-byte name would never be appended to itself. In the server / parity-baseline entry frame this is the length-prefixed appearance data written at entry+0x3E. Supersedes the earlier `name` reading of this offset; the real name is at record+0x20."
-        },
-        {
-          "offset": "variable",
-          "size": "variable",
-          "name": "payload_b",
-          "type": "byte[]",
-          "notes": "Remaining bytes after the tail string up to record+0x1CF. Sub-field widths not yet decoded."
+          "notes": "On an existing low-six-bit key match, FUN_00DA76B0 scans from this byte to the first NUL and copies the string including its terminator to the first NUL at destination slot+0x40. Neither scan nor the append has a parser-side bound. Bytes after the terminator through record+0x1CF remain opaque."
         }
       ],
-      "notes": "Per-character record carried by the chara-list lobby packet (opcode 0x0D, dispatched via BCS-Y-0019 FUN_00DA76B0). Walked at stride 0x1D0 starting at body+0 for up to body[9] records (`local_304[0] = param_2 + local_306 * 0x1d0`); record 0's leading 16 bytes double as the outer chara-list header (init flag at +8, record count at +9). Re-anchored against the client parser in phase-ledger the lobby-0x0e-0x0d-parser-re-anchor pass. Frame relationship to the server / parity-baseline builder: the server writes a 0x10-byte list header (u64 sequence, u8 tracker @0x08, u32 count @0x09, u8 0, u16 0) and then entries at body+0x10 + i*0x1D0, so SERVER ENTRY i = CLIENT RECORD i + 0x10. The client's record window is deliberately shifted 0x10 earlier, which is exactly why its copy path sources record+0x10 for 0x1D0 bytes - that source span IS the server's entry. Three independent parser reads confirm the shift: the slot key the client masks at record+0x18 is the server's slot byte at entry+0x08; the do_rename byte the 0x0E handler writes to slot entry+0x09 is the server's options byte at entry+0x09 = record+0x19; and the 0x20-byte name the 0x0E handler writes to slot entry+0x10 is the server's name at entry+0x10 = record+0x20. The prior catalog reading placed the name at record+0x50 - that offset is really the length-prefixed appearance blob, which the parser treats as a NUL-terminated string and CONCATENATES onto the matched slot entry's existing string at entry+0x40, a paging mechanism no fixed-width name could use. The count field is read as a u8 by the client and written as a u32 by the server; the two are wire-identical below 256 and the client caps the list at 8 entries. The push path reads 0x1D0 bytes starting at record+0x10, copies that into a local 0x2E0-byte buffer with the trailing 0x110 bytes zeroed, and pushes onto the slot-entry vector (element size 0x2E0) via FUN_00891F00 (BCS-Y-0023 push_back) when no existing entry matches the record's slot key. The slot-copy-construct path FUN_00891900 has been decoded (chain FUN_00891900 -> FUN_008916F0 -> FUN_008913E0 -> FUN_00891360 / BCS-Y-0076..0079) and reveals the slot's 0x2E0 anatomy (see BCS-S-0009). Sub-field widths inside record+0x60..0x1CF remain undecoded and are still blocked on a payload-shape correlation; no lobby pcap exists, the capture corpus excludes login."
+      "notes": "Opcode-0x000D parser window at body + index*0x1D0. New keys project record+0x10 for 0x1D0 bytes into BCS-S-0009; that source reaches record+0x1DF, 0x10 bytes beyond this nominal window. Repeated low-six-bit keys append the NUL-terminated string beginning at record+0x50. The restricted retail fixture confirms one type-0x000D occurrence in one of two deterministically labeled lobby sessions, a client-read count of one in a body with two-entry capacity, an all-zero unused entry, and string termination inside the copied source. It cannot classify type-0x000D fields invariant or dynamic across sessions because the other session has no such opcode. Unnamed spans remain opaque; former server-lineage field names were removed because this client route does not consume them."
     },
     {
       "id": "BCS-S-0009",
@@ -554,54 +547,54 @@
       "size": "0x2E0",
       "confidence": "probable",
       "sourceRefs": [
-        "notes:character-modify-flow",
+        "manifests/lobby_character_list_projection.json",
         "mdi-025"
       ],
       "fields": [
         {
           "offset": "0x000",
           "size": "0x1D0",
-          "name": "wire_mirror",
+          "name": "wire_projection",
           "type": "byte[464]",
-          "notes": "Plain copy of the wire body bytes [+0x10..+0x1E0). For chara-list per-character records (BCS-S-0008), the source is record+0x10..0x1E0. For CharacterModify response bodies (BCS-S-0006), the source is body+0x10..0x1E0. The two source layouts disagree on field positions inside this region: chara-list places the slot key at record+0x18 (low 6 bits) and a variable-length name at record+0x50, which map to slot+0x08 and slot+0x40 respectively; response places slot_or_chrindex at body+0x18 (mapping to slot+0x08) and the 32-byte character name at body+0x20 (mapping to slot+0x10). The parser only relies on slot+0x08 being the slot key in both cases; downstream readers must know which source populated the entry to interpret fields past +0x10."
+          "notes": "Plain copy of record+0x10..record+0x1DF for opcode 0x000D. The projection is source-relative and does not assign semantics to opaque wire bytes."
+        },
+        {
+          "offset": "0x004",
+          "size": "0x04",
+          "name": "equality_key",
+          "type": "uint32_t",
+          "notes": "FUN_00DA9550 compares this dword with +0x04 of each 0x30-stride operation record before calling FUN_00DA94C0. The bounded route proves equality-key use, not a domain noun."
         },
         {
           "offset": "0x008",
           "size": "0x01",
-          "name": "slot_key",
+          "name": "slot_key_and_flags",
           "type": "uint8_t",
-          "notes": "Slot key inside wire_mirror, used by the chara-list parser (FUN_00DA76B0 / BCS-Y-0019) for entry lookup. Comparison uses the low 6 bits (masked 0x3F) against the wire record's record+0x18 low 6 bits."
-        },
-        {
-          "offset": "0x010",
-          "size": "0x20",
-          "name": "response_name_window",
-          "type": "char[32]",
-          "notes": "32-byte name region populated only when the slot was filled or patched by the CharacterModify response handler (CMD_RENAME copies the name from body+0x20 here; the push path for the same body would also land it here via wire_mirror). Distinct from chara_list_name_window below."
+          "notes": "Lookup byte used by FUN_00DA76B0. Bits 0..5 are the key; the insertion normalization path clears bits 6..7 across all slots."
         },
         {
           "offset": "0x040",
           "size": "variable",
-          "name": "chara_list_name_window",
+          "name": "append_c_string",
           "type": "char[]",
-          "notes": "Variable-length name region populated when the slot was filled by the chara-list parser from record+0x50. The chara-list parser scans from slot+0x3F forward to find the tail-string null terminator, then appends additional name bytes from incoming records that match this slot's key."
+          "notes": "Destination C string scanned from +0x40 and extended for repeated low-six-bit keys. The parser provides no destination bound or capacity check."
         },
         {
           "offset": "0x1D0",
-          "size": "0x110",
-          "name": "zeroed_local_state",
-          "type": "byte[272]",
-          "notes": "Zeroed at push time by both source paths (chara-list parser and CharacterModify response handler). Use unknown; probably holds slot-local UI state populated after push."
+          "size": "0x100",
+          "name": "zero_initialized_opaque_state",
+          "type": "byte[256]",
+          "notes": "Zeroed in the temporary slot buffer before push, then copied as 0x40 dwords by FUN_00891360. No semantic consumer is established in the bounded chain."
         },
         {
           "offset": "0x2D0",
           "size": "0x10",
-          "name": "embedded_vector",
-          "type": "std::vector<RetainerListRecord> (element stride 0x30)",
-          "notes": "Embedded std::vector with element stride 0x30 = 48 bytes (matching BCS-S-0004 RetainerListRecord exactly). Initialized empty at push time via FUN_00890EE0 (BCS-Y-0080), which copy-constructs from the source local buffer's matching offset (which is also zeroed at push time). Element type confirmed as BCS-S-0004 RetainerListRecord: the upsert helper FUN_00DA94C0 (BCS-Y-0094) operates generically on any container's embedded vector at this+0x2D0, and one of its three callers is FUN_00DA4D80 (BCS-Y-0022 RetainerListParser, opcode 0x17), forcing the records carried in vectors of this exact shape to be BCS-S-0004. The upsert key is the byte at element+8 = low byte of BCS-S-0004's `total` field (a stable per-retainer index). The slot's specific vector is initialized empty by the copy-construct path; all three known FUN_00DA94C0 callsites have been traced to set `this` = CharaMakeSlotEntry, so the populated retainer vector is slot+0x2D0 in every observed path: (1) RetainerListParser FUN_00DA4D80 walks the chara-list slot vector at CharaMakeOperation+0x1D4 by character_id and upserts into each matching slot; (2) CMD_MAKE in FUN_00DA79D0 looks up chara-list-slot[body[0x18]] via the indexer FUN_006B3D40 (BCS-Y-0096) and upserts the installed record; (3) FUN_00DA9550 (BCS-Y-0091) inherits its `this` from FUN_00DA76B0's newly-pushed slot at slot[size-1]. Layout per std::vector implementation: vec+0x00 unused/allocator, vec+0x04 begin pointer, vec+0x08 end pointer, vec+0x0C cap_end pointer."
+          "name": "embedded_0x30_stride_vector",
+          "type": "std::vector<opaque_0x30_byte_element>",
+          "notes": "FUN_00890EE0 copy-constructs this embedded container. The control word at +0x00 remains opaque; begin/end/capacity at +0x04/+0x08/+0x0C are initialized to zero and populated only when the source has elements. Element stride 0x30 is proven, but the generic helper does not uniquely establish an element domain type."
         }
       ],
-      "notes": "Slot entry stored in the CharaMakeOperation's slot-entry vectors at this+0x1D4..0x1D8 (chara-list vector, populated by FUN_00DA76B0) and this+0x218..0x21C (response vector, populated by FUN_00DA79D0). Both vectors share the 0x2E0 stride. Decoded from Ghidra 12.1 auto-decompiler analysis of the copy-construct chain FUN_00891900 -> FUN_008916F0 -> FUN_008913E0 -> FUN_00891360 / FUN_00890EE0 at VAs 0x00891900, 0x008916F0, 0x008913E0, 0x00891360, 0x00890EE0. Field widths inside wire_mirror remain blocked on pcap correlation of the chara-list (opcode 0x0D) or CharacterModify response (opcode 0x0E) payloads."
+      "notes": "0x2E0-byte destination used by the slot vector at CharaMakeOperation+0x1D0. FUN_00DA76B0 prepares 0x1D0 copied bytes, 0x100 zero bytes, and an empty embedded vector; FUN_00891F00 pushes it. The construction chain FUN_00891900 -> FUN_008916F0 -> FUN_008913E0 -> FUN_00891360 copies the two plain regions and delegates the final 0x10 bytes to FUN_00890EE0. This corrects the former 0x110 zero-region claim and removes unsupported source-specific names from the wire projection."
     },
     {
       "id": "BCS-S-0010",

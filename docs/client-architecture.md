@@ -77,6 +77,29 @@ BCS-Y-0321, BCS-Y-0525..BCS-Y-0527, BCS-Y-0535..BCS-Y-0541,
 BCS-Y-0612..BCS-Y-0613, BCS-Y-0838; BCS-Y-0791 (Element class enumeration, 23 total;
 multiple-inheritance secondary vtables are not distinct classes).
 
+### Lobby s2c 0x000D projects record windows into slot entries
+
+BCS-Y-0017 (`FUN_00DAA9F0`) routes lobby s2c `0x000D` directly to
+`FUN_00DA76B0` with `packet+0x10`. The parser reads a byte count at body
+`+0x09`, walks windows at stride `0x1D0`, and uses the low six bits of each
+window's byte `+0x18` as a slot key. A new key copies `0x1D0` bytes from
+window `+0x10` into a `0x2E0` slot entry, zeroes the next `0x100` bytes, and
+copy-constructs the final `0x10`-byte embedded vector. A repeated key appends
+the NUL-terminated string beginning at window `+0x50` to the first NUL at
+slot `+0x40`. Neither C-string scan nor the append has a local bound.
+
+The restricted retail capture now supplies one sanitized `0x000D`
+observation in one of two deterministically labeled retained lobby sessions.
+The other session has no `0x000D`, so cross-session byte invariance is not
+claimable. Its observed body has two-entry capacity, a client-read count of
+one, and a zero unused entry; its active append string terminates inside the
+copied source.
+Offsets not consumed by the bounded client route remain opaque.
+
+Refs: `manifests/lobby_character_list_projection.json`,
+`manifests/lobby_character_list_capture_correlation.json`; BCS-Y-0017,
+BCS-Y-0019, BCS-Y-0023, BCS-Y-0076..BCS-Y-0080; BCS-S-0008, BCS-S-0009.
+
 ### Two independent s2c dispatch paths converge on the LuaActorImpl vtable
 
 The client runs a second, independent inbound path parallel to the sync

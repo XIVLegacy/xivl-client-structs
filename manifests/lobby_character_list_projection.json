@@ -1,0 +1,272 @@
+{
+  "format": "xivl-lobby-character-list-projection-v1",
+  "gameVersion": "1.23b",
+  "opcode": "0x000D",
+  "direction": "s2c",
+  "method": {
+    "clientBuild": "2012.09.19.0001",
+    "imageBase": "0x00400000",
+    "decompiler": "Ghidra 12.1.3",
+    "readOnlyScripts": [
+      "ghidra/DumpVAs.java",
+      "ghidra/DumpFunctionListing.java"
+    ],
+    "targetVAs": [
+      "0x00DAA9F0",
+      "0x00DA76B0",
+      "0x00891F00",
+      "0x00891900",
+      "0x008916F0",
+      "0x008913E0",
+      "0x00891360",
+      "0x00890EE0",
+      "0x00891A00",
+      "0x00891E50",
+      "0x00DA9550"
+    ],
+    "captureFixture": "manifests/lobby_character_list_capture_correlation.json",
+    "captureReproduction": "python tools/verify_lobby_character_list.py --captures-repo PATH"
+  },
+  "route": [
+    {
+      "function": "FUN_00DAA9F0",
+      "bcsId": "BCS-Y-0017",
+      "address": "0x00DAA9F0",
+      "observation": "The opcode switch case 0x000D passes packet+0x10 directly to FUN_00DA76B0. It reads body+0x00 as a u32 for a numeric logger and body+0x09 as a u8 for the count logger before the call. BCS-Y-0017 supplies the pre-existing catalog identity."
+    },
+    {
+      "function": "CharaListParser_FUN_00DA76B0",
+      "bcsId": "BCS-Y-0019",
+      "address": "0x00DA76B0",
+      "observation": "The parser indexes 0x1D0-byte record windows from the packet body and projects new keys into a 0x2E0-stride slot vector."
+    }
+  ],
+  "wireRecord": {
+    "windowStride": "0x1D0",
+    "windowBase": "body + index * 0x1D0",
+    "fields": [
+      {
+        "offset": "0x00",
+        "width": "0x04",
+        "name": "logged_u32",
+        "wireFrame": "packet body; record 0 only",
+        "destinationOffset": null,
+        "consumer": "FUN_00DAA9F0 numeric logger; semantic role remains opaque",
+        "variability": "not-classifiable-across-sessions",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x04",
+        "width": "0x04",
+        "name": "opaque_04",
+        "wireFrame": "record window",
+        "destinationOffset": null,
+        "consumer": "none in the bounded route",
+        "variability": "opaque",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x08",
+        "width": "0x01",
+        "name": "control_flags",
+        "wireFrame": "packet body; record 0 only",
+        "destinationOffset": null,
+        "consumer": "FUN_00DA76B0",
+        "variability": "not-classifiable-across-sessions",
+        "confidence": "confirmed",
+        "observations": [
+          "Bits 1..7 all clear cause the existing slot vector to be cleared before record processing.",
+          "The return value is the inverse of bit 0. A set bit returns 0 to FUN_00DAA9F0, which calls FUN_00DA5030 and returns 0."
+        ]
+      },
+      {
+        "offset": "0x09",
+        "width": "0x01",
+        "name": "record_count",
+        "wireFrame": "packet body; record 0 only",
+        "destinationOffset": null,
+        "consumer": "FUN_00DAA9F0 logger and FUN_00DA76B0 loop bound",
+        "variability": "not-classifiable-across-sessions",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x0A",
+        "width": "0x0A",
+        "name": "opaque_0A",
+        "wireFrame": "record window",
+        "destinationOffset": null,
+        "consumer": "none in the bounded route",
+        "variability": "opaque",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x14",
+        "width": "0x04",
+        "name": "equality_key",
+        "wireFrame": "record window",
+        "destinationOffset": "0x04",
+        "consumer": "bulk-copied into the slot; FUN_00DA9550 compares it with +0x04 of 0x30-stride operation records",
+        "variability": "not-classifiable-across-sessions",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x18",
+        "width": "0x01",
+        "name": "slot_key_and_flags",
+        "wireFrame": "record window",
+        "destinationOffset": "0x08",
+        "consumer": "FUN_00DA76B0 slot-vector lookup and normalization loop",
+        "variability": "not-classifiable-across-sessions",
+        "confidence": "confirmed",
+        "observations": [
+          "Bits 0..5 are the lookup key.",
+          "A newly inserted record whose upper two bits are nonzero causes every destination slot byte at +0x08 to be masked with 0x3F."
+        ]
+      },
+      {
+        "offset": "0x19",
+        "width": "0x37",
+        "name": "opaque_19",
+        "wireFrame": "record window",
+        "destinationOffset": "0x09",
+        "consumer": "bulk copy only",
+        "variability": "opaque",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x50",
+        "width": "NUL-terminated; no parser-side bound",
+        "name": "append_c_string",
+        "wireFrame": "record window",
+        "destinationOffset": "0x40 append point",
+        "consumer": "FUN_00DA76B0 matching-key append path",
+        "variability": "not-classifiable-across-sessions",
+        "confidence": "confirmed",
+        "observations": [
+          "The source scan includes the NUL terminator in the copied length.",
+          "The destination scan begins at slot+0x40 and appends at its first NUL.",
+          "Neither scan nor the append has a record, destination, or capacity bound in this function."
+        ]
+      }
+    ],
+    "opaqueBoundary": "All bytes not named above remain opaque. In particular, no noun is assigned inside record+0x19..0x4F or after the append string terminator through record+0x1CF."
+  },
+  "projection": {
+    "destinationType": "CharaMakeSlotEntry",
+    "destinationBcsId": "BCS-S-0009",
+    "destinationSize": "0x2E0",
+    "ranges": [
+      {
+        "source": "record+0x10",
+        "destination": "slot+0x000",
+        "length": "0x1D0",
+        "operation": "plain dword copy into the temporary slot buffer, then plain copy-construction"
+      },
+      {
+        "source": "constant zero",
+        "destination": "slot+0x1D0",
+        "length": "0x100",
+        "operation": "temporary-buffer zero fill, then plain copy-construction"
+      },
+      {
+        "source": "temporary embedded-container state",
+        "destination": "slot+0x2D0",
+        "length": "0x10",
+        "operation": "container copy-construction; +0x04/+0x08/+0x0C are initialized as begin/end/capacity pointers"
+      }
+    ],
+    "destinationFields": [
+      {
+        "offset": "0x000",
+        "width": "0x1D0",
+        "name": "wire_projection",
+        "consumer": "bulk-copied source record+0x10",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x004",
+        "width": "0x04",
+        "name": "equality_key",
+        "consumer": "FUN_00DA9550 compares it with +0x04 of 0x30-stride operation records",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x008",
+        "width": "0x01",
+        "name": "slot_key_and_flags",
+        "consumer": "FUN_00DA76B0 lookup and normalization",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x040",
+        "width": "NUL-terminated; no parser-side bound",
+        "name": "append_c_string",
+        "consumer": "FUN_00DA76B0 matching-key append path",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x1D0",
+        "width": "0x100",
+        "name": "zero_initialized_opaque_state",
+        "consumer": "none in the bounded route",
+        "confidence": "confirmed"
+      },
+      {
+        "offset": "0x2D0",
+        "width": "0x10",
+        "name": "embedded_0x30_stride_vector",
+        "consumer": "FUN_00890EE0 copy-constructor; FUN_00DA94C0 population through FUN_00DA9550",
+        "confidence": "confirmed"
+      }
+    ],
+    "copyConstructionChain": [
+      "FUN_00891F00",
+      "FUN_00891900",
+      "FUN_008916F0",
+      "FUN_008913E0",
+      "FUN_00891360",
+      "FUN_00890EE0"
+    ]
+  },
+  "behavior": {
+    "existingKey": "Append the record+0x50 C string, including its NUL, to the first NUL at destination slot+0x40. No new slot is inserted.",
+    "newKey": "Copy record+0x10 for 0x1D0 bytes, zero destination+0x1D0 for 0x100 bytes, initialize an empty embedded vector, push one 0x2E0 slot, then join matching 0x30-stride operation records through FUN_00DA9550.",
+    "emptyCount": "Skip the record loop and return the inverse of control_flags bit 0.",
+    "paginationBoundary": "Repeated records with the same low-six-bit key append their record+0x50 strings. The client supplies no explicit total-length or page-count check in this parser.",
+    "recordWindowBoundary": "The new-key copy reads through record+0x1DF, 0x10 bytes beyond the nominal 0x1D0 window. For index N this is the next window's leading 0x10 bytes; the caller passes no payload length to the parser."
+  },
+  "validationAndFailure": [
+    "Vector begin/end inversions and out-of-range slot indexes call FUN_009D22B4.",
+    "FUN_00891F00 uses in-capacity construction when possible; otherwise FUN_00891E50 validates the vector state and grows it through FUN_00891B20.",
+    "FUN_008913E0 constructs only when the destination pointer is nonzero.",
+    "FUN_00890EE0 derives embedded-vector element count at stride 0x30, initializes destination begin/end/capacity to zero, and rejects a count above 0x05555555 through FUN_006D20B0 before allocation.",
+    "FUN_00DA76B0 performs no payload-length validation, no record-count-to-length validation, and no bound check on either C-string scan or the append copy."
+  ],
+  "captureCorrelation": {
+    "confidence": "confirmed-pcap-derived",
+    "sessionComparison": "Both retained lobby sessions begin their decrypted type-3 opcode sequence with 0x000C. Type 0x000D is absent from deterministic session-a and occurs once in session-b, so no type-0x000D byte can be classified invariant or dynamic across sessions. The labels do not assert capture chronology.",
+    "observedShape": "The sole type-0x000D body has capacity for two 0x1D0 entries after its 0x10-byte leading frame, while the client-read count is one and the unused capacity entry is zero. The active append C string terminates inside both the record window and the 0x1D0 copy source.",
+    "fixture": "manifests/lobby_character_list_capture_correlation.json"
+  },
+  "implementationBoundary": {
+    "ready": [
+      "direct opcode route and body frame",
+      "logged u32 read with opaque semantics",
+      "u8 control flags and return behavior",
+      "u8 record count and 0x1D0 window stride",
+      "low-six-bit slot key and upper-bit normalization",
+      "same-key NUL-terminated append behavior",
+      "0x1D0 wire copy, 0x100 zero region, and 0x10 embedded container",
+      "0x2E0 destination stride and 0x30 embedded-vector element stride"
+    ],
+    "opaque": [
+      "record+0x04..0x07",
+      "record+0x0A..0x13",
+      "record+0x19..0x4F",
+      "bytes after the append-string terminator through record+0x1CF",
+      "destination+0x1D0..0x2CF semantics beyond zero initialization",
+      "destination+0x2D0 allocator/control word semantics",
+      "the semantic type and fields of each 0x30-byte embedded-vector element beyond its proven stride and join behavior"
+    ]
+  }
+}

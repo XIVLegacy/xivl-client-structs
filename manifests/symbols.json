@@ -151,9 +151,10 @@
       "address": "0x00DAA9F0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "mdi-004"
+        "mdi-004",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Lobby operation-step dispatcher for the four list packets. One switch routes opcode 0x0D to FUN_00DA76B0 (CharacterList), 0x15 to FUN_00DA6320 (WorldList), 0x16 to FUN_00DA4C20 (ImportList), and 0x17 to FUN_00DA4D80 (RetainerList), all called with packet+0x10. Returns char; on failure calls FUN_00DA5030 on the user-supplied callback. [apply-log fix] Address shifted from 0x009AA9F0 to 0x00DAA9F0 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "Lobby operation receive dispatcher. Case 0x000D reads packet body+0x00 as a u32 for a numeric logger and body+0x09 as a u8 for the count logger, then calls FUN_00DA76B0 with packet+0x10. If that parser returns 0, it calls FUN_00DA5030 on this+0x34 and returns 0. Cases 0x0015, 0x0016, and 0x0017 route the other list records. See manifests/lobby_character_list_projection.json. Address corrected from 0x009AA9F0 to 0x00DAA9F0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0018",
@@ -175,9 +176,10 @@
       "address": "0x00DA76B0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "mdi-014"
+        "mdi-014",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Character-list deserializer for lobby opcode 0x0D. Walks up to body[9] records at stride 0x1D0 starting from body+0 (so record metadata at body+8 = init-path flag and body+9 = record count are at record 0's leading bytes). For each record reads record+0x18 (low 6 bits) as the slot key and matches it against the existing slot vector at this+0x1D4..this+0x1D8 (vector of CharaMakeSlotEntry / BCS-S-0009, stride 0x2E0 = 736 bytes, end pointer at this+0x1D8). On match, appends the null-terminated name string at record+0x50 to the matched slot entry's tail-string region (scan starts at entry+0x3F, append at the first null in that region, which lines up with entry+0x40 = wire_mirror+0x40 = record+0x50). Otherwise copies 0x74 dwords (464 bytes) from record+0x10 into a local 0x2E0-byte buffer (zeroing the trailing 0x110 bytes so the embedded std::vector at slot+0x2D0 ends up empty after copy-construct) and pushes that onto the slot vector via FUN_00891F00 (BCS-Y-0023 = std::vector::push_back). Returns 1 on success. The read-width of 0x1D0 from record+0x10 extends 0x10 bytes past the indexed stride into the next record (or the body's trailing pad for the last record). Decoded from Ghidra 12.1 auto-decompiler on 1.23b ffxivgame.exe at VA 0x00DA76B0 (782 byte body). | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x009A76B0 to 0x00DA76B0 (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=name_fun_token; count=1."
+      "notes": "Direct s2c opcode-0x000D parser reached only from BCS-Y-0017 with packet+0x10. It clears the slot vector when body+0x08 bits 1..7 are zero, loops over the u8 count at body+0x09 with 0x1D0 record-window stride, and looks up each record+0x18 low-six-bit key in the 0x2E0-stride vector at this+0x1D0. Existing keys append the unbounded NUL-terminated record+0x50 string to the first NUL at slot+0x40. New keys copy record+0x10 for 0x1D0 bytes, zero 0x100 bytes, initialize an empty embedded vector, and push through BCS-Y-0023; upper key bits request a 0x3F mask over every destination key byte. The parser returns the inverse of control-flags bit 0. It has vector-state checks through FUN_009D22B4 but no payload-length, count-to-length, string-scan, or append-capacity validation. See manifests/lobby_character_list_projection.json and its sanitized restricted-capture fixture. | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x009A76B0 to 0x00DA76B0 (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=name_fun_token; count=1."
     },
     {
       "id": "BCS-Y-0020",
@@ -213,7 +215,10 @@
       "kind": "function",
       "address": "0x00891F00",
       "confidence": "confirmed",
-      "notes": "std::vector::push_back specialization for the slot-entry vector (element size 0x2E0 = 736 bytes, see BCS-S-0009 CharaMakeSlotEntry). param_1 is the vector header (begin pointer at +0x04, end pointer at +0x08, capacity-end pointer at +0x0C); param_2 is the source element pointer. If size = (end - begin)/0x2E0 < capacity = (cap_end - begin)/0x2E0, delegates to FUN_00891900 (BCS-Y-0076 slot batch copy loop) to copy-construct the new element at *end then advances end by 0x2E0; otherwise calls FUN_00891E50 to grow the vector and insert. The full copy-construct chain is FUN_00891900 -> FUN_008916F0 -> FUN_008913E0 -> FUN_00891360 (BCS-Y-0076..0079) with the tail std::vector handled by FUN_00890EE0 (BCS-Y-0080). The decode shows it is NOT a per-character parser. The actual chara-list per-record parsing happens inline in FUN_00DA76B0 (BCS-Y-0019); FUN_00DA79D0 (BCS-Y-0024) and FUN_00DA76B0 only use this function to APPEND a fully prepared local slot buffer onto the live slot vector. Decoded from Ghidra 12.1 auto-decompiler on 1.23b ffxivgame.exe at VA 0x00891F00 (168 byte body). See MDI-014 for the corrected blocker description. [apply-log fix] Address shifted from 0x00491F00 to 0x00891F00 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "std::vector::push_back specialization for 0x2E0-byte BCS-S-0009 entries. With spare capacity it copy-constructs one element at end through FUN_00891900 and advances end by 0x2E0. Otherwise it validates end >= begin and delegates growth/insertion to FUN_00891E50. It does not parse wire fields. See manifests/lobby_character_list_projection.json. Address corrected from 0x00491F00 to 0x00891F00 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "sourceRefs": [
+        "manifests/lobby_character_list_projection.json"
+      ]
     },
     {
       "id": "BCS-Y-0024",
@@ -712,21 +717,23 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-025"
+        "mdi-025",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Actual copy-constructor for CharaMakeSlotEntry (BCS-S-0009). Signature recovered as __thiscall(undefined4 *param_1=dest, undefined4 *param_2=source). Body: (1) plain dword loop copies 0x74 dwords = 0x1D0 bytes from source[0..0x1D0) to dest[0..0x1D0); (2) plain dword loop copies 0x40 dwords = 0x100 bytes from source[0x1D0..0x2D0) to dest[0x1D0..0x2D0); (3) calls FUN_00890EE0 (BCS-Y-0080) with explicit arg source+0x2D0 (implicit ECX dest+0x2D0) to copy-construct the embedded std::vector tail at slot+0x2D0..0x2E0. Returns dest. 124 byte body at VA 0x00891360 with SEH frame (LAB_00EBD1EE unwind handler) covering the tail-object construct (so a throwing element copy in the embedded vector unwinds the plain-data region correctly). Decoded from Ghidra 12.1 auto-decompiler on 1.23b ffxivgame.exe. [apply-log fix] Address shifted from 0x00491360 to 0x00891360 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "BCS-S-0009 copy-constructor. It copies 0x74 dwords (0x1D0 bytes) from source+0x000, then 0x40 dwords (0x100 bytes) from source+0x1D0, and delegates the embedded 0x10-byte container at +0x2D0 to FUN_00890EE0. The two plain ranges plus the container close the exact 0x2E0 destination layout. See manifests/lobby_character_list_projection.json. Address corrected from 0x00491360 to 0x00891360 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0080",
-      "name": "SlotRetainerVectorCopyConstructor_FUN_00890EE0",
+      "name": "SlotEmbeddedVectorCopyConstructor_FUN_00890EE0",
       "kind": "function",
       "address": "0x00890EE0",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-025"
+        "mdi-025",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Copy-constructor for the std::vector embedded at CharaMakeSlotEntry+0x2D0 (BCS-S-0009 retainer_vector field). Signature recovered as __thiscall(int param_1=dest, int param_2=source). Layout reads source as a vector with begin at +4 and end at +8 (element stride 0x30 = 48 bytes). Initializes dest's begin/end/cap_end at +4/+8/+0xC to zero; if source size is non-zero, calls FUN_0088F150 to allocate count * 0x30 bytes, sets dest begin and (initially) end to the allocation and cap_end to allocation + count*0x30, then uses FUN_00890210 with iterators returned by FUN_0071CB30 / FUN_006CFBB0 (allocator placement-new helpers) to element-copy the range, finally setting dest end to the post-copy position. Maximum count guarded at 0x5555555 = 2^32 / 0x30. 227 byte body at VA 0x00890EE0 with SEH frame (LAB_00EBD1C0 unwind handler). Other caller is FUN_00DADCC0 (BCS-Y-0081), which constructs a 0x24-byte snapshot object containing an operation-level instance of the same 0x30-stride vector at source+0x204. The 0x30 stride matches BCS-S-0004 RetainerListRecord but is not unique to it: FUN_00890FE0 (another 0x30-stride vector helper) has five callers across the lobby/chara-make code, so multiple unrelated 48-byte record types likely share these vector ops. [apply-log fix] Address shifted from 0x00490EE0 to 0x00890EE0 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "Copy-constructor for the embedded container at BCS-S-0009+0x2D0. It derives source count from begin/end at +0x04/+0x08 with element stride 0x30, zeroes destination begin/end/capacity at +0x04/+0x08/+0x0C, rejects counts above 0x05555555 through FUN_006D20B0, allocates count*0x30 bytes for a nonempty source, and copy-constructs the range. The control word at +0x00 is not interpreted here, and the generic 0x30 stride does not uniquely prove an element domain type. See manifests/lobby_character_list_projection.json. Address corrected from 0x00490EE0 to 0x00890EE0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0081",
@@ -842,9 +849,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-025"
+        "mdi-025",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Helper that walks a 0x30-stride vector (begin at param_2+4, end at param_2+8) and calls FUN_00DA94C0 on each element whose +4 dword matches the input's +4 dword. 98 byte body at VA 0x00DA9550. __thiscall(int param_1=key_holder, int param_2=vector_struct_ptr). Body: walks from param_2+4 to param_2+8 in steps of 0x30, on each iteration tests '*(element+4) == *(param_1+4)' and on match calls FUN_00DA94C0(element). Bounds-checks via FUN_009D22B4 on each step. The element-stride 0x30 and the match-by-+4 pattern match BCS-S-0004 RetainerListRecord (character_id at offset 0x04). Called from FUN_00DA76B0 (BCS-Y-0019 chara-list parser) with param_2 = this+0x204 (the operation-level vector); the caller's preceding bounds check on slot[size-1] of the chara-list vector at this+0x1D4 indicates the key_holder is the newly-pushed slot entry (slot+4 in the wire mirror corresponds to wire body+0x14, which for the chara-list source carries the per-character key). FUN_00DA94C0 inherits ECX, so its `this` is the same newly-pushed slot entry, and the upsert lands in slot_entry+0x2D0 (the BCS-S-0009 embedded retainer vector). The matched-by-character_id semantic plus the FUN_00DA94C0 upsert shape confirm that the 0x30 records walked here are BCS-S-0004 RetainerListRecord-shaped (per MDI-025); the operation-level vector at this+0x204 holds the recently-received retainers that the parser sweeps when adding a new slot. [apply-log fix] Address shifted from 0x009A9550 to 0x00DA9550 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "Walks the operation-level vector at param_2 in 0x30-byte steps. For each element whose +0x04 dword equals the newly inserted BCS-S-0009 slot's +0x04 join key, it calls FUN_00DA94C0 with the slot retained as this. Every begin/end and per-element access is guarded through FUN_009D22B4. This proves equality-key use and the 0x30 stride, but not a unique domain noun for the generic record type. Called only from FUN_00DA76B0 after a new slot push. See manifests/lobby_character_list_projection.json. Address corrected from 0x009A9550 to 0x00DA9550 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0092",

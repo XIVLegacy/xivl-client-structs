@@ -26,6 +26,22 @@ Exit 0 validates the bridge against that explicit corpus without rewriting the
 tracked sidecar. Record the exact client, capture, or Ghidra artifact for every
 external-evidence result.
 
+For the restricted lobby character-list correlation, run:
+
+```powershell
+python tools\verify_lobby_character_list.py --captures-repo C:\path\to\xivl-captures
+python tools\test_lobby_character_list.py
+python tools\extractors\promote_lobby_character_list.py --check
+```
+
+The first command reproduces only the sanitized structural fixture from the
+explicit capture checkout. It emits no plaintext, names, session material,
+network endpoints, or opaque scalar values other than the source artifact's
+identity hash. The latter commands are asset-free
+layout, sanitization, and deterministic-promotion checks.
+After reviewing a reproduced result, pass `--write` with `--captures-repo` to
+replace the tracked sanitized fixture explicitly.
+
 ## Retail-input reproduction
 
 The manual retail-input workflow is specified in

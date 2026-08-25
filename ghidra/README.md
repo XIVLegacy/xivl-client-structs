@@ -53,6 +53,20 @@ tools\ghidra\run-headless.ps1 -Script DumpVAs.java -ReadOnly `
 
 Addresses are Ghidra absolute VAs (image base `0x00400000`).
 
+## DumpFunctionListing.java
+
+`DumpFunctionListing.java` emits the defined instruction sequence for exact
+function-entry VAs. It refuses mid-function or missing targets and ends with a
+requested/completed marker. Use it read-only when a decompiler expression
+hides the register tested by a branch or the exact bounds of a copy:
+
+```powershell
+tools\ghidra\run-headless.ps1 -Script DumpFunctionListing.java -ReadOnly `
+    -Out tools\ghidra\logs\listing.txt `
+    -ScriptEnv @{ XIVL_TARGET_VAS = '0x00DA76B0,0x00891360' } `
+    -ScriptPath @('ghidra')
+```
+
 ## FindFieldRefs.java
 
 Scans every instruction for memory operands whose displacement matches one of
