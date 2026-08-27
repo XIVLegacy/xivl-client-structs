@@ -297,6 +297,101 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "8..15; kind 1 reads bits 12..15 and kind 2 reads bits 8..11",
     ):
         findings.append(Finding("ERROR", "cast-chant.chant", "SubStat Chant boundary drifted"))
+    semantics = doc.get("chantNibbleSemanticsSearch", {})
+    if not isinstance(semantics, dict):
+        return findings + [Finding("ERROR", "cast-chant.chant-semantics", "must be an object")]
+    sample = semantics.get("sample", {})
+    research_inputs = semantics.get("researchInputs", {})
+    names = semantics.get("exactLuaNameCensus", {})
+    shapes = semantics.get("instructionShapeCensus", {})
+    expected_resolver_consumers = [
+        "FUN_006F9D60 Waste: bits 24..31",
+        "FUN_006F9E20 Guard: bits 16..17",
+        "FUN_006F9EC0 Chant: kind 1 bits 12..15; kind 2 bits 8..11",
+        "FUN_006F9F70 Object: kinds read bits 8..11, 14..15, and 12..13",
+        "FUN_006FA020 Breakage: bits 0..7",
+    ]
+    expected_accessors = [
+        "FUN_006EECB0", "FUN_006EECD0", "FUN_006FA150", "FUN_006FA1F0",
+        "FUN_006FA220", "FUN_006FA250", "FUN_006FA2C0", "FUN_006FA330",
+        "FUN_006FA980", "FUN_006FAE70", "FUN_00707FB0", "FUN_007080F0",
+        "FUN_007084B0", "FUN_007084E0",
+    ]
+    expected_boundary = (
+        "A computed, indirect, dynamic, or otherwise unanchored consumer of the already-resolved "
+        "status word, or a preserved client resource outside the decoded Lua/data surfaces, that "
+        "contains an explicit value table for either Chant nibble."
+    )
+    expected_conclusion = (
+        "The client establishes the two Chant nibble positions and returns their numeric values, "
+        "but this bounded search found no concrete enum identity, comparison, switch, table index, "
+        "or value-to-name mapping for either nibble."
+    )
+    expected_research_inputs = {
+        "clientStructsCommit": "f3932032ed8db9c6fe55813215253e17e43e3baf",
+        "opcodesCommit": "419df34344b7cb4422040f401e10bcaeead6565a",
+        "clientDataCommit": "46e21e44ef65c78cbabe48e6f25642efb12da6c6",
+        "clientScriptsCommit": "c9d0c376bafd43449468c22c910faffaf184cdb2",
+    }
+    expected_offset_dc_intersections = {
+        "FUN_00847BE0": "CharaWeaponController reads an unrelated object's +0xDC flags",
+        "FUN_00C6A010": "counts unrelated +0xDC category values 1, 2, and 3",
+    }
+    expected_method_boundary = (
+        "Whole-image callgraph and +0xDC field-reference exports lacked terminal completion markers "
+        "and were used only for candidate triage. Exact string/address-reference exports and "
+        "per-function decompilation establish the bounded negative."
+    )
+    if research_inputs != expected_research_inputs:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.inputs", "research inputs drifted"))
+    if not isinstance(sample, dict) or (
+        sample.get("statusWordHex"), sample.get("chantKind1"), sample.get("chantKind2"),
+        sample.get("objectKinds")
+    ) != ("0x0003681F", 6, 8, [8, 1, 2]):
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.sample", "sample projection drifted"))
+    if not isinstance(names, dict) or (
+        names.get("definedStringsScanned"), names.get("queries"), names.get("nativeMatches"),
+        names.get("valueTablesFound")
+    ) != (
+        28414,
+        ["_getSubStatChant", "_getSubStatChant_cpp", "_getSubStatChant_inl", "_setSubStatChant"],
+        ["_getSubStatChant at 0x00FD7B9C -> FUN_0074ADF0"],
+        0,
+    ):
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.names", "exact name census drifted"))
+    elif names.get("scriptConsumers") != ["commanddebuggerdev.lua reads and prints the numeric result"]:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.names", "script consumer census drifted"))
+    if semantics.get("status") != "bounded_negative":
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.status", "bounded verdict drifted"))
+    if semantics.get("resolverConsumers") != expected_resolver_consumers:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.resolvers", "resolver census drifted"))
+    if semantics.get("storageAccessorConsumers") != expected_accessors:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.accessors", "accessor census drifted"))
+    negatives = shapes.get("shapeOnlyNegatives", []) if isinstance(shapes, dict) else []
+    if not isinstance(negatives, list) or not all(isinstance(item, str) for item in negatives):
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "candidates must be strings"))
+    elif not isinstance(shapes, dict) or (
+        shapes.get("emittedFunctionRanges"), shapes.get("candidateFunctions"),
+        shapes.get("anchoredConsumers"), len(negatives),
+        shapes.get("statusStorageIntersections")
+    ) != (94894, 99, ["FUN_006F9EC0", "FUN_006F9F70"], 97, []):
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "instruction census drifted"))
+    elif len(set(negatives)) != 97:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "candidate census has duplicates"))
+    elif hashlib.sha256("\n".join(negatives).encode()).hexdigest() != (
+        "853e4201d09dbae717591c1b1a924c4cc1e832f86148a40f946f26b233b641d2"
+    ):
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "candidate census drifted"))
+    if isinstance(shapes, dict) and shapes.get("offsetDcIntersections") != expected_offset_dc_intersections:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "+0xDC negatives drifted"))
+    if isinstance(shapes, dict) and shapes.get("methodBoundary") != expected_method_boundary:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "method boundary drifted"))
+    if semantics.get("otherDirectStatusReader") != "FUN_006FA100 MotionPack reads only bits 0..7":
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.motion-pack", "direct reader drifted"))
+    if semantics.get("conclusion") != expected_conclusion:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.conclusion", "bounded conclusion drifted"))
+    if semantics.get("remainingBoundary") != expected_boundary:
+        findings.append(Finding("ERROR", "cast-chant.chant-semantics.boundary", "remaining boundary drifted"))
     rejected = doc.get("rejectedImports", [])
     unresolved = doc.get("unresolved", [])
     if not isinstance(rejected, list) or not isinstance(unresolved, list):
@@ -320,6 +415,12 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "xivl-decomp:asm/ffxivgame/00373f10_FUN_00773f10.s",
         "xivl-decomp:docs/actor/cast-timing-clock.md",
         "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/lane1_substat-chant-native-consumers.txt",
+        "tools/ghidra/logs/lane1_substat-chant-storage-bypass.txt",
+        "tools/ghidra/logs/lane1_substat-related-registrars.txt",
+        "xivl-client-data:docs/substat-status-join.md",
+        "xivl-client-data:derived/substat_status_crosswalk.csv",
+        "xivl-client-scripts:lua/scripts/commanddebugger/commanddebuggerdev.lua",
     }
     if not isinstance(source_refs, list) or not all(isinstance(ref, str) for ref in source_refs):
         findings.append(Finding("ERROR", "cast-chant.sourceRefs", "sourceRefs must be strings"))
