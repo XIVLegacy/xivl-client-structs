@@ -229,7 +229,28 @@ the encoded id as `0xC1000000 + allocator_index`, or `0xC0000000` on the
 allocator sentinel. The fixed initialization batch in `FUN_004D9110` supplies
 11 selector/id pairs. Other direct routes provide literal selectors `0x05`,
 `0x08`, `0x0A`, `0x0B`, `0x0F`, and `0x1A`, plus dynamic selectors from a
-packet field or virtual slot `+0x50`.
+packet field or virtual slot `+0x50`. The complete recorded virtual domain is
+bounded: `Control::SpreadSheet` slot `+0x50` returns selector `0`, while the
+shared `Control::WidgetBase` and `DesktopUtil` entry returns `0x1A`. Their
+slot-`+0x6C` wrappers are the only direct callers of `FUN_0075BE10`, which
+passes those selectors to the auto-id wrapper. Computed, indirect, and
+unanalyzed vtables remain outside that census.
+
+The configured instruction listing closes the other selector-`0x1A` producer.
+Inside `FUN_00774AD0` (BCS-Y-1019/BCS-Y-1353), callsite `0x00774B78` pushes
+encoded id `0xC0000024` and selector `0x1A`, reaching the `0x280`-byte
+`FormElement` factory BCS-Y-2195. The branch is gated by equality between the
+record's actor id and the local-player actor id from `FUN_004D7490`; it first looks up the fixed id,
+creates only when absent, then obtains the Lua class table named
+`DesktopWidget` and calls `FUN_004D87C0`. Its full inbound route is
+`FUN_004DC690 -> FUN_0058CCA0 -> FUN_004D8860 -> FUN_00574780 ->
+FUN_00774AD0`. The actor and implementation object are already present; this
+path follows a failed `LuaActorImpl` cast and a `NullActorImpl` probe. It is
+therefore local-player actor-record apply plus a DesktopWidget/FormElement
+setup handoff, not creation of the actor target or MyPlayer control. Direct
+ordering does not make it the separate `+0x16C` zone-bind state machine.
+`FUN_0075BE50` (BCS-Y-2200) implements the same fixed-id ensure operation but
+has no recorded direct reference, so no reachable lifecycle is assigned to it.
 
 `FUN_00585800` is a separate battle-result visual classifier. Depending on
 its caller fallback and classifier results it returns `0x05..0x11`. Seven
@@ -248,10 +269,15 @@ teardown is BCS-Y-2170. `FUN_005374D0` (BCS-Y-2173) clears fixed caches for its
 directly compared ids and otherwise erases from the selector-`0x08` map. Its
 ScreenshotManager comparison is literal `0x0000000C`, not initialization id
 `0xC000000C`; the catalog preserves that mismatch without correction.
+Selector `0x1A` has no direct invoker cache. Its fixed-id lookup uses the
+container actor/object map, while ordinary RaptureElement registration,
+removal, and destruction govern the FormElement outside the registry's fixed
+cache fields. The constant `0xC0000024` alone is not packet, spawn, player, or
+zone-transition identity evidence.
 
 Refs: `manifests/rapture_selector_0d_clientwork.json`; BCS-S-0053,
 BCS-S-0491; BCS-Y-0530, BCS-Y-1330..1334, BCS-Y-1998, BCS-Y-2033..2055,
-BCS-Y-2169..2195.
+BCS-Y-2169..2200.
 
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 

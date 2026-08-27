@@ -50,6 +50,39 @@ EXPECTED_SELECTORS = [
     ("0x1A", "0x0053B1B0", "BCS-Y-2195", "0x280", "0x0053AF60", "Application::Main::Element::FormElement", "no direct invoker cache"),
 ]
 
+EXPECTED_CACHE_MAP = [
+    ("0x02", "0x18", "0x4C4"), ("0x03", "0x1C", "0x4C8"),
+    ("0x04", "0x20", "0x4CC"), ("0x05", "0x24", "0x4D0"),
+    ("0x06", "0x10", "0x4BC"), ("0x07", "0x14", "0x4C0"),
+    ("0x08", "0x38", "0x4E4"), ("0x09", "0x34", "0x4E0"),
+    ("0x0C", "0x28", "0x4D4"), ("0x0D", "0x2C", "0x4D8"),
+    ("0x0E", "0x30", "0x4DC"), ("0x11", "0x44", "0x4F0"),
+]
+
+EXPECTED_CLEAR_ROUTES = [
+    ("0xC0000004", "0x18", "0x02"), ("0xC0000005", "0x1C", "0x03"),
+    ("0xC0000006", "0x20", "0x04"), ("0xC0000007", "0x14", "0x07"),
+    ("0xC0000009", "0x10", "0x06"), ("0x0000000C", "0x28", "0x0C"),
+    ("0xC000000D", "0x2C", "0x0D"), ("0xC000000E", "0x30", "0x0E"),
+    ("0xC000001E", "0x34", "0x09"), ("0xC0000020", "0x44", "0x11"),
+    ("other", "0x38", "0x08 map-like cache"),
+]
+
+EXPECTED_PRODUCERS = [
+    ("0x004DC690", "0x004DCC34", None, "0x08", "caller-supplied"),
+    ("0x004DC690", "0x004DCCD8", None, "packet+0x10", "caller-supplied"),
+    ("0x006AC9F0", None, None, "0x08", "FUN_004D9CA0 result from bounds 0xC0000040 and 0xC00000A3"),
+    ("0x00774AD0", "0x00774B78", None, "0x1A", "0xC0000024"),
+    ("0x0075BE50", "0x0075BE6C", None, "0x1A", "0xC0000024"),
+    ("0x005522D0", None, "0x004D7C10", "0x0F", "0xC1000000 + allocator index, or 0xC0000000 sentinel"),
+    ("0x006A5F80", None, "0x004D7C10", "0x0A", "0xC1000000 + allocator index, or 0xC0000000 sentinel"),
+    ("0x006B3210", None, "0x004D7C10", "0x05 and 0x0A", "0xC1000000 + allocator index, or 0xC0000000 sentinel"),
+    ("0x006A8650", None, "0x004D7C10", "0x0A", "0xC1000000 + allocator index, or 0xC0000000 sentinel"),
+    ("0x00885DC0", None, "0x004D7C10", "0x0A", "0xC1000000 + allocator index, or 0xC0000000 sentinel"),
+    ("0x00679ED0", None, "0x004D7C10", "0x0B", "0xC1000000 + allocator index, or 0xC0000000 sentinel"),
+    ("0x0075BE10", None, "0x004D7C10", "0x00 or 0x1A across every recorded vtable owner", "0xC1000000 + allocator index, or 0xC0000000 sentinel"),
+]
+
 
 def validate(manifest: dict, structs_doc: dict, symbols_doc: dict) -> list[str]:
     errors: list[str] = []
@@ -90,6 +123,9 @@ def validate(manifest: dict, structs_doc: dict, symbols_doc: dict) -> list[str]:
     actual_fields = [(f.get("offset"), f.get("size"), f.get("name")) for f in registry.get("fields", [])]
     if registry.get("size") != "0x48" or actual_fields != expected_fields:
         errors.append("BCS-S-0491 byte-accounted layout drifted")
+    cache_map = [(e.get("selector"), e.get("interfaceOffset"), e.get("containerOffset")) for e in manifest.get("cacheMap", [])]
+    if cache_map != EXPECTED_CACHE_MAP or manifest.get("cacheMap", [])[6].get("storage") != "map-like cache keyed by encoded object id":
+        errors.append("fixed or map-backed cache domain drifted")
     container_field = _field(structs.get("BCS-S-0053", {}), "0x004AC")
     if not container_field or (container_field.get("size"), container_field.get("name"), container_field.get("type")) != ("0x048", "element_registry", "ApplicationMainRaptureElementRegistry"):
         errors.append("RaptureElementContainer registry embedding drifted")
@@ -98,14 +134,39 @@ def validate(manifest: dict, structs_doc: dict, symbols_doc: dict) -> list[str]:
     expected_pairs = [["0x02", "0xC0000004"], ["0x01", "0xC0000003"], ["0x03", "0xC0000005"], ["0x07", "0xC0000007"], ["0x04", "0xC0000006"], ["0x0C", "0xC000000C"], ["0x0D", "0xC000000D"], ["0x0E", "0xC000000E"], ["0x15", "0xC0000001"], ["0x09", "0xC000001E"], ["0x06", "0xC0000009"]]
     if fixed_pairs != expected_pairs:
         errors.append("fixed initialization selector/id pairs drifted")
-    if not any("0xC1000000 + allocator index" in p.get("encodedId", "") for p in manifest.get("deterministicProducers", [])):
+    producers = manifest.get("deterministicProducers", [])
+    producer_rows = [(e.get("producer"), e.get("callsite"), e.get("via"), e.get("selector"), e.get("encodedId")) for e in producers[1:]]
+    if producer_rows != EXPECTED_PRODUCERS:
+        errors.append("complete direct producer/selector/id domain drifted")
+    if not any("0xC1000000 + allocator index" in p.get("encodedId", "") for p in producers):
         errors.append("upper encoded-id producer range is missing")
-    ad0 = next((p for p in manifest.get("deterministicProducers", []) if p.get("producer") == "0x00774AD0"), {})
-    if (ad0.get("selector"), ad0.get("encodedId")) != ("0x1A", "unresolved"):
-        errors.append("FUN_00774AD0 unresolved encoded-id boundary drifted")
-    screenshot = next((r for r in manifest.get("clearRoutes", []) if r.get("selector") == "0x0C"), {})
-    if screenshot.get("encodedId") != "0x0000000C":
-        errors.append("literal selector-0x0C clear mismatch was normalized away")
+    ad0 = next((p for p in producers if p.get("producer") == "0x00774AD0"), {})
+    if (ad0.get("callsite"), ad0.get("selector"), ad0.get("encodedId")) != ("0x00774B78", "0x1A", "0xC0000024") or "PUSH 0xC0000024" not in ad0.get("notes", ""):
+        errors.append("FUN_00774AD0 fixed selector/id instruction boundary drifted")
+    auto = next((p for p in producers if p.get("producer") == "0x0075BE10"), {})
+    if (auto.get("producerBcsId"), auto.get("selector")) != ("BCS-Y-2196", "0x00 or 0x1A across every recorded vtable owner"):
+        errors.append("virtual selector producer domain drifted")
+    clear_routes = [(e.get("encodedId"), e.get("interfaceOffset"), e.get("selector")) for e in manifest.get("clearRoutes", [])]
+    if clear_routes != EXPECTED_CLEAR_ROUTES:
+        errors.append("clear-route domain drifted")
+    dynamic = manifest.get("dynamicSelectorDomain", {})
+    owners = [(e.get("class"), e.get("vtable"), e.get("producer"), e.get("result"), e.get("consumer")) for e in dynamic.get("vtableOwners", [])]
+    expected_owners = [
+        ("Application::Lua::Script::Client::Control::SpreadSheet", "0x00FD7744", "0x00AB7340", "0x00", "0x006E3650"),
+        ("Application::Lua::Script::Client::Control::WidgetBase", "0x00FD5A74", "0x005F5F70", "0x1A", "0x006E3920"),
+        ("Application::Lua::Script::Client::Control::DesktopUtil", "0x00FDFC9C", "0x005F5F70", "0x1A", "0x006E3920"),
+    ]
+    if dynamic.get("autoIdWrapper", {}).get("directCallers") != ["0x006E3650", "0x006E3920"] or owners != expected_owners:
+        errors.append("bounded virtual owner/selector census drifted")
+    selector_1a = manifest.get("selector1AClosure", {})
+    if selector_1a.get("fixedId") != "0xC0000024" or selector_1a.get("factory", {}).get("bcsId") != "BCS-Y-2195" or selector_1a.get("actorApplyChain", [])[-3:] != ["0x004D90C0", "0x00537620", "0x0053B1B0"]:
+        errors.append("selector-0x1A factory/lifecycle closure drifted")
+    if "not creation of the actor target" not in selector_1a.get("lifecycleVerdict", "") or "failed LuaActorImpl cast" not in selector_1a.get("lifecycleVerdict", "") or "no direct +0x4AC invoker cache" not in selector_1a.get("cacheEffect", ""):
+        errors.append("selector-0x1A lifecycle or cache boundary drifted")
+    for symbol_id, address in (("BCS-Y-2196", "0x0075BE10"), ("BCS-Y-2197", "0x005F5F70"), ("BCS-Y-2198", "0x006E3650"), ("BCS-Y-2199", "0x006E3920"), ("BCS-Y-2200", "0x0075BE50")):
+        symbol = symbols.get(symbol_id, {})
+        if (symbol.get("address", "").lower(), symbol.get("kind")) != (address.lower(), "function"):
+            errors.append(f"{symbol_id} producer address or kind drifted")
     other = manifest.get("otherSelectorProducer", {})
     if (other.get("address"), len(other.get("directCallers", []))) != ("0x00585800", 8) or "does not establish" not in other.get("interfaceVerdict", ""):
         errors.append("FUN_00585800 producer boundary drifted")
@@ -114,8 +175,19 @@ def validate(manifest: dict, structs_doc: dict, symbols_doc: dict) -> list[str]:
     if manifest.get("evidence", {}).get("referenceCompletion") != "COMPLETE: FindReferences targets=32 references=64":
         errors.append("reference-export completion marker drifted")
     commands = manifest.get("method", {}).get("commands", [])
-    if len(commands) != 5 or any("-ScriptPath @('ghidra') -ReadOnly" not in command for command in commands[:4]) or "-Addresses " not in commands[4] or " -Out " not in commands[4]:
+    if len(commands) != 6 or any("-ScriptPath @('ghidra') -ReadOnly" not in command for command in commands[:4]) or "-Addresses " not in commands[4] or " -Out " not in commands[4]:
         errors.append("read-only evidence reproduction recipe drifted")
+    listing_command = commands[5] if len(commands) > 5 else ""
+    if "DumpFunctionListing.java" not in listing_command or "-ScriptPath @('ghidra') -ReadOnly" not in listing_command or "XIVL_TARGET_VAS='0x00774AD0" not in listing_command:
+        errors.append("producer instruction-listing recipe drifted")
+    if manifest.get("evidence", {}).get("producerInstructionListing") != "tools/ghidra/logs/c539_rapture-selector-producer-listing.txt":
+        errors.append("producer instruction-listing evidence drifted")
+    producer_refs = [(e.get("path"), e.get("completion")) for e in manifest.get("evidence", {}).get("producerReferenceExports", [])]
+    if producer_refs != [
+        ("tools/ghidra/logs/c539_dynamic-selector-refs.txt", "COMPLETE: FindReferences targets=5 references=7"),
+        ("tools/ghidra/logs/c539_selector1a-owner-refs.txt", "COMPLETE: FindReferences targets=4 references=17"),
+    ]:
+        errors.append("producer reference-export completion drifted")
     closure = manifest.get("clientWorkClosure", {})
     if (closure.get("class"), closure.get("structBcsId"), closure.get("allocationSize"), closure.get("factoryBcsId"), closure.get("constructorBcsId"), closure.get("cache"), closure.get("completeTeardownBcsId")) != (
         "Application::Main::Element::System::ClientWorkElement", "BCS-S-0080", "0x838", "BCS-Y-2169", "BCS-Y-2052", "interface+0x2C/container+0x4D8", "BCS-Y-2170"
@@ -143,7 +215,7 @@ def main() -> int:
         for error in errors:
             print(f"ERROR: {error}")
         return 1
-    print("RaptureElement registry: 51 invariants passed")
+    print("RaptureElement registry: 67 invariants passed")
     return 0
 
 

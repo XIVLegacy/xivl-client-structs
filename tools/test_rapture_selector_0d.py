@@ -34,12 +34,28 @@ def main() -> int:
         ("null selector", ("nullSelectors", 2), "0x1A"),
         ("factory return", ("factoryContract", "returnType"), "void *"),
         ("fixed pair", ("deterministicProducers", 0, "pairs", 0, 0), "0x03"),
-        ("unknown producer id", ("deterministicProducers", 4, "encodedId"), "0xC0000024"),
+        ("resolved producer id", ("deterministicProducers", 4, "encodedId"), "unresolved"),
+        ("resolved producer listing", ("deterministicProducers", 4, "notes"), "decompiler guess"),
+        ("dynamic selector domain", ("deterministicProducers", 12, "selector"), "caller-supplied"),
+        ("packet selector domain", ("deterministicProducers", 2, "selector"), "0x08"),
+        ("bounded selector-0x08 ids", ("deterministicProducers", 3, "encodedId"), "caller-supplied"),
+        ("literal selector domain", ("deterministicProducers", 8, "selector"), "0x0A"),
         ("clear mismatch", ("clearRoutes", 5, "encodedId"), "0xC000000C"),
+        ("clear route", ("clearRoutes", 0, "selector"), "0x03"),
+        ("cache map", ("cacheMap", 6, "interfaceOffset"), "0x34"),
+        ("vtable owner", ("dynamicSelectorDomain", "vtableOwners", 1, "vtable"), "0x00FD5A78"),
+        ("vtable result", ("dynamicSelectorDomain", "vtableOwners", 2, "result"), "0x00"),
+        ("auto-id callers", ("dynamicSelectorDomain", "autoIdWrapper", "directCallers", 1), "0x006E3650"),
+        ("FormElement fixed id", ("selector1AClosure", "fixedId"), "0xC0000025"),
+        ("FormElement lifecycle", ("selector1AClosure", "lifecycleVerdict"), "actor creation"),
+        ("FormElement cache", ("selector1AClosure", "cacheEffect"), "fixed cache"),
         ("producer boundary", ("otherSelectorProducer", "interfaceVerdict"), "connected"),
         ("effect upper-id boundary", ("otherSelectorProducer", "upperIdBoundary"), "unresolved"),
         ("reference completion", ("evidence", "referenceCompletion"), "partial"),
         ("evidence recipe", ("method", "commands", 4), "tools/ghidra/export-references.ps1 -Address bad -Output bad"),
+        ("producer listing", ("evidence", "producerInstructionListing"), "missing"),
+        ("producer listing recipe", ("method", "commands", 5), "DumpFunctionListing.java"),
+        ("producer reference completion", ("evidence", "producerReferenceExports", 0, "completion"), "partial"),
         ("ClientWork closure", ("clientWorkClosure", "allocationSize"), "0x834"),
         ("ClientWork consumer", ("clientWorkClosure", "consumers", 1, "clear"), "unresolved"),
     ]:
@@ -60,6 +76,9 @@ def main() -> int:
     changed_symbols = copy.deepcopy(symbols)
     next(s for s in changed_symbols["symbols"] if s["id"] == "BCS-Y-2182")["address"] = "0x00533550"
     mutations.append(("factory symbol", manifest, structs, changed_symbols))
+    changed_symbols = copy.deepcopy(symbols)
+    next(s for s in changed_symbols["symbols"] if s["id"] == "BCS-Y-2197")["address"] = "0x005F5F80"
+    mutations.append(("selector producer symbol", manifest, structs, changed_symbols))
     changed_structs = copy.deepcopy(structs)
     storage = next(s for s in changed_structs["structs"] if s["id"] == "BCS-S-0079")
     next(f for f in storage["fields"] if f["offset"] == "0x014")["offset"] = "0x010"

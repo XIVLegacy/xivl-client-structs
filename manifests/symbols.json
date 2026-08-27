@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2182,
+  "symbolCount": 2187,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -11662,9 +11662,11 @@
       "address": "0x00774AD0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/0x00CC_actor_record_apply.json"
+        "manifests/0x00CC_actor_record_apply.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt"
       ],
-      "notes": "[s2c-0x00cc-actor-record-apply-pipeline 0x00CC actor record apply] 1694-byte case 0xCC primary actor-record-apply handler (sole caller FUN_00574780 BCS-Y-0588). Deserializes large actor state record from packet param_3 (with header at +0x14, string fields at +1/+9/+0x11) into local actor representation. Self-actor branch (when target == FUN_004D7490 local player): populates 16-dword array at *(puVar9+0x10c)+4+i*4 - SAME 16-slot table as the s2c-0x00d0-state-table-pipeline-synthesis pass 0x00D0 case 0xD0 target [[ThirdRouter_Case0xD0_RecordTableInit_FUN_0058ECB0]] (BCS-Y-0619). Multi-branch Lua-side dispatch: sentinel via FUN_0078fa80, simple path uses literal string 0xfdf510 + FUN_00cc7ea0 Lua call; complex path uses FUN_0078f8d0 object setup chain + FUN_00758810 finalizer. Conditional flag writes: cStack_22c -> Lua state ref to obj+0x4c via FUN_0076a3f0; cStack_22e -> byte to obj+0xb6; if (self-actor AND cStack_22e): *(actor+0xd8)+0x174 = 1. Final 5-arg assembly via FUN_00774530. Body uses Application::Lua::Script::Client::LuaActorImpl framework. Represents the heavy 0xCC apply path - server sends complete actor state including equipment/status table. | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]].",
+      "notes": "[s2c-0x00cc-actor-record-apply-pipeline 0x00CC actor record apply] 1694-byte case 0xCC primary actor-record-apply handler (sole caller FUN_00574780 BCS-Y-0588). Deserializes large actor state record from packet param_3 (with header at +0x14, string fields at +1/+9/+0x11) into local actor representation. Self-actor branch (when target == FUN_004D7490 local player): populates 16-dword array at *(puVar9+0x10c)+4+i*4 - SAME 16-slot table as the s2c-0x00d0-state-table-pipeline-synthesis pass 0x00D0 case 0xD0 target [[ThirdRouter_Case0xD0_RecordTableInit_FUN_0058ECB0]] (BCS-Y-0619). Multi-branch Lua-side dispatch: sentinel via FUN_0078fa80, simple path uses literal string 0xfdf510 + FUN_00cc7ea0 Lua call; complex path uses FUN_0078f8d0 object setup chain + FUN_00758810 finalizer. Conditional flag writes: cStack_22c -> Lua state ref to obj+0x4c via FUN_0076a3f0; cStack_22e -> byte to obj+0xb6; if (self-actor AND cStack_22e): *(actor+0xd8)+0x174 = 1. Final 5-arg assembly via FUN_00774530. Body uses Application::Lua::Script::Client::LuaActorImpl framework. Represents the heavy 0xCC apply path - server sends complete actor state including equipment/status table. | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]]. | [Tier C539 2026-08-27] Configured instructions close the self-actor registry branch: 0x00774B71 pushes encoded id 0xC0000024, 0x00774B76 pushes selector 0x1A, and 0x00774B78 calls [[BCS-Y-0531]]. The branch first looks up the same id through [[BCS-Y-0534]], reaches FormElement factory [[BCS-Y-2195]] only when absent, then obtains the DesktopWidget Lua class table and calls FUN_004D87C0. The actor and implementation object are already present; the path follows a failed LuaActorImpl cast and a NullActorImpl probe. This is local-player actor-record apply plus a DesktopWidget/FormElement setup handoff, not creation of the actor target or MyPlayer control. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
       "id": "BCS-Y-1019"
     },
     {
@@ -15704,9 +15706,11 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c61_sibling_factories_decomp.txt",
-        "manifests/sibling_receiver_factories.json"
+        "manifests/sibling_receiver_factories.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt"
       ],
-      "notes": "[16-sibling-receiver-hybrid-factories-cataloged] 1694-byte complex variant hybrid factory - the largest of the 16 siblings. SEH-wrapped (handler at LAB_00ea4461). Has ONE direct caller [[EventFamilyDispatcher_Case0xCC_FUN_00574780]] (BCS-Y-0588) - distinct from the other 15 siblings which have zero direct callers. __thiscall(void *param_1, int **param_2, int *param_3, undefined1 *param_4). Body shape: (1) RTTI-style type check via FUN_00CC7510; (2) populate cache fields via several FUN_00447260 stores; (3) call FUN_0078FA80 to test a sub-condition; (4) if condition fails, build a 4-vec data block via FUN_00445CF0 + FUN_0078F8D0 + FUN_0078F840 chain; (5) inner branch on container[+0x50] flag: **fast-path** (==0) calls [[ReceiverStateCache_LazyGet_FUN_0076A3F0]] (BCS-Y-1337), then FUN_00771230(id, name_bytes) - SAME secondary as BCS-Y-1353; **slow-path** (!=0) allocs 0x60=96 bytes via FUN_009D1B35, calls FUN_0089D530 - SAME ctor as BCS-Y-1353; (6) cleanup via FUN_00446F50 + FUN_0044D350. Architecturally this is BCS-Y-1353's pattern wrapped in an EventFamily dispatch envelope - BCS-Y-0588 case 0xCC fans out via this factory after RTTI verification of the actor type. Closes part of the manifest deferred_followups[0]. The wrap-then-delegate shape suggests live capture work may find this factory firing on specific actor events (likely name-change or class-change broadcasts to nearby actors gated by visibility/sight check). | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]]."
+      "notes": "[16-sibling-receiver-hybrid-factories-cataloged] 1694-byte complex variant hybrid factory - the largest of the 16 siblings. SEH-wrapped (handler at LAB_00ea4461). Has ONE direct caller [[EventFamilyDispatcher_Case0xCC_FUN_00574780]] (BCS-Y-0588) - distinct from the other 15 siblings which have zero direct callers. __thiscall(void *param_1, int **param_2, int *param_3, undefined1 *param_4). Body shape: (1) RTTI-style type check via FUN_00CC7510; (2) populate cache fields via several FUN_00447260 stores; (3) call FUN_0078FA80 to test a sub-condition; (4) if condition fails, build a 4-vec data block via FUN_00445CF0 + FUN_0078F8D0 + FUN_0078F840 chain; (5) inner branch on container[+0x50] flag: **fast-path** (==0) calls [[ReceiverStateCache_LazyGet_FUN_0076A3F0]] (BCS-Y-1337), then FUN_00771230(id, name_bytes) - SAME secondary as BCS-Y-1353; **slow-path** (!=0) allocs 0x60=96 bytes via FUN_009D1B35, calls FUN_0089D530 - SAME ctor as BCS-Y-1353; (6) cleanup via FUN_00446F50 + FUN_0044D350. Architecturally this is BCS-Y-1353's pattern wrapped in an EventFamily dispatch envelope - BCS-Y-0588 case 0xCC fans out via this factory after RTTI verification of the actor type. Closes part of the manifest deferred_followups[0]. The wrap-then-delegate shape suggests live capture work may find this factory firing on specific actor events (likely name-change or class-change broadcasts to nearby actors gated by visibility/sight check). | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]]. | [Tier C539 2026-08-27] Fresh instruction and caller evidence supersedes the speculative live-event interpretation for the directly observed selector branch. The fixed pair selector 0x1A/id 0xC0000024 is gated on equality between the record actor id and the local-player actor id and hands a FormElement through DesktopWidget during actor-record apply; it does not prove actor creation, MyPlayer control creation, or a named receiver-factory type. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt."
     },
     {
       "id": "BCS-Y-1354",
@@ -26981,6 +26985,66 @@
       ],
       "notes": "[Tier C538 2026-08-27] Directly installed selector 0x1A callback. Allocates exactly 0x280 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0053AF60; retained constructor vftables and RTTI identify Application::Main::Element::FormElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
       "id": "BCS-Y-2195"
+    },
+    {
+      "name": "RaptureElement_AutoIdCreateBySelector_FUN_0075BE10",
+      "kind": "function",
+      "address": "0x0075BE10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539 2026-08-27] Calls [[BCS-Y-0532]] with its caller-supplied selector, then calls [[BCS-Y-1837]] on the created RaptureElement; the final getter leaves the element's +0x88 id/handle in the ABI return register even though Ghidra types the wrapper as void. Its only direct callers are FUN_006E3650 and FUN_006E3920. The allocator-backed create path admits 0xC1000000 plus the allocated index, or 0xC0000000 when the allocator returns its sentinel. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2196"
+    },
+    {
+      "name": "Application_Lua_Control_slot20_005F5F70_selector_0x1A",
+      "kind": "function",
+      "address": "0x005F5F70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539 2026-08-27] Six-byte constant returner whose complete body returns selector 0x1A. Direct PE/vftable evidence places it at slot 20 (+0x50) in the Control::WidgetBase and DesktopUtil vtables reached by FUN_006E3920. Those slot-27 wrappers pass this return through FUN_0075BE10 to [[BCS-Y-0532]] and the registry invoker [[BCS-Y-0530]]. The return value selects the FormElement factory [[BCS-Y-2195]]; factory result identity does not name the registry. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2197"
+    },
+    {
+      "name": "Control_SpreadSheet_slot27_006E3650_create_selected_element_FUN_006E3650",
+      "kind": "function",
+      "address": "0x006E3650",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539 2026-08-27] Control::SpreadSheet vtable slot 27 (+0x6C). Calls the same object's virtual slot 20 (+0x50), whose SpreadSheet entry is [[BCS-Y-1562]] and returns selector 0, then passes the selector through FUN_0075BE10 to registry creation. It wraps the resulting encoded id through FUN_00CC9320/FUN_0078BBB0 and performs paired cleanup. The function has no direct instruction caller; its recorded reference is the SpreadSheet vtable data entry at 0x00FD77B0. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2198"
+    },
+    {
+      "name": "Control_WidgetBase_DesktopUtil_slot27_006E3920_create_selected_element_FUN_006E3920",
+      "kind": "function",
+      "address": "0x006E3920",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539 2026-08-27] Shared Control::WidgetBase and DesktopUtil vtable slot 27 (+0x6C). Calls the same object's virtual slot 20 (+0x50), which is FUN_005F5F70 and returns selector 0x1A for both vtables, then passes it through FUN_0075BE10 to registry creation. It wraps the resulting encoded id through FUN_00CC9320/FUN_0078BBB0 and performs paired cleanup. The function has no direct instruction caller; its recorded references are vtable data entries at 0x00FD5AE0 and 0x00FDFD08. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2199"
+    },
+    {
+      "name": "RaptureElement_EnsureFormElementFixedId_FUN_0075BE50",
+      "kind": "function",
+      "address": "0x0075BE50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539 2026-08-27] Looks up encoded id 0xC0000024 through [[BCS-Y-0534]] and, only when absent, calls [[BCS-Y-0531]] with selector 0x1A and the same id. The selector reaches FormElement factory [[BCS-Y-2195]]. The verified direct-reference export records zero references to this function, so static evidence supplies no reachable lifecycle for this standalone helper and does not exclude computed or indirect dispatch. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2200"
     }
   ]
 }
