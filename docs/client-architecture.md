@@ -279,6 +279,69 @@ Refs: `manifests/rapture_selector_0d_clientwork.json`; BCS-S-0053,
 BCS-S-0491; BCS-Y-0530, BCS-Y-1330..1334, BCS-Y-1998, BCS-Y-2033..2055,
 BCS-Y-2169..2200.
 
+### S2C 0x018D projects ClientWork rows into XML-backed MapScreen data
+
+The canonical opcode identity remains neutral `_0x018D`; the historical
+`PartyMapMarkerUpdatePacket` label is not an evidence-backed retail packet
+name. The immutable wire application is 0x298 bytes, with sixteen physical
+0x28-byte rows at +0x10 and a count byte at +0x290. `FUN_0055CF70`
+(BCS-Y-0890) projects that separate wire layout into `ClientWorkStorage`:
+records begin at storage +0x18 with 0x78 stride, and the count is widened into
+storage +0x14 without a clamp to the physical capacity.
+
+The first proven presentation route is:
+
+`RaptureElementContainer+0x4D8 -> ClientWorkElement+0x98 -> ClientWorkStorage`
+`-> RaptureElementContainer+0x17858 -> MapScreenControl -> FUN_00671400`.
+
+`MapScreenControl` is a retail RTTI class with exact complete-object size
+0xA70 (BCS-S-0492). Its constructor BCS-Y-2203 installs vftables at +0x000,
++0x0B4, +0x194, and +0x2A4. It retains the container pointer at +0x5F0;
+primary vtable slot 10 (BCS-Y-2204) registers the complete pointer at owner
++0x17858, and BCS-Y-2205 clears that slot during teardown. The registry field
+is a non-owning registration. The two factories own allocation, and primary
+slot 0 (BCS-Y-2206) is the deleting destructor.
+
+The presenter requires byte `MapScreenControl+0x57C == 2`. It lazily resolves
+exact resource key `group_marker_data`, dynamically casts the resource from
+`Sqwt::ResourceDictionary` to `Sqwt::Data::SqwtXmlDataMaker`, and caches the
+borrowed pointer at +0x9E8. MapScreenControl teardown has no release edge for
+that cached pointer. The 0x210-byte data maker (BCS-S-0494) owns embedded
+property state and a 0xE4-byte `Sqwt::Xml::XmlDocument` at +0x11C
+(BCS-S-0493). Accepted source rows are compacted to dense zero-based indices;
+the source record keys are not retained as XML row keys.
+
+Each accepted row receives the exact UI property groups `X:Int`, `Z:Int`,
+`Layout:Int`, `Text:String`, `Visibility:String=Visible`,
+`SparkleSequence:String=m00002`, and
+`Template:String=MapMarkerParty`, followed by at most one `Update`. These are
+presentation property strings after local transforms, not proof that the
+wire fields are world coordinates, actor ids, icons, labels, or server data.
+BCS-Y-2211 removes stale suffix indices in descending order with exact
+`RemoveIndex` state.
+
+`MapMarkerParty` has no match in the complete 5,623-row retail RTTI export.
+The presenter supplies it as the String value of the Template property; it
+does not call a native constructor or expose a native marker vtable. The
+bounded lifetime is therefore the XmlDocument-backed presentation row, not a
+separately cataloged marker object. A framework object may be materialized at
+runtime, but its type and ownership are outside the static route.
+
+The row helper uses a separate stack-only 0x18-byte context (BCS-S-0495).
+BCS-Y-2212 copies it, BCS-Y-2214 uses it as hidden `this` while deriving
+record +0x20 and +0x74, and BCS-Y-2213 tears it down after apply. Its catalog
+name is descriptive because no retail RTTI or source name is established.
+
+`PcSearchWidgetOperator` remains separate. Its retail vtable 0x00FC8424 slot
+29 is BCS-Y-2221. That method reaches the same ClientWork storage, requires
++0x798 nonzero and count +0x14 equal to one, calls `FUN_00691E80` without a
+storage or record pointer, and clears +0x798. This proves a later gate, not
+PcSearch ownership of MapScreenControl, group-marker rows, or marker
+presentation.
+
+Refs: `manifests/s2c_018d_map_marker_presentation.json`; BCS-S-0078..0080,
+BCS-S-0492..0495; BCS-Y-0890, BCS-Y-2201..2221.
+
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 
 `FUN_004DC690` case `0xCA` (BCS-Y-0525) looks up or creates the actor,
