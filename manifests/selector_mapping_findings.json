@@ -14,7 +14,8 @@
     "%BCS_GHIDRA_PROJECTS%\\tier2_effect_resource_helpers_decomp.txt",
     "manifests\\combat_damage_findings.json",
     "manifests\\symbols.json",
-    "docs\\combat-damage-receive-path.md"
+    "docs\\combat-damage-receive-path.md",
+    "manifests\\rapture_selector_0d_clientwork.json"
   ],
   "summary": {
     "selectorFunction": "BCS-Y-0411 BattleResultEffectVisualClassSelector_FUN_00585800",
@@ -24,9 +25,23 @@
     "downstreamConsumerGate": "BCS-Y-0425 RaptureTargetVfxParameterGate_FUN_00812DB0",
     "downstreamProcessor": "BCS-Y-0420 VfxRaptureClipProcessor_FUN_00812B50",
     "selectorStorage": "BCS-S-0031 BattleResultQueueEntry +0x04, copied by BCS-Y-0417 into VfxRaptureParameter +0x6C",
-    "clipClassResolution": "The exact per-selector Rapture*Clip class switch remains behind the iStack_22c+0x12F0 virtual slot +8 call in FUN_00812B50; this names selectors and identifies the concrete downstream Vfx consumer without over-claiming per-class bindings."
+    "clipClassResolution": "FUN_00812B50's +0x12F0 virtual call is resolved to Application::Scene::Vfx::RaptureSchEffectController primary slot 2 (+0x08), FUN_0080E050 -> FUN_0080CC00. The controller passes the Vfx parameter into a runtime schedule-target resolver; there is no per-selector Rapture*Clip class switch in this fixed path.",
+    "registryBoundary": "Seven recorded FUN_00585800 callers feed battle-result staging; FUN_0058AB60 instead passes the result to FUN_00589F60 and returns its predicate. None directly reaches FUN_004D90C0, FUN_004D7C10, or the distinct RaptureElement registry invoker FUN_00537620. Numeric overlap with registry selectors is not route evidence."
   },
   "selectorMapping": [
+    {
+      "selector": "0x05",
+      "decimal": 5,
+      "effectCategoryName": "UnresolvedFallback0x05",
+      "sourceKind": "default argument to FUN_00585800",
+      "effectCategoryHighByte": "unmatched classifier branch",
+      "resourcePrefix": null,
+      "resourceBucket": null,
+      "downstreamConsumer": "battle-result staging callers",
+      "confidence": "confirmed for caller fallback; semantic name unresolved",
+      "notes": "Recorded action-record callers pass 5 as the fallback. The function returns it when no classifier branch matches; this numeric value does not establish a RaptureElement registry route.",
+      "clipClassIfKnown": null
+    },
     {
       "selector": "0x06",
       "decimal": 6,
@@ -37,7 +52,7 @@
       "resourceBucket": "0x06",
       "downstreamConsumer": "BCS-Y-0420 VfxRaptureClipProcessor_FUN_00812B50 via BCS-Y-0425 gate",
       "confidence": "confirmed for selector fallback; reference-reconciled for HitEffectType",
-      "notes": "Selector 6 is outside the requested 7..0x11 range but is the observed default passed by the battle-result wrappers. Table row 8/bucket 6 therefore returns this default selector.",
+      "notes": "Recorded command-result wrappers pass 6 as the fallback. Table row 8/bucket 6 therefore returns this caller value. Other recorded callers pass 5, and neither value establishes a RaptureElement registry route.",
       "clipClassIfKnown": null
     },
     {
@@ -284,10 +299,8 @@
         "0x00812B50"
       ],
       "role": "Concrete Rapture Vfx consumer path for queued battle-result data.",
-      "observedLogic": "FUN_00812DB0 validates a vfx parameter record and calls FUN_00812B50. FUN_00812B50 obtains a typed record via vtable +0xF0 slot +0x6C, verifies tag 0x766678 ('vfx\\0'), constructs a VfxRaptureParameter through FUN_007C7F80, and passes that parameter to an indirect object at +0x12F0 vtable slot +8."
+      "observedLogic": "FUN_00812DB0 validates a vfx parameter record and calls FUN_00812B50. FUN_00812B50 obtains a typed record via vtable +0xF0 slot +0x6C, verifies tag 0x766678 ('vfx\\0'), constructs a VfxRaptureParameter through FUN_007C7F80, and passes it to the target CharaActor's RaptureSchEffectController at +0x12F0 through primary slot 2 (+0x08). The controller resolves a runtime schedule target, registers it, and returns success."
     }
   },
-  "openFollowOns": [
-    "Resolve the iStack_22c+0x12F0 vtable slot +8 target from FUN_00812B50 if future work needs exact selector-to-Rapture*Clip class bindings. The selector semantics are named here, but per-selector clip class remains unknown."
-  ]
+  "openFollowOns": []
 }

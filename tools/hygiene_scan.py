@@ -53,6 +53,8 @@ NAMED_CATALOGS = frozenset({
     "control_class_napi_field_access_recursive.json",
     "control_class_napi_map.json", "data_dependency_catalog.json",
     "gam_hash_names.json", "ir_catalog.json", "ir_overlay.json", "lua_api_index.json",
+    "lobby_character_list_capture_correlation.json",
+    "lobby_character_list_projection.json",
     "lua_apply_chain_firers.json", "lua_to_opcode.json",
     "operation_opcode_map_outbound.json", "operation_opcode_map_overlay.json",
     "receiver_field_writes.json", "receiver_opcode_map_inbound.json",

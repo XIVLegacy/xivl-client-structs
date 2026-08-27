@@ -77,6 +77,29 @@ BCS-Y-0321, BCS-Y-0525..BCS-Y-0527, BCS-Y-0535..BCS-Y-0541,
 BCS-Y-0612..BCS-Y-0613, BCS-Y-0838; BCS-Y-0791 (Element class enumeration, 23 total;
 multiple-inheritance secondary vtables are not distinct classes).
 
+### Lobby s2c 0x000D projects record windows into slot entries
+
+BCS-Y-0017 (`FUN_00DAA9F0`) routes lobby s2c `0x000D` directly to
+`FUN_00DA76B0` with `packet+0x10`. The parser reads a byte count at body
+`+0x09`, walks windows at stride `0x1D0`, and uses the low six bits of each
+window's byte `+0x18` as a slot key. A new key copies `0x1D0` bytes from
+window `+0x10` into a `0x2E0` slot entry, zeroes the next `0x100` bytes, and
+copy-constructs the final `0x10`-byte embedded vector. A repeated key appends
+the NUL-terminated string beginning at window `+0x50` to the first NUL at
+slot `+0x40`. Neither C-string scan nor the append has a local bound.
+
+The restricted retail capture now supplies one sanitized `0x000D`
+observation in one of two deterministically labeled retained lobby sessions.
+The other session has no `0x000D`, so cross-session byte invariance is not
+claimable. Its observed body has two-entry capacity, a client-read count of
+one, and a zero unused entry; its active append string terminates inside the
+copied source.
+Offsets not consumed by the bounded client route remain opaque.
+
+Refs: `manifests/lobby_character_list_projection.json`,
+`manifests/lobby_character_list_capture_correlation.json`; BCS-Y-0017,
+BCS-Y-0019, BCS-Y-0023, BCS-Y-0076..BCS-Y-0080; BCS-S-0008, BCS-S-0009.
+
 ### Two independent s2c dispatch paths converge on the LuaActorImpl vtable
 
 The client runs a second, independent inbound path parallel to the sync
@@ -150,6 +173,112 @@ static edge currently joins these systems.
 
 Refs: BCS-Y-0412, BCS-Y-0540, BCS-Y-1025, BCS-Y-1864..1868.
 
+### RaptureElementContainer embeds an anonymous element registry at +0x4AC
+
+`FUN_004DBF40` (BCS-Y-1998) constructs an exact `0x48`-byte member at
+`RaptureElementContainer+0x4AC`; the next direct container field begins at
+`+0x4F4`. `FUN_0053B230` (BCS-Y-2171) sizes a 28-entry callback vector
+at member `+0x04..+0x0C`, zeroes eight of ten fixed cache dwords through
+`+0x34`, constructs a map-like cache at `+0x38..+0x43`, and zeroes the final
+fixed cache at `+0x44`. The invoker later owns writes to all ten cache dwords,
+including constructor-untouched `+0x24` and `+0x30`.
+`FUN_004DED90` (BCS-Y-2172) destroys the map-like member and callback
+allocation. Neither constructor installs a vftable, so no directly evidenced
+RTTI record or retail class name identifies the whole member. The catalog
+therefore uses the descriptive `ApplicationMainRaptureElementRegistry` name
+for a structurally bounded anonymous registry/cache member, not a recovered
+source type or template spelling.
+
+The builder installs 25 uniform heap factories and leaves selectors `0x17`,
+`0x18`, and `0x1B` null. Each factory returns zero on allocation failure and
+otherwise returns its constructor result; the recovered C++ return signatures
+remain unknown. Constructor vftables and RTTI establish these class identities:
+
+| Selector | Class | Bytes | Invoker cache |
+|---|---|---:|---|
+| `0x00` | `DaemonElement` | `0x94` | none directly evidenced |
+| `0x01` | `CommonResourceElement` | `0x98` | none directly evidenced |
+| `0x02` | `CameraElement` | `0x194` | member `+0x18` / container `+0x4C4` |
+| `0x03` | `CutManagerElement` | `0x120` | member `+0x1C` / container `+0x4C8` |
+| `0x04` | `GameManagerElement` | `0x260` | member `+0x20` / container `+0x4CC` |
+| `0x05` | `BootupElement` | `0x130` | member `+0x24` / container `+0x4D0` |
+| `0x06` | `MainElement` | `0xCC` | member `+0x10` / container `+0x4BC` |
+| `0x07` | `TargetElement` | `0x104` | member `+0x14` / container `+0x4C0` |
+| `0x08` | `CharaElement` | `0xEF0` | member `+0x38` map, keyed by encoded id |
+| `0x09` | `MapLayoutElement` | `0x208` | member `+0x34` / container `+0x4E0` |
+| `0x0A` | `EffectElement` | `0x9C` | none directly evidenced |
+| `0x0B` | `CustomControlElement` | `0x98` | none directly evidenced |
+| `0x0C` | `ScreenshotManagerElement` | `0x1B8` | member `+0x28` / container `+0x4D4` |
+| `0x0D` | `ClientWorkElement` | `0x838` | member `+0x2C` / container `+0x4D8` |
+| `0x0E` | `WidgetElement` | `0xFB0` | member `+0x30` / container `+0x4DC` |
+| `0x0F` | `SqwtElement` | `0x98` | none directly evidenced |
+| `0x10` | `DebugWindow` | `0x1E78` | none directly evidenced |
+| `0x11` | `LuaDebugLog` | `0xF0` | member `+0x44` / container `+0x4F0` |
+| `0x12` | `LuaDebugSelect` | `0x100` | none directly evidenced |
+| `0x13` | `LuaDebugOut` | `0xBC8` | none directly evidenced |
+| `0x14` | `LightElement` | `0x94` | none directly evidenced |
+| `0x15` | `DebugInfoElement` | `0x94` | none directly evidenced |
+| `0x16` | `EffectDebugElement` | `0x120` | none directly evidenced |
+| `0x19` | `XamlElement` | `0xB8` | none directly evidenced |
+| `0x1A` | `FormElement` | `0x280` | none directly evidenced |
+
+`FUN_00537620` (BCS-Y-0530) is the sole indexed invoker. Its two direct
+callers always form `ECX = container+0x4AC`. `FUN_004D90C0` accepts a selector
+and encoded object id; `FUN_004D7C10` accepts a selector but separately forms
+the encoded id as `0xC1000000 + allocator_index`, or `0xC0000000` on the
+allocator sentinel. The fixed initialization batch in `FUN_004D9110` supplies
+11 selector/id pairs. Other direct routes provide literal selectors `0x05`,
+`0x08`, `0x0A`, `0x0B`, `0x0F`, and `0x1A`, plus dynamic selectors from a
+packet field or virtual slot `+0x50`. The complete recorded virtual domain is
+bounded: `Control::SpreadSheet` slot `+0x50` returns selector `0`, while the
+shared `Control::WidgetBase` and `DesktopUtil` entry returns `0x1A`. Their
+slot-`+0x6C` wrappers are the only direct callers of `FUN_0075BE10`, which
+passes those selectors to the auto-id wrapper. Computed, indirect, and
+unanalyzed vtables remain outside that census.
+
+The configured instruction listing closes the other selector-`0x1A` producer.
+Inside `FUN_00774AD0` (BCS-Y-1019/BCS-Y-1353), callsite `0x00774B78` pushes
+encoded id `0xC0000024` and selector `0x1A`, reaching the `0x280`-byte
+`FormElement` factory BCS-Y-2195. The branch is gated by equality between the
+record's actor id and the local-player actor id from `FUN_004D7490`; it first looks up the fixed id,
+creates only when absent, then obtains the Lua class table named
+`DesktopWidget` and calls `FUN_004D87C0`. Its full inbound route is
+`FUN_004DC690 -> FUN_0058CCA0 -> FUN_004D8860 -> FUN_00574780 ->
+FUN_00774AD0`. The actor and implementation object are already present; this
+path follows a failed `LuaActorImpl` cast and a `NullActorImpl` probe. It is
+therefore local-player actor-record apply plus a DesktopWidget/FormElement
+setup handoff, not creation of the actor target or MyPlayer control. Direct
+ordering does not make it the separate `+0x16C` zone-bind state machine.
+`FUN_0075BE50` (BCS-Y-2200) implements the same fixed-id ensure operation but
+has no recorded direct reference, so no reachable lifecycle is assigned to it.
+
+`FUN_00585800` is a separate battle-result visual classifier. Depending on
+its caller fallback and classifier results it returns `0x05..0x11`. Seven
+recorded callers feed battle-result staging; `FUN_0058AB60` instead passes the
+result to `FUN_00589F60` and returns its predicate. None is either registry
+wrapper or the indexed invoker. Numeric overlap therefore does not establish
+a registry route. Its bucket-1 split uses effect upper ids `0x0D..0x13` and
+`0x0FE9` to choose visual result `0x0D`; those values are effect-id fragments,
+not registry selectors or encoded RaptureElement ids. The verified
+direct-reference census remains bounded:
+computed, indirect, dynamic, and unanalyzed propagation can be absent.
+
+Selector `0x0D` retains the earlier `ClientWorkElement` closure. S2C `0x018D`
+and `FUN_00691F30` consume its embedded storage at object `+0x98`, and complete
+teardown is BCS-Y-2170. `FUN_005374D0` (BCS-Y-2173) clears fixed caches for its
+directly compared ids and otherwise erases from the selector-`0x08` map. Its
+ScreenshotManager comparison is literal `0x0000000C`, not initialization id
+`0xC000000C`; the catalog preserves that mismatch without correction.
+Selector `0x1A` has no direct invoker cache. Its fixed-id lookup uses the
+container actor/object map, while ordinary RaptureElement registration,
+removal, and destruction govern the FormElement outside the registry's fixed
+cache fields. The constant `0xC0000024` alone is not packet, spawn, player, or
+zone-transition identity evidence.
+
+Refs: `manifests/rapture_selector_0d_clientwork.json`; BCS-S-0053,
+BCS-S-0491; BCS-Y-0530, BCS-Y-1330..1334, BCS-Y-1998, BCS-Y-2033..2055,
+BCS-Y-2169..2200.
+
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 
 `FUN_004DC690` case `0xCA` (BCS-Y-0525) looks up or creates the actor,
@@ -191,9 +320,20 @@ The s2c display side uses dedicated `CommandResult*` opcodes (`0x0139..0x013C`,
 four shape variants for 0/1/10/18 targets). The evidenced c2s command-event
 path rides the generic `EventStartPacket` `0x012D` frame. Combat captures use
 that envelope, but so do many noncombat scenarios; no separate per-skill
-opcode or stable scalar `gameCommand` row id is proven. The command-specific
-meaning remains in the event arguments, inline name/data, and Lua parameter
-tail behind an upstream dynamic boundary. The
+opcode or stable scalar `gameCommand` row id is proven. The direct PlayerBase
+trace closes the two formerly generic dwords. Application `+0x08` comes from
+the command ActorBase object's resolved Lua control binding entry at `+0x70`:
+`FUN_0070A010` extracts the command object, `FUN_00CC73B0` resolves it through
+`FUN_00CD7A30`/`FUN_00CC7030`, `FUN_00895860` stores the result at
+`Event::Base+0x08`, and the EventStart wrapper forwards it. This is a runtime
+Lua control/class SID-domain binding token. The writer stores it before
+conditional registry validation; its six callers constrain it to allocated,
+copied, default, or caller-supplied values. It is not a stable enum, flags
+field, command-class discriminator, sheet row, or runtime argument.
+Application `+0x0C` is CRC32 of
+the exact 128-byte Lua parameter tail, computed by `FUN_00D3AB60` through
+`FUN_00D3A380`. The command-specific meaning remains in the owner, binding
+value, inline name/data, and serialized Lua tail. The
 `CharaActionController` RTTI (BCS-Y-0055) is a receive-side
 playback/queue class, not a c2s emitter. The `0x012D` builder is
 `FUN_00776760` (BCS-Y-0426); its payload layout is BCS-S-0034

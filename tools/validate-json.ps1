@@ -118,3 +118,9 @@ if ($LASTEXITCODE -ne 0)
 {
     throw "Vendor provenance validation failed (validate_vendor.py exit $LASTEXITCODE)."
 }
+
+& $python.Source (Join-Path $PSScriptRoot "verify_lobby_character_list.py")
+if ($LASTEXITCODE -ne 0)
+{
+    throw "Lobby character-list validation failed (verify_lobby_character_list.py exit $LASTEXITCODE)."
+}

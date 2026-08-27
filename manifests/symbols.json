@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2136,
+  "symbolCount": 2187,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -151,9 +151,10 @@
       "address": "0x00DAA9F0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "mdi-004"
+        "mdi-004",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Lobby operation-step dispatcher for the four list packets. One switch routes opcode 0x0D to FUN_00DA76B0 (CharacterList), 0x15 to FUN_00DA6320 (WorldList), 0x16 to FUN_00DA4C20 (ImportList), and 0x17 to FUN_00DA4D80 (RetainerList), all called with packet+0x10. Returns char; on failure calls FUN_00DA5030 on the user-supplied callback. [apply-log fix] Address shifted from 0x009AA9F0 to 0x00DAA9F0 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "Lobby operation receive dispatcher. Case 0x000D reads packet body+0x00 as a u32 for a numeric logger and body+0x09 as a u8 for the count logger, then calls FUN_00DA76B0 with packet+0x10. If that parser returns 0, it calls FUN_00DA5030 on this+0x34 and returns 0. Cases 0x0015, 0x0016, and 0x0017 route the other list records. See manifests/lobby_character_list_projection.json. Address corrected from 0x009AA9F0 to 0x00DAA9F0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0018",
@@ -175,9 +176,10 @@
       "address": "0x00DA76B0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "mdi-014"
+        "mdi-014",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Character-list deserializer for lobby opcode 0x0D. Walks up to body[9] records at stride 0x1D0 starting from body+0 (so record metadata at body+8 = init-path flag and body+9 = record count are at record 0's leading bytes). For each record reads record+0x18 (low 6 bits) as the slot key and matches it against the existing slot vector at this+0x1D4..this+0x1D8 (vector of CharaMakeSlotEntry / BCS-S-0009, stride 0x2E0 = 736 bytes, end pointer at this+0x1D8). On match, appends the null-terminated name string at record+0x50 to the matched slot entry's tail-string region (scan starts at entry+0x3F, append at the first null in that region, which lines up with entry+0x40 = wire_mirror+0x40 = record+0x50). Otherwise copies 0x74 dwords (464 bytes) from record+0x10 into a local 0x2E0-byte buffer (zeroing the trailing 0x110 bytes so the embedded std::vector at slot+0x2D0 ends up empty after copy-construct) and pushes that onto the slot vector via FUN_00891F00 (BCS-Y-0023 = std::vector::push_back). Returns 1 on success. The read-width of 0x1D0 from record+0x10 extends 0x10 bytes past the indexed stride into the next record (or the body's trailing pad for the last record). Decoded from Ghidra 12.1 auto-decompiler on 1.23b ffxivgame.exe at VA 0x00DA76B0 (782 byte body). | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x009A76B0 to 0x00DA76B0 (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=name_fun_token; count=1."
+      "notes": "Direct s2c opcode-0x000D parser reached only from BCS-Y-0017 with packet+0x10. It clears the slot vector when body+0x08 bits 1..7 are zero, loops over the u8 count at body+0x09 with 0x1D0 record-window stride, and looks up each record+0x18 low-six-bit key in the 0x2E0-stride vector at this+0x1D0. Existing keys append the unbounded NUL-terminated record+0x50 string to the first NUL at slot+0x40. New keys copy record+0x10 for 0x1D0 bytes, zero 0x100 bytes, initialize an empty embedded vector, and push through BCS-Y-0023; upper key bits request a 0x3F mask over every destination key byte. The parser returns the inverse of control-flags bit 0. It has vector-state checks through FUN_009D22B4 but no payload-length, count-to-length, string-scan, or append-capacity validation. See manifests/lobby_character_list_projection.json and its sanitized restricted-capture fixture. | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x009A76B0 to 0x00DA76B0 (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=name_fun_token; count=1."
     },
     {
       "id": "BCS-Y-0020",
@@ -213,7 +215,10 @@
       "kind": "function",
       "address": "0x00891F00",
       "confidence": "confirmed",
-      "notes": "std::vector::push_back specialization for the slot-entry vector (element size 0x2E0 = 736 bytes, see BCS-S-0009 CharaMakeSlotEntry). param_1 is the vector header (begin pointer at +0x04, end pointer at +0x08, capacity-end pointer at +0x0C); param_2 is the source element pointer. If size = (end - begin)/0x2E0 < capacity = (cap_end - begin)/0x2E0, delegates to FUN_00891900 (BCS-Y-0076 slot batch copy loop) to copy-construct the new element at *end then advances end by 0x2E0; otherwise calls FUN_00891E50 to grow the vector and insert. The full copy-construct chain is FUN_00891900 -> FUN_008916F0 -> FUN_008913E0 -> FUN_00891360 (BCS-Y-0076..0079) with the tail std::vector handled by FUN_00890EE0 (BCS-Y-0080). The decode shows it is NOT a per-character parser. The actual chara-list per-record parsing happens inline in FUN_00DA76B0 (BCS-Y-0019); FUN_00DA79D0 (BCS-Y-0024) and FUN_00DA76B0 only use this function to APPEND a fully prepared local slot buffer onto the live slot vector. Decoded from Ghidra 12.1 auto-decompiler on 1.23b ffxivgame.exe at VA 0x00891F00 (168 byte body). See MDI-014 for the corrected blocker description. [apply-log fix] Address shifted from 0x00491F00 to 0x00891F00 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "std::vector::push_back specialization for 0x2E0-byte BCS-S-0009 entries. With spare capacity it copy-constructs one element at end through FUN_00891900 and advances end by 0x2E0. Otherwise it validates end >= begin and delegates growth/insertion to FUN_00891E50. It does not parse wire fields. See manifests/lobby_character_list_projection.json. Address corrected from 0x00491F00 to 0x00891F00 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "sourceRefs": [
+        "manifests/lobby_character_list_projection.json"
+      ]
     },
     {
       "id": "BCS-Y-0024",
@@ -712,21 +717,23 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-025"
+        "mdi-025",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Actual copy-constructor for CharaMakeSlotEntry (BCS-S-0009). Signature recovered as __thiscall(undefined4 *param_1=dest, undefined4 *param_2=source). Body: (1) plain dword loop copies 0x74 dwords = 0x1D0 bytes from source[0..0x1D0) to dest[0..0x1D0); (2) plain dword loop copies 0x40 dwords = 0x100 bytes from source[0x1D0..0x2D0) to dest[0x1D0..0x2D0); (3) calls FUN_00890EE0 (BCS-Y-0080) with explicit arg source+0x2D0 (implicit ECX dest+0x2D0) to copy-construct the embedded std::vector tail at slot+0x2D0..0x2E0. Returns dest. 124 byte body at VA 0x00891360 with SEH frame (LAB_00EBD1EE unwind handler) covering the tail-object construct (so a throwing element copy in the embedded vector unwinds the plain-data region correctly). Decoded from Ghidra 12.1 auto-decompiler on 1.23b ffxivgame.exe. [apply-log fix] Address shifted from 0x00491360 to 0x00891360 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "BCS-S-0009 copy-constructor. It copies 0x74 dwords (0x1D0 bytes) from source+0x000, then 0x40 dwords (0x100 bytes) from source+0x1D0, and delegates the embedded 0x10-byte container at +0x2D0 to FUN_00890EE0. The two plain ranges plus the container close the exact 0x2E0 destination layout. See manifests/lobby_character_list_projection.json. Address corrected from 0x00491360 to 0x00891360 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0080",
-      "name": "SlotRetainerVectorCopyConstructor_FUN_00890EE0",
+      "name": "SlotEmbeddedVectorCopyConstructor_FUN_00890EE0",
       "kind": "function",
       "address": "0x00890EE0",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-025"
+        "mdi-025",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Copy-constructor for the std::vector embedded at CharaMakeSlotEntry+0x2D0 (BCS-S-0009 retainer_vector field). Signature recovered as __thiscall(int param_1=dest, int param_2=source). Layout reads source as a vector with begin at +4 and end at +8 (element stride 0x30 = 48 bytes). Initializes dest's begin/end/cap_end at +4/+8/+0xC to zero; if source size is non-zero, calls FUN_0088F150 to allocate count * 0x30 bytes, sets dest begin and (initially) end to the allocation and cap_end to allocation + count*0x30, then uses FUN_00890210 with iterators returned by FUN_0071CB30 / FUN_006CFBB0 (allocator placement-new helpers) to element-copy the range, finally setting dest end to the post-copy position. Maximum count guarded at 0x5555555 = 2^32 / 0x30. 227 byte body at VA 0x00890EE0 with SEH frame (LAB_00EBD1C0 unwind handler). Other caller is FUN_00DADCC0 (BCS-Y-0081), which constructs a 0x24-byte snapshot object containing an operation-level instance of the same 0x30-stride vector at source+0x204. The 0x30 stride matches BCS-S-0004 RetainerListRecord but is not unique to it: FUN_00890FE0 (another 0x30-stride vector helper) has five callers across the lobby/chara-make code, so multiple unrelated 48-byte record types likely share these vector ops. [apply-log fix] Address shifted from 0x00490EE0 to 0x00890EE0 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "Copy-constructor for the embedded container at BCS-S-0009+0x2D0. It derives source count from begin/end at +0x04/+0x08 with element stride 0x30, zeroes destination begin/end/capacity at +0x04/+0x08/+0x0C, rejects counts above 0x05555555 through FUN_006D20B0, allocates count*0x30 bytes for a nonempty source, and copy-constructs the range. The control word at +0x00 is not interpreted here, and the generic 0x30 stride does not uniquely prove an element domain type. See manifests/lobby_character_list_projection.json. Address corrected from 0x00490EE0 to 0x00890EE0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0081",
@@ -842,9 +849,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "notes:character-modify-flow",
-        "mdi-025"
+        "mdi-025",
+        "manifests/lobby_character_list_projection.json"
       ],
-      "notes": "Helper that walks a 0x30-stride vector (begin at param_2+4, end at param_2+8) and calls FUN_00DA94C0 on each element whose +4 dword matches the input's +4 dword. 98 byte body at VA 0x00DA9550. __thiscall(int param_1=key_holder, int param_2=vector_struct_ptr). Body: walks from param_2+4 to param_2+8 in steps of 0x30, on each iteration tests '*(element+4) == *(param_1+4)' and on match calls FUN_00DA94C0(element). Bounds-checks via FUN_009D22B4 on each step. The element-stride 0x30 and the match-by-+4 pattern match BCS-S-0004 RetainerListRecord (character_id at offset 0x04). Called from FUN_00DA76B0 (BCS-Y-0019 chara-list parser) with param_2 = this+0x204 (the operation-level vector); the caller's preceding bounds check on slot[size-1] of the chara-list vector at this+0x1D4 indicates the key_holder is the newly-pushed slot entry (slot+4 in the wire mirror corresponds to wire body+0x14, which for the chara-list source carries the per-character key). FUN_00DA94C0 inherits ECX, so its `this` is the same newly-pushed slot entry, and the upsert lands in slot_entry+0x2D0 (the BCS-S-0009 embedded retainer vector). The matched-by-character_id semantic plus the FUN_00DA94C0 upsert shape confirm that the 0x30 records walked here are BCS-S-0004 RetainerListRecord-shaped (per MDI-025); the operation-level vector at this+0x204 holds the recently-received retainers that the parser sweeps when adding a new slot. [apply-log fix] Address shifted from 0x009A9550 to 0x00DA9550 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "Walks the operation-level vector at param_2 in 0x30-byte steps. For each element whose +0x04 dword equals the newly inserted BCS-S-0009 slot's +0x04 join key, it calls FUN_00DA94C0 with the slot retained as this. Every begin/end and per-element access is guarded through FUN_009D22B4. This proves equality-key use and the 0x30 stride, but not a unique domain noun for the generic record type. Called only from FUN_00DA76B0 after a new slot push. See manifests/lobby_character_list_projection.json. Address corrected from 0x009A9550 to 0x00DA9550 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
     {
       "id": "BCS-Y-0092",
@@ -2956,9 +2964,11 @@
         "xivl-opcodes:data/client_receivers.json",
         "mdi-019",
         "manifests/actor_cluster_dispatch_model.json",
-        "tools/ghidra/logs/c311_dispatcher-size-verification.txt"
+        "tools/ghidra/logs/c311_dispatcher-size-verification.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
-      "notes": "**CENTRAL PACKET DISPATCHER (option 2)**: FUN_004dc690 at 0x004DC690 (size 3390B). Reads packet opcode at `*(short *)(packet + 2)` (game-message header). Two-branch structure: (1) `if (0x13D < uVar2)` switch covers high opcodes; (2) `if (uVar2 < 0x12E)` switch covers low opcodes. High-opcode switch has a multi-opcode fallthrough group (0x144, 0x145, 0x157-0x16A, 0x16B, 0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199-0x1A2, 0x1A4-0x1A8) that dispatches via `(**(code **)(*piVar12 + 0x24))(iVar8)` where piVar12 = `FUN_004d9910(param_2)` is the actor looked up by packet's actor id. Offset 0x24 = slot 9 of the actor's vftable. So the generic dispatch path is: opcode -> determine actor -> actor->vftable[9](packet). Specific handlers exist for ~30 other opcodes (e.g. 0x143 FUN_00576240, 0x146 FUN_005764c0, 0x196 FUN_00576050, 0x198 FUN_00576150, 0x1A3 FUN_00576140). Low-opcode switch has another fallthrough group (0x0F, 0xCC-0xE5) using the same actor-vftable[9] mechanism (covers 0xD3 SetTargetTime). Combined with FUN_004d8860 (event-family dispatcher), these are the central packet routers that bind opcodes to receivers. | **the actor-cluster-dispatch-model pass Actor cluster characterization**: low-switch (uVar2 < 0x12E) contains dedicated cases 0x02..0x11 (init/teardown/walk) plus cases 0xCA (AddActor) and 0xCB (RemoveActor); 24-opcode multi-case fallthrough 0x0F + 0xCC..0xE5 dispatches via FUN_004d9910(param_2) actor-id-to-actor lookup then actor->vftable[9](packet) - the polymorphic per-actor-class handler. ALL the Actor*Packet types; SetActorPosition; SetActorAppearance; etc.) flow through this generic dispatch path; per-opcode receivers do NOT exist for the Actor cluster (architecturally distinct; the *Receiver class pattern the receiver-discovery pass documented). 0xD2 is observed in pcap (33 hits) but NOT in any case list - it falls into the default/skip branch, suggesting either an engine bug, version drift, or different routing path. | [Tier C309] Its `this` is Application::Main::RaptureElementContainer, reached from NetworkModule+0x8 through [[BCS-Y-1851]] and then MainModule+0x10 through [[BCS-Y-1997]] / [[BCS-Y-1998]]. At 0x004DD167 it loads a POINTER from `this+0x4D8`, tests it for zero, and uses the pointee at `+0x98`; [[BCS-Y-1999]] returns the same dword field. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [duplicate-address resolution] Authoritative dispatcher row: this one function is primarily the inbound s2c dispatcher and also contains the embedded c2s 0x00CA response emit documented by [[BCS-Y-0321]] in low-switch case 7. Raw retail instructions continue through the shared `ret 8` at 0x004DD3CC..0x004DD3CE, confirming the catalog's 3390-byte body-size convention; Ghidra's 3364 body-address count omits the post-free continuation because the runtime free call is marked noreturn. Evidence: tools/ghidra/logs/c311_dispatcher-size-verification.txt."
+      "notes": "**CENTRAL PACKET DISPATCHER (option 2)**: FUN_004dc690 at 0x004DC690 (size 3390B). Reads packet opcode at `*(short *)(packet + 2)` (game-message header). Two-branch structure: (1) `if (0x13D < uVar2)` switch covers high opcodes; (2) `if (uVar2 < 0x12E)` switch covers low opcodes. High-opcode switch has a multi-opcode fallthrough group (0x144, 0x145, 0x157-0x16A, 0x16B, 0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199-0x1A2, 0x1A4-0x1A8) that dispatches via `(**(code **)(*piVar12 + 0x24))(iVar8)` where piVar12 = `FUN_004d9910(param_2)` is the actor looked up by packet's actor id. Offset 0x24 = slot 9 of the actor's vftable. So the generic dispatch path is: opcode -> determine actor -> actor->vftable[9](packet). Specific handlers exist for ~30 other opcodes (e.g. 0x143 FUN_00576240, 0x146 FUN_005764c0, 0x196 FUN_00576050, 0x198 FUN_00576150, 0x1A3 FUN_00576140). Low-opcode switch has another fallthrough group (0x0F, 0xCC-0xE5) using the same actor-vftable[9] mechanism (covers 0xD3 SetTargetTime). Combined with FUN_004d8860 (event-family dispatcher), these are the central packet routers that bind opcodes to receivers. | **the actor-cluster-dispatch-model pass Actor cluster characterization**: low-switch (uVar2 < 0x12E) contains dedicated cases 0x02..0x11 (init/teardown/walk) plus cases 0xCA (AddActor) and 0xCB (RemoveActor); 24-opcode multi-case fallthrough 0x0F + 0xCC..0xE5 dispatches via FUN_004d9910(param_2) actor-id-to-actor lookup then actor->vftable[9](packet) - the polymorphic per-actor-class handler. ALL the Actor*Packet types; SetActorPosition; SetActorAppearance; etc.) flow through this generic dispatch path; per-opcode receivers do NOT exist for the Actor cluster (architecturally distinct; the *Receiver class pattern the receiver-discovery pass documented). 0xD2 is observed in pcap (33 hits) but NOT in any case list - it falls into the default/skip branch, suggesting either an engine bug, version drift, or different routing path. | [Tier C309] Its `this` is Application::Main::RaptureElementContainer, reached from NetworkModule+0x8 through [[BCS-Y-1851]] and then MainModule+0x10 through [[BCS-Y-1997]] / [[BCS-Y-1998]]. At 0x004DD167 it loads a POINTER from `this+0x4D8`, tests it for zero, and uses the pointee at `+0x98`; [[BCS-Y-1999]] returns the same dword field. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [duplicate-address resolution] Authoritative dispatcher row: this one function is primarily the inbound s2c dispatcher and also contains the embedded c2s 0x00CA response emit documented by [[BCS-Y-0321]] in low-switch case 7. Raw retail instructions continue through the shared `ret 8` at 0x004DD3CC..0x004DD3CE, confirming the catalog's 3390-byte body-size convention; Ghidra's 3364 body-address count omits the post-free continuation because the runtime free call is marked noreturn. Evidence: tools/ghidra/logs/c311_dispatcher-size-verification.txt. | [Tier C537] The 0x018D case's +0x4D8 pointee is RTTI-confirmed Application::Main::Element::System::ClientWorkElement, created by selector 0x0D factory [[BCS-Y-2169]]. The case passes pointee+0x98 to [[BCS-Y-0890]]; this is a direct object/storage route, not a class name inferred from the opcode label."
     },
     {
       "id": "BCS-Y-0280",
@@ -4747,9 +4757,13 @@
         "BCS-Y-0422",
         "BCS-Y-0423",
         "BCS-Y-0425",
-        "BCS-S-0031"
+        "BCS-S-0031",
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0212",
+        "manifests/rapture_selector_0d_clientwork.json"
       ],
-      "notes": "Classifies a battle result's effect/animation id into a compact visual result class stored at BCS-S-0031+0x04. The combat-damage-findings pass resolved the selector names. FUN_00798370 (BCS-Y-0422) splits the effect id into high-byte category plus upper/lower ids. High-byte special cases return: 0x7C -> selector 7 AttackModeBattleAction (reference 0x7C000062 Attack Mode), 0x6F -> selector 8 CastOrReadyPreAction (reference 0x6F000000|castType), 0x70 -> selector 9 ExternalVisualCategory0x70, and 0x71 -> selector 10 ExternalVisualCategory0x71. All other categories go through FUN_007982D0 (BCS-Y-0423) and the DAT_00FE32DC resource table: bucket 8/prefix kao -> selector 0x0B KaoFacialEffect; bucket 1/prefix emt -> selector 0x0C EmtNormalEffect or 0x0D EmtSpecialRangeEffect when upper id is 0x0D..0x13 or 0x0FE9; bucket 2/prefix lin -> selector 0x0E LinLineEffect; bucket 3/prefix lif -> selector 0x0F LifEffect; bucket 4/prefix lil -> selector 0x10 LilEffect; bucket 5/prefix atk -> selector 0x11 AdditionalAttackEffect (reference AdditionalEffectType = 24 << 24). The battle-result wrappers pass default selector 6, so the reference HitEffectType (8 << 24, table prefix em4/bucket 6) and other unmapped buckets fall through as DefaultPhysicalHitOrUnmappedEffect. Downstream, BCS-Y-0417 copies the queue entry into VfxRaptureParameter+0x68, so this selector lands at VfxRaptureParameter+0x6C and is consumed by the Rapture Vfx path BCS-Y-0425 -> BCS-Y-0420; the exact per-selector Rapture*Clip class switch remains behind FUN_00812B50's indirect +0x12F0 vtable slot +8 call. [apply-log fix] Address shifted from 0x00185800 to 0x00585800 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "notes": "Classifies a battle result's effect/animation id into the visualResultClass stored at BCS-S-0031+0x04. FUN_00798370 (BCS-Y-0422) splits the effect id; high-byte cases map 0x7C to 7 AttackModeBattleAction, 0x6F to 8 CastOrReadyPreAction, 0x70 to 9 ExternalVisualCategory0x70, and 0x71 to 10 ExternalVisualCategory0x71. FUN_007982D0 (BCS-Y-0423) and DAT_00FE32DC map resource prefixes kao, emt, lin, lif, lil, and atk to selectors 0x0B..0x11. BCS-Y-0417 copies the queue entry to VfxRaptureParameter+0x68, placing the selector at +0x6C. BCS-Y-0420 then calls the target CharaActor's BCS-S-0212 RaptureSchEffectController at +0x12F0 through primary slot 2. The fixed path resolves a schedule target at runtime and is not a per-selector Rapture*Clip class switch. Address corrected from 0x00185800 to 0x00585800 (+0x00400000) per the catalog-validation-report TYPO_RVA_NOT_VA finding. | [Tier C538] Direct listing confirms the eight recorded callers pass fallback 0x05 or 0x06 and the classifier returns 0x07..0x11 on matched branches. Seven callers feed battle-result staging; FUN_0058AB60 instead passes the result to FUN_00589F60 and returns its predicate. None is FUN_004D90C0, FUN_004D7C10, or the +0x4AC registry invoker FUN_00537620. Numeric overlap therefore does not establish a registry route. Computed or indirect propagation remains outside the direct-reference census.",
       "id": "BCS-Y-0411"
     },
     {
@@ -4867,9 +4881,15 @@
         "manifests/selector_mapping_findings.json",
         "BCS-Y-0059",
         "BCS-Y-0417",
-        "BCS-Y-0425"
+        "BCS-Y-0425",
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-S-0210",
+        "BCS-S-0211",
+        "BCS-S-0212"
       ],
-      "notes": "Rapture clip-side Vfx processor and concrete downstream consumer path for selector-bearing battle-result queue entries. 593-byte function in the App::Scene::Cut::Clip address range, adjacent to RaptureActionDamageCallClip constructor FUN_00811690 (BCS-Y-0421, +0xFE0 offset). Reads a sub-object pointer at param_1+0x14, dereferences a vtable at vtable+0xF0 slot +0x6C to obtain a typed work record, checks the type tag at record+4 equals 0x766678 ('vfx\\0'), bounds-checks a position counter at param_1+0x58, and on match calls FUN_007C7F80(record) to construct a VfxRaptureParameter from the queue-entry-shaped sub-object at record+0x68. Since FUN_007C7F80 copies BCS-S-0031 into VfxRaptureParameter+0x68, the visualResultClass selector originally at queue+0x04 is present at VfxRaptureParameter+0x6C when this processor calls the indirect object at iStack_22c+0x12F0 vtable slot +8. This identifies the downstream selector consumer boundary without naming the final virtual target.",
+      "notes": "RaptureTargetSchClip-side Vfx processor for selector-bearing battle-result entries. The 593-byte function validates the vfx tag, bounds-checks the current entry, constructs a VfxRaptureParameter through BCS-Y-0417, resolves a target CharaActor, and calls CharaActor+0x12F0. That field is BCS-S-0212 Application::Scene::Vfx::RaptureSchEffectController; primary vftable 0x00FF5628 slot 2 (+0x08) is FUN_0080E050, which forwards to FUN_0080CC00 with fixed flag 1. Success or failure is appended to the VfxRaptureParameter vector at +0x38 before the clip cursor at +0x58 advances. The indirect call is a fixed controller target, not a visualResultClass-to-clip-class switch.",
       "id": "BCS-Y-0420"
     },
     {
@@ -4929,9 +4949,13 @@
       "sourceRefs": [
         "BCS-Y-0417",
         "BCS-Y-0420",
-        "BCS-S-0031"
+        "BCS-S-0031",
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-S-0212"
       ],
-      "notes": "Downstream Rapture Vfx gate for selector-bearing battle-result data. Validates or advances a 'vfx\\0' parameter record and calls FUN_00812B50 (BCS-Y-0420). The selector path is: FUN_00587210 stores visualResultClass at BCS-S-0031+0x04, FUN_007C7F80 copies the queue entry from source+0x68 into VfxRaptureParameter+0x68 (so selector lands at VfxRaptureParameter+0x6C), and FUN_00812B50 passes the constructed parameter to an indirect object at +0x12F0 vtable slot +8. This is the concrete consumer boundary identified earlier; exact per-selector Rapture*Clip class dispatch remains behind that indirect virtual.",
+      "notes": "RaptureTargetSchClip Vfx gate for selector-bearing battle-result data. It verifies the vfx parameter record and calls BCS-Y-0420. The fixed downstream target is the target CharaActor's BCS-S-0212 RaptureSchEffectController at +0x12F0, primary slot 2 (+0x08). That controller copies the parameter into schedule state, resolves a runtime target, registers listeners, appends a BCS-S-0210 record, and returns success. No per-selector concrete clip class is established by this path.",
       "id": "BCS-Y-0425"
     },
     {
@@ -6114,9 +6138,12 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/actor_factory_drill.json",
-        "tools/ghidra/logs/c310_owner-reattribution-verification.txt"
+        "tools/ghidra/logs/c310_owner-reattribution-verification.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
-      "notes": "346-byte generic OOP method-dispatch helper. Calls `method_table[index](args)` on a caller-supplied interface struct (method_table held at +4..+8 of the interface, entry count computed as `(end-begin)/4`), then caches the returned value at a struct slot determined by `switch(index)`: case 2->+0x18, 3->+0x1c, 4->+0x20, 5->+0x24, 6->+0x10, 7->+0x14, 8->FUN_004e5ca0 special path, 9->+0x34, 0xc->+0x28, 0xd->+0x2c, 0xe->+0x30, 0x11->+0x44. **The actor-factory-drill pass corrective finding**: this is NOT a class factory (as hypothesized when planning the phase from BCS-Y-0525's case 0xCA AddActor handler). It is a method-invocation helper used by [[ZoneActor_CreateOrGetById_FUN_004d90c0]] (BCS-Y-0531) and [[ZoneActor_CreateGenericById_FUN_004d7c10]] (BCS-Y-0532) - both actor create-via-dispatch primitives - to invoke the actor-class registry's create-method by index. Resolving which actor class is actually dispatched (the actor-vftable9-investigation pass open question) requires drilling the interface member at RaptureElementContainer+0x4AC; case 0xCA supplies packet+0x10 as the method index, not as the interface object. | [Tier C309 owner correction] Case 0xCA loads the value from packet+0x10 at 0x004DCCD1; it is not a member offset on the dispatcher object. | [Tier C310 correction] The interface attribution from C309 did not reproduce: 0x004D90E7 passes RaptureElementContainer+0x4AC in ECX, while the packet+0x10 value reaches FUN_00537620 as its method index."
+      "notes": "346-byte generic OOP method-dispatch helper. Calls `method_table[index](args)` on a caller-supplied interface struct (method_table held at +4..+8 of the interface, entry count computed as `(end-begin)/4`), then caches the returned value at a struct slot determined by `switch(index)`: case 2->+0x18, 3->+0x1c, 4->+0x20, 5->+0x24, 6->+0x10, 7->+0x14, 8->FUN_004e5ca0 special path, 9->+0x34, 0xc->+0x28, 0xd->+0x2c, 0xe->+0x30, 0x11->+0x44. **Corrective finding**: this is NOT a class factory. It is a method-invocation helper used by [[ZoneActor_CreateOrGetById_FUN_004d90c0]] (BCS-Y-0531) and [[ZoneActor_CreateGenericById_FUN_004d7c10]] (BCS-Y-0532) - both actor create-via-dispatch primitives - to invoke the actor-class registry's create-method by index. Resolving which actor class is actually dispatched remains unresolved and requires drilling the interface member at RaptureElementContainer+0x4AC; case 0xCA supplies packet+0x10 as the method index, not as the interface object. | [Tier C309 owner correction] Case 0xCA loads the value from packet+0x10 at 0x004DCCD1; it is not a member offset on the dispatcher object. | [Tier C310 correction] The interface attribution from C309 did not reproduce: 0x004D90E7 passes RaptureElementContainer+0x4AC in ECX, while the packet+0x10 value reaches FUN_00537620 as its method index. | [Tier C537] FUN_0053B230 installs [[BCS-Y-2169]] at table index 0x0D, and this invoker's case 0x0D caches that callback's Application::Main::Element::System::ClientWorkElement result at interface+0x2C, aliasing RaptureElementContainer+0x4D8. The concrete +0x4AC interface type remains unresolved."
     },
     {
       "id": "BCS-Y-0531",
@@ -8643,7 +8670,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/element_vtable8_bulk.json",
-        "tools/ghidra/logs/c327_clientwork-layouts.txt"
+        "tools/ghidra/logs/c327_clientwork-layouts.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
       "notes": "Application::Main::Element::System::ClientWorkElement secondary input vftable at complete-object +0x8. C327 corrects the older primary label: FUN_0055F8B0 stores 0x00FA418C at +0x8. Evidence: tools/ghidra/logs/c327_clientwork-layouts.txt.",
       "id": "BCS-Y-0754"
@@ -8655,7 +8685,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/element_vtable8_bulk.json",
-        "tools/ghidra/logs/c327_clientwork-layouts.txt"
+        "tools/ghidra/logs/c327_clientwork-layouts.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
       "notes": "Application::Main::Element::System::ClientWorkElement primary vftable at complete-object +0x0. C327 corrects the older secondary label: FUN_0055F8B0 stores 0x00FA42B0 at +0x0, and FUN_0055D100 restores the same table during complete-object teardown. Evidence: tools/ghidra/logs/c327_clientwork-layouts.txt.",
       "id": "BCS-Y-0755"
@@ -10153,9 +10186,11 @@
       "address": "0x0055CF70",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/schema_rescue.json"
+        "manifests/schema_rescue.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
-      "notes": "[schema-rescue schema rescue] Apply path for s2c 0x018D PartyMapMarkerUpdate. Writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json. Updates 16 marker entries (stride 0x28) in the marker-update path reached after the RaptureElementContainer+0x4d8 nonzero gate; the field's pointer/widget interpretation is unresolved. The party-subsystem pass opcode_table 0x018D ultimate_callee. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "notes": "[schema-rescue schema rescue] Apply path for s2c 0x018D PartyMapMarkerUpdate. Writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json. Updates 16 marker entries (stride 0x28) in the marker-update path reached after the RaptureElementContainer+0x4d8 nonzero gate; the field's pointer/widget interpretation is unresolved. The party-subsystem pass opcode_table 0x018D ultimate_callee. | [Tier C309 owner correction] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [Tier C537] Owner correction: ECX is ClientWorkElement+0x98, the embedded ApplicationMainElementSystemClientWorkStorage (BCS-S-0079), not RaptureElementContainer. The function writes storage +0x08/+0x0C/+0x10, sign-extends the prepared byte count into +0x14, advances records from +0x18 at exact 0x78 stride, and conditionally sets +0x798. Selector 0x0D and RTTI establish the enclosing object identity independently of the opcode label.",
       "id": "BCS-Y-0890"
     },
     {
@@ -11627,9 +11662,11 @@
       "address": "0x00774AD0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/0x00CC_actor_record_apply.json"
+        "manifests/0x00CC_actor_record_apply.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt"
       ],
-      "notes": "[s2c-0x00cc-actor-record-apply-pipeline 0x00CC actor record apply] 1694-byte case 0xCC primary actor-record-apply handler (sole caller FUN_00574780 BCS-Y-0588). Deserializes large actor state record from packet param_3 (with header at +0x14, string fields at +1/+9/+0x11) into local actor representation. Self-actor branch (when target == FUN_004D7490 local player): populates 16-dword array at *(puVar9+0x10c)+4+i*4 - SAME 16-slot table as the s2c-0x00d0-state-table-pipeline-synthesis pass 0x00D0 case 0xD0 target [[ThirdRouter_Case0xD0_RecordTableInit_FUN_0058ECB0]] (BCS-Y-0619). Multi-branch Lua-side dispatch: sentinel via FUN_0078fa80, simple path uses literal string 0xfdf510 + FUN_00cc7ea0 Lua call; complex path uses FUN_0078f8d0 object setup chain + FUN_00758810 finalizer. Conditional flag writes: cStack_22c -> Lua state ref to obj+0x4c via FUN_0076a3f0; cStack_22e -> byte to obj+0xb6; if (self-actor AND cStack_22e): *(actor+0xd8)+0x174 = 1. Final 5-arg assembly via FUN_00774530. Body uses Application::Lua::Script::Client::LuaActorImpl framework. Represents the heavy 0xCC apply path - server sends complete actor state including equipment/status table. | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]].",
+      "notes": "[s2c-0x00cc-actor-record-apply-pipeline 0x00CC actor record apply] 1694-byte case 0xCC primary actor-record-apply handler (sole caller FUN_00574780 BCS-Y-0588). Deserializes large actor state record from packet param_3 (with header at +0x14, string fields at +1/+9/+0x11) into local actor representation. Self-actor branch (when target == FUN_004D7490 local player): populates 16-dword array at *(puVar9+0x10c)+4+i*4 - SAME 16-slot table as the s2c-0x00d0-state-table-pipeline-synthesis pass 0x00D0 case 0xD0 target [[ThirdRouter_Case0xD0_RecordTableInit_FUN_0058ECB0]] (BCS-Y-0619). Multi-branch Lua-side dispatch: sentinel via FUN_0078fa80, simple path uses literal string 0xfdf510 + FUN_00cc7ea0 Lua call; complex path uses FUN_0078f8d0 object setup chain + FUN_00758810 finalizer. Conditional flag writes: cStack_22c -> Lua state ref to obj+0x4c via FUN_0076a3f0; cStack_22e -> byte to obj+0xb6; if (self-actor AND cStack_22e): *(actor+0xd8)+0x174 = 1. Final 5-arg assembly via FUN_00774530. Body uses Application::Lua::Script::Client::LuaActorImpl framework. Represents the heavy 0xCC apply path - server sends complete actor state including equipment/status table. | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]]. | [Tier C539] Configured instructions close the self-actor registry branch: 0x00774B71 pushes encoded id 0xC0000024, 0x00774B76 pushes selector 0x1A, and 0x00774B78 calls [[BCS-Y-0531]]. The branch first looks up the same id through [[BCS-Y-0534]], reaches FormElement factory [[BCS-Y-2195]] only when absent, then obtains the DesktopWidget Lua class table and calls FUN_004D87C0. The actor and implementation object are already present; the path follows a failed LuaActorImpl cast and a NullActorImpl probe. This is local-player actor-record apply plus a DesktopWidget/FormElement setup handoff, not creation of the actor target or MyPlayer control. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
       "id": "BCS-Y-1019"
     },
     {
@@ -15669,9 +15706,11 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c61_sibling_factories_decomp.txt",
-        "manifests/sibling_receiver_factories.json"
+        "manifests/sibling_receiver_factories.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt"
       ],
-      "notes": "[16-sibling-receiver-hybrid-factories-cataloged] 1694-byte complex variant hybrid factory - the largest of the 16 siblings. SEH-wrapped (handler at LAB_00ea4461). Has ONE direct caller [[EventFamilyDispatcher_Case0xCC_FUN_00574780]] (BCS-Y-0588) - distinct from the other 15 siblings which have zero direct callers. __thiscall(void *param_1, int **param_2, int *param_3, undefined1 *param_4). Body shape: (1) RTTI-style type check via FUN_00CC7510; (2) populate cache fields via several FUN_00447260 stores; (3) call FUN_0078FA80 to test a sub-condition; (4) if condition fails, build a 4-vec data block via FUN_00445CF0 + FUN_0078F8D0 + FUN_0078F840 chain; (5) inner branch on container[+0x50] flag: **fast-path** (==0) calls [[ReceiverStateCache_LazyGet_FUN_0076A3F0]] (BCS-Y-1337), then FUN_00771230(id, name_bytes) - SAME secondary as BCS-Y-1353; **slow-path** (!=0) allocs 0x60=96 bytes via FUN_009D1B35, calls FUN_0089D530 - SAME ctor as BCS-Y-1353; (6) cleanup via FUN_00446F50 + FUN_0044D350. Architecturally this is BCS-Y-1353's pattern wrapped in an EventFamily dispatch envelope - BCS-Y-0588 case 0xCC fans out via this factory after RTTI verification of the actor type. Closes part of the manifest deferred_followups[0]. The wrap-then-delegate shape suggests live capture work may find this factory firing on specific actor events (likely name-change or class-change broadcasts to nearby actors gated by visibility/sight check). | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]]."
+      "notes": "[16-sibling-receiver-hybrid-factories-cataloged] 1694-byte complex variant hybrid factory - the largest of the 16 siblings. SEH-wrapped (handler at LAB_00ea4461). Has ONE direct caller [[EventFamilyDispatcher_Case0xCC_FUN_00574780]] (BCS-Y-0588) - distinct from the other 15 siblings which have zero direct callers. __thiscall(void *param_1, int **param_2, int *param_3, undefined1 *param_4). Body shape: (1) RTTI-style type check via FUN_00CC7510; (2) populate cache fields via several FUN_00447260 stores; (3) call FUN_0078FA80 to test a sub-condition; (4) if condition fails, build a 4-vec data block via FUN_00445CF0 + FUN_0078F8D0 + FUN_0078F840 chain; (5) inner branch on container[+0x50] flag: **fast-path** (==0) calls [[ReceiverStateCache_LazyGet_FUN_0076A3F0]] (BCS-Y-1337), then FUN_00771230(id, name_bytes) - SAME secondary as BCS-Y-1353; **slow-path** (!=0) allocs 0x60=96 bytes via FUN_009D1B35, calls FUN_0089D530 - SAME ctor as BCS-Y-1353; (6) cleanup via FUN_00446F50 + FUN_0044D350. Architecturally this is BCS-Y-1353's pattern wrapped in an EventFamily dispatch envelope - BCS-Y-0588 case 0xCC fans out via this factory after RTTI verification of the actor type. Closes part of the manifest deferred_followups[0]. The wrap-then-delegate shape suggests live capture work may find this factory firing on specific actor events (likely name-change or class-change broadcasts to nearby actors gated by visibility/sight check). | [duplicate-address resolution] Legitimate dual perspective: the actor-record apply role and the enclosing receiver hybrid-factory role are independently useful perspectives; sibling entries [[BCS-Y-1019]], [[BCS-Y-1353]]. | [Tier C539] Fresh instruction and caller evidence supersedes the speculative live-event interpretation for the directly observed selector branch. The fixed pair selector 0x1A/id 0xC0000024 is gated on equality between the record actor id and the local-player actor id and hands a FormElement through DesktopWidget during actor-record apply; it does not prove actor creation, MyPlayer control creation, or a named receiver-factory type. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt."
     },
     {
       "id": "BCS-Y-1354",
@@ -24550,9 +24589,11 @@
       "sourceRefs": [
         "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
         "manifests/symbols.json#BCS-Y-1851",
-        "manifests/symbols.json#BCS-Y-0279"
+        "manifests/symbols.json#BCS-Y-0279",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
-      "notes": "[Tier C309] Seven-byte read-only accessor: `MOV EAX,[ECX+0x4D8]; RET` returns the Application::Main::RaptureElementContainer pointer field as a dword. Caller FUN_00691F30 adds `+0x98` to the pointee before use, matching central dispatcher [[BCS-Y-0279]]. The ownership chain runs through NetworkModule ctor [[BCS-Y-1851]] and container ctor [[BCS-Y-1998]]. Confidence is confirmed because the complete body directly implements the accessor. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "notes": "[Tier C309] Seven-byte read-only accessor: `MOV EAX,[ECX+0x4D8]; RET` returns the Application::Main::RaptureElementContainer pointer field as a dword. Caller FUN_00691F30 adds `+0x98` to the pointee before use, matching central dispatcher [[BCS-Y-0279]]. The ownership chain runs through NetworkModule ctor [[BCS-Y-1851]] and container ctor [[BCS-Y-1998]]. Confidence is confirmed because the complete body directly implements the accessor. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [Tier C537] The returned pointer is the selector-0x0D cache for RTTI-confirmed Application::Main::Element::System::ClientWorkElement (BCS-S-0080), created by [[BCS-Y-2169]]. Its sole direct caller adds +0x98, tests storage +0x798 with count +0x14, invokes FUN_00691E80 when the predicate passes, and clears +0x798 through FUN_0055D0F0.",
       "id": "BCS-Y-1999"
     },
     {
@@ -25272,9 +25313,12 @@
       "sourceRefs": [
         "manifests/rapture_element_hierarchy.json",
         "tools/ghidra/logs/c320_rapture-element-constructors.txt",
-        "tools/ghidra/logs/c320_rapture-element-rtti.txt"
+        "tools/ghidra/logs/c320_rapture-element-rtti.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
-      "notes": "[Tier C320] Direct constructor evidence for Application::Main::Element::System::ClientWorkElement. The body calls [[BCS-Y-0539]] and then installs RTTI-resolved class vftables at this+0x0=0x00FA42B0, this+0x8=0x00FA418C. This establishes a directly encoded RaptureElement-derived constructor rooted at [[BCS-Y-0538]] for objects managed through container ctor [[BCS-Y-1998]]. Confidence is confirmed because the base-ctor call, vftable stores, and RTTI identity are direct. Evidence: tools/ghidra/logs/c320_rapture-element-constructors.txt and tools/ghidra/logs/c320_rapture-element-rtti.txt.",
+      "notes": "[Tier C320] Direct constructor evidence for Application::Main::Element::System::ClientWorkElement. The body calls [[BCS-Y-0539]] and then installs RTTI-resolved class vftables at this+0x0=0x00FA42B0, this+0x8=0x00FA418C. This establishes a directly encoded RaptureElement-derived constructor rooted at [[BCS-Y-0538]] for objects managed through container ctor [[BCS-Y-1998]]. Confidence is confirmed because the base-ctor call, vftable stores, and RTTI identity are direct. Evidence: tools/ghidra/logs/c320_rapture-element-constructors.txt and tools/ghidra/logs/c320_rapture-element-rtti.txt. | [Tier C537] Selector-table index 0x0D reaches this constructor through sole recorded factory callback [[BCS-Y-2169]], which allocates exactly 0x838 bytes. Complete teardown is [[BCS-Y-2170]].",
       "id": "BCS-Y-2052"
     },
     {
@@ -26354,6 +26398,653 @@
       ],
       "notes": "Registered handler for Global _isInstanceOf, stored by registrar FUN_00753470 and therefore reached indirectly with no recorded direct callers. It rejects a first argument whose tag is not 4, extracts its LuaControl pointer plus a requested class name, returns true for ActorBaseClass, uses MSVC __RTDynamicCast for CharaBaseClass, PlayerBaseClass, NpcBaseClass, AreaBaseClass, DirectorBaseClass, and DesktopWidget, and otherwise checks the object's LGE class-registry chain by name through FUN_00CC7210. It packages the result as a Lua boolean and has no network-send or callback-fire path.",
       "id": "BCS-Y-2149"
+    },
+    {
+      "name": "Application::Scene::Vfx::RaptureSchEffectController::vftable",
+      "kind": "vtable",
+      "address": "0x00FF5628",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-S-0212"
+      ],
+      "notes": "Seven-slot primary vftable for Application::Scene::Vfx::RaptureSchEffectController. RTTI TypeDescriptor 0x012C8B1C. Slot 2 (+0x08) is FUN_0080E050. FUN_0080E8C0 writes this vftable, and FUN_0065F940 stores the constructed 0x58-byte object at CharaActor+0x12F0.",
+      "id": "BCS-Y-2150"
+    },
+    {
+      "name": "RaptureSchEffectController_Dispatch_FUN_0080E050",
+      "kind": "function",
+      "address": "0x0080E050",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0212"
+      ],
+      "notes": "RaptureSchEffectController primary vftable slot 2 (+0x08). A 30-byte wrapper that preserves the caller's four arguments, appends fixed argument 1, and calls FUN_0080CC00.",
+      "id": "BCS-Y-2151"
+    },
+    {
+      "name": "RaptureSchEffectController_DispatchCore_FUN_0080CC00",
+      "kind": "function",
+      "address": "0x0080CC00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0210",
+        "BCS-S-0211",
+        "BCS-S-0212"
+      ],
+      "notes": "Common Rapture schedule-effect dispatch core. It first retires eligible prior records when selected_index is positive, then calls the embedded BCS-S-0211 container's slot 1 to resolve and register a runtime target. With the slot-2 wrapper's fixed flag it invokes target virtual +0x2C, then always invokes target virtual +0xEC with controller+0x04, releases a temporary reference when nonzero, appends a BCS-S-0210 record in exact {dispatch handle, resource reference, schedule key, target pointer} order, and returns the target pointer.",
+      "id": "BCS-Y-2152"
+    },
+    {
+      "name": "Application::Scene::Vfx::RaptureSchEffectContainer::vftable",
+      "kind": "vtable",
+      "address": "0x00FF55E4",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0211"
+      ],
+      "notes": "Primary vftable for the RaptureSchEffectContainer embedded at RaptureSchEffectController+0x38. FUN_0080E6A0 writes it after move-register base construction. Slot 1 (+0x04) is FUN_0080E7A0.",
+      "id": "BCS-Y-2153"
+    },
+    {
+      "name": "RaptureSchEffectContainer_ResolveTarget_FUN_0080E7A0",
+      "kind": "function",
+      "address": "0x0080E7A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0211"
+      ],
+      "notes": "RaptureSchEffectContainer vftable slot 1 (+0x04). Resolves a runtime schedule target through FUN_0080F3C0, copies the caller's VfxRaptureParameter into a schedule-node payload via FUN_0080F710, inserts the node into the container's schedule state, notifies the target's scheduler-facing interface, and returns the resolved target pointer.",
+      "id": "BCS-Y-2154"
+    },
+    {
+      "name": "RaptureSchEffectContainer_RuntimeTargetResolver_FUN_0080F3C0",
+      "kind": "function",
+      "address": "0x0080F3C0",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0211"
+      ],
+      "notes": "Runtime target resolver used only by FUN_0080E7A0 in the retained direct-call graph. It traverses the container's scene service with the schedule dispatch key, constructs a temporary reference wrapper, resolves the live target, registers the container listener through target virtual +0xEC when nonnull, and returns that target. The concrete target class is runtime-selected and is not fixed by visualResultClass in this path.",
+      "id": "BCS-Y-2155"
+    },
+    {
+      "name": "Application::Scene::Cut::Clip::RaptureTargetSchClip::vftable_primary",
+      "kind": "vtable",
+      "address": "0x00FF9190",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt"
+      ],
+      "notes": "Primary vftable for Application::Scene::Cut::Clip::RaptureTargetSchClip. RTTI TypeDescriptor 0x012C9040; the corresponding complete-object-locator records displacement +0x08 for this primary interface.",
+      "id": "BCS-Y-2156"
+    },
+    {
+      "name": "Application::Scene::Cut::Clip::RaptureTargetSchClip::vftable_secondary",
+      "kind": "vtable",
+      "address": "0x00FF919C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-Y-0425"
+      ],
+      "notes": "Secondary scheduler-facing vftable for Application::Scene::Cut::Clip::RaptureTargetSchClip at object displacement 0. Slot 1 (+0x04) is BCS-Y-0425 FUN_00812DB0, whose class-specific error literal and direct call identify BCS-Y-0420 as this clip's Vfx processor.",
+      "id": "BCS-Y-2157"
+    },
+    {
+      "name": "LuaControl_BindingCopy_FUN_00CD8210",
+      "kind": "function",
+      "address": "0x00CD8210",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Copies a source binding's resolved registry SID into another binding through FUN_00CE1CC0. It obtains the canonical registry-node SID through FUN_00D03610 rather than constructing a command-specific literal.",
+      "id": "BCS-Y-2158"
+    },
+    {
+      "name": "LuaControl_BindingCreate_FUN_00CD99F0",
+      "kind": "function",
+      "address": "0x00CD99F0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Creates or finds a Lua control binding, allocates its SID through FUN_00D038C0, and writes that SID to binding-entry +0x70 through FUN_00CE1CC0.",
+      "id": "BCS-Y-2159"
+    },
+    {
+      "name": "LuaControl_NullBindingRegister_FUN_00CDAEB0",
+      "kind": "function",
+      "address": "0x00CDAEB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt",
+        "BCS-Y-0724"
+      ],
+      "notes": "Registers a binding using DAT_0130C778, the shared 0xE0000000 null SID sentinel established by BCS-Y-0724, through FUN_00CE1CC0, then completes the surrounding control registration. The writer stores the token before conditional registry validation.",
+      "id": "BCS-Y-2160"
+    },
+    {
+      "name": "LuaControl_StaticBindingRegister_FUN_00CDDE20",
+      "kind": "function",
+      "address": "0x00CDDE20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt",
+        "xivl-decomp:asm/ffxivgame/008dde20_FUN_00cdde20.s"
+      ],
+      "notes": "Registers a static Lua control binding from a caller-supplied SID-domain token. Assembly formats the name suffix from token & 0x000FFFFF and the function passes the unchanged full token to FUN_00CE1CC0.",
+      "id": "BCS-Y-2161"
+    },
+    {
+      "name": "LuaControl_BindingSidWriter_FUN_00CE1CC0",
+      "kind": "function",
+      "address": "0x00CE1CC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Direct writer of Lua control binding-entry +0x70. It unconditionally stores the caller-supplied SID-domain token, then checks exact registry membership through FUN_00D03680. Only a successful check sets +0x7E valid and permits the same token to be mirrored to a resolved linked entry +0x0C.",
+      "id": "BCS-Y-2162"
+    },
+    {
+      "name": "LuaControl_BindingSidGetter_FUN_00CC7030",
+      "kind": "function",
+      "address": "0x00CC7030",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Reads and returns binding-entry +0x70. Resolution belongs to the surrounding caller chain; the direct PlayerBase EventStart route copies this returned SID-domain token to application payload +0x08.",
+      "id": "BCS-Y-2163"
+    },
+    {
+      "name": "SidRegistry_PartitionIndex_FUN_00D03340",
+      "kind": "function",
+      "address": "0x00D03340",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Extracts (sid >> 20) & 0xF as a registry partition index. Its callers use that index for keyed registry lookup; this helper itself performs no lookup. The nibble is registry structure, not independent command flags.",
+      "id": "BCS-Y-2164"
+    },
+    {
+      "name": "SidRegistry_Validate_FUN_00D03540",
+      "kind": "function",
+      "address": "0x00D03540",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Validates a SID against its registry node using the keyed lookup and mask comparison (sid & 0xF0F00000) == node+0x0C.",
+      "id": "BCS-Y-2165"
+    },
+    {
+      "name": "SidRegistry_ResolveScoped_FUN_00D03610",
+      "kind": "function",
+      "address": "0x00D03610",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Resolves a supplied SID through its registry partition and returns the registry node's canonical SID in a BCS-Y-1801 scoped handle.",
+      "id": "BCS-Y-2166"
+    },
+    {
+      "name": "SidRegistry_ContainsExact_FUN_00D03680",
+      "kind": "function",
+      "address": "0x00D03680",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Performs an exact SID equality check against the resolved registry node's +0x0C value. FUN_00CE1CC0 uses it while installing binding-entry +0x70.",
+      "id": "BCS-Y-2167"
+    },
+    {
+      "name": "SidRegistry_AllocateScoped_FUN_00D038C0",
+      "kind": "function",
+      "address": "0x00D038C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Allocates the next unused SID in a per-key runtime registry, seeding a missing record from the key tag, incrementing until unused, inserting the chosen SID, and returning it in a BCS-Y-1801 scoped handle. Concrete values are runtime/order dependent.",
+      "id": "BCS-Y-2168"
+    },
+    {
+      "name": "Application_Main_Element_System_ClientWorkElement_factory_FUN_005334C0",
+      "kind": "function",
+      "address": "0x005334C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt",
+        "manifests/structs.json"
+      ],
+      "notes": "[Tier C537] The selector-indexed callback installed by [[BCS-Y-0530]] at table index 0x0D. It allocates exactly 0x838 bytes and, on success, calls [[BCS-Y-2052]] to construct RTTI-confirmed Application::Main::Element::System::ClientWorkElement. A verified address-reference export records one reference to this function, the table assignment in FUN_0053B230; computed, indirect, dynamic, and unanalyzed references remain outside that bounded census. Evidence: tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt and tools/ghidra/logs/c537_rapture-selector-0d-refs.txt.",
+      "id": "BCS-Y-2169"
+    },
+    {
+      "name": "Application_Main_Element_System_ClientWorkElement_complete_teardown_FUN_0055D100",
+      "kind": "function",
+      "address": "0x0055D100",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt",
+        "manifests/structs.json"
+      ],
+      "notes": "[Tier C537] Complete-object teardown for RTTI-confirmed Application::Main::Element::System::ClientWorkElement. It restores primary vftable 0x00FA42B0 at +0x0 and secondary input vftable 0x00FA418C at +0x8, destroys the embedded +0x98 storage through FUN_0055CF20, then calls the RaptureElement teardown chain through FUN_004DB6A0. Scalar-deleting wrapper FUN_00567A60 calls this function and frees the 0x838-byte allocation when flag bit 0 is set. Evidence: tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt and tools/ghidra/logs/c537_rapture-selector-0d-refs.txt.",
+      "id": "BCS-Y-2170"
+    },
+    {
+      "name": "Application_Main_RaptureElementRegistry_ctor_FUN_0053B230",
+      "kind": "function",
+      "address": "0x0053B230",
+      "confidence": "structural",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c538_rapture-element-registry.txt"
+      ],
+      "notes": "[Tier C538] In-place constructor for the exact 0x48 non-polymorphic member at RaptureElementContainer+0x4AC. Initializes the callback-vector header, zeroes fixed caches at +0x10,+0x14,+0x18,+0x1C,+0x20,+0x28,+0x2C,+0x34 and +0x44, constructs the map-like cache, and sizes or ensures a 28-entry callback table. It directly installs 25 factories. Cache slots +0x24 and +0x30 are populated by the invoker but are not directly written here. The descriptive registry name does not claim an authoritative retail class or template identity.",
+      "id": "BCS-Y-2171"
+    },
+    {
+      "name": "Application_Main_RaptureElementRegistry_dtor_FUN_004DED90",
+      "kind": "function",
+      "address": "0x004DED90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c538_rapture-element-registry.txt"
+      ],
+      "notes": "[Tier C538] RaptureElementContainer teardown calls this helper with ECX=container+0x4AC. It destroys the member's +0x38 map-like cache, frees the callback-vector allocation when non-null, and clears begin/end/capacity-end at +0x04/+0x08/+0x0C.",
+      "id": "BCS-Y-2172"
+    },
+    {
+      "name": "Application_Main_RaptureElementRegistry_clear_by_id_FUN_005374D0",
+      "kind": "function",
+      "address": "0x005374D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c538_rapture-element-registry.txt"
+      ],
+      "notes": "[Tier C538] Clears fixed registry caches for directly compared encoded ids and otherwise attempts removal from the +0x38 map-like cache. The direct comparison for cache +0x28 is literal 0x0000000C, not initialization id 0xC000000C; that mismatch is preserved without correction.",
+      "id": "BCS-Y-2173"
+    },
+    {
+      "name": "Application_Main_Element_DaemonElement_factory_FUN_00532FC0",
+      "kind": "function",
+      "address": "0x00532FC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x00 callback. Allocates exactly 0x94 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00532F40; retained constructor vftables and RTTI identify Application::Main::Element::DaemonElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2174"
+    },
+    {
+      "name": "Application_Main_Element_System_CommonResourceElement_factory_FUN_00533040",
+      "kind": "function",
+      "address": "0x00533040",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x01 callback. Allocates exactly 0x98 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0055F940; retained constructor vftables and RTTI identify Application::Main::Element::System::CommonResourceElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2175"
+    },
+    {
+      "name": "Application_Main_Element_System_CameraElement_factory_FUN_005330C0",
+      "kind": "function",
+      "address": "0x005330C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x02 callback. Allocates exactly 0x194 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00566380; retained constructor vftables and RTTI identify Application::Main::Element::System::CameraElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2176"
+    },
+    {
+      "name": "Application_Main_Element_System_CutManagerElement_factory_FUN_00533140",
+      "kind": "function",
+      "address": "0x00533140",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x03 callback. Allocates exactly 0x120 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00565170; retained constructor vftables and RTTI identify Application::Main::Element::System::CutManagerElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2177"
+    },
+    {
+      "name": "Application_Main_Element_System_GameManagerElement_factory_FUN_005331C0",
+      "kind": "function",
+      "address": "0x005331C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x04 callback. Allocates exactly 0x260 bytes, returns zero on allocation failure, and otherwise calls constructor 0x005600B0; retained constructor vftables and RTTI identify Application::Main::Element::System::GameManagerElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2178"
+    },
+    {
+      "name": "Application_Main_Element_System_BootupElement_factory_FUN_005333C0",
+      "kind": "function",
+      "address": "0x005333C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x05 callback. Allocates exactly 0x130 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0055EB70; retained constructor vftables and RTTI identify Application::Main::Element::System::BootupElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2179"
+    },
+    {
+      "name": "Application_Main_Element_System_MainElement_factory_FUN_00533240",
+      "kind": "function",
+      "address": "0x00533240",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x06 callback. Allocates exactly 0xCC bytes, returns zero on allocation failure, and otherwise calls constructor 0x00564F80; retained constructor vftables and RTTI identify Application::Main::Element::System::MainElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2180"
+    },
+    {
+      "name": "Application_Main_Element_System_TargetElement_factory_FUN_005332C0",
+      "kind": "function",
+      "address": "0x005332C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x07 callback. Allocates exactly 0x104 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00566880; retained constructor vftables and RTTI identify Application::Main::Element::System::TargetElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2181"
+    },
+    {
+      "name": "Application_Main_Element_Chara_CharaElement_factory_FUN_00533540",
+      "kind": "function",
+      "address": "0x00533540",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x08 callback. Allocates exactly 0xEF0 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0058B4E0; retained constructor vftables and RTTI identify Application::Main::Element::Chara::CharaElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2182"
+    },
+    {
+      "name": "Application_Main_Element_Map_MapLayoutElement_factory_FUN_005335C0",
+      "kind": "function",
+      "address": "0x005335C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x09 callback. Allocates exactly 0x208 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0059EE50; retained constructor vftables and RTTI identify Application::Main::Element::Map::MapLayoutElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2183"
+    },
+    {
+      "name": "Application_Main_Element_Effect_EffectElement_factory_FUN_00533640",
+      "kind": "function",
+      "address": "0x00533640",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x0A callback. Allocates exactly 0x9C bytes, returns zero on allocation failure, and otherwise calls constructor 0x00687320; retained constructor vftables and RTTI identify Application::Main::Element::Effect::EffectElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2184"
+    },
+    {
+      "name": "Application_Main_Element_System_CustomControlElement_factory_FUN_00533340",
+      "kind": "function",
+      "address": "0x00533340",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x0B callback. Allocates exactly 0x98 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0055D170; retained constructor vftables and RTTI identify Application::Main::Element::System::CustomControlElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2185"
+    },
+    {
+      "name": "Application_Main_Element_System_ScreenshotManagerElement_factory_FUN_00533440",
+      "kind": "function",
+      "address": "0x00533440",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x0C callback. Allocates exactly 0x1B8 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00561190; retained constructor vftables and RTTI identify Application::Main::Element::System::ScreenshotManagerElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2186"
+    },
+    {
+      "name": "Application_Main_Element_Window_WidgetElement_factory_FUN_00533740",
+      "kind": "function",
+      "address": "0x00533740",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x0E callback. Allocates exactly 0xFB0 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0066F770; retained constructor vftables and RTTI identify Application::Main::Element::Window::WidgetElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2187"
+    },
+    {
+      "name": "Application_Main_Element_Window_SqwtElement_factory_FUN_005336C0",
+      "kind": "function",
+      "address": "0x005336C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x0F callback. Allocates exactly 0x98 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0066EB80; retained constructor vftables and RTTI identify Application::Main::Element::Window::SqwtElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2188"
+    },
+    {
+      "name": "Application_Main_Element_Window_Debug_DebugWindow_factory_FUN_005337C0",
+      "kind": "function",
+      "address": "0x005337C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x10 callback. Allocates exactly 0x1E78 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00688710; retained constructor vftables and RTTI identify Application::Main::Element::Window::Debug::DebugWindow. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2189"
+    },
+    {
+      "name": "Application_Main_Element_Window_LuaDebug_LuaDebugOut_factory_FUN_005338C0",
+      "kind": "function",
+      "address": "0x005338C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x13 callback. Allocates exactly 0xBC8 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0068D510; retained constructor vftables and RTTI identify Application::Main::Element::Window::LuaDebug::LuaDebugOut. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2190"
+    },
+    {
+      "name": "Application_Main_Element_Light_LightElement_factory_FUN_005339C0",
+      "kind": "function",
+      "address": "0x005339C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x14 callback. Allocates exactly 0x94 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0068E4C0; retained constructor vftables and RTTI identify Application::Main::Element::Light::LightElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2191"
+    },
+    {
+      "name": "Application_Main_Element_Debug_DebugInfoElement_factory_FUN_00533A40",
+      "kind": "function",
+      "address": "0x00533A40",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x15 callback. Allocates exactly 0x94 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0068E680; retained constructor vftables and RTTI identify Application::Main::Element::Debug::DebugInfoElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2192"
+    },
+    {
+      "name": "Application_Main_Element_Effect_EffectDebugElement_factory_FUN_00533AC0",
+      "kind": "function",
+      "address": "0x00533AC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x16 callback. Allocates exactly 0x120 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00686FB0; retained constructor vftables and RTTI identify Application::Main::Element::Effect::EffectDebugElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2193"
+    },
+    {
+      "name": "Application_Main_Element_XamlElement_factory_FUN_00539940",
+      "kind": "function",
+      "address": "0x00539940",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x19 callback. Allocates exactly 0xB8 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00539890; retained constructor vftables and RTTI identify Application::Main::Element::XamlElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2194"
+    },
+    {
+      "name": "Application_Main_Element_FormElement_factory_FUN_0053B1B0",
+      "kind": "function",
+      "address": "0x0053B1B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538] Directly installed selector 0x1A callback. Allocates exactly 0x280 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0053AF60; retained constructor vftables and RTTI identify Application::Main::Element::FormElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2195"
+    },
+    {
+      "name": "RaptureElement_AutoIdCreateBySelector_FUN_0075BE10",
+      "kind": "function",
+      "address": "0x0075BE10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539] Calls [[BCS-Y-0532]] with its caller-supplied selector, then calls [[BCS-Y-1837]] on the created RaptureElement; the final getter leaves the element's +0x88 id/handle in the ABI return register even though Ghidra types the wrapper as void. Its only direct callers are FUN_006E3650 and FUN_006E3920. The allocator-backed create path admits 0xC1000000 plus the allocated index, or 0xC0000000 when the allocator returns its sentinel. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2196"
+    },
+    {
+      "name": "Application_Lua_Control_slot20_005F5F70_selector_0x1A",
+      "kind": "function",
+      "address": "0x005F5F70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539] Six-byte constant returner whose complete body returns selector 0x1A. Direct PE/vftable evidence places it at slot 20 (+0x50) in the Control::WidgetBase and DesktopUtil vtables reached by FUN_006E3920. Those slot-27 wrappers pass this return through FUN_0075BE10 to [[BCS-Y-0532]] and the registry invoker [[BCS-Y-0530]]. The return value selects the FormElement factory [[BCS-Y-2195]]; factory result identity does not name the registry. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2197"
+    },
+    {
+      "name": "Control_SpreadSheet_slot27_006E3650_create_selected_element_FUN_006E3650",
+      "kind": "function",
+      "address": "0x006E3650",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539] Control::SpreadSheet vtable slot 27 (+0x6C). Calls the same object's virtual slot 20 (+0x50), whose SpreadSheet entry is [[BCS-Y-1562]] and returns selector 0, then passes the selector through FUN_0075BE10 to registry creation. It wraps the resulting encoded id through FUN_00CC9320/FUN_0078BBB0 and performs paired cleanup. The function has no direct instruction caller; its recorded reference is the SpreadSheet vtable data entry at 0x00FD77B0. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2198"
+    },
+    {
+      "name": "Control_WidgetBase_DesktopUtil_slot27_006E3920_create_selected_element_FUN_006E3920",
+      "kind": "function",
+      "address": "0x006E3920",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539] Shared Control::WidgetBase and DesktopUtil vtable slot 27 (+0x6C). Calls the same object's virtual slot 20 (+0x50), which is FUN_005F5F70 and returns selector 0x1A for both vtables, then passes it through FUN_0075BE10 to registry creation. It wraps the resulting encoded id through FUN_00CC9320/FUN_0078BBB0 and performs paired cleanup. The function has no direct instruction caller; its recorded references are vtable data entries at 0x00FD5AE0 and 0x00FDFD08. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2199"
+    },
+    {
+      "name": "RaptureElement_EnsureFormElementFixedId_FUN_0075BE50",
+      "kind": "function",
+      "address": "0x0075BE50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt",
+        "manifests/rapture_selector_0d_clientwork.json"
+      ],
+      "notes": "[Tier C539] Looks up encoded id 0xC0000024 through [[BCS-Y-0534]] and, only when absent, calls [[BCS-Y-0531]] with selector 0x1A and the same id. The selector reaches FormElement factory [[BCS-Y-2195]]. The verified direct-reference export records zero references to this function, so static evidence supplies no reachable lifecycle for this standalone helper and does not exclude computed or indirect dispatch. Evidence: tools/ghidra/logs/c539_rapture-selector-producer-boundary.txt.",
+      "id": "BCS-Y-2200"
     }
   ]
 }
