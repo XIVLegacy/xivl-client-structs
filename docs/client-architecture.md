@@ -306,10 +306,36 @@ The presenter requires byte `MapScreenControl+0x57C == 2`. It lazily resolves
 exact resource key `group_marker_data`, dynamically casts the resource from
 `Sqwt::ResourceDictionary` to `Sqwt::Data::SqwtXmlDataMaker`, and caches the
 borrowed pointer at +0x9E8. MapScreenControl teardown has no release edge for
-that cached pointer. The 0x210-byte data maker (BCS-S-0494) owns embedded
-property state and a 0xE4-byte `Sqwt::Xml::XmlDocument` at +0x11C
-(BCS-S-0493). Accepted source rows are compacted to dense zero-based indices;
-the source record keys are not retained as XML row keys.
+that cached pointer. Primary vtable slot 7 (BCS-Y-2222, descriptive name)
+follows the local resource collection pointer at +0x294, scans the pointer
+range held at collection +0x08/+0x0C, compares the requested key with each
+ResourceDictionary-derived object's owned +0x4C key string, and delegates a
+miss through the parent resource chain. The returned complete object is the
+value; the presenter only borrows it.
+
+`Sqwt::ResourceDictionary` is a retail RTTI class with exact size 0xC4
+(BCS-S-0496). BCS-Y-2223/2224 construct and tear down the class,
+BCS-Y-2225 allocates it, and BCS-Y-2226 is deleting destruction. Its teardown
+destroys the +0x4C key wrapper. The 0x210-byte data maker (BCS-S-0494) derives
+from that class, owns embedded property state, and owns a 0xE4-byte
+`Sqwt::Xml::XmlDocument` at +0x11C (BCS-S-0493). Accepted source rows are
+compacted to dense zero-based indices; the source record keys are not retained
+as XML row keys.
+
+The generic markup producer is also concrete. BCS-Y-2227 recognizes the
+`SqwtXmlDataMaker` tag and installs the RTTI-confirmed nine-slot
+`Sqwt::Markup::XamlSqwtXmlDataMaker` vtable. Slot 8, BCS-Y-2228, allocates
+0x210 bytes and calls the concrete data-maker constructor; BCS-Y-2229 is a
+second allocating factory. This proves how a data maker can be materialized,
+not which factory or package supplied the instance keyed `group_marker_data`.
+
+The package references remain separate. `common/mapMarker.le.spk` is used by
+two MapScreen callbacks that apply the package with instances `m00010` and
+`m00020` to RTTI-cast `Sqwt::Controls::SparkleControl` objects.
+`debug/pc_mark_sample.le.spk` is assigned only by MapScreenControl property
+handler case 0x1F to +0xA00. Neither route inserts `group_marker_data`, passes
+that key, or establishes package ownership. Shared control co-residence and
+MapMarker-like names are not registration edges.
 
 Each accepted row receives the exact UI property groups `X:Int`, `Z:Int`,
 `Layout:Int`, `Text:String`, `Visibility:String=Visible`,
@@ -324,8 +350,10 @@ BCS-Y-2211 removes stale suffix indices in descending order with exact
 The presenter supplies it as the String value of the Template property; it
 does not call a native constructor or expose a native marker vtable. The
 bounded lifetime is therefore the XmlDocument-backed presentation row, not a
-separately cataloged marker object. A framework object may be materialized at
-runtime, but its type and ownership are outside the static route.
+separately cataloged marker object. The XamlSqwtXmlDataMaker path materializes
+the data maker, not the object named by the Template value. A framework object
+may be materialized from `MapMarkerParty` at runtime, but its type and
+ownership remain outside the static route.
 
 The row helper uses a separate stack-only 0x18-byte context (BCS-S-0495).
 BCS-Y-2212 copies it, BCS-Y-2214 uses it as hidden `this` while deriving
@@ -340,7 +368,7 @@ PcSearch ownership of MapScreenControl, group-marker rows, or marker
 presentation.
 
 Refs: `manifests/s2c_018d_map_marker_presentation.json`; BCS-S-0078..0080,
-BCS-S-0492..0495; BCS-Y-0890, BCS-Y-2201..2221.
+BCS-S-0492..0496; BCS-Y-0890, BCS-Y-2201..2229.
 
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 
