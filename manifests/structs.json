@@ -3439,7 +3439,9 @@
       "sourceRefs": [
         "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
         "manifests/actor_map_writers.json",
-        "manifests/async_queue_producer.json"
+        "manifests/async_queue_producer.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
       "fields": [
         {
@@ -3528,10 +3530,24 @@
         },
         {
           "offset": "0x004AC",
-          "size": "0x048",
-          "name": "indexed_method_interface",
-          "type": "unknown[0x48]",
-          "notes": "Passed as the interface object to FUN_00537620 (BCS-Y-0530). That helper accesses its method range and result-cache slots through +0x44, but the concrete type name is unresolved."
+          "size": "0x02C",
+          "name": "indexed_method_interface_prefix",
+          "type": "unknown[0x2C]",
+          "notes": "Prefix of the unresolved indexed-method interface passed to FUN_00537620 (BCS-Y-0530). The method range and earlier result-cache slots remain inside this segment."
+        },
+        {
+          "offset": "0x004D8",
+          "size": "0x004",
+          "name": "client_work_element",
+          "type": "ApplicationMainElementSystemClientWorkElement *",
+          "notes": "Nullable selector-0x0D result cache at indexed interface +0x2C. FUN_005334C0 (BCS-Y-2169) creates the RTTI-confirmed ClientWorkElement; FUN_005374D0 clears this field for encoded id 0xC000000D."
+        },
+        {
+          "offset": "0x004DC",
+          "size": "0x018",
+          "name": "indexed_method_interface_suffix",
+          "type": "unknown[0x18]",
+          "notes": "Suffix of the same unresolved indexed-method interface, including later result-cache slots through interface +0x44."
         },
         {
           "offset": "0x004F4",
@@ -3849,7 +3865,7 @@
           "notes": "Unobserved tail bytes up to the directly evidenced MainModule+0x17920 boundary."
         }
       ],
-      "notes": "Full byte-accounted layout of the RaptureElementContainer subobject embedded at MainModule+0x10. Its exact 0x17910 extent follows from the next direct MainModule fields at +0x17920 and +0x17924, while FUN_004DBF40 constructs two 0x54-byte event slots through container+0x17908. Unknown spans preserve bytes whose member boundaries or concrete types are not established by retained evidence.",
+      "notes": "Full byte-accounted layout of the RaptureElementContainer subobject embedded at MainModule+0x10. Its exact 0x17910 extent follows from the next direct MainModule fields at +0x17920 and +0x17924, while FUN_004DBF40 constructs two 0x54-byte event slots through container+0x17908. Unknown spans preserve bytes whose member boundaries or concrete types are not established by retained evidence. Tier C537 partitions the selector-0x0D result cache at +0x4D8 without assigning a concrete type to the enclosing +0x4AC interface.",
       "id": "BCS-S-0053"
     },
     {
@@ -8292,7 +8308,9 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c327_clientwork-layouts.txt",
-        "manifests/symbols.json"
+        "manifests/symbols.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
       "fields": [
         {
@@ -8300,7 +8318,7 @@
           "size": "0x78",
           "name": "record_storage",
           "type": "unknown[0x78]",
-          "notes": "Exact array-element stride. FUN_00567210 constructs a default std::string at record offset zero and FUN_0061EC10 destroys it, but current evidence does not establish the string's exact member boundary or the types of the remaining bytes."
+          "notes": "Exact array-element stride. FUN_00567210 constructs a default std::string at record offset zero and FUN_0061EC10 destroys it, but current evidence does not establish the string's exact member boundary or the types of the remaining bytes. FUN_0055CF70 writes the marker-update scalar lanes within each record and advances by this exact stride; the retained evidence still does not justify finer stable member types."
         }
       ],
       "notes": "Exact ClientWork record layout at the current evidence boundary. The MSVC vector constructor and destructor iterators both use stride 0x78 and count 0x10. The record begins with a confirmed std::string lifetime, but assigning a concrete string size would exceed the retained evidence, so the stride remains one honest unknown-typed field.",
@@ -8314,7 +8332,9 @@
       "sourceRefs": [
         "tools/ghidra/logs/c327_clientwork-layouts.txt",
         "tools/ghidra/logs/c327_clientwork-fieldrefs.txt",
-        "manifests/symbols.json"
+        "manifests/symbols.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
       "fields": [
         {
@@ -8333,10 +8353,17 @@
         },
         {
           "offset": "0x008",
-          "size": "0x010",
-          "name": "header_state",
-          "type": "uint32_t[4]",
-          "notes": "Four dwords zero-initialized by FUN_0055F830; individual semantics are unresolved."
+          "size": "0x00C",
+          "name": "header_values",
+          "type": "uint32_t[3]",
+          "notes": "Zero-initialized by FUN_0055F830 and overwritten from the first three prepared values by FUN_0055CF70."
+        },
+        {
+          "offset": "0x014",
+          "size": "0x004",
+          "name": "record_count",
+          "type": "int32_t",
+          "notes": "Zero-initialized by FUN_0055F830. FUN_0055CF70 sign-extends the prepared byte count into this field before iterating the 0x78-byte records."
         },
         {
           "offset": "0x018",
@@ -8360,7 +8387,7 @@
           "notes": "Unobserved bytes closing the storage object at the enclosing allocation boundary."
         }
       ],
-      "notes": "Full byte-accounted ClientWork storage layout. FUN_0055F830 initializes the header, constructs sixteen 0x78-byte records at +0x18, and clears the byte at +0x798. Placement at ClientWorkElement+0x98 and the enclosing 0x838-byte factory close the storage extent at exactly 0x7A0.",
+      "notes": "Full byte-accounted ClientWork storage layout. FUN_0055F830 initializes the header, constructs sixteen 0x78-byte records at +0x18, and clears the byte at +0x798. FUN_0055CF70 updates the three header values, record count, and record array for s2c 0x018D; FUN_0055D0D0 and FUN_0055D0F0 separately test and clear the +0x798 byte. Placement at ClientWorkElement+0x98 and the enclosing 0x838-byte factory close the storage extent at exactly 0x7A0.",
       "id": "BCS-S-0079"
     },
     {
@@ -8374,7 +8401,10 @@
         "tools/ghidra/logs/c321_direct-callers.txt",
         "tools/ghidra/logs/c327_clientwork-layouts.txt",
         "tools/ghidra/logs/c327_clientwork-fieldrefs.txt",
-        "manifests/symbols.json"
+        "manifests/symbols.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
       "fields": [
         {
@@ -8399,7 +8429,7 @@
           "notes": "Embedded storage constructed by FUN_0055F830. Instruction 0x0055F8FD loads ECX from complete-object +0x98 before the call; FUN_0055D100 tears the same storage down through FUN_0055CF20."
         }
       ],
-      "notes": "Full byte-accounted ClientWorkElement layout. Sole factory FUN_005334C0 allocates exactly 0x838 bytes. Direct instruction evidence fixes the storage subobject at +0x98, and its 0x7A0-byte extent closes exactly at the allocation boundary. Only the separating dword at +0x94 remains unknown-typed.",
+      "notes": "Full byte-accounted ClientWorkElement layout. Selector-table index 0x0D resolves to sole recorded callback FUN_005334C0 (BCS-Y-2169), which allocates exactly 0x838 bytes and calls constructor FUN_0055F8B0 (BCS-Y-2052). Direct instruction evidence fixes the storage subobject at +0x98, and its 0x7A0-byte extent closes exactly at the allocation boundary. Complete teardown is FUN_0055D100 (BCS-Y-2170). Only the separating dword at +0x94 remains unknown-typed.",
       "id": "BCS-S-0080"
     },
     {

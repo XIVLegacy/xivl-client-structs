@@ -173,6 +173,43 @@ static edge currently joins these systems.
 
 Refs: BCS-Y-0412, BCS-Y-0540, BCS-Y-1025, BCS-Y-1864..1868.
 
+### Selector 0x0D owns the ClientWorkElement cached at container+0x4D8
+
+`FUN_0053B230` installs `FUN_005334C0` (BCS-Y-2169) at byte offset
+`0x34` of its selector-indexed factory table, which is index `0x0D`.
+`FUN_00537620` (BCS-Y-0530) invokes that table entry and caches its return
+at indexed-interface `+0x2C`. The interface begins at
+`RaptureElementContainer+0x4AC`, so the cache aliases container `+0x4D8`.
+The explicit route in `FUN_004D9110` supplies selector `0x0D` and encoded
+object id `0xC000000D`.
+
+The selected factory allocates `0x838` bytes and calls `FUN_0055F8B0`
+(BCS-Y-2052). That constructor writes both RTTI-confirmed
+`Application::Main::Element::System::ClientWorkElement` vftables. The object
+contains its `RaptureElement` base through `+0x93`, an unresolved dword at
+`+0x94`, and a `0x7A0`-byte `ClientWorkStorage` at `+0x98`. The storage has
+three header dwords at `+0x08`, a signed record count at `+0x14`, sixteen
+`0x78`-byte records at `+0x18`, and a state byte at `+0x798`.
+
+S2C `0x018D` null-tests container `+0x4D8` and passes pointee `+0x98` to
+`FUN_0055CF70`, which updates the header, count, records, and state byte. A
+separate internal route, `FUN_00691F30`, obtains the same object through
+`FUN_004D7370`, tests storage `+0x798` together with count `+0x14`, invokes
+an indirect consumer when the predicate passes, and clears `+0x798`.
+Teardown runs `FUN_0055D100` (BCS-Y-2170), destroys the embedded storage,
+and enters the normal `RaptureElement` removal path; selector clear case
+`0xC000000D` zeroes the cache.
+
+The direct-reference export records the factory callback only at selector
+index `0x0D`. This is a bounded result: computed, dynamic, indirect, and
+unanalyzed routes remain outside that export, and the concrete type of the
+indexed interface at container `+0x4AC` is unresolved. Wire opcode `0x000D`
+uses the distinct container `+0x4E0` object and does not name this class.
+
+Refs: `manifests/rapture_selector_0d_clientwork.json`; BCS-S-0053,
+BCS-S-0078..0080; BCS-Y-0530, BCS-Y-0754, BCS-Y-0755, BCS-Y-1999,
+BCS-Y-2052, BCS-Y-2169, BCS-Y-2170.
+
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 
 `FUN_004DC690` case `0xCA` (BCS-Y-0525) looks up or creates the actor,

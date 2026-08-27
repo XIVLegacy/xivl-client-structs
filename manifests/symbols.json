@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2155,
+  "symbolCount": 2157,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -2964,9 +2964,11 @@
         "xivl-opcodes:data/client_receivers.json",
         "mdi-019",
         "manifests/actor_cluster_dispatch_model.json",
-        "tools/ghidra/logs/c311_dispatcher-size-verification.txt"
+        "tools/ghidra/logs/c311_dispatcher-size-verification.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
-      "notes": "**CENTRAL PACKET DISPATCHER (option 2)**: FUN_004dc690 at 0x004DC690 (size 3390B). Reads packet opcode at `*(short *)(packet + 2)` (game-message header). Two-branch structure: (1) `if (0x13D < uVar2)` switch covers high opcodes; (2) `if (uVar2 < 0x12E)` switch covers low opcodes. High-opcode switch has a multi-opcode fallthrough group (0x144, 0x145, 0x157-0x16A, 0x16B, 0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199-0x1A2, 0x1A4-0x1A8) that dispatches via `(**(code **)(*piVar12 + 0x24))(iVar8)` where piVar12 = `FUN_004d9910(param_2)` is the actor looked up by packet's actor id. Offset 0x24 = slot 9 of the actor's vftable. So the generic dispatch path is: opcode -> determine actor -> actor->vftable[9](packet). Specific handlers exist for ~30 other opcodes (e.g. 0x143 FUN_00576240, 0x146 FUN_005764c0, 0x196 FUN_00576050, 0x198 FUN_00576150, 0x1A3 FUN_00576140). Low-opcode switch has another fallthrough group (0x0F, 0xCC-0xE5) using the same actor-vftable[9] mechanism (covers 0xD3 SetTargetTime). Combined with FUN_004d8860 (event-family dispatcher), these are the central packet routers that bind opcodes to receivers. | **the actor-cluster-dispatch-model pass Actor cluster characterization**: low-switch (uVar2 < 0x12E) contains dedicated cases 0x02..0x11 (init/teardown/walk) plus cases 0xCA (AddActor) and 0xCB (RemoveActor); 24-opcode multi-case fallthrough 0x0F + 0xCC..0xE5 dispatches via FUN_004d9910(param_2) actor-id-to-actor lookup then actor->vftable[9](packet) - the polymorphic per-actor-class handler. ALL the Actor*Packet types; SetActorPosition; SetActorAppearance; etc.) flow through this generic dispatch path; per-opcode receivers do NOT exist for the Actor cluster (architecturally distinct; the *Receiver class pattern the receiver-discovery pass documented). 0xD2 is observed in pcap (33 hits) but NOT in any case list - it falls into the default/skip branch, suggesting either an engine bug, version drift, or different routing path. | [Tier C309 2026-08-17] Its `this` is Application::Main::RaptureElementContainer, reached from NetworkModule+0x8 through [[BCS-Y-1851]] and then MainModule+0x10 through [[BCS-Y-1997]] / [[BCS-Y-1998]]. At 0x004DD167 it loads a POINTER from `this+0x4D8`, tests it for zero, and uses the pointee at `+0x98`; [[BCS-Y-1999]] returns the same dword field. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [duplicate-address resolution] Authoritative dispatcher row: this one function is primarily the inbound s2c dispatcher and also contains the embedded c2s 0x00CA response emit documented by [[BCS-Y-0321]] in low-switch case 7. Raw retail instructions continue through the shared `ret 8` at 0x004DD3CC..0x004DD3CE, confirming the catalog's 3390-byte body-size convention; Ghidra's 3364 body-address count omits the post-free continuation because the runtime free call is marked noreturn. Evidence: tools/ghidra/logs/c311_dispatcher-size-verification.txt."
+      "notes": "**CENTRAL PACKET DISPATCHER (option 2)**: FUN_004dc690 at 0x004DC690 (size 3390B). Reads packet opcode at `*(short *)(packet + 2)` (game-message header). Two-branch structure: (1) `if (0x13D < uVar2)` switch covers high opcodes; (2) `if (uVar2 < 0x12E)` switch covers low opcodes. High-opcode switch has a multi-opcode fallthrough group (0x144, 0x145, 0x157-0x16A, 0x16B, 0x16C, 0x16F, 0x170, 0x175, 0x177, 0x179, 0x17B, 0x18E, 0x192, 0x194, 0x195, 0x197, 0x199-0x1A2, 0x1A4-0x1A8) that dispatches via `(**(code **)(*piVar12 + 0x24))(iVar8)` where piVar12 = `FUN_004d9910(param_2)` is the actor looked up by packet's actor id. Offset 0x24 = slot 9 of the actor's vftable. So the generic dispatch path is: opcode -> determine actor -> actor->vftable[9](packet). Specific handlers exist for ~30 other opcodes (e.g. 0x143 FUN_00576240, 0x146 FUN_005764c0, 0x196 FUN_00576050, 0x198 FUN_00576150, 0x1A3 FUN_00576140). Low-opcode switch has another fallthrough group (0x0F, 0xCC-0xE5) using the same actor-vftable[9] mechanism (covers 0xD3 SetTargetTime). Combined with FUN_004d8860 (event-family dispatcher), these are the central packet routers that bind opcodes to receivers. | **the actor-cluster-dispatch-model pass Actor cluster characterization**: low-switch (uVar2 < 0x12E) contains dedicated cases 0x02..0x11 (init/teardown/walk) plus cases 0xCA (AddActor) and 0xCB (RemoveActor); 24-opcode multi-case fallthrough 0x0F + 0xCC..0xE5 dispatches via FUN_004d9910(param_2) actor-id-to-actor lookup then actor->vftable[9](packet) - the polymorphic per-actor-class handler. ALL the Actor*Packet types; SetActorPosition; SetActorAppearance; etc.) flow through this generic dispatch path; per-opcode receivers do NOT exist for the Actor cluster (architecturally distinct; the *Receiver class pattern the receiver-discovery pass documented). 0xD2 is observed in pcap (33 hits) but NOT in any case list - it falls into the default/skip branch, suggesting either an engine bug, version drift, or different routing path. | [Tier C309 2026-08-17] Its `this` is Application::Main::RaptureElementContainer, reached from NetworkModule+0x8 through [[BCS-Y-1851]] and then MainModule+0x10 through [[BCS-Y-1997]] / [[BCS-Y-1998]]. At 0x004DD167 it loads a POINTER from `this+0x4D8`, tests it for zero, and uses the pointee at `+0x98`; [[BCS-Y-1999]] returns the same dword field. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [duplicate-address resolution] Authoritative dispatcher row: this one function is primarily the inbound s2c dispatcher and also contains the embedded c2s 0x00CA response emit documented by [[BCS-Y-0321]] in low-switch case 7. Raw retail instructions continue through the shared `ret 8` at 0x004DD3CC..0x004DD3CE, confirming the catalog's 3390-byte body-size convention; Ghidra's 3364 body-address count omits the post-free continuation because the runtime free call is marked noreturn. Evidence: tools/ghidra/logs/c311_dispatcher-size-verification.txt. | [Tier C537 2026-08-27] The 0x018D case's +0x4D8 pointee is RTTI-confirmed Application::Main::Element::System::ClientWorkElement, created by selector 0x0D factory [[BCS-Y-2169]]. The case passes pointee+0x98 to [[BCS-Y-0890]]; this is a direct object/storage route, not a class name inferred from the opcode label."
     },
     {
       "id": "BCS-Y-0280",
@@ -6135,9 +6137,12 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/actor_factory_drill.json",
-        "tools/ghidra/logs/c310_owner-reattribution-verification.txt"
+        "tools/ghidra/logs/c310_owner-reattribution-verification.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
-      "notes": "346-byte generic OOP method-dispatch helper. Calls `method_table[index](args)` on a caller-supplied interface struct (method_table held at +4..+8 of the interface, entry count computed as `(end-begin)/4`), then caches the returned value at a struct slot determined by `switch(index)`: case 2->+0x18, 3->+0x1c, 4->+0x20, 5->+0x24, 6->+0x10, 7->+0x14, 8->FUN_004e5ca0 special path, 9->+0x34, 0xc->+0x28, 0xd->+0x2c, 0xe->+0x30, 0x11->+0x44. **The actor-factory-drill pass corrective finding**: this is NOT a class factory (as hypothesized when planning the phase from BCS-Y-0525's case 0xCA AddActor handler). It is a method-invocation helper used by [[ZoneActor_CreateOrGetById_FUN_004d90c0]] (BCS-Y-0531) and [[ZoneActor_CreateGenericById_FUN_004d7c10]] (BCS-Y-0532) - both actor create-via-dispatch primitives - to invoke the actor-class registry's create-method by index. Resolving which actor class is actually dispatched (the actor-vftable9-investigation pass open question) requires drilling the interface member at RaptureElementContainer+0x4AC; case 0xCA supplies packet+0x10 as the method index, not as the interface object. | [Tier C309 owner correction 2026-08-17] Case 0xCA loads the value from packet+0x10 at 0x004DCCD1; it is not a member offset on the dispatcher object. | [Tier C310 correction 2026-08-17] The interface attribution from C309 did not reproduce: 0x004D90E7 passes RaptureElementContainer+0x4AC in ECX, while the packet+0x10 value reaches FUN_00537620 as its method index."
+      "notes": "346-byte generic OOP method-dispatch helper. Calls `method_table[index](args)` on a caller-supplied interface struct (method_table held at +4..+8 of the interface, entry count computed as `(end-begin)/4`), then caches the returned value at a struct slot determined by `switch(index)`: case 2->+0x18, 3->+0x1c, 4->+0x20, 5->+0x24, 6->+0x10, 7->+0x14, 8->FUN_004e5ca0 special path, 9->+0x34, 0xc->+0x28, 0xd->+0x2c, 0xe->+0x30, 0x11->+0x44. **Corrective finding**: this is NOT a class factory. It is a method-invocation helper used by [[ZoneActor_CreateOrGetById_FUN_004d90c0]] (BCS-Y-0531) and [[ZoneActor_CreateGenericById_FUN_004d7c10]] (BCS-Y-0532) - both actor create-via-dispatch primitives - to invoke the actor-class registry's create-method by index. Resolving which actor class is actually dispatched remains unresolved and requires drilling the interface member at RaptureElementContainer+0x4AC; case 0xCA supplies packet+0x10 as the method index, not as the interface object. | [Tier C309 owner correction 2026-08-17] Case 0xCA loads the value from packet+0x10 at 0x004DCCD1; it is not a member offset on the dispatcher object. | [Tier C310 correction 2026-08-17] The interface attribution from C309 did not reproduce: 0x004D90E7 passes RaptureElementContainer+0x4AC in ECX, while the packet+0x10 value reaches FUN_00537620 as its method index. | [Tier C537 2026-08-27] FUN_0053B230 installs [[BCS-Y-2169]] at table index 0x0D, and this invoker's case 0x0D caches that callback's Application::Main::Element::System::ClientWorkElement result at interface+0x2C, aliasing RaptureElementContainer+0x4D8. The concrete +0x4AC interface type remains unresolved."
     },
     {
       "id": "BCS-Y-0531",
@@ -8664,7 +8669,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/element_vtable8_bulk.json",
-        "tools/ghidra/logs/c327_clientwork-layouts.txt"
+        "tools/ghidra/logs/c327_clientwork-layouts.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
       "notes": "Application::Main::Element::System::ClientWorkElement secondary input vftable at complete-object +0x8. C327 corrects the older primary label: FUN_0055F8B0 stores 0x00FA418C at +0x8. Evidence: tools/ghidra/logs/c327_clientwork-layouts.txt.",
       "id": "BCS-Y-0754"
@@ -8676,7 +8684,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/element_vtable8_bulk.json",
-        "tools/ghidra/logs/c327_clientwork-layouts.txt"
+        "tools/ghidra/logs/c327_clientwork-layouts.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
       "notes": "Application::Main::Element::System::ClientWorkElement primary vftable at complete-object +0x0. C327 corrects the older secondary label: FUN_0055F8B0 stores 0x00FA42B0 at +0x0, and FUN_0055D100 restores the same table during complete-object teardown. Evidence: tools/ghidra/logs/c327_clientwork-layouts.txt.",
       "id": "BCS-Y-0755"
@@ -10174,9 +10185,11 @@
       "address": "0x0055CF70",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/schema_rescue.json"
+        "manifests/schema_rescue.json",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
-      "notes": "[schema-rescue schema rescue] Apply path for s2c 0x018D PartyMapMarkerUpdate. Writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json. Updates 16 marker entries (stride 0x28) in the marker-update path reached after the RaptureElementContainer+0x4d8 nonzero gate; the field's pointer/widget interpretation is unresolved. The party-subsystem pass opcode_table 0x018D ultimate_callee. | [Tier C309 owner correction 2026-08-17] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "notes": "[schema-rescue schema rescue] Apply path for s2c 0x018D PartyMapMarkerUpdate. Writes offsets +0x08/+0x0c/+0x10/+0x14/+0x798 per receiver_discovery.json. Updates 16 marker entries (stride 0x28) in the marker-update path reached after the RaptureElementContainer+0x4d8 nonzero gate; the field's pointer/widget interpretation is unresolved. The party-subsystem pass opcode_table 0x018D ultimate_callee. | [Tier C309 owner correction 2026-08-17] The owner is Application::Main::RaptureElementContainer because this case is inside [[BCS-Y-0279]], whose ECX base is established by C309. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [Tier C537 2026-08-27] Owner correction: ECX is ClientWorkElement+0x98, the embedded ApplicationMainElementSystemClientWorkStorage (BCS-S-0079), not RaptureElementContainer. The function writes storage +0x08/+0x0C/+0x10, sign-extends the prepared byte count into +0x14, advances records from +0x18 at exact 0x78 stride, and conditionally sets +0x798. Selector 0x0D and RTTI establish the enclosing object identity independently of the opcode label.",
       "id": "BCS-Y-0890"
     },
     {
@@ -24571,9 +24584,11 @@
       "sourceRefs": [
         "tools/ghidra/logs/c309_zone-4d8-object-identity.txt",
         "manifests/symbols.json#BCS-Y-1851",
-        "manifests/symbols.json#BCS-Y-0279"
+        "manifests/symbols.json#BCS-Y-0279",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt"
       ],
-      "notes": "[Tier C309 2026-08-17] Seven-byte read-only accessor: `MOV EAX,[ECX+0x4D8]; RET` returns the Application::Main::RaptureElementContainer pointer field as a dword. Caller FUN_00691F30 adds `+0x98` to the pointee before use, matching central dispatcher [[BCS-Y-0279]]. The ownership chain runs through NetworkModule ctor [[BCS-Y-1851]] and container ctor [[BCS-Y-1998]]. Confidence is confirmed because the complete body directly implements the accessor. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt.",
+      "notes": "[Tier C309 2026-08-17] Seven-byte read-only accessor: `MOV EAX,[ECX+0x4D8]; RET` returns the Application::Main::RaptureElementContainer pointer field as a dword. Caller FUN_00691F30 adds `+0x98` to the pointee before use, matching central dispatcher [[BCS-Y-0279]]. The ownership chain runs through NetworkModule ctor [[BCS-Y-1851]] and container ctor [[BCS-Y-1998]]. Confidence is confirmed because the complete body directly implements the accessor. Evidence: tools/ghidra/logs/c309_zone-4d8-object-identity.txt. | [Tier C537 2026-08-27] The returned pointer is the selector-0x0D cache for RTTI-confirmed Application::Main::Element::System::ClientWorkElement (BCS-S-0080), created by [[BCS-Y-2169]]. Its sole direct caller adds +0x98, tests storage +0x798 with count +0x14, invokes FUN_00691E80 when the predicate passes, and clears +0x798 through FUN_0055D0F0.",
       "id": "BCS-Y-1999"
     },
     {
@@ -25293,9 +25308,12 @@
       "sourceRefs": [
         "manifests/rapture_element_hierarchy.json",
         "tools/ghidra/logs/c320_rapture-element-constructors.txt",
-        "tools/ghidra/logs/c320_rapture-element-rtti.txt"
+        "tools/ghidra/logs/c320_rapture-element-rtti.txt",
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt"
       ],
-      "notes": "[Tier C320 2026-08-18] Direct constructor evidence for Application::Main::Element::System::ClientWorkElement. The body calls [[BCS-Y-0539]] and then installs RTTI-resolved class vftables at this+0x0=0x00FA42B0, this+0x8=0x00FA418C. This establishes a directly encoded RaptureElement-derived constructor rooted at [[BCS-Y-0538]] for objects managed through container ctor [[BCS-Y-1998]]. Confidence is confirmed because the base-ctor call, vftable stores, and RTTI identity are direct. Evidence: tools/ghidra/logs/c320_rapture-element-constructors.txt and tools/ghidra/logs/c320_rapture-element-rtti.txt.",
+      "notes": "[Tier C320 2026-08-18] Direct constructor evidence for Application::Main::Element::System::ClientWorkElement. The body calls [[BCS-Y-0539]] and then installs RTTI-resolved class vftables at this+0x0=0x00FA42B0, this+0x8=0x00FA418C. This establishes a directly encoded RaptureElement-derived constructor rooted at [[BCS-Y-0538]] for objects managed through container ctor [[BCS-Y-1998]]. Confidence is confirmed because the base-ctor call, vftable stores, and RTTI identity are direct. Evidence: tools/ghidra/logs/c320_rapture-element-constructors.txt and tools/ghidra/logs/c320_rapture-element-rtti.txt. | [Tier C537 2026-08-27] Selector-table index 0x0D reaches this constructor through sole recorded factory callback [[BCS-Y-2169]], which allocates exactly 0x838 bytes. Complete teardown is [[BCS-Y-2170]].",
       "id": "BCS-Y-2052"
     },
     {
@@ -26614,6 +26632,32 @@
       ],
       "notes": "Allocates the next unused SID in a per-key runtime registry, seeding a missing record from the key tag, incrementing until unused, inserting the chosen SID, and returning it in a BCS-Y-1801 scoped handle. Concrete values are runtime/order dependent.",
       "id": "BCS-Y-2168"
+    },
+    {
+      "name": "Application_Main_Element_System_ClientWorkElement_factory_FUN_005334C0",
+      "kind": "function",
+      "address": "0x005334C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt",
+        "manifests/structs.json"
+      ],
+      "notes": "[Tier C537 2026-08-27] The selector-indexed callback installed by [[BCS-Y-0530]] at table index 0x0D. It allocates exactly 0x838 bytes and, on success, calls [[BCS-Y-2052]] to construct RTTI-confirmed Application::Main::Element::System::ClientWorkElement. A verified address-reference export records one reference to this function, the table assignment in FUN_0053B230; computed, indirect, dynamic, and unanalyzed references remain outside that bounded census. Evidence: tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt and tools/ghidra/logs/c537_rapture-selector-0d-refs.txt.",
+      "id": "BCS-Y-2169"
+    },
+    {
+      "name": "Application_Main_Element_System_ClientWorkElement_complete_teardown_FUN_0055D100",
+      "kind": "function",
+      "address": "0x0055D100",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt",
+        "tools/ghidra/logs/c537_rapture-selector-0d-refs.txt",
+        "manifests/structs.json"
+      ],
+      "notes": "[Tier C537 2026-08-27] Complete-object teardown for RTTI-confirmed Application::Main::Element::System::ClientWorkElement. It restores primary vftable 0x00FA42B0 at +0x0 and secondary input vftable 0x00FA418C at +0x8, destroys the embedded +0x98 storage through FUN_0055CF20, then calls the RaptureElement teardown chain through FUN_004DB6A0. Scalar-deleting wrapper FUN_00567A60 calls this function and frees the 0x838-byte allocation when flag bit 0 is set. Evidence: tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt and tools/ghidra/logs/c537_rapture-selector-0d-refs.txt.",
+      "id": "BCS-Y-2170"
     }
   ]
 }
