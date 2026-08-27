@@ -14,7 +14,7 @@
     "builder": "FUN_00776760",
     "builderVa": "0x00776760",
     "confidence": "decomp_routed",
-    "summary": "The preserved PlayerBase command path can reach the generic 0x012d EventStart builder. Combat captures contain this fixed-size envelope, but the envelope is also used by noncombat events. Static evidence does not expose a separate per-skill opcode or a stable scalar command-sheet id field."
+    "summary": "The preserved PlayerBase command path reaches the generic 0x012d EventStart builder. Combat captures contain this fixed-size envelope, but the envelope is also used by noncombat events. Application +0x08 is the command control object's resolved binding value, not a directly propagated command-sheet row or runtime scalar; +0x0c is the CRC32 of the exact 128-byte Lua argument tail."
   },
   "commandPath": [
     {
@@ -106,14 +106,14 @@
       {
         "offset": "0x08",
         "width": 4,
-        "source": "builder param_4",
-        "name": "eventArgument0_unresolved"
+        "source": "builder param_4 from Event::Base+0x08; the direct PlayerBase path resolves the command ActorBase control through FUN_00CD7A30 and reads the binding entry at +0x70 through FUN_00CC7030",
+        "name": "contextValue_or_commandControlBindingValue"
       },
       {
         "offset": "0x0c",
         "width": 4,
-        "source": "builder param_5",
-        "name": "eventArgument1_unresolved"
+        "source": "builder param_5 from FUN_00D3AAE0 after FUN_00D3AB60 computes CRC32 over the exact 0x80-byte event tail",
+        "name": "secondaryArgument_or_luaTailCrc32"
       },
       {
         "offset": "0x10",
@@ -140,6 +140,47 @@
         "name": "reserved_or_alignment_tail"
       }
     ]
+  },
+  "applicationFieldProvenance": {
+    "status": "resolved_direct_playerbase_path",
+    "scope": "The direct PlayerBase gameCommand/commandRequest route into EventStart. This classification identifies native sources; it does not assign command-sheet, subcommand, guildleve-mutation, or server-response semantics.",
+    "builderMapping": {
+      "function": "FUN_00776760",
+      "facts": [
+        "param_4 is written at 0x00776771 to builder record +0x20, which is application payload +0x08",
+        "param_5 is written at 0x00776793 to builder record +0x24, which is application payload +0x0c"
+      ]
+    },
+    "offset0x08": {
+      "classification": "command_control_binding_value",
+      "sourceCategory": "another source",
+      "path": "PlayerBaseClass.command supplies commandName then the command ActorBase object -> FUN_0070A010 accepts the first value as Utf8String through FUN_0071CE70 and the second as ActorBase through FUN_0071BB80 -> FUN_00CC73B0 resolves that control through FUN_00CD7A30 and copies the resolved binding entry's +0x70 dword through FUN_00CC7030 -> FUN_00898480 -> FUN_00897310 passes the dword into the concrete event constructor -> shared base constructor FUN_00895860 writes it at Event::Base+0x08 -> FUN_0075E230/FUN_0075E3A0 load Event::Base+0x08 -> FUN_00776760 param_4 -> application +0x08",
+      "exactAnchors": [
+        "FUN_0070A010 call FUN_0071CE70 at 0x0070A0C8",
+        "FUN_0070A010 call FUN_0071BB80 for the second Lua value at 0x0070A10C",
+        "FUN_0070A010 call FUN_00CC73B0 at 0x0070A11C",
+        "FUN_00CC7030 reads resolved entry+0x70 at 0x00CC7031",
+        "FUN_00897310 pushes the binding-value pointer at 0x00897396 and calls FUN_00896680 at 0x0089739A",
+        "FUN_00895860 writes Event::Base+0x08 at 0x0089589C",
+        "FUN_0075E230 loads Event::Base+0x08 at 0x0075E31E and calls FUN_00776760 at 0x0075E32F",
+        "FUN_0075E3A0 loads Event::Base+0x08 at 0x0075E499 and calls FUN_00776760 at 0x0075E4AA"
+      ],
+      "wireCalibration": "The 60 retained 0x012d samples contain 10 distinct network-order values at +0x08: 0x0026, 0x002b, 0x003d, 0x4024, 0x8025, 0x8026, 0x8028, 0x8033, 0xc025, and 0xc026. None equals the trigger or owner actor dword. This is consistent with a separate binding value and rejects the inherited actor-id label.",
+      "semanticBoundary": "FUN_00CE1CC0 writes binding-entry +0x70 from a caller-supplied value, but the bounded trace does not prove that value is a gameCommand row, subcommand, or stable cross-class enum. The field is therefore named by provenance, not by an inferred sheet meaning."
+    },
+    "offset0x0c": {
+      "classification": "crc32_of_exact_lua_tail",
+      "sourceCategory": "runtime arguments after serialization",
+      "path": "FUN_0075E230/FUN_0075E3A0 stage the exact 0x80-byte event tail -> FUN_00D3AB60 initializes CRC state and calls table-driven CRC32 core FUN_00D3A380 over length 0x80 -> FUN_00D3AAE0 returns the stored dword -> FUN_00776760 param_5 -> application +0x0c",
+      "exactAnchors": [
+        "FUN_0075E230 calls FUN_00D3AB60 with length 0x80 at 0x0075E2E3 and FUN_00D3AAE0 at 0x0075E2F4",
+        "FUN_0075E3A0 calls FUN_00D3AB60 with length 0x80 at 0x0075E44C and FUN_00D3AAE0 at 0x0075E45D",
+        "FUN_00D3AB60 calls CRC32 core FUN_00D3A380 at 0x00D3AB7D and stores the result at state+0x04 at 0x00D3AB85"
+      ],
+      "wireCalibration": "Interpreting +0x0c as a little-endian dword, 59 of the 60 retained 0x012d samples equal standard CRC32 of application +0x31..+0xb0. invite_join_party.pcapng is the sole mismatch, so the CRC32 name is limited to the proven direct PlayerBase wrappers and is not promoted as a universal property of every EventStart producer.",
+      "semanticBoundary": "The checksum is a deterministic function of the serialized runtime arguments, not a separately propagated journalID, subindex, command row, or server code."
+    },
+    "evidence": "tools/ghidra/logs/lane2_eventstart-field-provenance.txt"
   },
   "clientPrechecks": [
     {
@@ -196,7 +237,7 @@
   "commandIdRelationship": {
     "status": "resolved_owner_static_actor_identity",
     "summary": "For owner IDs in the 0xa0f00000 static-actor block, application payload offset 0x04 carries a command static-actor identity in the low 16 bits. This relationship is general to EventStart, not combat-specific. Owners outside that block remain event-owner actor IDs and do not support the mask.",
-    "unresolvedBoundary": "The conditional owner static-actor identity is resolved. Direct propagation of a gameCommand sheet row, including the separate application offset 0x08 field, remains unproven; 12 static command-owner occurrences have no gameCommand row.",
+    "unresolvedBoundary": "The conditional owner static-actor identity is resolved. Application +0x08 is also resolved by provenance: it is the command control object's binding-entry +0x70 value, not a directly propagated gameCommand row. Its binding-value enum semantics remain unnamed; 12 static command-owner occurrences have no gameCommand row.",
     "sourceSnapshots": {
       "captures": {
         "repository": "XIVLegacy/xivl-captures",
@@ -1532,7 +1573,7 @@
       "The 0xa0f00000 prefix is a tested partition, not evidence imported from a server reimplementation.",
       "Owners outside the 0xa0f00000 block are not masked into command rows.",
       "A staticactor /Command join does not imply that the row exists in gameCommand; 12 static command-owner occurrences use actors absent from that sheet.",
-      "Client-data command names and parameters remain client-side metadata, not server validation semantics."
+      "Client-data command names and parameters remain client-side metadata, not server validation semantics. Application +0x08 is not journalID, subindex, or another runtime scalar; those values enter the independent 128-byte Lua tail. Application +0x0c is that tail's CRC32, not a server status or response code."
     ]
   },
   "captureBoundary": {
@@ -1561,6 +1602,16 @@
     "manifests/c2s_emit_sites.json",
     "xivl-decomp:asm/ffxivgame/002ee680_FUN_006ee680.s",
     "xivl-decomp:asm/ffxivgame/0035e3a0_FUN_0075e3a0.s",
+    "xivl-decomp:asm/ffxivgame/0035e230_FUN_0075e230.s",
+    "xivl-decomp:asm/ffxivgame/0030a010_FUN_0070a010.s",
+    "xivl-decomp:asm/ffxivgame/00497310_FUN_00897310.s",
+    "xivl-decomp:asm/ffxivgame/00495860_FUN_00895860.s",
+    "xivl-decomp:asm/ffxivgame/008c73b0_FUN_00cc73b0.s",
+    "xivl-decomp:asm/ffxivgame/008d7a30_FUN_00cd7a30.s",
+    "xivl-decomp:asm/ffxivgame/008c7030_FUN_00cc7030.s",
+    "xivl-decomp:asm/ffxivgame/0093ab60_FUN_00d3ab60.s",
+    "xivl-decomp:asm/ffxivgame/0093a380_FUN_00d3a380.s",
+    "xivl-decomp:asm/ffxivgame/0093aae0_FUN_00d3aae0.s",
     "xivl-decomp:asm/ffxivgame/000d6d30_FUN_004d6d30.s",
     "xivl-decomp:asm/ffxivgame/000e0240_FUN_004e0240.s",
     "xivl-client-scripts:manifests/scripts.json#lua/scripts/chara/player/playerbaseclass.lua",

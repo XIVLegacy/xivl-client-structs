@@ -214,9 +214,17 @@ The s2c display side uses dedicated `CommandResult*` opcodes (`0x0139..0x013C`,
 four shape variants for 0/1/10/18 targets). The evidenced c2s command-event
 path rides the generic `EventStartPacket` `0x012D` frame. Combat captures use
 that envelope, but so do many noncombat scenarios; no separate per-skill
-opcode or stable scalar `gameCommand` row id is proven. The command-specific
-meaning remains in the event arguments, inline name/data, and Lua parameter
-tail behind an upstream dynamic boundary. The
+opcode or stable scalar `gameCommand` row id is proven. The direct PlayerBase
+trace closes the two formerly generic dwords. Application `+0x08` comes from
+the command ActorBase object's resolved Lua control binding entry at `+0x70`:
+`FUN_0070A010` extracts the command object, `FUN_00CC73B0` resolves it through
+`FUN_00CD7A30`/`FUN_00CC7030`, `FUN_00895860` stores the result at
+`Event::Base+0x08`, and the EventStart wrapper forwards it. This is a binding
+value, not a directly propagated command-sheet row, subcommand, or runtime
+argument; its enum semantics remain unnamed. Application `+0x0C` is CRC32 of
+the exact 128-byte Lua parameter tail, computed by `FUN_00D3AB60` through
+`FUN_00D3A380`. The command-specific meaning remains in the owner, binding
+value, inline name/data, and serialized Lua tail. The
 `CharaActionController` RTTI (BCS-Y-0055) is a receive-side
 playback/queue class, not a c2s emitter. The `0x012D` builder is
 `FUN_00776760` (BCS-Y-0426); its payload layout is BCS-S-0034
