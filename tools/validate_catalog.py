@@ -170,7 +170,7 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
     if not isinstance(doc, dict):
         return [Finding("ERROR", "cast-chant", "manifest must be an object")]
     if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
-        2, "2026-08-23", "1.23b", "bounded_syncwriter_storage_closure"
+        3, "2026-08-27", "1.23b", "cast_ready_schedule_dispatch_closed"
     ):
         findings.append(Finding("ERROR", "cast-chant.metadata", "snapshot metadata drifted"))
 
@@ -178,7 +178,7 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "captures": {"repository": "XIVLegacy/xivl-captures", "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4"},
         "clientData": {"repository": "XIVLegacy/xivl-client-data", "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6"},
         "clientScripts": {"repository": "XIVLegacy/xivl-client-scripts", "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b"},
-        "decomp": {"repository": "XIVLegacy/xivl-decomp", "commit": "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb"},
+        "decomp": {"repository": "XIVLegacy/xivl-decomp", "commit": "51f908e6a963b7e4a33cdb3f1b9b2f3573ef31df"},
     }
     if doc.get("sourceSnapshots") != expected_snapshots:
         findings.append(Finding("ERROR", "cast-chant.sourceSnapshots", "source snapshot drifted"))
@@ -255,7 +255,7 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
     if not isinstance(duration, dict) or (
         duration.get("formula"), duration.get("widget"), duration.get("storyboard"),
         duration.get("units")
-    ) != (expected_formula, "ProgressBar_MagicCast_Main", "UILuaCommands.StartCastGauge", "unresolved"):
+    ) != (expected_formula, "ProgressBar_MagicCast_Main", "UILuaCommands.StartCastGauge", "whole seconds"):
         findings.append(Finding("ERROR", "cast-chant.uiDuration", "gauge formula drifted"))
     sheet = doc.get("localCommandCastTime", {})
     if not isinstance(sheet, dict):
@@ -279,6 +279,14 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "0x6f", 8, "CastOrReadyPreAction"
     ):
         findings.append(Finding("ERROR", "cast-chant.vfx", "cast-ready selector drifted"))
+    expected_tail = [
+        "target CharaActor+0x12F0 RaptureSchEffectController",
+        "primary vftable 0x00FF5628 slot 2 (+0x08) FUN_0080E050",
+        "FUN_0080CC00",
+        "embedded RaptureSchEffectContainer slot 1 FUN_0080E7A0",
+    ]
+    if cast_vfx.get("route", [])[-4:] != expected_tail:
+        findings.append(Finding("ERROR", "cast-chant.vfx.route", "schedule dispatch tail drifted"))
 
     chant = doc.get("chantStatusBoundary", {})
     if not isinstance(chant, dict):
@@ -293,7 +301,7 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
     unresolved = doc.get("unresolved", [])
     if not isinstance(rejected, list) or not isinstance(unresolved, list):
         findings.append(Finding("ERROR", "cast-chant.boundaries", "boundary sets must be arrays"))
-    elif len(rejected) != 7 or len(unresolved) != 6:
+    elif len(rejected) != 7 or len(unresolved) != 3:
         findings.append(Finding("ERROR", "cast-chant.boundaries",
                                 "rejected-import or unresolved boundary set drifted"))
     source_refs = doc.get("sourceRefs", [])
@@ -310,6 +318,8 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "xivl-client-scripts:lua/scripts/widget/actiongaugewidget.lua",
         "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
         "xivl-decomp:asm/ffxivgame/00373f10_FUN_00773f10.s",
+        "xivl-decomp:docs/actor/cast-timing-clock.md",
+        "manifests/cast_ready_schedule_dispatch.json",
     }
     if not isinstance(source_refs, list) or not all(isinstance(ref, str) for ref in source_refs):
         findings.append(Finding("ERROR", "cast-chant.sourceRefs", "sourceRefs must be strings"))

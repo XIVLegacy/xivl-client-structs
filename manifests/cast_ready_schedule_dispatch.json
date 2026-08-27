@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "generated": "2026-08-27",
+  "gameVersion": "1.23b",
+  "topic": "cast-ready schedule-effect dispatch",
+  "status": "fixed_target_closed_runtime_concrete_target_bounded",
+  "scope": "Resolves FUN_00812B50's CharaActor+0x12F0 virtual call through the fixed Rapture schedule-effect controller. It records the exact state ordering and does not infer a per-selector animation class.",
+  "sourceRefs": [
+    "manifests/cast_chant_presentation.json",
+    "manifests/selector_mapping_findings.json",
+    "manifests/structs.json#BCS-S-0060",
+    "manifests/structs.json#BCS-S-0210",
+    "manifests/structs.json#BCS-S-0211",
+    "manifests/structs.json#BCS-S-0212",
+    "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+    "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+    "xivl-decomp:docs/actor/cast-timing-clock.md"
+  ],
+  "sourceSnapshots": {
+    "decomp": {
+      "repository": "XIVLegacy/xivl-decomp",
+      "commit": "51f908e6a963b7e4a33cdb3f1b9b2f3573ef31df"
+    }
+  },
+  "callerIdentity": {
+    "class": "Application::Scene::Cut::Clip::RaptureTargetSchClip",
+    "typeDescriptor": "0x012C9040",
+    "primaryVftable": "0x00FF9190",
+    "secondaryVftable": "0x00FF919C",
+    "secondarySlot1": "FUN_00812DB0",
+    "processor": "FUN_00812B50",
+    "evidence": "The RTTI vftables and the RaptureTargetSchClip error literal in FUN_00812DB0 identify the owning clip. FUN_00812DB0 validates a vfx-tagged parameter and directly calls FUN_00812B50."
+  },
+  "controllerIdentity": {
+    "owner": "BCS-S-0060 ApplicationSceneActorCharaCharaActor",
+    "ownerOffset": "0x12F0",
+    "class": "Application::Scene::Vfx::RaptureSchEffectController",
+    "typeDescriptor": "0x012C8B1C",
+    "primaryVftable": "0x00FF5628",
+    "primarySlotCount": 7,
+    "adjustedVftable": "0x00FF55F4",
+    "adjustedSlotCount": 12,
+    "allocationSize": "0x58",
+    "constructor": "FUN_0080E8C0",
+    "ownerConstructorPath": "FUN_0065F940 allocates 0x58, calls FUN_0080E8C0, and stores the result at CharaActor+0x12F0.",
+    "virtualSlot": {
+      "index": 2,
+      "offset": "0x08",
+      "target": "FUN_0080E050",
+      "role": "Thin fixed-flag wrapper over FUN_0080CC00; forwards the four caller arguments and appends a fifth argument equal to 1."
+    }
+  },
+  "dispatchChain": [
+    "RaptureTargetSchClip FUN_00812DB0 validates the vfx parameter and calls FUN_00812B50.",
+    "FUN_00812B50 resolves the target CharaActor and calls CharaActor+0x12F0 primary vftable slot 2 (+0x08).",
+    "RaptureSchEffectController slot 2 FUN_0080E050 forwards to FUN_0080CC00 with fixed flag 1.",
+    "FUN_0080CC00 optionally retires eligible existing controller records before creating the new target.",
+    "FUN_0080CC00 calls the embedded RaptureSchEffectContainer at controller+0x38, vftable 0x00FF55E4 slot 1 (+0x04), FUN_0080E7A0.",
+    "FUN_0080E7A0 calls FUN_0080F3C0, which resolves the runtime target from scene state and the schedule key and first registers the embedded-container listener at container+0x0C through target virtual slot +0xEC.",
+    "FUN_0080E7A0 then copies the VfxRaptureParameter into a schedule-node payload through FUN_0080F710, inserts that node, and notifies the resolved target's scheduler-facing interface.",
+    "On success FUN_0080CC00 invokes resolved-target virtual slot +0x2C because the wrapper flag is 1, then virtual slot +0xEC with the controller's adjusted listener at controller+0x04.",
+    "FUN_0080CC00 releases the temporary reference when nonzero, appends one 0x10 BCS-S-0210 record, and returns the resolved target pointer.",
+    "FUN_00812B50 converts the returned pointer to success 1 or failure 0, appends that value to the VfxRaptureParameter result vector at +0x38, advances its per-entry cursor at RaptureTargetSchClip+0x58, and completes the clip when no work remains."
+  ],
+  "effectRecordLayout": [
+    {
+      "offset": "0x00",
+      "role": "dispatch handle/index produced by FUN_00812890"
+    },
+    {
+      "offset": "0x04",
+      "role": "temporary resource/reference value released by FUN_00A3E670 when nonzero"
+    },
+    {
+      "offset": "0x08",
+      "role": "schedule dispatch key passed to the embedded container"
+    },
+    {
+      "offset": "0x0C",
+      "role": "resolved runtime target pointer; later status and removal calls dispatch through this pointer"
+    }
+  ],
+  "selectorBoundary": {
+    "selector": "BCS-S-0031 visualResultClass copied to VfxRaptureParameter+0x6C",
+    "fixedTarget": "Application::Scene::Vfx::RaptureSchEffectController",
+    "conclusion": "The +0x12F0 call is not a visualResultClass-to-Rapture*Clip class switch. The fixed virtual target is the actor-owned RaptureSchEffectController. The VfxRaptureParameter is copied into a schedule-node payload, while the concrete schedule target is resolved at runtime from scene state and the schedule dispatch key.",
+    "remainingBoundary": "The concrete runtime target returned by FUN_0080F3C0 is not fixed by this static path. No selector-specific animation or clip class is assigned."
+  },
+  "castTimingReconciliation": {
+    "clock": "castEndClient is an absolute 32-bit whole-second deadline in the same Unix-compatible client clock domain as worldMaster:_getServerTime().",
+    "forceOverride": "GameCommandBaseClass.getCastTime starts from basic-data field 76. With all three optional arguments present, a nonzero second return from getForceCastTimeForCaster replaces the base value; otherwise a nonzero first return multiplies it. There is no additive stage.",
+    "remainingBoundary": "The force provider's origin, allowed ranges, and unit remain unresolved, as does the unit of the duration-like command-data value. Neither affects the closed absolute cast deadline clock."
+  },
+  "rejectedInterpretations": [
+    "Do not describe CharaActor+0x12F0 as an unknown clip selector; its RTTI identity is RaptureSchEffectController.",
+    "Do not map visualResultClass 8 or any sibling selector directly to RaptureActionDamageCallClip, RaptureActionSelectClip, or another animation class from this call.",
+    "Do not treat the dynamically resolved schedule target as a statically fixed class; this path resolves it through scene state and a schedule key.",
+    "Do not merge the cast-ready visual selector with castEndClient, gameCommandBasic field 76, the force-cast pair, or SubStat Chant."
+  ]
+}

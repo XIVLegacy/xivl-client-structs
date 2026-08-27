@@ -203,7 +203,7 @@
       "opcodeHex": "0x0139",
       "dispatchPath": "FUN_004DC690 (BCS-Y-0279 central s2c dispatcher, high-switch branch) -> FUN_0058CCA0 (BCS-Y-0404 third-router) case 0x139 -> FUN_0058C880 (BCS-Y-0406 wrapper) -> FUN_00587370 (BCS-Y-0409 single-target stager) -> FUN_005901D0 (BCS-Y-0412 queue push) -> BCS-S-0031 BattleResultQueueEntry",
       "pattern": "C (bespoke handler)",
-      "downstreamConsumer": "BCS-Y-0417 VfxRaptureParameterCtor_FUN_007C7F80 -> BCS-Y-0420 VfxRaptureClipProcessor_FUN_00812B50 -> per-selector Rapture*Clip"
+      "downstreamConsumer": "BCS-Y-0417 VfxRaptureParameterCtor_FUN_007C7F80 -> BCS-Y-0420 VfxRaptureClipProcessor_FUN_00812B50 -> target CharaActor+0x12F0 RaptureSchEffectController -> runtime schedule target"
     },
     {
       "opcodeHex": "0x013a",
@@ -314,8 +314,8 @@
       "step5_stager": "Stager copies header + 0/1/10/18 target rows into BCS-S-0031 BattleResultQueueEntry",
       "step6_push": "FUN_005901D0 (BCS-Y-0412) pushes the queue entry to the ring buffer at the battle-result subsystem",
       "step7_consume": "FUN_007C7F80 (BCS-Y-0417 VfxRaptureParameterCtor) reads the queue entry into a VfxRaptureParameter struct",
-      "step8_dispatch": "FUN_00812B50 (BCS-Y-0420 VfxRaptureClipProcessor) consumes the parameter and dispatches via +0x12F0 vtable indirection to a concrete RaptureActionDamageCallClip / RaptureActionSelectClip / sibling clip (per-selector Rapture*Clip class identification deferred behind that vtable - low expected value)",
-      "step9_visual": "Rapture*Clip schedules the CDev cut/scheduler animation; clip Begin creates DamagePlate UI element on the actor; clip Update feeds animation curves; clip End destroys the popup"
+      "step8_dispatch": "FUN_00812B50 (BCS-Y-0420 VfxRaptureClipProcessor) consumes the parameter and dispatches through the target CharaActor's +0x12F0 RaptureSchEffectController primary vftable slot 2 (+0x08), FUN_0080E050 -> FUN_0080CC00.",
+      "step9_visual": "The controller copies the VfxRaptureParameter into schedule state, resolves a runtime target through its embedded RaptureSchEffectContainer, registers controller listeners, and records success. This fixed path does not map the visual selector to a concrete animation or Rapture*Clip subclass."
     },
     "actorAnimationPath_partial": {
       "wire": "0x00DA PlayAnimationOnActor arrives at zone packet stream (31 pcap hits)",

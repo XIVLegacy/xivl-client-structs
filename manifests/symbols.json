@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2136,
+  "symbolCount": 2144,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -4755,9 +4755,12 @@
         "BCS-Y-0422",
         "BCS-Y-0423",
         "BCS-Y-0425",
-        "BCS-S-0031"
+        "BCS-S-0031",
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0212"
       ],
-      "notes": "Classifies a battle result's effect/animation id into a compact visual result class stored at BCS-S-0031+0x04. The combat-damage-findings pass resolved the selector names. FUN_00798370 (BCS-Y-0422) splits the effect id into high-byte category plus upper/lower ids. High-byte special cases return: 0x7C -> selector 7 AttackModeBattleAction (reference 0x7C000062 Attack Mode), 0x6F -> selector 8 CastOrReadyPreAction (reference 0x6F000000|castType), 0x70 -> selector 9 ExternalVisualCategory0x70, and 0x71 -> selector 10 ExternalVisualCategory0x71. All other categories go through FUN_007982D0 (BCS-Y-0423) and the DAT_00FE32DC resource table: bucket 8/prefix kao -> selector 0x0B KaoFacialEffect; bucket 1/prefix emt -> selector 0x0C EmtNormalEffect or 0x0D EmtSpecialRangeEffect when upper id is 0x0D..0x13 or 0x0FE9; bucket 2/prefix lin -> selector 0x0E LinLineEffect; bucket 3/prefix lif -> selector 0x0F LifEffect; bucket 4/prefix lil -> selector 0x10 LilEffect; bucket 5/prefix atk -> selector 0x11 AdditionalAttackEffect (reference AdditionalEffectType = 24 << 24). The battle-result wrappers pass default selector 6, so the reference HitEffectType (8 << 24, table prefix em4/bucket 6) and other unmapped buckets fall through as DefaultPhysicalHitOrUnmappedEffect. Downstream, BCS-Y-0417 copies the queue entry into VfxRaptureParameter+0x68, so this selector lands at VfxRaptureParameter+0x6C and is consumed by the Rapture Vfx path BCS-Y-0425 -> BCS-Y-0420; the exact per-selector Rapture*Clip class switch remains behind FUN_00812B50's indirect +0x12F0 vtable slot +8 call. [apply-log fix] Address shifted from 0x00185800 to 0x00585800 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "notes": "Classifies a battle result's effect/animation id into the visualResultClass stored at BCS-S-0031+0x04. FUN_00798370 (BCS-Y-0422) splits the effect id; high-byte cases map 0x7C to 7 AttackModeBattleAction, 0x6F to 8 CastOrReadyPreAction, 0x70 to 9 ExternalVisualCategory0x70, and 0x71 to 10 ExternalVisualCategory0x71. FUN_007982D0 (BCS-Y-0423) and DAT_00FE32DC map resource prefixes kao, emt, lin, lif, lil, and atk to selectors 0x0B..0x11. BCS-Y-0417 copies the queue entry to VfxRaptureParameter+0x68, placing the selector at +0x6C. BCS-Y-0420 then calls the target CharaActor's BCS-S-0212 RaptureSchEffectController at +0x12F0 through primary slot 2. The fixed path resolves a schedule target at runtime and is not a per-selector Rapture*Clip class switch. [apply-log fix] Address shifted from 0x00185800 to 0x00585800 (+0x00400000) per the catalog-validation-report TYPO_RVA_NOT_VA finding.",
       "id": "BCS-Y-0411"
     },
     {
@@ -4875,9 +4878,15 @@
         "manifests/selector_mapping_findings.json",
         "BCS-Y-0059",
         "BCS-Y-0417",
-        "BCS-Y-0425"
+        "BCS-Y-0425",
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-S-0210",
+        "BCS-S-0211",
+        "BCS-S-0212"
       ],
-      "notes": "Rapture clip-side Vfx processor and concrete downstream consumer path for selector-bearing battle-result queue entries. 593-byte function in the App::Scene::Cut::Clip address range, adjacent to RaptureActionDamageCallClip constructor FUN_00811690 (BCS-Y-0421, +0xFE0 offset). Reads a sub-object pointer at param_1+0x14, dereferences a vtable at vtable+0xF0 slot +0x6C to obtain a typed work record, checks the type tag at record+4 equals 0x766678 ('vfx\\0'), bounds-checks a position counter at param_1+0x58, and on match calls FUN_007C7F80(record) to construct a VfxRaptureParameter from the queue-entry-shaped sub-object at record+0x68. Since FUN_007C7F80 copies BCS-S-0031 into VfxRaptureParameter+0x68, the visualResultClass selector originally at queue+0x04 is present at VfxRaptureParameter+0x6C when this processor calls the indirect object at iStack_22c+0x12F0 vtable slot +8. This identifies the downstream selector consumer boundary without naming the final virtual target.",
+      "notes": "RaptureTargetSchClip-side Vfx processor for selector-bearing battle-result entries. The 593-byte function validates the vfx tag, bounds-checks the current entry, constructs a VfxRaptureParameter through BCS-Y-0417, resolves a target CharaActor, and calls CharaActor+0x12F0. That field is BCS-S-0212 Application::Scene::Vfx::RaptureSchEffectController; primary vftable 0x00FF5628 slot 2 (+0x08) is FUN_0080E050, which forwards to FUN_0080CC00 with fixed flag 1. Success or failure is appended to the VfxRaptureParameter vector at +0x38 before the clip cursor at +0x58 advances. The indirect call is a fixed controller target, not a visualResultClass-to-clip-class switch.",
       "id": "BCS-Y-0420"
     },
     {
@@ -4937,9 +4946,13 @@
       "sourceRefs": [
         "BCS-Y-0417",
         "BCS-Y-0420",
-        "BCS-S-0031"
+        "BCS-S-0031",
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-S-0212"
       ],
-      "notes": "Downstream Rapture Vfx gate for selector-bearing battle-result data. Validates or advances a 'vfx\\0' parameter record and calls FUN_00812B50 (BCS-Y-0420). The selector path is: FUN_00587210 stores visualResultClass at BCS-S-0031+0x04, FUN_007C7F80 copies the queue entry from source+0x68 into VfxRaptureParameter+0x68 (so selector lands at VfxRaptureParameter+0x6C), and FUN_00812B50 passes the constructed parameter to an indirect object at +0x12F0 vtable slot +8. This is the concrete consumer boundary identified earlier; exact per-selector Rapture*Clip class dispatch remains behind that indirect virtual.",
+      "notes": "RaptureTargetSchClip Vfx gate for selector-bearing battle-result data. It verifies the vfx parameter record and calls BCS-Y-0420. The fixed downstream target is the target CharaActor's BCS-S-0212 RaptureSchEffectController at +0x12F0, primary slot 2 (+0x08). That controller copies the parameter into schedule state, resolves a runtime target, registers listeners, appends a BCS-S-0210 record, and returns success. No per-selector concrete clip class is established by this path.",
       "id": "BCS-Y-0425"
     },
     {
@@ -26362,6 +26375,111 @@
       ],
       "notes": "Registered handler for Global _isInstanceOf, stored by registrar FUN_00753470 and therefore reached indirectly with no recorded direct callers. It rejects a first argument whose tag is not 4, extracts its LuaControl pointer plus a requested class name, returns true for ActorBaseClass, uses MSVC __RTDynamicCast for CharaBaseClass, PlayerBaseClass, NpcBaseClass, AreaBaseClass, DirectorBaseClass, and DesktopWidget, and otherwise checks the object's LGE class-registry chain by name through FUN_00CC7210. It packages the result as a Lua boolean and has no network-send or callback-fire path.",
       "id": "BCS-Y-2149"
+    },
+    {
+      "name": "Application::Scene::Vfx::RaptureSchEffectController::vftable",
+      "kind": "vtable",
+      "address": "0x00FF5628",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-S-0212"
+      ],
+      "notes": "Seven-slot primary vftable for Application::Scene::Vfx::RaptureSchEffectController. RTTI TypeDescriptor 0x012C8B1C. Slot 2 (+0x08) is FUN_0080E050. FUN_0080E8C0 writes this vftable, and FUN_0065F940 stores the constructed 0x58-byte object at CharaActor+0x12F0.",
+      "id": "BCS-Y-2150"
+    },
+    {
+      "name": "RaptureSchEffectController_Dispatch_FUN_0080E050",
+      "kind": "function",
+      "address": "0x0080E050",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0212"
+      ],
+      "notes": "RaptureSchEffectController primary vftable slot 2 (+0x08). A 30-byte wrapper that preserves the caller's four arguments, appends fixed argument 1, and calls FUN_0080CC00.",
+      "id": "BCS-Y-2151"
+    },
+    {
+      "name": "RaptureSchEffectController_DispatchCore_FUN_0080CC00",
+      "kind": "function",
+      "address": "0x0080CC00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0210",
+        "BCS-S-0211",
+        "BCS-S-0212"
+      ],
+      "notes": "Common Rapture schedule-effect dispatch core. It first retires eligible prior records when selected_index is positive, then calls the embedded BCS-S-0211 container's slot 1 to resolve and register a runtime target. With the slot-2 wrapper's fixed flag it invokes target virtual +0x2C, then always invokes target virtual +0xEC with controller+0x04, releases a temporary reference when nonzero, appends a BCS-S-0210 record in exact {dispatch handle, resource reference, schedule key, target pointer} order, and returns the target pointer.",
+      "id": "BCS-Y-2152"
+    },
+    {
+      "name": "Application::Scene::Vfx::RaptureSchEffectContainer::vftable",
+      "kind": "vtable",
+      "address": "0x00FF55E4",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0211"
+      ],
+      "notes": "Primary vftable for the RaptureSchEffectContainer embedded at RaptureSchEffectController+0x38. FUN_0080E6A0 writes it after move-register base construction. Slot 1 (+0x04) is FUN_0080E7A0.",
+      "id": "BCS-Y-2153"
+    },
+    {
+      "name": "RaptureSchEffectContainer_ResolveTarget_FUN_0080E7A0",
+      "kind": "function",
+      "address": "0x0080E7A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0211"
+      ],
+      "notes": "RaptureSchEffectContainer vftable slot 1 (+0x04). Resolves a runtime schedule target through FUN_0080F3C0, copies the caller's VfxRaptureParameter into a schedule-node payload via FUN_0080F710, inserts the node into the container's schedule state, notifies the target's scheduler-facing interface, and returns the resolved target pointer.",
+      "id": "BCS-Y-2154"
+    },
+    {
+      "name": "RaptureSchEffectContainer_RuntimeTargetResolver_FUN_0080F3C0",
+      "kind": "function",
+      "address": "0x0080F3C0",
+      "confidence": "probable",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
+        "BCS-S-0211"
+      ],
+      "notes": "Runtime target resolver used only by FUN_0080E7A0 in the retained direct-call graph. It traverses the container's scene service with the schedule dispatch key, constructs a temporary reference wrapper, resolves the live target, registers the container listener through target virtual +0xEC when nonnull, and returns that target. The concrete target class is runtime-selected and is not fixed by visualResultClass in this path.",
+      "id": "BCS-Y-2155"
+    },
+    {
+      "name": "Application::Scene::Cut::Clip::RaptureTargetSchClip::vftable_primary",
+      "kind": "vtable",
+      "address": "0x00FF9190",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt"
+      ],
+      "notes": "Primary vftable for Application::Scene::Cut::Clip::RaptureTargetSchClip. RTTI TypeDescriptor 0x012C9040; the corresponding complete-object-locator records displacement +0x08 for this primary interface.",
+      "id": "BCS-Y-2156"
+    },
+    {
+      "name": "Application::Scene::Cut::Clip::RaptureTargetSchClip::vftable_secondary",
+      "kind": "vtable",
+      "address": "0x00FF919C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/cast_ready_schedule_dispatch.json",
+        "tools/ghidra/logs/c535_cast-ready-schedule-rtti.txt",
+        "BCS-Y-0425"
+      ],
+      "notes": "Secondary scheduler-facing vftable for Application::Scene::Cut::Clip::RaptureTargetSchClip at object displacement 0. Slot 1 (+0x04) is BCS-Y-0425 FUN_00812DB0, whose class-specific error literal and direct call identify BCS-Y-0420 as this clip's Vfx processor.",
+      "id": "BCS-Y-2157"
     }
   ]
 }

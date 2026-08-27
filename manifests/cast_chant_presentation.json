@@ -1,8 +1,8 @@
 {
-  "version": 2,
-  "generated": "2026-08-23",
+  "version": 3,
+  "generated": "2026-08-27",
   "gameVersion": "1.23b",
-  "status": "bounded_syncwriter_storage_closure",
+  "status": "cast_ready_schedule_dispatch_closed",
   "scope": "Separates active cast-gauge timing, local command cast-time data, cast-ready battle-result VFX selection, and SubStat Chant state. It does not infer live server behavior, packet-to-action causality, or a shared cast/chant type enum.",
   "dependencies": {
     "package1": "manifests/battle_result_field_semantics.json",
@@ -24,7 +24,7 @@
     },
     "decomp": {
       "repository": "XIVLegacy/xivl-decomp",
-      "commit": "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb"
+      "commit": "51f908e6a963b7e4a33cdb3f1b9b2f3573ef31df"
     }
   },
   "activeCastGauge": {
@@ -99,8 +99,9 @@
       "formula": "remaining = player.getCastEndTime() - worldMaster._getServerTime(); if remaining <= 0 then remaining = 1; progressRate = 1 / remaining",
       "widget": "ProgressBar_MagicCast_Main",
       "storyboard": "UILuaCommands.StartCastGauge",
-      "units": "unresolved",
-      "conclusion": "The active gauge duration comes from the property-stream deadline relative to client server-time state, not directly from gameCommandBasic cast_time."
+      "units": "whole seconds",
+      "clockDomain": "Absolute low-32-bit Unix-compatible seconds cached from NetworkModule+0x30C and exposed through WorldMaster+0x60.",
+      "conclusion": "The active gauge duration is derived from an absolute property-stream deadline minus the cached client server-time clock, not directly from gameCommandBasic cast_time."
     },
     "captureCrossCheck": {
       "scenario": "party_battle_leve.pcapng",
@@ -115,7 +116,7 @@
     "column": 76,
     "fieldName": "cast_time",
     "getter": "GameCommandBaseClass.getCastTime",
-    "getterBehavior": "Reads column 76, then may replace it with a nonzero getForceCastTimeForCaster override or multiply it by a nonzero returned modifier.",
+    "getterBehavior": "Reads column 76. When caster and both additional arguments are non-nil, a nonzero second getForceCastTimeForCaster return replaces the base value; otherwise a nonzero first return multiplies it. There is no additive stage.",
     "units": "unresolved",
     "example": {
       "rowId": 27346,
@@ -134,14 +135,17 @@
       "FUN_007C7F80",
       "FUN_00812DB0",
       "FUN_00812B50",
-      "indirect object +0x12F0 vtable slot +8"
+      "target CharaActor+0x12F0 RaptureSchEffectController",
+      "primary vftable 0x00FF5628 slot 2 (+0x08) FUN_0080E050",
+      "FUN_0080CC00",
+      "embedded RaptureSchEffectContainer slot 1 FUN_0080E7A0"
     ],
     "mapping": {
       "effectCategoryHighByte": "0x6f",
       "visualResultClass": 8,
       "name": "CastOrReadyPreAction"
     },
-    "boundary": "This is a native cast-ready VFX selector, not a command-sheet cast type or active gauge duration. The exact selector-to-Rapture clip class remains behind the final indirect call."
+    "boundary": "This is a native cast-ready VFX selector, not a command-sheet cast type or active gauge duration. The fixed indirect target is RaptureSchEffectController; its embedded container resolves a schedule target at runtime rather than switching directly from visualResultClass to a Rapture*Clip class."
   },
   "chantStatusBoundary": {
     "storage": "BCS-S-0035 CharaSubStatStorage status u32 array",
@@ -154,15 +158,12 @@
   },
   "package2Boundary": "The c2s 0x012D EventStart path carries generic eventName and Lua parameter data. It does not expose a stable scalar gameCommand id or the active cast-gauge deadline.",
   "unresolved": [
-    "The time unit and epoch used by castEndClient and worldMaster._getServerTime.",
-    "The construction-time registry population that selects the concrete SyncWriter subclass for each property hash; the apply path exposes only the common SyncWriter pointer boundary.",
-    "The semantics of the getForceCastTimeForCaster override and multiplier values.",
+    "The origin, allowed ranges, and unit of the getForceCastTimeForCaster provider's multiplier and replacement values; their selection and precedence rules are closed.",
     "A universal packet-level castCommandClient-to-command causality join beyond the one captured same-integer cross-check.",
-    "The final selector-to-Rapture clip class behind FUN_00812B50's indirect call.",
     "The concrete enum identities behind the two SubStat Chant nibbles."
   ],
   "rejectedImports": [
-    "Do not treat gameCommandBasic column 76 as the active cast-gauge deadline or assign it a time unit.",
+    "Do not treat gameCommandBasic column 76 as the active cast-gauge deadline or infer its duration unit from the whole-second deadline clock.",
     "Do not use gameCommandBasic column 36 as a cast type or as a staticactor class-path key.",
     "Do not treat effect category 0x6f or visual selector 8 as a command-sheet column.",
     "Do not infer a stable command id from c2s 0x012D payload +0x08 or from its opaque eventName/Lua blob.",
@@ -193,6 +194,8 @@
     "xivl-client-scripts:lua/scripts/widget/actionmenuwidget.lua",
     "xivl-client-scripts:lua/scripts/widget/actiongaugewidget.lua",
     "xivl-decomp:asm/ffxivgame/00375180_FUN_00775180.s",
-    "xivl-decomp:asm/ffxivgame/00373f10_FUN_00773f10.s"
+    "xivl-decomp:asm/ffxivgame/00373f10_FUN_00773f10.s",
+    "xivl-decomp:docs/actor/cast-timing-clock.md",
+    "manifests/cast_ready_schedule_dispatch.json"
   ]
 }
