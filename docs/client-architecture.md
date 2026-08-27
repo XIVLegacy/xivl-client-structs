@@ -219,9 +219,12 @@ trace closes the two formerly generic dwords. Application `+0x08` comes from
 the command ActorBase object's resolved Lua control binding entry at `+0x70`:
 `FUN_0070A010` extracts the command object, `FUN_00CC73B0` resolves it through
 `FUN_00CD7A30`/`FUN_00CC7030`, `FUN_00895860` stores the result at
-`Event::Base+0x08`, and the EventStart wrapper forwards it. This is a binding
-value, not a directly propagated command-sheet row, subcommand, or runtime
-argument; its enum semantics remain unnamed. Application `+0x0C` is CRC32 of
+`Event::Base+0x08`, and the EventStart wrapper forwards it. This is a runtime
+Lua control/class SID-domain binding token. The writer stores it before
+conditional registry validation; its six callers constrain it to allocated,
+copied, default, or caller-supplied values. It is not a stable enum, flags
+field, command-class discriminator, sheet row, or runtime argument.
+Application `+0x0C` is CRC32 of
 the exact 128-byte Lua parameter tail, computed by `FUN_00D3AB60` through
 `FUN_00D3A380`. The command-specific meaning remains in the owner, binding
 value, inline name/data, and serialized Lua tail. The

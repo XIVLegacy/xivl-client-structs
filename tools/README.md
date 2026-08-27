@@ -26,7 +26,7 @@ below are implementation modules.
 | Promote the six-primitive LGE closure | `python tools\extractors\promote_lge_primitive_registrar_closure.py [--check]` | Serialized `symbols.json` correction/allocation from `manifests\lge_primitive_registrar_closure.json` |
 | Build deferred Lua callsite context | `python tools\extractors\build_lua_callsite_context.py --scripts-repo PATH [--check]` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only for the 19 fixed binding names |
 | Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
-| Test EventStart field provenance | `python tools\test_eventstart_field_provenance.py` | Asset-free contract and mutation tests for application +0x08/+0x0C |
+| Test EventStart field provenance | `python tools\test_eventstart_field_provenance.py` | Asset-free contract and mutation tests for the +0x08 binding SID writer/domain and +0x0C layout |
 | Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit tracked decomp assembly inputs and emits the bounded Group-family static manifest |
 | Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
 | Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |

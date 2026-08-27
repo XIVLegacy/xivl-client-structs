@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2144,
+  "symbolCount": 2155,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -26480,6 +26480,140 @@
       ],
       "notes": "Secondary scheduler-facing vftable for Application::Scene::Cut::Clip::RaptureTargetSchClip at object displacement 0. Slot 1 (+0x04) is BCS-Y-0425 FUN_00812DB0, whose class-specific error literal and direct call identify BCS-Y-0420 as this clip's Vfx processor.",
       "id": "BCS-Y-2157"
+    },
+    {
+      "name": "LuaControl_BindingCopy_FUN_00CD8210",
+      "kind": "function",
+      "address": "0x00CD8210",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Copies a source binding's resolved registry SID into another binding through FUN_00CE1CC0. It obtains the canonical registry-node SID through FUN_00D03610 rather than constructing a command-specific literal.",
+      "id": "BCS-Y-2158"
+    },
+    {
+      "name": "LuaControl_BindingCreate_FUN_00CD99F0",
+      "kind": "function",
+      "address": "0x00CD99F0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Creates or finds a Lua control binding, allocates its SID through FUN_00D038C0, and writes that SID to binding-entry +0x70 through FUN_00CE1CC0.",
+      "id": "BCS-Y-2159"
+    },
+    {
+      "name": "LuaControl_NullBindingRegister_FUN_00CDAEB0",
+      "kind": "function",
+      "address": "0x00CDAEB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt",
+        "BCS-Y-0724"
+      ],
+      "notes": "Registers a binding using DAT_0130C778, the shared 0xE0000000 null SID sentinel established by BCS-Y-0724, through FUN_00CE1CC0, then completes the surrounding control registration. The writer stores the token before conditional registry validation.",
+      "id": "BCS-Y-2160"
+    },
+    {
+      "name": "LuaControl_StaticBindingRegister_FUN_00CDDE20",
+      "kind": "function",
+      "address": "0x00CDDE20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt",
+        "xivl-decomp:asm/ffxivgame/008dde20_FUN_00cdde20.s"
+      ],
+      "notes": "Registers a static Lua control binding from a caller-supplied SID-domain token. Assembly formats the name suffix from token & 0x000FFFFF and the function passes the unchanged full token to FUN_00CE1CC0.",
+      "id": "BCS-Y-2161"
+    },
+    {
+      "name": "LuaControl_BindingSidWriter_FUN_00CE1CC0",
+      "kind": "function",
+      "address": "0x00CE1CC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Direct writer of Lua control binding-entry +0x70. It unconditionally stores the caller-supplied SID-domain token, then checks exact registry membership through FUN_00D03680. Only a successful check sets +0x7E valid and permits the same token to be mirrored to a resolved linked entry +0x0C.",
+      "id": "BCS-Y-2162"
+    },
+    {
+      "name": "LuaControl_BindingSidGetter_FUN_00CC7030",
+      "kind": "function",
+      "address": "0x00CC7030",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Reads and returns binding-entry +0x70. Resolution belongs to the surrounding caller chain; the direct PlayerBase EventStart route copies this returned SID-domain token to application payload +0x08.",
+      "id": "BCS-Y-2163"
+    },
+    {
+      "name": "SidRegistry_PartitionIndex_FUN_00D03340",
+      "kind": "function",
+      "address": "0x00D03340",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Extracts (sid >> 20) & 0xF as a registry partition index. Its callers use that index for keyed registry lookup; this helper itself performs no lookup. The nibble is registry structure, not independent command flags.",
+      "id": "BCS-Y-2164"
+    },
+    {
+      "name": "SidRegistry_Validate_FUN_00D03540",
+      "kind": "function",
+      "address": "0x00D03540",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Validates a SID against its registry node using the keyed lookup and mask comparison (sid & 0xF0F00000) == node+0x0C.",
+      "id": "BCS-Y-2165"
+    },
+    {
+      "name": "SidRegistry_ResolveScoped_FUN_00D03610",
+      "kind": "function",
+      "address": "0x00D03610",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Resolves a supplied SID through its registry partition and returns the registry node's canonical SID in a BCS-Y-1801 scoped handle.",
+      "id": "BCS-Y-2166"
+    },
+    {
+      "name": "SidRegistry_ContainsExact_FUN_00D03680",
+      "kind": "function",
+      "address": "0x00D03680",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Performs an exact SID equality check against the resolved registry node's +0x0C value. FUN_00CE1CC0 uses it while installing binding-entry +0x70.",
+      "id": "BCS-Y-2167"
+    },
+    {
+      "name": "SidRegistry_AllocateScoped_FUN_00D038C0",
+      "kind": "function",
+      "address": "0x00D038C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/combat_command_emission.json",
+        "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+      ],
+      "notes": "Allocates the next unused SID in a per-key runtime registry, seeding a missing record from the key tag, incrementing until unused, inserting the chosen SID, and returning it in a BCS-Y-1801 scoped handle. Concrete values are runtime/order dependent.",
+      "id": "BCS-Y-2168"
     }
   ]
 }
