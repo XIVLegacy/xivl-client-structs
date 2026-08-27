@@ -1,4 +1,4 @@
-"""Mutation tests for the selector-0x0D ClientWorkElement validator."""
+"""Mutation tests for the RaptureElement registry validator."""
 
 from __future__ import annotations
 
@@ -22,62 +22,52 @@ def main() -> int:
     structs = _load("structs.json")
     symbols = _load("symbols.json")
     if validate(manifest, structs, symbols):
-        raise AssertionError("baseline selector-0x0D catalogs failed validation")
-
+        raise AssertionError("baseline registry catalogs failed validation")
     mutations = []
-    changed = copy.deepcopy(manifest)
-    changed["selectorTrace"]["tableEntry"]["callback"] = "0x005334D0"
-    mutations.append(("factory callback", changed, structs, symbols))
-
-    changed = copy.deepcopy(manifest)
-    changed["createdObject"]["allocationSize"] = "0x834"
-    mutations.append(("allocation size", changed, structs, symbols))
-
-    changed = copy.deepcopy(manifest)
-    changed["createdObject"]["primaryVftable"]["address"] = "0x00FA418C"
-    mutations.append(("primary vftable", changed, structs, symbols))
-
-    changed = copy.deepcopy(manifest)
-    changed["selectorTrace"]["invoker"]["containerAlias"] = "unresolved"
-    mutations.append(("container cache alias", changed, structs, symbols))
-
-    changed = copy.deepcopy(manifest)
-    changed["lifecycle"]["ordinaryClear"] = "unresolved"
-    mutations.append(("encoded selector clear", changed, structs, symbols))
-
+    for label, path, value in [
+        ("extent", ("identityVerdict", "size"), "0x44"),
+        ("constructor", ("lifetime", "memberConstructor", "address"), "0x0053B240"),
+        ("factory callback", ("installedSelectors", 13, "callback"), "0x005334D0"),
+        ("allocation size", ("installedSelectors", 8, "allocationSize"), "0xEEC"),
+        ("class identity", ("installedSelectors", 24, "class"), "unresolved"),
+        ("cache slot", ("installedSelectors", 4, "cache"), "no direct invoker cache"),
+        ("null selector", ("nullSelectors", 2), "0x1A"),
+        ("factory return", ("factoryContract", "returnType"), "void *"),
+        ("fixed pair", ("deterministicProducers", 0, "pairs", 0, 0), "0x03"),
+        ("unknown producer id", ("deterministicProducers", 4, "encodedId"), "0xC0000024"),
+        ("clear mismatch", ("clearRoutes", 5, "encodedId"), "0xC000000C"),
+        ("producer boundary", ("otherSelectorProducer", "interfaceVerdict"), "connected"),
+        ("effect upper-id boundary", ("otherSelectorProducer", "upperIdBoundary"), "unresolved"),
+        ("reference completion", ("evidence", "referenceCompletion"), "partial"),
+        ("evidence recipe", ("method", "commands", 4), "tools/ghidra/export-references.ps1 -Address bad -Output bad"),
+        ("ClientWork closure", ("clientWorkClosure", "allocationSize"), "0x834"),
+        ("ClientWork consumer", ("clientWorkClosure", "consumers", 1, "clear"), "unresolved"),
+    ]:
+        changed = copy.deepcopy(manifest)
+        target = changed
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = value
+        mutations.append((label, changed, structs, symbols))
     changed_structs = copy.deepcopy(structs)
-    storage = next(item for item in changed_structs["structs"] if item["id"] == "BCS-S-0079")
-    next(item for item in storage["fields"] if item["offset"] == "0x014")["offset"] = "0x010"
-    mutations.append(("record count offset", manifest, changed_structs, symbols))
-
+    registry = next(s for s in changed_structs["structs"] if s["id"] == "BCS-S-0491")
+    registry["fields"][14]["size"] = "0x08"
+    mutations.append(("map extent", manifest, changed_structs, symbols))
     changed_structs = copy.deepcopy(structs)
-    container = next(item for item in changed_structs["structs"] if item["id"] == "BCS-S-0053")
-    next(item for item in container["fields"] if item["offset"] == "0x004D8")["type"] = "void *"
-    mutations.append(("container pointee type", manifest, changed_structs, symbols))
-
-    changed_structs = copy.deepcopy(structs)
-    record = next(item for item in changed_structs["structs"] if item["id"] == "BCS-S-0078")
-    record["size"] = "0x74"
-    mutations.append(("record stride", manifest, changed_structs, symbols))
-
+    container = next(s for s in changed_structs["structs"] if s["id"] == "BCS-S-0053")
+    next(f for f in container["fields"] if f["offset"] == "0x004AC")["type"] = "unknown[0x48]"
+    mutations.append(("container embedding", manifest, changed_structs, symbols))
     changed_symbols = copy.deepcopy(symbols)
-    factory = next(item for item in changed_symbols["symbols"] if item["id"] == "BCS-Y-2169")
-    factory["address"] = "0x005334D0"
-    mutations.append(("factory symbol address", manifest, structs, changed_symbols))
-
-    changed = copy.deepcopy(manifest)
-    changed["consumers"][0]["apply"] = "unresolved"
-    mutations.append(("marker consumer", changed, structs, symbols))
-
-    changed = copy.deepcopy(manifest)
-    changed["consumers"][1]["predicate"] = "unresolved"
-    mutations.append(("maintenance consumer", changed, structs, symbols))
-
+    next(s for s in changed_symbols["symbols"] if s["id"] == "BCS-Y-2182")["address"] = "0x00533550"
+    mutations.append(("factory symbol", manifest, structs, changed_symbols))
+    changed_structs = copy.deepcopy(structs)
+    storage = next(s for s in changed_structs["structs"] if s["id"] == "BCS-S-0079")
+    next(f for f in storage["fields"] if f["offset"] == "0x014")["offset"] = "0x010"
+    mutations.append(("ClientWorkStorage field", manifest, changed_structs, symbols))
     for label, test_manifest, test_structs, test_symbols in mutations:
         if not validate(test_manifest, test_structs, test_symbols):
             raise AssertionError(f"mutation escaped validation: {label}")
-
-    print(f"selector-0x0D ClientWorkElement: {len(mutations)} mutations rejected")
+    print(f"RaptureElement registry: {len(mutations)} mutations rejected")
     return 0
 
 

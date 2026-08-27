@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2157,
+  "symbolCount": 2182,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -4760,9 +4760,10 @@
         "BCS-S-0031",
         "manifests/cast_ready_schedule_dispatch.json",
         "tools/ghidra/logs/c535_cast-ready-schedule-dispatch.txt",
-        "BCS-S-0212"
+        "BCS-S-0212",
+        "manifests/rapture_selector_0d_clientwork.json"
       ],
-      "notes": "Classifies a battle result's effect/animation id into the visualResultClass stored at BCS-S-0031+0x04. FUN_00798370 (BCS-Y-0422) splits the effect id; high-byte cases map 0x7C to 7 AttackModeBattleAction, 0x6F to 8 CastOrReadyPreAction, 0x70 to 9 ExternalVisualCategory0x70, and 0x71 to 10 ExternalVisualCategory0x71. FUN_007982D0 (BCS-Y-0423) and DAT_00FE32DC map resource prefixes kao, emt, lin, lif, lil, and atk to selectors 0x0B..0x11. BCS-Y-0417 copies the queue entry to VfxRaptureParameter+0x68, placing the selector at +0x6C. BCS-Y-0420 then calls the target CharaActor's BCS-S-0212 RaptureSchEffectController at +0x12F0 through primary slot 2. The fixed path resolves a schedule target at runtime and is not a per-selector Rapture*Clip class switch. [apply-log fix] Address shifted from 0x00185800 to 0x00585800 (+0x00400000) per the catalog-validation-report TYPO_RVA_NOT_VA finding.",
+      "notes": "Classifies a battle result's effect/animation id into the visualResultClass stored at BCS-S-0031+0x04. FUN_00798370 (BCS-Y-0422) splits the effect id; high-byte cases map 0x7C to 7 AttackModeBattleAction, 0x6F to 8 CastOrReadyPreAction, 0x70 to 9 ExternalVisualCategory0x70, and 0x71 to 10 ExternalVisualCategory0x71. FUN_007982D0 (BCS-Y-0423) and DAT_00FE32DC map resource prefixes kao, emt, lin, lif, lil, and atk to selectors 0x0B..0x11. BCS-Y-0417 copies the queue entry to VfxRaptureParameter+0x68, placing the selector at +0x6C. BCS-Y-0420 then calls the target CharaActor's BCS-S-0212 RaptureSchEffectController at +0x12F0 through primary slot 2. The fixed path resolves a schedule target at runtime and is not a per-selector Rapture*Clip class switch. Address corrected from 0x00185800 to 0x00585800 (+0x00400000) per the catalog-validation-report TYPO_RVA_NOT_VA finding. | [Tier C538 2026-08-27] Direct listing confirms the eight recorded callers pass fallback 0x05 or 0x06 and the classifier returns 0x07..0x11 on matched branches. Seven callers feed battle-result staging; FUN_0058AB60 instead passes the result to FUN_00589F60 and returns its predicate. None is FUN_004D90C0, FUN_004D7C10, or the +0x4AC registry invoker FUN_00537620. Numeric overlap therefore does not establish a registry route. Computed or indirect propagation remains outside the direct-reference census.",
       "id": "BCS-Y-0411"
     },
     {
@@ -26658,6 +26659,328 @@
       ],
       "notes": "[Tier C537 2026-08-27] Complete-object teardown for RTTI-confirmed Application::Main::Element::System::ClientWorkElement. It restores primary vftable 0x00FA42B0 at +0x0 and secondary input vftable 0x00FA418C at +0x8, destroys the embedded +0x98 storage through FUN_0055CF20, then calls the RaptureElement teardown chain through FUN_004DB6A0. Scalar-deleting wrapper FUN_00567A60 calls this function and frees the 0x838-byte allocation when flag bit 0 is set. Evidence: tools/ghidra/logs/c537_rapture-selector-0d-clientwork.txt and tools/ghidra/logs/c537_rapture-selector-0d-refs.txt.",
       "id": "BCS-Y-2170"
+    },
+    {
+      "name": "Application_Main_RaptureElementRegistry_ctor_FUN_0053B230",
+      "kind": "function",
+      "address": "0x0053B230",
+      "confidence": "structural",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c538_rapture-element-registry.txt"
+      ],
+      "notes": "[Tier C538 2026-08-27] In-place constructor for the exact 0x48 non-polymorphic member at RaptureElementContainer+0x4AC. Initializes the callback-vector header, zeroes fixed caches at +0x10,+0x14,+0x18,+0x1C,+0x20,+0x28,+0x2C,+0x34 and +0x44, constructs the map-like cache, and sizes or ensures a 28-entry callback table. It directly installs 25 factories. Cache slots +0x24 and +0x30 are populated by the invoker but are not directly written here. The descriptive registry name does not claim an authoritative retail class or template identity.",
+      "id": "BCS-Y-2171"
+    },
+    {
+      "name": "Application_Main_RaptureElementRegistry_dtor_FUN_004DED90",
+      "kind": "function",
+      "address": "0x004DED90",
+      "confidence": "structural",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c538_rapture-element-registry.txt"
+      ],
+      "notes": "[Tier C538 2026-08-27] RaptureElementContainer teardown calls this helper with ECX=container+0x4AC. It destroys the member's +0x38 map-like cache, frees the callback-vector allocation when non-null, and clears begin/end/capacity-end at +0x04/+0x08/+0x0C.",
+      "id": "BCS-Y-2172"
+    },
+    {
+      "name": "Application_Main_RaptureElementRegistry_clear_by_id_FUN_005374D0",
+      "kind": "function",
+      "address": "0x005374D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "tools/ghidra/logs/c538_rapture-element-registry.txt"
+      ],
+      "notes": "[Tier C538 2026-08-27] Clears fixed registry caches for directly compared encoded ids and otherwise attempts removal from the +0x38 map-like cache. The direct comparison for cache +0x28 is literal 0x0000000C, not initialization id 0xC000000C; that mismatch is preserved without correction.",
+      "id": "BCS-Y-2173"
+    },
+    {
+      "name": "Application_Main_Element_DaemonElement_factory_FUN_00532FC0",
+      "kind": "function",
+      "address": "0x00532FC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x00 callback. Allocates exactly 0x94 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00532F40; retained constructor vftables and RTTI identify Application::Main::Element::DaemonElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2174"
+    },
+    {
+      "name": "Application_Main_Element_System_CommonResourceElement_factory_FUN_00533040",
+      "kind": "function",
+      "address": "0x00533040",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x01 callback. Allocates exactly 0x98 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0055F940; retained constructor vftables and RTTI identify Application::Main::Element::System::CommonResourceElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2175"
+    },
+    {
+      "name": "Application_Main_Element_System_CameraElement_factory_FUN_005330C0",
+      "kind": "function",
+      "address": "0x005330C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x02 callback. Allocates exactly 0x194 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00566380; retained constructor vftables and RTTI identify Application::Main::Element::System::CameraElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2176"
+    },
+    {
+      "name": "Application_Main_Element_System_CutManagerElement_factory_FUN_00533140",
+      "kind": "function",
+      "address": "0x00533140",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x03 callback. Allocates exactly 0x120 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00565170; retained constructor vftables and RTTI identify Application::Main::Element::System::CutManagerElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2177"
+    },
+    {
+      "name": "Application_Main_Element_System_GameManagerElement_factory_FUN_005331C0",
+      "kind": "function",
+      "address": "0x005331C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x04 callback. Allocates exactly 0x260 bytes, returns zero on allocation failure, and otherwise calls constructor 0x005600B0; retained constructor vftables and RTTI identify Application::Main::Element::System::GameManagerElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2178"
+    },
+    {
+      "name": "Application_Main_Element_System_BootupElement_factory_FUN_005333C0",
+      "kind": "function",
+      "address": "0x005333C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x05 callback. Allocates exactly 0x130 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0055EB70; retained constructor vftables and RTTI identify Application::Main::Element::System::BootupElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2179"
+    },
+    {
+      "name": "Application_Main_Element_System_MainElement_factory_FUN_00533240",
+      "kind": "function",
+      "address": "0x00533240",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x06 callback. Allocates exactly 0xCC bytes, returns zero on allocation failure, and otherwise calls constructor 0x00564F80; retained constructor vftables and RTTI identify Application::Main::Element::System::MainElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2180"
+    },
+    {
+      "name": "Application_Main_Element_System_TargetElement_factory_FUN_005332C0",
+      "kind": "function",
+      "address": "0x005332C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x07 callback. Allocates exactly 0x104 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00566880; retained constructor vftables and RTTI identify Application::Main::Element::System::TargetElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2181"
+    },
+    {
+      "name": "Application_Main_Element_Chara_CharaElement_factory_FUN_00533540",
+      "kind": "function",
+      "address": "0x00533540",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x08 callback. Allocates exactly 0xEF0 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0058B4E0; retained constructor vftables and RTTI identify Application::Main::Element::Chara::CharaElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2182"
+    },
+    {
+      "name": "Application_Main_Element_Map_MapLayoutElement_factory_FUN_005335C0",
+      "kind": "function",
+      "address": "0x005335C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x09 callback. Allocates exactly 0x208 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0059EE50; retained constructor vftables and RTTI identify Application::Main::Element::Map::MapLayoutElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2183"
+    },
+    {
+      "name": "Application_Main_Element_Effect_EffectElement_factory_FUN_00533640",
+      "kind": "function",
+      "address": "0x00533640",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x0A callback. Allocates exactly 0x9C bytes, returns zero on allocation failure, and otherwise calls constructor 0x00687320; retained constructor vftables and RTTI identify Application::Main::Element::Effect::EffectElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2184"
+    },
+    {
+      "name": "Application_Main_Element_System_CustomControlElement_factory_FUN_00533340",
+      "kind": "function",
+      "address": "0x00533340",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x0B callback. Allocates exactly 0x98 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0055D170; retained constructor vftables and RTTI identify Application::Main::Element::System::CustomControlElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2185"
+    },
+    {
+      "name": "Application_Main_Element_System_ScreenshotManagerElement_factory_FUN_00533440",
+      "kind": "function",
+      "address": "0x00533440",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x0C callback. Allocates exactly 0x1B8 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00561190; retained constructor vftables and RTTI identify Application::Main::Element::System::ScreenshotManagerElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2186"
+    },
+    {
+      "name": "Application_Main_Element_Window_WidgetElement_factory_FUN_00533740",
+      "kind": "function",
+      "address": "0x00533740",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x0E callback. Allocates exactly 0xFB0 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0066F770; retained constructor vftables and RTTI identify Application::Main::Element::Window::WidgetElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2187"
+    },
+    {
+      "name": "Application_Main_Element_Window_SqwtElement_factory_FUN_005336C0",
+      "kind": "function",
+      "address": "0x005336C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x0F callback. Allocates exactly 0x98 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0066EB80; retained constructor vftables and RTTI identify Application::Main::Element::Window::SqwtElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2188"
+    },
+    {
+      "name": "Application_Main_Element_Window_Debug_DebugWindow_factory_FUN_005337C0",
+      "kind": "function",
+      "address": "0x005337C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x10 callback. Allocates exactly 0x1E78 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00688710; retained constructor vftables and RTTI identify Application::Main::Element::Window::Debug::DebugWindow. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2189"
+    },
+    {
+      "name": "Application_Main_Element_Window_LuaDebug_LuaDebugOut_factory_FUN_005338C0",
+      "kind": "function",
+      "address": "0x005338C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x13 callback. Allocates exactly 0xBC8 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0068D510; retained constructor vftables and RTTI identify Application::Main::Element::Window::LuaDebug::LuaDebugOut. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2190"
+    },
+    {
+      "name": "Application_Main_Element_Light_LightElement_factory_FUN_005339C0",
+      "kind": "function",
+      "address": "0x005339C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x14 callback. Allocates exactly 0x94 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0068E4C0; retained constructor vftables and RTTI identify Application::Main::Element::Light::LightElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2191"
+    },
+    {
+      "name": "Application_Main_Element_Debug_DebugInfoElement_factory_FUN_00533A40",
+      "kind": "function",
+      "address": "0x00533A40",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x15 callback. Allocates exactly 0x94 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0068E680; retained constructor vftables and RTTI identify Application::Main::Element::Debug::DebugInfoElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2192"
+    },
+    {
+      "name": "Application_Main_Element_Effect_EffectDebugElement_factory_FUN_00533AC0",
+      "kind": "function",
+      "address": "0x00533AC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x16 callback. Allocates exactly 0x120 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00686FB0; retained constructor vftables and RTTI identify Application::Main::Element::Effect::EffectDebugElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2193"
+    },
+    {
+      "name": "Application_Main_Element_XamlElement_factory_FUN_00539940",
+      "kind": "function",
+      "address": "0x00539940",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x19 callback. Allocates exactly 0xB8 bytes, returns zero on allocation failure, and otherwise calls constructor 0x00539890; retained constructor vftables and RTTI identify Application::Main::Element::XamlElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2194"
+    },
+    {
+      "name": "Application_Main_Element_FormElement_factory_FUN_0053B1B0",
+      "kind": "function",
+      "address": "0x0053B1B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/rapture_selector_0d_clientwork.json",
+        "manifests/rapture_element_hierarchy.json",
+        "manifests/rapture_element_subtrees.json"
+      ],
+      "notes": "[Tier C538 2026-08-27] Directly installed selector 0x1A callback. Allocates exactly 0x280 bytes, returns zero on allocation failure, and otherwise calls constructor 0x0053AF60; retained constructor vftables and RTTI identify Application::Main::Element::FormElement. The recovered return type remains an unknown 32-bit value rather than an imposed C++ signature. Evidence: tools/ghidra/logs/c538_rapture-element-factories.txt and tools/ghidra/logs/c538_rapture-element-registry-refs.txt.",
+      "id": "BCS-Y-2195"
     }
   ]
 }

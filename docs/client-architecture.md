@@ -173,42 +173,85 @@ static edge currently joins these systems.
 
 Refs: BCS-Y-0412, BCS-Y-0540, BCS-Y-1025, BCS-Y-1864..1868.
 
-### Selector 0x0D owns the ClientWorkElement cached at container+0x4D8
+### RaptureElementContainer embeds an anonymous element registry at +0x4AC
 
-`FUN_0053B230` installs `FUN_005334C0` (BCS-Y-2169) at byte offset
-`0x34` of its selector-indexed factory table, which is index `0x0D`.
-`FUN_00537620` (BCS-Y-0530) invokes that table entry and caches its return
-at indexed-interface `+0x2C`. The interface begins at
-`RaptureElementContainer+0x4AC`, so the cache aliases container `+0x4D8`.
-The explicit route in `FUN_004D9110` supplies selector `0x0D` and encoded
-object id `0xC000000D`.
+`FUN_004DBF40` (BCS-Y-1998) constructs an exact `0x48`-byte member at
+`RaptureElementContainer+0x4AC`; the next direct container field begins at
+`+0x4F4`. `FUN_0053B230` (BCS-Y-2171) sizes a 28-entry callback vector
+at member `+0x04..+0x0C`, zeroes eight of ten fixed cache dwords through
+`+0x34`, constructs a map-like cache at `+0x38..+0x43`, and zeroes the final
+fixed cache at `+0x44`. The invoker later owns writes to all ten cache dwords,
+including constructor-untouched `+0x24` and `+0x30`.
+`FUN_004DED90` (BCS-Y-2172) destroys the map-like member and callback
+allocation. Neither constructor installs a vftable, so no directly evidenced
+RTTI record or retail class name identifies the whole member. The catalog
+therefore uses the descriptive `ApplicationMainRaptureElementRegistry` name
+for a structurally bounded anonymous registry/cache member, not a recovered
+source type or template spelling.
 
-The selected factory allocates `0x838` bytes and calls `FUN_0055F8B0`
-(BCS-Y-2052). That constructor writes both RTTI-confirmed
-`Application::Main::Element::System::ClientWorkElement` vftables. The object
-contains its `RaptureElement` base through `+0x93`, an unresolved dword at
-`+0x94`, and a `0x7A0`-byte `ClientWorkStorage` at `+0x98`. The storage has
-three header dwords at `+0x08`, a signed record count at `+0x14`, sixteen
-`0x78`-byte records at `+0x18`, and a state byte at `+0x798`.
+The builder installs 25 uniform heap factories and leaves selectors `0x17`,
+`0x18`, and `0x1B` null. Each factory returns zero on allocation failure and
+otherwise returns its constructor result; the recovered C++ return signatures
+remain unknown. Constructor vftables and RTTI establish these class identities:
 
-S2C `0x018D` null-tests container `+0x4D8` and passes pointee `+0x98` to
-`FUN_0055CF70`, which updates the header, count, records, and state byte. A
-separate internal route, `FUN_00691F30`, obtains the same object through
-`FUN_004D7370`, tests storage `+0x798` together with count `+0x14`, invokes
-an indirect consumer when the predicate passes, and clears `+0x798`.
-Teardown runs `FUN_0055D100` (BCS-Y-2170), destroys the embedded storage,
-and enters the normal `RaptureElement` removal path; selector clear case
-`0xC000000D` zeroes the cache.
+| Selector | Class | Bytes | Invoker cache |
+|---|---|---:|---|
+| `0x00` | `DaemonElement` | `0x94` | none directly evidenced |
+| `0x01` | `CommonResourceElement` | `0x98` | none directly evidenced |
+| `0x02` | `CameraElement` | `0x194` | member `+0x18` / container `+0x4C4` |
+| `0x03` | `CutManagerElement` | `0x120` | member `+0x1C` / container `+0x4C8` |
+| `0x04` | `GameManagerElement` | `0x260` | member `+0x20` / container `+0x4CC` |
+| `0x05` | `BootupElement` | `0x130` | member `+0x24` / container `+0x4D0` |
+| `0x06` | `MainElement` | `0xCC` | member `+0x10` / container `+0x4BC` |
+| `0x07` | `TargetElement` | `0x104` | member `+0x14` / container `+0x4C0` |
+| `0x08` | `CharaElement` | `0xEF0` | member `+0x38` map, keyed by encoded id |
+| `0x09` | `MapLayoutElement` | `0x208` | member `+0x34` / container `+0x4E0` |
+| `0x0A` | `EffectElement` | `0x9C` | none directly evidenced |
+| `0x0B` | `CustomControlElement` | `0x98` | none directly evidenced |
+| `0x0C` | `ScreenshotManagerElement` | `0x1B8` | member `+0x28` / container `+0x4D4` |
+| `0x0D` | `ClientWorkElement` | `0x838` | member `+0x2C` / container `+0x4D8` |
+| `0x0E` | `WidgetElement` | `0xFB0` | member `+0x30` / container `+0x4DC` |
+| `0x0F` | `SqwtElement` | `0x98` | none directly evidenced |
+| `0x10` | `DebugWindow` | `0x1E78` | none directly evidenced |
+| `0x11` | `LuaDebugLog` | `0xF0` | member `+0x44` / container `+0x4F0` |
+| `0x12` | `LuaDebugSelect` | `0x100` | none directly evidenced |
+| `0x13` | `LuaDebugOut` | `0xBC8` | none directly evidenced |
+| `0x14` | `LightElement` | `0x94` | none directly evidenced |
+| `0x15` | `DebugInfoElement` | `0x94` | none directly evidenced |
+| `0x16` | `EffectDebugElement` | `0x120` | none directly evidenced |
+| `0x19` | `XamlElement` | `0xB8` | none directly evidenced |
+| `0x1A` | `FormElement` | `0x280` | none directly evidenced |
 
-The direct-reference export records the factory callback only at selector
-index `0x0D`. This is a bounded result: computed, dynamic, indirect, and
-unanalyzed routes remain outside that export, and the concrete type of the
-indexed interface at container `+0x4AC` is unresolved. Wire opcode `0x000D`
-uses the distinct container `+0x4E0` object and does not name this class.
+`FUN_00537620` (BCS-Y-0530) is the sole indexed invoker. Its two direct
+callers always form `ECX = container+0x4AC`. `FUN_004D90C0` accepts a selector
+and encoded object id; `FUN_004D7C10` accepts a selector but separately forms
+the encoded id as `0xC1000000 + allocator_index`, or `0xC0000000` on the
+allocator sentinel. The fixed initialization batch in `FUN_004D9110` supplies
+11 selector/id pairs. Other direct routes provide literal selectors `0x05`,
+`0x08`, `0x0A`, `0x0B`, `0x0F`, and `0x1A`, plus dynamic selectors from a
+packet field or virtual slot `+0x50`.
+
+`FUN_00585800` is a separate battle-result visual classifier. Depending on
+its caller fallback and classifier results it returns `0x05..0x11`. Seven
+recorded callers feed battle-result staging; `FUN_0058AB60` instead passes the
+result to `FUN_00589F60` and returns its predicate. None is either registry
+wrapper or the indexed invoker. Numeric overlap therefore does not establish
+a registry route. Its bucket-1 split uses effect upper ids `0x0D..0x13` and
+`0x0FE9` to choose visual result `0x0D`; those values are effect-id fragments,
+not registry selectors or encoded RaptureElement ids. The verified
+direct-reference census remains bounded:
+computed, indirect, dynamic, and unanalyzed propagation can be absent.
+
+Selector `0x0D` retains the earlier `ClientWorkElement` closure. S2C `0x018D`
+and `FUN_00691F30` consume its embedded storage at object `+0x98`, and complete
+teardown is BCS-Y-2170. `FUN_005374D0` (BCS-Y-2173) clears fixed caches for its
+directly compared ids and otherwise erases from the selector-`0x08` map. Its
+ScreenshotManager comparison is literal `0x0000000C`, not initialization id
+`0xC000000C`; the catalog preserves that mismatch without correction.
 
 Refs: `manifests/rapture_selector_0d_clientwork.json`; BCS-S-0053,
-BCS-S-0078..0080; BCS-Y-0530, BCS-Y-0754, BCS-Y-0755, BCS-Y-1999,
-BCS-Y-2052, BCS-Y-2169, BCS-Y-2170.
+BCS-S-0491; BCS-Y-0530, BCS-Y-1330..1334, BCS-Y-1998, BCS-Y-2033..2055,
+BCS-Y-2169..2195.
 
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 
