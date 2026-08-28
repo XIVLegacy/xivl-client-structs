@@ -54,6 +54,9 @@ CAST_CHANT_PRESENTATION_PATH = REPO / "manifests" / "cast_chant_presentation.jso
 COMBAT_COMMAND_EMISSION_PATH = REPO / "manifests" / "combat_command_emission.json"
 GAM_HASH_NAMES_PATH = REPO / "manifests" / "gam_hash_names.json"
 PROPERTY_STREAM_HASH_CATALOG_PATH = REPO / "manifests" / "property_stream_hash_catalog.json"
+EXPANDED_REVERSE_BFS_PATH = REPO / "manifests" / "expanded_reverse_bfs.json"
+C2S_BRIDGE_PATH = REPO / "manifests" / "c2s_bridge_skeleton.json"
+DATA_DEPENDENCY_PATH = REPO / "manifests" / "data_dependency_catalog.json"
 
 SEVERITIES = ("ERROR", "WARNING", "INFO")
 
@@ -2052,6 +2055,48 @@ def check_cross_references(symbols_doc: Any, structs_doc: Any,
     return findings
 
 
+def check_expanded_reverse_bfs_projection() -> list[Finding]:
+    """Keep the two retained reverse-BFS summary projections synchronized."""
+    findings: list[Finding] = []
+    try:
+        canonical = _load_json(EXPANDED_REVERSE_BFS_PATH)
+        c2s_projection = _load_json(C2S_BRIDGE_PATH).get("expandedReverseBfs")
+        dependency_projection = _load_json(DATA_DEPENDENCY_PATH).get(
+            "expandedReverseBfs"
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        return [Finding("ERROR", "expanded-reverse-bfs", f"load failed: {exc}")]
+
+    if c2s_projection != dependency_projection:
+        findings.append(Finding(
+            "ERROR",
+            "expanded-reverse-bfs.projections",
+            "c2s and data-dependency summary projections disagree",
+        ))
+        return findings
+    if not isinstance(c2s_projection, dict):
+        return [Finding(
+            "ERROR",
+            "expanded-reverse-bfs.projections",
+            "summary projection must be an object",
+        )]
+
+    for key in ("generated", "reconciled", "bcsyRef", "stats"):
+        if c2s_projection.get(key) != canonical.get(key):
+            findings.append(Finding(
+                "ERROR",
+                f"expanded-reverse-bfs.{key}",
+                "summary projection disagrees with the canonical manifest",
+            ))
+    if c2s_projection.get("findingsManifest") != "manifests\\expanded_reverse_bfs.json":
+        findings.append(Finding(
+            "ERROR",
+            "expanded-reverse-bfs.findingsManifest",
+            "summary projection lost its canonical manifest pointer",
+        ))
+    return findings
+
+
 @dataclass
 class SectionResult:
     name: str
@@ -2092,6 +2137,7 @@ SYMBOL_CHECK_COUNT = 12
 STRUCT_CHECK_COUNT = 14
 MATRIX_CHECK_COUNT = 14
 CROSS_CHECK_COUNT = 2
+EXPANDED_REVERSE_BFS_CHECK_COUNT = 2
 ROLE_CHECK_COUNT = 1
 BATTLE_RESULT_CHECK_COUNT = 1
 LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
@@ -2257,6 +2303,11 @@ def main() -> int:
                       check_property_stream_hash_catalog(property_stream_hash_catalog_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
+        SectionResult(
+            "expanded reverse-BFS projections",
+            EXPANDED_REVERSE_BFS_CHECK_COUNT,
+            check_expanded_reverse_bfs_projection(),
+        ),
     ]
 
     for s in sections:
