@@ -440,7 +440,7 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
     if not isinstance(doc, dict):
         return [Finding("ERROR", "property-stream", "manifest must be an object")]
     if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
-        3, "2026-08-23", "1.23b", "catalog_registry_population_complete"
+        4, "2026-08-29", "1.23b", "player_hp_writer_identity_complete"
     ):
         findings.append(Finding("ERROR", "property-stream.metadata", "snapshot metadata drifted"))
 
@@ -449,10 +449,12 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         snapshots.get("clientStructs", {}).get("commit"),
         snapshots.get("captures", {}).get("commit"),
         snapshots.get("decomp", {}).get("commit"),
+        snapshots.get("clientScripts", {}).get("commit"),
     ) != (
         "3384717be917c0c9464c33bcf17c723769af77da",
         "54a24c87faa4e3cebde808b74d80b6f1bee4b013",
         "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb",
+        "f351794098124d00a673ef2714336ca23eb48d85",
     ):
         findings.append(Finding("ERROR", "property-stream.sourceSnapshots", "source snapshot drifted"))
 
@@ -565,6 +567,122 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         ):
             findings.append(Finding("ERROR", "property-stream.registryPopulation",
                                     "handler adapter boundary drifted"))
+
+    player_hp = doc.get("playerHpWriterIdentity", {})
+    if not isinstance(player_hp, dict):
+        findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                "must be an object"))
+    else:
+        index = player_hp.get("indexConvention", {})
+        if not isinstance(index, dict) or (
+            index.get("luaToNativeHelper"), index.get("pathBuilder"),
+            index.get("hashWrapper"), index.get("hashFunction"),
+        ) != ("FUN_00D1A620", "FUN_00D278D0", "FUN_00D31540", "FUN_00D31490"):
+            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                    "native index or hash chain drifted"))
+        property_rows = player_hp.get("properties", [])
+        property_tuples = [
+            (
+                row.get("requestedPath"), row.get("hash"), row.get("cataloged"),
+                row.get("informationType"), row.get("factory"), row.get("writerType"),
+                row.get("writerConstructor"), row.get("typedSet"),
+                row.get("nativeIndex"), row.get("luaIndex"),
+            )
+            for row in property_rows if isinstance(row, dict)
+        ] if isinstance(property_rows, list) else []
+        expected_properties = [
+            (
+                "charaWork.parameterSave.state_mainSkill[0]", "0x7532ce24", True,
+                "ArrayInformation with Integer8Information elements",
+                "FUN_00D22030 via Information vtable slot 8 (+0x20)",
+                "SyncWriterArray", "FUN_00D305A0", "FUN_00D30640", 0, 1,
+            ),
+            (
+                "charaWork.parameterSave.state_mainSkillLevel", "0x96063588", True,
+                "Integer16Information",
+                "FUN_00D2BF40 via Information vtable slot 8 (+0x20)",
+                "SyncWriterInteger16", "FUN_00D2FC10", "FUN_00D2F910", None, None,
+            ),
+            (
+                "charaWork.battleTemp.generalParameter[5]", "0x416571ac", True,
+                "ArrayInformation with Integer16Information elements",
+                "FUN_00D22030 via Information vtable slot 8 (+0x20)",
+                "SyncWriterArrayEndianAdjust<short>", "FUN_00D30710", "FUN_00D30640", 5, 6,
+            ),
+            (
+                "charaWork.battleTemp.hpMax[0]", "0x0ea82712", False,
+                None, None, None, None, None, 0, 1,
+            ),
+        ]
+        if property_tuples != expected_properties:
+            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                    "hash-to-writer mapping drifted"))
+        semantic_tuples = [
+            (
+                row.get("luaDescriptor"), row.get("storageTarget"),
+                row.get("consumerBoundary"),
+            )
+            for row in property_rows if isinstance(row, dict)
+        ] if isinstance(property_rows, list) else []
+        expected_semantics = [
+            (
+                "parameterSave.state_mainSkill = array(4, integer8)",
+                "writer-local array state: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
+                "Decoded Lua getStateMainSkill returns state_mainSkill[1] and [2], and other Lua consumers pass those tokens to skill-category and battle-class helpers. No direct native consumer establishes a class/job identifier namespace.",
+            ),
+            (
+                "parameterSave.state_mainSkillLevel = integer16",
+                "writer-local integer16 at writer+0x10; no fixed actor field offset",
+                "Decoded Lua getStateMainSkillLevel returns this scalar and level-adjustment code consumes it as a level. No separate native backing-field consumer was found.",
+            ),
+            (
+                "battleTemp.generalParameter = array(35, integer16)",
+                "writer-local endian-adjusted short array: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
+                "Decoded Lua getPhysicalParameter(n) reads generalParameter[n+3]. The bonus-point widget labels n=2 as vitCurrent and n=3 as dexCurrent, so native index 5 reaches the latter Lua display projection, not the former. These labels are Lua/display evidence, not a native gameplay namespace; no direct native consumer names this element.",
+            ),
+            (
+                None, None,
+                "No battleTemp.hpMax descriptor or observed property hash exists in the retained catalog. The registry chain cannot select a writer for this unregistered exact path.",
+            ),
+        ]
+        if semantic_tuples != expected_semantics:
+            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                    "descriptor, storage, or consumer boundary drifted"))
+        correction = player_hp.get("calibrationCorrection", {})
+        if not isinstance(correction, dict) or (
+            correction.get("path"), correction.get("hash"),
+            correction.get("informationType"), correction.get("factory"),
+            correction.get("writerType"), correction.get("writerConstructor"),
+            correction.get("typedSet"), correction.get("nativeIndex"),
+            correction.get("luaIndex"),
+        ) != (
+            "charaWork.parameterSave.hpMax[0]", "0x7bcdfb69",
+            "ArrayInformation with Integer16Information elements",
+            "FUN_00D22030 via Information vtable slot 8 (+0x20)",
+            "SyncWriterArrayEndianAdjust<short>", "FUN_00D30710", "FUN_00D30640", 0, 1,
+        ):
+            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                    "HP calibration correction drifted"))
+        if isinstance(correction, dict) and (
+            correction.get("luaDescriptor"), correction.get("storageTarget"),
+            correction.get("consumerBoundary"),
+        ) != (
+            "parameterSave.hpMax = array(8, integer16)",
+            "writer-local endian-adjusted short array: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
+            "Decoded Lua getHPMax calls getPartsHPMax with Lua index 1, which reaches getHpMaxImpl and parameterSave.hpMax[1]. CharaBase initialization also binds token 1011 to charaWork.parameterSave.hpMax. This proves the HP-maximum script/binding domain, not a fixed C++ actor field.",
+        ):
+            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                    "HP correction semantic boundary drifted"))
+        evidence_runs = player_hp.get("evidenceRuns", [])
+        run_ids = {
+            row.get("id") for row in evidence_runs if isinstance(row, dict)
+        } if isinstance(evidence_runs, list) else set()
+        if run_ids != {
+            "lane1-player-hp-property-writers-2026-08-29",
+            "lane1-property-name-reference-negative-2026-08-29",
+        }:
+            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                    "evidence run set drifted"))
     pending = storage.get("pendingStream", {})
     if not isinstance(pending, dict) or (
         pending.get("managerMapOffset"), pending.get("mapNodeSize"),
@@ -588,6 +706,12 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         "xivl-decomp:asm/ffxivgame/00922030_FUN_00d22030.s",
         "xivl-decomp:asm/ffxivgame/008fd610_FUN_00cfd610.s",
         "xivl-decomp:asm/ffxivgame/008fece0_FUN_00cfece0.s",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass.lua",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_battle.lua",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_cliprog.lua",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_ffxivbattle.lua",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_parameter.lua",
+        "xivl-client-scripts:lua/scripts/widget/ask/bonuspointassignwidget.lua",
     }
     source_refs = doc.get("sourceRefs", [])
     if not isinstance(source_refs, list) or not required_refs.issubset(source_refs):
