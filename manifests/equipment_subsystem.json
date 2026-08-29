@@ -290,29 +290,29 @@
     {
       "opcode": "0x018F",
       "decimal": 399,
-      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x018F _0x018F (MassSetItemModifier begin)",
+      "catalog_entry": "data/vendor/opcodes/opcodes.json 0x018F _0x018F",
       "direction": "s2c",
-      "role": "modifier_frame_begin",
-      "bahamut_anchor": "MapServerOpcode::MassSetItemModifierBegin",
+      "role": "modifier_transaction_setup",
+      "candidate_label": "MassSetItemModifierBeginPacket (imported catalog term; not retail-proven)",
       "decomp_anchor": "OP_MASS_SET_ITEM_MODIFIER_BEGIN",
-      "note": "Frame-start marker for a burst of 0x0190 bodies."
+      "note": "The client route performs setup and reads no application payload bytes. Retail evidence does not prove the Begin noun or place this opcode inside gear-change frames."
     },
     {
       "opcode": "0x0190",
       "decimal": 400,
-      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x0190 _0x0190 (MassSetItemModifier body)",
+      "catalog_entry": "data/vendor/opcodes/opcodes.json 0x0190 _0x0190",
       "direction": "s2c",
-      "role": "modifier_burst_body",
-      "bahamut_anchor": "MapServerOpcode::MassSetItemModifier",
+      "role": "modifier_record_update",
+      "candidate_label": "MassSetItemModifierPacket (imported catalog term; not retail-proven)",
       "decomp_anchor": "OP_MASS_SET_ITEM_MODIFIER"
     },
     {
       "opcode": "0x0191",
       "decimal": 401,
-      "bahamut_opcode": "xivl-opcodes/opcodes.json 0x0191 _0x0191 (MassSetItemModifier end)",
+      "catalog_entry": "data/vendor/opcodes/opcodes.json 0x0191 _0x0191",
       "direction": "s2c",
-      "role": "modifier_frame_end",
-      "bahamut_anchor": "MapServerOpcode::MassSetItemModifierEnd",
+      "role": "modifier_transaction_finalize",
+      "candidate_label": "MassSetItemModifierEndPacket (imported catalog term; not retail-proven)",
       "decomp_anchor": "OP_MASS_SET_ITEM_MODIFIER_END"
     }
   ],
@@ -359,15 +359,15 @@
       },
       "high_branch_mass_modifier": {
         "0x018E": "case 0x18e not in dispatcher case list - Pattern E unrouted",
-        "0x018F": "FUN_00576CD0 (case 0x18F)",
-        "0x0190": "FUN_00576C60 (case 399)",
+        "0x018F": "FUN_00576C60 (case 399 / 0x18F)",
+        "0x0190": "FUN_00576CD0 (case 400 / 0x190)",
         "0x0191": "FUN_00576D40 (case 0x191)"
       }
     }
   },
   "data_flow_summary": {
     "c2s_player_equip_initiation": "Unresolved. FUN_0075E670 / BCS-Y-0981 identifies c2s 0x012E as the generic EventUpdatePacket, not a confirmed equipment-specific transaction.",
-    "s2c_inventory_frame": "The inventory mutation frame is: 0x016D InventoryBeginChange -> 0x0146 InventorySetBegin (with ItemPackage code) -> 0x0148/9/A/B/C InventoryListX0N (item rows) AND/OR 0x014D-0x0151 LinkedItemListX0N (slot bindings) -> [0x018F MassSetItemModifierBegin -> 0x0190 MassSetItemModifier... -> 0x0191 MassSetItemModifierEnd] -> 0x0147 InventorySetEnd (but 1.23b client lacks the case so this is no-op) -> 0x016E InventoryEndChange.",
+    "s2c_inventory_frame": "The observed inventory mutation frame is 0x016D InventoryBeginChange -> 0x0146 InventorySetBegin (with ItemPackage code) -> 0x0148/9/A/B/C InventoryListX0N (item rows) and/or 0x014D-0x0151 LinkedItemListX0N (slot bindings) -> 0x0147 InventorySetEnd (the 1.23b client lacks a dispatcher case) -> 0x016E InventoryEndChange. The four gear captures contain no 0x018F, 0x0190, or 0x0191 stream, so those opcodes are not synthesized into this frame.",
     "s2c_appearance_resend": "PCAP evidence records 199 s2c 0x00D6 SetActorAppearance packets. BCS-Y-0622 identifies CharaElement::vftable[9] FUN_0058CCA0 cases 0xD6 and 0xD7 as the receive path and this+0xaac as the landing array.",
     "request_resend_path": "If client desyncs, it can request a full inventory resync via c2s 0x0131 UpdateItemPackagePacket (actorID + packageId u32 pair); the inventory-frame sequence above follows."
   },
@@ -582,34 +582,34 @@
       ]
     },
     {
-      "id": "BCS-Y-0598",
-      "name": "EquipmentDispatcher_Opcode0x018F_FUN_00576CD0",
-      "address": "0x00576CD0",
-      "kind": "function",
-      "confidence": "structural",
-      "summary": "FUN_004DC690 high-switch case 0x18F thunk for MassSetItemModifierBegin. It ships in the 1.23b client dispatcher.",
-      "evidence": [
-        "fun_004dc690_decomp.txt:405-408"
-      ]
-    },
-    {
-      "id": "BCS-Y-0599",
-      "name": "EquipmentDispatcher_Opcode0x0190_FUN_00576C60",
+      "id": "BCS-Y-0722",
+      "name": "EquipmentDispatcher_Opcode0x018F_FUN_00576C60",
       "address": "0x00576C60",
       "kind": "function",
       "confidence": "structural",
-      "summary": "FUN_004DC690 high-switch case 399 (0x18F) thunk for MassSetItemModifier (per-item modifier body row).",
+      "summary": "FUN_004DC690 high-switch case 399 (0x18F) thunk. The imported opcode catalog offers MassSetItemModifierBegin as a candidate label, not a retail-proven noun.",
       "evidence": [
         "fun_004dc690_decomp.txt:401-404"
       ]
     },
     {
-      "id": "BCS-Y-0600",
+      "id": "BCS-Y-0721",
+      "name": "EquipmentDispatcher_Opcode0x0190_FUN_00576CD0",
+      "address": "0x00576CD0",
+      "kind": "function",
+      "confidence": "structural",
+      "summary": "FUN_004DC690 high-switch case 400 (0x190) thunk. The imported opcode catalog offers MassSetItemModifier as a candidate label, not a retail-proven noun.",
+      "evidence": [
+        "fun_004dc690_decomp.txt:405-408"
+      ]
+    },
+    {
+      "id": "BCS-Y-0723",
       "name": "EquipmentDispatcher_Opcode0x0191_FUN_00576D40",
       "address": "0x00576D40",
       "kind": "function",
       "confidence": "structural",
-      "summary": "FUN_004DC690 high-switch case 0x191 thunk for MassSetItemModifierEnd. Frame-end marker matching BCS-Y-0598's begin.",
+      "summary": "FUN_004DC690 high-switch case 0x191 thunk. The imported opcode catalog offers MassSetItemModifierEnd as a candidate label, not a retail-proven noun.",
       "evidence": [
         "fun_004dc690_decomp.txt:409-412"
       ]
@@ -632,11 +632,9 @@
       "implication": "Open question for Pattern E catalog: 0x0147 joins 0x00D2 as a known-unrouted opcode in 1.23b. Could be a retail-only addition or simply a wire artifact the client doesn't need."
     },
     {
-      "title": "Equipment/inventory wire frame ordering is canonical: BeginChange -> SetBegin -> {ItemList | LinkedItemList} -> [ModifierFrame] -> SetEnd -> EndChange",
-      "detail": "The wire frame ordering is BeginChange -> SetBegin -> {ItemList | LinkedItemList} -> [ModifierFrame] -> SetEnd -> EndChange. The 5 X01/X08/X16/X32/X64 size variants for each row family allow the game loop to pick the smallest power-of-2 chunk that fits the burst.",
-      "needsReverify": true,
-      "reverifyMethod": "live-validation against the retail 1.23b client in a live session",
-      "implication": "Anyone implementing or fuzzing the equipment subsystem must respect this frame ordering. A LinkedItemListX08 packet outside a Begin/EndChange bracket is malformed; the client may or may not reject it (unknown without test)."
+      "title": "Observed equipment/inventory frame excludes the 0x018F-0x0191 cluster",
+      "detail": "The supported frame is BeginChange -> SetBegin -> {ItemList | LinkedItemList} -> SetEnd -> EndChange. The body, helm, soul, and weapon captures contain no 0x018F, 0x0190, or 0x0191 stream, so the prior inserted ModifierFrame step is discarded.",
+      "implication": "Do not require or synthesize the 0x018F-0x0191 cluster inside gear-change frames. Its independent transaction context remains unresolved."
     },
     {
       "title": "The c2s equipment-initiation carrier remains unresolved",
@@ -661,9 +659,10 @@
       "xivl-opcodes/opcodes.json 0x016E InventoryEndChangePacket",
       "xivl-opcodes/opcodes.json 0x0146 InventorySetBeginPacket (ItemPackage chunk start)",
       "xivl-opcodes/opcodes.json 0x0147 InventorySetEndPacket (ItemPackage chunk end)",
-      "xivl-opcodes/opcodes.json 0x018F _0x018F (MassSetItemModifier begin)",
-      "xivl-opcodes/opcodes.json 0x0191 _0x0191 (MassSetItemModifier end)",
-      "xivl-opcodes/opcodes.json 0x0190 _0x0190 (MassSetItemModifier body)"
+      "data/vendor/opcodes/opcodes.json 0x018F _0x018F (candidate label only)",
+      "data/vendor/opcodes/opcodes.json 0x0191 _0x0191 (candidate label only)",
+      "data/vendor/opcodes/opcodes.json 0x0190 _0x0190 (candidate label only)",
+      "xivl-captures:studies/equipment-property-correlation/derived/evidence-map.md"
     ],
     "ghidra_evidence": [
       "%BCS_GHIDRA_PROJECTS%\\fun_004dc690_decomp.txt (FUN_004DC690 high-switch case map, 3364 bytes)",
