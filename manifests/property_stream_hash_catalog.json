@@ -1,8 +1,8 @@
 {
-  "version": 4,
+  "version": 5,
   "generated": "2026-08-29",
   "gameVersion": "1.23b",
-  "status": "player_hp_writer_identity_complete",
+  "status": "main_skill_namespace_complete",
   "scope": "Client-side grammar and carrier closure for the typed actor-property stream. Names and values describe client/capture evidence only and do not claim server behavior.",
   "sourceSnapshots": {
     "clientStructs": {
@@ -20,6 +20,11 @@
     "clientScripts": {
       "repository": "XIVLegacy/xivl-client-scripts",
       "commit": "f351794098124d00a673ef2714336ca23eb48d85"
+    },
+    "clientData": {
+      "repository": "XIVLegacy/xivl-client-data",
+      "commit": "76d68d2036dc99bdda2917e65efcdef4f62f4b63",
+      "extraction": "2012.09.19.0001"
     }
   },
   "grammar": {
@@ -269,7 +274,7 @@
         "nativeIndex": 0,
         "luaIndex": 1,
         "storageTarget": "writer-local array state: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
-        "consumerBoundary": "Decoded Lua getStateMainSkill returns state_mainSkill[1] and [2], and other Lua consumers pass those tokens to skill-category and battle-class helpers. No direct native consumer establishes a class/job identifier namespace."
+        "consumerBoundary": "Decoded Lua getStateMainSkill returns state_mainSkill[1] and [2]. The first value is consumed as a skill id by category, class/job, command, equipment-compatibility, and display helpers; the second is the sub-skill return and is ignored by getMainSkillCategory."
       },
       {
         "requestedPath": "charaWork.parameterSave.state_mainSkillLevel",
@@ -317,6 +322,81 @@
         "consumerBoundary": "No battleTemp.hpMax descriptor or observed property hash exists in the retained catalog. The registry chain cannot select a writer for this unregistered exact path."
       }
     ],
+    "mainSkillIdentifierNamespace": {
+      "status": "closed_as_skill_id_namespace",
+      "scriptRegistration": {
+        "kind": "decoded retail Lua methods listed in the CharaBaseClass corpus registry, not address-attributed native N-API registrations",
+        "getMainSkill": "CharaBaseClass.getMainSkill -> _getEquippingItem(1) -> ItemBaseClass.getMainSkill; returns skill id 3 for the retained base implementation, with fallback skill id 1 when the slot or method result is nil",
+        "getMainSkillCategory": "CharaBaseClass.getMainSkillCategory -> getStateMainSkill -> getSkillCategory(first return); the second state_mainSkill return is outside getSkillCategory's one-argument signature",
+        "getMainSkillLevel": "CharaBaseClass.getMainSkillLevel -> getStateMainSkillLevel -> charaWork.parameterSave.state_mainSkillLevel",
+        "nativeNameReferenceResult": "Verified COMPLETE exact-string export found zero defined-data matches for getMainSkill, getMainSkillCategory, and getMainSkillLevel among 28,414 defined strings. This excludes only Ghidra-recorded exact defined strings and does not replace the decoded Lua registration evidence."
+      },
+      "nativeDependencies": {
+        "getMainSkillEquipmentLookup": "_getEquippingItem registration FUN_00755D00 -> CharaBase vtable slot 2 switchboard FUN_007574A0 -> concrete implementation FUN_007088E0",
+        "getMainSkillItemMethod": "The decoded ItemBaseClass.getMainSkill method returns literal skill id 3; no target-specific native wrapper or implementation was established",
+        "getMainSkillCategory": "The decoded method is a Lua threshold projection over getStateMainSkill's first generic property read; no target-specific native wrapper or implementation was established",
+        "getMainSkillLevel": "The decoded method is a Lua wrapper over the generic scalar property read; no target-specific native wrapper or implementation was established"
+      },
+      "nativeReadChain": {
+        "instanceIndex": "FUN_00D16D40 dispatches an ordinary member read through the selected implementation vtable slot 7 (+0x1C)",
+        "indexedMetatable": "FUN_00D20540 registers indexed-container __index as FUN_00D2F220",
+        "indexedWrapper": "FUN_00D2F220 -> FUN_00D2E0A0",
+        "indexedImplementation": "FUN_00D2E0A0 bounds Lua indices to 1..extent at container+0x58, calls FUN_00D1A620, then dispatches the backing implementation vtable slot 7 (+0x1C)",
+        "indexConversion": "FUN_00D1A620 decrements every positive Lua index; Lua index 1 selects native slot 0",
+        "genericLookup": "FUN_00D1DF90 resolves a named MetamethodArray2D row and returns its payload at row+0x1C"
+      },
+      "namespace": {
+        "identifier": "skill id",
+        "notIdentifiers": ["category id", "discipline id", "job-only id"],
+        "categoryProjection": "getSkillCategory maps 0 -> 0, 1..20 -> 1, 21..28 -> 21, 29..38 -> 29, and >=39 -> 39; getMainSkillCategory applies this projection to native slot 0",
+        "classJobRelationship": "getMainClassOrJob returns a nonzero job id for players and otherwise forwards both getStateMainSkill values. isJob recognizes 15..19 and 26..27, while convertSkillId maps those job ids back to base skill ids including 3 and 4.",
+        "slotRelationship": "state_mainSkill native slot 0 / Lua index 1 is the primary skill id; Lua index 2 is the second return, and Lua index 3 is exposed separately as getStateMainSkillForSub. getMainSkill does not read this array."
+      },
+      "observedMappings": [
+        {
+          "value": 3,
+          "skillRow": 3,
+          "skillName": "Sword",
+          "classRow": 3,
+          "className": "Gladiator",
+          "category": 1
+        },
+        {
+          "value": 4,
+          "skillRow": 4,
+          "skillName": "Axe",
+          "classRow": 4,
+          "className": "Marauder",
+          "category": 1
+        }
+      ],
+      "consumerBridges": {
+        "battleClass": "isBattleClass explicitly accepts skill ids 2, 3, 4, 7, 8, 10, 22, and 23 from either of getStateMainSkill's two returns",
+        "commandEligibility": "gameCommandBasic column 38 is getCommandMainSkill; job permission tables and convertSkillId compare job ids with base skill ids, and command compatibility indexes compatibility.csv at column 8 + (skill id - 1)",
+        "equipmentCompatibility": "getItemMainSkill returns two item-data skill ids; getItemCompatibilityBySkill indexes the same compatibility-sheet skill axis, with job ids converted to their base skill id where required",
+        "display": "PcProfileWidget passes state_mainSkill[0], state_mainSkillLevel, and an optional job id to text resource 231; xtx_text_skillName and xtx_text_jobName use the skill/class row id directly",
+        "level": "state_mainSkillLevel is the scalar level paired with the primary skill in profile, progression, equipment, repair, materia, and matching displays; it is not another identifier"
+      },
+      "calibrationGate": "Values 3 and 4 now identify Sword/Gladiator and Axe/Marauder on the client skill-id axis, but the two HP anchors remain only two calibration points. Their admitted HP tuples and the no-two-point-formula gate are unchanged.",
+      "sourceRefs": [
+        "manifests/lua_api_contract.json",
+        "manifests/symbols.json",
+        "xivl-client-scripts:lua/registry.json",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass.lua:108-130",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_battle.lua:52-90",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_cliprog.lua:69-81",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_parameter.lua:31-49,734-955,961-999",
+        "xivl-client-scripts:lua/scripts/chara/charabaseclass_ffxivbattle.lua:88-107,111-320",
+        "xivl-client-scripts:lua/scripts/item/itembaseclass_common.lua:1020-1160,4316-4324",
+        "xivl-client-scripts:lua/scripts/command/game/gamecommandbaseclass.lua:41-52,998-1060",
+        "xivl-client-scripts:lua/scripts/widget/pcprofilewidget.lua:45-69",
+        "xivl-client-scripts:lua/scripts/widget/pcmatchingfindwidget.lua:750-799,1031-1089",
+        "xivl-client-scripts:lua/scripts/widget/repairequipmentwidget.lua:404-486,2008-2020,2329-2340,2577-2593",
+        "xivl-client-scripts:lua/scripts/widget/desktopwidget_itemdetail.lua:3666-4035,6740-7532",
+        "xivl-client-data:csv/xtx_text_skillName.csv:rows 3-4; SHA-256 170FD51685AB160989DD836C1D67DDF87E95627180CF17AB86DEE271D04AB746",
+        "xivl-client-data:csv/xtx_text_jobName.csv:rows 3-4; SHA-256 61535798445DDB716CD16E8B68B06D9C6A67F76C321FE0DD5E9840C143DE8B57"
+      ]
+    },
     "calibrationCorrection": {
       "path": "charaWork.parameterSave.hpMax[0]",
       "hash": "0x7bcdfb69",
@@ -344,9 +424,22 @@
         "output": "tools/ghidra/logs/lane1_property-name-refs.txt",
         "command": "tools\\ghidra\\export-references.ps1 -Strings @('battleTemp','generalParameter','hpMax','parameterSave','state_mainSkill','state_mainSkillLevel') -StringMatch EXACT -Out tools\\ghidra\\logs\\lane1_property-name-refs.txt",
         "result": "Verified COMPLETE export: zero defined-string matches for battleTemp, generalParameter, hpMax, parameterSave, state_mainSkill, and state_mainSkillLevel among 28,414 defined strings. This excludes only Ghidra-recorded exact defined strings and does not exclude computed or script-loaded names."
+      },
+      {
+        "id": "lane4-main-skill-native-read-2026-08-29",
+        "script": "ghidra/DumpVAs.java",
+        "output": "tools/ghidra/logs/lane4_main-skill-namespace.txt",
+        "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\lane4_main-skill-namespace.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00D16D40,0x00D1A620,0x00D1DF90,0x00D20540,0x00D211E0,0x00D22030,0x00D2BF40,0x00D2E0A0,0x00D2F220,0x00D2F910,0x00D2FC10,0x00D305A0,0x00D30640' } -ScriptPath @('ghidra')"
+      },
+      {
+        "id": "lane4-main-skill-name-reference-negative-2026-08-29",
+        "script": "ghidra/FindReferences.java",
+        "output": "tools/ghidra/logs/lane4_main-skill-api-name-refs.txt",
+        "command": "tools\\ghidra\\export-references.ps1 -Strings @('getMainSkill','getMainSkillCategory','getMainSkillLevel') -Out tools\\ghidra\\logs\\lane4_main-skill-api-name-refs.txt",
+        "result": "Verified COMPLETE export: zero defined-string matches for getMainSkill, getMainSkillCategory, and getMainSkillLevel among 28,414 defined strings."
       }
     ],
-    "conclusion": "The four requested strings do not all name registered properties. Three exact hashes select writer-local typed handlers with a proven Lua-to-native array-index shift. The requested battleTemp.hpMax[0] path is absent; the HP calibration property is parameterSave.hpMax[0]. No direct native consumer promotes state_mainSkill[0] to a class/job id or generalParameter[5] to Vitality."
+    "conclusion": "The four requested strings do not all name registered properties. Three exact hashes select writer-local typed handlers with a proven Lua-to-native array-index shift. The requested battleTemp.hpMax[0] path is absent; the HP calibration property is parameterSave.hpMax[0]. Decoded Lua consumers and first-party text rows close state_mainSkill[0] as a skill id: 3 is Sword/Gladiator and 4 is Axe/Marauder. This does not promote generalParameter[5] to Vitality or authorize an HP formula from two points."
   },
   "catalog": {
     "home": "manifests/gam_hash_names.json",

@@ -72,6 +72,55 @@ class PlayerHpWriterIdentityTest(unittest.TestCase):
         correction["storageTarget"] = "fixed PlayerBase field"
         self.assertIn("HP correction semantic boundary drifted", validate(mutated))
 
+    def test_main_skill_index_chain_mutation_is_rejected(self) -> None:
+        mutated = copy.deepcopy(self.doc)
+        namespace = mutated["playerHpWriterIdentity"]["mainSkillIdentifierNamespace"]
+        namespace["nativeReadChain"]["indexConversion"] = (
+            "Lua index 1 selects native slot 1"
+        )
+        self.assertIn("native read or index chain drifted", validate(mutated))
+
+    def test_main_skill_namespace_mutation_is_rejected(self) -> None:
+        mutated = copy.deepcopy(self.doc)
+        namespace = mutated["playerHpWriterIdentity"]["mainSkillIdentifierNamespace"]
+        namespace["namespace"]["identifier"] = "job id"
+        self.assertIn("identifier or slot namespace drifted", validate(mutated))
+
+    def test_observed_skill_mapping_mutation_is_rejected(self) -> None:
+        mutated = copy.deepcopy(self.doc)
+        namespace = mutated["playerHpWriterIdentity"]["mainSkillIdentifierNamespace"]
+        namespace["observedMappings"][0]["className"] = "Marauder"
+        self.assertIn("observed skill mapping drifted", validate(mutated))
+
+    def test_api_relationship_mutation_is_rejected(self) -> None:
+        mutated = copy.deepcopy(self.doc)
+        namespace = mutated["playerHpWriterIdentity"]["mainSkillIdentifierNamespace"]
+        namespace["scriptRegistration"]["getMainSkill"] = (
+            "CharaBaseClass.getMainSkill -> state_mainSkill[1]"
+        )
+        self.assertIn("API relationship drifted", validate(mutated))
+
+    def test_hp_gate_cannot_be_reinterpreted(self) -> None:
+        mutated = copy.deepcopy(self.doc)
+        namespace = mutated["playerHpWriterIdentity"]["mainSkillIdentifierNamespace"]
+        namespace["calibrationGate"] = "derive an HP formula from the two points"
+        self.assertIn("HP calibration gate drifted", validate(mutated))
+
+    def test_main_skill_source_reference_mutation_is_rejected(self) -> None:
+        mutated = copy.deepcopy(self.doc)
+        namespace = mutated["playerHpWriterIdentity"]["mainSkillIdentifierNamespace"]
+        namespace["sourceRefs"][0] = "notes:uncited-main-skill"
+        self.assertIn("source reference set drifted", validate(mutated))
+
+    def test_main_skill_evidence_record_mutation_is_rejected(self) -> None:
+        mutated = copy.deepcopy(self.doc)
+        runs = mutated["playerHpWriterIdentity"]["evidenceRuns"]
+        lane4 = next(run for run in runs if run["id"].startswith("lane4-main-skill-native"))
+        lane4["output"] = "tools/ghidra/logs/wrong.txt"
+        self.assertTrue(
+            any("evidence record drifted" in finding for finding in validate(mutated))
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

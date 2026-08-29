@@ -440,7 +440,7 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
     if not isinstance(doc, dict):
         return [Finding("ERROR", "property-stream", "manifest must be an object")]
     if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
-        4, "2026-08-29", "1.23b", "player_hp_writer_identity_complete"
+        5, "2026-08-29", "1.23b", "main_skill_namespace_complete"
     ):
         findings.append(Finding("ERROR", "property-stream.metadata", "snapshot metadata drifted"))
 
@@ -450,11 +450,15 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         snapshots.get("captures", {}).get("commit"),
         snapshots.get("decomp", {}).get("commit"),
         snapshots.get("clientScripts", {}).get("commit"),
+        snapshots.get("clientData", {}).get("commit"),
+        snapshots.get("clientData", {}).get("extraction"),
     ) != (
         "3384717be917c0c9464c33bcf17c723769af77da",
         "54a24c87faa4e3cebde808b74d80b6f1bee4b013",
         "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb",
         "f351794098124d00a673ef2714336ca23eb48d85",
+        "76d68d2036dc99bdda2917e65efcdef4f62f4b63",
+        "2012.09.19.0001",
     ):
         findings.append(Finding("ERROR", "property-stream.sourceSnapshots", "source snapshot drifted"))
 
@@ -628,7 +632,7 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
             (
                 "parameterSave.state_mainSkill = array(4, integer8)",
                 "writer-local array state: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
-                "Decoded Lua getStateMainSkill returns state_mainSkill[1] and [2], and other Lua consumers pass those tokens to skill-category and battle-class helpers. No direct native consumer establishes a class/job identifier namespace.",
+                "Decoded Lua getStateMainSkill returns state_mainSkill[1] and [2]. The first value is consumed as a skill id by category, class/job, command, equipment-compatibility, and display helpers; the second is the sub-skill return and is ignored by getMainSkillCategory.",
             ),
             (
                 "parameterSave.state_mainSkillLevel = integer16",
@@ -648,6 +652,104 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         if semantic_tuples != expected_semantics:
             findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
                                     "descriptor, storage, or consumer boundary drifted"))
+        namespace = player_hp.get("mainSkillIdentifierNamespace", {})
+        if not isinstance(namespace, dict) or namespace.get("status") != "closed_as_skill_id_namespace":
+            findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                    "namespace status drifted"))
+        else:
+            registration = namespace.get("scriptRegistration", {})
+            if not isinstance(registration, dict) or (
+                registration.get("kind"),
+                registration.get("getMainSkill"),
+                registration.get("getMainSkillCategory"),
+                registration.get("getMainSkillLevel"),
+            ) != (
+                "decoded retail Lua methods listed in the CharaBaseClass corpus registry, not address-attributed native N-API registrations",
+                "CharaBaseClass.getMainSkill -> _getEquippingItem(1) -> ItemBaseClass.getMainSkill; returns skill id 3 for the retained base implementation, with fallback skill id 1 when the slot or method result is nil",
+                "CharaBaseClass.getMainSkillCategory -> getStateMainSkill -> getSkillCategory(first return); the second state_mainSkill return is outside getSkillCategory's one-argument signature",
+                "CharaBaseClass.getMainSkillLevel -> getStateMainSkillLevel -> charaWork.parameterSave.state_mainSkillLevel",
+            ):
+                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                        "API relationship drifted"))
+            dependencies = namespace.get("nativeDependencies", {})
+            if not isinstance(dependencies, dict) or (
+                dependencies.get("getMainSkillEquipmentLookup"),
+                dependencies.get("getMainSkillItemMethod"),
+                dependencies.get("getMainSkillCategory"),
+                dependencies.get("getMainSkillLevel"),
+            ) != (
+                "_getEquippingItem registration FUN_00755D00 -> CharaBase vtable slot 2 switchboard FUN_007574A0 -> concrete implementation FUN_007088E0",
+                "The decoded ItemBaseClass.getMainSkill method returns literal skill id 3; no target-specific native wrapper or implementation was established",
+                "The decoded method is a Lua threshold projection over getStateMainSkill's first generic property read; no target-specific native wrapper or implementation was established",
+                "The decoded method is a Lua wrapper over the generic scalar property read; no target-specific native wrapper or implementation was established",
+            ):
+                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                        "native dependency boundary drifted"))
+            native_read = namespace.get("nativeReadChain", {})
+            if not isinstance(native_read, dict) or (
+                native_read.get("instanceIndex"), native_read.get("indexedMetatable"),
+                native_read.get("indexedWrapper"), native_read.get("indexedImplementation"),
+                native_read.get("indexConversion"), native_read.get("genericLookup"),
+            ) != (
+                "FUN_00D16D40 dispatches an ordinary member read through the selected implementation vtable slot 7 (+0x1C)",
+                "FUN_00D20540 registers indexed-container __index as FUN_00D2F220",
+                "FUN_00D2F220 -> FUN_00D2E0A0",
+                "FUN_00D2E0A0 bounds Lua indices to 1..extent at container+0x58, calls FUN_00D1A620, then dispatches the backing implementation vtable slot 7 (+0x1C)",
+                "FUN_00D1A620 decrements every positive Lua index; Lua index 1 selects native slot 0",
+                "FUN_00D1DF90 resolves a named MetamethodArray2D row and returns its payload at row+0x1C",
+            ):
+                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                        "native read or index chain drifted"))
+            identity = namespace.get("namespace", {})
+            if not isinstance(identity, dict) or (
+                identity.get("identifier"), identity.get("notIdentifiers"),
+                identity.get("categoryProjection"), identity.get("slotRelationship"),
+            ) != (
+                "skill id", ["category id", "discipline id", "job-only id"],
+                "getSkillCategory maps 0 -> 0, 1..20 -> 1, 21..28 -> 21, 29..38 -> 29, and >=39 -> 39; getMainSkillCategory applies this projection to native slot 0",
+                "state_mainSkill native slot 0 / Lua index 1 is the primary skill id; Lua index 2 is the second return, and Lua index 3 is exposed separately as getStateMainSkillForSub. getMainSkill does not read this array.",
+            ):
+                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                        "identifier or slot namespace drifted"))
+            mappings = [
+                (
+                    row.get("value"), row.get("skillRow"), row.get("skillName"),
+                    row.get("classRow"), row.get("className"), row.get("category"),
+                )
+                for row in namespace.get("observedMappings", []) if isinstance(row, dict)
+            ] if isinstance(namespace.get("observedMappings"), list) else []
+            if mappings != [
+                (3, 3, "Sword", 3, "Gladiator", 1),
+                (4, 4, "Axe", 4, "Marauder", 1),
+            ]:
+                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                        "observed skill mapping drifted"))
+            if namespace.get("calibrationGate") != (
+                "Values 3 and 4 now identify Sword/Gladiator and Axe/Marauder on the client skill-id axis, but the two HP anchors remain only two calibration points. Their admitted HP tuples and the no-two-point-formula gate are unchanged."
+            ):
+                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                        "HP calibration gate drifted"))
+            expected_refs = [
+                "manifests/lua_api_contract.json",
+                "manifests/symbols.json",
+                "xivl-client-scripts:lua/registry.json",
+                "xivl-client-scripts:lua/scripts/chara/charabaseclass.lua:108-130",
+                "xivl-client-scripts:lua/scripts/chara/charabaseclass_battle.lua:52-90",
+                "xivl-client-scripts:lua/scripts/chara/charabaseclass_cliprog.lua:69-81",
+                "xivl-client-scripts:lua/scripts/chara/charabaseclass_parameter.lua:31-49,734-955,961-999",
+                "xivl-client-scripts:lua/scripts/chara/charabaseclass_ffxivbattle.lua:88-107,111-320",
+                "xivl-client-scripts:lua/scripts/item/itembaseclass_common.lua:1020-1160,4316-4324",
+                "xivl-client-scripts:lua/scripts/command/game/gamecommandbaseclass.lua:41-52,998-1060",
+                "xivl-client-scripts:lua/scripts/widget/pcprofilewidget.lua:45-69",
+                "xivl-client-scripts:lua/scripts/widget/pcmatchingfindwidget.lua:750-799,1031-1089",
+                "xivl-client-scripts:lua/scripts/widget/repairequipmentwidget.lua:404-486,2008-2020,2329-2340,2577-2593",
+                "xivl-client-scripts:lua/scripts/widget/desktopwidget_itemdetail.lua:3666-4035,6740-7532",
+                "xivl-client-data:csv/xtx_text_skillName.csv:rows 3-4; SHA-256 170FD51685AB160989DD836C1D67DDF87E95627180CF17AB86DEE271D04AB746",
+                "xivl-client-data:csv/xtx_text_jobName.csv:rows 3-4; SHA-256 61535798445DDB716CD16E8B68B06D9C6A67F76C321FE0DD5E9840C143DE8B57",
+            ]
+            if namespace.get("sourceRefs") != expected_refs:
+                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
+                                        "source reference set drifted"))
         correction = player_hp.get("calibrationCorrection", {})
         if not isinstance(correction, dict) or (
             correction.get("path"), correction.get("hash"),
@@ -680,9 +782,34 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         if run_ids != {
             "lane1-player-hp-property-writers-2026-08-29",
             "lane1-property-name-reference-negative-2026-08-29",
+            "lane4-main-skill-native-read-2026-08-29",
+            "lane4-main-skill-name-reference-negative-2026-08-29",
         }:
             findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
                                     "evidence run set drifted"))
+        run_by_id = {
+            run.get("id"): run for run in evidence_runs if isinstance(run, dict)
+        }
+        expected_lane4_runs = {
+            "lane4-main-skill-native-read-2026-08-29": (
+                "ghidra/DumpVAs.java",
+                "tools/ghidra/logs/lane4_main-skill-namespace.txt",
+                "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\lane4_main-skill-namespace.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00D16D40,0x00D1A620,0x00D1DF90,0x00D20540,0x00D211E0,0x00D22030,0x00D2BF40,0x00D2E0A0,0x00D2F220,0x00D2F910,0x00D2FC10,0x00D305A0,0x00D30640' } -ScriptPath @('ghidra')",
+                None,
+            ),
+            "lane4-main-skill-name-reference-negative-2026-08-29": (
+                "ghidra/FindReferences.java",
+                "tools/ghidra/logs/lane4_main-skill-api-name-refs.txt",
+                "tools\\ghidra\\export-references.ps1 -Strings @('getMainSkill','getMainSkillCategory','getMainSkillLevel') -Out tools\\ghidra\\logs\\lane4_main-skill-api-name-refs.txt",
+                "Verified COMPLETE export: zero defined-string matches for getMainSkill, getMainSkillCategory, and getMainSkillLevel among 28,414 defined strings.",
+            ),
+        }
+        for run_id, expected in expected_lane4_runs.items():
+            run = run_by_id.get(run_id, {})
+            actual = (run.get("script"), run.get("output"), run.get("command"), run.get("result"))
+            if actual != expected:
+                findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
+                                        f"{run_id} evidence record drifted"))
     pending = storage.get("pendingStream", {})
     if not isinstance(pending, dict) or (
         pending.get("managerMapOffset"), pending.get("mapNodeSize"),
