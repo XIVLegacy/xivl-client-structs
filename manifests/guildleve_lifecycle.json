@@ -482,7 +482,7 @@
         "activegl discriminator",
         "JournalDetailWidget work.offerLimit integer8"
       ],
-      "path": "request leg: failed retained regional detail opens -> DesktopWidget.executeCommandJournalDetailInfo -> command 24212 sends activegl plus journalID; separate uncorrelated presentation leg: s2c 0x0133 handler FUN_00575060 -> LuaActorImpl slot 59 FUN_00759E50 -> UserDataReceiver FUN_008A0190 -> PlayerBaseClass `_onReceiveDataPacket` requestedData branch -> DesktopWidget activegl branch -> JournalDetailWidget.setDetailData -> positive first detail value enables regional Retry and is copied to widget-local work.offerLimit; the local widget has a parallel positive seventh-value predicate but no producer in the preserved route",
+      "path": "request leg: failed retained regional detail opens -> JournalDetailWidget passes journalType, journalID, and questIndex -> DesktopWidget.executeCommandJournalDetailInfo type 1 -> command 24212 sends activegl plus questIndex while journalID is unused; separate uncorrelated presentation leg: s2c 0x0133 handler FUN_00575060 -> LuaActorImpl slot 59 FUN_00759E50 -> UserDataReceiver FUN_008A0190 -> PlayerBaseClass `_onReceiveDataPacket` requestedData branch -> DesktopWidget activegl branch -> JournalDetailWidget.setDetailData -> positive first detail value enables regional Retry and is copied to widget-local work.offerLimit; the local widget has a parallel positive seventh-value predicate but no producer in the preserved route",
       "support": [
         "xivl-client-scripts:lua/scripts/widget/ask/journaldetailwidget.lua",
         "xivl-client-scripts:lua/scripts/widget/desktopwidget_connector.lua",
@@ -495,7 +495,7 @@
       ],
       "evidenceTier": "retail_binary_script_and_client_data",
       "confidence": "confirmed_client_presentation_boundary",
-      "proves": "offerLimit is an integer8 field local to JournalDetailWidget. For regional retained details it is populated from the first value on the s2c 0x0133 requestedData/activegl presentation route. Separately, command 24212 sends an activegl request with the journal ID; no retained transaction correlates the two legs. A positive value is only a client presentation predicate for exposing Retry on an already failed retained entry. The local widget applies the same predicate to its seventh detail value, but the preserved script route does not show a producer. offerLimit is not a PlayerBase work field, and both detail legs are separate from JournalCommand 24241 mutation intent.",
+      "proves": "offerLimit is an integer8 field local to JournalDetailWidget. For regional retained details it is populated from the first value on the s2c 0x0133 requestedData/activegl presentation route. Separately, command 24212 sends an activegl request with the caller's questIndex; the journalID argument is not used on that branch, and no retained transaction correlates the two legs. A positive value is only a client presentation predicate for exposing Retry on an already failed retained entry. The local widget applies the same predicate to its seventh detail value, but the preserved script route does not show a producer. offerLimit is not a PlayerBase work field, and both detail legs are separate from JournalCommand 24241 mutation intent.",
       "doesNotProve": "No retained request/response pair correlates command 24212 to the 0x0133 detail values, and no local-detail producer is established. The value's authoritative producer, semantic unit, maximum, reset schedule, decrement rule, reacquisition rule, and relationship to an account or character allowance store remain unknown. Nothing in this path establishes that a 24241 Retry response returns offerLimit or that offerLimit itself is authoritative server state."
     },
     {
@@ -504,21 +504,25 @@
         "Application::Network::GameAttributeManager::Data::Player",
         "GAM ordinal parameter 233 guildleveOfferLimit",
         "signed char DecoratorSimpleAssign",
+        "Player parameter collection subobject +0x73c and value +0x740",
         "FUN_005BCEE0 one-byte assignment"
       ],
-      "path": "lobby GAM Player CompileTimeParameter ordinal 233 -> RTTI name guildleveOfferLimit and signed-char type -> DecoratorSimpleAssign slot candidate FUN_005BCEE0 copies one input byte into parameter-local storage; no tracked consumer edge reaches s2c 0x0133, PlayerBase work, or JournalDetailWidget",
+      "path": "lobby GAM Player FUN_005ACB70 allocates a 0x748-byte CompileTimeParameterCollection<1043> -> FUN_00608730 -> FUN_00608640 invokes ordinal-233 default initializer FUN_005BB760, which zeroes its object-local +4 value byte; separate teardown/reset FUN_006080D0 addresses the ordinal-233 subobject at collection +0x73c, and Player copy construction FUN_005ACD10 -> FUN_006089B0 passes source collection +0x73c to FUN_005C2290 for virtual-accessor copying; together these paths cross-confirm the parameter subobject at +0x73c and its value layout at +0x740; FUN_005BCEE0 copies one input byte into that parameter-local value",
       "support": [
         "xivl-decomp:include/net/gam_registry.h",
         "xivl-decomp:config/ffxivgame.gam_params.json",
         "xivl-decomp:config/ffxivgame.gam_types_rtti.json",
+        "xivl-decomp:config/ffxivgame.rtti.json",
         "xivl-decomp:config/ffxivgame.vtable_slots.jsonl",
         "xivl-decomp:docs/net/wire-protocol.md",
-        "tools/ghidra/logs/c542_guildleve-offerlimit-gam.txt"
+        "tools/ghidra/logs/c542_guildleve-offerlimit-gam.txt",
+        "tools/ghidra/logs/c543_offerlimit_address_refs.txt",
+        "tools/ghidra/logs/c543_guildleve-allowance-dataflow.txt"
       ],
       "evidenceTier": "retail_binary_rtti_and_decomp",
-      "confidence": "confirmed_native_representation_unbound_consumer",
-      "proves": "The native lobby GAM Player data class has a distinct ordinal parameter named guildleveOfferLimit with a signed one-byte representation and simple-assignment storage. GAM ordinals and in-zone 0x0137 property-path hashes are parallel, non-interchangeable identifier systems.",
-      "doesNotProve": "The matching name and width do not establish a dataflow into JournalDetailWidget.offerLimit, identify the 0x0133 activegl producer, bind a specific lobby packet, or prove amount semantics and server authority. FUN_005BCEE0 is a type-level assignment candidate; its caller and concrete parameter-233 instance remain unbound."
+      "confidence": "confirmed_concrete_native_storage_unbound_consumer",
+      "proves": "The native lobby GAM Player data class has a distinct ordinal parameter named guildleveOfferLimit with a signed one-byte representation. Separate teardown/reset and copy paths cross-confirm its concrete parameter subobject at Player parameter collection +0x73c; its object-local +4 byte establishes the corresponding value layout at collection +0x740. The 0x748-byte collection's construction, zero-initialization, simple assignment, teardown/reset, and copy paths are bounded. GAM ordinals and in-zone 0x0137 property-path hashes are parallel, non-interchangeable identifier systems.",
+      "doesNotProve": "Concrete storage and the matching name do not establish a dataflow into JournalDetailWidget.offerLimit, identify the 0x0133 activegl producer, bind a specific lobby packet or metadata parser, or prove amount semantics and server authority. The completed three-target reference export found 152 references to FUN_005BCEE0, all vtable data entries, and five code references to the parameter-233 vtable, all construction, destruction, or copy paths. No code-owned direct consumer appeared within that export; computed, indirect, dynamic, and unanalyzed runtime paths remain insufficient rather than excluded."
     },
     {
       "question": "What guildleve renewal countdown does the client present?",
@@ -628,8 +632,8 @@
     "Bind one effective s2c 0x00CB to the known director actor/control's observed disappearance; do not copy the retail duplicate or generalize its scene-transition placement.",
     "Bind s2c 0x0131 selector 5 to event-execution retirement only. Its placement after actor removal is observed once and is not a universal ordering rule.",
     "Encode JournalCommand 24241 as generic c2s 0x012D commandRequest intent for static actor 0xA0F05EB1 with tail `00 <journalID:be32> 00 <subindex:be32> 05 05 0F` and zero padding through 128 bytes; do not invent a command-specific opcode or response policy.",
-    "Treat command 24212 activegl and s2c 0x0133 requestedData/activegl as separate observed regional detail request and presentation legs; a positive first presentation value may expose Retry, but do not assume transaction correlation, model the widget value as an authoritative allowance store, or invent a local-detail producer.",
-    "Preserve lobby GAM Player parameter 233 guildleveOfferLimit as a signed-byte native representation distinct from both the activegl widget value and 0x0137 property hashes until a consumer edge binds them.",
+    "Treat command 24212 activegl with questIndex and s2c 0x0133 requestedData/activegl as separate observed regional detail request and presentation legs; a positive first presentation value may expose Retry, but do not assume transaction correlation, substitute journalID for questIndex, model the widget value as an authoritative allowance store, or invent a local-detail producer.",
+    "Preserve lobby GAM Player parameter 233 guildleveOfferLimit as a signed-byte value at Player parameter collection +0x740, with its parameter subobject at +0x73c, distinct from both the activegl widget value and 0x0137 property hashes until a consumer edge binds them.",
     "Represent observed guildleveId values as hash-selected 16-bit SyncMemory properties and observed guildleveDone/guildleveChecked values as hash-selected 8-bit SyncMemory properties; do not bind any such 0x0137 write to command 24241 without a correlated response.",
     "For active-attempt abandonment, add no abandonment-specific packet sequence from this lane; only generic cleanup independently required by existing group, actor, and event lifecycles is justified."
   ],
@@ -646,7 +650,7 @@
     "A captured Break or Retry response sequence that binds command 24241 to journal-ID, done/checked, offer-limit, or director-lifecycle mutation.",
     "The authoritative producer and semantics of activegl offerLimit, including whether it derives from a character, account, or other allowance store.",
     "The producer of the local retained-detail seventh value consumed as offerLimit.",
-    "A concrete consumer edge from lobby GAM Player parameter 233 guildleveOfferLimit to activegl UserData or JournalDetailWidget.offerLimit.",
+    "A concrete producer or consumer edge from lobby GAM Player parameter collection +0x740 (ordinal 233 guildleveOfferLimit) to a lobby parser, activegl UserData, or JournalDetailWidget.offerLimit.",
     "The remaining-allowance amount, grant and maximum, server-side reset semantics at the client-presented 12-hour boundary, decrement point, reacquisition rule, and Retry consumption policy.",
     "Retail policy for accepted-leve retention and retry after abandon or failure."
   ]
