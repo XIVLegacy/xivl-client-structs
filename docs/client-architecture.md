@@ -981,6 +981,49 @@ BCS-Y-1496..BCS-Y-1520, BCS-Y-1529..BCS-Y-1553, BCS-Y-1557,
 BCS-Y-1569..BCS-Y-1587, BCS-Y-1670..BCS-Y-1743;
 BCS-S-0046..BCS-S-0049.
 
+### Ordinary text submission has no verified native consume seam
+
+Retail Lua routes non-empty `TextBox_ChatInput` submissions through
+`processInputWordAnalyze` and `DesktopWidget.executeTextCommand`. The GM/debug
+test runs first. Other input calls `_parseTextCommand` once per
+`executeTextCommand` invocation; parser-declined ordinary text and unknown
+slash input then converge on `chat(rawInput)`. Deferred target selection can
+later re-execute the saved raw input, so this script order is not a runtime
+once-only hook guarantee.
+
+The native parser path is exact-build bounded. `_parseTextCommand` registers
+implementation `FUN_006FE2A0` at registration function `FUN_00751F70` through
+binder `FUN_00726BF0`. The implementation calls `FUN_0075CCF0`, which
+dereferences its object, selects the member at `+0x8BC`, and tail-jumps to
+`FUN_0056E380`. The core is `__thiscall`-shaped, returns success in `AL`, and
+writes a caller-stack 16-byte result containing a signed 16-bit command id, an
+unsigned 16-bit count, and three 32-bit parameters. It checks a narrow leading
+slash byte, but the exact character encoding, input ownership, and invocation
+thread are not established.
+
+This parser result is not a consume result. `FUN_00708FC0` is the
+`_commandDebug` N-API and builds `_comdebDEV`, `_comdebGM`, `_comdebTEST`, or
+`_comdebFUNC` class names before firing `_onCommand`; it is not ordinary chat
+ingress. `_onPreCommand`, `_onPostCommand`, and `_onCommandCancel` are void
+lifecycle fire sites without a native handled return. MyPlayer slot 42
+`FUN_0070A010` runs only after successful parsing, while `_chat`, MyPlayer slot
+67, and the packet builders are downstream surfaces. `_chat` registers
+implementation label `0x006DE7D0`, but Ghidra has not defined that address as
+a function and the direct link from it to slot 67 remains unproven. None of
+these surfaces supplies the required pre-execution silent-consume and
+identity-forward decision.
+
+The exact executable SHA-256 can identify a future experiment, but no stable byte
+signature or runtime four-input proof exists. In particular, `/wiki test` has
+not been consumed with zero packet send. An exact-build launcher hook therefore
+remains unsupported. The minimum next evidence is a runtime trace that
+records call stacks, thread ids, parser results, and packet-builder hits for a
+custom command, ordinary chat, a known retail slash command, and an unknown
+slash command.
+
+Refs: `manifests/text_command_ingress.json`; BCS-Y-1688, BCS-Y-1989,
+BCS-Y-2016, BCS-Y-2230..BCS-Y-2232, BCS-Y-0306, BCS-Y-0309.
+
 ## Sqwt UI framework
 
 ### Sqwt UI factories construct elements and subscribe handlers

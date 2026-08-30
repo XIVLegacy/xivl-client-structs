@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "generated": "2026-08-30",
+  "gameVersion": "1.23b",
+  "status": "insufficient_for_hook",
+  "scope": "Ordinary submitted text from TextBox_ChatInput through the DesktopWidget parser, recognized-command execution, declined-input chat fallback, and the first proven chat packet builder.",
+  "inputIdentity": {
+    "program": "ffxivgame.exe",
+    "build": "2012.09.19.0001",
+    "size": 15996808,
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "imageBase": "0x00400000",
+    "addressConvention": "absolute Ghidra VA",
+    "ghidraVersion": "12.1.3",
+    "clientStructsBaseCommit": "568135f3c2651d096840b896dc002e765eae57ed",
+    "clientScriptsCommit": "3804eebcc43a48e6998371117aeeb0d04084d7a6",
+    "clientDecompCommit": "4955acc6f6d45fb7d30ab92bb50ae998dd93eec2"
+  },
+  "method": {
+    "closingDecomp": {
+      "output": "tools/ghidra/logs/c546_text-command-ingress.txt",
+      "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c546_text-command-ingress.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006FE2A0,0x0075CCF0,0x0056E380,0x00751F70,0x00708FC0,0x00756E10,0x0078B910,0x0078B9B0,0x0078BA50,0x0078BAF0,0x0070A010,0x00897A20,0x00897B40,0x00897C60,0x00897D90,0x00897EE0,0x006E91F0,0x0075C1A0,0x004D82E0,0x004DF6D0,0x00DB3E30,0x00743D80' } -ScriptPath @('ghidra')",
+      "verifiedSections": 22,
+      "decompErrors": 0,
+      "runId": "bcs-headless-12692",
+      "headlessSaved": false
+    },
+    "referenceExports": [
+      {
+        "mode": "ADDRESS",
+        "targets": [
+          "0x006FE2A0",
+          "0x00708FC0",
+          "0x0070A010",
+          "0x00753B90",
+          "0x00897B40",
+          "0x00897C60",
+          "0x00897D90",
+          "0x00897EE0"
+        ],
+        "result": "8 targets and 18 Ghidra-recorded references; the two N-API implementations have registration-data references only, MyPlayer slot 42 has one vftable data reference, and the command callbacks have only vftable data references."
+      },
+      {
+        "mode": "STRING_EXACT",
+        "targets": [
+          "_parseTextCommand",
+          "_commandDebug",
+          "_onCommand",
+          "_onPreCommand",
+          "_onPostCommand",
+          "_onCommandCancel"
+        ],
+        "result": "6 queries, 7 defined-string matches, and 7 references; parser and debug names reference their registration functions, while callback names reference their exact fire sites."
+      }
+    ],
+    "scriptEvidence": {
+      "kind": "retail Lua corpus with local bodies verified against tracked hashes and line counts",
+      "trackedAnchors": [
+        "xivl-client-scripts:lua/scripts/widget/desktopwidget_connector.calls.json",
+        "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.calls.json",
+        "xivl-client-scripts:lua/napi_index.json"
+      ],
+      "boundary": "Tracked callsite products prove names and locations. Control-flow facts were checked against the exact local retail bodies at the pinned commit; the bodies remain ignored and are not copied here."
+    }
+  },
+  "ordinaryRoute": [
+    {
+      "step": 1,
+      "component": "TextBox_ChatInput PressEnter",
+      "evidenceKind": "retail_script",
+      "facts": [
+        "non-empty submitted input reaches processInputWordAnalyze",
+        "the widget may defer and later re-execute saved raw input for target selection"
+      ]
+    },
+    {
+      "step": 2,
+      "component": "DesktopWidget.executeTextCommand",
+      "evidenceKind": "retail_script",
+      "facts": [
+        "the GM/debug test runs before ordinary parsing",
+        "non-debug input reaches _parseTextCommand once per executeTextCommand invocation",
+        "a parser-declined ordinary line or unknown slash command converges on chat(rawInput)"
+      ]
+    },
+    {
+      "step": 3,
+      "component": "_parseTextCommand N-API",
+      "bcsId": "BCS-Y-2230",
+      "address": "0x006FE2A0",
+      "registration": "0x00751F70",
+      "binder": "0x00726BF0",
+      "evidenceKind": "static_decomp_and_registration",
+      "facts": [
+        "the implementation has one 32-bit stack argument and a callee-clean RET 4, but Ghidra does not recover an authoritative source calling-convention name",
+        "it extracts the first Lua argument and calls the parser thunk at 0x0075CCF0",
+        "it converts the parser result into thirteen Lua-visible result positions"
+      ]
+    },
+    {
+      "step": 4,
+      "component": "parser member thunk",
+      "bcsId": "BCS-Y-2231",
+      "address": "0x0075CCF0",
+      "evidenceKind": "instruction_listing",
+      "facts": [
+        "ECX is dereferenced, 0x8BC is added through 0x004D7520, and execution tail-jumps to 0x0056E380",
+        "the thunk has no independent consume or forward result"
+      ]
+    },
+    {
+      "step": 5,
+      "component": "text-command parser core",
+      "bcsId": "BCS-Y-2232",
+      "address": "0x0056E380",
+      "evidenceKind": "static_decomp_and_instruction_listing",
+      "facts": [
+        "the core is __thiscall-shaped with ECX as the parser object, two stack arguments, and RET 8",
+        "it checks the first narrow byte for slash, resolves a command, and returns success in AL",
+        "the output is a caller-owned 16-byte stack record: signed 16-bit command id, unsigned 16-bit count, and three 32-bit parameter values",
+        "the N-API converts the record before its stack lifetime ends",
+        "the exact character encoding and invocation thread are not established"
+      ]
+    },
+    {
+      "step": 6,
+      "component": "recognized command",
+      "address": "0x0070A010",
+      "evidenceKind": "static_decomp_and_vtable",
+      "facts": [
+        "the MyPlayer slot-42 override is reached after Lua accepts a parser result",
+        "ordinary parser-declined text does not reach this function",
+        "it has no raw-line ingress role"
+      ]
+    },
+    {
+      "step": 7,
+      "component": "declined-input chat fallback",
+      "evidenceKind": "retail_script_and_static_decomp",
+      "facts": [
+        "Lua converts and forwards the declined raw input through _chat with no Lua-visible handled result",
+        "_chat registers implementation label 0x006DE7D0, but Ghidra has not defined that address as a function and the static link from the label to a concrete vtable slot remains unproven",
+        "the separately evidenced MyPlayer slot 67 at 0x006E91F0 branches by chat mode and reaches channel-specific builders",
+        "the group branch reaches 0x004D82E0, then the 0x00C9 builder at 0x004DF6D0 and queue forwarder at 0x00DB3E30",
+        "this path is after the parser decision and is not an allowed packet-suppression seam"
+      ]
+    }
+  ],
+  "candidateVerdicts": [
+    {
+      "candidate": "0x0056E380 parser core",
+      "verdict": "INSUFFICIENT",
+      "reason": "It is a narrow pre-routing observation point with a bounded output record, but it returns parse success and parsed values rather than a handled/consume decision. No evidenced return can consume a custom command silently."
+    },
+    {
+      "candidate": "0x006FE2A0 _parseTextCommand N-API",
+      "verdict": "REJECT",
+      "reason": "Hooking it requires implementing the private Lua bridge ABI and still exposes parser results rather than a consume decision."
+    },
+    {
+      "candidate": "0x00708FC0 _commandDebug N-API and _onCommand fire site",
+      "verdict": "REJECT",
+      "reason": "Its four builders create _comdebDEV, _comdebGM, _comdebTEST, and _comdebFUNC class names. It belongs to the GM/debug command surface, not ordinary player chat ingress, and returns no handled result."
+    },
+    {
+      "candidate": "0x00897B40 _onPreCommand",
+      "verdict": "REJECT",
+      "reason": "The void __thiscall fire site dispatches a two-argument lifecycle callback and has no native handled return. The post and cancel callbacks are likewise void notifications."
+    },
+    {
+      "candidate": "0x0070A010 MyPlayer executeCommand",
+      "verdict": "REJECT",
+      "reason": "It is downstream of successful parsing and does not receive parser-declined ordinary text or unknown slash input."
+    },
+    {
+      "candidate": "_chat and packet builders",
+      "verdict": "REJECT",
+      "reason": "They are downstream send paths. Using them would require packet suppression or mutation, which is outside the requested contract."
+    },
+    {
+      "candidate": "GM ExecuteDebugCommandReceiver, WM_CHAR, keyboard reconstruction, or launcher IPC",
+      "verdict": "REJECT",
+      "reason": "These are separate surfaces and do not supply the required ordinary submitted-line consume/forward decision."
+    }
+  ],
+  "contractVerdicts": {
+    "ordinaryLineObservedExactlyOnce": "INSUFFICIENT - the retail script proves one parser call per executeTextCommand invocation, but deferred target selection can re-execute saved input and no runtime hit census exists",
+    "beforeLocalExecuteRejectOrSend": "SUPPORTED for parser observation only",
+    "verifiedAddress": "SUPPORTED for 0x006FE2A0, 0x0075CCF0, and 0x0056E380",
+    "verifiedSignatureAndCallingConvention": "INSUFFICIENT - the parser core stack contract is bounded, but the N-API convention and source-level types are not recovered",
+    "verifiedThread": "INSUFFICIENT",
+    "verifiedEncoding": "INSUFFICIENT - narrow byte operations are proven, exact character encoding is not",
+    "verifiedPayloadAndLifetime": "PARTIAL - the 16-byte parser output and caller-stack lifetime are proven; input ownership and lifetime are not",
+    "verifiedConsumeForwardSemantics": "INSUFFICIENT - no candidate exposes an evidenced handled/consume decision",
+    "wikiConsumedWithZeroPacket": "NOT DEMONSTRATED",
+    "ordinaryChatForwardedUnchanged": "INSUFFICIENT - the baseline script route is known, but no hook or live identity comparison exists",
+    "knownRetailSlashForwardedUnchanged": "INSUFFICIENT - the baseline script route is known, but no hook or live identity comparison exists",
+    "unknownSlashPreservesRetailBehavior": "SCRIPT-SUPPORTED as parser-declined chat fallback, NOT LIVE-VALIDATED",
+    "identityGate": "SUPPORTED by exact executable size and SHA-256",
+    "signatureGate": "INSUFFICIENT - no stable byte signature and mask has been promoted"
+  },
+  "requiredRuntimeMatrix": [
+    {
+      "input": "/wiki test",
+      "requiredObservation": "one selected ingress hit, an explicit consume result, and zero chat/game packet sends",
+      "currentStatus": "not run"
+    },
+    {
+      "input": "ordinary chat",
+      "requiredObservation": "the original client-produced _chat arguments remain byte-identical to an unhooked baseline and the original retail send count is unchanged",
+      "currentStatus": "not run"
+    },
+    {
+      "input": "known retail slash command",
+      "requiredObservation": "original parser result and execution/send path unchanged",
+      "currentStatus": "not run"
+    },
+    {
+      "input": "/unknown-command",
+      "requiredObservation": "original parser-declined result and chat fallback unchanged",
+      "currentStatus": "not run"
+    }
+  ]
+}

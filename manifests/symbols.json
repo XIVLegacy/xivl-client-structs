@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2216,
+  "symbolCount": 2219,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -20406,9 +20406,10 @@
         "tools/ghidra/logs/c98_alt_dispatchers.txt",
         "tools/ghidra/logs/c98_alt_caller_check.txt",
         "tools/ghidra/logs/c98_more_dispatchers.txt",
-        "manifests/alt_lua_fire_paths.json"
+        "manifests/alt_lua_fire_paths.json",
+        "manifests/text_command_ingress.json"
       ],
-      "notes": "[alternate-lua-fire-mechanisms-surveyed] **Lua fire site firing `_onCommand` via the ALTERNATE dispatcher** (1259 body bytes). **MISSED BY the inventory** - enumerated only FUN_00CC7A90 callers; this fire site uses [[LuaCallbackDispatcher_alternate_synchronous_FUN_00CD25C0]] (BCS-Y-1685 NEW) instead. Fire pattern at lines 213-215 of decomp: `FUN_00447260(\"_onCommand\", DAT_00f67298); local_4._0_1_ = 0xf; FUN_00cd25c0(iVar8, local_1b0, local_1f0);`. **Function semantics**: complex command-handling/routing logic with 4 command-type branches (uses FUN_0078B910/9B0/BA50/BAF0 for different command builders, FUN_0078FAB0/0078FAC0 for command flow control, FUN_00753B90 for execution). Each branch routes commands through FUN_00CC7A00/A20 ([[LuaClassTableLookup_with_create_FUN_00CC7A00]] BCS-Y-1689 / [[LuaClassTableLookup_find_only_FUN_00CC7A20]] BCS-Y-1690) for class-name -> class-entry resolution, then fires `_onCommand` at the end. **Event newly added to inventory**: `_onCommand` was NOT in the 67-event list (which had `_onPreCommand`/`_onPostCommand` but not bare `_onCommand`). The full Lua event surface should be re-cataloged once all alternate-dispatcher fire sites are enumerated."
+      "notes": "[alternate-lua-fire-mechanisms-surveyed] **Lua fire site firing `_onCommand` via the ALTERNATE dispatcher** (1259 body bytes). **MISSED BY the inventory** - enumerated only FUN_00CC7A90 callers; this fire site uses [[LuaCallbackDispatcher_alternate_synchronous_FUN_00CD25C0]] (BCS-Y-1685 NEW) instead. Fire pattern at lines 213-215 of decomp: `FUN_00447260(\"_onCommand\", DAT_00f67298); local_4._0_1_ = 0xf; FUN_00cd25c0(iVar8, local_1b0, local_1f0);`. **Function semantics**: complex command-handling/routing logic with 4 command-type branches (uses FUN_0078B910/9B0/BA50/BAF0 for different command builders, FUN_0078FAB0/0078FAC0 for command flow control, FUN_00753B90 for execution). Each branch routes commands through FUN_00CC7A00/A20 ([[LuaClassTableLookup_with_create_FUN_00CC7A00]] BCS-Y-1689 / [[LuaClassTableLookup_find_only_FUN_00CC7A20]] BCS-Y-1690) for class-name -> class-entry resolution, then fires `_onCommand` at the end. **Event newly added to inventory**: `_onCommand` was NOT in the 67-event list (which had \"_onPreCommand\"/\"_onPostCommand\" but not bare `_onCommand`). The full Lua event surface should be re-cataloged once all alternate-dispatcher fire sites are enumerated. [Tier C546 2026-08-30] Fresh decomp closes the deferred branch identity: FUN_0078B910, FUN_0078B9B0, FUN_0078BA50, and FUN_0078BAF0 format the DEV, GM, TEST, and FUNC command-debug class-name prefixes with an eight-digit hexadecimal suffix. This confirms the `_commandDebug` surface and rejects the function as ordinary submitted chat ingress. The body and alternate `_onCommand` dispatch return no handled result."
     },
     {
       "id": "BCS-Y-1689",
@@ -27391,6 +27392,43 @@
       ],
       "notes": "[Tier C541 2026-08-27] Descriptive name; no retail source name is established. Independently allocates exactly 0x210 bytes, calls [[BCS-Y-2208]], applies caller-provided state through a separate helper, and returns the concrete SqwtXmlDataMaker. No group_marker_data or package literal occurs in this factory.",
       "id": "BCS-Y-2229"
+    },
+    {
+      "name": "LuaNApi_DesktopWidget_parseTextCommand_FUN_006FE2A0",
+      "kind": "function",
+      "address": "0x006FE2A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c546_text-command-ingress.txt",
+        "manifests/bulk_napi_classification.json",
+        "manifests/text_command_ingress.json"
+      ],
+      "notes": "[Tier C546 2026-08-30] Exact-build `_parseTextCommand` N-API implementation. Registration FUN_00751F70 stores this VA with binder FUN_00726BF0; the complete reference export finds the two registration-data references and no direct call. The body accepts one callee-clean 32-bit stack argument, extracts Lua argument zero, calls [[BCS-Y-2231]], and converts the returned 16-byte parser record into thirteen Lua result positions. Ghidra does not recover an authoritative source calling-convention name, invocation thread, input ownership, or character encoding. This is a parser bridge, not a demonstrated handled/consume seam.",
+      "id": "BCS-Y-2230"
+    },
+    {
+      "name": "TextCommandParser_member_thunk_FUN_0075CCF0",
+      "kind": "function",
+      "address": "0x0075CCF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c546_text-command-ingress.txt",
+        "manifests/text_command_ingress.json"
+      ],
+      "notes": "[Tier C546 2026-08-30] Four-instruction parser member thunk. It dereferences ECX, calls FUN_004D7520 to add 0x8BC, moves the returned parser member into ECX, and tail-jumps to [[BCS-Y-2232]]. Its sole direct caller is [[BCS-Y-2230]]. It has no independent handled, consume, or forward result.",
+      "id": "BCS-Y-2231"
+    },
+    {
+      "name": "TextCommandParser_core_FUN_0056E380",
+      "kind": "function",
+      "address": "0x0056E380",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c546_text-command-ingress.txt",
+        "manifests/text_command_ingress.json"
+      ],
+      "notes": "[Tier C546 2026-08-30] Exact-build text-command parser core whose sole Ghidra-recorded caller is [[BCS-Y-2231]]; computed, indirect, dynamic, and unanalyzed references remain outside that census. The function is __thiscall-shaped with ECX as the parser object, two explicit stack arguments, RET 8, and success returned in AL. It checks the first narrow byte for `/`, resolves a command, and writes a caller-owned 16-byte record: signed 16-bit command id, unsigned 16-bit count, and three 32-bit parameters. The caller converts the record before its stack lifetime ends. The exact character encoding, input lifetime, invocation thread, and any silent-consume contract remain unproven.",
+      "id": "BCS-Y-2232"
     }
   ]
 }
