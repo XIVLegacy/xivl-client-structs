@@ -600,6 +600,45 @@ BCS-Y-1576, BCS-Y-1581, BCS-Y-1665, BCS-Y-1701, BCS-Y-1710, BCS-Y-1711,
 BCS-Y-1789, BCS-Y-1792..BCS-Y-1813, BCS-Y-1819, BCS-Y-1820,
 BCS-Y-1834..BCS-Y-1837.
 
+## Resource file I/O
+
+### LocalFile owns the CRT stream opened for a DAT request
+
+One exact-build runtime observation reached `Sqex::File::LocalFile` open member
+`FUN_00453C00` (BCS-Y-2233) for a read-mode DAT request on the Resource
+FileThread. The member is x86 `__thiscall`-shaped: `ECX` is the LocalFile
+object, three callee-clean arguments carry a caller path wrapper, narrow mode,
+and retry count, and `RET 0x0C` removes them. It converts path and mode into
+temporary UTF-16 strings and passes `this+0x04` as `FILE**` to `_wfopen_s` at
+`0x00453CD5`. The observed call used mode `rb`, returned errno zero, stored a
+non-null stream, and entered the member's success path.
+
+At post-call address `0x00453CDA`, the three `_wfopen_s` arguments remain on
+the stack. The enclosing member caller return is therefore at `[ESP+0xC4]`
+and equals `0x00C96984`. `[ESP+0xC0]` is not that return. Static call and
+vtable evidence narrows the active chain to BCS-Y-2234 at `0x00C96984`,
+FileThread slot 2 BCS-Y-2235 at `0x00C96B6D`, generic thread run BCS-Y-2239
+at `0x00D3566D`, and the CRT thread wrapper at `0x00DC41A9`.
+`0x00C96B62` is an earlier return site inside the same slot-2 function, not an
+additional caller frame.
+
+The stream ownership is bounded. `SqexFileLocalFile+0x04` (BCS-S-0162) owns
+the `FILE*`. BCS-Y-2236 flushes, closes, and clears it. LocalFile vtable slot
+0 BCS-Y-2237 applies that teardown to scalar or 0x2010-stride vector records,
+and FileThread teardown BCS-Y-2238 invokes it over the array owned at
+FileThread `+0x8C`. This proves eventual terminal cleanup. It does not yet
+identify the normal per-request close point for the observed read open.
+
+The observed relative path spells the same hex groups as resource id
+`0x2A080017`, but the request was not observed entering a numeric resource-id
+formatter. That relationship remains inferred. Missing-file fallthrough,
+successful redirect semantics, path-buffer ownership for an override, original
+path identity forwarding, and a stable masked signature remain untested.
+Launcher evidence gate P09.1 is therefore INSUFFICIENT.
+
+Refs: `manifests/resource_dat_open.json`; BCS-S-0162, BCS-S-0163;
+BCS-Y-2233..BCS-Y-2239.
+
 ## Environment and movement subsystems
 
 ### SetDalamud s2c 0x0010 selects one of eight scene states

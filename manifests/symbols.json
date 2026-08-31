@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2219,
+  "symbolCount": 2226,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -27429,6 +27429,92 @@
       ],
       "notes": "[Tier C546 2026-08-30] Exact-build text-command parser core whose sole Ghidra-recorded caller is [[BCS-Y-2231]]; computed, indirect, dynamic, and unanalyzed references remain outside that census. The function is __thiscall-shaped with ECX as the parser object, two explicit stack arguments, RET 8, and success returned in AL. It checks the first narrow byte for `/`, resolves a command, and writes a caller-owned 16-byte record: signed 16-bit command id, unsigned 16-bit count, and three 32-bit parameters. The caller converts the record before its stack lifetime ends. The exact character encoding, input lifetime, invocation thread, and any silent-consume contract remain unproven.",
       "id": "BCS-Y-2232"
+    },
+    {
+      "name": "Sqex_File_LocalFile_open_FUN_00453C00",
+      "kind": "function",
+      "address": "0x00453C00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c547_dat-open-boundary.txt",
+        "manifests/resource_dat_open.json"
+      ],
+      "notes": "[Tier C547 2026-08-30] Exact-build Sqex::File::LocalFile open member. ECX is the LocalFile object; three callee-clean stack arguments carry a caller path wrapper, narrow mode string, and retry count, and RET 0x0C closes the explicit arguments. The function converts path and mode to temporary wide strings, passes this+0x04 as FILE** to _wfopen_s at 0x00453CD5, and returns 1 on errno 0 or 0 after the bounded failure path. A live read open observed errno 0 and a non-null FILE* at this+0x04. This does not establish redirect or missing-file semantics.",
+      "id": "BCS-Y-2233"
+    },
+    {
+      "name": "Component_Resource_FileThread_service_FUN_00C96850",
+      "kind": "function",
+      "address": "0x00C96850",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c547_dat-open-boundary.txt",
+        "manifests/resource_dat_open.json"
+      ],
+      "notes": "[Tier C547 2026-08-30] FileThread local-file service loop. It selects a Resource record and the matching 0x2010-byte [[BCS-S-0162]] record from FileThread+0x8C, sets ECX to that LocalFile, pushes resource+0x04 as the path wrapper, selects the read or write mode literal, pushes retry count 0, and calls [[BCS-Y-2233]] at 0x00C9697F. The post-call return site is 0x00C96984.",
+      "id": "BCS-Y-2234"
+    },
+    {
+      "name": "Component_Resource_FileThread_slot2_00C96AF0_service",
+      "kind": "function",
+      "address": "0x00C96AF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c547_dat-open-boundary.txt",
+        "manifests/resource_dat_open.json"
+      ],
+      "notes": "[Tier C547 2026-08-30] Component::Resource::FileThread vtable slot 2. The complete address-reference export finds its single recorded reference at FileThread vftable+0x08, address 0x0110894C. It performs thread-work gating and calls [[BCS-Y-2234]] at 0x00C96B68; the direct return site is 0x00C96B6D. A live successful DAT open ran on this FileThread thread.",
+      "id": "BCS-Y-2235"
+    },
+    {
+      "name": "Sqex_File_LocalFile_teardown_FUN_00453190",
+      "kind": "function",
+      "address": "0x00453190",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c547_dat-open-boundary.txt",
+        "manifests/resource_dat_open.json",
+        "tools/ghidra/logs/c358_resource-file-record.txt"
+      ],
+      "notes": "[Tier C547 2026-08-30] Sqex::File::LocalFile teardown. It restores the LocalFile vftable, reads FILE* at this+0x04, and when non-null calls fflush, calls fclose, then clears this+0x04. This establishes ownership and terminal cleanup of the stored stream, not the exact close point of every successful read request.",
+      "id": "BCS-Y-2236"
+    },
+    {
+      "name": "Sqex_File_LocalFile_deleting_destructor_FUN_00C96140",
+      "kind": "function",
+      "address": "0x00C96140",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c547_dat-open-boundary.txt",
+        "manifests/resource_dat_open.json"
+      ],
+      "notes": "[Tier C547 2026-08-30] LocalFile scalar/vector deleting destructor at vftable 0x00F676F4 slot 0. Scalar destruction calls [[BCS-Y-2236]]; vector destruction walks the exact 0x2010 stride with the same teardown before optional free. The address-reference export finds the single vftable data reference.",
+      "id": "BCS-Y-2237"
+    },
+    {
+      "name": "Component_Resource_FileThread_teardown_FUN_00C96780",
+      "kind": "function",
+      "address": "0x00C96780",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c547_dat-open-boundary.txt",
+        "manifests/resource_dat_open.json",
+        "tools/ghidra/logs/c357_resource-file-thread.txt"
+      ],
+      "notes": "[Tier C547 2026-08-30] FileThread teardown. It obtains the owned LocalFile array from FileThread+0x8C and invokes the first record vtable slot 0 with vector-delete flags; [[BCS-Y-2237]] then tears down every 0x2010-byte record. The direct deleting-destructor caller is FUN_00C96CE0, whose sole data reference is FileThread vftable slot 0 at 0x01108944.",
+      "id": "BCS-Y-2238"
+    },
+    {
+      "name": "Sqex_Thread_Thread_run_FUN_00D355B0",
+      "kind": "function",
+      "address": "0x00D355B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c547_dat-open-boundary.txt",
+        "manifests/resource_dat_open.json"
+      ],
+      "notes": "[Tier C547 2026-08-30] Generic Sqex thread run routine. It records the current thread id, invokes object vtable slot 1 for startup, repeatedly invokes slot 2 while the thread state remains active, and calls slot 3 on exit. At 0x00D3566B the slot-2 call returned to 0x00D3566D during the live FileThread DAT open; FileThread slot 2 is [[BCS-Y-2235]].",
+      "id": "BCS-Y-2239"
     }
   ]
 }

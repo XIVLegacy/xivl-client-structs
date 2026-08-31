@@ -13549,7 +13549,8 @@
       "sourceRefs": [
         "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
         "tools/ghidra/logs/c357_resource-file-thread.txt",
-        "tools/ghidra/logs/c358_resource-file-record.txt"
+        "tools/ghidra/logs/c358_resource-file-record.txt",
+        "manifests/resource_dat_open.json"
       ],
       "fields": [
         {
@@ -13563,8 +13564,8 @@
           "offset": "0x0004",
           "size": "0x0004",
           "name": "stream",
-          "type": "void *",
-          "notes": "Owned CRT file-stream pointer; constructor clears it and teardown flushes and closes it when non-null."
+          "type": "FILE *",
+          "notes": "Owned CRT stream. BCS-Y-2233 passes this+0x04 as FILE** to _wfopen_s; BCS-Y-2236 flushes, closes, and clears it when non-null."
         },
         {
           "offset": "0x0008",
@@ -13588,7 +13589,7 @@
           "notes": "Unpartitioned LocalFile storage. The 0x2010 array stride fixes its extent, but constructor and teardown do not establish internal member types."
         }
       ],
-      "notes": "Full byte-accounted Sqex::File::LocalFile. RTTI confirms the identity, direct construction and teardown establish the leading stream/state fields, and FileThread's exception-safe array constructor uses an exact 0x2010-byte element stride.",
+      "notes": "Full byte-accounted Sqex::File::LocalFile. RTTI confirms the identity, direct open and teardown establish ownership of the leading FILE* and state fields, and FileThread's exception-safe array constructor uses an exact 0x2010-byte element stride. The exact normal per-request close point for a successful read remains unresolved; FileThread array teardown closes every surviving stream.",
       "id": "BCS-S-0162"
     },
     {
@@ -13600,6 +13601,7 @@
         "tools/ghidra/logs/c348_thread-coordination-rtti.txt",
         "tools/ghidra/logs/c357_resource-file-thread.txt",
         "tools/ghidra/logs/c358_resource-file-record.txt",
+        "manifests/resource_dat_open.json",
         "BCS-S-0122",
         "BCS-S-0123",
         "BCS-S-0125"
@@ -13659,7 +13661,7 @@
           "size": "0x04",
           "name": "local_files",
           "type": "SqexFileLocalFile *",
-          "notes": "Owned exception-safe array of local_file_count records at an exact 0x2010-byte stride."
+          "notes": "Owned exception-safe array of local_file_count records at an exact 0x2010-byte stride. FileThread teardown dispatches LocalFile vtable slot 0 across the array."
         },
         {
           "offset": "0x90",
