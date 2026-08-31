@@ -1,8 +1,8 @@
 {
   "version": 1,
   "gameVersion": "1.23b",
-  "status": "successful_open_verified_missing_file_unverified",
-  "scope": "Exact-build Resource FileThread path from one successful read-mode DAT open through SqexFileLocalFile ownership and terminal teardown.",
+  "status": "successful_open_verified_bounded_missing_file_observed",
+  "scope": "Exact-build Resource FileThread path covering one successful baseline read and one separate restored-path missing-file attempt through SqexFileLocalFile ownership and terminal teardown.",
   "inputIdentity": {
     "program": "ffxivgame.exe",
     "build": "2012.09.19.0001",
@@ -12,6 +12,16 @@
     "addressConvention": "absolute Ghidra VA",
     "ghidraVersion": "12.1.3"
   },
+  "companionEvidence": {
+    "sourceRefs": [
+      "xivl-decomp:config/resource_path_producer.json",
+      "xivl-decomp:docs/resource/resource-path-producer.md"
+    ],
+    "exactBuildSignature": "6A 00 68 ?? ?? ?? ?? 83 C6 04 56 8B CF E8 ?? ?? ?? ??",
+    "patternVa": "0x00C96972",
+    "matchCount": 1,
+    "scope": "The signature is verified only for the pinned executable identity; cross-build stability remains unresolved."
+  },
   "method": {
     "liveObservation": {
       "observedAt": "2026-08-30T19:42:04-04:00",
@@ -19,6 +29,14 @@
       "boundary": "post-call instruction 0x00453CDA immediately after _wfopen_s",
       "inputHandling": "A machine-local debugger capture was treated as a lead. Only the sanitized exact-build values below were retained after independent executable-hash, instruction, function, and caller-chain verification.",
       "mutation": "ordinary debugger breakpoints only; no client bytes, arguments, or installed files were changed"
+    },
+    "missingFileObservation": {
+      "observedAt": "2026-08-31",
+      "evidenceClass": "sanitized machine-local live observation report",
+      "boundary": "one missing-path read-mode request at 0x00453CD5 through the FileThread post-call site at 0x00C96B6D and return at 0x00C96B73, followed by a 15-second observation window; the successful baseline was a separate request",
+      "inputHandling": "A sanitized machine-local debugger report was treated as a lead. The executable identity, instruction boundaries, retry branch, error-helper edge, boolean return, and caller chain were independently checked against the pinned executable and retained disassembly.",
+      "mutation": "one UTF-16 code unit in the temporary wide path buffer changed 7 to G for one _wfopen_s attempt, then restored at 0x00453CDA before error-path execution; the Resource path wrapper and installed files were not modified",
+      "artifactBoundary": "No raw debugger log, pointer value, or memory dump is retained. Dynamic values come from the sanitized live report and were not reproduced by the static verification."
     },
     "closingDecomp": {
       "script": "ghidra/DumpVAs.java",
@@ -61,7 +79,7 @@
     "secureCrtArguments": {
       "api": "_wfopen_s",
       "output": "FILE** at SqexFileLocalFile+0x04",
-      "path": "NUL-terminated UTF-16LE absolute path",
+      "path": "NUL-terminated UTF-16LE path; the retained request used relative path data\\2A\\08\\00\\17.DAT",
       "mode": "NUL-terminated UTF-16LE rb",
       "instructionRelationship": "The member preserves its object in EBX, computes EBX+0x04 into EBP, and pushes EBP as the FILE** argument."
     },
@@ -77,6 +95,8 @@
     "postCallStack": {
       "callerReturnOffset": "ESP+0xC4",
       "callerReturn": "0x00C96984",
+      "retryCountOffset": "ESP+0xD0",
+      "observedRetryCount": 0,
       "reason": "At 0x00453CDA the three _wfopen_s arguments have not yet been removed. The member prologue places its own return at the current ESP+0xC4. After ADD ESP,0x0C, the same offset names the member retry argument instead.",
       "rejectedOffset": "ESP+0xC0 is not the member caller return at the captured post-call boundary."
     }
@@ -148,32 +168,56 @@
     "blocker": "The observed request was not captured entering a numeric resource-id formatter, so neither the input id nor formatter edge is promoted."
   },
   "missingDatExperiment": {
-    "status": "designed_not_run",
-    "requiresUserApproval": true,
-    "mutation": "For one exact path match at 0x00453CD5, change one UTF-16 code unit in the temporary path buffer to a same-length non-hex filename that a read-only precheck proved absent. Restore that code unit at 0x00453CDA before continuing.",
+    "status": "bounded_live_observation",
+    "scope": "One successful baseline request followed by one separate exact-build missing-path request with retry count zero and a 15-second post-return observation window. The no-retry and no-fallback result applies only to the missing-path request and does not establish global behavior.",
     "safety": [
-      "Do not rename, move, overwrite, truncate, or delete an installed DAT.",
-      "Take an unmodified baseline hit first and record the original path bytes, FILE** value, errno result, member return, and downstream state.",
-      "Arm the mutation as a one-shot condition on the exact sanitized path and mode rb; skip every other open attempt.",
-      "Save the original path code unit and stack arguments before changing process memory.",
-      "At the post-call breakpoint capture errno, FILE*, last-error state, branch path, retry count, member return, caller handling, and any subsequent open attempt.",
-      "Restore the path code unit on the post-call breakpoint and on every debugger exception or abort path.",
-      "Before detach, verify the original bytes, remove all breakpoints, resume every thread, detach cleanly, and confirm the client remains responsive."
+      "A read-only filesystem precheck confirmed that the same-length alternate path data\\2A\\08\\00\\1G.DAT did not exist.",
+      "No installed file or Resource path wrapper was renamed, moved, overwritten, truncated, deleted, or modified.",
+      "The original path code unit and full temporary path buffer were restored and read back before any error-path instruction executed.",
+      "All breakpoints were removed, all threads were resumed, the debugger detached and closed normally, and the client remained responsive."
     ],
-    "questions": [
-      "Does _wfopen_s leave the FILE* null and which errno is returned?",
-      "Does retry count 0 bypass all retries and reach FUN_00456960 once?",
-      "Does BCS-Y-2233 return 0, and does BCS-Y-2234 preserve, retry, drop, or transform the original request?",
-      "Is another original-path open attempted after the single controlled failure?"
-    ]
+    "baseline": {
+      "path": "data\\2A\\08\\00\\17.DAT",
+      "mode": "rb",
+      "callerReturn": "0x00C96984",
+      "secureCrtReturn": 0,
+      "outputFilePointer": "non-null"
+    },
+    "missingAttempt": {
+      "path": "data\\2A\\08\\00\\1G.DAT",
+      "mode": "rb",
+      "callerReturn": "0x00C96984",
+      "retryCount": 0,
+      "outputFilePointerBeforeCall": "null",
+      "secureCrtReturn": 2,
+      "threadLastError": 2,
+      "outputFilePointerAfterCall": "null",
+      "pathRestoredBeforeErrorHandling": true
+    },
+    "downstream": {
+      "errorHelper": "FUN_00456960",
+      "errorHelperCalls": 1,
+      "errorArgument": 2,
+      "errorHelperReturn": "0x00453D59",
+      "memberReturnAl": 0,
+      "memberReturnBoundary": "0x00C96984",
+      "fileThreadPostCall": "0x00C96B6D",
+      "fileThreadReturn": "0x00C96B73",
+      "originalPathRetryBeforeServiceReturn": false,
+      "observationWindowSeconds": 15,
+      "laterOriginalPathOpenObserved": false,
+      "fallbackPathObserved": false
+    },
+    "staticReconciliation": "At 0x00453CDA a nonzero errno branches through the retry-count check. Retry count zero reaches the single direct FUN_00456960 call at 0x00453D54, then the failure epilogue clears AL before returning. BCS-Y-2234 continues after 0x00C96984; BCS-Y-2235 resumes after its direct BCS-Y-2234 call at 0x00C96B6D and returns at 0x00C96B73.",
+    "limits": "The no-retry and no-fallback findings apply only to the one missing-path request and its 15-second observation window. Successful substituted-path ownership, successful redirected read completion, normal-read closure, identity forwarding at the pre-open boundary, and cross-build signature stability remain unresolved."
   },
   "hookGate": {
-    "stableExactBuildSignature": "INSUFFICIENT - executable hash gates identity, but no masked byte signature has been promoted",
+    "stableExactBuildSignature": "SUPPORTED for the pinned executable identity",
     "preOpenCallingConvention": "SUPPORTED for BCS-Y-2233",
     "pathOwnership": "PARTIAL - caller path wrapper and temporary UTF-16 path are bounded; override-buffer ownership is untested",
     "streamOwnershipAndLifetime": "PARTIAL - LocalFile owns and eventually closes +0x04; the observed read request's normal close point is unresolved",
     "successfulRedirectSemantics": "NOT TESTED",
-    "missingFileFallthrough": "NOT TESTED",
+    "missingFileFallthrough": "BOUNDED - for one missing-path request, retry count zero produced errno 2, a null FILE*, one error-helper call, false member return, and no observed retry or fallback through the service return and following 15 seconds; global behavior remains unresolved",
     "originalPathIdentityForwarding": "NOT TESTED",
     "launcherGate": "P09.1 INSUFFICIENT"
   },
@@ -182,18 +226,16 @@
     "verdictCounts": {
       "REMOVE": 0,
       "OWNER_CALL": 0,
-      "KEEP": 4
+      "KEEP": 2
     },
     "kept": [
-      "one sanitized evidence manifest as the canonical successful-open and insufficiency record",
-      "seven symbols because each names a distinct open, thread, owner, or teardown boundary used by the contract",
-      "the existing two structure rows with narrower ownership prose",
-      "one architecture section for the stable consumer-facing model"
+      "one asset-free mutation test because the bounded runtime claims otherwise have no exact-field repository gate",
+      "one CI invocation because it is the only automated caller of that evidence-contract test"
     ],
     "negativeSweeps": [
-      "no hook, detour, resolver, redirect, fallback, configuration, runtime guard, retry, timeout, cache, lock, or production code was added",
+      "no hook, detour, resolver, redirect, fallback, configuration, runtime guard, retry implementation, timeout, cache, lock, or production code was added",
       "no installed path, raw debugger stack, pointer value, FILE* value, or machine-local scratch path was retained",
-      "no resource-id formatter edge, per-request read close point, or missing-file behavior was inferred"
+      "no resource-id formatter edge, successful redirect, per-request read close point, global missing-file behavior, or cross-build signature stability was inferred"
     ]
   }
 }

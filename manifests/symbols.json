@@ -27439,7 +27439,7 @@
         "tools/ghidra/logs/c547_dat-open-boundary.txt",
         "manifests/resource_dat_open.json"
       ],
-      "notes": "[Tier C547 2026-08-30] Exact-build Sqex::File::LocalFile open member. ECX is the LocalFile object; three callee-clean stack arguments carry a caller path wrapper, narrow mode string, and retry count, and RET 0x0C closes the explicit arguments. The function converts path and mode to temporary wide strings, passes this+0x04 as FILE** to _wfopen_s at 0x00453CD5, and returns 1 on errno 0 or 0 after the bounded failure path. A live read open observed errno 0 and a non-null FILE* at this+0x04. This does not establish redirect or missing-file semantics.",
+      "notes": "[Tier C549 2026-08-31] Exact-build Sqex::File::LocalFile open member. ECX is the LocalFile object; three callee-clean stack arguments carry a caller path wrapper, narrow mode string, and retry count, and RET 0x0C closes the explicit arguments. The function converts path and mode to temporary wide strings and passes this+0x04 as FILE** to _wfopen_s at 0x00453CD5. A successful read observed errno 0, a non-null FILE*, and return 1. One restored-path missing-file attempt with retry count zero observed errno 2, a null FILE*, one FUN_00456960 call, and return 0 in AL. This does not establish successful redirect semantics or global missing-file behavior.",
       "id": "BCS-Y-2233"
     },
     {
@@ -27451,7 +27451,7 @@
         "tools/ghidra/logs/c547_dat-open-boundary.txt",
         "manifests/resource_dat_open.json"
       ],
-      "notes": "[Tier C547 2026-08-30] FileThread local-file service loop. It selects a Resource record and the matching 0x2010-byte [[BCS-S-0162]] record from FileThread+0x8C, sets ECX to that LocalFile, pushes resource+0x04 as the path wrapper, selects the read or write mode literal, pushes retry count 0, and calls [[BCS-Y-2233]] at 0x00C9697F. The post-call return site is 0x00C96984.",
+      "notes": "[Tier C549 2026-08-31] FileThread local-file service loop. It selects a Resource record and the matching 0x2010-byte [[BCS-S-0162]] record from FileThread+0x8C, sets ECX to that LocalFile, pushes resource+0x04 as the path wrapper, selects the read or write mode literal, pushes retry count 0, and calls [[BCS-Y-2233]] at 0x00C9697F. The post-call return site is 0x00C96984. For one bounded missing-file attempt, BCS-Y-2234 returned to FileThread slot 2 at 0x00C96B6D and the slot returned at 0x00C96B73 without an original-path retry; no original-path open or fallback was observed during the following 15 seconds. Global behavior remains unresolved.",
       "id": "BCS-Y-2234"
     },
     {

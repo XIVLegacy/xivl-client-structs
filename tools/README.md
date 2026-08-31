@@ -39,6 +39,7 @@ below are implementation modules.
 | Test the retail-input contract | `python tools\test_retail_actor_rebuild.py` | Asset-free mutation and attestation-schema tests |
 | Verify the lobby character-list fixture | `python tools\verify_lobby_character_list.py [--captures-repo PATH]` | Public-shape validation by default; explicit restricted-capture reproduction when a capture checkout is supplied |
 | Test lobby layout and sanitization guards | `python tools\test_lobby_character_list.py` | Asset-free mutation tests for wire lengths, projection shape, session accounting, and sensitive-data rejection |
+| Test Resource DAT-open evidence | `python tools\test_resource_dat_open.py` | Asset-free mutation tests for the exact-build signature, bounded missing-file result, and unresolved launcher-hook requirements |
 | Check lobby catalog promotion | `python tools\extractors\promote_lobby_character_list.py --check` | Deterministic BCS-S-0008/0009 and related BCS-Y projection from the canonical lobby manifest |
 
 ## Layout

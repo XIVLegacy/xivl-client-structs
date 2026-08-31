@@ -615,12 +615,28 @@ non-null stream, and entered the member's success path.
 
 At post-call address `0x00453CDA`, the three `_wfopen_s` arguments remain on
 the stack. The enclosing member caller return is therefore at `[ESP+0xC4]`
-and equals `0x00C96984`. `[ESP+0xC0]` is not that return. Static call and
-vtable evidence narrows the active chain to BCS-Y-2234 at `0x00C96984`,
+and equals `0x00C96984`; the retry count is at `[ESP+0xD0]`. `[ESP+0xC0]` is
+not that return. Static call and vtable evidence narrows the active chain to
+BCS-Y-2234 at `0x00C96984`,
 FileThread slot 2 BCS-Y-2235 at `0x00C96B6D`, generic thread run BCS-Y-2239
 at `0x00D3566D`, and the CRT thread wrapper at `0x00DC41A9`.
 `0x00C96B62` is an earlier return site inside the same slot-2 function, not an
 additional caller frame.
+
+A second exact-build observation changed one UTF-16 code unit in the temporary
+wide path for one `rb` attempt from `data\2A\08\00\17.DAT` to the prechecked
+missing path `data\2A\08\00\1G.DAT`. The Resource path wrapper and installed
+files were not modified. At `0x00453CDA`, `_wfopen_s` returned errno 2, the
+`FILE*` output remained null, and the original code unit and full path buffer
+were restored before error handling. Retry count zero bypassed the retry loop,
+`FUN_00456960` ran once with argument 2, and BCS-Y-2233 returned false in `AL`.
+BCS-Y-2234 returned to FileThread slot 2 at `0x00C96B6D`, and the slot returned
+at `0x00C96B73`.
+
+No original-path retry occurred before that return, and no original-path open
+or fallback path was observed during the following 15 seconds. This is a
+bounded result for one request, not evidence that missing-file fallback is
+globally absent.
 
 The stream ownership is bounded. `SqexFileLocalFile+0x04` (BCS-S-0162) owns
 the `FILE*`. BCS-Y-2236 flushes, closes, and clears it. LocalFile vtable slot
@@ -631,13 +647,17 @@ identify the normal per-request close point for the observed read open.
 
 The observed relative path spells the same hex groups as resource id
 `0x2A080017`, but the request was not observed entering a numeric resource-id
-formatter. That relationship remains inferred. Missing-file fallthrough,
-successful redirect semantics, path-buffer ownership for an override, original
-path identity forwarding, and a stable masked signature remain untested.
-Launcher evidence gate P09.1 is therefore INSUFFICIENT.
+formatter. That relationship remains inferred. The exact-build pre-open
+signature at `0x00C96972` is unique in the pinned executable, but cross-build
+stability is not established. Successful substituted-path ownership and read
+completion, path-buffer ownership for an override, original-path identity
+forwarding at the pre-open boundary, and the exact normal-read close point
+remain unresolved. The evidence does not yet support an exact-build launcher
+hook at this boundary.
 
 Refs: `manifests/resource_dat_open.json`; BCS-S-0162, BCS-S-0163;
-BCS-Y-2233..BCS-Y-2239.
+BCS-Y-2233..BCS-Y-2239;
+`xivl-decomp:config/resource_path_producer.json`.
 
 ## Environment and movement subsystems
 
