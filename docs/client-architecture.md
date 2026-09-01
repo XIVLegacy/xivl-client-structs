@@ -279,6 +279,97 @@ Refs: `manifests/rapture_selector_0d_clientwork.json`; BCS-S-0053,
 BCS-S-0491; BCS-Y-0530, BCS-Y-1330..1334, BCS-Y-1998, BCS-Y-2033..2055,
 BCS-Y-2169..2200.
 
+### S2C 0x018D projects ClientWork rows into XML-backed MapScreen data
+
+The canonical opcode identity remains neutral `_0x018D`; the historical
+`PartyMapMarkerUpdatePacket` label is not an evidence-backed retail packet
+name. The immutable wire application is 0x298 bytes, with sixteen physical
+0x28-byte rows at +0x10 and a count byte at +0x290. `FUN_0055CF70`
+(BCS-Y-0890) projects that separate wire layout into `ClientWorkStorage`:
+records begin at storage +0x18 with 0x78 stride, and the count is widened into
+storage +0x14 without a clamp to the physical capacity.
+
+The first proven presentation route is:
+
+`RaptureElementContainer+0x4D8 -> ClientWorkElement+0x98 -> ClientWorkStorage`
+`-> RaptureElementContainer+0x17858 -> MapScreenControl -> FUN_00671400`.
+
+`MapScreenControl` is a retail RTTI class with exact complete-object size
+0xA70 (BCS-S-0492). Its constructor BCS-Y-2203 installs vftables at +0x000,
++0x0B4, +0x194, and +0x2A4. It retains the container pointer at +0x5F0;
+primary vtable slot 10 (BCS-Y-2204) registers the complete pointer at owner
++0x17858, and BCS-Y-2205 clears that slot during teardown. The registry field
+is a non-owning registration. The two factories own allocation, and primary
+slot 0 (BCS-Y-2206) is the deleting destructor.
+
+The presenter requires byte `MapScreenControl+0x57C == 2`. It lazily resolves
+exact resource key `group_marker_data`, dynamically casts the resource from
+`Sqwt::ResourceDictionary` to `Sqwt::Data::SqwtXmlDataMaker`, and caches the
+borrowed pointer at +0x9E8. MapScreenControl teardown has no release edge for
+that cached pointer. Primary vtable slot 7 (BCS-Y-2222, descriptive name)
+follows the local resource collection pointer at +0x294, scans the pointer
+range held at collection +0x08/+0x0C, compares the requested key with each
+ResourceDictionary-derived object's owned +0x4C key string, and delegates a
+miss through the parent resource chain. The returned complete object is the
+value; the presenter only borrows it.
+
+`Sqwt::ResourceDictionary` is a retail RTTI class with exact size 0xC4
+(BCS-S-0496). BCS-Y-2223/2224 construct and tear down the class,
+BCS-Y-2225 allocates it, and BCS-Y-2226 is deleting destruction. Its teardown
+destroys the +0x4C key wrapper. The 0x210-byte data maker (BCS-S-0494) derives
+from that class, owns embedded property state, and owns a 0xE4-byte
+`Sqwt::Xml::XmlDocument` at +0x11C (BCS-S-0493). Accepted source rows are
+compacted to dense zero-based indices; the source record keys are not retained
+as XML row keys.
+
+The generic markup producer is also concrete. BCS-Y-2227 recognizes the
+`SqwtXmlDataMaker` tag and installs the RTTI-confirmed nine-slot
+`Sqwt::Markup::XamlSqwtXmlDataMaker` vtable. Slot 8, BCS-Y-2228, allocates
+0x210 bytes and calls the concrete data-maker constructor; BCS-Y-2229 is a
+second allocating factory. This proves how a data maker can be materialized,
+not which factory or package supplied the instance keyed `group_marker_data`.
+
+The package references remain separate. `common/mapMarker.le.spk` is used by
+two MapScreen callbacks that apply the package with instances `m00010` and
+`m00020` to RTTI-cast `Sqwt::Controls::SparkleControl` objects.
+`debug/pc_mark_sample.le.spk` is assigned only by MapScreenControl property
+handler case 0x1F to +0xA00. Neither route inserts `group_marker_data`, passes
+that key, or establishes package ownership. Shared control co-residence and
+MapMarker-like names are not registration edges.
+
+Each accepted row receives the exact UI property groups `X:Int`, `Z:Int`,
+`Layout:Int`, `Text:String`, `Visibility:String=Visible`,
+`SparkleSequence:String=m00002`, and
+`Template:String=MapMarkerParty`, followed by at most one `Update`. These are
+presentation property strings after local transforms, not proof that the
+wire fields are world coordinates, actor ids, icons, labels, or server data.
+BCS-Y-2211 removes stale suffix indices in descending order with exact
+`RemoveIndex` state.
+
+`MapMarkerParty` has no match in the complete 5,623-row retail RTTI export.
+The presenter supplies it as the String value of the Template property; it
+does not call a native constructor or expose a native marker vtable. The
+bounded lifetime is therefore the XmlDocument-backed presentation row, not a
+separately cataloged marker object. The XamlSqwtXmlDataMaker path materializes
+the data maker, not the object named by the Template value. A framework object
+may be materialized from `MapMarkerParty` at runtime, but its type and
+ownership remain outside the static route.
+
+The row helper uses a separate stack-only 0x18-byte context (BCS-S-0495).
+BCS-Y-2212 copies it, BCS-Y-2214 uses it as hidden `this` while deriving
+record +0x20 and +0x74, and BCS-Y-2213 tears it down after apply. Its catalog
+name is descriptive because no retail RTTI or source name is established.
+
+`PcSearchWidgetOperator` remains separate. Its retail vtable 0x00FC8424 slot
+29 is BCS-Y-2221. That method reaches the same ClientWork storage, requires
++0x798 nonzero and count +0x14 equal to one, calls `FUN_00691E80` without a
+storage or record pointer, and clears +0x798. This proves a later gate, not
+PcSearch ownership of MapScreenControl, group-marker rows, or marker
+presentation.
+
+Refs: `manifests/s2c_018d_map_marker_presentation.json`; BCS-S-0078..0080,
+BCS-S-0492..0496; BCS-Y-0890, BCS-Y-2201..2229.
+
 ### The per-actor rebuild transaction: s2c 0x00CA opens, only 0x00CC closes it
 
 `FUN_004DC690` case `0xCA` (BCS-Y-0525) looks up or creates the actor,
@@ -508,6 +599,65 @@ BCS-Y-0983..BCS-Y-0985, BCS-Y-1019, BCS-Y-1020, BCS-Y-1056, BCS-Y-1557,
 BCS-Y-1576, BCS-Y-1581, BCS-Y-1665, BCS-Y-1701, BCS-Y-1710, BCS-Y-1711,
 BCS-Y-1789, BCS-Y-1792..BCS-Y-1813, BCS-Y-1819, BCS-Y-1820,
 BCS-Y-1834..BCS-Y-1837.
+
+## Resource file I/O
+
+### LocalFile owns the CRT stream opened for a DAT request
+
+One exact-build runtime observation reached `Sqex::File::LocalFile` open member
+`FUN_00453C00` (BCS-Y-2233) for a read-mode DAT request on the Resource
+FileThread. The member is x86 `__thiscall`-shaped: `ECX` is the LocalFile
+object, three callee-clean arguments carry a caller path wrapper, narrow mode,
+and retry count, and `RET 0x0C` removes them. It converts path and mode into
+temporary UTF-16 strings and passes `this+0x04` as `FILE**` to `_wfopen_s` at
+`0x00453CD5`. The observed call used mode `rb`, returned errno zero, stored a
+non-null stream, and entered the member's success path.
+
+At post-call address `0x00453CDA`, the three `_wfopen_s` arguments remain on
+the stack. The enclosing member caller return is therefore at `[ESP+0xC4]`
+and equals `0x00C96984`; the retry count is at `[ESP+0xD0]`. `[ESP+0xC0]` is
+not that return. Static call and vtable evidence narrows the active chain to
+BCS-Y-2234 at `0x00C96984`,
+FileThread slot 2 BCS-Y-2235 at `0x00C96B6D`, generic thread run BCS-Y-2239
+at `0x00D3566D`, and the CRT thread wrapper at `0x00DC41A9`.
+`0x00C96B62` is an earlier return site inside the same slot-2 function, not an
+additional caller frame.
+
+A second exact-build observation changed one UTF-16 code unit in the temporary
+wide path for one `rb` attempt from `data\2A\08\00\17.DAT` to the prechecked
+missing path `data\2A\08\00\1G.DAT`. The Resource path wrapper and installed
+files were not modified. At `0x00453CDA`, `_wfopen_s` returned errno 2, the
+`FILE*` output remained null, and the original code unit and full path buffer
+were restored before error handling. Retry count zero bypassed the retry loop,
+`FUN_00456960` ran once with argument 2, and BCS-Y-2233 returned false in `AL`.
+BCS-Y-2234 returned to FileThread slot 2 at `0x00C96B6D`, and the slot returned
+at `0x00C96B73`.
+
+No original-path retry occurred before that return, and no original-path open
+or fallback path was observed during the following 15 seconds. This is a
+bounded result for one request, not evidence that missing-file fallback is
+globally absent.
+
+The stream ownership is bounded. `SqexFileLocalFile+0x04` (BCS-S-0162) owns
+the `FILE*`. BCS-Y-2236 flushes, closes, and clears it. LocalFile vtable slot
+0 BCS-Y-2237 applies that teardown to scalar or 0x2010-stride vector records,
+and FileThread teardown BCS-Y-2238 invokes it over the array owned at
+FileThread `+0x8C`. This proves eventual terminal cleanup. It does not yet
+identify the normal per-request close point for the observed read open.
+
+The observed relative path spells the same hex groups as resource id
+`0x2A080017`, but the request was not observed entering a numeric resource-id
+formatter. That relationship remains inferred. The exact-build pre-open
+signature at `0x00C96972` is unique in the pinned executable, but cross-build
+stability is not established. Successful substituted-path ownership and read
+completion, path-buffer ownership for an override, original-path identity
+forwarding at the pre-open boundary, and the exact normal-read close point
+remain unresolved. The evidence does not yet support an exact-build launcher
+hook at this boundary.
+
+Refs: `manifests/resource_dat_open.json`; BCS-S-0162, BCS-S-0163;
+BCS-Y-2233..BCS-Y-2239;
+`xivl-decomp:config/resource_path_producer.json`.
 
 ## Environment and movement subsystems
 
@@ -889,6 +1039,49 @@ BCS-Y-1393..BCS-Y-1410, BCS-Y-1476..BCS-Y-1480,
 BCS-Y-1496..BCS-Y-1520, BCS-Y-1529..BCS-Y-1553, BCS-Y-1557,
 BCS-Y-1569..BCS-Y-1587, BCS-Y-1670..BCS-Y-1743;
 BCS-S-0046..BCS-S-0049.
+
+### Ordinary text submission has no verified native consume seam
+
+Retail Lua routes non-empty `TextBox_ChatInput` submissions through
+`processInputWordAnalyze` and `DesktopWidget.executeTextCommand`. The GM/debug
+test runs first. Other input calls `_parseTextCommand` once per
+`executeTextCommand` invocation; parser-declined ordinary text and unknown
+slash input then converge on `chat(rawInput)`. Deferred target selection can
+later re-execute the saved raw input, so this script order is not a runtime
+once-only hook guarantee.
+
+The native parser path is exact-build bounded. `_parseTextCommand` registers
+implementation `FUN_006FE2A0` at registration function `FUN_00751F70` through
+binder `FUN_00726BF0`. The implementation calls `FUN_0075CCF0`, which
+dereferences its object, selects the member at `+0x8BC`, and tail-jumps to
+`FUN_0056E380`. The core is `__thiscall`-shaped, returns success in `AL`, and
+writes a caller-stack 16-byte result containing a signed 16-bit command id, an
+unsigned 16-bit count, and three 32-bit parameters. It checks a narrow leading
+slash byte, but the exact character encoding, input ownership, and invocation
+thread are not established.
+
+This parser result is not a consume result. `FUN_00708FC0` is the
+`_commandDebug` N-API and builds `_comdebDEV`, `_comdebGM`, `_comdebTEST`, or
+`_comdebFUNC` class names before firing `_onCommand`; it is not ordinary chat
+ingress. `_onPreCommand`, `_onPostCommand`, and `_onCommandCancel` are void
+lifecycle fire sites without a native handled return. MyPlayer slot 42
+`FUN_0070A010` runs only after successful parsing, while `_chat`, MyPlayer slot
+67, and the packet builders are downstream surfaces. `_chat` registers
+implementation label `0x006DE7D0`, but Ghidra has not defined that address as
+a function and the direct link from it to slot 67 remains unproven. None of
+these surfaces supplies the required pre-execution silent-consume and
+identity-forward decision.
+
+The exact executable SHA-256 can identify a future experiment, but no stable byte
+signature or runtime four-input proof exists. In particular, `/wiki test` has
+not been consumed with zero packet send. An exact-build launcher hook therefore
+remains unsupported. The minimum next evidence is a runtime trace that
+records call stacks, thread ids, parser results, and packet-builder hits for a
+custom command, ordinary chat, a known retail slash command, and an unknown
+slash command.
+
+Refs: `manifests/text_command_ingress.json`; BCS-Y-1688, BCS-Y-1989,
+BCS-Y-2016, BCS-Y-2230..BCS-Y-2232, BCS-Y-0306, BCS-Y-0309.
 
 ## Sqwt UI framework
 
