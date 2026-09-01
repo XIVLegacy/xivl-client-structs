@@ -107,11 +107,12 @@ Historical manifest records reference an earlier, unrelated `FindOffsetWriters.j
 
 ## FindReferences.java
 
-Exports every reference recorded by Ghidra analysis to one or more addresses,
-or resolves exact or substring queries against all defined-string data and
-exports each exact string address and its code/data references. Reference rows
-include the containing function or section, making them reproducible registrar
-or implementation candidates without attributing either role.
+Exports every reference recorded by Ghidra analysis to one or more addresses.
+It can instead resolve exact or substring queries against all defined-string
+data and export each exact string address with its code/data references.
+Reference rows include the containing function or section. This makes them
+reproducible registrar or implementation candidates without attributing either
+role.
 
 Always use the dedicated wrapper. It requires explicit targets and a new output
 path, forces `-ReadOnly`, applies hard query/match/reference bounds, and verifies

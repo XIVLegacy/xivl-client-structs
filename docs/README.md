@@ -12,8 +12,6 @@ inventories and their regeneration rules live under `manifests/`.
   evidence classes, confidence, citations, and claim boundaries.
 - [Comments and prose](ai_agents/comments-and-prose.md) -
   deletion default and comment doctrine.
-- [Verification](ai_agents/verification.md) - external-evidence checks and
-  limits on what CI proves.
 - [Retail-input validation](ai_agents/retail-input-validation.md) - bounded
   private-input workflow, credential boundary, and sanitized attestation.
 

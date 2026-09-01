@@ -18,13 +18,12 @@ The [manifest contract](../../manifests/README.md) and
 owning tools. Hosted CI enforces the catalog and IR checks.
 
 Use [evidence and claims](evidence-and-claims.md) for source classes and claim
-boundaries. Use [verification](verification.md) for external-evidence checks
-and the limits on what CI proves.
+boundaries.
 
 ## Documentation policy
 
 Tracked documentation is consumer-facing. It describes the current contract,
-the evidence standard, and the verification checks. Dates that belong to
+the evidence standard, and supported research procedures. Dates that belong to
 evidence citations remain part of the record.
 
 Untracked maintainer material is outside the public contract. Tracked pages
@@ -41,12 +40,9 @@ Read these pages in order:
 
 1. [Evidence and claims](evidence-and-claims.md)
 2. [Comments and prose](comments-and-prose.md)
-3. [Verification](verification.md)
-4. [Retail-input validation](retail-input-validation.md)
+3. [Retail-input validation](retail-input-validation.md)
 
 The [manifest contract](../../manifests/README.md) owns the catalog charter.
-The [checks workflow](../../.github/workflows/checks.yml) owns the CI-covered
-command list, and the [verification policy](verification.md) owns beyond-CI
-checks and claim limits. The [docs index](../README.md) owns the consumer-facing
-documentation map, and the
+The [docs index](../README.md) owns the consumer-facing documentation map, and
+the
 [tools guide](../../tools/README.md) owns generator and research-command details.

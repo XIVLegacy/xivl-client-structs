@@ -17,7 +17,7 @@ restricted artifacts do not belong in the repository.
 
 AI-assisted contributions are welcome, but the contributor owns the result.
 A contributor who cannot explain their diff in detail, including its evidence
-and verification, should not open it.
+and scope, should not open it.
 
 ## Catalog and documentation changes
 
@@ -34,21 +34,11 @@ Follow the generated-output contract in the [tooling guide](tools/README.md)
 and the preservation rules in the
 [evidence standard](docs/ai_agents/evidence-and-claims.md).
 
-## Verification
-
-The [checks workflow](.github/workflows/checks.yml) is the authoritative list
-of CI-covered checks. Run the applicable checks before opening a pull request.
-The [verification policy](docs/ai_agents/verification.md) owns the beyond-CI
-external-evidence checks and explains what each result proves.
-
-Do not claim client, capture, or decompiler validation unless that track was
-actually run and its artifact and result are identified.
-
 ## Pull requests
 
 Keep each pull request focused on one catalog slice, documentation batch, or
-tooling change. Explain the claim, identify the durable evidence, and describe
-the verification performed. Address review with follow-up commits so the
+tooling change. Explain the claim and identify the durable evidence. Address
+review with follow-up commits so the
 review history remains readable.
 
 ## Community

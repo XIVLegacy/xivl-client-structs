@@ -63,4 +63,9 @@ page a stranger reads, uses a plain, direct register.
 - Name the actual hazard or dependency directly: "X relies on Y" or "run X
   before Y". Do not substitute a metaphor for the relationship.
 
+These rules apply to structured data as well as prose. Manifest strings and
+keys are public product data: retain technical evidence, provenance,
+uncertainty, and conclusions, but remove review summaries, internal task
+metadata, prompts, and work-session diary narration.
+
 Internal working docs are out of scope. These rules govern the public tier.

@@ -22,7 +22,6 @@ are research references, not build dependencies.
 
 - [Documentation home](docs/README.md)
 - [Evidence and claims](docs/ai_agents/evidence-and-claims.md)
-- [Verification](docs/ai_agents/verification.md)
 - [Client architecture](docs/client-architecture.md)
 - [Manifest catalog](manifests/README.md)
 - [Tooling and regeneration](tools/README.md)

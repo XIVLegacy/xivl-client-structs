@@ -43,12 +43,6 @@ The two IR schemas and the retail-evidence attestation schema live in
 schema is loaded by the retail verifier and its normal-CI tests. A schema that
 is not loaded by validation does not belong in this repository.
 
-## Verification
-
-The [checks workflow](../.github/workflows/checks.yml) lists CI-covered
-commands. The [verification policy](../docs/ai_agents/verification.md) lists
-additional checks and explains what each result proves.
-
 ## Lobby character-list contract
 
 `lobby_character_list_projection.json` is the canonical offset, projection,

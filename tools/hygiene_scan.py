@@ -182,20 +182,6 @@ def scan_a2_duplicate_addresses(symbols):
     return dupes
 
 
-def scan_a3_orphaned_manifests(ledger_path: pathlib.Path):
-    """Snapshot manifests the ledger never names. Advisory, never gating."""
-    manifest_files = _snapshots()
-    ledger_text = ledger_path.read_text(encoding="utf-8")
-
-    orphans = []
-    for mf in manifest_files:
-        if mf.stem in ledger_text or mf.name in ledger_text:
-            continue
-        orphans.append({"manifest": mf.name, "files": [mf.name]})
-
-    return orphans, len(manifest_files)
-
-
 # Validate `repo:path` citations by shape. Provenance hashes establish byte identity.
 # Reject commit pins because flattened sibling histories make them dangling.
 A3_CITATION_RE = re.compile(
@@ -547,23 +533,7 @@ def scan_a5_embedded_addresses(symbols):
     return results
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Run repository-local catalog hygiene scans.")
-    parser.add_argument(
-        "--phase-ledger", type=pathlib.Path,
-        dest="phase_ledger",
-        help=("Optional maintainer investigation ledger used only for the advisory "
-              "A3 orphaned-manifest scan."),
-    )
-    args = parser.parse_args(argv)
-    ledger_path = args.phase_ledger
-    if ledger_path is not None:
-        if not ledger_path.is_absolute():
-            ledger_path = REPO / ledger_path
-        if not ledger_path.is_file():
-            parser.error(f"ledger does not exist: {ledger_path}")
-
+def main() -> int:
     symbols = load_symbols()
     matrix = load_matrix()
 
@@ -595,18 +565,7 @@ def main(argv: list[str] | None = None) -> int:
         for eid, name, kind in entries:
             print(f"    {eid} [{kind}] {name}")
 
-    print("\n--- A3: orphaned manifests (no ledger entry) ---\n")
-    if ledger_path is None:
-        print("not run: pass --phase-ledger PATH to check the maintainer ledger")
-    else:
-        orphans, total_files = scan_a3_orphaned_manifests(ledger_path)
-        print(f"manifest files total: {total_files}")
-        print(f"orphaned manifests (no ledger entry): {len(orphans)}")
-        for o in orphans:
-            for f in o["files"]:
-                print(f"  {f}")
-
-    print("\n--- A4: sourceRef path inventory ---\n")
+    print("\n--- A3: sourceRef path inventory ---\n")
     structs = load_structs()
     a3 = scan_a3_sourcerefs(symbols, structs)
     print("category counts:")

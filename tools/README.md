@@ -26,15 +26,18 @@ below are implementation modules.
 | Promote the six-primitive LGE closure | `python tools\extractors\promote_lge_primitive_registrar_closure.py [--check]` | Serialized `symbols.json` correction/allocation from `manifests\lge_primitive_registrar_closure.json` |
 | Build deferred Lua callsite context | `python tools\extractors\build_lua_callsite_context.py --scripts-repo PATH [--check]` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only for the 19 fixed binding names |
 | Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
+| Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit tracked decomp assembly inputs and emits the bounded Group-family static manifest |
+
+### Catalog and evidence checks
+
+| Task | Command | Prerequisite or scope |
+|---|---|---|
+| Validate the PCAP bridge | `python tools\validate_pcap_bridge.py --captures-dir PATH [--write]` | Explicit capture corpus. `--write` deliberately regenerates the sidecar |
 | Test EventStart field provenance | `python tools\test_eventstart_field_provenance.py` | Asset-free contract and mutation tests for the +0x08 binding SID writer/domain and +0x0C layout |
 | Validate RaptureElement registry | `python tools\validate_rapture_selector_0d.py` | Asset-free member, selector/factory, cache, producer, and boundary checks |
 | Test RaptureElement registry validation | `python tools\test_rapture_selector_0d.py` | Twenty-one planted defects covering extent, factories, caches, producers, fields, consumers, and evidence |
 | Validate s2c 0x018D presentation | `python tools\validate_s2c_018d_presentation.py` | Ownership, RTTI, layout, projection, XML-row, lifetime, accessor, and PcSearch boundary checks |
 | Test s2c 0x018D presentation validation | `python tools\test_s2c_018d_presentation.py` | Focused planted defects covering identity, extents, ownership, resource registration, RTTI, accessors, marker verdicts, and the separate gate |
-| Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit tracked decomp assembly inputs and emits the bounded Group-family static manifest |
-| Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
-| Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |
-| Query callers and callees | `python tools\callers.py TARGET` | Requires `build\callgraph.json`; generate it first with the documented `DumpCallGraph.java` -> `build_callgraph.py` pipeline |
 | Verify actor-rebuild observations | `python tools\verify_retail_actor_rebuild.py [options]` | Structured output from `ghidra/VerifyActorRebuild.java`, the expected check manifest, and the approved input declaration |
 | Test the retail-input contract | `python tools\test_retail_actor_rebuild.py` | Asset-free mutation and attestation-schema tests |
 | Verify the lobby character-list fixture | `python tools\verify_lobby_character_list.py [--captures-repo PATH]` | Public-shape validation by default; explicit restricted-capture reproduction when a capture checkout is supplied |
@@ -42,12 +45,20 @@ below are implementation modules.
 | Test Resource DAT-open evidence | `python tools\test_resource_dat_open.py` | Asset-free mutation tests for the exact-build signature, bounded missing-file result, and unresolved launcher-hook requirements |
 | Check lobby catalog promotion | `python tools\extractors\promote_lobby_character_list.py --check` | Deterministic BCS-S-0008/0009 and related BCS-Y projection from the canonical lobby manifest |
 
+### PE, Ghidra, and call-graph commands
+
+| Task | Command | Prerequisite or scope |
+|---|---|---|
+| Inspect the client PE | `python -m tools.extractors.client_pe --exe PATH MODE` | Explicit path to `ffxivgame.exe` |
+| Run a Ghidra post-script | `tools\ghidra\run-headless.ps1 -Script NAME [options]` | Configured Ghidra project and JDK |
+| Query callers and callees | `python tools\callers.py TARGET` | Requires `build\callgraph.json`; generate it first with the documented `DumpCallGraph.java` -> `build_callgraph.py` pipeline |
+
 ## Layout
 
-- `tools\` (this directory): reusable pipelines, audit invariants, and validators for catalog inputs.
-- `tools\extractors\`: reusable Lua-bridge extractor pipelines (data-dependency catalog + apply-chain + substruct cross-ref) and the standalone `client_pe\` PE-extractor package (see `tools\extractors\client_pe\README.md`).
-- `tools\ghidra\`: headless dispatcher (`run-headless.ps1`), the program-edit applier (`ApplyProgramEdits.java`), and the reusable RTTI exporter (`ExtractRtti.java`). Headless decomp logs under `logs/` are gitignored reproducible scratch. Decompiled bodies must not be committed; see README + AGENTS. Regenerate the logs from explicit target inputs.
-- `data\vendor\`: vendored fixture promotions from first-party source projects, each under its own subdir (`opcodes\`, `captures\`) with a `PROVENANCE.json` recording source repo, source path, source license and URL, and the sha256 of the copied bytes. Fixtures are byte-identical promotions, not regenerated or relicensed. `tools\validate_vendor.py` re-hashes every file against its entry and `tools\refresh_vendor.py` restores or re-pins it from a named source checkout.
+- `tools\`: reusable pipelines, audit invariants, and validators for catalog inputs.
+- `tools\extractors\`: Lua-bridge pipelines and the standalone `client_pe\` PE-extractor package; see `tools\extractors\client_pe\README.md`.
+- `tools\ghidra\`: the headless dispatcher (`run-headless.ps1`), program-edit applier (`ApplyProgramEdits.java`), and RTTI exporter (`ExtractRtti.java`). Logs under `logs/` are ignored local evidence; decompiled bodies must not be committed. Regenerate logs from explicit target inputs.
+- `data\vendor\`: byte-identical fixture promotions under `opcodes\` and `captures\`. Each has a `PROVENANCE.json` with source repo, path, license, URL, and copied-byte SHA-256. `tools\validate_vendor.py` checks hashes; `tools\refresh_vendor.py` restores or re-pins from a named source checkout.
 
 All scripts use only Python 3 standard library or PowerShell built-ins, except `validate_pcap_bridge.py` (requires the third-party `scapy` package for pcap parsing).
 
@@ -134,11 +145,11 @@ representation. Reader's guide: `..\docs\ir-schema.md`.
 - `ghidra\export-references.ps1`: the read-only entry point for exact named-string/address reference evidence. It requires explicit targets and a new output, runs `ghidra\FindReferences.java` with hard bounds, then rejects cancellation, partial output, count drift, and missing completion through `verify_reference_export.py`.
 - `ghidra\DumpFunctionListing.java`: read-only instruction listing for exact function-entry VAs. Use it when the decompiler hides register state at a copy or branch boundary; output remains ignored local evidence.
 - `test_reference_export.py`: mutation tests for short-string acceptance, cancellation/failure/limit rejection, deterministic reference ordering, summary drift, and wrapper read-only enforcement.
-- `test_ir_gates.py`: bite proofs. Plants one defect per gate and requires the named gate to fire. One case additionally asserts that no other invariant fires on the same plant. Its docstring records the two things it does not prove (the cross-talk check covers five of the thirteen invariants, and the determinism cases are single-process). Run with `python tools\test_ir_gates.py`.
-- `_schema_check.py`: stdlib interpreter for the JSON Schema draft 2020-12 subset the in-repo schemas use, because CI installs no packages. Its exact keyword set is `$schema`, `$id`, `$defs`, `$ref`, `title`, `description`, `examples`, `type`, `properties`, `patternProperties`, `required`, `additionalProperties`, `items`, `enum`, `const`, `pattern`, `minimum`, `maximum`, `minItems`, `minLength`, `uniqueItems`, `oneOf`, and `dependentRequired`. It raises on any other keyword rather than passing it silently. When a maintainer has `jsonschema` installed, `crosscheck()` reports disagreements as local calibration; CI does not install that package and the calibration is not a gate.
+- `test_ir_gates.py`: mutation tests that plant one defect per invariant and require the named invariant to fire. One case additionally asserts that no other invariant fires on the same plant. Its docstring records the two things it does not prove (the cross-talk check covers five of the thirteen invariants, and the determinism cases are single-process). Run with `python tools\test_ir_gates.py`.
+- `_schema_check.py`: stdlib interpreter for the JSON Schema draft 2020-12 subset the in-repo schemas use, because CI installs no packages. Its exact keyword set is `$schema`, `$id`, `$defs`, `$ref`, `title`, `description`, `examples`, `type`, `properties`, `patternProperties`, `required`, `additionalProperties`, `items`, `enum`, `const`, `pattern`, `minimum`, `maximum`, `minItems`, `minLength`, `uniqueItems`, `oneOf`, and `dependentRequired`. It raises on any other keyword rather than passing it silently. When a maintainer has `jsonschema` installed, `crosscheck()` reports disagreements as local calibration; CI does not install that package and the calibration is not a required check.
 - `manifests\ir_overlay.json`: the curated companion, and the sole hand-maintained home for the two fields no source catalog records (type alignment, and the reading of a derived unknown span). Both populated and empty paths are bite-proved.
 
-### Verification
+### Retail-input checks
 
 - `verify_retail_actor_rebuild.py`: validates the fixed structured observation
   set for `actor-rebuild-receiver-field-v1`, cross-checks its target BCS entries
@@ -215,5 +226,4 @@ Regenerate: dump the TSV (headless), then `python tools\build_callgraph.py`, the
 ### Repository checks
 
 The [checks workflow](../.github/workflows/checks.yml) is authoritative for
-CI-covered checks. The [verification policy](../docs/ai_agents/verification.md)
-documents the local research checks that require external evidence.
+CI-covered checks.
