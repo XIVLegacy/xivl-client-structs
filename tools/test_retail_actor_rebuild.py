@@ -24,7 +24,6 @@ RETAIL_INPUTS = REPO / "manifests" / "retail_inputs.json"
 SCHEMA = REPO / "schemas" / "retail-evidence-attestation.schema.json"
 VERIFY = REPO / "tools" / "verify_retail_actor_rebuild.py"
 WORKFLOW = REPO / ".github" / "workflows" / "retail-checks.yml"
-SHARED_ACTION_SHA = "4920dece45e88fcb14424de1f5c4fdee94ae6d02"
 PASSED: list[str] = []
 FAILED: list[str] = []
 
@@ -69,16 +68,25 @@ def _run_cli(path: Path) -> subprocess.CompletedProcess[str]:
 def main() -> int:
     baseline = _load(FIXTURE)
     workflow = WORKFLOW.read_text(encoding="utf-8")
+    shared_actions = [
+        line.strip().removeprefix("uses: ")
+        for line in workflow.splitlines()
+        if line.strip().startswith(
+            "uses: XIVLegacy/xivl-tools/.github/actions/"
+        )
+    ]
+    shared_revisions = {action.rsplit("@", 1)[-1] for action in shared_actions}
+    shared_revision = next(iter(shared_revisions), "")
     check(
-        "shared retail actions are pinned",
-        workflow.count(
-            f"XIVLegacy/xivl-tools/.github/actions/fetch-retail-input@{SHARED_ACTION_SHA}"
-        ) == 1
-        and workflow.count(
-            f"XIVLegacy/xivl-tools/.github/actions/setup-retail-toolchain@{SHARED_ACTION_SHA}"
-        ) == 1
-        and workflow.count(
-            f"XIVLegacy/xivl-tools/.github/actions/finalize-retail-attestation@{SHARED_ACTION_SHA}"
+        "shared retail actions use one immutable pin",
+        len(shared_actions) == 3
+        and len(shared_revisions) == 1
+        and len(shared_revision) == 40
+        and all(char in "0123456789abcdef" for char in shared_revision)
+        and sum("/fetch-retail-input@" in action for action in shared_actions) == 1
+        and sum("/setup-retail-toolchain@" in action for action in shared_actions) == 1
+        and sum(
+            "/finalize-retail-attestation@" in action for action in shared_actions
         ) == 1,
     )
     check(

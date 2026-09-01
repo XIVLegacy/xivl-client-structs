@@ -19,7 +19,7 @@ complete semantic interpretation of the actor-rebuild transaction.
 | Passing attestation | `manifests/retail_evidence/actor-rebuild-receiver-field.json` |
 | Protected environment | `retail-evidence` |
 | Private input repository | `XIVLegacy/xivl-private-assets` |
-| Shared actions | `XIVLegacy/xivl-tools` at `4920dece45e88fcb14424de1f5c4fdee94ae6d02` |
+| Shared actions | Immutable revision from `XIVLegacy/xivl-tools` |
 
 The private repository contains only the canonical `ffxivgame.exe`. The input
 manifest pins its repository-relative path, immutable private commit, byte
