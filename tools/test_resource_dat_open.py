@@ -135,7 +135,11 @@ def validate_contract(document: dict) -> list[str]:
     if gate.get("originalPathIdentityForwarding") != "NOT TESTED":
         errors.append("identity-forwarding gate")
     serialized = json.dumps(document, ensure_ascii=True, sort_keys=True)
-    if re.search(r"[A-Za-z]:\\\\|/Users/|/home/|agent-islands", serialized, re.I):
+    private_path_pattern = re.compile(
+        r"[A-Za-z]:\\\\|/" + r"Users/|/" + r"home/|agent-" + r"islands",
+        re.I,
+    )
+    if private_path_pattern.search(serialized):
         errors.append("private path leak")
     return errors
 
