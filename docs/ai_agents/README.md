@@ -27,9 +27,8 @@ the evidence standard, and supported research procedures. Dates that belong to
 evidence citations remain part of the record.
 
 Untracked maintainer material is outside the public contract. Tracked pages
-must not depend on it, link to it, or treat it as evidence. The docs index must
-list every tracked Markdown page under `docs/`, and every listed docs path must
-exist.
+must not depend on it, link to it, or treat it as evidence. Local paths in
+tracked Markdown must resolve inside the repository.
 
 The [comments and prose policy](comments-and-prose.md) owns punctuation,
 structure, deletion, and canonical-link guidance for tracked writing.

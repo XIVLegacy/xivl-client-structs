@@ -139,28 +139,6 @@ def markdown_code_stripped(text: str) -> str:
 
 
 def check_docs(paths: list[str], errors: list[str]) -> None:
-    docs_tree = {
-        path for path in paths
-        if path.startswith("docs/") and path.endswith(".md") and path != "docs/README.md"
-    }
-    index = ROOT / "docs" / "README.md"
-    indexed: set[str] = set()
-    for raw in MARKDOWN_LINK_RE.findall(index.read_text(encoding="utf-8")):
-        target = raw.strip().strip("<>").split()[0].split("#", 1)[0]
-        if not target or re.match(r"^[a-z]+:", target, re.IGNORECASE):
-            continue
-        resolved = (index.parent / unquote(target)).resolve()
-        try:
-            relative = resolved.relative_to(ROOT).as_posix()
-        except ValueError:
-            continue
-        if relative.startswith("docs/") and relative.endswith(".md"):
-            indexed.add(relative)
-    for path in sorted(docs_tree - indexed):
-        errors.append(f"docs index missing: {path}")
-    for path in sorted(indexed - docs_tree):
-        errors.append(f"docs index extra: {path}")
-
     for path in paths:
         if not path.endswith(".md"):
             continue
@@ -199,7 +177,7 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
-    print(f"repository boundary OK ({len(paths)} tracked files, docs-index/link sync).")
+    print(f"repository boundary OK ({len(paths)} tracked files, documentation links).")
     return 0
 
 
