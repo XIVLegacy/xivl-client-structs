@@ -2455,7 +2455,7 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     if not isinstance(doc, dict):
         return [Finding("ERROR", "command-slot.shape", "document is not an object")]
-    if (doc.get("schemaVersion"), doc.get("kind")) != (1, "xivl-command-slot-context"):
+    if (doc.get("schemaVersion"), doc.get("kind")) != (2, "xivl-command-slot-context"):
         findings.append(Finding("ERROR", "command-slot.header", "schema or kind drifted"))
     coverage = doc.get("coverage", {})
     if not isinstance(coverage, dict):
@@ -2468,6 +2468,10 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
         "staticActorCatalogHits": 52,
         "commandCatalogHits": 52,
         "categoryRecords": 240,
+        "borderRecords": 12,
+        "relevantWriteRecords": 646,
+        "zeroCommandWrites": 20,
+        "statePartitions": 14,
         "categoryHashes": 20,
         "statefulCategoryObservations": 174,
         "commandsWithCategoryObservations": 26,
@@ -2487,7 +2491,7 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
         findings.append(Finding("ERROR", "command-slot.rows", "row content drifted"))
     expected_sources = {
         "captures": {
-            "commit": "306bffb2be8a755fe817705d5a1407de7af12dd8",
+            "commit": "056fa89df0f71687680aa03e26cd3f63518f21d4",
             "sha256": "bb0c2ee515e550d8a01494abb682213da7458c01da1f2d81abddf9f7ade06d08",
         },
         "clientData": {
@@ -2496,7 +2500,8 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
             "commandCatalogSha256": "bc043bbd5558916a971de4d3a3a8dac5ec9d8ca36571bb534d0e964cd0b55d6a",
         },
         "clientStructs": {
-            "generatorSha256": "6fec84bdaf23a82c67f574278e36fa220ce0263ec06f268138c68dcf76b7fdd7",
+            "generatorSha256": "a9c75832ab2d8930b4a1ab8240a89708dc49fd8ae9a73dd2565911d320fe2f2b",
+            "generatorHashNormalization": "UTF-8 text with CRLF and CR normalized to LF",
             "hashNamesSha256": "4c6626aaec0569e8e857ae4d25ddd186614d8843c50b91904c4ac617283d2ca3",
             "actorIdentitySha256": "1fc7b8736a8d1a7b6ae174b6522c63b0b6c23125149291a2920867160559d694",
         },
@@ -2566,6 +2571,150 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
         for category in slot["categoryObservations"]
     ) != 174:
         findings.append(Finding("ERROR", "command-slot.rows", "category occurrence sum drifted"))
+    corpus = doc.get("writeCorpus", {})
+    writes = corpus.get("writes", []) if isinstance(corpus, dict) else []
+    if not isinstance(writes, list) or not all(isinstance(write, dict) for write in writes):
+        return findings + [Finding("ERROR", "command-slot.writes", "writes are malformed")]
+    encoded_writes = json.dumps(writes, sort_keys=True, separators=(",", ":")).encode("ascii")
+    if corpus.get("writesSha256") != hashlib.sha256(encoded_writes).hexdigest():
+        findings.append(Finding("ERROR", "command-slot.writes", "write digest drifted"))
+    expected_boundary = {
+        "partialState": True,
+        "initialState": "unknown",
+        "finalState": "unasserted",
+        "serverAuthoritative": False,
+        "packetReplay": False,
+    }
+    if any(corpus.get(key) != value for key, value in expected_boundary.items()):
+        findings.append(Finding("ERROR", "command-slot.writes", "evidence boundary drifted"))
+    derivation = doc.get("derivation", {})
+    if (
+        derivation.get("statePartition") != ["capture", "lane_index", "source_actor_id"]
+        or derivation.get("stateOrder") != "increasing record_index"
+        or corpus.get("statePartition") != ["capture", "laneIndex", "sourceActorId"]
+        or corpus.get("stateOrder") != "increasing recordIndex within each partition"
+    ):
+        findings.append(Finding("ERROR", "command-slot.writes", "state metadata drifted"))
+    operation_counts = Counter(write.get("operation") for write in writes)
+    if operation_counts != Counter(
+        {"set-command": 374, "clear": 20, "set-category": 240, "set-border": 12}
+    ):
+        findings.append(Finding("ERROR", "command-slot.writes", "operation counts drifted"))
+    identities = {
+        row.get("commandId"): (row.get("actorIdHex"), row.get("classPath")) for row in rows
+    }
+    partitions: dict[tuple[Any, Any, Any], int] = {}
+    command_state: dict[tuple[tuple[Any, Any, Any], int], int] = {}
+    for write in writes:
+        key = (write.get("capture"), write.get("laneIndex"), write.get("sourceActorId"))
+        record_index = write.get("recordIndex")
+        if (
+            not isinstance(key[0], str)
+            or not key[0]
+            or type(key[1]) is not int
+            or type(key[2]) is not int
+            or type(record_index) is not int
+            or record_index <= partitions.get(key, -1)
+        ):
+            findings.append(Finding("ERROR", "command-slot.writes", "partition order drifted"))
+            break
+        partitions[key] = record_index
+        try:
+            width = write["valueWidth"]
+            path = write["propertyPath"]
+            hash_text = write["propertyHash"]
+            value_hex = write["valueHex"]
+            if type(width) is not int or not isinstance(path, str):
+                raise ValueError
+            if not re.fullmatch(r"0x[0-9a-f]{8}", hash_text):
+                raise ValueError
+            if not re.fullmatch(r"(?:[0-9a-f]{2})*", value_hex):
+                raise ValueError
+            property_hash = int(hash_text, 16)
+            value = bytes.fromhex(value_hex)
+            expected_fragment = (
+                bytes([width]) + property_hash.to_bytes(4, "little") + value
+            ).hex()
+        except (KeyError, TypeError, ValueError, OverflowError):
+            findings.append(Finding("ERROR", "command-slot.writes", "record encoding is malformed"))
+            break
+        if (
+            len(value) != width
+            or write.get("recordFragmentHex") != expected_fragment
+            or not path.isascii()
+            or murmur2_backward(path.encode("ascii")) != property_hash
+        ):
+            findings.append(Finding("ERROR", "command-slot.writes", "record fragment drifted"))
+            break
+        operation = write.get("operation")
+        common = {
+            "recordIndex", "capture", "laneIndex", "sourceActorId", "propertyPath",
+            "propertyHash", "valueWidth", "valueHex", "recordFragmentHex", "operation",
+        }
+        operation_keys = {
+            "clear": common | {"slot"},
+            "set-command": common | {"slot", "actorIdHex", "commandId", "classPath"},
+            "set-category": common | {"slot", "categoryValue", "joinedCommandRecordIndex"},
+            "set-border": common | {"borderValue"},
+        }
+        if operation not in operation_keys or set(write) != operation_keys[operation]:
+            findings.append(Finding("ERROR", "command-slot.writes", "operation shape drifted"))
+            break
+        if operation == "set-border":
+            border = write.get("borderValue")
+            if (
+                path != "charaWork.commandBorder"
+                or width != 1
+                or type(border) is not int
+                or not 0 <= border <= 255
+                or value != bytes([border])
+            ):
+                findings.append(Finding("ERROR", "command-slot.writes", "border write drifted"))
+                break
+            continue
+        match = re.fullmatch(
+            r"charaWork\.commandCategory\[(\d+)\]" if operation == "set-category"
+            else r"charaWork\.command\[(\d+)\]",
+            path,
+        )
+        slot = write.get("slot")
+        if match is None or type(slot) is not int or not 0 <= slot < 64 or int(match.group(1)) != slot:
+            findings.append(Finding("ERROR", "command-slot.writes", "slot path drifted"))
+            break
+        state_key = (key, slot)
+        if operation == "clear":
+            if width != 4 or value != b"\0\0\0\0":
+                findings.append(Finding("ERROR", "command-slot.writes", "clear write drifted"))
+                break
+            command_state.pop(state_key, None)
+        elif operation == "set-command":
+            actor_id = write.get("actorIdHex")
+            command_id = write.get("commandId")
+            identity = identities.get(command_id)
+            if (
+                width != 4
+                or not isinstance(actor_id, str)
+                or not re.fullmatch(r"0x[0-9a-f]{8}", actor_id)
+                or value != int(actor_id, 16).to_bytes(4, "little")
+                or identity != (actor_id, write.get("classPath"))
+            ):
+                findings.append(Finding("ERROR", "command-slot.writes", "command identity drifted"))
+                break
+            command_state[state_key] = record_index
+        else:
+            category = write.get("categoryValue")
+            joined = write.get("joinedCommandRecordIndex")
+            if (
+                width != 1
+                or type(category) is not int
+                or not 0 <= category <= 255
+                or value != bytes([category])
+                or joined != command_state.get(state_key)
+            ):
+                findings.append(Finding("ERROR", "command-slot.writes", "category join drifted"))
+                break
+    if len(partitions) != 14:
+        findings.append(Finding("ERROR", "command-slot.writes", "partition count drifted"))
     return findings
 
 

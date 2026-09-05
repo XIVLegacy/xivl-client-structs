@@ -16,6 +16,25 @@ The result is reproducible in
 and client-data checkouts, pins their commits and input hashes, and refuses an
 incomplete static-actor or command-catalog join.
 
+## Observed loadout writes
+
+Schema 2 also retains the 646 resolved command-related property writes in
+capture order: 394 command-slot assignments, including 20 zero clears; 240
+category assignments; and 12 command-border assignments. Each row preserves
+the property path, hash, exact value bytes, and the record fragment encoded as
+the one-byte width, little-endian property hash, and value bytes. Nonzero
+command assignments carry the same qualified static-actor identity join used
+by the aggregate rows. Category assignments record the preceding nonzero
+command-write record in the same slot and state partition when one exists.
+
+Replay state is partitioned by `(capture, laneIndex, sourceActorId)` and ordered
+by increasing `recordIndex`. The source actor value is retained only as stream
+context; the fixture does not name either packet-header actor field as the
+property subject. Initial state is unknown, final state is unasserted, and
+untouched slots cannot be filled from this corpus. The fragments omit unrelated
+property writes and packet framing, so they are not complete `0x0137` packets,
+a default loadout, or server policy.
+
 ## Category observations
 
 The property stream is ordered within each reconstructed capture lane. The

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Join observed command-slot actor IDs to static command identities."""
+"""Build command-slot identities and ordered observed property writes."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ PROPERTY_FIELDS = {
     "source_actor_id",
     "property_hash",
     "value_width",
+    "value_hex",
     "value_u_le",
 }
 STATIC_ACTOR_PREFIX = 0xA0F00000
@@ -31,10 +32,19 @@ EXPECTED_COMMAND_INDICES = frozenset(range(23)) | frozenset(range(32, 45)) | {51
 EXPECTED_CATEGORY_INDICES = {0, 1} | set(range(32, 49)) | {51}
 EXPECTED_COMMAND_RECORDS = 394
 EXPECTED_CATEGORY_RECORDS = 240
+EXPECTED_BORDER_RECORDS = 12
+EXPECTED_RELEVANT_WRITES = 646
+EXPECTED_ZERO_COMMAND_WRITES = 20
+EXPECTED_STATE_PARTITIONS = 14
 
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _text_sha256(path: Path) -> str:
+    text = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def _commit(repo: Path) -> str:
@@ -99,6 +109,7 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         source_rows = list(reader)
 
     states: dict[tuple[str, int, int], dict[int, int]] = defaultdict(dict)
+    state_records: dict[tuple[str, int, int], dict[int, int]] = defaultdict(dict)
     command_occurrences: Counter[int] = Counter()
     command_slot_occurrences: Counter[tuple[int, int]] = Counter()
     category_values: Counter[int] = Counter()
@@ -109,6 +120,9 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
     missing_current_command: Counter[int] = Counter()
     command_record_count = 0
     category_record_count = 0
+    border_record_count = 0
+    zero_command_write_count = 0
+    writes = []
     last_record_index = -1
 
     for row in source_rows:
@@ -121,6 +135,15 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             continue
         width = int(row["value_width"])
         value = int(row["value_u_le"])
+        value_hex = row["value_hex"].lower()
+        value_bytes = bytes.fromhex(value_hex)
+        if len(value_bytes) != width:
+            raise ValueError(f"record {record_index} value hex does not match its width")
+        if int.from_bytes(value_bytes, "little") != value:
+            raise ValueError(f"record {record_index} value interpretations disagree")
+        property_hash = row["property_hash"].lower()
+        hash_value = int(property_hash, 16)
+        fragment = bytes([width]) + hash_value.to_bytes(4, "little") + value_bytes
         lane = (
             row["capture"],
             int(row["lane_index"]),
@@ -134,9 +157,34 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             command_record_count += 1
             command_indices.add(index)
             states[lane][index] = value
+            state_records[lane][index] = record_index
+            write = {
+                "recordIndex": record_index,
+                "capture": row["capture"],
+                "laneIndex": int(row["lane_index"]),
+                "sourceActorId": int(row["source_actor_id"]),
+                "propertyPath": name,
+                "propertyHash": property_hash,
+                "valueWidth": width,
+                "valueHex": value_hex,
+                "recordFragmentHex": fragment.hex(),
+                "operation": "clear" if value == 0 else "set-command",
+                "slot": index,
+            }
             if value:
                 command_occurrences[value] += 1
                 command_slot_occurrences[(value, index)] += 1
+                command_id = value & ROW_ID_MASK
+                write.update(
+                    {
+                        "actorIdHex": f"0x{value:08x}",
+                        "commandId": command_id,
+                        "classPath": actors.get(command_id),
+                    }
+                )
+            else:
+                zero_command_write_count += 1
+            writes.append(write)
         elif name.startswith("charaWork.commandCategory["):
             if width != 1:
                 raise ValueError(f"{name} has wire width {width}, expected 1")
@@ -146,14 +194,56 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             category_hashes.add(row["property_hash"].lower())
             category_values[value] += 1
             actor_id = states[lane].get(index)
+            joined_record_index = state_records[lane].get(index) if actor_id else None
             if actor_id:
                 stateful_pairs[(actor_id, index, value)] += 1
             else:
                 missing_current_command[index] += 1
+            writes.append(
+                {
+                    "recordIndex": record_index,
+                    "capture": row["capture"],
+                    "laneIndex": int(row["lane_index"]),
+                    "sourceActorId": int(row["source_actor_id"]),
+                    "propertyPath": name,
+                    "propertyHash": property_hash,
+                    "valueWidth": width,
+                    "valueHex": value_hex,
+                    "recordFragmentHex": fragment.hex(),
+                    "operation": "set-category",
+                    "slot": index,
+                    "categoryValue": value,
+                    "joinedCommandRecordIndex": joined_record_index,
+                }
+            )
+        elif name == "charaWork.commandBorder":
+            if width != 1:
+                raise ValueError(f"{name} has wire width {width}, expected 1")
+            border_record_count += 1
+            writes.append(
+                {
+                    "recordIndex": record_index,
+                    "capture": row["capture"],
+                    "laneIndex": int(row["lane_index"]),
+                    "sourceActorId": int(row["source_actor_id"]),
+                    "propertyPath": name,
+                    "propertyHash": property_hash,
+                    "valueWidth": width,
+                    "valueHex": value_hex,
+                    "recordFragmentHex": fragment.hex(),
+                    "operation": "set-border",
+                    "borderValue": value,
+                }
+            )
 
     if (
         command_record_count != EXPECTED_COMMAND_RECORDS
         or category_record_count != EXPECTED_CATEGORY_RECORDS
+        or border_record_count != EXPECTED_BORDER_RECORDS
+        or len(writes) != EXPECTED_RELEVANT_WRITES
+        or zero_command_write_count != EXPECTED_ZERO_COMMAND_WRITES
+        or len({(write["capture"], write["laneIndex"], write["sourceActorId"]) for write in writes})
+        != EXPECTED_STATE_PARTITIONS
         or command_indices != EXPECTED_COMMAND_INDICES
         or category_indices != EXPECTED_CATEGORY_INDICES
     ):
@@ -213,7 +303,7 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         )
 
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "kind": "xivl-command-slot-context",
         "gameVersion": "1.23b",
         "status": "qualified-static-actor-identity-partial-category-observation",
@@ -227,7 +317,8 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             "clientStructs": {
                 "repository": "XIVLegacy/xivl-client-structs",
                 "generatorArtifact": "tools/extractors/build_command_slot_context.py",
-                "generatorSha256": _sha256(generator_path),
+                "generatorSha256": _text_sha256(generator_path),
+                "generatorHashNormalization": "UTF-8 text with CRLF and CR normalized to LF",
                 "hashNamesArtifact": "manifests/gam_hash_names.json",
                 "hashNamesSha256": _sha256(names_path),
                 "actorIdentityArtifact": "manifests/combat_command_emission.json#commandIdRelationship",
@@ -259,6 +350,10 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             "staticActorCatalogHits": len(command_occurrences),
             "commandCatalogHits": len(command_occurrences),
             "categoryRecords": category_record_count,
+            "borderRecords": border_record_count,
+            "relevantWriteRecords": len(writes),
+            "zeroCommandWrites": zero_command_write_count,
+            "statePartitions": EXPECTED_STATE_PARTITIONS,
             "categoryHashes": len(category_hashes),
             "categoryValueDistribution": [
                 {"value": value, "occurrences": count}
@@ -275,11 +370,27 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         },
         "rowsSha256": _json_sha256(joined_rows),
         "rows": joined_rows,
+        "writeCorpus": {
+            "scope": "observed-filtered-property-record-fragments",
+            "recordEncoding": "valueWidth:u8 + propertyHash:u32le + value[valueWidth]",
+            "propertyHashEncoding": "little-endian u32",
+            "statePartition": ["capture", "laneIndex", "sourceActorId"],
+            "stateOrder": "increasing recordIndex within each partition",
+            "partialState": True,
+            "initialState": "unknown",
+            "finalState": "unasserted",
+            "serverAuthoritative": False,
+            "packetReplay": False,
+            "writesSha256": _json_sha256(writes),
+            "writes": writes,
+        },
         "unresolved": [
             "category 2 is not observed in the retained property corpus",
             "category value 1 has no promoted semantic label",
             "the retained corpus does not establish a complete category domain or assignment policy",
             "the native sync-cache-to-Lua-work-binding bridge remains unresolved",
+            "the filtered record fragments omit unrelated writes and packet framing",
+            "the retained writes do not establish a complete or default server loadout",
         ],
     }
 
