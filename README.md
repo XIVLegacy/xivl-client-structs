@@ -26,13 +26,6 @@ are research references, not build dependencies.
 - [Manifest catalog](manifests/README.md)
 - [Tooling and regeneration](tools/README.md)
 
-## Community
-
-Join the [project Discord](https://discord.gg/PxK5RJYQjm) for questions and
-community support.
-Use [Issues](https://github.com/XIVLegacy/xivl-client-structs/issues) to record
-bugs and research findings.
-
 ## Contributing
 
 Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
