@@ -52,6 +52,7 @@ LUA_CALLBACK_CONTRACT_PATH = REPO / "manifests" / "lua_callback_contract.json"
 LUA_API_CONTRACT_PATH = REPO / "manifests" / "lua_api_contract.json"
 CAST_CHANT_PRESENTATION_PATH = REPO / "manifests" / "cast_chant_presentation.json"
 COMBAT_COMMAND_EMISSION_PATH = REPO / "manifests" / "combat_command_emission.json"
+COMMAND_SLOT_CONTEXT_PATH = REPO / "manifests" / "command_slot_context.json"
 GAM_HASH_NAMES_PATH = REPO / "manifests" / "gam_hash_names.json"
 PROPERTY_STREAM_HASH_CATALOG_PATH = REPO / "manifests" / "property_stream_hash_catalog.json"
 EXPANDED_REVERSE_BFS_PATH = REPO / "manifests" / "expanded_reverse_bfs.json"
@@ -2447,6 +2448,125 @@ CAST_CHANT_PRESENTATION_CHECK_COUNT = 1
 COMBAT_COMMAND_EMISSION_CHECK_COUNT = 1
 GAM_HASH_NAMES_CHECK_COUNT = 1
 PROPERTY_STREAM_HASH_CATALOG_CHECK_COUNT = 1
+COMMAND_SLOT_CONTEXT_CHECK_COUNT = 1
+
+
+def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
+    findings: list[Finding] = []
+    if not isinstance(doc, dict):
+        return [Finding("ERROR", "command-slot.shape", "document is not an object")]
+    if (doc.get("schemaVersion"), doc.get("kind")) != (1, "xivl-command-slot-context"):
+        findings.append(Finding("ERROR", "command-slot.header", "schema or kind drifted"))
+    coverage = doc.get("coverage", {})
+    if not isinstance(coverage, dict):
+        return [Finding("ERROR", "command-slot.coverage", "coverage is not an object")]
+    expected = {
+        "commandRecords": 394,
+        "nonzeroCommandOccurrences": 374,
+        "uniqueNonzeroCommandActors": 52,
+        "staticActorPrefixHits": 52,
+        "staticActorCatalogHits": 52,
+        "commandCatalogHits": 52,
+        "categoryRecords": 240,
+        "categoryHashes": 20,
+        "statefulCategoryObservations": 174,
+        "commandsWithCategoryObservations": 26,
+    }
+    for key, value in expected.items():
+        if coverage.get(key) != value:
+            findings.append(Finding("ERROR", f"command-slot.coverage.{key}", "count drifted"))
+    if coverage.get("categoryValueDistribution") != [{"value": 1, "occurrences": 240}]:
+        findings.append(Finding("ERROR", "command-slot.categories", "observed values drifted"))
+    rows = doc.get("rows", [])
+    if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+        return [Finding("ERROR", "command-slot.rows", "rows is not an object array")]
+    encoded_rows = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("ascii")
+    rows_sha256 = hashlib.sha256(encoded_rows).hexdigest()
+    expected_rows_sha256 = "9bfb71511ee515a52452b6a0a5dd4e7a27573fa07e48afb3f4f2091c139583d2"
+    if doc.get("rowsSha256") != rows_sha256 or rows_sha256 != expected_rows_sha256:
+        findings.append(Finding("ERROR", "command-slot.rows", "row content drifted"))
+    expected_sources = {
+        "captures": {
+            "commit": "306bffb2be8a755fe817705d5a1407de7af12dd8",
+            "sha256": "bb0c2ee515e550d8a01494abb682213da7458c01da1f2d81abddf9f7ade06d08",
+        },
+        "clientData": {
+            "commit": "67fe9cd4cf9dd29d253c1b17d0a7a14ac27b19a3",
+            "staticActorSha256": "d612438827e5997422ab6f64a807e567ddf1b953c532e8a319d67b93c53c9db0",
+            "commandCatalogSha256": "bc043bbd5558916a971de4d3a3a8dac5ec9d8ca36571bb534d0e964cd0b55d6a",
+        },
+        "clientStructs": {
+            "generatorSha256": "6fec84bdaf23a82c67f574278e36fa220ce0263ec06f268138c68dcf76b7fdd7",
+            "hashNamesSha256": "4c6626aaec0569e8e857ae4d25ddd186614d8843c50b91904c4ac617283d2ca3",
+            "actorIdentitySha256": "1fc7b8736a8d1a7b6ae174b6522c63b0b6c23125149291a2920867160559d694",
+        },
+    }
+    sources = doc.get("sourceSnapshots", {})
+    if not isinstance(sources, dict):
+        findings.append(Finding("ERROR", "command-slot.sources", "sources are malformed"))
+    else:
+        for source, expected_values in expected_sources.items():
+            actual = sources.get(source, {})
+            if not isinstance(actual, dict) or any(
+                actual.get(key) != value for key, value in expected_values.items()
+            ):
+                findings.append(Finding("ERROR", f"command-slot.sources.{source}", "source pin drifted"))
+    if any(
+        not isinstance(row.get("slotObservations"), list)
+        or not all(isinstance(slot, dict) for slot in row["slotObservations"])
+        or any(
+            not isinstance(slot.get("categoryObservations"), list)
+            or not all(
+                isinstance(category, dict)
+                for category in slot["categoryObservations"]
+            )
+            for slot in row["slotObservations"]
+        )
+        for row in rows
+    ):
+        return findings + [
+            Finding("ERROR", "command-slot.rows", "slot observations are malformed")
+        ]
+    if len(rows) != 52 or len({row.get("commandId") for row in rows}) != 52:
+        findings.append(Finding("ERROR", "command-slot.rows", "command identity set drifted"))
+    observed = [
+        row
+        for row in rows
+        if any(slot.get("categoryObservations") for slot in row.get("slotObservations", []))
+    ]
+    if len(observed) != 26:
+        findings.append(Finding("ERROR", "command-slot.rows", "category command count drifted"))
+    for row in rows:
+        actor_id = row.get("actorIdHex", "")
+        command_id = row.get("commandId")
+        try:
+            actor_value = int(actor_id, 16)
+        except (TypeError, ValueError):
+            findings.append(Finding("ERROR", "command-slot.rows", "actor id is malformed"))
+            continue
+        if actor_value & 0xFFFF0000 != 0xA0F00000 or actor_value & 0xFFFF != command_id:
+            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "static actor decode drifted"))
+        if not str(row.get("classPath", "")).startswith("/Command/"):
+            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "class path drifted"))
+        slots = row.get("slotObservations", [])
+        if len({slot.get("slot") for slot in slots}) != len(slots):
+            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "slot set drifted"))
+        if sum(slot.get("commandOccurrences", 0) for slot in slots) != row.get(
+            "commandOccurrences"
+        ):
+            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "slot count drifted"))
+        for slot in slots:
+            for category in slot.get("categoryObservations", []):
+                if category.get("value") != 1 or not isinstance(category.get("occurrences"), int):
+                    findings.append(Finding("ERROR", f"command-slot.{actor_id}", "category observation drifted"))
+    if sum(
+        category["occurrences"]
+        for row in observed
+        for slot in row["slotObservations"]
+        for category in slot["categoryObservations"]
+    ) != 174:
+        findings.append(Finding("ERROR", "command-slot.rows", "category occurrence sum drifted"))
+    return findings
 
 
 def main() -> int:
@@ -2515,6 +2635,11 @@ def main() -> int:
     except (OSError, json.JSONDecodeError) as e:
         print(f"FATAL: failed to load {PROPERTY_STREAM_HASH_CATALOG_PATH}: {e}", file=sys.stderr)
         return 2
+    try:
+        command_slot_context_doc = _load_json(COMMAND_SLOT_CONTEXT_PATH)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"FATAL: failed to load {COMMAND_SLOT_CONTEXT_PATH}: {e}", file=sys.stderr)
+        return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
@@ -2552,6 +2677,8 @@ def main() -> int:
                       check_gam_hash_names(gam_hash_names_doc)),
         SectionResult("property stream apply storage", PROPERTY_STREAM_HASH_CATALOG_CHECK_COUNT,
                       check_property_stream_hash_catalog(property_stream_hash_catalog_doc)),
+        SectionResult("command slot context", COMMAND_SLOT_CONTEXT_CHECK_COUNT,
+                      check_command_slot_context(command_slot_context_doc)),
         SectionResult("cross-file references", CROSS_CHECK_COUNT,
                       check_cross_references(symbols_doc, structs_doc, matrix_doc)),
         SectionResult(

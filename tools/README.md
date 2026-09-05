@@ -26,6 +26,7 @@ below are implementation modules.
 | Promote the six-primitive LGE closure | `python tools\extractors\promote_lge_primitive_registrar_closure.py [--check]` | Serialized `symbols.json` correction/allocation from `manifests\lge_primitive_registrar_closure.json` |
 | Build deferred Lua callsite context | `python tools\extractors\build_lua_callsite_context.py --scripts-repo PATH [--check]` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only for the 19 fixed binding names |
 | Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
+| Build command-slot context | `python tools\extractors\build_command_slot_context.py --captures-repo PATH --client-data-repo PATH [--check]` | Joins ordered `0x0137` command slots to static actors and observed category writes |
 | Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit tracked decomp assembly inputs and emits the bounded Group-family static manifest |
 
 ### Catalog and evidence checks

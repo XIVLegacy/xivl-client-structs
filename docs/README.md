@@ -26,6 +26,8 @@ inventories and their regeneration rules live under `manifests/`.
   fields, the address convention, and the Receiver-vs-Packet naming pairing.
 - [Lua Game Engine (LGE) class system](lua-class-system.md) - description of the
   LGE class system (5 Lua metatables, registration pipeline, write chokepoint).
+- [Command-slot actor and category context](actor/command-slot-context.md) -
+  joins observed property-stream slot values to static command identities.
 
 ## Related contracts
 

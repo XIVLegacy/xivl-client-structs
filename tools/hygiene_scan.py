@@ -48,7 +48,7 @@ MATRIX = REPO / "manifests" / "pcap_opcode_coverage_matrix.json"
 
 # Named catalogs are maintained products. Every other JSON manifest is a snapshot.
 NAMED_CATALOGS = frozenset({
-    "c2s_bridge_skeleton.json", "client_class_registry.json",
+    "c2s_bridge_skeleton.json", "client_class_registry.json", "command_slot_context.json",
     "control_class_napi_field_access.json",
     "control_class_napi_field_access_recursive.json",
     "control_class_napi_map.json", "data_dependency_catalog.json",
