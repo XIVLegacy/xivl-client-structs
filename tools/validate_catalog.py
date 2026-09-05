@@ -2491,8 +2491,8 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
         findings.append(Finding("ERROR", "command-slot.rows", "row content drifted"))
     expected_sources = {
         "captures": {
-            "commit": "056fa89df0f71687680aa03e26cd3f63518f21d4",
-            "sha256": "bb0c2ee515e550d8a01494abb682213da7458c01da1f2d81abddf9f7ade06d08",
+            "commit": "5d49f6039e98df15e249d2e1f88fb942cc267efa",
+            "sha256": "244a87a0182c9d3f0b9de253cb7fc454b0f9fd07e2530d6f546b539b7269f437",
         },
         "clientData": {
             "commit": "67fe9cd4cf9dd29d253c1b17d0a7a14ac27b19a3",
