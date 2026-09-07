@@ -1,66 +1,46 @@
 {
-  "version": 1,
-  "generated": "2026-08-30",
+  "version": 2,
+  "generated": "2026-09-07",
   "gameVersion": "1.23b",
-  "status": "insufficient_for_hook",
-  "scope": "Ordinary submitted text from TextBox_ChatInput through the DesktopWidget parser, recognized-command execution, declined-input chat fallback, and the first proven chat packet builder.",
+  "status": "go_exact_build_lookup_boundary",
+  "scope": "Ordinary submitted text from TextBox_ChatInput through the DesktopWidget parse-or-chat owner, including command lifecycle notifications and the first application-level chat dispatch before packet construction.",
   "inputIdentity": {
     "program": "ffxivgame.exe",
     "build": "2012.09.19.0001",
     "size": 15996808,
     "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
     "imageBase": "0x00400000",
-    "addressConvention": "absolute Ghidra VA",
+    "addressConvention": "absolute Ghidra VA; RVA is VA minus 0x00400000",
     "ghidraVersion": "12.1.3",
-    "clientStructsBaseCommit": "568135f3c2651d096840b896dc002e765eae57ed",
-    "clientScriptsCommit": "3804eebcc43a48e6998371117aeeb0d04084d7a6",
-    "clientDecompCommit": "4955acc6f6d45fb7d30ab92bb50ae998dd93eec2"
+    "clientStructsBaseCommit": "1dea038a20f5e14996bc61947f11a24b407c63de",
+    "clientScriptsCommit": "19859132873ff77f4399ca30467b49638f638799",
+    "clientDecompCommit": "3a1e52170fd30432d92318d0d86463a603337dbe"
   },
   "method": {
     "closingDecomp": {
-      "output": "tools/ghidra/logs/c546_text-command-ingress.txt",
-      "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c546_text-command-ingress.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x006FE2A0,0x0075CCF0,0x0056E380,0x00751F70,0x00708FC0,0x00756E10,0x0078B910,0x0078B9B0,0x0078BA50,0x0078BAF0,0x0070A010,0x00897A20,0x00897B40,0x00897C60,0x00897D90,0x00897EE0,0x006E91F0,0x0075C1A0,0x004D82E0,0x004DF6D0,0x00DB3E30,0x00743D80' } -ScriptPath @('ghidra')",
-      "verifiedSections": 22,
+      "output": "tools/ghidra/logs/c548_text-command-cancellation-boundary.txt",
+      "command": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c548_text-command-cancellation-boundary.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00743D80,0x007267D0,0x006E91F0,0x006FE2A0,0x0056E380,0x0070A010,0x00897A20,0x00897B40,0x00897C60,0x00897D90,0x00897EE0,0x00CC7A90,0x0071CE70,0x00444CB0,0x00445060,0x007248D0,0x0071B9C0' } -ScriptPath @('ghidra')",
+      "verifiedSections": 17,
       "decompErrors": 0,
-      "runId": "bcs-headless-12692",
       "headlessSaved": false
     },
-    "referenceExports": [
-      {
-        "mode": "ADDRESS",
-        "targets": [
-          "0x006FE2A0",
-          "0x00708FC0",
-          "0x0070A010",
-          "0x00753B90",
-          "0x00897B40",
-          "0x00897C60",
-          "0x00897D90",
-          "0x00897EE0"
-        ],
-        "result": "8 targets and 18 Ghidra-recorded references; the two N-API implementations have registration-data references only, MyPlayer slot 42 has one vftable data reference, and the command callbacks have only vftable data references."
-      },
-      {
-        "mode": "STRING_EXACT",
-        "targets": [
-          "_parseTextCommand",
-          "_commandDebug",
-          "_onCommand",
-          "_onPreCommand",
-          "_onPostCommand",
-          "_onCommandCancel"
-        ],
-        "result": "6 queries, 7 defined-string matches, and 7 references; parser and debug names reference their registration functions, while callback names reference their exact fire sites."
-      }
-    ],
+    "directPeInspection": {
+      "input": "the pinned executable above",
+      "facts": [
+        "0x006DE7D0 contains 8B 01 8B 80 0C 01 00 00 FF E0: load the ECX object vtable, load byte-offset 0x10C, and tail-jump.",
+        "MyPlayer vftable 0x00FD785C plus 0x10C is 0x00FD7968 and the pinned image stores 0x006E91F0 there.",
+        "The exact signatures recorded below each occur once in executable sections of the pinned image."
+      ]
+    },
     "scriptEvidence": {
       "kind": "retail Lua corpus with local bodies verified against tracked hashes and line counts",
       "trackedAnchors": [
         "xivl-client-scripts:lua/scripts/widget/desktopwidget_connector.calls.json",
+        "xivl-client-scripts:lua/scripts/widget/logwidget.calls.json",
         "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.calls.json",
         "xivl-client-scripts:lua/napi_index.json"
       ],
-      "boundary": "Tracked callsite products prove names and locations. Control-flow facts were checked against the exact local retail bodies at the pinned commit; the bodies remain ignored and are not copied here."
+      "boundary": "Tracked callsite products prove names and locations. Control-flow facts were checked against exact local retail bodies at the pinned commit; bodies remain ignored and are not copied here."
     }
   },
   "ordinaryRoute": [
@@ -69,8 +49,8 @@
       "component": "TextBox_ChatInput PressEnter",
       "evidenceKind": "retail_script",
       "facts": [
-        "non-empty submitted input reaches processInputWordAnalyze",
-        "the widget may defer and later re-execute saved raw input for target selection"
+        "A non-empty submitted line reaches processInputWordAnalyze.",
+        "A retail command requiring subtarget selection saves its raw line and later calls executeTextCommand again with the selected actor."
       ]
     },
     {
@@ -78,9 +58,9 @@
       "component": "DesktopWidget.executeTextCommand",
       "evidenceKind": "retail_script",
       "facts": [
-        "the GM/debug test runs before ordinary parsing",
-        "non-debug input reaches _parseTextCommand once per executeTextCommand invocation",
-        "a parser-declined ordinary line or unknown slash command converges on chat(rawInput)"
+        "The debug test precedes ordinary parsing.",
+        "Each invocation calls _parseTextCommand once.",
+        "Parser success reaches local command execution; parser failure calls chat with the original raw line and returns false."
       ]
     },
     {
@@ -88,137 +68,317 @@
       "component": "_parseTextCommand N-API",
       "bcsId": "BCS-Y-2230",
       "address": "0x006FE2A0",
-      "registration": "0x00751F70",
-      "binder": "0x00726BF0",
+      "rva": "0x002FE2A0",
       "evidenceKind": "static_decomp_and_registration",
       "facts": [
-        "the implementation has one 32-bit stack argument and a callee-clean RET 4, but Ghidra does not recover an authoritative source calling-convention name",
-        "it extracts the first Lua argument and calls the parser thunk at 0x0075CCF0",
-        "it converts the parser result into thirteen Lua-visible result positions"
+        "The callee-clean implementation receives one 32-bit Lua argument-container pointer and returns with RET 4.",
+        "Argument variant extraction yields the borrowed narrow string pointer passed to the parser thunk.",
+        "Parser failure becomes nil Lua-visible results; parser success becomes the parsed command tuple."
       ]
     },
     {
       "step": 4,
-      "component": "parser member thunk",
-      "bcsId": "BCS-Y-2231",
-      "address": "0x0075CCF0",
-      "evidenceKind": "instruction_listing",
+      "component": "text-command parser core",
+      "bcsId": "BCS-Y-2232",
+      "address": "0x0056E380",
+      "rva": "0x0016E380",
+      "evidenceKind": "static_decomp_and_instruction_listing",
       "facts": [
-        "ECX is dereferenced, 0x8BC is added through 0x004D7520, and execution tail-jumps to 0x0056E380",
-        "the thunk has no independent consume or forward result"
+        "The core is __thiscall-shaped: bool parse(TextCommandParser* this, const char* input, ParsedCommand* output), with ECX plus two stack arguments and RET 8.",
+        "It checks the first narrow byte for slash and returns success in AL.",
+        "It writes the caller-owned 16-byte output only on success. Exact source types beyond these bounded roles are not claimed."
       ]
     },
     {
       "step": 5,
-      "component": "text-command parser core",
-      "bcsId": "BCS-Y-2232",
-      "address": "0x0056E380",
-      "evidenceKind": "static_decomp_and_instruction_listing",
+      "component": "recognized retail command",
+      "address": "0x0070A010",
+      "rva": "0x0030A010",
+      "evidenceKind": "static_decomp_and_vtable",
       "facts": [
-        "the core is __thiscall-shaped with ECX as the parser object, two stack arguments, and RET 8",
-        "it checks the first narrow byte for slash, resolves a command, and returns success in AL",
-        "the output is a caller-owned 16-byte stack record: signed 16-bit command id, unsigned 16-bit count, and three 32-bit parameter values",
-        "the N-API converts the record before its stack lifetime ends",
-        "the exact character encoding and invocation thread are not established"
+        "MyPlayer slot 42 is reached only after Lua accepts parser output.",
+        "A parser-declined custom line cannot reach this function."
       ]
     },
     {
       "step": 6,
-      "component": "recognized command",
-      "address": "0x0070A010",
-      "evidenceKind": "static_decomp_and_vtable",
+      "component": "declined-input chat fallback",
+      "evidenceKind": "retail_script",
       "facts": [
-        "the MyPlayer slot-42 override is reached after Lua accepts a parser result",
-        "ordinary parser-declined text does not reach this function",
-        "it has no raw-line ingress role"
+        "chat resets temporary chat mode, validates the input, converts pronouns, and calls _chat.",
+        "The registered _chat receives the converted message rather than the original raw submitted bytes."
       ]
     },
     {
       "step": 7,
-      "component": "declined-input chat fallback",
-      "evidenceKind": "retail_script_and_static_decomp",
+      "component": "_chat virtual thunk and MyPlayer slot 67",
+      "address": "0x006DE7D0",
+      "rva": "0x002DE7D0",
+      "targetBcsId": "BCS-Y-2016",
+      "targetAddress": "0x006E91F0",
+      "targetRva": "0x002E91F0",
+      "evidenceKind": "registration_decomp_direct_pe_and_vtable",
       "facts": [
-        "Lua converts and forwards the declined raw input through _chat with no Lua-visible handled result",
-        "_chat registers implementation label 0x006DE7D0, but Ghidra has not defined that address as a function and the static link from the label to a concrete vtable slot remains unproven",
-        "the separately evidenced MyPlayer slot 67 at 0x006E91F0 branches by chat mode and reaches channel-specific builders",
-        "the group branch reaches 0x004D82E0, then the 0x00C9 builder at 0x004DF6D0 and queue forwarder at 0x00DB3E30",
-        "this path is after the parser decision and is not an allowed packet-suppression seam"
-      ]
+        "Registration function 0x00743D80 passes 0x006DE7D0 to its generic binder while registering literal _chat.",
+        "The thunk dispatches ECX vtable byte offset 0x10C, slot 67; the MyPlayer vtable entry resolves to 0x006E91F0.",
+        "Slot 67 is void __thiscall-shaped as void PlayerBase::chat(ExecuteParameters const&) const, with ECX plus one stack argument and RET 4. It extracts two 16-byte Lua values, branches on chat mode, and then invokes channel-specific builders.",
+        "Returning at the thunk before its tail jump is before builder construction and queueing. No slot-67 local object has yet been constructed."
+      ],
+      "registrationBcsId": "BCS-Y-2240"
     }
   ],
+  "lifecycleCancellation": {
+    "classes": [
+      "Event::Command",
+      "Event::CommandBlock",
+      "Event::CommandNonBlock"
+    ],
+    "vtableFacts": [
+      "All three classes have 12-slot vtables. Slots 2, 3, and 4 dispatch _onCommandRejected, _onPreCommand, and _onPostCommand.",
+      "CommandBlock slot 10 fires _onCommandRequest and slot 11 fires _onCommandCancel; CommandNonBlock slot 10 fires _onCommandEvent and slot 11 fires _onCommandCancel.",
+      "The cancel wrappers read whether their fifth argument equals global 0x01355294 and expose that comparison as a Lua boolean; they do not store a handled result."
+    ],
+    "executionState": [
+      "ExecutionClientSideBlockEvent+0x1D is an abort latch, +0x20 is a server-order marker, +0x21 is an armed flag, and +0x28 is a pending checker.",
+      "The pre callback runs before +0x21 is armed; cancellation later invokes slot 11 and may clear +0x21 before post notification. These fields govern an already-created event lifecycle, not text parse-or-chat routing."
+    ],
+    "verdict": "NO-GO",
+    "reason": "Every recovered fire site is a void callback dispatch. No callback return, shared text-command handled bit, or later execute-versus-chat branch was found. _onCommandCancel reports cleanup after event cancellation and receives no complete submitted raw line."
+  },
+  "strongestCandidate": {
+    "name": "top-level command-definition lookup interception",
+    "verdict": "GO",
+    "boundary": "Detour 0x0056D3C0 on the exact pinned build and dispatch only calls returning to 0x0056E6A4.",
+    "evidenceLimit": "Static analysis establishes the lookup ABI and eligible caller. A 2026-09-07 live probe proved /pos dispatch and visible toggle; preservation rows and exact per-submit hit count remain unverified."
+  },
   "candidateVerdicts": [
     {
-      "candidate": "0x0056E380 parser core",
-      "verdict": "INSUFFICIENT",
-      "reason": "It is a narrow pre-routing observation point with a bounded output record, but it returns parse success and parsed values rather than a handled/consume decision. No evidenced return can consume a custom command silently."
+      "rank": 1,
+      "candidate": "top-level command-definition lookup",
+      "vas": [
+        "0x0056D3C0"
+      ],
+      "rvas": [
+        "0x0016D3C0"
+      ],
+      "classAndSlot": [
+        "TextCommandParser command-definition lookup",
+        "eligible caller return address 0x0056E6A4"
+      ],
+      "callingConventionAndPrototype": [
+        "int __thiscall lookup(TextCommandParser* this, const CommandToken* token, void* auxiliaryOutput); callee RET 8"
+      ],
+      "signatures": [
+        {
+          "va": "0x0056D3C0",
+          "pattern": "6A FF 68 74 F6 E6 00 64 A1 00 00 00 00 50 83 EC 54 53 56 57 A1 B0 A8 2E 01 33 C4 50 8D 44 24 64 64 A3 00 00 00 00 8B F1",
+          "mask": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+          "executableSectionMatches": 1
+        }
+      ],
+      "inputEncoding": "The token first field is a borrowed narrow NUL-terminated byte pointer. Exact character encoding is unresolved; addon recognition is limited to an ASCII slash prefix and ASCII command name.",
+      "inputOwnershipAndLifetime": "Retail owns the token and auxiliary output. The addon may inspect token bytes only for the call duration and must copy retained bytes.",
+      "expectedInvocationThread": "The 2026-09-07 live probe observed lookup and addon dispatch on one OS thread. Broader UI-thread identity is not established.",
+      "exactOnceBehavior": "The live aggregate contained two eligible lookup entries and two addon dispatches across the user test. The probe did not isolate the number of physical submissions, so exact once-per-submit behavior remains unverified.",
+      "consumeForwardMechanism": "For an addon-handled ASCII command, leave auxiliary output untouched and return the retail miss sentinel -2 without calling the original lookup. Forward every ineligible caller and unhandled token to the original trampoline unchanged.",
+      "cleanupObligations": "Retain no token or pending state. Catch addon exceptions and forward the original lookup unchanged.",
+      "unsupportedBuildBehavior": "Require exact executable size and SHA-256, the exact VA, and one executable-section signature match. If any gate fails, expose no command callback.",
+      "verdict": "GO",
+      "evidence": "Static caller analysis identifies the top-level lookup return at 0x0056E6A4. On 2026-09-07, live retail diagnostics recorded two lookup entries, recognitions, handled dispatches, and synthetic misses with zero forwards; /pos visibly toggled the Position window. No _chat thunk entry occurred."
     },
     {
-      "candidate": "0x006FE2A0 _parseTextCommand N-API",
-      "verdict": "REJECT",
-      "reason": "Hooking it requires implementing the private Lua bridge ABI and still exposes parser results rather than a consume decision."
+      "rank": 2,
+      "candidate": "DesktopWidget.executeTextCommand Lua replacement",
+      "vas": [],
+      "rvas": [],
+      "classAndSlot": [
+        "DesktopWidget Lua method; no native slot recovered"
+      ],
+      "callingConventionAndPrototype": [
+        "Lua method contract observed; native closure replacement ABI not recovered"
+      ],
+      "signatures": [],
+      "inputEncoding": "Lua string; exact byte encoding unresolved.",
+      "inputOwnershipAndLifetime": "Lua-owned method argument for the invocation.",
+      "expectedInvocationThread": "Lua/UI dispatch thread expected; not statically proven.",
+      "exactOnceBehavior": "One call per invocation, including a second call for saved deferred input.",
+      "consumeForwardMechanism": "Conceptually can return handled before parse or chat, but no exact native replacement/install boundary was proven.",
+      "cleanupObligations": "Would have to preserve every Lua return tuple and deferred/macro behavior.",
+      "unsupportedBuildBehavior": "No installable exact-build signature exists.",
+      "verdict": "NO-GO",
+      "evidence": "The script owner is the clean semantic seam, but this investigation did not prove a native VA, closure-table patch, or replacement ABI."
     },
     {
-      "candidate": "0x00708FC0 _commandDebug N-API and _onCommand fire site",
-      "verdict": "REJECT",
-      "reason": "Its four builders create _comdebDEV, _comdebGM, _comdebTEST, and _comdebFUNC class names. It belongs to the GM/debug command surface, not ordinary player chat ingress, and returns no handled result."
+      "rank": 3,
+      "candidate": "parser core alone",
+      "vas": [
+        "0x0056E380"
+      ],
+      "rvas": [
+        "0x0016E380"
+      ],
+      "classAndSlot": [
+        "TextCommandParser member"
+      ],
+      "callingConventionAndPrototype": [
+        "bool __thiscall parser(TextCommandParser* this, const char* input, ParsedCommand* output); callee RET 8"
+      ],
+      "signatures": [
+        {
+          "va": "0x0056E380",
+          "reference": "rank 1 parser signature"
+        }
+      ],
+      "inputEncoding": "Borrowed narrow NUL-terminated bytes; exact encoding unresolved.",
+      "inputOwnershipAndLifetime": "Retail-owned for call duration.",
+      "expectedInvocationThread": "Lua/UI dispatch thread expected; unproven.",
+      "exactOnceBehavior": "Once per executeTextCommand invocation, not once per physical Enter across deferred replay.",
+      "consumeForwardMechanism": "Can force parser failure but cannot alone suppress the proven chat fallback.",
+      "cleanupObligations": "Do not write output on synthetic failure.",
+      "unsupportedBuildBehavior": "Fail closed on identity or signature mismatch.",
+      "verdict": "NO-GO",
+      "evidence": "Parser success is routing state, not a handled/consume result."
     },
     {
-      "candidate": "0x00897B40 _onPreCommand",
-      "verdict": "REJECT",
-      "reason": "The void __thiscall fire site dispatches a two-argument lifecycle callback and has no native handled return. The post and cancel callbacks are likewise void notifications."
+      "rank": 4,
+      "candidate": "_chat virtual thunk alone",
+      "vas": [
+        "0x006DE7D0"
+      ],
+      "rvas": [
+        "0x002DE7D0"
+      ],
+      "classAndSlot": [
+        "Control::MyPlayer slot 67 thunk"
+      ],
+      "callingConventionAndPrototype": [
+        "void __thiscall chatThunk(PlayerBase* this, ExecuteParameters const* args); effective target RET 4"
+      ],
+      "signatures": [
+        {
+          "va": "0x006DE7D0",
+          "reference": "rank 1 chat-thunk signature"
+        }
+      ],
+      "inputEncoding": "Converted Lua message bytes, not the original submitted line.",
+      "inputOwnershipAndLifetime": "Retail-owned Lua argument container for call duration.",
+      "expectedInvocationThread": "Lua/UI dispatch thread expected; unproven.",
+      "exactOnceBehavior": "Reached by chat fallback, but not by known retail commands that execute locally.",
+      "consumeForwardMechanism": "An early RET 4 suppresses builder entry, but without the parser token it cannot identify the original addon-handled line safely.",
+      "cleanupObligations": "No callee locals exist before the tail jump; caller-owned arguments remain caller-owned.",
+      "unsupportedBuildBehavior": "Fail closed on identity or signature mismatch.",
+      "verdict": "NO-GO",
+      "evidence": "Clean pre-builder point, insufficient command identity by itself."
     },
     {
-      "candidate": "0x0070A010 MyPlayer executeCommand",
-      "verdict": "REJECT",
-      "reason": "It is downstream of successful parsing and does not receive parser-declined ordinary text or unknown slash input."
-    },
-    {
-      "candidate": "_chat and packet builders",
-      "verdict": "REJECT",
-      "reason": "They are downstream send paths. Using them would require packet suppression or mutation, which is outside the requested contract."
-    },
-    {
-      "candidate": "GM ExecuteDebugCommandReceiver, WM_CHAR, keyboard reconstruction, or launcher IPC",
-      "verdict": "REJECT",
-      "reason": "These are separate surfaces and do not supply the required ordinary submitted-line consume/forward decision."
+      "rank": 5,
+      "candidate": "command lifecycle callbacks",
+      "vas": [
+        "0x00897A20",
+        "0x00897B40",
+        "0x00897C60",
+        "0x00897D90",
+        "0x00897EE0"
+      ],
+      "rvas": [
+        "0x00497A20",
+        "0x00497B40",
+        "0x00497C60",
+        "0x00497D90",
+        "0x00497EE0"
+      ],
+      "classAndSlot": [
+        "Command-family Event slots 2, 3, 4, 10, and 11"
+      ],
+      "callingConventionAndPrototype": [
+        "0x00897A20: void __thiscall rejected(EventCommand* this, uint32 arg1, uint32 arg2); RET 8",
+        "0x00897B40: void __thiscall pre(EventCommand* this, uint32 arg1, uint32 arg2, uint32 arg3); RET 0xC",
+        "0x00897C60: void __thiscall post(EventCommand* this, uint32 arg1, uint32 arg2, uint32 arg3, uint32 arg4); RET 0x10",
+        "0x00897D90 and 0x00897EE0: void __thiscall cancel(EventCommand* this, uint32 arg1, uint32 arg2, uint32 arg3, const uint32* arg4); RET 0x10",
+        "Argument roles above are bounded by use and stack cleanup; exact source types are unresolved."
+      ],
+      "signatures": [
+        {
+          "status": "not promoted because the lifecycle family is rejected before hook-location selection"
+        }
+      ],
+      "inputEncoding": "No complete submitted raw-line argument proven.",
+      "inputOwnershipAndLifetime": "Event/command objects owned by retail lifecycle.",
+      "expectedInvocationThread": "Command lifecycle thread not proven.",
+      "exactOnceBehavior": "Notifications occur after command selection and vary by lifecycle path.",
+      "consumeForwardMechanism": "None found.",
+      "cleanupObligations": "Lua callbacks manage UI/control cleanup for existing commands.",
+      "unsupportedBuildBehavior": "No hook should be installed.",
+      "verdict": "NO-GO",
+      "evidence": "No cancellation bit, stored callback result, or later execute-versus-chat branch was found."
     }
   ],
-  "contractVerdicts": {
-    "ordinaryLineObservedExactlyOnce": "INSUFFICIENT - the retail script proves one parser call per executeTextCommand invocation, but deferred target selection can re-execute saved input and no runtime hit census exists",
-    "beforeLocalExecuteRejectOrSend": "SUPPORTED for parser observation only",
-    "verifiedAddress": "SUPPORTED for 0x006FE2A0, 0x0075CCF0, and 0x0056E380",
-    "verifiedSignatureAndCallingConvention": "INSUFFICIENT - the parser core stack contract is bounded, but the N-API convention and source-level types are not recovered",
-    "verifiedThread": "INSUFFICIENT",
-    "verifiedEncoding": "INSUFFICIENT - narrow byte operations are proven, exact character encoding is not",
-    "verifiedPayloadAndLifetime": "PARTIAL - the 16-byte parser output and caller-stack lifetime are proven; input ownership and lifetime are not",
-    "verifiedConsumeForwardSemantics": "INSUFFICIENT - no candidate exposes an evidenced handled/consume decision",
-    "wikiConsumedWithZeroPacket": "NOT DEMONSTRATED",
-    "ordinaryChatForwardedUnchanged": "INSUFFICIENT - the baseline script route is known, but no hook or live identity comparison exists",
-    "knownRetailSlashForwardedUnchanged": "INSUFFICIENT - the baseline script route is known, but no hook or live identity comparison exists",
-    "unknownSlashPreservesRetailBehavior": "SCRIPT-SUPPORTED as parser-declined chat fallback, NOT LIVE-VALIDATED",
-    "identityGate": "SUPPORTED by exact executable size and SHA-256",
-    "signatureGate": "INSUFFICIENT - no stable byte signature and mask has been promoted"
+  "proposedHookContract": {
+    "install": "Install the lookup detour only after exact executable identity, exact address, and unique signature gates pass.",
+    "lookupHook": [
+      "Forward calls from every return address except 0x0056E6A4 without inspecting the token.",
+      "At the eligible caller, inspect only the borrowed token first-field byte pointer for an exact ASCII addon command.",
+      "If handled, leave auxiliary output untouched and return -2 without invoking the original lookup.",
+      "If unhandled or addon dispatch fails, call the original lookup with the original ECX, token, and auxiliary-output pointers and preserve its result."
+    ],
+    "preservation": [
+      "Ordinary chat, known retail commands, unknown slash commands, retail macros, and deferred retail commands use original code unless the extension explicitly handles its own ASCII command.",
+      "Do not fabricate a retail command id, retain token state, alter packet data, or hook chat, WndProc, keyboard input, builders, or queue forwarders."
+    ],
+    "knownLimit": "Live validation proved /pos toggling but did not isolate exact hits per physical submission or execute the four unhandled preservation rows."
   },
   "requiredRuntimeMatrix": [
     {
-      "input": "/wiki test",
-      "requiredObservation": "one selected ingress hit, an explicit consume result, and zero chat/game packet sends",
-      "currentStatus": "not run"
+      "input": "/pos",
+      "addonDisposition": "handled",
+      "requiredObservation": "Addon dispatch toggles the Position window; handled lookup returns -2 without calling the original lookup or modifying auxiliary output.",
+      "currentStatus": "partial pass 2026-09-07: visible toggle; aggregate 2 entries, recognitions, dispatches, handled results, and synthetic misses; 0 forwards; exact per-submit count not isolated"
     },
     {
       "input": "ordinary chat",
-      "requiredObservation": "the original client-produced _chat arguments remain byte-identical to an unhooked baseline and the original retail send count is unchanged",
+      "addonDisposition": "unhandled",
+      "requiredObservation": "Original lookup result and retail chat behavior equal an unhooked baseline.",
       "currentStatus": "not run"
     },
     {
       "input": "known retail slash command",
-      "requiredObservation": "original parser result and execution/send path unchanged",
+      "addonDisposition": "unhandled",
+      "requiredObservation": "Original lookup result and command execution count remain unchanged; no addon execution.",
       "currentStatus": "not run"
     },
     {
       "input": "/unknown-command",
-      "requiredObservation": "original parser-declined result and chat fallback unchanged",
+      "addonDisposition": "unhandled",
+      "requiredObservation": "Original lookup miss and retail fallback behavior remain unchanged.",
+      "currentStatus": "not run"
+    },
+    {
+      "input": "known retail command with deferred target-selection syntax",
+      "addonDisposition": "unhandled",
+      "requiredObservation": "Record each eligible lookup if replay occurs, zero addon executions, and unchanged deferred selection and final command execution.",
       "currentStatus": "not run"
     }
+  ],
+  "runtimeProbe": {
+    "kind": "The production lookup hook has opt-in aggregate diagnostics and performs no packet mutation.",
+    "counters": [
+      "eligible and ineligible lookup entries",
+      "addon recognition and execution",
+      "original forwards and synthetic misses"
+    ],
+    "records": [
+      "OS thread id at the latest lookup",
+      "latest lookup result",
+      "monotonically increasing local event sequence"
+    ],
+    "acceptance": "The /pos row has a partial live pass. The remaining rows and exact per-submit census must pass on the pinned build before claiming complete preservation validation."
+  },
+  "evidenceBoundaries": [
+    "GO applies only to the exact-build lookup hook gated to caller return 0x0056E6A4.",
+    "The /pos live row passed visibly, but exact per-submit count and four preservation rows remain unverified.",
+    "Exact character encoding is unresolved. Only ASCII command-name recognition is supported by this contract.",
+    "The lifecycle callback names do not imply a submitted-text cancellation facility.",
+    "The earlier paired parser/chat hypothesis was rejected by live evidence: the validated /pos path entered no _chat thunk.",
+    "No client bytes, decompiler bodies, private paths, or reference-project implementation details are stored in this manifest."
   ]
 }
