@@ -82,10 +82,12 @@ Incidental figures go and the claim stays. When the sentence is about
 something else, a count tells the reader nothing they can act on and becomes
 stale when another run differs. Keep what was found. Drop the incidental count.
 
-A hedge is the strongest tell. "approximately", "roughly", "about", or a
-leading "~" before a figure means the author had already decided the figure
-did not matter. Make it exact or cut it. Where an exact source exists, name
-that source instead of restating its number in prose.
+A hedge needs a reason. "approximately", "roughly", "about", or a leading "~"
+may preserve a source-backed measurement, bounded estimate, or unresolved
+boundary when the prose states its method and resolution or bound. Keep that
+qualification rather than inventing precision. Cut an incidental figure that
+does not support the claim. Where an exact source exists, name that source
+instead of restating its number in prose.
 
 This rule governs prose authored for the repository. A figure inside a quoted or
 transcribed source is source content and stays verbatim, hedge included.

@@ -21,10 +21,15 @@ complete semantic interpretation of the actor-rebuild transaction.
 | Private input repository | `XIVLegacy/xivl-private-assets` |
 | Shared actions | Immutable revision from `XIVLegacy/xivl-tools` |
 
-The private repository contains only the canonical `ffxivgame.exe`. The input
-manifest pins its repository-relative path, immutable private commit, byte
-size, SHA-256, and allowed check. A companion binary, another input class, or
-another check requires an explicit manifest amendment and owner review.
+This workflow is authorized to read only the canonical `ffxivgame.exe`. Its
+input manifest pins the repository-relative path, immutable private commit,
+byte size, SHA-256, and allowed check. The shared private repository also holds
+approved SAN, LPB, decoded CSV, decoded Lua, and restricted PCAP archives for
+other workflows. The read-only credential has repository-wide Contents
+visibility, so an environment holding it can technically read those assets;
+that visibility does not authorize this workflow to use them. A companion
+binary, another input class, or another check requires an explicit manifest
+amendment and owner review.
 
 ## Trust boundary
 
