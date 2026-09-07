@@ -71,9 +71,10 @@ class Report:
 
 def i1_ir_schema(ir, report: Report) -> None:
     schema = _schema_check.load_schema(IR_SCHEMA_PATH)
+    failures = _schema_check.validate(ir, schema)
     report.record("I1  ir_catalog.json conforms to schemas/ir-v1.schema.json",
-                  _schema_check.validate(ir, schema))
-    note = _schema_check.crosscheck(ir, schema)
+                  failures)
+    note = _schema_check.crosscheck(ir, schema, validation_errors=failures)
     if note:
         print(f"note: schema interpreter cross-check disagreement: {note}")
 

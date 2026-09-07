@@ -186,17 +186,20 @@ def _validate(value: Any, schema: dict, root: dict, loc: str) -> Iterator[str]:
                    "oneOf branches, expected exactly 1")
 
 
-def crosscheck(document: Any, schema: dict) -> str | None:
+def crosscheck(
+    document: Any, schema: dict, *, validation_errors: list[str] | None = None,
+) -> str | None:
     """Second opinion from a real jsonschema install, when one exists.
 
     Returns None when unavailable or in agreement, otherwise a description
     of the disagreement. Callers report this. They must not gate on it.
+    Pass validation_errors to reuse a prior check of this document and schema.
     """
     try:
         import jsonschema  # type: ignore
     except ImportError:
         return None
-    ours = bool(validate(document, schema))
+    ours = bool(validate(document, schema) if validation_errors is None else validation_errors)
     try:
         jsonschema.validate(document, schema)
         theirs = False
