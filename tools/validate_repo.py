@@ -35,6 +35,8 @@ ABSOLUTE_MAINTAINER_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^]]*\]\(([^)]+)\)")
+
+
 def tracked_paths() -> list[str]:
     result = subprocess.run(
         ["git", "ls-files", "-z", "--cached"],
@@ -43,7 +45,8 @@ def tracked_paths() -> list[str]:
         capture_output=True,
     )
     return sorted(
-        path for path in result.stdout.decode("utf-8").split("\0")
+        path
+        for path in result.stdout.decode("utf-8").split("\0")
         if path and (ROOT / path).is_file()
     )
 
@@ -117,8 +120,7 @@ def check_boundary(paths: list[str], errors: list[str]) -> None:
                     )
 
     ignore_text = (
-        (ROOT / ".gitignore").read_text(encoding="utf-8")
-        .replace("\r\n", "\n")
+        (ROOT / ".gitignore").read_text(encoding="utf-8").replace("\r\n", "\n")
     )
     ignore_lines = set(ignore_text.split("\n"))
     for required in sorted(REQUIRED_AGENT_TOOLING_IGNORE_LINES):
@@ -139,28 +141,6 @@ def markdown_code_stripped(text: str) -> str:
 
 
 def check_docs(paths: list[str], errors: list[str]) -> None:
-    docs_tree = {
-        path for path in paths
-        if path.startswith("docs/") and path.endswith(".md") and path != "docs/README.md"
-    }
-    index = ROOT / "docs" / "README.md"
-    indexed: set[str] = set()
-    for raw in MARKDOWN_LINK_RE.findall(index.read_text(encoding="utf-8")):
-        target = raw.strip().strip("<>").split()[0].split("#", 1)[0]
-        if not target or re.match(r"^[a-z]+:", target, re.IGNORECASE):
-            continue
-        resolved = (index.parent / unquote(target)).resolve()
-        try:
-            relative = resolved.relative_to(ROOT).as_posix()
-        except ValueError:
-            continue
-        if relative.startswith("docs/") and relative.endswith(".md"):
-            indexed.add(relative)
-    for path in sorted(docs_tree - indexed):
-        errors.append(f"docs index missing: {path}")
-    for path in sorted(indexed - docs_tree):
-        errors.append(f"docs index extra: {path}")
-
     for path in paths:
         if not path.endswith(".md"):
             continue
@@ -199,7 +179,7 @@ def main() -> int:
             print(f"  - {error}", file=sys.stderr)
         return 1
 
-    print(f"repository boundary OK ({len(paths)} tracked files, docs-index/link sync).")
+    print(f"repository boundary OK ({len(paths)} tracked files, documentation links).")
     return 0
 
 

@@ -59,9 +59,13 @@ def _ensure_java_unluac(unluac_jar: Path) -> int:
     if not unluac_jar.is_file():
         print(f"error: unluac.jar not found at {unluac_jar}", file=sys.stderr)
         print("       download from:", file=sys.stderr)
-        print("         https://sourceforge.net/projects/unluac/files/latest/download",
-              file=sys.stderr)
-        print("       then set UNLUAC_JAR=<path> or pass --unluac-jar.", file=sys.stderr)
+        print(
+            "         https://sourceforge.net/projects/unluac/files/latest/download",
+            file=sys.stderr,
+        )
+        print(
+            "       then set UNLUAC_JAR=<path> or pass --unluac-jar.", file=sys.stderr
+        )
         return 2
     try:
         subprocess.run(["java", "-version"], capture_output=True, check=True)
@@ -71,7 +75,9 @@ def _ensure_java_unluac(unluac_jar: Path) -> int:
     return 0
 
 
-def _decompile_one(unluac_jar: Path, luac: Path, out_lua: Path) -> tuple[Path, bool, str]:
+def _decompile_one(
+    unluac_jar: Path, luac: Path, out_lua: Path
+) -> tuple[Path, bool, str]:
     out_lua.parent.mkdir(parents=True, exist_ok=True)
     try:
         result = subprocess.run(
@@ -86,8 +92,13 @@ def _decompile_one(unluac_jar: Path, luac: Path, out_lua: Path) -> tuple[Path, b
     return luac, True, ""
 
 
-def _decompile_stage(lpb_dir: Path, lua_dir: Path, unluac_jar: Path,
-                     parallel_jobs: int, source_name: str | None) -> int:
+def _decompile_stage(
+    lpb_dir: Path,
+    lua_dir: Path,
+    unluac_jar: Path,
+    parallel_jobs: int,
+    source_name: str | None,
+) -> int:
     """Decompile .luac -> .lua into lua_dir using unluac."""
     rc = _ensure_java_unluac(unluac_jar)
     if rc != 0:
@@ -96,7 +107,9 @@ def _decompile_stage(lpb_dir: Path, lua_dir: Path, unluac_jar: Path,
     if source_name:
         luac = lpb_dir / f"{source_name}.luac"
         if not luac.is_file():
-            print(f"error: {luac} not present - run decode stage first", file=sys.stderr)
+            print(
+                f"error: {luac} not present - run decode stage first", file=sys.stderr
+            )
             return 1
         out_lua = lua_dir / f"{source_name}.lua"
         _, ok, err = _decompile_one(unluac_jar, luac, out_lua)
@@ -129,32 +142,61 @@ def _decompile_stage(lpb_dir: Path, lua_dir: Path, unluac_jar: Path,
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("install_root", type=Path, nargs="?",
-                    help="FFXIV install root (the dir containing client/script/). "
-                         "Required unless --no-decode is set.")
-    ap.add_argument("--source", default=None,
-                    help="Single source name (e.g. 'Man0g0' or 'OpeningDirector'). "
-                         "If omitted, processes the entire script tree.")
-    ap.add_argument("--lpb-dir", type=Path, default=Path("build/lpb"),
-                    help="Output dir for stage-1 .luac files. Default: build/lpb")
-    ap.add_argument("--lua-dir", type=Path, default=Path("build/lua"),
-                    help="Output dir for stage-2 .lua files. Default: build/lua")
-    ap.add_argument("--unluac-jar", type=Path, default=None,
-                    help="Path to unluac.jar. Defaults to $UNLUAC_JAR env var.")
-    ap.add_argument("--parallel-jobs", type=int, default=8,
-                    help="unluac worker count (default: 8)")
-    ap.add_argument("--no-decode", action="store_true",
-                    help="Skip stage 1 (.le.lpb -> .luac). --lpb-dir must already exist.")
-    ap.add_argument("--no-decompile", action="store_true",
-                    help="Skip stage 2 (.luac -> .lua via unluac).")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "install_root",
+        type=Path,
+        nargs="?",
+        help="FFXIV install root (the dir containing client/script/). "
+        "Required unless --no-decode is set.",
+    )
+    ap.add_argument(
+        "--source",
+        default=None,
+        help="Single source name (e.g. 'Man0g0' or 'OpeningDirector'). "
+        "If omitted, processes the entire script tree.",
+    )
+    ap.add_argument(
+        "--lpb-dir",
+        type=Path,
+        default=Path("build/lpb"),
+        help="Output dir for stage-1 .luac files. Default: build/lpb",
+    )
+    ap.add_argument(
+        "--lua-dir",
+        type=Path,
+        default=Path("build/lua"),
+        help="Output dir for stage-2 .lua files. Default: build/lua",
+    )
+    ap.add_argument(
+        "--unluac-jar",
+        type=Path,
+        default=None,
+        help="Path to unluac.jar. Defaults to $UNLUAC_JAR env var.",
+    )
+    ap.add_argument(
+        "--parallel-jobs", type=int, default=8, help="unluac worker count (default: 8)"
+    )
+    ap.add_argument(
+        "--no-decode",
+        action="store_true",
+        help="Skip stage 1 (.le.lpb -> .luac). --lpb-dir must already exist.",
+    )
+    ap.add_argument(
+        "--no-decompile",
+        action="store_true",
+        help="Skip stage 2 (.luac -> .lua via unluac).",
+    )
     args = ap.parse_args()
 
     if not args.no_decode:
         if args.install_root is None:
-            print("error: install_root is required unless --no-decode is set",
-                  file=sys.stderr)
+            print(
+                "error: install_root is required unless --no-decode is set",
+                file=sys.stderr,
+            )
             return 1
         rc = decode_tree(args.install_root, args.lpb_dir, args.source)
         if rc != 0:
@@ -163,11 +205,15 @@ def main() -> int:
     if not args.no_decompile:
         unluac_jar = _resolve_unluac_jar(args.unluac_jar)
         if unluac_jar is None:
-            print("error: --unluac-jar or $UNLUAC_JAR required for decompile stage. "
-                  "Use --no-decompile to skip.", file=sys.stderr)
+            print(
+                "error: --unluac-jar or $UNLUAC_JAR required for decompile stage. "
+                "Use --no-decompile to skip.",
+                file=sys.stderr,
+            )
             return 1
-        rc = _decompile_stage(args.lpb_dir, args.lua_dir, unluac_jar,
-                              args.parallel_jobs, args.source)
+        rc = _decompile_stage(
+            args.lpb_dir, args.lua_dir, unluac_jar, args.parallel_jobs, args.source
+        )
         if rc != 0:
             return rc
 

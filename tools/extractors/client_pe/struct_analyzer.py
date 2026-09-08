@@ -24,6 +24,7 @@ x86 opcode bytes used:
   E8 rel32        CALL near
   8B C1/CB/CE/CF  MOV ecx, reg
 """
+
 from __future__ import annotations
 
 import struct
@@ -76,7 +77,9 @@ class StructLayout:
 
 def analyze(exe_bytes: bytes, class_name: str, exe_path: str | Path) -> StructLayout:
     entries = extract_all(exe_path)
-    target = next((e for e in entries if class_name.lower() in e.demangled_name.lower()), None)
+    target = next(
+        (e for e in entries if class_name.lower() in e.demangled_name.lower()), None
+    )
     if target is None:
         raise ValueError(f"Class '{class_name}' not found in RTTI")
 
@@ -142,7 +145,7 @@ def find_constructor(exe_bytes: bytes, vtable_va: int | None) -> int:
                 i += 1
                 continue
 
-        if exe_bytes[i + imm_offset:i + imm_offset + 4] != vt_bytes:
+        if exe_bytes[i + imm_offset : i + imm_offset + 4] != vt_bytes:
             i += 1
             continue
 
@@ -159,7 +162,11 @@ def find_func_start(exe_bytes: bytes, va: int) -> int:
     for i in range(file_off, lower_bound, -1):
         if i + 2 >= len(exe_bytes):
             continue
-        if exe_bytes[i] == 0x55 and exe_bytes[i + 1] == 0x8B and exe_bytes[i + 2] == 0xEC:
+        if (
+            exe_bytes[i] == 0x55
+            and exe_bytes[i + 1] == 0x8B
+            and exe_bytes[i + 2] == 0xEC
+        ):
             if i > 0 and exe_bytes[i - 1] in (0xC3, 0xCC, 0x90, 0xC2):
                 return i + IMAGE_BASE
     return 0
@@ -281,7 +288,12 @@ def extract_field_stores(exe_bytes: bytes, ctor_va: int) -> list[FieldStore]:
                     if disp > 0:
                         fields.append(FieldStore(va, disp, "dword", reg32_names[src]))
 
-        elif b == 0xF3 and off + 2 < len(exe_bytes) and exe_bytes[off + 1] == 0x0F and exe_bytes[off + 2] == 0x11:
+        elif (
+            b == 0xF3
+            and off + 2 < len(exe_bytes)
+            and exe_bytes[off + 1] == 0x0F
+            and exe_bytes[off + 2] == 0x11
+        ):
             modrm = exe_bytes[off + 3]
             mod = (modrm >> 6) & 3
             src = (modrm >> 3) & 7
@@ -296,7 +308,12 @@ def extract_field_stores(exe_bytes: bytes, ctor_va: int) -> list[FieldStore]:
                     if disp > 0:
                         fields.append(FieldStore(va, disp, "float", f"xmm{src}"))
 
-        elif b == 0xF2 and off + 2 < len(exe_bytes) and exe_bytes[off + 1] == 0x0F and exe_bytes[off + 2] == 0x11:
+        elif (
+            b == 0xF2
+            and off + 2 < len(exe_bytes)
+            and exe_bytes[off + 1] == 0x0F
+            and exe_bytes[off + 2] == 0x11
+        ):
             modrm = exe_bytes[off + 3]
             mod = (modrm >> 6) & 3
             src = (modrm >> 3) & 7
@@ -318,7 +335,9 @@ def extract_field_stores(exe_bytes: bytes, ctor_va: int) -> list[FieldStore]:
     return sorted(seen.values(), key=lambda x: x.offset)
 
 
-def extract_sub_objects(exe_bytes: bytes, ctor_va: int, rtti_entries: list[RttiEntry]) -> list[SubObject]:
+def extract_sub_objects(
+    exe_bytes: bytes, ctor_va: int, rtti_entries: list[RttiEntry]
+) -> list[SubObject]:
     sub_objects: list[SubObject] = []
     file_off = ctor_va - IMAGE_BASE
     vtable_names = _build_vtable_name_map(rtti_entries)
@@ -376,7 +395,9 @@ def extract_sub_objects(exe_bytes: bytes, ctor_va: int, rtti_entries: list[RttiE
     return sorted(seen.values(), key=lambda x: x.offset)
 
 
-def extract_base_ctor_calls(exe_bytes: bytes, ctor_va: int, rtti_entries: list[RttiEntry]) -> list[InheritanceInfo]:
+def extract_base_ctor_calls(
+    exe_bytes: bytes, ctor_va: int, rtti_entries: list[RttiEntry]
+) -> list[InheritanceInfo]:
     bases: list[InheritanceInfo] = []
     file_off = ctor_va - IMAGE_BASE
     vtable_names = _build_vtable_name_map(rtti_entries)
@@ -398,7 +419,10 @@ def extract_base_ctor_calls(exe_bytes: bytes, ctor_va: int, rtti_entries: list[R
                 continue
             rel = struct.unpack_from("<i", exe_bytes, off + j + 1)[0]
             target = (off + j + 5 + IMAGE_BASE + rel) & 0xFFFFFFFF
-            if target < IMAGE_BASE + TEXT_FILE_START or target >= IMAGE_BASE + TEXT_FILE_END:
+            if (
+                target < IMAGE_BASE + TEXT_FILE_START
+                or target >= IMAGE_BASE + TEXT_FILE_END
+            ):
                 break
             vtable, name = _find_vtable_in_function(exe_bytes, target, vtable_names)
             if name is not None:
@@ -410,10 +434,14 @@ def extract_base_ctor_calls(exe_bytes: bytes, ctor_va: int, rtti_entries: list[R
 
 
 def _build_vtable_name_map(rtti_entries: list[RttiEntry]) -> dict[int, str]:
-    return {e.vtable_va: e.demangled_name for e in rtti_entries if e.vtable_va is not None}
+    return {
+        e.vtable_va: e.demangled_name for e in rtti_entries if e.vtable_va is not None
+    }
 
 
-def _find_vtable_in_function(exe_bytes: bytes, func_va: int, vtable_names: dict[int, str]) -> tuple[int | None, str | None]:
+def _find_vtable_in_function(
+    exe_bytes: bytes, func_va: int, vtable_names: dict[int, str]
+) -> tuple[int | None, str | None]:
     func_off = func_va - IMAGE_BASE
     if func_off < 0 or func_off >= len(exe_bytes) - 10:
         return None, None
@@ -452,23 +480,37 @@ def dump_analysis(layout: StructLayout, writer) -> None:
     vt = f"0x{layout.vtable_va:08X}" if layout.vtable_va is not None else "none"
     writer.write(f"// VTable: {vt} ({layout.vtable_entry_count} vfuncs)\n")
     writer.write(f"// Ctor:   0x{layout.ctor_va:08X}\n")
-    size = f"0x{layout.alloc_size:X} ({layout.alloc_size} bytes)" if layout.alloc_size else "unknown"
+    size = (
+        f"0x{layout.alloc_size:X} ({layout.alloc_size} bytes)"
+        if layout.alloc_size
+        else "unknown"
+    )
     writer.write(f"// Size:   {size}\n\n")
 
     if layout.base_ctors:
         writer.write("// === Base Class Constructors ===\n")
         for b in layout.base_ctors:
             vt = f"vt=0x{b.vtable_va:08X}" if b.vtable_va else "no vtable"
-            writer.write(f"//   {b.class_name} (ctor=0x{b.ctor_va:08X}, {vt}, {len(b.fields)} fields)\n")
+            writer.write(
+                f"//   {b.class_name} (ctor=0x{b.ctor_va:08X}, {vt}, {len(b.fields)} fields)\n"
+            )
         writer.write("\n")
 
-    writer.write(f"// === Fields (from constructor init) === [{len(layout.fields)} total]\n")
+    writer.write(
+        f"// === Fields (from constructor init) === [{len(layout.fields)} total]\n"
+    )
     for f in layout.fields:
-        writer.write(f"// +0x{f.offset:04X} [{f.type:<6}] = {f.value}  (@ 0x{f.va:08X})\n")
+        writer.write(
+            f"// +0x{f.offset:04X} [{f.type:<6}] = {f.value}  (@ 0x{f.va:08X})\n"
+        )
 
     if layout.sub_objects:
-        writer.write(f"\n// === Embedded Sub-Objects === [{len(layout.sub_objects)} total]\n")
+        writer.write(
+            f"\n// === Embedded Sub-Objects === [{len(layout.sub_objects)} total]\n"
+        )
         for s in layout.sub_objects:
             name = s.class_name or "unknown"
             vt = f"vt=0x{s.vtable_va:08X}" if s.vtable_va else "no vtable"
-            writer.write(f"// +0x{s.offset:04X} {name} ({vt}, ctor=0x{s.ctor_va:08X})\n")
+            writer.write(
+                f"// +0x{s.offset:04X} {name} ({vt}, ctor=0x{s.ctor_va:08X})\n"
+            )

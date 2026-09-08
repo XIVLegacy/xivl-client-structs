@@ -10,6 +10,7 @@ find_string_xrefs(exe, literal)
     Locate the literal in .rdata, then scan .text for PUSH imm32
     instructions whose immediate matches the .rdata VA.
 """
+
 from __future__ import annotations
 
 import struct
@@ -31,7 +32,9 @@ class StringRef:
     value: str
 
 
-def extract_from_function(exe_bytes: bytes, func_va: int, max_scan_bytes: int = 4096) -> list[StringRef]:
+def extract_from_function(
+    exe_bytes: bytes, func_va: int, max_scan_bytes: int = 4096
+) -> list[StringRef]:
     results: list[StringRef] = []
     func_off = func_va - IMAGE_BASE
     if func_off < 0 or func_off >= len(exe_bytes):
@@ -84,7 +87,7 @@ def find_string_xrefs(exe_bytes: bytes, search_string: str) -> list[StringRef]:
 
     i = RDATA_FILE_START
     while i < RDATA_FILE_END - len(search_bytes):
-        if exe_bytes[i:i + len(search_bytes)] == search_bytes:
+        if exe_bytes[i : i + len(search_bytes)] == search_bytes:
             term_off = i + len(search_bytes)
             if term_off >= len(exe_bytes) or exe_bytes[term_off] == 0:
                 str_vas.append(i + IMAGE_BASE)
@@ -96,7 +99,7 @@ def find_string_xrefs(exe_bytes: bytes, search_string: str) -> list[StringRef]:
 
         i = TEXT_FILE_START
         while i < TEXT_FILE_END - 5:
-            if exe_bytes[i] == 0x68 and exe_bytes[i + 1:i + 5] == str_bytes:
+            if exe_bytes[i] == 0x68 and exe_bytes[i + 1 : i + 5] == str_bytes:
                 results.append(StringRef(i + IMAGE_BASE, str_va, value))
             i += 1
 

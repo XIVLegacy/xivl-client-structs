@@ -19,8 +19,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 from _regen_guard import add_force_arg, check_regen_safe  # noqa: E402
+
 NAPI_FIELD_ACCESS = REPO_ROOT / "manifests" / "control_class_napi_field_access.json"
-NAPI_FIELD_ACCESS_RECURSIVE = REPO_ROOT / "manifests" / "control_class_napi_field_access_recursive.json"
+NAPI_FIELD_ACCESS_RECURSIVE = (
+    REPO_ROOT / "manifests" / "control_class_napi_field_access_recursive.json"
+)
 VTABLE_RESOLVED_EVIDENCE = REPO_ROOT / "manifests" / "vtable_resolved_evidence.json"
 RECEIVER_FIELD_WRITES = REPO_ROOT / "manifests" / "receiver_field_writes.json"
 OUT_JSON = REPO_ROOT / "manifests" / "data_dependency_catalog.json"
@@ -64,10 +67,18 @@ PURE_NATIVE_RECEIVER_WRITES = [
         "opcode": "0x0195",
         "bcsyRef": "BCS-Y-0278",
         "writes": [
-            {"actorClass": "NpcBase", "offset": "0x154", "type": "u32",
-             "semantic": "enmity amount"},
-            {"actorClass": "NpcBase", "offset": "0x158", "type": "u16",
-             "semantic": "enmity kind"},
+            {
+                "actorClass": "NpcBase",
+                "offset": "0x154",
+                "type": "u32",
+                "semantic": "enmity amount",
+            },
+            {
+                "actorClass": "NpcBase",
+                "offset": "0x158",
+                "type": "u16",
+                "semantic": "enmity kind",
+            },
         ],
         "applyVa": "0x0089D030",
     },
@@ -76,8 +87,12 @@ PURE_NATIVE_RECEIVER_WRITES = [
         "opcode": "0x017B",
         "bcsyRef": "BCS-Y-0278",
         "writes": [
-            {"actorClass": "CharaBase", "offset": "0x5D", "type": "u8",
-             "semantic": "shadow-actor flag"},
+            {
+                "actorClass": "CharaBase",
+                "offset": "0x5D",
+                "type": "u8",
+                "semantic": "shadow-actor flag",
+            },
         ],
         "applyVa": "0x0089CC70",
     },
@@ -86,8 +101,12 @@ PURE_NATIVE_RECEIVER_WRITES = [
         "opcode": "0x012F",
         "bcsyRef": "BCS-Y-0278",
         "writes": [
-            {"actorClass": "param_2", "offset": "0x0", "type": "u8",
-             "semantic": "kick result byte (not actor field)"},
+            {
+                "actorClass": "param_2",
+                "offset": "0x0",
+                "type": "u8",
+                "semantic": "kick result byte (not actor field)",
+            },
         ],
         "applyVa": "0x0089E450",
         "note": "writes to packet result buffer, not actor state",
@@ -105,38 +124,62 @@ def build_receiver_writes() -> list[dict]:
             continue
         if not r.get("castTarget"):
             continue
-        out.append({
-            "receiver": r["receiverName"],
-            "opcode": r["opcodeHex"],
-            "bcsyRef": "receiver_classification",
-            "writes": [
-                {"actorClass": r["castTarget"], "offset": o, "type": "?",
-                 "semantic": f"auto-extracted from {r['slot1Va']}+workers"}
-                for o in r["unifiedWrites"]
-            ],
-            "applyVa": r["slot1Va"],
-            "kind": r["kind"],
-            "workers": r["workers"],
-        })
+        out.append(
+            {
+                "receiver": r["receiverName"],
+                "opcode": r["opcodeHex"],
+                "bcsyRef": "receiver_classification",
+                "writes": [
+                    {
+                        "actorClass": r["castTarget"],
+                        "offset": o,
+                        "type": "?",
+                        "semantic": f"auto-extracted from {r['slot1Va']}+workers",
+                    }
+                    for o in r["unifiedWrites"]
+                ],
+                "applyVa": r["slot1Va"],
+                "kind": r["kind"],
+                "workers": r["workers"],
+            }
+        )
     # GrandCompanyReceiver resolves through PlayerBase::vftable[0xA4] to FUN_006DEB00, which writes PlayerBase+0xED-0xF0.
-    out.append({
-        "receiver": "GrandCompanyReceiver",
-        "opcode": "0x0194",
-        "bcsyRef": "src-12f",
-        "writes": [
-            {"actorClass": "PlayerBase", "offset": "0xed", "type": "u8",
-             "semantic": "grand-company rank cluster byte 0 (vtable[0xa4]->FUN_006DEB00)"},
-            {"actorClass": "PlayerBase", "offset": "0xee", "type": "u8",
-             "semantic": "grand-company rank cluster byte 1"},
-            {"actorClass": "PlayerBase", "offset": "0xef", "type": "u8",
-             "semantic": "grand-company rank cluster byte 2"},
-            {"actorClass": "PlayerBase", "offset": "0xf0", "type": "u8",
-             "semantic": "grand-company rank cluster byte 3"},
-        ],
-        "applyVa": "0x0089CD60",
-        "kind": "trivial_with_vtable_dispatch",
-        "vtableTarget": "0x006DEB00",
-    })
+    out.append(
+        {
+            "receiver": "GrandCompanyReceiver",
+            "opcode": "0x0194",
+            "bcsyRef": "src-12f",
+            "writes": [
+                {
+                    "actorClass": "PlayerBase",
+                    "offset": "0xed",
+                    "type": "u8",
+                    "semantic": "grand-company rank cluster byte 0 (vtable[0xa4]->FUN_006DEB00)",
+                },
+                {
+                    "actorClass": "PlayerBase",
+                    "offset": "0xee",
+                    "type": "u8",
+                    "semantic": "grand-company rank cluster byte 1",
+                },
+                {
+                    "actorClass": "PlayerBase",
+                    "offset": "0xef",
+                    "type": "u8",
+                    "semantic": "grand-company rank cluster byte 2",
+                },
+                {
+                    "actorClass": "PlayerBase",
+                    "offset": "0xf0",
+                    "type": "u8",
+                    "semantic": "grand-company rank cluster byte 3",
+                },
+            ],
+            "applyVa": "0x0089CD60",
+            "kind": "trivial_with_vtable_dispatch",
+            "vtableTarget": "0x006DEB00",
+        }
+    )
     return out
 
 
@@ -270,7 +313,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     add_force_arg(ap)
     ap.add_argument(
-        "--normalize-citations", action="store_true",
+        "--normalize-citations",
+        action="store_true",
         help="update moved sibling citation paths while preserving accumulated blocks",
     )
     args = ap.parse_args()
@@ -292,13 +336,15 @@ def main() -> int:
     for r in receiver_writes:
         for w in r["writes"]:
             key = (w["actorClass"], w["offset"].lower())
-            write_offset_to_receivers.setdefault(key, []).append({
-                "receiver": r["receiver"],
-                "opcode": r["opcode"],
-                "bcsyRef": r["bcsyRef"],
-                "semantic": w["semantic"],
-                "type": w["type"],
-            })
+            write_offset_to_receivers.setdefault(key, []).append(
+                {
+                    "receiver": r["receiver"],
+                    "opcode": r["opcode"],
+                    "bcsyRef": r["bcsyRef"],
+                    "semantic": w["semantic"],
+                    "type": w["type"],
+                }
+            )
 
     # Cross-class offset matches are allowed only within the known inheritance hierarchy.
     HIERARCHY = {
@@ -324,24 +370,29 @@ def main() -> int:
         for off in read_offsets:
             exact = write_offset_to_receivers.get((cls_name, off), [])
             if exact:
-                out.append({
-                    "offset": off,
-                    "matchKind": "exact",
-                    "receivers": exact,
-                })
+                out.append(
+                    {
+                        "offset": off,
+                        "matchKind": "exact",
+                        "receivers": exact,
+                    }
+                )
                 continue
             relaxed = offset_only_to_writers.get(off, [])
             compatible = []
             for w in relaxed:
-                if w.get("writerActorClass") in HIERARCHY.get(cls_name, set()) or \
-                   cls_name in HIERARCHY.get(w.get("writerActorClass", ""), set()):
+                if w.get("writerActorClass") in HIERARCHY.get(
+                    cls_name, set()
+                ) or cls_name in HIERARCHY.get(w.get("writerActorClass", ""), set()):
                     compatible.append(w)
             if compatible:
-                out.append({
-                    "offset": off,
-                    "matchKind": "hierarchy",
-                    "receivers": compatible,
-                })
+                out.append(
+                    {
+                        "offset": off,
+                        "matchKind": "hierarchy",
+                        "receivers": compatible,
+                    }
+                )
         return out
 
     pilot_matches: list[dict] = []
@@ -355,20 +406,24 @@ def main() -> int:
             all_reads = sorted(set(reads + nested))
             api_matches = find_api_matches(all_reads, cls_name)
             if api_matches:
-                pilot_matches.append({
-                    "luaName": api["luaName"],
-                    "luaClass": cls_name,
-                    "implVa": api.get("implVa"),
-                    "matches": api_matches,
-                })
+                pilot_matches.append(
+                    {
+                        "luaName": api["luaName"],
+                        "luaClass": cls_name,
+                        "implVa": api.get("implVa"),
+                        "matches": api_matches,
+                    }
+                )
             else:
-                pilot_no_match.append({
-                    "luaName": api["luaName"],
-                    "luaClass": cls_name,
-                    "implVa": api.get("implVa"),
-                    "readsOffsets": api.get("readsOffsets", []),
-                    "writesOffsets": api.get("writesOffsets", []),
-                })
+                pilot_no_match.append(
+                    {
+                        "luaName": api["luaName"],
+                        "luaClass": cls_name,
+                        "implVa": api.get("implVa"),
+                        "readsOffsets": api.get("readsOffsets", []),
+                        "writesOffsets": api.get("writesOffsets", []),
+                    }
+                )
 
     vtable_evidence: dict[str, dict] = {}
     if VTABLE_RESOLVED_EVIDENCE.exists():
@@ -378,8 +433,7 @@ def main() -> int:
                 "reads": [o.lower() for o in e.get("derivedReads", [])],
                 "writes": [o.lower() for o in e.get("derivedWrites", [])],
                 "nested": [
-                    {"inner": r["inner"].lower()}
-                    for r in e.get("derivedNested", [])
+                    {"inner": r["inner"].lower()} for r in e.get("derivedNested", [])
                 ],
             }
 
@@ -389,9 +443,7 @@ def main() -> int:
             if api.get("status") != "ok":
                 continue
             deep_reads = [o.lower() for o in api.get("deepReads", [])]
-            deep_nested = [
-                r["inner"].lower() for r in api.get("deepNestedReads", [])
-            ]
+            deep_nested = [r["inner"].lower() for r in api.get("deepNestedReads", [])]
             vt = vtable_evidence.get(api.get("implVa"), {})
             vt_reads = vt.get("reads", [])
             vt_nested = [r["inner"] for r in vt.get("nested", [])]
@@ -413,13 +465,15 @@ def main() -> int:
                         m["source"] = "vtable_resolved"
                     else:
                         m["source"] = "unknown"
-                recursive_matches.append({
-                    "luaName": api["luaName"],
-                    "luaClass": cls_name,
-                    "implVa": api.get("implVa"),
-                    "chasedCallees": api.get("chasedCallees", []),
-                    "matches": api_matches,
-                })
+                recursive_matches.append(
+                    {
+                        "luaName": api["luaName"],
+                        "luaClass": cls_name,
+                        "implVa": api.get("implVa"),
+                        "chasedCallees": api.get("chasedCallees", []),
+                        "matches": api_matches,
+                    }
+                )
 
     out = {
         "version": "1",

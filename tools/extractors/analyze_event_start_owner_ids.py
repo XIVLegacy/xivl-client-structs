@@ -57,7 +57,9 @@ def _all_event_starts(captures_repo: Path) -> list[dict[str, object]]:
     extractor_path = extractor_dir / "extract_content_samples.py"
     sys.path.insert(0, str(extractor_dir))
     sys.path.insert(0, str(extractor_dir.parent))
-    spec = importlib.util.spec_from_file_location("xivl_extract_content_samples", extractor_path)
+    spec = importlib.util.spec_from_file_location(
+        "xivl_extract_content_samples", extractor_path
+    )
     if spec is None or spec.loader is None:
         raise OSError(f"cannot load {extractor_path}")
     module = importlib.util.module_from_spec(spec)
@@ -86,22 +88,23 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         body = bytes.fromhex(sample["bytes"])
         if sample["sub_size"] != 216 or len(body) != 200:
             raise ValueError("c2s 0x012d retained sample framing drifted")
-        retained_owners.append((sample["capture"], struct.unpack_from("<I", body, OWNER_BODY_OFFSET)[0]))
+        retained_owners.append(
+            (sample["capture"], struct.unpack_from("<I", body, OWNER_BODY_OFFSET)[0])
+        )
 
     event_starts = _all_event_starts(captures_repo)
     owners = [
-        (str(event["capture"]), int(event["ownerActorId"]))
-        for event in event_starts
+        (str(event["capture"]), int(event["ownerActorId"])) for event in event_starts
     ]
     if len(owners) != 126:
-        raise ValueError(f"c2s 0x012d raw replay found {len(owners)} events, expected 126")
+        raise ValueError(
+            f"c2s 0x012d raw replay found {len(owners)} events, expected 126"
+        )
 
     static_actors = {row["id"]: row["classPath"] for row in actor_doc["records"]}
     with commands_path.open(encoding="utf-8-sig", newline="") as handle:
         command_ids = {
-            int(row[0])
-            for row in csv.reader(handle)
-            if row and row[0].isdigit()
+            int(row[0]) for row in csv.reader(handle) if row and row[0].isdigit()
         }
 
     static_rows: list[dict[str, object]] = []
@@ -110,13 +113,15 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             continue
         row_id = owner & 0xFFFF
         class_path = static_actors.get(row_id)
-        static_rows.append({
-            "capture": capture,
-            "ownerActorId": owner,
-            "rowId": row_id,
-            "classPath": class_path,
-            "gameCommandHit": row_id in command_ids,
-        })
+        static_rows.append(
+            {
+                "capture": capture,
+                "ownerActorId": owner,
+                "rowId": row_id,
+                "classPath": class_path,
+                "gameCommandHit": row_id in command_ids,
+            }
+        )
 
     joined_distribution: list[dict[str, object]] = []
     joined_counts = Counter(
@@ -124,18 +129,26 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         for row in static_rows
     )
     for (owner, row_id, class_path, game_hit), count in sorted(joined_counts.items()):
-        joined_distribution.append({
-            "ownerActorId": _hex(owner),
-            "low16RowId": row_id,
-            "count": count,
-            "staticActorClassPath": class_path,
-            "gameCommandHit": game_hit,
-        })
+        joined_distribution.append(
+            {
+                "ownerActorId": _hex(owner),
+                "low16RowId": row_id,
+                "count": count,
+                "staticActorClassPath": class_path,
+                "gameCommandHit": game_hit,
+            }
+        )
 
     scenario_groups: dict[str, dict[str, object]] = {}
     for name, is_combat in (("combatExamples", True), ("noncombatExamples", False)):
-        rows = [(capture, owner) for capture, owner in owners if (capture in COMBAT_CAPTURES) == is_combat]
-        static_count = sum(owner & STATIC_ACTOR_MASK == STATIC_ACTOR_PREFIX for _, owner in rows)
+        rows = [
+            (capture, owner)
+            for capture, owner in owners
+            if (capture in COMBAT_CAPTURES) == is_combat
+        ]
+        static_count = sum(
+            owner & STATIC_ACTOR_MASK == STATIC_ACTOR_PREFIX for _, owner in rows
+        )
         retained_rows = [
             (capture, owner)
             for capture, owner in retained_owners
@@ -155,7 +168,9 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
                 "sampleCount": len(retained_rows),
                 "staticActorBlockCount": retained_static,
                 "outsideStaticActorBlockCount": len(retained_rows) - retained_static,
-                "ownerIdDistribution": _distribution([owner for _, owner in retained_rows]),
+                "ownerIdDistribution": _distribution(
+                    [owner for _, owner in retained_rows]
+                ),
             },
         }
 
@@ -164,12 +179,15 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         name = str(event["eventName"])
         owner = int(event["ownerActorId"])
         row_id = owner & 0xFFFF
-        row = event_names.setdefault(name, {
-            "count": 0,
-            "staticActorHits": 0,
-            "gameCommandHits": 0,
-            "outsideStaticActorBlock": 0,
-        })
+        row = event_names.setdefault(
+            name,
+            {
+                "count": 0,
+                "staticActorHits": 0,
+                "gameCommandHits": 0,
+                "outsideStaticActorBlock": 0,
+            },
+        )
         row["count"] += 1
         if owner & STATIC_ACTOR_MASK == STATIC_ACTOR_PREFIX:
             row["staticActorHits"] += row_id in static_actors
@@ -178,7 +196,8 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             row["outsideStaticActorBlock"] += 1
 
     command_static_ids = [
-        row_id for row_id, class_path in static_actors.items()
+        row_id
+        for row_id, class_path in static_actors.items()
         if class_path.startswith("/Command/")
     ]
     observed_command_ids = [row["rowId"] for row in static_rows]
@@ -195,11 +214,13 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         for bits in range(8, 33):
             mask = (1 << bits) - 1 if bits < 32 else 0xFFFFFFFF
             values = [owner & mask for _, owner in source]
-            rows.append({
-                "bits": bits,
-                "staticActorHits": sum(value in static_actors for value in values),
-                "gameCommandHits": sum(value in command_ids for value in values),
-            })
+            rows.append(
+                {
+                    "bits": bits,
+                    "staticActorHits": sum(value in static_actors for value in values),
+                    "gameCommandHits": sum(value in command_ids for value in values),
+                }
+            )
         return rows
 
     return {
@@ -221,9 +242,16 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
                 "repository": "XIVLegacy/xivl-captures",
                 "commit": _commit(captures_repo),
                 "rawCorpusArtifact": "sources/pcap-1.23b/manifest.yaml#members",
-                "rawCorpusManifestSha256": _sha256(captures_repo / "sources" / "pcap-1.23b" / "manifest.yaml"),
+                "rawCorpusManifestSha256": _sha256(
+                    captures_repo / "sources" / "pcap-1.23b" / "manifest.yaml"
+                ),
                 "extractorArtifact": "tools/extractors/extract_content_samples.py:73-144",
-                "extractorSha256": _sha256(captures_repo / "tools" / "extractors" / "extract_content_samples.py"),
+                "extractorSha256": _sha256(
+                    captures_repo
+                    / "tools"
+                    / "extractors"
+                    / "extract_content_samples.py"
+                ),
                 "retainedSampleArtifact": "derived/payload_samples.json#samples.c2s.0x012d",
                 "retainedSampleSha256": _sha256(samples_path),
             },
@@ -253,7 +281,9 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             "retainedSampleCap": {
                 "sampleCount": len(retained_owners),
                 "ownerIds": _distribution([owner for _, owner in retained_owners]),
-                "upper16Blocks": _distribution([owner >> 16 for _, owner in retained_owners], 4),
+                "upper16Blocks": _distribution(
+                    [owner >> 16 for _, owner in retained_owners], 4
+                ),
             },
         },
         "scenarioComparison": scenario_groups,
@@ -298,8 +328,12 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
             "observedMaximumRowId": max(observed_command_ids),
             "commandStaticActorMaximumRowId": max(command_static_ids),
             "gameCommandMaximumRowId": max(command_ids),
-            "observedOverflowCount": sum(row_id > 0xFFFF for row_id in observed_command_ids),
-            "commandStaticActorOverflowCount": sum(row_id > 0xFFFF for row_id in command_static_ids),
+            "observedOverflowCount": sum(
+                row_id > 0xFFFF for row_id in observed_command_ids
+            ),
+            "commandStaticActorOverflowCount": sum(
+                row_id > 0xFFFF for row_id in command_static_ids
+            ),
             "gameCommandOverflowCount": sum(row_id > 0xFFFF for row_id in command_ids),
             "maskSweep": mask_sweep(owners),
             "retainedMaskSweep": mask_sweep(retained_owners),
@@ -343,9 +377,14 @@ def main() -> int:
         )
         if args.check:
             if manifest.get("commandIdRelationship") != relationship:
-                print("error: commandIdRelationship does not match fresh evidence", file=sys.stderr)
+                print(
+                    "error: commandIdRelationship does not match fresh evidence",
+                    file=sys.stderr,
+                )
                 return 1
-            print("OK: EventStart owner-ID evidence matches the raw corpus and retained sample cap")
+            print(
+                "OK: EventStart owner-ID evidence matches the raw corpus and retained sample cap"
+            )
             return 0
         manifest["commandIdRelationship"] = relationship
         out.write_text(
@@ -353,9 +392,17 @@ def main() -> int:
             encoding="utf-8",
             newline="\n",
         )
-        print(f"wrote {relationship['distribution']['totalOccurrences']} owner IDs to {out}")
+        print(
+            f"wrote {relationship['distribution']['totalOccurrences']} owner IDs to {out}"
+        )
         return 0
-    except (OSError, ValueError, KeyError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

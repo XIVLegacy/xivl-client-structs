@@ -75,29 +75,46 @@ def _index_bcs_by_class_token(symbols: list[dict]) -> dict[str, list[dict]]:
     for sym in symbols:
         name = sym["name"]
         for chunk in name.replace("::", " ").split():
-            if chunk.endswith(("Operation", "Receiver", "Sender", "Builder",
-                               "Channel", "Callback", "Dispatcher", "Backend")):
-                index[chunk].append({
-                    "bcsId": sym["id"],
-                    "symbolName": sym["name"],
-                    "kind": sym["kind"],
-                    "address": sym["address"],
-                })
+            if chunk.endswith(
+                (
+                    "Operation",
+                    "Receiver",
+                    "Sender",
+                    "Builder",
+                    "Channel",
+                    "Callback",
+                    "Dispatcher",
+                    "Backend",
+                )
+            ):
+                index[chunk].append(
+                    {
+                        "bcsId": sym["id"],
+                        "symbolName": sym["name"],
+                        "kind": sym["kind"],
+                        "address": sym["address"],
+                    }
+                )
     return index
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--check", action="store_true",
-                    help="verify the committed output matches a fresh build")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="verify the committed output matches a fresh build",
+    )
     args = ap.parse_args()
 
     if not SYMBOLS_JSON.is_file():
         print(f"error: {SYMBOLS_JSON} missing", file=sys.stderr)
         return 1
     if not OPCODES_JSON.is_file():
-        print(f"error: {OPCODES_JSON} missing - run tools/refresh_vendor.py to refresh it",
-              file=sys.stderr)
+        print(
+            f"error: {OPCODES_JSON} missing - run tools/refresh_vendor.py to refresh it",
+            file=sys.stderr,
+        )
         return 1
 
     symbols_manifest = load_symbols(SYMBOLS_JSON)
@@ -142,13 +159,15 @@ def main() -> int:
             }
             for op in ops
         ]
-        operations.append({
-            "retailClass": cls,
-            "tail": tail,
-            "opcodeCount": len(ops),
-            "opcodes": ops_summary,
-            "bcsRefs": bcs_index.get(tail, []),
-        })
+        operations.append(
+            {
+                "retailClass": cls,
+                "tail": tail,
+                "opcodeCount": len(ops),
+                "opcodes": ops_summary,
+                "bcsRefs": bcs_index.get(tail, []),
+            }
+        )
 
     gap_serverbound = [
         {
@@ -162,11 +181,14 @@ def main() -> int:
         }
         for op in unclassed
     ]
-    gap_serverbound.sort(key=lambda o: (o.get("opcode") or 0))
+    gap_serverbound.sort(key=lambda o: o.get("opcode") or 0)
 
     if not OVERLAY_JSON.is_file():
-        print(f"error: {OVERLAY_JSON} missing - the curated overlay is a "
-              "committed input, not optional", file=sys.stderr)
+        print(
+            f"error: {OVERLAY_JSON} missing - the curated overlay is a "
+            "committed input, not optional",
+            file=sys.stderr,
+        )
         return 1
     with OVERLAY_JSON.open(encoding="utf-8") as fov:
         overlay = json.load(fov)
@@ -216,16 +238,20 @@ def main() -> int:
         out["totals"].setdefault(k, v)
     for k, v in (overlay.get("topLevelSections") or {}).items():
         if k in out:
-            print(f"error: overlay topLevelSections key {k!r} collides with a "
-                  "generated key", file=sys.stderr)
+            print(
+                f"error: overlay topLevelSections key {k!r} collides with a "
+                "generated key",
+                file=sys.stderr,
+            )
             return 1
         out[k] = v
 
     rendered = json.dumps(out, indent=2, ensure_ascii=False) + "\n"
     if args.check:
         if not OUT_JSON.is_file() or OUT_JSON.read_text(encoding="utf-8") != rendered:
-            print(f"error: {OUT_JSON.name} does not match a fresh build",
-                  file=sys.stderr)
+            print(
+                f"error: {OUT_JSON.name} does not match a fresh build", file=sys.stderr
+            )
             return 1
         print(f"OK: {OUT_JSON.name} matches a fresh build")
         return 0
@@ -239,8 +265,10 @@ def main() -> int:
     print(f"  serverbound gap:      {len(unclassed)}")
     for o in operations:
         bcs = ",".join(r["bcsId"] for r in o["bcsRefs"][:4])
-        print(f"    {o['tail']:30} {o['opcodeCount']:>2} opcodes  "
-              f"bcsRefs: {bcs or '(none)'}")
+        print(
+            f"    {o['tail']:30} {o['opcodeCount']:>2} opcodes  "
+            f"bcsRefs: {bcs or '(none)'}"
+        )
     return 0
 
 

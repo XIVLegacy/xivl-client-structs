@@ -26,6 +26,7 @@ Stdlib only.
 Usage:
     python tools/build_callgraph.py [--tsv PATH] [--out PATH]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -70,7 +71,8 @@ def build(tsv_path: Path) -> dict:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
-        description="Build build/callgraph.json from the Ghidra TSV export.")
+        description="Build build/callgraph.json from the Ghidra TSV export."
+    )
     ap.add_argument("--tsv", type=Path, default=DEFAULT_TSV)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = ap.parse_args(argv)
@@ -78,11 +80,12 @@ def main(argv=None) -> int:
     if not args.tsv.exists():
         print(f"ERROR: TSV not found: {args.tsv}")
         print("Generate it with the headless dumper:")
-        print("  analyzeHeadless <proj> ffxivgame -process ffxivgame.exe "
-              "-noanalysis -readOnly \\")
+        print(
+            "  analyzeHeadless <proj> ffxivgame -process ffxivgame.exe "
+            "-noanalysis -readOnly \\"
+        )
         print("    -scriptPath tools/ghidra -postScript DumpCallGraph.java")
-        print("  (set XIVL_CALLGRAPH_OUT to "
-              "tools/ghidra/logs/callgraph_edges.tsv)")
+        print("  (set XIVL_CALLGRAPH_OUT to tools/ghidra/logs/callgraph_edges.tsv)")
         return 1
 
     functions = build(args.tsv)
@@ -97,7 +100,7 @@ def main(argv=None) -> int:
             "functionCount": len(functions),
             "edgeCount": total_edges,
             "note": "Static direct-call graph from tools/ghidra/DumpCallGraph.java. "
-                    "Indirect/virtual dispatch NOT captured. Generated; regenerable.",
+            "Indirect/virtual dispatch NOT captured. Generated; regenerable.",
         },
         "functions": functions,
     }

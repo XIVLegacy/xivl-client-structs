@@ -17,6 +17,7 @@ Usage:
     python tools/callers.py 004d9988        # mid-function VA resolves to owner
     python tools/callers.py FUN_004d9910 --json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -89,7 +90,8 @@ def resolve(va: int, functions: dict, entries_sorted: list):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
-        description="Who calls FUN_xxxx (offline static call graph).")
+        description="Who calls FUN_xxxx (offline static call graph)."
+    )
     ap.add_argument("target", help="FUN_xxxxxxxx, 0xVA, or bare hex VA")
     ap.add_argument("--graph", type=Path, default=DEFAULT_GRAPH)
     ap.add_argument("--json", action="store_true", help="machine-readable output")
@@ -127,8 +129,12 @@ def main(argv=None) -> int:
             "resolvedEntry": owner,
             "name": node["name"],
             "maxVA": node["maxVA"],
-            "callees": [{"va": c, "label": annotate(c, functions, symidx)} for c in callees],
-            "callers": [{"va": c, "label": annotate(c, functions, symidx)} for c in callers],
+            "callees": [
+                {"va": c, "label": annotate(c, functions, symidx)} for c in callees
+            ],
+            "callers": [
+                {"va": c, "label": annotate(c, functions, symidx)} for c in callers
+            ],
         }
         print(json.dumps(out, indent=2, ensure_ascii=False))
         return 0

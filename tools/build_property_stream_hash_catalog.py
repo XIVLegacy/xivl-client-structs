@@ -14,8 +14,14 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "manifests" / "gam_hash_names.json"
 
 SCRIPT_CONSUMERS = {
-    "playerWork.castCommandClient": ["PlayerBaseClass.getCastCommand", "ActionMenuWidget.updateCastInfo"],
-    "playerWork.castEndClient": ["PlayerBaseClass.getCastEndTime", "ActionGaugeWidget.update"],
+    "playerWork.castCommandClient": [
+        "PlayerBaseClass.getCastCommand",
+        "ActionMenuWidget.updateCastInfo",
+    ],
+    "playerWork.castEndClient": [
+        "PlayerBaseClass.getCastEndTime",
+        "ActionGaugeWidget.update",
+    ],
     "charaWork.battleTemp.castGauge_speed[0]": ["CharaBaseClass.getCastSpeed"],
     "charaWork.battleTemp.castGauge_speed[1]": ["CharaBaseClass.getCastSpeed"],
 }
@@ -58,17 +64,34 @@ def build(accounting_path: Path, source_commit: str) -> dict:
             got = murmur2_backward(name.encode("ascii"))
             if got != int(entry["idHex"], 16):
                 raise ValueError(f"hash mismatch: {name}")
-        if profile["occurrences"] != entry["count"] or profile["widths"] != entry["sizes"]:
+        if (
+            profile["occurrences"] != entry["count"]
+            or profile["widths"] != entry["sizes"]
+        ):
             raise ValueError(f"capture profile drift: {entry['idHex']}")
         entry["wireValueType"] = wire_type(profile["widths"])
         entry["observedProfile"] = {
-            key: profile[key] for key in ("occurrences", "captures", "scenarios",
-                                          "source_actors", "destination_actors",
-                                          "widths", "distinct_values",
-                                          "value_u_le_min", "value_u_le_max", "top_values")
+            key: profile[key]
+            for key in (
+                "occurrences",
+                "captures",
+                "scenarios",
+                "source_actors",
+                "destination_actors",
+                "widths",
+                "distinct_values",
+                "value_u_le_min",
+                "value_u_le_max",
+                "top_values",
+            )
         }
-        consumers = sorted({consumer for name in entry["names"]
-                            for consumer in SCRIPT_CONSUMERS.get(name, [])})
+        consumers = sorted(
+            {
+                consumer
+                for name in entry["names"]
+                for consumer in SCRIPT_CONSUMERS.get(name, [])
+            }
+        )
         entry["consumingScriptGetters"] = consumers
         entry["resolutionEvidence"] = {
             "method": "exact_backward_murmurhash2_seed_0",

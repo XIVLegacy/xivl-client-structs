@@ -73,11 +73,13 @@ HEX_RE = re.compile(r"^0x[0-9a-fA-F]+$")
 DEC_RE = re.compile(r"^\d+$")
 ANNOTATED_SIZE_RE = re.compile(r"^(0x[0-9a-fA-F]+)[\s(/].+$")
 BOUNDED_SIZE_RE = re.compile(
-    r"^(at\s+least|approximately|minimum|maximum)\s+(0x[0-9a-fA-F]+)\b.*$")
+    r"^(at\s+least|approximately|minimum|maximum)\s+(0x[0-9a-fA-F]+)\b.*$"
+)
 VARIABLE_ANNOTATED_RE = re.compile(r"^variable\s*\(.+\)$")
 LOGICAL_SIZES = frozenset({"pointer/string"})
 LUA_LOGICAL_SIZE_RE = re.compile(
-    r"^Lua\s+(?:table\s+entry|reference|string|closure|call\s+expression)$")
+    r"^Lua\s+(?:table\s+entry|reference|string|closure|call\s+expression)$"
+)
 ELEMENT_OFFSET_RE = re.compile(r"^element\+(0x[0-9a-fA-F]+)$")
 
 SCALAR_ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{8}$")
@@ -100,8 +102,9 @@ def parse_size(raw: object, where: str) -> dict:
             raise BuildError(f"{where}: negative size {raw}")
         return {"kind": "exact", "raw": raw, "bytes": raw}
     if not isinstance(raw, str):
-        raise BuildError(f"{where}: size must be a string or int, got "
-                         f"{type(raw).__name__}")
+        raise BuildError(
+            f"{where}: size must be a string or int, got {type(raw).__name__}"
+        )
     text = raw.strip()
     if HEX_RE.match(text):
         return {"kind": "exact", "raw": raw, "bytes": int(text, 16)}
@@ -113,8 +116,12 @@ def parse_size(raw: object, where: str) -> dict:
     m = BOUNDED_SIZE_RE.match(text)
     if m:
         bound = re.sub(r"\s+", "-", m.group(1).lower())
-        return {"kind": "bounded", "raw": raw, "bytes": int(m.group(2), 16),
-                "bound": bound}
+        return {
+            "kind": "bounded",
+            "raw": raw,
+            "bytes": int(m.group(2), 16),
+            "bound": bound,
+        }
     if text in ("variable", "varies") or VARIABLE_ANNOTATED_RE.match(text):
         return {"kind": "variable", "raw": raw}
     if text in ("unknown", "n/a"):
@@ -123,33 +130,32 @@ def parse_size(raw: object, where: str) -> dict:
         return {"kind": "logical", "raw": raw}
     raise BuildError(
         f"{where}: unrecognised size {raw!r}. Teach parse_size() the new "
-        "convention rather than letting it fall through to 'unknown'.")
+        "convention rather than letting it fall through to 'unknown'."
+    )
 
 
 def parse_offset(raw: object, where: str) -> dict:
     if not isinstance(raw, str):
-        raise BuildError(f"{where}: offset must be a string, got "
-                         f"{type(raw).__name__}")
+        raise BuildError(f"{where}: offset must be a string, got {type(raw).__name__}")
     text = raw.strip()
     if HEX_RE.match(text):
         return {"kind": "exact", "raw": raw, "bytes": int(text, 16)}
     m = ELEMENT_OFFSET_RE.match(text)
     if m:
-        return {"kind": "element-relative", "raw": raw,
-                "bytes": int(m.group(1), 16)}
+        return {"kind": "element-relative", "raw": raw, "bytes": int(m.group(1), 16)}
     if text == "variable":
         return {"kind": "variable", "raw": raw}
     if text == "n/a":
         return {"kind": "none", "raw": raw}
     raise BuildError(
         f"{where}: unrecognised offset {raw!r}. Teach parse_offset() the new "
-        "convention rather than letting it fall through.")
+        "convention rather than letting it fall through."
+    )
 
 
 def parse_address(raw: object, where: str) -> dict:
     if not isinstance(raw, str):
-        raise BuildError(f"{where}: address must be a string, got "
-                         f"{type(raw).__name__}")
+        raise BuildError(f"{where}: address must be a string, got {type(raw).__name__}")
     text = raw.strip()
     if text == ADDRESS_PLACEHOLDER:
         return {"kind": "placeholder", "raw": raw, "values": []}
@@ -161,7 +167,8 @@ def parse_address(raw: object, where: str) -> dict:
         return {"kind": "range", "raw": raw, "values": text.split("..")}
     raise BuildError(
         f"{where}: unrecognised address {raw!r}. Extend parse_address() and "
-        "validate_catalog.ADDRESS_CANONICAL_NONSCALAR_RES together.")
+        "validate_catalog.ADDRESS_CANONICAL_NONSCALAR_RES together."
+    )
 
 
 def parse_namespace(raw: str, where: str) -> dict:
@@ -205,8 +212,15 @@ def derive_layout(fields: list[dict], type_size: dict) -> tuple[dict, list[dict]
             open_starts.append(start)
 
     if not intervals and not open_starts:
-        return ({"status": "unmodeled", "coveredBytes": 0, "unknownBytes": 0,
-                 "overlapBytes": 0}, [])
+        return (
+            {
+                "status": "unmodeled",
+                "coveredBytes": 0,
+                "unknownBytes": 0,
+                "overlapBytes": 0,
+            },
+            [],
+        )
 
     merged = _union(intervals)
     overlap = sum(e - s for s, e in intervals) - sum(e - s for s, e in merged)
@@ -220,7 +234,8 @@ def derive_layout(fields: list[dict], type_size: dict) -> tuple[dict, list[dict]
         if outside:
             spans = ", ".join(f"0x{start:X}..0x{end:X}" for start, end in outside)
             raise BuildError(
-                f"field extent {spans} exceeds declared type size 0x{declared:X}")
+                f"field extent {spans} exceeds declared type size 0x{declared:X}"
+            )
     if declared is not None and not open_starts:
         status, extent, trailing = "modeled", declared, None
     else:
@@ -291,12 +306,14 @@ def tracked_paths() -> frozenset[str]:
     on Windows and case-sensitive elsewhere.
     """
     try:
-        out = subprocess.run(["git", "-C", str(REPO), "ls-files", "-z"],
-                             capture_output=True, check=True).stdout
+        out = subprocess.run(
+            ["git", "-C", str(REPO), "ls-files", "-z"], capture_output=True, check=True
+        ).stdout
     except (OSError, subprocess.CalledProcessError) as e:
         raise BuildError(
             "cannot list tracked files via git, and the IR's citation "
-            f"resolution is defined against tracked content: {e}") from e
+            f"resolution is defined against tracked content: {e}"
+        ) from e
     return frozenset(p.decode("utf-8") for p in out.split(b"\0") if p)
 
 
@@ -320,11 +337,13 @@ def refuse_unsafe_ref(raw: str, where: str = "sourceRef") -> None:
         raise BuildError(
             f"{where} {raw!r} is a live_parent_path: a path into another "
             "checkout is a defect hygiene_scan already gates, and the IR must "
-            "not launder one into a citation.")
+            "not launder one into a citation."
+        )
 
 
-def build_citations(entries: list[tuple[str, list[str]]]) -> tuple[list[dict],
-                                                                  dict[str, str]]:
+def build_citations(
+    entries: list[tuple[str, list[str]]],
+) -> tuple[list[dict], dict[str, str]]:
     """Normalize every distinct sourceRef into a citation record.
 
     EV ids are assigned over the sorted distinct raw strings, so a rebuild
@@ -346,11 +365,11 @@ def build_citations(entries: list[tuple[str, list[str]]]) -> tuple[list[dict],
         _status, category = _classify_ref(raw, exists=_is_tracked)
         resolution = CATEGORY_TO_RESOLUTION.get(category)
         if resolution is None:
-            raise BuildError(f"sourceRef {raw!r}: unmapped hygiene category "
-                             f"{category!r}")
+            raise BuildError(
+                f"sourceRef {raw!r}: unmapped hygiene category {category!r}"
+            )
         cid = f"EV-{index:04d}"
-        record = {"id": cid, "raw": raw, "category": category,
-                  "resolution": resolution}
+        record = {"id": cid, "raw": raw, "category": category, "resolution": resolution}
         m = CITATION_RE.match(raw)
         if m:
             record["repo"] = m.group(1)
@@ -426,8 +445,7 @@ class _OpcodeIndex:
         """
         if not name:
             return
-        if not any(n["name"] == name and n["source"] == source
-                   for n in row["names"]):
+        if not any(n["name"] == name and n["source"] == source for n in row["names"]):
             row["names"].append({"name": name, "source": source})
 
     @staticmethod
@@ -477,14 +495,14 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
             raise BuildError(f"{where} cites {raw!r}, which holds no BCS-Y id")
         for bcs_id in found:
             if bcs_id not in known_symbols:
-                raise BuildError(f"{where} cites {bcs_id}, which symbols.json "
-                                 "does not hold")
+                raise BuildError(
+                    f"{where} cites {bcs_id}, which symbols.json does not hold"
+                )
             _OpcodeIndex.add(row, "symbols", bcs_id)
 
     # -- coverage matrix ---------------------------------------------------
     matrix = sources["coverage-matrix"]
-    for table, direction in (("s2cOpcodeTable", "s2c"),
-                             ("c2sOpcodeTable", "c2s")):
+    for table, direction in (("s2cOpcodeTable", "s2c"), ("c2sOpcodeTable", "c2s")):
         for entry in matrix[table]:
             row = index.touch(direction, entry["opcode"], "coverage-matrix")
             row["matrix"] = {
@@ -499,11 +517,13 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
 
     # -- receiver map ------------------------------------------------------
     receiver_doc = sources["receiver-map"]
-    field_writes = {e["receiverName"]: e
-                    for e in sources["receiver-field-writes"]["perReceiver"]}
-    for bucket, classification in (("inboundReceivers", "inbound"),
-                                   ("clientInternalReceivers",
-                                    "client-internal")):
+    field_writes = {
+        e["receiverName"]: e for e in sources["receiver-field-writes"]["perReceiver"]
+    }
+    for bucket, classification in (
+        ("inboundReceivers", "inbound"),
+        ("clientInternalReceivers", "client-internal"),
+    ):
         for entry in receiver_doc[bucket]:
             record = {
                 "name": entry["name"],
@@ -524,9 +544,11 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
                 for ref in refs:
                     bcs_id = ref["bcsId"]
                     if bcs_id not in known_symbols:
-                        raise BuildError(f"receiver {entry['name']} cites "
-                                         f"{bcs_id}, which symbols.json does "
-                                         "not hold")
+                        raise BuildError(
+                            f"receiver {entry['name']} cites "
+                            f"{bcs_id}, which symbols.json does "
+                            "not hold"
+                        )
                     if bcs_id not in ids:
                         ids.append(bcs_id)
                     if bcs_id not in all_symbols:
@@ -554,8 +576,9 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
                 if writes.get("workers"):
                     record["workerAddresses"] = list(writes["workers"])
                 if not casts:
-                    casts = _casts(writes.get("castTarget"),
-                                   f"field writes {entry['name']}")
+                    casts = _casts(
+                        writes.get("castTarget"), f"field writes {entry['name']}"
+                    )
             if casts:
                 record["casts"] = casts
             receivers.append(record)
@@ -587,20 +610,29 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
     # -- operation map -----------------------------------------------------
     operation_doc = sources["operation-map"]
     for entry in operation_doc["operationClasses"]:
-        record = {"retailClass": entry["retailClass"], "tail": entry["tail"],
-                  "symbols": [], "opcodes": [], "sources": ["operation-map"]}
+        record = {
+            "retailClass": entry["retailClass"],
+            "tail": entry["tail"],
+            "symbols": [],
+            "opcodes": [],
+            "sources": ["operation-map"],
+        }
         for ref in entry.get("bcsRefs") or []:
             bcs_id = ref["bcsId"]
             if bcs_id not in known_symbols:
-                raise BuildError(f"operation {entry['retailClass']} cites "
-                                 f"{bcs_id}, which symbols.json does not hold")
+                raise BuildError(
+                    f"operation {entry['retailClass']} cites "
+                    f"{bcs_id}, which symbols.json does not hold"
+                )
             if bcs_id not in record["symbols"]:
                 record["symbols"].append(bcs_id)
         for opcode in entry["opcodes"]:
             if opcode["direction"] != "serverbound":
-                raise BuildError(f"operation {entry['retailClass']} carries "
-                                 f"direction {opcode['direction']!r}; only "
-                                 "serverbound is modeled")
+                raise BuildError(
+                    f"operation {entry['retailClass']} carries "
+                    f"direction {opcode['direction']!r}; only "
+                    "serverbound is modeled"
+                )
             row = index.touch("c2s", opcode["opcodeHex"], "operation-map")
             index.name(row, opcode.get("name"), "operation-map")
             index.add(row, "operations", entry["retailClass"])
@@ -620,8 +652,10 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
         row = index.touch("c2s", entry["opcodeHex"], "c2s-skeleton")
         index.name(row, entry.get("name"), "c2s-skeleton")
         where = f"c2s skeleton {entry['opcodeHex']}"
-        confirmed = [{"luaApi": b["luaApi"], "bcsyRef": b.get("bcsyRef")}
-                     for b in (entry.get("confirmedBindings") or [])]
+        confirmed = [
+            {"luaApi": b["luaApi"], "bcsyRef": b.get("bcsyRef")}
+            for b in (entry.get("confirmedBindings") or [])
+        ]
         if entry.get("confirmedBinding") and not confirmed:
             # The older scalar form joins several APIs into one string, with
             # its ids joined in the sibling field the same way. Split both
@@ -629,11 +663,15 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
             apis = [a.strip() for a in entry["confirmedBinding"].split(";")]
             ids = BCS_Y_TOKEN_RE.findall(entry.get("confirmedBcsy") or "")
             if ids and len(ids) != len(apis):
-                raise BuildError(f"{where}: confirmedBinding names "
-                                 f"{len(apis)} APIs but confirmedBcsy names "
-                                 f"{len(ids)} ids; the pairing is ambiguous")
-            confirmed = [{"luaApi": api, "bcsyRef": ids[i] if ids else None}
-                         for i, api in enumerate(apis)]
+                raise BuildError(
+                    f"{where}: confirmedBinding names "
+                    f"{len(apis)} APIs but confirmedBcsy names "
+                    f"{len(ids)} ids; the pairing is ambiguous"
+                )
+            confirmed = [
+                {"luaApi": api, "bcsyRef": ids[i] if ids else None}
+                for i, api in enumerate(apis)
+            ]
         for binding in confirmed:
             # Keep qualified `Class._method` names separate from bare Lua bridge keys.
             record = {"luaApi": binding["luaApi"]}
@@ -653,60 +691,71 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
             # the binding was observed dispatching through, so this edge
             # carries the slot the opcode-level receiver list cannot.
             "receivers": [
-                {k: ref[k] for k in
-                 ("receiverClass", "namespace", "slot", "confidence")
-                 if k in ref}
-                for ref in (entry.get("receivers") or [])],
+                {
+                    k: ref[k]
+                    for k in ("receiverClass", "namespace", "slot", "confidence")
+                    if k in ref
+                }
+                for ref in (entry.get("receivers") or [])
+            ],
         }
         for ref in entry.get("bcsRefs") or []:
             bcs_id = ref["bcsId"]
             if bcs_id not in known_symbols:
-                raise BuildError(f"lua binding {lua_name} cites {bcs_id}, "
-                                 "which symbols.json does not hold")
+                raise BuildError(
+                    f"lua binding {lua_name} cites {bcs_id}, "
+                    "which symbols.json does not hold"
+                )
             if bcs_id not in record["symbols"]:
                 record["symbols"].append(bcs_id)
         for opcode in entry.get("opcodes") or []:
             # Validated, not coerced: an unmodeled direction must stop the
             # build rather than default into c2s.
-            direction = {"inbound": "s2c", "outbound": "c2s"}.get(
-                opcode["direction"])
+            direction = {"inbound": "s2c", "outbound": "c2s"}.get(opcode["direction"])
             if direction is None:
-                raise BuildError(f"lua binding {lua_name} carries direction "
-                                 f"{opcode['direction']!r}; only inbound and "
-                                 "outbound are modeled")
+                raise BuildError(
+                    f"lua binding {lua_name} carries direction "
+                    f"{opcode['direction']!r}; only inbound and "
+                    "outbound are modeled"
+                )
             row = index.touch(direction, opcode["opcodeHex"], "lua-bridge")
             index.add(row, "luaBindings", lua_name)
             for bcs_id in record["symbols"]:
                 index.add(row, "symbols", bcs_id)
             if row["id"] not in record["opcodes"]:
                 record["opcodes"].append(row["id"])
-        for key, source_key in (("applyChainBindings", "applyChainBindings"),
-                                ("indirectBindings", "indirectBindings")):
+        for key, source_key in (
+            ("applyChainBindings", "applyChainBindings"),
+            ("indirectBindings", "indirectBindings"),
+        ):
             if entry.get(source_key):
                 record[key] = len(entry[source_key])
         lua_bindings.append(record)
 
     opcodes = [index.rows[oid] for oid in sorted(index.rows)]
     for row in opcodes:
-        for key in ("names", "receivers", "operations", "luaBindings",
-                    "symbols", "sources"):
+        for key in (
+            "names",
+            "receivers",
+            "operations",
+            "luaBindings",
+            "symbols",
+            "sources",
+        ):
             if key == "names":
-                row[key] = sorted(row[key], key=lambda n: (n["source"],
-                                                           n["name"]))
+                row[key] = sorted(row[key], key=lambda n: (n["source"], n["name"]))
             else:
                 row[key] = sorted(row[key])
         if "c2sBindings" in row:
-            row["c2sBindings"] = sorted(row["c2sBindings"],
-                                        key=lambda b: b["luaApi"])
+            row["c2sBindings"] = sorted(row["c2sBindings"], key=lambda b: b["luaApi"])
     identities = [(r["name"], r.get("rttiAddress")) for r in receivers]
     if len(identities) != len(set(identities)):
-        duplicated = sorted({i for i in identities
-                             if identities.count(i) > 1})
-        raise BuildError(f"receiver identity (name, vftable) is not unique: "
-                         f"{duplicated}")
+        duplicated = sorted({i for i in identities if identities.count(i) > 1})
+        raise BuildError(
+            f"receiver identity (name, vftable) is not unique: {duplicated}"
+        )
 
-    conflicts = sum(1 for row in opcodes
-                    if len({n["name"] for n in row["names"]}) > 1)
+    conflicts = sum(1 for row in opcodes if len({n["name"] for n in row["names"]}) > 1)
     summary = {
         "opcodes": len(opcodes),
         "s2c": sum(1 for r in opcodes if r["direction"] == "s2c"),
@@ -722,12 +771,15 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
         "luaBindings": len(lua_bindings),
     }
     return {
-        "sources": [{"role": role, "path": path}
-                    for role, path in sorted(RELATIONSHIP_SOURCES.items())],
+        "sources": [
+            {"role": role, "path": path}
+            for role, path in sorted(RELATIONSHIP_SOURCES.items())
+        ],
         "summary": summary,
         "opcodes": opcodes,
-        "receivers": sorted(receivers, key=lambda r: (r["name"],
-                                                      r.get("rttiAddress", ""))),
+        "receivers": sorted(
+            receivers, key=lambda r: (r["name"], r.get("rttiAddress", ""))
+        ),
         "operations": sorted(operations, key=lambda o: o["retailClass"]),
         "luaBindings": lua_bindings,
     }
@@ -750,16 +802,21 @@ def load_vftable_vas(path: Path) -> set[str]:
 
     if RTTI_DUMP_PATH.exists():
         import build_rtti_index
+
         if vas != set(build_rtti_index.read_dump(RTTI_DUMP_PATH)):
             raise BuildError(
                 f"{path.name} disagrees with {RTTI_DUMP_PATH.name}; "
-                "rerun tools/build_rtti_index.py")
+                "rerun tools/build_rtti_index.py"
+            )
     return vas
 
 
-def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
-          overlay: dict | None = None,
-          relationship_sources: dict[str, dict] | None = None) -> dict:
+def build(
+    symbols_doc: dict | None = None,
+    structs_doc: dict | None = None,
+    overlay: dict | None = None,
+    relationship_sources: dict[str, dict] | None = None,
+) -> dict:
     """Build the IR document. Arguments override the on-disk inputs.
 
     The overrides exist so tools/test_ir_gates.py can plant a defect in one
@@ -781,10 +838,9 @@ def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
     vftable_vas = load_vftable_vas(RTTI_PATH)
 
     citations, citation_id = build_citations(
-        [(s["id"], s.get("sourceRefs", []))
-         for s in structs_doc["structs"]]
-        + [(s["id"], s.get("sourceRefs", []))
-           for s in symbols_doc["symbols"]])
+        [(s["id"], s.get("sourceRefs", [])) for s in structs_doc["structs"]]
+        + [(s["id"], s.get("sourceRefs", [])) for s in symbols_doc["symbols"]]
+    )
 
     alignment_overlay = overlay.get("alignment", {})
     span_overlay = overlay.get("unknownSpanAnnotations", {})
@@ -834,16 +890,27 @@ def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
             if key in span_overlay:
                 used_span_keys.add(key)
                 entry = span_overlay[key]
-                annotation = {"kind": entry["kind"], "note": entry["note"],
-                              "source": "overlay"}
-            raw_members.append({
-                "kind": "unknown-span",
-                "offset": {"kind": "exact", "raw": f"0x{start:02X}",
-                           "bytes": start},
-                "size": {"kind": "exact", "raw": f"0x{length:02X}",
-                         "bytes": length},
-                "annotation": annotation,
-            })
+                annotation = {
+                    "kind": entry["kind"],
+                    "note": entry["note"],
+                    "source": "overlay",
+                }
+            raw_members.append(
+                {
+                    "kind": "unknown-span",
+                    "offset": {
+                        "kind": "exact",
+                        "raw": f"0x{start:02X}",
+                        "bytes": start,
+                    },
+                    "size": {
+                        "kind": "exact",
+                        "raw": f"0x{length:02X}",
+                        "bytes": length,
+                    },
+                    "annotation": annotation,
+                }
+            )
         span_count += len(spans)
 
         # Layout order where it exists, catalog order otherwise. Members with
@@ -858,13 +925,19 @@ def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
         members = [m for _, m in sorted(enumerate(raw_members), key=_key)]
         member_count += len(members)
 
-        alignment = {"kind": "unknown",
-                     "reason": "no catalog records alignment for this type; "
-                               "deriving it from offsets would be inference"}
+        alignment = {
+            "kind": "unknown",
+            "reason": "no catalog records alignment for this type; "
+            "deriving it from offsets would be inference",
+        }
         if sid in alignment_overlay:
             entry = alignment_overlay[sid]
-            alignment = {"kind": "exact", "bytes": entry["bytes"],
-                         "reason": entry["reason"], "source": "overlay"}
+            alignment = {
+                "kind": "exact",
+                "bytes": entry["bytes"],
+                "reason": entry["reason"],
+                "source": "overlay",
+            }
 
         record = {
             "id": sid,
@@ -873,16 +946,18 @@ def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
         }
         if "aliases" in st:
             record["aliases"] = st["aliases"]
-        record.update({
-            "confidence": st["confidence"],
-            "size": type_size,
-            "alignment": alignment,
-            "bases": {"status": "deferred", "owner": "C1c"},
-            "vtable": {"status": "deferred", "owner": "C1c"},
-            "layout": layout,
-            "members": members,
-            "citations": [citation_id[r] for r in st.get("sourceRefs", []) if r],
-        })
+        record.update(
+            {
+                "confidence": st["confidence"],
+                "size": type_size,
+                "alignment": alignment,
+                "bases": {"status": "deferred", "owner": "C1c"},
+                "vtable": {"status": "deferred", "owner": "C1c"},
+                "layout": layout,
+                "members": members,
+                "citations": [citation_id[r] for r in st.get("sourceRefs", []) if r],
+            }
+        )
         if "notes" in st:
             record["notes"] = st["notes"]
         for key in ("needsReverify", "reverifyMethod"):
@@ -894,11 +969,14 @@ def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
     if unknown_span_keys:
         raise BuildError(
             "ir_overlay.json unknownSpanAnnotations names spans the build does "
-            f"not derive: {sorted(unknown_span_keys)}")
+            f"not derive: {sorted(unknown_span_keys)}"
+        )
     unknown_alignment = set(alignment_overlay) - {t["id"] for t in types}
     if unknown_alignment:
-        raise BuildError("ir_overlay.json alignment names unknown types: "
-                         f"{sorted(unknown_alignment)}")
+        raise BuildError(
+            "ir_overlay.json alignment names unknown types: "
+            f"{sorted(unknown_alignment)}"
+        )
 
     symbols: list[dict] = []
     for sym in sorted(symbols_doc["symbols"], key=lambda s: s["id"]):
@@ -919,8 +997,7 @@ def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
             "addressCorroboration": corroboration,
             "confidence": sym["confidence"],
         }
-        record["citations"] = [citation_id[r] for r in sym.get("sourceRefs", [])
-                               if r]
+        record["citations"] = [citation_id[r] for r in sym.get("sourceRefs", []) if r]
         if "notes" in sym:
             record["notes"] = sym["notes"]
         for key in ("needsReverify", "reverifyMethod"):
@@ -929,61 +1006,94 @@ def build(symbols_doc: dict | None = None, structs_doc: dict | None = None,
         symbols.append(record)
 
     relationships = build_relationships(
-        relationship_sources, {s["id"] for s in symbols_doc["symbols"]})
+        relationship_sources, {s["id"] for s in symbols_doc["symbols"]}
+    )
 
     inputs = [
         {"path": rel, "sha256": _sha256(REPO / rel)}
-        for rel in sorted([
-            "manifests/ir_overlay.json",
-            "manifests/rtti_vftable_index.json",
-            "manifests/structs.json",
-            "manifests/symbols.json",
-        ] + list(RELATIONSHIP_SOURCES.values()))
+        for rel in sorted(
+            [
+                "manifests/ir_overlay.json",
+                "manifests/rtti_vftable_index.json",
+                "manifests/structs.json",
+                "manifests/symbols.json",
+            ]
+            + list(RELATIONSHIP_SOURCES.values())
+        )
     ]
 
     return {
         "irVersion": IR_VERSION,
         "gameVersion": GAME_VERSION,
-        "generator": {"tool": "tools/build_ir.py",
-                      "generatorVersion": GENERATOR_VERSION,
-                      "schema": SCHEMA_REF},
+        "generator": {
+            "tool": "tools/build_ir.py",
+            "generatorVersion": GENERATOR_VERSION,
+            "schema": SCHEMA_REF,
+        },
         "inputs": inputs,
         "dimensions": {
-            "namespaces": {"status": "populated",
-                           "note": "recorded verbatim and classified; the two "
-                                   "conventions are not unified here"},
-            "sizes": {"status": "populated",
-                      "note": "parsed into exact/annotated/bounded/variable/"
-                              "unknown/logical beside the raw value"},
-            "offsets": {"status": "populated",
-                        "note": "parsed into exact/element-relative/variable/none"},
-            "unknownSpans": {"status": "populated",
-                             "note": "derived as the complement of the recorded "
-                                     "fields inside each type's extent"},
-            "confidence": {"status": "populated",
-                           "note": "copied from the source catalogs unchanged"},
-            "functions": {"status": "populated",
-                          "note": "the BCS-Y symbol layer, addresses verbatim"},
-            "evidenceRefs": {"status": "populated",
-                             "note": "every distinct sourceRef normalized and "
-                                     "reverse-indexed, unresolved ones included"},
-            "alignment": {"status": "declared-unknown",
-                          "note": "no catalog records it; ir_overlay.json is "
-                                  "the sole home once evidence exists"},
-            "bases": {"status": "deferred", "owner": "C1c",
-                      "note": "the facts live in 21 frozen phase snapshots and "
-                              "need a per-source adapter each"},
-            "vtables": {"status": "deferred", "owner": "C1c",
-                        "note": "slot layouts live in the same frozen snapshots"},
-            "payloadRelationships": {"status": "populated",
-                                     "note": "opcode, receiver, operation and "
-                                             "Lua-bridge edges joined from six "
-                                             "sources, direction-keyed"},
-            "payloadTypeBindings": {"status": "deferred", "owner": "C1c",
-                                    "note": "no catalog states a type-to-opcode "
-                                            "edge; the available signal is the "
-                                            "'<Receiver>Payload' name convention "
-                                            "and prose hex, both inference"},
+            "namespaces": {
+                "status": "populated",
+                "note": "recorded verbatim and classified; the two "
+                "conventions are not unified here",
+            },
+            "sizes": {
+                "status": "populated",
+                "note": "parsed into exact/annotated/bounded/variable/"
+                "unknown/logical beside the raw value",
+            },
+            "offsets": {
+                "status": "populated",
+                "note": "parsed into exact/element-relative/variable/none",
+            },
+            "unknownSpans": {
+                "status": "populated",
+                "note": "derived as the complement of the recorded "
+                "fields inside each type's extent",
+            },
+            "confidence": {
+                "status": "populated",
+                "note": "copied from the source catalogs unchanged",
+            },
+            "functions": {
+                "status": "populated",
+                "note": "the BCS-Y symbol layer, addresses verbatim",
+            },
+            "evidenceRefs": {
+                "status": "populated",
+                "note": "every distinct sourceRef normalized and "
+                "reverse-indexed, unresolved ones included",
+            },
+            "alignment": {
+                "status": "declared-unknown",
+                "note": "no catalog records it; ir_overlay.json is "
+                "the sole home once evidence exists",
+            },
+            "bases": {
+                "status": "deferred",
+                "owner": "C1c",
+                "note": "the facts live in 21 frozen phase snapshots and "
+                "need a per-source adapter each",
+            },
+            "vtables": {
+                "status": "deferred",
+                "owner": "C1c",
+                "note": "slot layouts live in the same frozen snapshots",
+            },
+            "payloadRelationships": {
+                "status": "populated",
+                "note": "opcode, receiver, operation and "
+                "Lua-bridge edges joined from six "
+                "sources, direction-keyed",
+            },
+            "payloadTypeBindings": {
+                "status": "deferred",
+                "owner": "C1c",
+                "note": "no catalog states a type-to-opcode "
+                "edge; the available signal is the "
+                "'<Receiver>Payload' name convention "
+                "and prose hex, both inference",
+            },
         },
         "counts": {
             "types": len(types),
@@ -1006,8 +1116,11 @@ def serialize(document: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true",
-                        help="rebuild and compare against the committed file")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="rebuild and compare against the committed file",
+    )
     args = parser.parse_args()
 
     try:
@@ -1024,14 +1137,18 @@ def main() -> int:
             return 1
         current = OUT_PATH.read_text(encoding="utf-8")
         if current != text:
-            print(f"FAIL: {OUT_PATH.name} is not what tools/build_ir.py "
-                  "produces from the current inputs; rerun without --check",
-                  file=sys.stderr)
+            print(
+                f"FAIL: {OUT_PATH.name} is not what tools/build_ir.py "
+                "produces from the current inputs; rerun without --check",
+                file=sys.stderr,
+            )
             return 1
-        print(f"OK: {OUT_PATH.name} matches a fresh build "
-              f"({document['counts']['types']} types, "
-              f"{document['counts']['symbols']} symbols, "
-              f"{document['counts']['citations']} citations)")
+        print(
+            f"OK: {OUT_PATH.name} matches a fresh build "
+            f"({document['counts']['types']} types, "
+            f"{document['counts']['symbols']} symbols, "
+            f"{document['counts']['citations']} citations)"
+        )
         return 0
 
     tmp = OUT_PATH.with_name(f"{OUT_PATH.name}.{os.getpid()}.tmp")
@@ -1040,12 +1157,14 @@ def main() -> int:
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, OUT_PATH)
-    print(f"wrote {OUT_PATH.relative_to(REPO)}: "
-          f"{document['counts']['types']} types, "
-          f"{document['counts']['symbols']} symbols, "
-          f"{document['counts']['members']} members "
-          f"({document['counts']['unknownSpans']} unknown spans), "
-          f"{document['counts']['citations']} citations")
+    print(
+        f"wrote {OUT_PATH.relative_to(REPO)}: "
+        f"{document['counts']['types']} types, "
+        f"{document['counts']['symbols']} symbols, "
+        f"{document['counts']['members']} members "
+        f"({document['counts']['unknownSpans']} unknown spans), "
+        f"{document['counts']['citations']} citations"
+    )
     return 0
 
 

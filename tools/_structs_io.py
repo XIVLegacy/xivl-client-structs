@@ -65,7 +65,9 @@ def _structs_lock(path: Path = STRUCTS_PATH):
             except OSError:
                 continue
             if time.monotonic() > deadline:
-                raise TimeoutError(f"could not acquire {lock.name} within {LOCK_TIMEOUT_S}s")
+                raise TimeoutError(
+                    f"could not acquire {lock.name} within {LOCK_TIMEOUT_S}s"
+                )
             time.sleep(LOCK_POLL_S)
     try:
         os.write(descriptor, str(os.getpid()).encode("ascii"))

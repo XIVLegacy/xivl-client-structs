@@ -60,7 +60,9 @@ def fetch_copy(checkout: Path, source_path: str) -> bytes:
 
 def load_provenance(path: Path) -> dict:
     provenance = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(provenance, dict) or not isinstance(provenance.get("files"), list):
+    if not isinstance(provenance, dict) or not isinstance(
+        provenance.get("files"), list
+    ):
         raise RefreshError(f"{path}: files must be an array")
     return provenance
 
@@ -68,18 +70,23 @@ def load_provenance(path: Path) -> dict:
 def write_provenance(path: Path, provenance: dict) -> None:
     path.write_text(
         json.dumps(provenance, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8", newline="\n",
+        encoding="utf-8",
+        newline="\n",
     )
 
 
-def refresh_entry(entry: dict, directory: Path, checkouts: dict[str, Path], args) -> str:
+def refresh_entry(
+    entry: dict, directory: Path, checkouts: dict[str, Path], args
+) -> str:
     name = entry["file"]
     fixture = directory / name
     source_repo = entry["sourceRepo"]
 
     checkout = checkouts.get(source_repo)
     if checkout is None:
-        return f"skipped {fixture.relative_to(REPO)} (no --repo {source_repo}=PATH given)"
+        return (
+            f"skipped {fixture.relative_to(REPO)} (no --repo {source_repo}=PATH given)"
+        )
 
     source_path = args.source_path or entry["sourcePath"]
 
@@ -94,8 +101,7 @@ def refresh_entry(entry: dict, directory: Path, checkouts: dict[str, Path], args
             json.loads(payload.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RefreshError(
-                f"{fixture.relative_to(REPO)}: source content is not valid "
-                f"JSON: {exc}"
+                f"{fixture.relative_to(REPO)}: source content is not valid JSON: {exc}"
             ) from exc
 
     digest = hashlib.sha256(payload).hexdigest()
@@ -103,7 +109,8 @@ def refresh_entry(entry: dict, directory: Path, checkouts: dict[str, Path], args
     if not promoting and digest != entry.get("sha256"):
         raise RefreshError(
             f"refused {fixture.relative_to(REPO)}: source content differs from the "
-            "recorded sha256 (pass --promote to accept the newer source state)")
+            "recorded sha256 (pass --promote to accept the newer source state)"
+        )
 
     was_drifted = not fixture.is_file() or fixture.read_bytes() != payload
     fixture.write_bytes(payload)
@@ -115,16 +122,29 @@ def refresh_entry(entry: dict, directory: Path, checkouts: dict[str, Path], args
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument(
-        "--repo", action="append", default=[], metavar="NAME=PATH",
+        "--repo",
+        action="append",
+        default=[],
+        metavar="NAME=PATH",
         help="source checkout for sourceRepo NAME (repeatable; required per repo refreshed)",
     )
-    ap.add_argument("--only", metavar="VENDOR_FILE", help="refresh a single vendored file")
-    ap.add_argument("--promote", action="store_true",
-                    help="accept a source state whose bytes differ from the recorded sha256")
-    ap.add_argument("--source-path", metavar="PATH",
-                    help="with --only: the file's new path in the source repository")
+    ap.add_argument(
+        "--only", metavar="VENDOR_FILE", help="refresh a single vendored file"
+    )
+    ap.add_argument(
+        "--promote",
+        action="store_true",
+        help="accept a source state whose bytes differ from the recorded sha256",
+    )
+    ap.add_argument(
+        "--source-path",
+        metavar="PATH",
+        help="with --only: the file's new path in the source repository",
+    )
     args = ap.parse_args()
 
     if args.source_path and not args.only:
@@ -148,7 +168,9 @@ def main() -> int:
             directory = provenance_path.parent
             changed = False
             for entry in provenance["files"]:
-                rel = str((directory / entry.get("file", "")).relative_to(REPO)).replace("\\", "/")
+                rel = str(
+                    (directory / entry.get("file", "")).relative_to(REPO)
+                ).replace("\\", "/")
                 known.append(rel)
                 if args.only and rel != args.only.replace("\\", "/"):
                     continue
@@ -163,8 +185,11 @@ def main() -> int:
 
     # A mistyped --only would otherwise refresh nothing and still exit 0.
     if args.only and args.only.replace("\\", "/") not in known:
-        print(f"error: --only {args.only} matched no vendored file; declared "
-              f"fixtures: {', '.join(sorted(known))}", file=sys.stderr)
+        print(
+            f"error: --only {args.only} matched no vendored file; declared "
+            f"fixtures: {', '.join(sorted(known))}",
+            file=sys.stderr,
+        )
         return 1
 
     for line in statuses:

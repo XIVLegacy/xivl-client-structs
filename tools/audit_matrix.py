@@ -8,6 +8,7 @@ CLI:
   python tools/audit_matrix.py attribution [options]
   python tools/audit_matrix.py drift [options]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,15 +27,17 @@ BCS_Y_PREFIX_RE = re.compile(r"^(BCS-Y-\d{4})\b")
 # Empty bcsYIds[] is a candidate only for these catalog statuses. `noise`
 # (parser garbage) and the c2s `control` heartbeat row are excluded because
 # both are intentionally unattributed by design.
-LATENT_CANDIDATE_STATUSES = frozenset({
-    "gap",
-    "covered_pattern",
-    "covered_pipeline",
-    "covered_pipeline_hybrid",
-    "covered_pipeline_nullstub",
-    "covered_receiver",
-    "covered_emitter",
-})
+LATENT_CANDIDATE_STATUSES = frozenset(
+    {
+        "gap",
+        "covered_pattern",
+        "covered_pipeline",
+        "covered_pipeline_hybrid",
+        "covered_pipeline_nullstub",
+        "covered_receiver",
+        "covered_emitter",
+    }
+)
 
 # Do not attribute direction-specific names across s2c/c2s rows. Ambiguous names remain eligible.
 S2C_NAME_PATTERNS = (
@@ -146,20 +149,20 @@ def _candidate_wire_names_in_notes(notes: str) -> set[str]:
     """
     if not notes:
         return set()
-    tok_re = re.compile(r"\b([A-Z][A-Za-z0-9_]{2,}?"
-                        r"(?:Packet|Receiver|Operation|Builder))\b")
+    tok_re = re.compile(
+        r"\b([A-Z][A-Za-z0-9_]{2,}?"
+        r"(?:Packet|Receiver|Operation|Builder))\b"
+    )
     return set(tok_re.findall(notes))
 
 
-def find_latent_rtti_attribution(symbols: list[dict],
-                                 matrix: dict) -> list[dict]:
+def find_latent_rtti_attribution(symbols: list[dict], matrix: dict) -> list[dict]:
     """Surface RTTI BCS-Y entries that match a matrix row's
     bcsYReceiverNames[] placeholder but are not yet in bcsYIds[]."""
     findings: list[dict] = []
 
     rtti_by_name: list[tuple[str, str]] = [
-        (s["id"], s.get("name", "")) for s in symbols
-        if s.get("kind") == "rtti"
+        (s["id"], s.get("name", "")) for s in symbols if s.get("kind") == "rtti"
     ]
 
     for table_key in ("s2cOpcodeTable", "c2sOpcodeTable"):
@@ -172,32 +175,36 @@ def find_latent_rtti_attribution(symbols: list[dict],
                 if not isinstance(rname, str) or not rname:
                     continue
                 matches: list[tuple[str, str]] = [
-                    (rid, rfullname) for rid, rfullname in rtti_by_name
+                    (rid, rfullname)
+                    for rid, rfullname in rtti_by_name
                     if rname in rfullname
                 ]
                 for rid, rfullname in matches:
                     if rid in existing_ids:
                         continue
-                    findings.append({
-                        "invariant": "latent_rtti_attribution",
-                        "table": table_key,
-                        "opcode": row.get("opcode"),
-                        "placeholder": rname,
-                        "candidate_id": rid,
-                        "candidate_name": rfullname,
-                        "row_bcs_ids": sorted(existing_ids),
-                        "row_status": row.get("catalogStatus"),
-                        "suggestion": (
-                            f"ADD '{rid} RTTI' to bcsYIds[] for "
-                            f"{row.get('opcode')} (matches placeholder "
-                            f"{rname})"
-                        ),
-                    })
+                    findings.append(
+                        {
+                            "invariant": "latent_rtti_attribution",
+                            "table": table_key,
+                            "opcode": row.get("opcode"),
+                            "placeholder": rname,
+                            "candidate_id": rid,
+                            "candidate_name": rfullname,
+                            "row_bcs_ids": sorted(existing_ids),
+                            "row_status": row.get("catalogStatus"),
+                            "suggestion": (
+                                f"ADD '{rid} RTTI' to bcsYIds[] for "
+                                f"{row.get('opcode')} (matches placeholder "
+                                f"{rname})"
+                            ),
+                        }
+                    )
     return findings
 
 
-def find_latent_case_handler_attribution(symbols: list[dict],
-                                         matrix: dict) -> list[dict]:
+def find_latent_case_handler_attribution(
+    symbols: list[dict], matrix: dict
+) -> list[dict]:
     """For each matrix row with bcsYIds=[], search symbols.json for any
     BCS-Y entry whose name or notes references the row's opcode using a
     case-index naming pattern. Surface a suggestion to link the BCS-Y
@@ -246,22 +253,24 @@ def find_latent_case_handler_attribution(symbols: list[dict],
                     continue
                 if s["id"] in existing_ids:
                     continue
-                findings.append({
-                    "invariant": "latent_case_handler_attribution",
-                    "table": table_key,
-                    "opcode": opcode,
-                    "row_status": status,
-                    "candidate_id": s["id"],
-                    "candidate_name": name,
-                    "candidate_kind": s.get("kind"),
-                    "candidate_direction": sym_dir,
-                    "matched_pattern": matched_pat.pattern,
-                    "matched_in": "name" if matched_pat.search(name) else "notes",
-                    "suggestion": (
-                        f"ADD '{s['id']}' to bcsYIds[] for {opcode} "
-                        f"(catalog name contains case-handler pattern)"
-                    ),
-                })
+                findings.append(
+                    {
+                        "invariant": "latent_case_handler_attribution",
+                        "table": table_key,
+                        "opcode": opcode,
+                        "row_status": status,
+                        "candidate_id": s["id"],
+                        "candidate_name": name,
+                        "candidate_kind": s.get("kind"),
+                        "candidate_direction": sym_dir,
+                        "matched_pattern": matched_pat.pattern,
+                        "matched_in": "name" if matched_pat.search(name) else "notes",
+                        "suggestion": (
+                            f"ADD '{s['id']}' to bcsYIds[] for {opcode} "
+                            f"(catalog name contains case-handler pattern)"
+                        ),
+                    }
+                )
     return findings
 
 
@@ -290,13 +299,15 @@ WIRE_NAME_DENY_LIST: dict[tuple[str, str], frozenset[str]] = {
 def _opcode_match_spans(opcode_hex: str, blob: str) -> list[tuple[int, int]]:
     """Return (start, end) positions of every standalone opcode mention."""
     n = int(opcode_hex.lower(), 16)
-    forms = sorted({
-        opcode_hex.lower(),
-        f"0x{n:X}",
-        f"0x{n:x}",
-        f"0x{n:04X}",
-        f"0x{n:04x}",
-    })
+    forms = sorted(
+        {
+            opcode_hex.lower(),
+            f"0x{n:X}",
+            f"0x{n:x}",
+            f"0x{n:04X}",
+            f"0x{n:04x}",
+        }
+    )
     alternation = "|".join(re.escape(f) for f in forms)
     pat = re.compile(rf"(?<![0-9A-Fa-f])(?:{alternation})(?![0-9A-Fa-f])")
     return [m.span() for m in pat.finditer(blob)]
@@ -311,14 +322,14 @@ def _opcode_is_in_multi_group(blob: str, op_s: int, op_e: int) -> bool:
         i -= 1
     if i >= 0 and blob[i] in {"+", "/"}:
         return True
-    if i >= 1 and blob[i - 1:i + 1] == "..":
+    if i >= 1 and blob[i - 1 : i + 1] == "..":
         return True
     j = op_e
     while j < len(blob) and blob[j] == " ":
         j += 1
     if j < len(blob) and blob[j] in {"+", "/"}:
         return True
-    if j + 1 < len(blob) and blob[j:j + 2] == "..":
+    if j + 1 < len(blob) and blob[j : j + 2] == "..":
         return True
     return False
 
@@ -330,11 +341,11 @@ def _forward_bound_wire_name(blob: str, op_e: int) -> str | None:
     `-` (not `->`) sits between the opcode and the candidate."""
     if op_e < len(blob) and blob[op_e] in MULTI_OPCODE_NEIGHBOR_CHARS:
         return None
-    window = blob[op_e:op_e + FORWARD_WINDOW]
+    window = blob[op_e : op_e + FORWARD_WINDOW]
     tok_m = WIRE_TOKEN_RE.search(window)
     if not tok_m:
         return None
-    glue = window[:tok_m.start()]
+    glue = window[: tok_m.start()]
     if not FORWARD_GLUE_RE.match(glue):
         return None
     return tok_m.group(1)
@@ -350,7 +361,7 @@ def _backward_bound_wire_name(blob: str, op_s: int, op_e: int) -> str | None:
     open_idx = blob.rfind("(", max(0, op_s - 8), op_s)
     if open_idx < 0:
         return None
-    if not BACKWARD_GLUE_RE.match(blob[open_idx + 1:op_s]):
+    if not BACKWARD_GLUE_RE.match(blob[open_idx + 1 : op_s]):
         return None
     window_start = max(0, open_idx - BACKWARD_WINDOW)
     last: re.Match[str] | None = None
@@ -358,18 +369,17 @@ def _backward_bound_wire_name(blob: str, op_s: int, op_e: int) -> str | None:
         last = m
     if last is None:
         return None
-    glue = blob[last.end():open_idx]
+    glue = blob[last.end() : open_idx]
     if not BACKWARD_GLUE_RE.match(glue):
         return None
     return last.group(1)
 
 
-def _bound_wire_names_for_opcode(opcode_hex: str,
-                                 blob: str) -> set[str]:
+def _bound_wire_names_for_opcode(opcode_hex: str, blob: str) -> set[str]:
     """Apply the directional binding heuristic to every opcode mention in
     `blob` and return the union of wire names that survive."""
     names: set[str] = set()
-    for (op_s, op_e) in _opcode_match_spans(opcode_hex, blob):
+    for op_s, op_e in _opcode_match_spans(opcode_hex, blob):
         if _opcode_is_in_multi_group(blob, op_s, op_e):
             continue
         fwd = _forward_bound_wire_name(blob, op_e)
@@ -381,8 +391,7 @@ def _bound_wire_names_for_opcode(opcode_hex: str,
     return names
 
 
-def find_latent_wire_name_curation(symbols: list[dict],
-                                   matrix: dict) -> list[dict]:
+def find_latent_wire_name_curation(symbols: list[dict], matrix: dict) -> list[dict]:
     """Lower-priority curation hint. For each matrix row, check if any
     BCS-Y entry's notes contain a wire-packet name in a recognised
     immediate-neighbor binding shape with the row's opcode (see the
@@ -421,21 +430,23 @@ def find_latent_wire_name_curation(symbols: list[dict],
                 missing = sorted(bound_names - row_wire_names)
                 if not missing:
                     continue
-                findings.append({
-                    "invariant": "latent_wire_name_curation",
-                    "table": table_key,
-                    "opcode": opcode,
-                    "candidate_id": s["id"],
-                    "candidate_name": s.get("name", ""),
-                    "candidate_direction": sym_dir,
-                    "wire_names_in_symbol": sorted(bound_names),
-                    "missing_from_row": missing,
-                    "row_notes_excerpt": row_notes[:80],
-                    "suggestion": (
-                        f"CONSIDER adding wire name(s) {missing} to notes "
-                        f"of {opcode} (sourced from {s['id']})"
-                    ),
-                })
+                findings.append(
+                    {
+                        "invariant": "latent_wire_name_curation",
+                        "table": table_key,
+                        "opcode": opcode,
+                        "candidate_id": s["id"],
+                        "candidate_name": s.get("name", ""),
+                        "candidate_direction": sym_dir,
+                        "wire_names_in_symbol": sorted(bound_names),
+                        "missing_from_row": missing,
+                        "row_notes_excerpt": row_notes[:80],
+                        "suggestion": (
+                            f"CONSIDER adding wire name(s) {missing} to notes "
+                            f"of {opcode} (sourced from {s['id']})"
+                        ),
+                    }
+                )
     return findings
 
 
@@ -449,8 +460,10 @@ def print_markdown_report(findings_by_invariant: dict[str, list[dict]]) -> None:
     print()
     print(f"[Latent RTTI attribution] {len(rtti)} findings")
     for f in rtti:
-        print(f"  {f['opcode']}: row has bcsYReceiverNames={f['placeholder']!r} "
-              f"but {f['candidate_id']} matches in symbols.json")
+        print(
+            f"  {f['opcode']}: row has bcsYReceiverNames={f['placeholder']!r} "
+            f"but {f['candidate_id']} matches in symbols.json"
+        )
         print(f"    suggest: ADD '{f['candidate_id']} RTTI' to bcsYIds[]")
         print(f"    candidate: {f['candidate_name']}")
     if not rtti:
@@ -465,16 +478,20 @@ def print_markdown_report(findings_by_invariant: dict[str, list[dict]]) -> None:
         rows = by_opcode[opcode]
         for f in rows:
             where = f.get("matched_in", "?")
-            print(f"  {opcode}: row has bcsYIds=[] but {f['candidate_id']} "
-                  f"{where} mentions {f['matched_pattern']!r}")
+            print(
+                f"  {opcode}: row has bcsYIds=[] but {f['candidate_id']} "
+                f"{where} mentions {f['matched_pattern']!r}"
+            )
             print(f"    suggest: ADD '{f['candidate_id']}' to bcsYIds[]")
             print(f"    candidate: {f['candidate_name']}")
     if not case:
         print("  (none)")
     print()
 
-    print(f"[Latent wire-name curation] {len(wire)} findings "
-          f"(lower priority - advisory, does not fail the gate)")
+    print(
+        f"[Latent wire-name curation] {len(wire)} findings "
+        f"(lower priority - advisory, does not fail the gate)"
+    )
     seen: set[tuple[str, str]] = set()
     aggregated: list[tuple[str, str, str]] = []
     for f in wire:
@@ -495,9 +512,11 @@ def print_markdown_report(findings_by_invariant: dict[str, list[dict]]) -> None:
     print()
 
     total = len(rtti) + len(case) + len(wire)
-    print(f"Summary: {len(rtti)} latent RTTI + {len(case)} latent "
-          f"case-handler + {len(wire)} latent wire-name = "
-          f"{total} total findings")
+    print(
+        f"Summary: {len(rtti)} latent RTTI + {len(case)} latent "
+        f"case-handler + {len(wire)} latent wire-name = "
+        f"{total} total findings"
+    )
 
 
 def _run_attribution(argv: list[str]) -> int:
@@ -509,11 +528,13 @@ def _run_attribution(argv: list[str]) -> int:
         ),
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit machine-readable JSON report on stdout.",
     )
     parser.add_argument(
-        "--invariant", choices=("rtti", "case_handler", "wire_name", "all"),
+        "--invariant",
+        choices=("rtti", "case_handler", "wire_name", "all"),
         default="all",
         help="Run only one invariant (default: all).",
     )
@@ -530,14 +551,17 @@ def _run_attribution(argv: list[str]) -> int:
     }
 
     if args.invariant in ("rtti", "all"):
-        findings_by_invariant["latent_rtti_attribution"] = (
-            find_latent_rtti_attribution(symbols, matrix_doc))
+        findings_by_invariant["latent_rtti_attribution"] = find_latent_rtti_attribution(
+            symbols, matrix_doc
+        )
     if args.invariant in ("case_handler", "all"):
         findings_by_invariant["latent_case_handler_attribution"] = (
-            find_latent_case_handler_attribution(symbols, matrix_doc))
+            find_latent_case_handler_attribution(symbols, matrix_doc)
+        )
     if args.invariant in ("wire_name", "all"):
         findings_by_invariant["latent_wire_name_curation"] = (
-            find_latent_wire_name_curation(symbols, matrix_doc))
+            find_latent_wire_name_curation(symbols, matrix_doc)
+        )
 
     if args.json:
         report = {
@@ -553,8 +577,9 @@ def _run_attribution(argv: list[str]) -> int:
         print_markdown_report(findings_by_invariant)
 
     # Only latent RTTI and case-handler findings fail. Wire-name findings are advisory.
-    structural = (len(findings_by_invariant["latent_rtti_attribution"])
-                  + len(findings_by_invariant["latent_case_handler_attribution"]))
+    structural = len(findings_by_invariant["latent_rtti_attribution"]) + len(
+        findings_by_invariant["latent_case_handler_attribution"]
+    )
     return 1 if structural else 0
 
 
@@ -566,9 +591,7 @@ CASE_PREFIX_RE = re.compile(r"(?:Case|Cases)_?0x", re.IGNORECASE)
 # Exclude upstream Callers lists and negated FUN_VA mentions from drift.
 NEG_CONTEXT_WINDOW = 80
 CALLERS_PREFIX_RE = re.compile(r"\bCallers?:", re.IGNORECASE)
-NEGATION_PREFIX_RE = re.compile(
-    r"\b(NOT|never|bypass(?:es)?)\b", re.IGNORECASE
-)
+NEGATION_PREFIX_RE = re.compile(r"\b(NOT|never|bypass(?:es)?)\b", re.IGNORECASE)
 # A period or newline ends the Callers/negation scope.
 SCOPE_END_RE = re.compile(r"[.\n]")
 
@@ -576,10 +599,12 @@ SCOPE_END_RE = re.compile(r"[.\n]")
 # Demote only LOW findings above this threshold. HIGH findings name the opcode directly.
 UBIQUITOUS_ROW_THRESHOLD = 4
 
-DRIFT_AUDIT_STATUSES = frozenset({
-    "covered_pattern",
-    "covered_pipeline_hybrid",
-})
+DRIFT_AUDIT_STATUSES = frozenset(
+    {
+        "covered_pattern",
+        "covered_pipeline_hybrid",
+    }
+)
 
 
 def _opcode_mention_patterns(opcode_hex: str) -> list[re.Pattern[str]]:
@@ -655,7 +680,7 @@ def is_negative_context(notes: str, va_match: re.Match) -> bool:
         drift tool was matching the FUN_VA and ignoring the NOT.
     """
     start = max(0, va_match.start() - NEG_CONTEXT_WINDOW)
-    before = notes[start:va_match.start()]
+    before = notes[start : va_match.start()]
     if not before:
         return False
     for prefix_re in (CALLERS_PREFIX_RE, NEGATION_PREFIX_RE):
@@ -663,7 +688,7 @@ def is_negative_context(notes: str, va_match: re.Match) -> bool:
         if not kw_matches:
             continue
         last_kw = kw_matches[-1]
-        between = before[last_kw.end():]
+        between = before[last_kw.end() :]
         if not SCOPE_END_RE.search(between):
             return True
     return False
@@ -706,8 +731,7 @@ def is_sibling_context(downstream_name: str, row_opcode_hex: str) -> bool:
     return False
 
 
-def audit_row(row: dict, table_key: str, addr_idx: dict, id_idx: dict
-              ) -> list[dict]:
+def audit_row(row: dict, table_key: str, addr_idx: dict, id_idx: dict) -> list[dict]:
     """Return drift findings for a single row."""
     findings: list[dict] = []
     opcode = row.get("opcode", "<?>")
@@ -748,17 +772,19 @@ def audit_row(row: dict, table_key: str, addr_idx: dict, id_idx: dict
                     p.search(ds_notes) for p in op_patterns
                 )
                 conf = "HIGH" if high_conf else "LOW"
-            findings.append({
-                "table": table_key,
-                "opcode": opcode,
-                "pcap": pcap,
-                "status": row.get("catalogStatus"),
-                "primaryId": primary_id,
-                "downstreamId": downstream_id,
-                "downstreamFunVa": va,
-                "downstreamName": downstream_name,
-                "confidence": conf,
-            })
+            findings.append(
+                {
+                    "table": table_key,
+                    "opcode": opcode,
+                    "pcap": pcap,
+                    "status": row.get("catalogStatus"),
+                    "primaryId": primary_id,
+                    "downstreamId": downstream_id,
+                    "downstreamFunVa": va,
+                    "downstreamName": downstream_name,
+                    "confidence": conf,
+                }
+            )
     return findings
 
 
@@ -779,9 +805,7 @@ def demote_ubiquitous(findings: list[dict]) -> list[dict]:
     """
     spread: dict[str, set[tuple[str, str]]] = {}
     for f in findings:
-        spread.setdefault(f["downstreamId"], set()).add(
-            (f["table"], f["opcode"])
-        )
+        spread.setdefault(f["downstreamId"], set()).add((f["table"], f["opcode"]))
     for f in findings:
         rows = len(spread[f["downstreamId"]])
         f["ubiquityRows"] = rows
@@ -803,22 +827,32 @@ def audit_matrix(matrix: dict, symbols: list[dict]) -> list[dict]:
 
 
 _BUCKET_BLURBS = {
-    "HIGH": ("downstream BCS-Y explicitly names the row opcode;"
-             " safe for immediate matrix sync"),
-    "LOW": ("downstream BCS-Y cataloged at FUN_VA from primary notes"
-            " but opcode not stated; manual review"),
-    "SIBLING_CONTEXT": ("downstream BCS-Y's name encodes a Case0xNN opcode"
-                        " DIFFERENT from this row's opcode; the primary's"
-                        " notes mention it as a shared/sibling helper, not"
-                        " as a downstream pipeline step (D17 filter)"),
-    "NEGATIVE_CONTEXT": ("FUN_VA appears in primary's notes inside a"
-                         " 'Callers:' list (upstream caller, not downstream)"
-                         " or in a NOT/never/bypass negation context"
-                         " (C50 filter)"),
-    "UBIQUITOUS_HELPER": ("same downstream cited as a drift-add across more"
-                          f" than {UBIQUITOUS_ROW_THRESHOLD} distinct rows;"
-                          " a shared utility, not one row's pipeline step"
-                          " (C132 filter)"),
+    "HIGH": (
+        "downstream BCS-Y explicitly names the row opcode;"
+        " safe for immediate matrix sync"
+    ),
+    "LOW": (
+        "downstream BCS-Y cataloged at FUN_VA from primary notes"
+        " but opcode not stated; manual review"
+    ),
+    "SIBLING_CONTEXT": (
+        "downstream BCS-Y's name encodes a Case0xNN opcode"
+        " DIFFERENT from this row's opcode; the primary's"
+        " notes mention it as a shared/sibling helper, not"
+        " as a downstream pipeline step (D17 filter)"
+    ),
+    "NEGATIVE_CONTEXT": (
+        "FUN_VA appears in primary's notes inside a"
+        " 'Callers:' list (upstream caller, not downstream)"
+        " or in a NOT/never/bypass negation context"
+        " (C50 filter)"
+    ),
+    "UBIQUITOUS_HELPER": (
+        "same downstream cited as a drift-add across more"
+        f" than {UBIQUITOUS_ROW_THRESHOLD} distinct rows;"
+        " a shared utility, not one row's pipeline step"
+        " (C132 filter)"
+    ),
 }
 
 # Buckets that are documented false-positive classes: hidden by default and
@@ -826,8 +860,7 @@ _BUCKET_BLURBS = {
 FP_BUCKETS = ("SIBLING_CONTEXT", "NEGATIVE_CONTEXT", "UBIQUITOUS_HELPER")
 
 
-def _render_text(findings: list[dict], high_only: bool,
-                 include_sibling: bool) -> str:
+def _render_text(findings: list[dict], high_only: bool, include_sibling: bool) -> str:
     out: list[str] = []
     out.append("=" * 72)
     out.append("MATRIX DRIFT AUDIT")
@@ -852,8 +885,10 @@ def _render_text(findings: list[dict], high_only: bool,
         bucket.sort(key=lambda f: (-f["pcap"], f["table"], f["opcode"]))
         total_pcap = sum(f["pcap"] for f in bucket)
         unique_rows = len({(f["table"], f["opcode"]) for f in bucket})
-        out.append(f"\n--- {conf} CONFIDENCE: {len(bucket)} findings "
-                   f"across {unique_rows} rows ({total_pcap} pcap) ---")
+        out.append(
+            f"\n--- {conf} CONFIDENCE: {len(bucket)} findings "
+            f"across {unique_rows} rows ({total_pcap} pcap) ---"
+        )
         out.append(f"    ({_BUCKET_BLURBS[conf]})")
         for f in bucket:
             direction = "s2c" if f["table"].startswith("s2c") else "c2s"
@@ -861,15 +896,9 @@ def _render_text(findings: list[dict], high_only: bool,
                 f"\n  {direction} {f['opcode']} (pcap={f['pcap']}, "
                 f"status={f['status']})"
             )
-            out.append(
-                f"    primary  : {f['primaryId']}"
-            )
-            out.append(
-                f"    drift add: {f['downstreamId']} {f['downstreamName']}"
-            )
-            out.append(
-                f"               (at {f['downstreamFunVa']})"
-            )
+            out.append(f"    primary  : {f['primaryId']}")
+            out.append(f"    drift add: {f['downstreamId']} {f['downstreamName']}")
+            out.append(f"               (at {f['downstreamFunVa']})")
 
     out.append("\n" + "=" * 72)
     summary_bits = [
@@ -877,25 +906,29 @@ def _render_text(findings: list[dict], high_only: bool,
         f"{len(by_conf['LOW'])} LOW",
     ]
     summary_bits += [f"{len(by_conf[b])} {b}" for b in FP_BUCKETS]
-    out.append(f"SUMMARY: {' + '.join(summary_bits)}"
-               f" = {len(findings)} total findings")
+    out.append(f"SUMMARY: {' + '.join(summary_bits)} = {len(findings)} total findings")
     high_pcap = sum(f["pcap"] for f in by_conf["HIGH"])
     high_rows = len({(f["table"], f["opcode"]) for f in by_conf["HIGH"]})
-    out.append(f"HIGH-confidence: {high_rows} rows, {high_pcap} pcap "
-               f"re-classifiable via matrix sync (zero new BCS-Y needed)")
+    out.append(
+        f"HIGH-confidence: {high_rows} rows, {high_pcap} pcap "
+        f"re-classifiable via matrix sync (zero new BCS-Y needed)"
+    )
     hidden_bits = []
     if not include_sibling:
-        hidden_bits = [f"{len(by_conf[b])} {b}" for b in FP_BUCKETS
-                       if by_conf[b]]
+        hidden_bits = [f"{len(by_conf[b])} {b}" for b in FP_BUCKETS if by_conf[b]]
     if hidden_bits:
-        out.append("(" + " + ".join(hidden_bits)
-                   + " findings hidden; pass --include-sibling to see them)")
+        out.append(
+            "("
+            + " + ".join(hidden_bits)
+            + " findings hidden; pass --include-sibling to see them)"
+        )
     out.append("=" * 72)
     return "\n".join(out)
 
 
-def _actionable_count(findings: list[dict], high_only: bool,
-                      include_sibling: bool) -> int:
+def _actionable_count(
+    findings: list[dict], high_only: bool, include_sibling: bool
+) -> int:
     """Count findings in the buckets the current flags actually surface.
 
     The exit code must track what the run displays: `--high-only` shows only
@@ -914,14 +947,23 @@ def _actionable_count(findings: list[dict], high_only: bool,
 
 def _run_drift(argv: list[str]) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--json", action="store_true",
-                   help="emit machine-readable JSON instead of text report")
-    p.add_argument("--high-only", action="store_true",
-                   help="suppress LOW-confidence findings in text report")
-    p.add_argument("--include-sibling", action="store_true",
-                   help="also show the triaged false-positive buckets"
-                        " (SIBLING_CONTEXT, NEGATIVE_CONTEXT,"
-                        " UBIQUITOUS_HELPER), hidden by default")
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="emit machine-readable JSON instead of text report",
+    )
+    p.add_argument(
+        "--high-only",
+        action="store_true",
+        help="suppress LOW-confidence findings in text report",
+    )
+    p.add_argument(
+        "--include-sibling",
+        action="store_true",
+        help="also show the triaged false-positive buckets"
+        " (SIBLING_CONTEXT, NEGATIVE_CONTEXT,"
+        " UBIQUITOUS_HELPER), hidden by default",
+    )
     args = p.parse_args(argv)
 
     try:
@@ -939,8 +981,7 @@ def _run_drift(argv: list[str]) -> int:
     else:
         print(_render_text(findings, args.high_only, args.include_sibling))
 
-    return 1 if _actionable_count(
-        findings, args.high_only, args.include_sibling) else 0
+    return 1 if _actionable_count(findings, args.high_only, args.include_sibling) else 0
 
 
 def main(argv: list[str]) -> int:

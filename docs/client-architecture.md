@@ -112,13 +112,14 @@ the segment-header `target` field, using MSVC red-black-tree helpers
 `FUN_004DC690`'s switch tables and runs on a different thread. This evidence
 does not establish whether the two opcode sets overlap.
 
-Both paths converge at `LuaActorImpl::vftable` (BCS-Y-0092, 90 slots,
-0x00FDFB2C..0x00FDFC94). Three independent slot identifications confirm
-this is a single vtable indexed by ordinal, not a second opcode-keyed
-dispatch table: slot 21 `onTouch` (BCS-Y-0203), slot 25 `onTargetChanged`
-(BCS-Y-0156), slot 59 `onReceiveDataPacket` (BCS-Y-0152, reached from the
-sync path's case `0x133` trampoline `FUN_00575060` BCS-Y-0595, whose body is
-exactly `(*(*param_1+0xEC))()`).
+Both paths reach the actor implementation interface at `actor+0x88`. During
+event-condition setup this is `NullActorImpl::vftable` (BCS-Y-0162), not
+`LuaActorImpl::vftable` (BCS-Y-0092). NullActorImpl slots 51 and 52 contain
+the SetNotice and SetEmote receiver factories (BCS-Y-1106 and BCS-Y-1107);
+the corresponding LuaActorImpl slots are no-op stubs. The shared ordinal
+layout also includes LuaActorImpl slot 21 `onTouch` (BCS-Y-0203), slot 25
+`onTargetChanged` (BCS-Y-0156), and slot 59 `onReceiveDataPacket`
+(BCS-Y-0152).
 
 Refs: BCS-Y-1034, BCS-Y-1035, BCS-Y-1036 (catalogued redundant with
 BCS-Y-0092), BCS-Y-0092, BCS-Y-0152, BCS-Y-0156, BCS-Y-0203, BCS-Y-0279,
@@ -137,8 +138,8 @@ layers, all on one continuous chain (not two parallel paths):
 | 1 | `FUN_004DC690` case `0x16B`/`0x16C` | BCS-Y-0279, BCS-Y-0527 | wire arrival, falls to `actor->vftable[9]` |
 | 2 | `CharaElement::vftable[9]` = `FUN_0058CCA0` | BCS-Y-0540 | per-Element sync handler; opcode not in its table, falls to default |
 | 3 | `FUN_004D8860` sub-dispatcher | BCS-Y-0280 | 24-case default-branch router |
-| 4 | `FUN_00574FE0`/`FUN_00574FF0` bridge trampoline | BCS-Y-0548, BCS-Y-0549 | reads `LuaActorImpl*` at `actor+0x88`, indexes vtable slot 51/52 |
-| 5 | `LuaActorImpl::vftable[51]`/`[52]` | (slot indirection) | virtual call into the actor's Lua-side subclass |
+| 4 | `FUN_00574FE0`/`FUN_00574FF0` bridge trampoline | BCS-Y-0601, BCS-Y-0602 | reads the actor implementation interface at `actor+0x88`, indexes vtable slot 51/52 |
+| 5 | `NullActorImpl::vftable[51]`/`[52]` | BCS-Y-0162, BCS-Y-1106, BCS-Y-1107 | constructs and registers the SetNotice or SetEmote receiver |
 | 6 | `SetNoticeEventConditionReceiver::slot1` / `SetEmoteEventConditionReceiver::slot1` | BCS-Y-0734, BCS-Y-0736 | `RTDynamicCast` (ActorBase -> DirectorBase), routes to registration helpers |
 
 `BCS-Y-0734` and `BCS-Y-0736` have zero direct callers anywhere in the
@@ -146,11 +147,11 @@ binary - they are exclusively virtual dispatch targets. This generalizes: a
 static call-graph search from any `*Receiver::slot1` method returns empty,
 because the receiver-class registry is wired into the runtime via C++
 multiple-inheritance vtable slots, not direct calls. Finding the caller
-means finding which trampoline reads the actor's `LuaActorImpl` vtable slot.
+means finding which trampoline reads the actor implementation vtable slot.
 
-Refs: `manifests/0x16b_0x16c_dual_path_resolution.json`. BCS-Y-0279,
-BCS-Y-0280, BCS-Y-0527, BCS-Y-0540, BCS-Y-0548, BCS-Y-0549, BCS-Y-0734,
-BCS-Y-0736.
+Refs: `manifests/pcap_opcode_coverage_matrix.json`. BCS-Y-0092, BCS-Y-0162,
+BCS-Y-0279, BCS-Y-0280, BCS-Y-0527, BCS-Y-0540, BCS-Y-0601, BCS-Y-0602,
+BCS-Y-0734, BCS-Y-0736, BCS-Y-1106, BCS-Y-1107.
 
 ### S2C 0x00DA stages a CharaElement-local battle effect
 
@@ -388,7 +389,7 @@ opcode `0xCC` alone, runs `FUN_00575860` (BCS-Y-0613 -> `FUN_00764630`
 BCS-Y-1020), and unconditionally zeroes `+0x92`. `0x00CA`/`0x00CC` therefore
 bracket a per-actor rebuild transaction: packets sent between them are
 deliberately discarded because the closing `0x00CC` carries the full,
-authoritative actor record (`FUN_00774AD0`, BCS-Y-0588/BCS-Y-1019) anyway.
+authoritative actor record (`FUN_00774AD0`, BCS-Y-1019) anyway.
 
 The two cited retail captures pair the bracket: s2c `0x00CA` and s2c
 `0x00CC` occur in a 1:1 ratio in `xivl-captures:sources/pcap-1.23b/objects/moving_around_gridania.pcapng`
@@ -445,7 +446,7 @@ Surveyed Lua N-API setters stay local to the client and never emit c2s packets:
 
 | Setter | Local write target | Server-visible mirror | BCS-Y |
 |---|---|---|---|
-| `_setActorExtraStat` | `CharaSubStatStorage+0x10` low byte via `FUN_006FA980` (BCS-Y-0349); fires `_onChangeNetStatUser`/`_onChangeNetStatSystem` | s2c `0x0145` ChangeActorExtraStat (inbound) | BCS-Y-0442 |
+| `_setActorExtraStat` | `CharaSubStatStorage+0x10` low byte via `FUN_006FA980` (BCS-Y-1611); fires `_onChangeNetStatUser`/`_onChangeNetStatSystem` | s2c `0x0145` ChangeActorExtraStat (inbound) | BCS-Y-0442 |
 | `_setVisible` | scene packet ids `0x10`/`0x11` (local scene state) | none observed | n/a |
 | `_setGroundOn` | record `0x12` -> scene packet `0x27` | none observed | n/a |
 | `_setSubStatStatus` | empty Lua stub; no native N-API registration | n/a | n/a |
@@ -459,7 +460,7 @@ not server retransmission behavior.
 native binding wired up.
 
 Refs: `manifests/lua_napi_c2s_trace_findings.json`,
-`manifests/lua_napi_c2s_survey_findings.json`. BCS-Y-0349, BCS-Y-0442.
+`manifests/lua_napi_c2s_survey_findings.json`. BCS-Y-1611, BCS-Y-0442.
 
 ### s2c state-push receivers do not gate on Group::SharedWork registration
 
@@ -486,7 +487,7 @@ A single causal chain runs from the Group spawn burst to loading-screen
 dismissal. Each stage gates the next.
 
 **Group spawn-burst completion (ring drain).** `Group::PacketProcessor::OnPacket`
-(`FUN_006CDE30`, BCS-Y-1056, vtable slot 1) latches `+0xe8` (sub-decoder 1 at
+(`FUN_006CDE30`, BCS-Y-0070, vtable slot 1) latches `+0xe8` (sub-decoder 1 at
 `this+0x40`) and `+0xe9` (sub-decoder 2 at `this+0x94`) independently per
 packet via buffer-equality compares (`FUN_00445D20`). The ring-buffer drain
 (`FUN_006CDA80`) fires only when both are set. The 0x17C header handler
@@ -1040,48 +1041,60 @@ BCS-Y-1496..BCS-Y-1520, BCS-Y-1529..BCS-Y-1553, BCS-Y-1557,
 BCS-Y-1569..BCS-Y-1587, BCS-Y-1670..BCS-Y-1743;
 BCS-S-0046..BCS-S-0049.
 
-### Ordinary text submission has no verified native consume seam
+### Ordinary text supports an exact-build paired consume boundary
 
-Retail Lua routes non-empty `TextBox_ChatInput` submissions through
-`processInputWordAnalyze` and `DesktopWidget.executeTextCommand`. The GM/debug
-test runs first. Other input calls `_parseTextCommand` once per
-`executeTextCommand` invocation; parser-declined ordinary text and unknown
-slash input then converge on `chat(rawInput)`. Deferred target selection can
-later re-execute the saved raw input, so this script order is not a runtime
-once-only hook guarantee.
+Retail Lua routes each `DesktopWidget.executeTextCommand` invocation through
+`_parseTextCommand`. Parser success proceeds to retail command execution.
+Parser failure immediately calls `chat` with the original line; `chat` resets
+temporary chat mode, validates the line, converts pronouns, and invokes
+`_chat`. Deferred target selection can later invoke `executeTextCommand` again
+with its saved line, so the unit proved by the script is an invocation rather
+than a physical Enter keypress.
 
-The native parser path is exact-build bounded. `_parseTextCommand` registers
-implementation `FUN_006FE2A0` at registration function `FUN_00751F70` through
-binder `FUN_00726BF0`. The implementation calls `FUN_0075CCF0`, which
-dereferences its object, selects the member at `+0x8BC`, and tail-jumps to
-`FUN_0056E380`. The core is `__thiscall`-shaped, returns success in `AL`, and
-writes a caller-stack 16-byte result containing a signed 16-bit command id, an
-unsigned 16-bit count, and three 32-bit parameters. It checks a narrow leading
-slash byte, but the exact character encoding, input ownership, and invocation
-thread are not established.
+The parser core at `FUN_0056E380` is the closest native point that sees the
+complete original line. It is `__thiscall`-shaped, receives a borrowed narrow
+NUL-terminated string and caller-owned 16-byte output, returns success in
+`AL`, and uses `RET 8`. Exact character encoding and the dispatch thread remain
+unresolved. Returning false without writing the output selects the existing
+Lua chat fallback; by itself this does not consume the line.
 
-This parser result is not a consume result. `FUN_00708FC0` is the
-`_commandDebug` N-API and builds `_comdebDEV`, `_comdebGM`, `_comdebTEST`, or
-`_comdebFUNC` class names before firing `_onCommand`; it is not ordinary chat
-ingress. `_onPreCommand`, `_onPostCommand`, and `_onCommandCancel` are void
-lifecycle fire sites without a native handled return. MyPlayer slot 42
-`FUN_0070A010` runs only after successful parsing, while `_chat`, MyPlayer slot
-67, and the packet builders are downstream surfaces. `_chat` registers
-implementation label `0x006DE7D0`, but Ghidra has not defined that address as
-a function and the direct link from it to slot 67 remains unproven. None of
-these surfaces supplies the required pre-execution silent-consume and
-identity-forward decision.
+The fallback now has an exact native identity. Registration owner
+`FUN_00743D80` binds `_chat` to code label `0x006DE7D0`. The label loads the
+ECX object's vtable entry at byte offset `0x10C` and tail-jumps to it. MyPlayer
+vtable `0x00FD785C` resolves that slot to `FUN_006E91F0`. The target is a void
+`__thiscall`-shaped `PlayerBase` member over `ExecuteParameters const&`, ends in
+`RET 4`, extracts the converted text and chat mode, and only then enters the
+channel builders. Returning from the thunk before its tail jump is therefore
+an application-level pre-builder consume action. No target local has been
+constructed at that point, and Lua has already reset temporary chat mode.
 
-The exact executable SHA-256 can identify a future experiment, but no stable byte
-signature or runtime four-input proof exists. In particular, `/wiki test` has
-not been consumed with zero packet send. An exact-build launcher hook therefore
-remains unsupported. The minimum next evidence is a runtime trace that
-records call stacks, thread ids, parser results, and packet-builder hits for a
-custom command, ordinary chat, a known retail slash command, and an unknown
-slash command.
+Together these points provide a bounded exact-build contract. A parser detour
+may recognize an ASCII custom command, run the extension, set a thread-local
+pending token, and return parser failure. The next same-thread `_chat` thunk
+clears that token and returns with `RET 4`; calls without a token execute the
+original thunk. Every unrecognized parser call also executes the original
+parser with unchanged arguments. Both detours must be installed atomically
+only after the executable identity and unique byte signatures pass. This
+contract does not fabricate a retail command id and does not touch WndProc,
+keyboard input, packet data, builders, or the queue forwarder.
 
-Refs: `manifests/text_command_ingress.json`; BCS-Y-1688, BCS-Y-1989,
-BCS-Y-2016, BCS-Y-2230..BCS-Y-2232, BCS-Y-0306, BCS-Y-0309.
+The command lifecycle callbacks are a separate surface. Event command slots
+fire `_onCommandRejected`, `_onPreCommand`, `_onPostCommand`, command/event
+notifications, and `_onCommandCancel` as void Lua callbacks. Cancellation state
+at `ExecutionClientSideBlockEvent+0x1D`, `+0x20`, `+0x21`, and `+0x28` governs
+an already-created event. No callback result or field was found that selects
+the earlier text execute-versus-chat route.
+
+The static verdict is GO only for the paired pinned-build boundary. A
+five-input diagnostic census must still prove same-thread ordering, absence of
+intervening reentrant `_chat`, exact hit counts, and byte-identical forwarding
+for ordinary chat, a known retail command, an unknown slash command, and a
+deferred retail command. Any mismatch rejects the pair. The signatures,
+complete hook contract, lifecycle evidence, and required counters are
+canonical in the manifest.
+
+Refs: `manifests/text_command_ingress.json`; BCS-Y-0163, BCS-Y-2016,
+BCS-Y-2230..BCS-Y-2232, BCS-Y-2240.
 
 ## Sqwt UI framework
 

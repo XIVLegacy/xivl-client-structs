@@ -8,6 +8,7 @@ the ClassHierarchyDescriptor.
 Output: list of RttiEntry tuples (mangled, demangled, td_va, col_va,
 vtable_va, vtable_count, base_classes).
 """
+
 from __future__ import annotations
 
 import struct
@@ -43,7 +44,7 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
             idx += 1
             continue
         end += 2
-        if end < len(data) and data[end:end + 1] == b"@":
+        if end < len(data) and data[end : end + 1] == b"@":
             end += 1
 
         mangled = data[idx:end].decode("ascii", errors="replace")
@@ -59,7 +60,7 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
         td_bytes = struct.pack("<I", td_va)
         i = RDATA_FILE_START
         while i < RDATA_FILE_END - 20:
-            if data[i + 12:i + 16] == td_bytes:
+            if data[i + 12 : i + 16] == td_bytes:
                 sig = struct.unpack_from("<I", data, i)[0]
                 if sig == 0:
                     col_va = i + IMAGE_BASE
@@ -67,14 +68,16 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
                     col_bytes = struct.pack("<I", col_va)
                     j = RDATA_FILE_START
                     while j < RDATA_FILE_END - 4:
-                        if data[j:j + 4] == col_bytes:
+                        if data[j : j + 4] == col_bytes:
                             candidate_vt = j + 4 + IMAGE_BASE
                             first = struct.unpack_from("<I", data, j + 4)[0]
                             if TEXT_VA_START <= first < TEXT_VA_END:
                                 vtable_va = candidate_vt
                                 count = 0
                                 for k in range(500):
-                                    entry = struct.unpack_from("<I", data, j + 4 + k * 4)[0]
+                                    entry = struct.unpack_from(
+                                        "<I", data, j + 4 + k * 4
+                                    )[0]
                                     if entry < TEXT_VA_START or entry >= TEXT_VA_END:
                                         break
                                     count += 1
@@ -93,7 +96,9 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
                 num_bases = struct.unpack_from("<i", data, chd_off + 8)[0]
                 bca_va = struct.unpack_from("<I", data, chd_off + 12)[0]
 
-                if 0 < num_bases < 100 and IMAGE_BASE <= bca_va < IMAGE_BASE + len(data):
+                if 0 < num_bases < 100 and IMAGE_BASE <= bca_va < IMAGE_BASE + len(
+                    data
+                ):
                     bca_off = bca_va - IMAGE_BASE
                     for b in range(1, num_bases):
                         bcd_va = struct.unpack_from("<I", data, bca_off + b * 4)[0]
@@ -101,7 +106,9 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
                             continue
                         bcd_off = bcd_va - IMAGE_BASE
                         base_td_va = struct.unpack_from("<I", data, bcd_off)[0]
-                        if base_td_va < IMAGE_BASE or base_td_va >= IMAGE_BASE + len(data):
+                        if base_td_va < IMAGE_BASE or base_td_va >= IMAGE_BASE + len(
+                            data
+                        ):
                             continue
                         base_td_off = base_td_va - IMAGE_BASE
                         name_off = base_td_off + 8
@@ -109,19 +116,23 @@ def extract_all(exe_path: str | Path) -> list[RttiEntry]:
                             name_end = name_off
                             while name_end < len(data) and data[name_end] != 0:
                                 name_end += 1
-                            base_name = data[name_off:name_end].decode("ascii", errors="replace")
+                            base_name = data[name_off:name_end].decode(
+                                "ascii", errors="replace"
+                            )
                             if base_name.startswith(".?AV"):
                                 base_classes.append(demangle(base_name))
 
-        results.append(RttiEntry(
-            mangled_name=mangled,
-            demangled_name=demangled,
-            type_descriptor_va=td_va,
-            complete_object_locator_va=col_va,
-            vtable_va=vtable_va,
-            vtable_entry_count=vtable_count,
-            base_classes=base_classes,
-        ))
+        results.append(
+            RttiEntry(
+                mangled_name=mangled,
+                demangled_name=demangled,
+                type_descriptor_va=td_va,
+                complete_object_locator_va=col_va,
+                vtable_va=vtable_va,
+                vtable_entry_count=vtable_count,
+                base_classes=base_classes,
+            )
+        )
         idx = end
 
     return results
@@ -141,7 +152,7 @@ def demangle(mangled: str) -> str:
         at_idx = name.find("@")
         if at_idx > 0:
             template_name = name[:at_idx]
-            rest = name[at_idx + 1:]
+            rest = name[at_idx + 1 :]
             template_params: list[str] = []
             outer_parts: list[str] = []
             depth = 0
@@ -177,30 +188,47 @@ def dump_to_file(exe_path: str | Path, output_path: str | Path) -> int:
     output_path = Path(output_path)
     with output_path.open("w", encoding="utf-8") as f:
         from datetime import datetime
+
         f.write(f"// FFXIV 1.0 (1.23b) RTTI Database - {len(entries)} classes\n")
         f.write(f"// Generated from: {Path(exe_path).name}\n")
         f.write(f"// Date: {datetime.now():%Y-%m-%d %H:%M:%S}\n\n")
-        f.write("// Format: Demangled | VTable VA | VFunc Count | TypeDescriptor VA | Mangled\n")
-        f.write("// -------------------------------------------------------------------------\n")
+        f.write(
+            "// Format: Demangled | VTable VA | VFunc Count | TypeDescriptor VA | Mangled\n"
+        )
+        f.write(
+            "// -------------------------------------------------------------------------\n"
+        )
         for e in sorted(entries, key=lambda x: x.demangled_name):
             vt = f"0x{e.vtable_va:08X}" if e.vtable_va is not None else "          "
-            count = f"{e.vtable_entry_count:>3}" if e.vtable_entry_count is not None else "   "
-            f.write(f"{e.demangled_name:<90} | {vt} | {count} | 0x{e.type_descriptor_va:08X} | {e.mangled_name}\n")
+            count = (
+                f"{e.vtable_entry_count:>3}"
+                if e.vtable_entry_count is not None
+                else "   "
+            )
+            f.write(
+                f"{e.demangled_name:<90} | {vt} | {count} | 0x{e.type_descriptor_va:08X} | {e.mangled_name}\n"
+            )
     return len(entries)
 
 
 def search_classes(exe_path: str | Path, pattern: str) -> list[RttiEntry]:
     pattern_low = pattern.lower()
     return sorted(
-        (e for e in extract_all(exe_path)
-         if pattern_low in e.demangled_name.lower() or pattern_low in e.mangled_name.lower()),
+        (
+            e
+            for e in extract_all(exe_path)
+            if pattern_low in e.demangled_name.lower()
+            or pattern_low in e.mangled_name.lower()
+        ),
         key=lambda x: x.demangled_name,
     )
 
 
 def dump_hierarchy(exe_path: str | Path, class_name: str, writer) -> None:
     entries = extract_all(exe_path)
-    target = next((e for e in entries if class_name.lower() in e.demangled_name.lower()), None)
+    target = next(
+        (e for e in entries if class_name.lower() in e.demangled_name.lower()), None
+    )
     if target is None:
         raise ValueError(f"Class '{class_name}' not found in RTTI")
 
@@ -209,7 +237,11 @@ def dump_hierarchy(exe_path: str | Path, class_name: str, writer) -> None:
         writer.write("// Direct + transitive bases:\n")
         for bc in target.base_classes:
             base_entry = next((e for e in entries if e.demangled_name == bc), None)
-            vt_info = f"vt=0x{base_entry.vtable_va:08X}" if base_entry and base_entry.vtable_va else "no vtable"
+            vt_info = (
+                f"vt=0x{base_entry.vtable_va:08X}"
+                if base_entry and base_entry.vtable_va
+                else "no vtable"
+            )
             writer.write(f"//   <- {bc} ({vt_info})\n")
     else:
         writer.write("// No base classes (root type)\n")
@@ -228,7 +260,9 @@ def dump_hierarchy(exe_path: str | Path, class_name: str, writer) -> None:
 
 def dump_vtable(exe_path: str | Path, class_name: str, output_path: str | Path) -> None:
     entries = extract_all(exe_path)
-    target = next((e for e in entries if class_name.lower() in e.demangled_name.lower()), None)
+    target = next(
+        (e for e in entries if class_name.lower() in e.demangled_name.lower()), None
+    )
     if target is None or target.vtable_va is None:
         raise ValueError(f"Class '{class_name}' not found or has no vtable")
 
@@ -237,7 +271,9 @@ def dump_vtable(exe_path: str | Path, class_name: str, output_path: str | Path) 
     output_path = Path(output_path)
     with output_path.open("w", encoding="utf-8") as f:
         f.write(f"// {target.demangled_name}\n")
-        f.write(f"// VTable: 0x{target.vtable_va:08X} ({target.vtable_entry_count} entries)\n\n")
+        f.write(
+            f"// VTable: 0x{target.vtable_va:08X} ({target.vtable_entry_count} entries)\n\n"
+        )
         for i in range(target.vtable_entry_count or 0):
             addr = struct.unpack_from("<I", data, file_off + i * 4)[0]
             f.write(f"vt[{i:>3}] = 0x{addr:08X}\n")

@@ -115,7 +115,9 @@ class PlayerHpWriterIdentityTest(unittest.TestCase):
     def test_main_skill_evidence_record_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.doc)
         runs = mutated["playerHpWriterIdentity"]["evidenceRuns"]
-        lane4 = next(run for run in runs if run["id"].startswith("lane4-main-skill-native"))
+        lane4 = next(
+            run for run in runs if run["id"].startswith("lane4-main-skill-native")
+        )
         lane4["output"] = "tools/ghidra/logs/wrong.txt"
         self.assertTrue(
             any("evidence record drifted" in finding for finding in validate(mutated))

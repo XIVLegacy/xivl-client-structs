@@ -44,19 +44,31 @@ OUT = REPO_ROOT / "manifests" / "lua_apply_chain_firers.json"
 
 # Add each findings manifest as (path, source tag).
 FINDINGS_SOURCES = [
-    (REPO_ROOT / "manifests" / "receiver_apply_findings_wire_derived.json",
-     "BCS-Y-wire-derived", "manifests\\receiver_apply_findings_wire_derived.json"),
-    (REPO_ROOT / "manifests" / "receiver_apply_findings_remaining.json",
-     "BCS-Y-remaining", "manifests\\receiver_apply_findings_remaining.json"),
-    (REPO_ROOT / "manifests" / "event_condition_consumer_findings.json",
-     "event_condition_consumer_findings", "manifests\\event_condition_consumer_findings.json"),
+    (
+        REPO_ROOT / "manifests" / "receiver_apply_findings_wire_derived.json",
+        "BCS-Y-wire-derived",
+        "manifests\\receiver_apply_findings_wire_derived.json",
+    ),
+    (
+        REPO_ROOT / "manifests" / "receiver_apply_findings_remaining.json",
+        "BCS-Y-remaining",
+        "manifests\\receiver_apply_findings_remaining.json",
+    ),
+    (
+        REPO_ROOT / "manifests" / "event_condition_consumer_findings.json",
+        "event_condition_consumer_findings",
+        "manifests\\event_condition_consumer_findings.json",
+    ),
 ]
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--check", action="store_true",
-                    help="verify the committed output matches a fresh build")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="verify the committed output matches a fresh build",
+    )
     args = ap.parse_args()
 
     rmap = json.load(RECEIVER_MAP.open(encoding="utf-8"))
@@ -81,25 +93,28 @@ def main() -> int:
                     continue
                 seen_keys.add(key)
                 r_meta = receiver_by_name.get(receiver_name, {})
-                firers.append({
-                    "luaName": cb["luaName"],
-                    "opcodeHex": op_hex.lower(),
-                    "opcodeInt": int(op_hex, 16),
-                    "receiverClass": receiver_name,
-                    "receiverNamespace": r_meta.get("namespace"),
-                    "luaActorImplSlot": r_meta.get("luaActorImplSlot"),
-                    "applyHelperVa": helper_va,
-                    "fireSite": cb.get("fireSite"),
-                    "bridgeStatus": cb.get("bridgeStatus"),
-                    "bindingFlavor": cb.get("bindingFlavor", "direct"),
-                    "evidenceBcsy": bcsy_tag,
-                    "evidenceFile": file_ref,
-                })
+                firers.append(
+                    {
+                        "luaName": cb["luaName"],
+                        "opcodeHex": op_hex.lower(),
+                        "opcodeInt": int(op_hex, 16),
+                        "receiverClass": receiver_name,
+                        "receiverNamespace": r_meta.get("namespace"),
+                        "luaActorImplSlot": r_meta.get("luaActorImplSlot"),
+                        "applyHelperVa": helper_va,
+                        "fireSite": cb.get("fireSite"),
+                        "bridgeStatus": cb.get("bridgeStatus"),
+                        "bindingFlavor": cb.get("bindingFlavor", "direct"),
+                        "evidenceBcsy": bcsy_tag,
+                        "evidenceFile": file_ref,
+                    }
+                )
 
     out = {
         "version": "1",
         "gameVersion": "1.23b",
-        "source": [src for _, _, src in FINDINGS_SOURCES] + [
+        "source": [src for _, _, src in FINDINGS_SOURCES]
+        + [
             "manifests\\receiver_opcode_map_inbound.json",
         ],
         "description": (
