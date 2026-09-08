@@ -5,6 +5,9 @@ run from the repository root and use explicit local inputs where shown.
 
 ## Commands
 
+- Check Python lint and formatting with `ruff check --no-cache tools` and
+  `ruff format --check --no-cache tools`.
+
 The following commands are the supported entry points. Other scripts documented
 below are implementation modules.
 

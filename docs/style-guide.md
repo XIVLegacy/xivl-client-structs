@@ -33,6 +33,9 @@ in [naming.md](naming.md).
 - Raise or report specific failures instead of using broad exception handlers.
 - Add type annotations where they clarify manifest records, addresses, paths,
   or public helper contracts.
+- Use Ruff 0.15.21 as the Python formatter and linter. Run `ruff check
+  --no-cache tools` and `ruff format --check --no-cache tools` from the
+  repository root.
 
 ## Ghidra Java
 
