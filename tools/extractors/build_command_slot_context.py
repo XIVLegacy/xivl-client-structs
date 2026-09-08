@@ -69,9 +69,11 @@ def _load_names(path: Path) -> dict[str, str]:
         if len(row["names"]) != 1:
             continue
         name = row["names"][0]
-        if name.startswith("charaWork.command[") or name.startswith(
-            "charaWork.commandCategory["
-        ) or name == "charaWork.commandBorder":
+        if (
+            name.startswith("charaWork.command[")
+            or name.startswith("charaWork.commandCategory[")
+            or name == "charaWork.commandBorder"
+        ):
             names[row["idHex"].lower()] = name
     return names
 
@@ -79,7 +81,7 @@ def _load_names(path: Path) -> dict[str, str]:
 def _array_index(name: str, prefix: str) -> int:
     if not name.startswith(prefix) or not name.endswith("]"):
         raise ValueError(f"malformed indexed property name {name!r}")
-    index = int(name[len(prefix):-1])
+    index = int(name[len(prefix) : -1])
     if not 0 <= index < 64:
         raise ValueError(f"command slot index {index} is outside the Lua array")
     return index
@@ -138,7 +140,9 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         value_hex = row["value_hex"].lower()
         value_bytes = bytes.fromhex(value_hex)
         if len(value_bytes) != width:
-            raise ValueError(f"record {record_index} value hex does not match its width")
+            raise ValueError(
+                f"record {record_index} value hex does not match its width"
+            )
         if int.from_bytes(value_bytes, "little") != value:
             raise ValueError(f"record {record_index} value interpretations disagree")
         property_hash = row["property_hash"].lower()
@@ -242,7 +246,12 @@ def build(captures_repo: Path, client_data_repo: Path) -> dict:
         or border_record_count != EXPECTED_BORDER_RECORDS
         or len(writes) != EXPECTED_RELEVANT_WRITES
         or zero_command_write_count != EXPECTED_ZERO_COMMAND_WRITES
-        or len({(write["capture"], write["laneIndex"], write["sourceActorId"]) for write in writes})
+        or len(
+            {
+                (write["capture"], write["laneIndex"], write["sourceActorId"])
+                for write in writes
+            }
+        )
         != EXPECTED_STATE_PARTITIONS
         or command_indices != EXPECTED_COMMAND_INDICES
         or category_indices != EXPECTED_CATEGORY_INDICES
@@ -406,7 +415,10 @@ def main() -> int:
         document = build(args.captures_repo.resolve(), args.client_data_repo.resolve())
         encoded = json.dumps(document, indent=2, ensure_ascii=True) + "\n"
         if args.check:
-            if not args.out.is_file() or args.out.read_text(encoding="utf-8") != encoded:
+            if (
+                not args.out.is_file()
+                or args.out.read_text(encoding="utf-8") != encoded
+            ):
                 print(f"error: stale command-slot context: {args.out}", file=sys.stderr)
                 return 1
             print("OK: command-slot context matches explicit evidence")
@@ -414,7 +426,13 @@ def main() -> int:
         args.out.write_text(encoded, encoding="utf-8", newline="\n")
         print(f"wrote {len(document['rows'])} command-slot rows to {args.out}")
         return 0
-    except (OSError, ValueError, KeyError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

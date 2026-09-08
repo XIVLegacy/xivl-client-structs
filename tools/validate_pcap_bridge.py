@@ -60,6 +60,7 @@ from pathlib import Path
 try:
     from scapy.all import rdpcap
     from scapy.layers.inet import IP, TCP
+
     _SCAPY_IMPORT_ERROR: Exception | None = None
 except ImportError as exc:  # pragma: no cover - exercised only w/o scapy
     rdpcap = None  # type: ignore[assignment]
@@ -86,14 +87,14 @@ GAME_HEADER_SIZE = struct.calcsize(GAME_HEADER_FMT)
 def reassemble_tcp_streams(pcap_path: Path) -> dict[tuple, bytes]:
     """Return dict keyed by (src_ip, src_port, dst_ip, dst_port) -> reassembled bytes.
 
-    Per-direction reassembly that respects TCP sequence numbers: each
-    segment is placed at offset `(seq - initial_seq)` in a pre-sized byte
-    buffer. This correctly resolves retransmits, zero-window probes, and
-    out-of-order delivery; duplicates that share a TCP SEQ overwrite the
-    same offset rather than double-counting.
+        Per-direction reassembly that respects TCP sequence numbers: each
+        segment is placed at offset `(seq - initial_seq)` in a pre-sized byte
+        buffer. This correctly resolves retransmits, zero-window probes, and
+        out-of-order delivery; duplicates that share a TCP SEQ overwrite the
+        same offset rather than double-counting.
 
-Ported from `xivl-captures/tools/extractors/extract_streams.py:78-112`
-    (`reconstruct()`).
+    Ported from `xivl-captures/tools/extractors/extract_streams.py:78-112`
+        (`reconstruct()`).
     """
     segs: dict[tuple, list[tuple[int, bytes]]] = defaultdict(list)
     pkts = rdpcap(str(pcap_path))
@@ -115,7 +116,7 @@ Ported from `xivl-captures/tools/extractors/extract_streams.py:78-112`
         buf = bytearray(max_end)
         for seq, payload in items:
             offset = seq - initial_seq
-            buf[offset:offset + len(payload)] = payload
+            buf[offset : offset + len(payload)] = payload
         streams[key] = bytes(buf)
     return streams
 
@@ -133,8 +134,9 @@ def parse_base_packets(stream: bytes) -> list[tuple[bool, bytes, int]]:
     n = len(stream)
     while i + BASE_HEADER_SIZE <= n:
         try:
-            (is_auth, is_comp, conn_type, pkt_size,
-             num_sub, ts) = struct.unpack_from(BASE_HEADER_FMT, stream, i)
+            (is_auth, is_comp, conn_type, pkt_size, num_sub, ts) = struct.unpack_from(
+                BASE_HEADER_FMT, stream, i
+            )
         except struct.error:
             break
         valid = (
@@ -147,7 +149,7 @@ def parse_base_packets(stream: bytes) -> list[tuple[bool, bytes, int]]:
         if not valid:
             i += 1
             continue
-        body = stream[i + BASE_HEADER_SIZE: i + pkt_size]
+        body = stream[i + BASE_HEADER_SIZE : i + pkt_size]
         out.append((is_comp == 1, body, pkt_size))
         i += pkt_size
     return out
@@ -160,17 +162,18 @@ def parse_subpackets(body: bytes) -> list[tuple[int, int]]:
     n = len(body)
     while i + SUB_HEADER_SIZE <= n:
         try:
-            (sub_size, sub_type, src_id, tgt_id,
-             unk1) = struct.unpack_from(SUB_HEADER_FMT, body, i)
+            (sub_size, sub_type, src_id, tgt_id, unk1) = struct.unpack_from(
+                SUB_HEADER_FMT, body, i
+            )
         except struct.error:
             break
         if sub_size < SUB_HEADER_SIZE or i + sub_size > n:
             break
         opcode = None
         if sub_type == 0x03 and i + SUB_HEADER_SIZE + GAME_HEADER_SIZE <= n:
-            (_unk4, opcode, _unk5, _ts,
-             _unk6) = struct.unpack_from(
-                 GAME_HEADER_FMT, body, i + SUB_HEADER_SIZE)
+            (_unk4, opcode, _unk5, _ts, _unk6) = struct.unpack_from(
+                GAME_HEADER_FMT, body, i + SUB_HEADER_SIZE
+            )
         out.append((sub_type, opcode))
         i += sub_size
     return out
@@ -246,15 +249,20 @@ def _inbound_opcodes(rcv_map: dict) -> set[int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument(
-        "--captures-dir", type=Path, required=True,
+        "--captures-dir",
+        type=Path,
+        required=True,
         help="path to the pcap capture corpus to scan (operator-supplied; "
-             "no default). Expects *.pcapng files.")
+        "no default). Expects *.pcapng files.",
+    )
     ap.add_argument(
-        "--write", action="store_true",
+        "--write",
+        action="store_true",
         help="regenerate the committed manifests/pcap_validation.json "
-             "sidecar; default is validate-only (no file writes). Its numbers "
-             "are referenced across downstream ledgers - regenerate only when "
-             "deliberately refreshing the corpus scan.")
+        "sidecar; default is validate-only (no file writes). Its numbers "
+        "are referenced across downstream ledgers - regenerate only when "
+        "deliberately refreshing the corpus scan.",
+    )
     args = ap.parse_args()
 
     if _SCAPY_IMPORT_ERROR is not None:
@@ -268,7 +276,9 @@ def main() -> int:
     pcap_dir_source = "(unrecorded corpus provenance - set manually)"
     if OUT_JSON.is_file():
         try:
-            prev_source = json.load(OUT_JSON.open(encoding="utf-8")).get("sourceCorpusDir")
+            prev_source = json.load(OUT_JSON.open(encoding="utf-8")).get(
+                "sourceCorpusDir"
+            )
             if prev_source:
                 pcap_dir_source = prev_source
         except (OSError, json.JSONDecodeError):
@@ -281,13 +291,18 @@ def main() -> int:
         opc_str = b.get("writingOpcode") or b.get("opcode")
         if opc_str:
             bridge_opcodes.add(int(opc_str, 16))
-    print(f"validating {len(bridge_opcodes)} distinct bridge opcodes: "
-          f"{[f'0x{o:04x}' for o in sorted(bridge_opcodes)]}")
+    print(
+        f"validating {len(bridge_opcodes)} distinct bridge opcodes: "
+        f"{[f'0x{o:04x}' for o in sorted(bridge_opcodes)]}"
+    )
 
     inbound_opcodes = _inbound_opcodes(json.load(OPCODE_MAP.open(encoding="utf-8")))
     if not inbound_opcodes:
-        print(f"ERROR: no inbound opcodes parsed from {OPCODE_MAP.name}; "
-              "the receiver-map schema has changed", file=sys.stderr)
+        print(
+            f"ERROR: no inbound opcodes parsed from {OPCODE_MAP.name}; "
+            "the receiver-map schema has changed",
+            file=sys.stderr,
+        )
         return 2
 
     if not pcap_dir.is_dir():
@@ -319,8 +334,10 @@ def main() -> int:
 
     failed = [n for n, r in per_pcap.items() if r.get("error")]
     if len(failed) == len(pcaps):
-        print(f"ERROR: all {len(pcaps)} captures failed to parse; "
-              "nothing was validated", file=sys.stderr)
+        print(
+            f"ERROR: all {len(pcaps)} captures failed to parse; nothing was validated",
+            file=sys.stderr,
+        )
         return 1
 
     bridge_observed = {o for o in bridge_opcodes if o in s2c_global}
@@ -333,9 +350,11 @@ def main() -> int:
         cnt = s2c_global.get(o, 0)
         wits = s2c_witnesses.get(o, [])
         mark = "OBSERVED" if cnt else "MISSING "
-        print(f"  [{mark}] 0x{o:04x}  count={cnt:4d}  "
-              f"captures={len(wits)}/{len(pcaps)}  "
-              f"sample={','.join(wits[:3])}")
+        print(
+            f"  [{mark}] 0x{o:04x}  count={cnt:4d}  "
+            f"captures={len(wits)}/{len(pcaps)}  "
+            f"sample={','.join(wits[:3])}"
+        )
 
     print()
     print("=== Summary ===")
@@ -365,8 +384,7 @@ def main() -> int:
         "s2cOpcodeHistogram": {f"0x{o:04x}": c for o, c in sorted(s2c_global.items())},
         "c2sOpcodeHistogram": {f"0x{o:04x}": c for o, c in sorted(c2s_global.items())},
         "bridgeWitnesses": {
-            f"0x{o:04x}": sorted(set(s2c_witnesses[o]))
-            for o in sorted(bridge_observed)
+            f"0x{o:04x}": sorted(set(s2c_witnesses[o])) for o in sorted(bridge_observed)
         },
         "perPcap": {
             name: {
@@ -385,12 +403,15 @@ def main() -> int:
     if args.write:
         OUT_JSON.write_text(
             json.dumps(out, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8", newline="\n",
+            encoding="utf-8",
+            newline="\n",
         )
         print(f"\nwrote {OUT_JSON}")
         print(f"  sourceCorpusDir kept as: {pcap_dir_source}")
-        print("  (curated provenance - edit it manually if this run used a "
-              "different corpus)")
+        print(
+            "  (curated provenance - edit it manually if this run used a "
+            "different corpus)"
+        )
     else:
         print(f"\n(validate-only; pass --write to regenerate {OUT_JSON.name})")
     return 0

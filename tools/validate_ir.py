@@ -72,8 +72,7 @@ class Report:
 def i1_ir_schema(ir, report: Report) -> None:
     schema = _schema_check.load_schema(IR_SCHEMA_PATH)
     failures = _schema_check.validate(ir, schema)
-    report.record("I1  ir_catalog.json conforms to schemas/ir-v1.schema.json",
-                  failures)
+    report.record("I1  ir_catalog.json conforms to schemas/ir-v1.schema.json", failures)
     note = _schema_check.crosscheck(ir, schema, validation_errors=failures)
     if note:
         print(f"note: schema interpreter cross-check disagreement: {note}")
@@ -83,7 +82,8 @@ def i2_overlay_schema(overlay, report: Report) -> None:
     schema = _schema_check.load_schema(OVERLAY_SCHEMA_PATH)
     report.record(
         "I2  ir_overlay.json conforms to schemas/ir-overlay-v1.schema.json",
-        _schema_check.validate(overlay, schema))
+        _schema_check.validate(overlay, schema),
+    )
 
 
 def i3_deferred_dimensions(ir, report: Report) -> None:
@@ -94,36 +94,40 @@ def i3_deferred_dimensions(ir, report: Report) -> None:
     if dims["bases"]["status"] == "deferred":
         for t in ir["types"]:
             if t["bases"] != {"status": "deferred", "owner": dims["bases"]["owner"]}:
-                failures.append(f"{t['id']}: bases populated while the dimension "
-                                "is deferred")
+                failures.append(
+                    f"{t['id']}: bases populated while the dimension is deferred"
+                )
     if dims["vtables"]["status"] == "deferred":
         for t in ir["types"]:
-            if t["vtable"] != {"status": "deferred",
-                               "owner": dims["vtables"]["owner"]}:
-                failures.append(f"{t['id']}: vtable populated while the dimension "
-                                "is deferred")
+            if t["vtable"] != {"status": "deferred", "owner": dims["vtables"]["owner"]}:
+                failures.append(
+                    f"{t['id']}: vtable populated while the dimension is deferred"
+                )
     if dims["alignment"]["status"] == "declared-unknown":
         for t in ir["types"]:
             if t["alignment"]["kind"] != "unknown":
-                failures.append(f"{t['id']}: alignment is "
-                                f"{t['alignment']['kind']!r} while the dimension "
-                                "is declared-unknown; move the dimension status "
-                                "in the same change")
+                failures.append(
+                    f"{t['id']}: alignment is "
+                    f"{t['alignment']['kind']!r} while the dimension "
+                    "is declared-unknown; move the dimension status "
+                    "in the same change"
+                )
     if dims["payloadRelationships"]["status"] == "deferred":
         for key in ("relationships", "payloads", "opcodes"):
             if key in ir:
-                failures.append(f"top-level {key!r} present while "
-                                "payloadRelationships is deferred")
+                failures.append(
+                    f"top-level {key!r} present while payloadRelationships is deferred"
+                )
     report.record("I3  deferred and unknown dimensions carry no values", failures)
 
 
-def i4_identifier_preservation(ir, symbols_doc, structs_doc,
-                               report: Report) -> None:
+def i4_identifier_preservation(ir, symbols_doc, structs_doc, report: Report) -> None:
     """BCS ids are the citation surface other repos promote against."""
     failures: list[str] = []
     for label, ir_key, source, source_key in (
-            ("BCS-S", "types", structs_doc, "structs"),
-            ("BCS-Y", "symbols", symbols_doc, "symbols")):
+        ("BCS-S", "types", structs_doc, "structs"),
+        ("BCS-Y", "symbols", symbols_doc, "symbols"),
+    ):
         ir_ids = [e["id"] for e in ir[ir_key]]
         source_ids = {e["id"] for e in source[source_key]}
         if len(ir_ids) != len(set(ir_ids)):
@@ -131,20 +135,19 @@ def i4_identifier_preservation(ir, symbols_doc, structs_doc,
         missing = source_ids - set(ir_ids)
         added = set(ir_ids) - source_ids
         for i in sorted(missing):
-            failures.append(f"{label}: {i} present in the catalog, dropped "
-                            "from the IR")
+            failures.append(f"{label}: {i} present in the catalog, dropped from the IR")
         for i in sorted(added):
-            failures.append(f"{label}: {i} present in the IR, absent from the "
-                            "catalog")
+            failures.append(f"{label}: {i} present in the IR, absent from the catalog")
     report.record("I4  every BCS identifier survives unrenumbered", failures)
 
 
-def i5_confidence_preservation(ir, symbols_doc, structs_doc,
-                               report: Report) -> None:
+def i5_confidence_preservation(ir, symbols_doc, structs_doc, report: Report) -> None:
     """Evidence tiers and reverification state are copied unchanged."""
     failures: list[str] = []
-    for ir_key, source, source_key in (("types", structs_doc, "structs"),
-                                       ("symbols", symbols_doc, "symbols")):
+    for ir_key, source, source_key in (
+        ("types", structs_doc, "structs"),
+        ("symbols", symbols_doc, "symbols"),
+    ):
         source_rows = {e["id"]: e for e in source[source_key]}
         for entry in ir[ir_key]:
             source_entry = source_rows.get(entry["id"])
@@ -152,17 +155,18 @@ def i5_confidence_preservation(ir, symbols_doc, structs_doc,
                 continue
             expected = source_entry["confidence"]
             if entry["confidence"] != expected:
-                failures.append(f"{entry['id']}: confidence "
-                                f"{entry['confidence']!r} != catalog "
-                                f"{expected!r}")
+                failures.append(
+                    f"{entry['id']}: confidence "
+                    f"{entry['confidence']!r} != catalog "
+                    f"{expected!r}"
+                )
             for key in ("needsReverify", "reverifyMethod"):
                 if entry.get(key) != source_entry.get(key):
                     failures.append(
                         f"{entry['id']}: {key} {entry.get(key)!r} != catalog "
                         f"{source_entry.get(key)!r}"
                     )
-    report.record("I5  confidence and reverify state are copied unchanged",
-                  failures)
+    report.record("I5  confidence and reverify state are copied unchanged", failures)
 
 
 def i7_citation_round_trip(ir, symbols_doc, structs_doc, report: Report) -> None:
@@ -189,18 +193,18 @@ def i7_citation_round_trip(ir, symbols_doc, structs_doc, report: Report) -> None
                     continue
                 ir_pairs.add((entry["id"], citation["raw"]))
 
-    for owner, ref in sorted(source_pairs - ir_pairs)[:SAMPLE * 4]:
+    for owner, ref in sorted(source_pairs - ir_pairs)[: SAMPLE * 4]:
         failures.append(f"{owner}: sourceRef {ref!r} lost in normalization")
-    for owner, ref in sorted(ir_pairs - source_pairs)[:SAMPLE * 4]:
+    for owner, ref in sorted(ir_pairs - source_pairs)[: SAMPLE * 4]:
         failures.append(f"{owner}: IR invents sourceRef {ref!r}")
 
     for citation in ir["citations"]:
         owners = {owner for owner, ref in source_pairs if ref == citation["raw"]}
         if set(citation["referencedBy"]) != owners:
-            failures.append(f"{citation['id']}: referencedBy disagrees with the "
-                            "catalogs")
-    report.record("I7  every sourceRef round-trips through a citation record",
-                  failures)
+            failures.append(
+                f"{citation['id']}: referencedBy disagrees with the catalogs"
+            )
+    report.record("I7  every sourceRef round-trips through a citation record", failures)
 
 
 def i8_raw_fidelity(ir, symbols_doc, structs_doc, report: Report) -> None:
@@ -212,8 +216,10 @@ def i8_raw_fidelity(ir, symbols_doc, structs_doc, report: Report) -> None:
         if source is None:
             continue
         if t["size"]["raw"] != source["size"]:
-            failures.append(f"{t['id']}: size raw {t['size']['raw']!r} != "
-                            f"catalog {source['size']!r}")
+            failures.append(
+                f"{t['id']}: size raw {t['size']['raw']!r} != "
+                f"catalog {source['size']!r}"
+            )
         if t["namespace"]["raw"] != source["namespace"]:
             failures.append(f"{t['id']}: namespace raw differs from the catalog")
         by_name: dict[str, list[dict]] = {}
@@ -223,11 +229,16 @@ def i8_raw_fidelity(ir, symbols_doc, structs_doc, report: Report) -> None:
             if member["kind"] != "field":
                 continue
             candidates = by_name.get(member["name"], [])
-            if not any(c["offset"] == member["offset"]["raw"]
-                       and c["size"] == member["size"]["raw"]
-                       and c["type"] == member["type"] for c in candidates):
-                failures.append(f"{t['id']}.{member['name']}: no catalog field "
-                                "with this offset, size and type")
+            if not any(
+                c["offset"] == member["offset"]["raw"]
+                and c["size"] == member["size"]["raw"]
+                and c["type"] == member["type"]
+                for c in candidates
+            ):
+                failures.append(
+                    f"{t['id']}.{member['name']}: no catalog field "
+                    "with this offset, size and type"
+                )
 
     symbols_by_id = {s["id"]: s for s in symbols_doc["symbols"]}
     for sym in ir["symbols"]:
@@ -235,13 +246,14 @@ def i8_raw_fidelity(ir, symbols_doc, structs_doc, report: Report) -> None:
         if source is None:
             continue
         if sym["address"]["raw"] != source["address"]:
-            failures.append(f"{sym['id']}: address raw "
-                            f"{sym['address']['raw']!r} != catalog "
-                            f"{source['address']!r}")
+            failures.append(
+                f"{sym['id']}: address raw "
+                f"{sym['address']['raw']!r} != catalog "
+                f"{source['address']!r}"
+            )
         if sym["name"] != source["name"] or sym["kind"] != source["kind"]:
             failures.append(f"{sym['id']}: name or kind differs from the catalog")
-    report.record("I8  every parsed value preserves its raw catalog string",
-                  failures)
+    report.record("I8  every parsed value preserves its raw catalog string", failures)
 
 
 def i9_layout_arithmetic(ir, report: Report) -> None:
@@ -253,18 +265,25 @@ def i9_layout_arithmetic(ir, report: Report) -> None:
         span_total += len(spans)
         span_bytes = sum(m["size"]["bytes"] for m in spans)
         if span_bytes != layout["unknownBytes"]:
-            failures.append(f"{t['id']}: unknown spans total {span_bytes} but "
-                            f"layout says {layout['unknownBytes']}")
+            failures.append(
+                f"{t['id']}: unknown spans total {span_bytes} but "
+                f"layout says {layout['unknownBytes']}"
+            )
         if layout["status"] == "modeled":
             declared = layout["declaredBytes"]
             if layout["coveredBytes"] + layout["unknownBytes"] != declared:
-                failures.append(f"{t['id']}: covered {layout['coveredBytes']} + "
-                                f"unknown {layout['unknownBytes']} != declared "
-                                f"{declared}")
+                failures.append(
+                    f"{t['id']}: covered {layout['coveredBytes']} + "
+                    f"unknown {layout['unknownBytes']} != declared "
+                    f"{declared}"
+                )
         if layout["status"] == "unmodeled" and spans:
             failures.append(f"{t['id']}: unmodeled layout with derived spans")
-        starts = [m["offset"]["bytes"] for m in t["members"]
-                  if m["kind"] == "field" and m["offset"]["kind"] == "exact"]
+        starts = [
+            m["offset"]["bytes"]
+            for m in t["members"]
+            if m["kind"] == "field" and m["offset"]["kind"] == "exact"
+        ]
         for span in spans:
             begin = span["offset"]["bytes"]
             end = begin + span["size"]["bytes"]
@@ -272,12 +291,14 @@ def i9_layout_arithmetic(ir, report: Report) -> None:
                 if begin <= start < end:
                     failures.append(
                         f"{t['id']}: unknown span 0x{begin:X}..0x{end:X} covers a "
-                        f"field declared at 0x{start:X}")
+                        f"field declared at 0x{start:X}"
+                    )
     if span_total != ir["counts"]["unknownSpans"]:
-        failures.append(f"counts.unknownSpans {ir['counts']['unknownSpans']} != "
-                        f"{span_total} spans present")
-    report.record("I9  layout arithmetic closes and no span covers a field",
-                  failures)
+        failures.append(
+            f"counts.unknownSpans {ir['counts']['unknownSpans']} != "
+            f"{span_total} spans present"
+        )
+    report.record("I9  layout arithmetic closes and no span covers a field", failures)
 
 
 def i10_overlay_reach(ir, overlay, report: Report) -> None:
@@ -291,12 +312,16 @@ def i10_overlay_reach(ir, overlay, report: Report) -> None:
         has_entry = t["id"] in alignment_overlay
         claims_overlay = t["alignment"].get("source") == "overlay"
         if has_entry != claims_overlay:
-            failures.append(f"{t['id']}: alignment overlay entry "
-                            f"{'present' if has_entry else 'absent'} but the IR "
-                            f"{'claims' if claims_overlay else 'does not claim'} "
-                            "an overlay source")
-        if has_entry and t["alignment"].get("bytes") != alignment_overlay[
-                t["id"]]["bytes"]:
+            failures.append(
+                f"{t['id']}: alignment overlay entry "
+                f"{'present' if has_entry else 'absent'} but the IR "
+                f"{'claims' if claims_overlay else 'does not claim'} "
+                "an overlay source"
+            )
+        if (
+            has_entry
+            and t["alignment"].get("bytes") != alignment_overlay[t["id"]]["bytes"]
+        ):
             failures.append(f"{t['id']}: alignment bytes differ from the overlay")
         for member in t["members"]:
             if member["kind"] != "unknown-span":
@@ -309,14 +334,15 @@ def i10_overlay_reach(ir, overlay, report: Report) -> None:
             if has_span != claims:
                 failures.append(f"{key}: span annotation and overlay disagree")
             if not has_span and member["annotation"]["kind"] != "unmapped":
-                failures.append(f"{key}: annotated {member['annotation']['kind']!r} "
-                                "with no overlay entry behind it")
+                failures.append(
+                    f"{key}: annotated {member['annotation']['kind']!r} "
+                    "with no overlay entry behind it"
+                )
     for key in sorted(set(span_overlay) - seen_spans):
         failures.append(f"{key}: overlay annotates a span the build does not derive")
     for tid in sorted(set(alignment_overlay) - {t["id"] for t in ir["types"]}):
         failures.append(f"{tid}: overlay aligns a type the IR does not hold")
-    report.record("I10 every overlay entry reaches exactly one IR value",
-                  failures)
+    report.record("I10 every overlay entry reaches exactly one IR value", failures)
 
 
 def i11_relationship_symbols(ir, symbols_doc, report: Report) -> None:
@@ -332,29 +358,34 @@ def i11_relationship_symbols(ir, symbols_doc, report: Report) -> None:
         for binding in opcode.get("c2sBindings", []):
             for bcs_id in binding.get("symbols", []):
                 if bcs_id not in known:
-                    failures.append(f"{opcode['id']}: c2s binding "
-                                    f"{binding['luaApi']} cites unknown "
-                                    f"{bcs_id}")
+                    failures.append(
+                        f"{opcode['id']}: c2s binding "
+                        f"{binding['luaApi']} cites unknown "
+                        f"{bcs_id}"
+                    )
                 elif bcs_id not in opcode["symbols"]:
-                    failures.append(f"{opcode['id']}: c2s binding "
-                                    f"{binding['luaApi']} cites {bcs_id}, "
-                                    "which the opcode does not carry")
+                    failures.append(
+                        f"{opcode['id']}: c2s binding "
+                        f"{binding['luaApi']} cites {bcs_id}, "
+                        "which the opcode does not carry"
+                    )
     for receiver in rel["receivers"]:
         for role, ids in receiver["symbolsByRole"].items():
             for bcs_id in ids:
                 if bcs_id not in known:
-                    failures.append(f"receiver {receiver['name']}: {role} cites "
-                                    f"unknown {bcs_id}")
+                    failures.append(
+                        f"receiver {receiver['name']}: {role} cites unknown {bcs_id}"
+                    )
     for operation in rel["operations"]:
         for bcs_id in operation["symbols"]:
             if bcs_id not in known:
-                failures.append(f"operation {operation['retailClass']}: cites "
-                                f"unknown {bcs_id}")
+                failures.append(
+                    f"operation {operation['retailClass']}: cites unknown {bcs_id}"
+                )
     for binding in rel["luaBindings"]:
         for bcs_id in binding["symbols"]:
             if bcs_id not in known:
-                failures.append(f"lua {binding['luaName']}: cites unknown "
-                                f"{bcs_id}")
+                failures.append(f"lua {binding['luaName']}: cites unknown {bcs_id}")
     report.record("I11 every relationship edge cites a known symbol", failures)
 
 
@@ -367,20 +398,25 @@ def i12_relationship_closure(ir, report: Report) -> None:
         failures.append("duplicate opcode ids")
 
     for kind, records, name_key, back in (
-            ("receiver", rel["receivers"], "name", "receivers"),
-            ("operation", rel["operations"], "retailClass", "operations"),
-            ("lua", rel["luaBindings"], "luaName", "luaBindings")):
+        ("receiver", rel["receivers"], "name", "receivers"),
+        ("operation", rel["operations"], "retailClass", "operations"),
+        ("lua", rel["luaBindings"], "luaName", "luaBindings"),
+    ):
         for record in records:
             for ref in record["opcodes"]:
                 oid = ref["id"] if isinstance(ref, dict) else ref
                 opcode = by_id.get(oid)
                 if opcode is None:
-                    failures.append(f"{kind} {record[name_key]}: names {oid}, "
-                                    "which the opcode set does not hold")
+                    failures.append(
+                        f"{kind} {record[name_key]}: names {oid}, "
+                        "which the opcode set does not hold"
+                    )
                     continue
                 if record[name_key] not in opcode[back]:
-                    failures.append(f"{kind} {record[name_key]}: claims {oid} "
-                                    "but the opcode does not name it back")
+                    failures.append(
+                        f"{kind} {record[name_key]}: claims {oid} "
+                        "but the opcode does not name it back"
+                    )
 
     # Check the reverse direction so every named edge has an owning record.
     known_names = {
@@ -392,22 +428,32 @@ def i12_relationship_closure(ir, report: Report) -> None:
         for key, names in known_names.items():
             for name in opcode[key]:
                 if name not in names:
-                    failures.append(f"{opcode['id']}: names {key[:-1]} "
-                                    f"{name!r}, which that set does not hold")
+                    failures.append(
+                        f"{opcode['id']}: names {key[:-1]} "
+                        f"{name!r}, which that set does not hold"
+                    )
                     continue
-                records = {"receivers": rel["receivers"],
-                           "operations": rel["operations"],
-                           "luaBindings": rel["luaBindings"]}[key]
-                name_key = {"receivers": "name", "operations": "retailClass",
-                            "luaBindings": "luaName"}[key]
+                records = {
+                    "receivers": rel["receivers"],
+                    "operations": rel["operations"],
+                    "luaBindings": rel["luaBindings"],
+                }[key]
+                name_key = {
+                    "receivers": "name",
+                    "operations": "retailClass",
+                    "luaBindings": "luaName",
+                }[key]
                 owners = [r for r in records if r[name_key] == name]
-                if not any(opcode["id"] == (ref["id"] if isinstance(ref, dict)
-                                            else ref)
-                           for r in owners for ref in r["opcodes"]):
-                    failures.append(f"{opcode['id']}: names {name!r} but no "
-                                    f"{key[:-1]} record claims it back")
-    report.record("I12 every relationship reference resolves both ways",
-                  failures)
+                if not any(
+                    opcode["id"] == (ref["id"] if isinstance(ref, dict) else ref)
+                    for r in owners
+                    for ref in r["opcodes"]
+                ):
+                    failures.append(
+                        f"{opcode['id']}: names {name!r} but no "
+                        f"{key[:-1]} record claims it back"
+                    )
+    report.record("I12 every relationship reference resolves both ways", failures)
 
 
 def i13_opcode_identity(ir, report: Report) -> None:
@@ -416,24 +462,24 @@ def i13_opcode_identity(ir, report: Report) -> None:
     counted = {"s2c": 0, "c2s": 0}
     for opcode in ir["relationships"]["opcodes"]:
         if opcode["id"] != f"{opcode['direction']}:{opcode['hex']}":
-            failures.append(f"{opcode['id']}: id disagrees with direction and "
-                            "hex")
+            failures.append(f"{opcode['id']}: id disagrees with direction and hex")
         if opcode["int"] != int(opcode["hex"], 16):
-            failures.append(f"{opcode['id']}: int {opcode['int']} != "
-                            f"int({opcode['hex']!r}, 16)")
+            failures.append(
+                f"{opcode['id']}: int {opcode['int']} != int({opcode['hex']!r}, 16)"
+            )
         counted[opcode["direction"]] += 1
         if not opcode["sources"]:
             failures.append(f"{opcode['id']}: no source named it")
     for direction, count in counted.items():
         if summary[direction] != count:
-            failures.append(f"summary.{direction} {summary[direction]} != "
-                            f"{count} present")
+            failures.append(
+                f"summary.{direction} {summary[direction]} != {count} present"
+            )
     if summary["opcodes"] != len(ir["relationships"]["opcodes"]):
         failures.append("summary.opcodes disagrees with the opcode list")
     if ir["counts"]["opcodes"] != summary["opcodes"]:
         failures.append("counts.opcodes disagrees with the relationship summary")
-    report.record("I13 opcode identity and the summary agree with the rows",
-                  failures)
+    report.record("I13 opcode identity and the summary agree with the rows", failures)
 
 
 def i14_payload_type_bindings_deferred(ir, report: Report) -> None:
@@ -442,8 +488,10 @@ def i14_payload_type_bindings_deferred(ir, report: Report) -> None:
     if ir["dimensions"]["payloadTypeBindings"]["status"] == "deferred":
         for t in ir["types"]:
             if "opcodes" in t or "relationships" in t:
-                failures.append(f"{t['id']}: carries an opcode binding while "
-                                "payloadTypeBindings is deferred")
+                failures.append(
+                    f"{t['id']}: carries an opcode binding while "
+                    "payloadTypeBindings is deferred"
+                )
     report.record("I14 payload type bindings stay deferred", failures)
 
 

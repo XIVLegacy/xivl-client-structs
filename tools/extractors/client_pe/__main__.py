@@ -15,13 +15,21 @@ Usage:
 Options:
   --exe <path>        required path to ffxivgame.exe
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 from . import IMAGE_BASE, TEXT_VA_END, TEXT_VA_START
-from . import import_table_dumper, rtti_dumper, string_extractor, struct_analyzer, vtable_analyzer
+from . import (
+    import_table_dumper,
+    rtti_dumper,
+    string_extractor,
+    struct_analyzer,
+    vtable_analyzer,
+)
+
 
 def main(argv: list[str]) -> int:
     if not argv or argv[0] in ("--help", "-h"):
@@ -35,7 +43,7 @@ def main(argv: list[str]) -> int:
         idx = args.index("--exe")
         if idx + 1 < len(args):
             exe_path = args[idx + 1]
-            del args[idx:idx + 2]
+            del args[idx : idx + 2]
 
     if exe_path is None:
         print("ERROR: --exe <path> is required")
@@ -57,7 +65,9 @@ def main(argv: list[str]) -> int:
         entries = rtti_dumper.extract_all(exe_path)
         with_vt = sum(1 for e in entries if e.vtable_va is not None)
         with_bases = sum(1 for e in entries if e.base_classes)
-        print(f" done! {count} classes ({with_vt} with vtables, {with_bases} with inheritance info)")
+        print(
+            f" done! {count} classes ({with_vt} with vtables, {with_bases} with inheritance info)"
+        )
         print(f"  -> {out}")
 
     if cmd in ("--imports", "--all"):
@@ -83,7 +93,9 @@ def main(argv: list[str]) -> int:
         class_name = args[1]
         print(f"Analyzing vtable functions for '{class_name}'...")
         entries = rtti_dumper.extract_all(exe_path)
-        target = next((e for e in entries if class_name.lower() in e.demangled_name.lower()), None)
+        target = next(
+            (e for e in entries if class_name.lower() in e.demangled_name.lower()), None
+        )
         if target is None or target.vtable_va is None:
             print(f"  ERROR: Class '{class_name}' not found or has no vtable")
             return 1
@@ -107,7 +119,9 @@ def main(argv: list[str]) -> int:
             print(f"\n  -> {out}")
         except ValueError as e:
             print(f"  ERROR: {e}")
-            print("  (Class may be abstract, template-only, or use a non-standard init pattern)")
+            print(
+                "  (Class may be abstract, template-only, or use a non-standard init pattern)"
+            )
             return 1
 
     if cmd == "--hierarchy" and len(args) > 1:
@@ -139,7 +153,10 @@ def main(argv: list[str]) -> int:
         print(f"Extracting string references for '{class_name}'...")
         try:
             entries = rtti_dumper.extract_all(exe_path)
-            target = next((e for e in entries if class_name.lower() in e.demangled_name.lower()), None)
+            target = next(
+                (e for e in entries if class_name.lower() in e.demangled_name.lower()),
+                None,
+            )
             if target is None:
                 raise ValueError(f"Class '{class_name}' not found in RTTI")
             exe = Path(exe_path).read_bytes()
@@ -149,11 +166,14 @@ def main(argv: list[str]) -> int:
             strings = string_extractor.extract_from_function(exe, ctor_va)
             if target.vtable_va is not None and target.vtable_entry_count:
                 import struct as _struct
+
                 vt_off = target.vtable_va - IMAGE_BASE
                 for i in range(min(target.vtable_entry_count, 50)):
                     func_va = _struct.unpack_from("<I", exe, vt_off + i * 4)[0]
                     if TEXT_VA_START <= func_va < TEXT_VA_END:
-                        strings.extend(string_extractor.extract_from_function(exe, func_va, 2048))
+                        strings.extend(
+                            string_extractor.extract_from_function(exe, func_va, 2048)
+                        )
 
             seen: dict[str, string_extractor.StringRef] = {}
             for s in strings:
@@ -167,11 +187,13 @@ def main(argv: list[str]) -> int:
                 f.write(f"// Constructor: 0x{ctor_va:08X}\n")
                 f.write(f"// {len(unique)} unique strings found\n\n")
                 for s in unique:
-                    f.write(f"0x{s.instruction_va:08X}  -> 0x{s.string_va:08X}  \"{s.value}\"\n")
+                    f.write(
+                        f'0x{s.instruction_va:08X}  -> 0x{s.string_va:08X}  "{s.value}"\n'
+                    )
 
             print(f"Found {len(unique)} unique strings")
             for s in unique[:30]:
-                print(f"  0x{s.instruction_va:08X}  \"{s.value}\"")
+                print(f'  0x{s.instruction_va:08X}  "{s.value}"')
             if len(unique) > 30:
                 print(f"  ... and {len(unique) - 30} more")
             print(f"\n  -> {out}")
@@ -188,7 +210,7 @@ def main(argv: list[str]) -> int:
         for x in xrefs:
             func_start = struct_analyzer.find_func_start(exe, x.instruction_va)
             func_info = f" (in func 0x{func_start:08X})" if func_start else ""
-            print(f"  0x{x.instruction_va:08X}{func_info}  \"{x.value}\"")
+            print(f'  0x{x.instruction_va:08X}{func_info}  "{x.value}"')
 
     print("\nAnalysis complete.")
     return 0

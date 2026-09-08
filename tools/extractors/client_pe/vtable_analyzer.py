@@ -8,6 +8,7 @@ For each vtable slot:
 
 Uses byte-pattern matching only (no disassembly library).
 """
+
 from __future__ import annotations
 
 import struct
@@ -27,7 +28,9 @@ class VtableFunction:
     signature: str | None
 
 
-def analyze_vtable(exe_bytes: bytes, vtable_va: int, entry_count: int) -> list[VtableFunction]:
+def analyze_vtable(
+    exe_bytes: bytes, vtable_va: int, entry_count: int
+) -> list[VtableFunction]:
     results: list[VtableFunction] = []
     vt_off = vtable_va - IMAGE_BASE
 
@@ -80,7 +83,11 @@ def is_pure_virtual_thunk(exe_bytes: bytes, func_off: int) -> bool:
 def count_stack_parameters(exe_bytes: bytes, func_off: int) -> int:
     if func_off < 0 or func_off >= len(exe_bytes) - 5:
         return 0
-    if exe_bytes[func_off] != 0x55 or exe_bytes[func_off + 1] != 0x8B or exe_bytes[func_off + 2] != 0xEC:
+    if (
+        exe_bytes[func_off] != 0x55
+        or exe_bytes[func_off + 1] != 0x8B
+        or exe_bytes[func_off + 2] != 0xEC
+    ):
         return 0
     for i in range(3, 0x5000):
         off = func_off + i
@@ -95,7 +102,9 @@ def count_stack_parameters(exe_bytes: bytes, func_off: int) -> int:
     return 0
 
 
-def build_signature(exe_bytes: bytes, func_off: int, func_va: int, stack_param_bytes: int) -> str:
+def build_signature(
+    exe_bytes: bytes, func_off: int, func_va: int, stack_param_bytes: int
+) -> str:
     parts = [f"0x{func_va:08X}"]
     size = estimate_function_size(exe_bytes, func_off)
     if size > 0:
@@ -111,10 +120,14 @@ def dump_vtable_analysis(exe_bytes: bytes, entry: RttiEntry, writer) -> None:
         return
     funcs = analyze_vtable(exe_bytes, entry.vtable_va, entry.vtable_entry_count)
     writer.write(f"// {entry.demangled_name}\n")
-    writer.write(f"// VTable: 0x{entry.vtable_va:08X} ({entry.vtable_entry_count} entries)\n\n")
+    writer.write(
+        f"// VTable: 0x{entry.vtable_va:08X} ({entry.vtable_entry_count} entries)\n\n"
+    )
     pure_count = sum(1 for f in funcs if f.is_pure_virtual)
     stub_count = sum(1 for f in funcs if f.is_stub)
-    writer.write(f"// Summary: {len(funcs)} total, {pure_count} pure virtual, {stub_count} stubs\n\n")
+    writer.write(
+        f"// Summary: {len(funcs)} total, {pure_count} pure virtual, {stub_count} stubs\n\n"
+    )
     for f in funcs:
         flags = []
         if f.is_pure_virtual:

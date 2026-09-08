@@ -53,7 +53,10 @@ WORKLOG_DATE_RE = re.compile(r"_(?:19|20)\d{2}-\d{2}-\d{2}(?=:)")
 
 ROLE_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("ctor", re.compile(r"::ctor\b|::ctor_|_ctor_", re.IGNORECASE)),
-    ("dtor", re.compile(r"::dtor\b|::dtor_|::nondelete_dtor|::deleting_dtor", re.IGNORECASE)),
+    (
+        "dtor",
+        re.compile(r"::dtor\b|::dtor_|::nondelete_dtor|::deleting_dtor", re.IGNORECASE),
+    ),
     ("apply", re.compile(r"::apply\b|::apply_|::Receive\b|::Receive_", re.IGNORECASE)),
     ("slot1", re.compile(r"::slot1\b|::slot1_", re.IGNORECASE)),
     ("dispatchWrapper", re.compile(r"::dispatch_wrapper|ApplyWrapper", re.IGNORECASE)),
@@ -143,16 +146,21 @@ def _emit_receiver(r: dict, bcs_index: dict[str, dict[str, list[dict]]]) -> dict
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--check", action="store_true",
-                    help="verify the committed output matches a fresh build")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="verify the committed output matches a fresh build",
+    )
     args = ap.parse_args()
 
     if not SYMBOLS_JSON.is_file():
         print(f"error: {SYMBOLS_JSON} missing", file=sys.stderr)
         return 1
     if not CLIENT_RECV_JSON.is_file():
-        print(f"error: {CLIENT_RECV_JSON} missing - run tools/refresh_vendor.py to refresh it",
-              file=sys.stderr)
+        print(
+            f"error: {CLIENT_RECV_JSON} missing - run tools/refresh_vendor.py to refresh it",
+            file=sys.stderr,
+        )
         return 1
 
     symbols_manifest = load_symbols(SYMBOLS_JSON)
@@ -198,8 +206,11 @@ def main() -> int:
     }
 
     if not OVERLAY_JSON.is_file():
-        print(f"error: {OVERLAY_JSON} missing - the curated overlay is a "
-              "committed input, not optional", file=sys.stderr)
+        print(
+            f"error: {OVERLAY_JSON} missing - the curated overlay is a "
+            "committed input, not optional",
+            file=sys.stderr,
+        )
         return 1
     with OVERLAY_JSON.open(encoding="utf-8") as fov:
         overlay = json.load(fov)
@@ -207,15 +218,19 @@ def main() -> int:
         if k == "_comment":
             continue
         if k in out:
-            print(f"error: overlay key {k!r} collides with a generated key",
-                  file=sys.stderr)
+            print(
+                f"error: overlay key {k!r} collides with a generated key",
+                file=sys.stderr,
+            )
             return 1
         out[k] = v
 
     rendered = json.dumps(out, indent=2, ensure_ascii=False) + "\n"
     if args.check:
         if not OUT_JSON.is_file() or OUT_JSON.read_text(encoding="utf-8") != rendered:
-            print(f"error: {OUT_JSON.name} does not match a fresh build", file=sys.stderr)
+            print(
+                f"error: {OUT_JSON.name} does not match a fresh build", file=sys.stderr
+            )
             return 1
         print(f"OK: {OUT_JSON.name} matches a fresh build")
         return 0
@@ -230,11 +245,15 @@ def main() -> int:
     print(f"  candidates:          {len(candidate)}")
     print(f"  total:               {len(receivers)}")
 
-    unmatched = [r["name"] for r in inbound + client_internal
-                 if r["name"] not in bcs_index]
+    unmatched = [
+        r["name"] for r in inbound + client_internal if r["name"] not in bcs_index
+    ]
     if unmatched:
-        print(f"warn: {len(unmatched)} confirmed/client-internal receivers "
-              f"have no BCS-Y cross-ref: {unmatched}", file=sys.stderr)
+        print(
+            f"warn: {len(unmatched)} confirmed/client-internal receivers "
+            f"have no BCS-Y cross-ref: {unmatched}",
+            file=sys.stderr,
+        )
     return 0
 
 

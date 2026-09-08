@@ -48,12 +48,20 @@ def _fails(
     retail_inputs: dict | None = None,
     symbols: dict | None = None,
 ) -> bool:
-    observation_path = _write(directory / "observations.json", observations or _load(FIXTURE))
+    observation_path = _write(
+        directory / "observations.json", observations or _load(FIXTURE)
+    )
     expected_path = _write(directory / "expected.json", expected or _load(CHECK))
-    retail_path = _write(directory / "retail.json", retail_inputs or _load(RETAIL_INPUTS))
-    symbols_path = _write(directory / "symbols.json", symbols or _symbols_io.load_symbols())
+    retail_path = _write(
+        directory / "retail.json", retail_inputs or _load(RETAIL_INPUTS)
+    )
+    symbols_path = _write(
+        directory / "symbols.json", symbols or _symbols_io.load_symbols()
+    )
     try:
-        return bool(verifier.verify(observation_path, expected_path, retail_path, symbols_path))
+        return bool(
+            verifier.verify(observation_path, expected_path, retail_path, symbols_path)
+        )
     except (OSError, KeyError, TypeError, ValueError, verifier.VerificationError):
         return True
 
@@ -61,7 +69,10 @@ def _fails(
 def _run_cli(path: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(VERIFY), "--input", str(path)],
-        cwd=REPO, capture_output=True, text=True, check=False,
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
@@ -71,9 +82,7 @@ def main() -> int:
     shared_actions = [
         line.strip().removeprefix("uses: ")
         for line in workflow.splitlines()
-        if line.strip().startswith(
-            "uses: XIVLegacy/xivl-tools/.github/actions/"
-        )
+        if line.strip().startswith("uses: XIVLegacy/xivl-tools/.github/actions/")
     ]
     shared_revisions = {action.rsplit("@", 1)[-1] for action in shared_actions}
     shared_revision = next(iter(shared_revisions), "")
@@ -85,16 +94,16 @@ def main() -> int:
         and all(char in "0123456789abcdef" for char in shared_revision)
         and sum("/fetch-retail-input@" in action for action in shared_actions) == 1
         and sum("/setup-retail-toolchain@" in action for action in shared_actions) == 1
-        and sum(
-            "/finalize-retail-attestation@" in action for action in shared_actions
-        ) == 1,
+        and sum("/finalize-retail-attestation@" in action for action in shared_actions)
+        == 1,
     )
     check(
         "shared fetch locks the local executable grant",
         "commit: aeb52f6dbde95a793ee6d52be28de9f28a885b15" in workflow
         and "path: ffxivgame.exe" in workflow
         and 'size: "15996808"' in workflow
-        and "sha256: 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9" in workflow
+        and "sha256: 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+        in workflow
         and "token: ${{ secrets.RETAIL_INPUTS_TOKEN }}" in workflow
         and "RETAIL_INPUTS_REPOSITORY" not in workflow,
     )
@@ -113,13 +122,15 @@ def main() -> int:
         "local verifier remains the analysis and retained boundary",
         workflow.count("tools/verify_retail_actor_rebuild.py") >= 2
         and 'verify_retail_actor_rebuild.py --input "${observations}"' in workflow
-        and '"${RUNNER_TEMP}/retail-evidence-private/missing-observations.json"' in workflow,
+        and '"${RUNNER_TEMP}/retail-evidence-private/missing-observations.json"'
+        in workflow,
     )
     check(
         "retained validation follows shared finalization",
         "id: finalize" in workflow
         and "id: retained" in workflow
-        and "if: always() && !cancelled() && steps.finalize.outcome == 'success'" in workflow
+        and "if: always() && !cancelled() && steps.finalize.outcome == 'success'"
+        in workflow
         and "hashFiles" not in workflow,
     )
     check(
@@ -131,8 +142,7 @@ def main() -> int:
         "final failure preserves every retail gate",
         "steps.fetch.outcome != 'success' || steps.toolchain.outcome != 'success'"
         " || steps.analysis.outcome != 'success' || steps.finalize.outcome != 'success'"
-        " || steps.retained.outcome != 'success'"
-        in workflow,
+        " || steps.retained.outcome != 'success'" in workflow,
     )
     check(
         "artifact upload relies on shared action defaults",
@@ -146,12 +156,20 @@ def main() -> int:
         directory = Path(raw)
         check("canonical fixture passes", not _fails(directory, baseline))
 
-        call_indices = [index for index, row in enumerate(baseline["observations"])
-                        if row["kind"] == "call"]
-        field_indices = [index for index, row in enumerate(baseline["observations"])
-                         if row["kind"] != "call"]
-        check("contract has four calls and four fields",
-              len(call_indices) == 4 and len(field_indices) == 4)
+        call_indices = [
+            index
+            for index, row in enumerate(baseline["observations"])
+            if row["kind"] == "call"
+        ]
+        field_indices = [
+            index
+            for index, row in enumerate(baseline["observations"])
+            if row["kind"] != "call"
+        ]
+        check(
+            "contract has four calls and four fields",
+            len(call_indices) == 4 and len(field_indices) == 4,
+        )
 
         for number, index in enumerate(call_indices, start=1):
             mutated = copy.deepcopy(baseline)
@@ -179,10 +197,14 @@ def main() -> int:
         mutated["observations"].pop()
         check("missing observation fails", _fails(directory, mutated))
         mutated = copy.deepcopy(baseline)
-        mutated["observations"].append({
-            "kind": "call", "instruction_va": "0x00400000",
-            "owner_va": "0x00400000", "target_va": "0x00400000",
-        })
+        mutated["observations"].append(
+            {
+                "kind": "call",
+                "instruction_va": "0x00400000",
+                "owner_va": "0x00400000",
+                "target_va": "0x00400000",
+            }
+        )
         check("extra observation fails", _fails(directory, mutated))
         mutated = copy.deepcopy(baseline)
         mutated["observations"].append(copy.deepcopy(mutated["observations"][0]))
@@ -226,17 +248,31 @@ def main() -> int:
         check("unsupported schema keyword fails closed", unsupported_rejected)
         public_commit = verifier._git_commit()
         check("test checkout has a public commit", public_commit is not None)
-        check("git-less checkout has no public commit", verifier._git_commit(directory) is None)
+        check(
+            "git-less checkout has no public commit",
+            verifier._git_commit(directory) is None,
+        )
         attestation = verifier.build_attestation("pass", public_commit)
-        check("passing attestation satisfies schema", not _schema_check.validate(attestation, schema))
+        check(
+            "passing attestation satisfies schema",
+            not _schema_check.validate(attestation, schema),
+        )
         attestation["observations"] = []
-        check("unexpected attestation field fails", bool(_schema_check.validate(attestation, schema)))
+        check(
+            "unexpected attestation field fails",
+            bool(_schema_check.validate(attestation, schema)),
+        )
         zero_failure = verifier.build_attestation("fail", None)
-        check("zero commit is limited to failed attestations",
-              zero_failure["publicRepositoryCommit"] == verifier.ZERO_COMMIT
-              and not _schema_check.validate(zero_failure, schema)
-              and bool(_schema_check.validate(
-                  {**zero_failure, "result": {"status": "pass"}}, schema)))
+        check(
+            "zero commit is limited to failed attestations",
+            zero_failure["publicRepositoryCommit"] == verifier.ZERO_COMMIT
+            and not _schema_check.validate(zero_failure, schema)
+            and bool(
+                _schema_check.validate(
+                    {**zero_failure, "result": {"status": "pass"}}, schema
+                )
+            ),
+        )
         try:
             verifier.build_attestation("pass", None)
         except verifier.VerificationError:
@@ -254,17 +290,28 @@ def main() -> int:
         except json.JSONDecodeError:
             output = {}
         check("failure invocation exits nonzero", result.returncode != 0)
-        check("failure output is sanitized", set(output) == {
-            "schemaVersion", "publicRepositoryCommit", "approvedInputSha256",
-            "toolVersions", "check", "result",
-        } and output.get("result", {}).get("status") == "fail"
-              and "observations" not in result.stdout)
+        check(
+            "failure output is sanitized",
+            set(output)
+            == {
+                "schemaVersion",
+                "publicRepositoryCommit",
+                "approvedInputSha256",
+                "toolVersions",
+                "check",
+                "result",
+            }
+            and output.get("result", {}).get("status") == "fail"
+            and "observations" not in result.stdout,
+        )
 
         first = _run_cli(FIXTURE)
         second = _run_cli(FIXTURE)
-        check("repeated passing output is byte-identical",
-              first.returncode == second.returncode == 0
-              and first.stdout.encode() == second.stdout.encode())
+        check(
+            "repeated passing output is byte-identical",
+            first.returncode == second.returncode == 0
+            and first.stdout.encode() == second.stdout.encode(),
+        )
 
     if FAILED:
         print("FAIL: " + "; ".join(FAILED))

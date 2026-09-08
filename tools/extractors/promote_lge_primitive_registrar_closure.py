@@ -87,7 +87,10 @@ ADDITIONS = [
         "kind": "function",
         "address": "0x00753470",
         "confidence": "confirmed",
-        "sourceRefs": [SOURCE, "manifests/control_class_napi_field_access_recursive.json"],
+        "sourceRefs": [
+            SOURCE,
+            "manifests/control_class_napi_field_access_recursive.json",
+        ],
         "notes": "Per-name registrar for _isInstanceOf. Its sole direct caller is Global registrar owner FUN_007582E0. It passes registered handler FUN_006FF210 to FUN_00726E00 and associates exact string VA 0x00FD8314 before finalization.",
     },
     {
@@ -95,7 +98,10 @@ ADDITIONS = [
         "kind": "function",
         "address": "0x006FF210",
         "confidence": "confirmed",
-        "sourceRefs": [SOURCE, "manifests/control_class_napi_field_access_recursive.json"],
+        "sourceRefs": [
+            SOURCE,
+            "manifests/control_class_napi_field_access_recursive.json",
+        ],
         "notes": "Registered handler for Global _isInstanceOf, stored by registrar FUN_00753470 and therefore reached indirectly with no recorded direct callers. It rejects a first argument whose tag is not 4, extracts its LuaControl pointer plus a requested class name, returns true for ActorBaseClass, uses MSVC __RTDynamicCast for CharaBaseClass, PlayerBaseClass, NpcBaseClass, AreaBaseClass, DirectorBaseClass, and DesktopWidget, and otherwise checks the object's LGE class-registry chain by name through FUN_00CC7210. It packages the result as a Lua boolean and has no network-send or callback-fire path.",
     },
 ]
@@ -144,7 +150,10 @@ def main() -> int:
         expected = copy.deepcopy(current)
         ids = apply_updates(expected)
         if current != expected:
-            print("error: LGE primitive registrar closure is not promoted", file=sys.stderr)
+            print(
+                "error: LGE primitive registrar closure is not promoted",
+                file=sys.stderr,
+            )
             return 1
         print(f"OK: LGE primitive registrar closure is current ({', '.join(ids)})")
         return 0

@@ -58,16 +58,23 @@ def render(doc: dict) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--check", action="store_true",
-                    help="verify the committed index matches the dump; write nothing")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="verify the committed index matches the dump; write nothing",
+    )
     args = ap.parse_args()
 
     if not DUMP_PATH.exists():
-        print(f"FATAL: {DUMP_PATH.name} is not in this checkout. It is local "
-              "evidence: regenerate it with tools/extractors/client_pe against your "
-              "own client install.", file=sys.stderr)
+        print(
+            f"FATAL: {DUMP_PATH.name} is not in this checkout. It is local "
+            "evidence: regenerate it with tools/extractors/client_pe against your "
+            "own client install.",
+            file=sys.stderr,
+        )
         return 2
 
     doc = build_index()
@@ -79,11 +86,16 @@ def main() -> int:
         with INDEX_PATH.open(encoding="utf-8", newline="") as f:
             committed = f.read()
         if committed != render(doc):
-            print(f"FAIL: {INDEX_PATH.name} is not what this tool produces "
-                  "from the current dump; rerun without --check", file=sys.stderr)
+            print(
+                f"FAIL: {INDEX_PATH.name} is not what this tool produces "
+                "from the current dump; rerun without --check",
+                file=sys.stderr,
+            )
             return 1
-        print(f"OK: {INDEX_PATH.name} matches the dump "
-              f"({doc['vftableCount']} vftable VAs)")
+        print(
+            f"OK: {INDEX_PATH.name} matches the dump "
+            f"({doc['vftableCount']} vftable VAs)"
+        )
         return 0
 
     # newline="" keeps the LF the repo commits (.gitattributes eol=lf). The

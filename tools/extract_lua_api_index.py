@@ -38,9 +38,7 @@ LUA_NAME_NOTES_RE = re.compile(
     r"(?P<bare>_[a-z]+[A-Z][A-Za-z0-9_]{2,})"
 )
 
-LUA_NAME_IN_SYMNAME_RE = re.compile(
-    r"_slot\d+_([a-z][A-Za-z0-9]*)(?:_FUN_|_fn_|$)"
-)
+LUA_NAME_IN_SYMNAME_RE = re.compile(r"_slot\d+_([a-z][A-Za-z0-9]*)(?:_FUN_|_fn_|$)")
 
 # Only LuaActorImpl vftable names contribute to opcode binding; other vftables use orthogonal slots.
 LUA_NAME_IN_LUAACTORIMPL_RE = re.compile(
@@ -48,10 +46,25 @@ LUA_NAME_IN_LUAACTORIMPL_RE = re.compile(
 )
 
 # Bare prose prefixes are excluded to avoid false-positive Lua method names.
-PROSE_PREFIX_NOISE = frozenset({
-    "_on", "_set", "_get", "_is", "_has", "_will", "_did", "_init",
-    "_update", "_create", "_destroy", "_load", "_save", "_can", "_should",
-})
+PROSE_PREFIX_NOISE = frozenset(
+    {
+        "_on",
+        "_set",
+        "_get",
+        "_is",
+        "_has",
+        "_will",
+        "_did",
+        "_init",
+        "_update",
+        "_create",
+        "_destroy",
+        "_load",
+        "_save",
+        "_can",
+        "_should",
+    }
+)
 
 SLOT_RE = re.compile(r"\bslot\s+(\d+)\b", re.IGNORECASE)
 
@@ -143,8 +156,11 @@ def build_index(symbols: list[dict]) -> tuple[dict[str, list[dict]], int]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--check", action="store_true",
-                    help="verify the committed output matches a fresh build")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="verify the committed output matches a fresh build",
+    )
     args = ap.parse_args()
 
     if not SYMBOLS_JSON.is_file():
@@ -156,8 +172,7 @@ def main() -> int:
     print(f"scanned {len(symbols)} symbols from {SYMBOLS_JSON.name}")
 
     index, total_refs = build_index(symbols)
-    print(f"found {len(index)} distinct Lua API names "
-          f"({total_refs} total references)")
+    print(f"found {len(index)} distinct Lua API names ({total_refs} total references)")
 
     out: dict = {
         "version": "1",
@@ -171,7 +186,9 @@ def main() -> int:
     rendered = json.dumps(out, indent=2, ensure_ascii=False) + "\n"
     if args.check:
         if not OUT_JSON.is_file() or OUT_JSON.read_text(encoding="utf-8") != rendered:
-            print(f"error: {OUT_JSON.name} does not match a fresh build", file=sys.stderr)
+            print(
+                f"error: {OUT_JSON.name} does not match a fresh build", file=sys.stderr
+            )
             return 1
         print(f"OK: {OUT_JSON.name} matches a fresh build")
         return 0

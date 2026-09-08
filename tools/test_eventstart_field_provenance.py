@@ -15,16 +15,26 @@ def load_inputs() -> tuple[dict, dict, dict]:
     def read(name: str) -> dict:
         return json.loads((ROOT / "manifests" / name).read_text(encoding="utf-8"))
 
-    return read("combat_command_emission.json"), read("guildleve_lifecycle.json"), read("structs.json")
+    return (
+        read("combat_command_emission.json"),
+        read("guildleve_lifecycle.json"),
+        read("structs.json"),
+    )
 
 
 def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]:
     errors: list[str] = []
     fields = {item["offset"].lower(): item for item in combat["wireLayout"]["fields"]}
     provenance = combat.get("applicationFieldProvenance", {})
-    struct = next((item for item in structs["structs"] if item.get("id") == "BCS-S-0034"), None)
-    struct_fields = {item["offset"].lower(): item for item in struct["fields"]} if struct else {}
-    journal_fields = guildleve.get("journalCommandLuaTail", {}).get("eventStartApplicationFields", {})
+    struct = next(
+        (item for item in structs["structs"] if item.get("id") == "BCS-S-0034"), None
+    )
+    struct_fields = (
+        {item["offset"].lower(): item for item in struct["fields"]} if struct else {}
+    )
+    journal_fields = guildleve.get("journalCommandLuaTail", {}).get(
+        "eventStartApplicationFields", {}
+    )
 
     expected_names = {
         "0x08": "commandControlBindingSid",
@@ -42,7 +52,14 @@ def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]
     if offset8.get("sourceCategory") != "another source":
         errors.append("+0x08 source category")
     path8 = offset8.get("path", "")
-    for token in ("FUN_0070A010", "FUN_00CC73B0", "FUN_00CD7A30", "FUN_00CC7030", "FUN_00895860", "Event::Base+0x08"):
+    for token in (
+        "FUN_0070A010",
+        "FUN_00CC73B0",
+        "FUN_00CD7A30",
+        "FUN_00CC7030",
+        "FUN_00895860",
+        "Event::Base+0x08",
+    ):
         if token not in path8:
             errors.append(f"+0x08 path missing {token}")
     if "+0x70" not in path8:
@@ -50,7 +67,16 @@ def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]
 
     writer_domain = offset8.get("writerDomain", {})
     writer = writer_domain.get("writer", "")
-    for token in ("FUN_00CE1CC0", "BCS-Y-2162", "+0x70", "unconditionally stores", "FUN_00D03680", "BCS-Y-2167", "Only a successful check", "+0x7e"):
+    for token in (
+        "FUN_00CE1CC0",
+        "BCS-Y-2162",
+        "+0x70",
+        "unconditionally stores",
+        "FUN_00D03680",
+        "BCS-Y-2167",
+        "Only a successful check",
+        "+0x7e",
+    ):
         if token not in writer:
             errors.append(f"+0x70 writer missing {token}")
 
@@ -92,9 +118,15 @@ def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]
     ):
         if token not in allocation:
             errors.append(f"SID domain missing {token}")
-    if writer_domain.get("defaultValue") != "DAT_0130C778 = 0xe0000000 null SID sentinel (BCS-Y-0724)":
+    if (
+        writer_domain.get("defaultValue")
+        != "DAT_0130C778 = 0xe0000000 null SID sentinel (BCS-Y-0724)"
+    ):
         errors.append("SID default")
-    if writer_domain.get("evidence") != "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt":
+    if (
+        writer_domain.get("evidence")
+        != "tools/ghidra/logs/lane2_eventstart-binding-sid-domain.txt"
+    ):
         errors.append("SID archive locator")
 
     calibration8 = offset8.get("wireCalibration", {})
@@ -114,12 +146,19 @@ def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]
         item.get("hostRawDword"): (item.get("networkOrder"), item.get("count"))
         for item in calibration8.get("observedValues", [])
     }
-    if actual_values != expected_values or sum(count for _, count in actual_values.values()) != 60:
+    if (
+        actual_values != expected_values
+        or sum(count for _, count in actual_values.values()) != 60
+    ):
         errors.append("SID observed domain")
     if calibration8.get("sampleCount") != 60:
         errors.append("SID sample count")
     representation = calibration8.get("representation", "")
-    for token in ("without a byte transform", "network-order presentation", "host/raw dwords"):
+    for token in (
+        "without a byte transform",
+        "network-order presentation",
+        "host/raw dwords",
+    ):
         if token not in representation:
             errors.append(f"SID representation missing {token}")
     expected_reconciliation = {
@@ -129,15 +168,32 @@ def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]
         "TeleportCommand: 4 occurrences, one each at 0x24400000, 0x25800000, 0x26800000, and 0x33800000",
         "PlaceDrivenCommand: 3 occurrences, SID 0x25800000",
     }
-    if set(calibration8.get("missingGameCommandReconciliation", [])) != expected_reconciliation:
+    if (
+        set(calibration8.get("missingGameCommandReconciliation", []))
+        != expected_reconciliation
+    ):
         errors.append("SID missing-gameCommand reconciliation")
     constraints = calibration8.get("constraints", "")
-    for token in ("12 static-owner occurrences", "TeleportCommand uses four SIDs", "neither a stable command-class discriminator nor row-derived data", "not command flags"):
+    for token in (
+        "12 static-owner occurrences",
+        "TeleportCommand uses four SIDs",
+        "neither a stable command-class discriminator nor row-derived data",
+        "not command flags",
+    ):
         if token not in constraints:
             errors.append(f"SID reconciliation missing {token}")
 
     boundary8 = offset8.get("semanticBoundary", "")
-    for token in ("runtime Lua control/class SID-domain binding token", "stores it before validation", "registry validity is conditional", "not a stable enum", "flags field", "gameCommand row", "journal ID", "server policy"):
+    for token in (
+        "runtime Lua control/class SID-domain binding token",
+        "stores it before validation",
+        "registry validity is conditional",
+        "not a stable enum",
+        "flags field",
+        "gameCommand row",
+        "journal ID",
+        "server policy",
+    ):
         if token not in boundary8:
             errors.append(f"SID classification missing {token}")
 
@@ -149,15 +205,23 @@ def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]
         if token not in pathc:
             errors.append(f"+0x0c path missing {token}")
     crc_calibration = offsetc.get("wireCalibration", "")
-    if "59 of the 60" not in crc_calibration or "invite_join_party.pcapng" not in crc_calibration:
+    if (
+        "59 of the 60" not in crc_calibration
+        or "invite_join_party.pcapng" not in crc_calibration
+    ):
         errors.append("+0x0c producer boundary")
 
-    if "SID-domain binding token at entry +0x70" not in journal_fields.get("offset0x08", ""):
+    if "SID-domain binding token at entry +0x70" not in journal_fields.get(
+        "offset0x08", ""
+    ):
         errors.append("guildleve +0x08 reconciliation")
     crc_text = journal_fields.get("offset0x0c", "")
     if "CRC32" not in crc_text or "128-byte tail" not in crc_text:
         errors.append("guildleve +0x0c reconciliation")
-    if provenance.get("evidence") != "tools/ghidra/logs/lane2_eventstart-field-provenance.txt":
+    if (
+        provenance.get("evidence")
+        != "tools/ghidra/logs/lane2_eventstart-field-provenance.txt"
+    ):
         errors.append("archive locator")
     return errors
 
@@ -167,64 +231,113 @@ class EventStartFieldProvenanceTests(unittest.TestCase):
         self.combat, self.guildleve, self.structs = load_inputs()
 
     def test_repository_contract(self) -> None:
-        self.assertEqual([], validate_contract(self.combat, self.guildleve, self.structs))
+        self.assertEqual(
+            [], validate_contract(self.combat, self.guildleve, self.structs)
+        )
 
     def test_binding_source_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
         mutated["applicationFieldProvenance"]["offset0x08"]["path"] = "gameCommand row"
-        self.assertIn("+0x08 path missing FUN_0070A010", validate_contract(mutated, self.guildleve, self.structs))
+        self.assertIn(
+            "+0x08 path missing FUN_0070A010",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_binding_writer_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
-        mutated["applicationFieldProvenance"]["offset0x08"]["writerDomain"]["writer"] = "FUN_00CE1CD0 writes +0x74"
+        mutated["applicationFieldProvenance"]["offset0x08"]["writerDomain"][
+            "writer"
+        ] = "FUN_00CE1CD0 writes +0x74"
         errors = validate_contract(mutated, self.guildleve, self.structs)
         self.assertIn("+0x70 writer missing FUN_00CE1CC0", errors)
         self.assertIn("+0x70 writer missing +0x70", errors)
 
     def test_binding_caller_set_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
-        mutated["applicationFieldProvenance"]["offset0x08"]["writerDomain"]["directCallers"].pop()
-        self.assertIn("+0x70 direct caller set", validate_contract(mutated, self.guildleve, self.structs))
+        mutated["applicationFieldProvenance"]["offset0x08"]["writerDomain"][
+            "directCallers"
+        ].pop()
+        self.assertIn(
+            "+0x70 direct caller set",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_binding_caller_origin_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
-        callers = mutated["applicationFieldProvenance"]["offset0x08"]["writerDomain"]["directCallers"]
-        next(item for item in callers if item["function"] == "FUN_00CDDE20")["valueOrigin"] = "opaque"
-        self.assertIn("+0x70 FUN_00CDDE20 origin missing 0x000fffff", validate_contract(mutated, self.guildleve, self.structs))
+        callers = mutated["applicationFieldProvenance"]["offset0x08"]["writerDomain"][
+            "directCallers"
+        ]
+        next(item for item in callers if item["function"] == "FUN_00CDDE20")[
+            "valueOrigin"
+        ] = "opaque"
+        self.assertIn(
+            "+0x70 FUN_00CDDE20 origin missing 0x000fffff",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_sid_allocator_domain_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
         domain = mutated["applicationFieldProvenance"]["offset0x08"]["writerDomain"]
         domain["allocationAndValidation"] = ["stable enum table"]
-        self.assertIn("SID domain missing FUN_00D038C0", validate_contract(mutated, self.guildleve, self.structs))
+        self.assertIn(
+            "SID domain missing FUN_00D038C0",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_sid_observed_value_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
-        observed = mutated["applicationFieldProvenance"]["offset0x08"]["wireCalibration"]["observedValues"]
+        observed = mutated["applicationFieldProvenance"]["offset0x08"][
+            "wireCalibration"
+        ]["observedValues"]
         observed[0]["hostRawDword"] = "0x24400001"
-        self.assertIn("SID observed domain", validate_contract(mutated, self.guildleve, self.structs))
+        self.assertIn(
+            "SID observed domain",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_sid_network_order_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
-        observed = mutated["applicationFieldProvenance"]["offset0x08"]["wireCalibration"]["observedValues"]
+        observed = mutated["applicationFieldProvenance"]["offset0x08"][
+            "wireCalibration"
+        ]["observedValues"]
         observed[0]["networkOrder"] = "0x2440"
-        self.assertIn("SID observed domain", validate_contract(mutated, self.guildleve, self.structs))
+        self.assertIn(
+            "SID observed domain",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_sid_classification_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
-        mutated["applicationFieldProvenance"]["offset0x08"]["classification"] = "stable_enum"
-        self.assertIn("+0x08 classification", validate_contract(mutated, self.guildleve, self.structs))
+        mutated["applicationFieldProvenance"]["offset0x08"]["classification"] = (
+            "stable_enum"
+        )
+        self.assertIn(
+            "+0x08 classification",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_crc_length_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.combat)
-        mutated["applicationFieldProvenance"]["offset0x0c"]["path"] = mutated["applicationFieldProvenance"]["offset0x0c"]["path"].replace("0x80-byte", "0x40-byte")
-        self.assertIn("+0x0c path missing 0x80-byte", validate_contract(mutated, self.guildleve, self.structs))
+        mutated["applicationFieldProvenance"]["offset0x0c"]["path"] = mutated[
+            "applicationFieldProvenance"
+        ]["offset0x0c"]["path"].replace("0x80-byte", "0x40-byte")
+        self.assertIn(
+            "+0x0c path missing 0x80-byte",
+            validate_contract(mutated, self.guildleve, self.structs),
+        )
 
     def test_struct_name_mutation_is_rejected(self) -> None:
         mutated = copy.deepcopy(self.structs)
-        struct = next(item for item in mutated["structs"] if item.get("id") == "BCS-S-0034")
-        next(item for item in struct["fields"] if item["offset"].lower() == "0x0c")["name"] = "unknown"
-        self.assertIn("BCS-S-0034 0x0c name", validate_contract(self.combat, self.guildleve, mutated))
+        struct = next(
+            item for item in mutated["structs"] if item.get("id") == "BCS-S-0034"
+        )
+        next(item for item in struct["fields"] if item["offset"].lower() == "0x0c")[
+            "name"
+        ] = "unknown"
+        self.assertIn(
+            "BCS-S-0034 0x0c name",
+            validate_contract(self.combat, self.guildleve, mutated),
+        )
 
 
 if __name__ == "__main__":

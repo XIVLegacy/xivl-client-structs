@@ -87,8 +87,10 @@ class ReferenceExportTests(unittest.TestCase):
         lines = complete_report()
         del lines[10:14]
         lines[9] = "Defined-data matches: 0"
-        lines[-1] = ("COMPLETE: FindReferences defined_strings=4 queries=1 "
-                     "matches=0 references=0")
+        lines[-1] = (
+            "COMPLETE: FindReferences defined_strings=4 queries=1 "
+            "matches=0 references=0"
+        )
         self.verify(lines)
 
     def test_reference_order_and_summary_drift_fail(self) -> None:
@@ -118,11 +120,17 @@ class ReferenceExportTests(unittest.TestCase):
     def test_exporter_has_bounded_partial_and_atomic_paths(self) -> None:
         source = JAVA.read_text(encoding="utf-8")
         for required in (
-            "MAX_TARGETS = 256", "MAX_QUERIES = 256",
-            "HARD_MAX_MATCHES = 4096", "HARD_MAX_REFERENCES = 100000",
-            "totalMatches == maxMatches", "totalReferences == maxReferences",
-            "Status.CANCELLED", "Status.PARTIAL", "Status.FAILED",
-            "StandardCopyOption.ATOMIC_MOVE", "monitor.checkCancelled()",
+            "MAX_TARGETS = 256",
+            "MAX_QUERIES = 256",
+            "HARD_MAX_MATCHES = 4096",
+            "HARD_MAX_REFERENCES = 100000",
+            "totalMatches == maxMatches",
+            "totalReferences == maxReferences",
+            "Status.CANCELLED",
+            "Status.PARTIAL",
+            "Status.FAILED",
+            "StandardCopyOption.ATOMIC_MOVE",
+            "monitor.checkCancelled()",
         ):
             self.assertIn(required, source)
 
@@ -135,8 +143,10 @@ class ReferenceExportTests(unittest.TestCase):
             'STRING QUERY: "\\ue000"',
             "Defined-data matches: 0",
         ]
-        lines[-1] = ("COMPLETE: FindReferences defined_strings=4 queries=2 "
-                     "matches=0 references=0")
+        lines[-1] = (
+            "COMPLETE: FindReferences defined_strings=4 queries=2 "
+            "matches=0 references=0"
+        )
         self.verify(lines)
 
     def test_impossible_export_counts_fail(self) -> None:

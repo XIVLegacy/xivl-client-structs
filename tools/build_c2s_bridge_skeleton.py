@@ -33,6 +33,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 from _regen_guard import add_force_arg, check_regen_safe  # noqa: E402
+
 OUTBOUND_MAP = REPO_ROOT / "manifests" / "operation_opcode_map_outbound.json"
 PCAP_VALIDATION = REPO_ROOT / "manifests" / "pcap_validation.json"
 LUA_INDEX = REPO_ROOT / "manifests" / "lua_api_index.json"
@@ -47,9 +48,13 @@ def tokens_from_anchor(anchor: str | None) -> list[str]:
     base = base.replace("Opcode", "").replace("Packet", "").replace("Handler", "")
     base = base.replace("OP_RX_", "").replace("OP_TX_", "")
     parts = re.findall(r"[A-Z][a-z]+|[A-Z]+(?=[A-Z][a-z]|\d|$)|\d+|[a-z]+", base)
-    return [p.lower() for p in parts if p and p.lower() not in (
-        "opcode", "packet", "handler", "request", "response", "map", "client"
-    )]
+    return [
+        p.lower()
+        for p in parts
+        if p
+        and p.lower()
+        not in ("opcode", "packet", "handler", "request", "response", "map", "client")
+    ]
 
 
 def main() -> int:
@@ -65,8 +70,7 @@ def main() -> int:
     op_classes = outbound.get("operationClasses", [])
     observed_c2s = pcap.get("c2sOpcodeHistogram", {})
     c2s_per_pcap = {
-        name: data.get("c2s", {})
-        for name, data in pcap.get("perPcap", {}).items()
+        name: data.get("c2s", {}) for name, data in pcap.get("perPcap", {}).items()
     }
 
     witnesses: dict[int, list[str]] = defaultdict(list)
@@ -90,7 +94,9 @@ def main() -> int:
     lua_name_tokens: dict[str, set[str]] = {}
     for name in lua_names:
         stripped = name.lstrip("_")
-        parts = re.findall(r"[A-Z][a-z]+|[A-Z]+(?=[A-Z][a-z]|\d|$)|\d+|[a-z]+", stripped)
+        parts = re.findall(
+            r"[A-Z][a-z]+|[A-Z]+(?=[A-Z][a-z]|\d|$)|\d+|[a-z]+", stripped
+        )
         lua_name_tokens[name] = {p.lower() for p in parts if p}
 
     def candidate_lua_apis(anchor_tokens: list[str]) -> list[str]:
@@ -120,28 +126,32 @@ def main() -> int:
         anchor_d = entry.get("decompAnchor")
         tokens = list(set(tokens_from_anchor(anchor_b) + tokens_from_anchor(anchor_d)))
         pcap_count = observed_c2s.get(op_hex, 0)
-        rows.append({
-            "opcode": op,
-            "opcodeHex": op_hex,
-            "name": entry.get("name"),
-            "bucket": entry.get("bucket"),
-            "implementationAnchor": anchor_b,
-            "decompAnchor": anchor_d,
-            "confidence": entry.get("confidence"),
-            "observedInPcaps": {
-                "count": pcap_count,
-                "captures": sorted(set(witnesses.get(op, []))),
-            },
-            "alreadyClassAttributed": op in classed_opcodes,
-            "anchorTokens": tokens,
-            "candidateLuaApis": candidate_lua_apis(tokens),
-        })
+        rows.append(
+            {
+                "opcode": op,
+                "opcodeHex": op_hex,
+                "name": entry.get("name"),
+                "bucket": entry.get("bucket"),
+                "implementationAnchor": anchor_b,
+                "decompAnchor": anchor_d,
+                "confidence": entry.get("confidence"),
+                "observedInPcaps": {
+                    "count": pcap_count,
+                    "captures": sorted(set(witnesses.get(op, []))),
+                },
+                "alreadyClassAttributed": op in classed_opcodes,
+                "anchorTokens": tokens,
+                "candidateLuaApis": candidate_lua_apis(tokens),
+            }
+        )
 
-    rows.sort(key=lambda r: (
-        -1 if r["observedInPcaps"]["count"] > 0 else 1,
-        -r["observedInPcaps"]["count"],
-        r["opcode"],
-    ))
+    rows.sort(
+        key=lambda r: (
+            -1 if r["observedInPcaps"]["count"] > 0 else 1,
+            -r["observedInPcaps"]["count"],
+            r["opcode"],
+        )
+    )
 
     intersect_count = sum(1 for r in rows if r["observedInPcaps"]["count"] > 0)
 
@@ -192,20 +202,25 @@ def main() -> int:
 
     OUT_JSON.write_text(
         json.dumps(out, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8", newline="\n",
+        encoding="utf-8",
+        newline="\n",
     )
     print(f"wrote {OUT_JSON}")
     print(f"  serverboundGap: {len(rows)}")
     print(f"  observed in pcaps: {intersect_count}")
-    print(f"  already class-attributed: {sum(1 for r in rows if r['alreadyClassAttributed'])}")
+    print(
+        f"  already class-attributed: {sum(1 for r in rows if r['alreadyClassAttributed'])}"
+    )
 
     print()
     print("=== Top 10 high-EV outbound targets ===")
     for r in rows[:10]:
         cands = r["candidateLuaApis"][:3]
-        print(f"  {r['opcodeHex']} ({r['observedInPcaps']['count']:6d}x) "
-              f"{r['name']:30s} "
-              f"candidates={cands}")
+        print(
+            f"  {r['opcodeHex']} ({r['observedInPcaps']['count']:6d}x) "
+            f"{r['name']:30s} "
+            f"candidates={cands}"
+        )
     return 0
 
 

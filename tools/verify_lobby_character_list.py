@@ -86,7 +86,15 @@ def _all_strings(value):
 
 
 def _validate_sanitization(fixture: dict) -> None:
-    forbidden_keys = {"payload", "payloadHex", "plaintext", "key", "ticket", "token", "address"}
+    forbidden_keys = {
+        "payload",
+        "payloadHex",
+        "plaintext",
+        "key",
+        "ticket",
+        "token",
+        "address",
+    }
 
     def walk(value) -> None:
         if isinstance(value, dict):
@@ -102,7 +110,9 @@ def _validate_sanitization(fixture: dict) -> None:
     for text in _all_strings(fixture):
         if not text.isascii():
             raise ValueError("fixture contains non-ASCII text")
-        if any(ord(character) < 0x20 and character not in "\t\n\r" for character in text):
+        if any(
+            ord(character) < 0x20 and character not in "\t\n\r" for character in text
+        ):
             raise ValueError("fixture contains a C0 control character")
         if HEX_SECRET_RE.search(text) and text != SOURCE_SHA256:
             raise ValueError("fixture contains a token-like hexadecimal string")
@@ -140,7 +150,9 @@ def _decrypt(payload: bytes, client_number: int, credential: bytes) -> bytes:
     try:
         from Crypto.Cipher import Blowfish
     except ImportError as exc:
-        raise RuntimeError("PyCryptodome is required for restricted reproduction") from exc
+        raise RuntimeError(
+            "PyCryptodome is required for restricted reproduction"
+        ) from exc
     cipher = Blowfish.new(_normalized_key(client_number, credential), Blowfish.MODE_ECB)
     output = bytearray()
     for offset in range(0, len(payload), 8):
@@ -172,7 +184,9 @@ def _reconstruct_connections(source: Path) -> list[dict]:
 
     sessions = []
     for endpoints, segments in sorted(grouped.items()):
-        server = next((endpoint for endpoint in endpoints if endpoint[1] == 54994), None)
+        server = next(
+            (endpoint for endpoint in endpoints if endpoint[1] == 54994), None
+        )
         if server is None:
             continue
         streams = {}
@@ -184,7 +198,9 @@ def _reconstruct_connections(source: Path) -> list[dict]:
             ]
             selected.sort(key=lambda item: item[0])
             initial = selected[0][0]
-            buffer = bytearray(max(sequence + len(payload) - initial for sequence, payload in selected))
+            buffer = bytearray(
+                max(sequence + len(payload) - initial for sequence, payload in selected)
+            )
             for sequence, payload in selected:
                 start = sequence - initial
                 buffer[start : start + len(payload)] = payload
@@ -207,13 +223,18 @@ def _decrypted_type3_records(
     while frame_offset < len(stream):
         if frame_offset + 16 > len(stream):
             raise ValueError("stream ends inside an outer header")
-        frame_length, subrecord_count = struct.unpack_from("<HH", stream, frame_offset + 4)
+        frame_length, subrecord_count = struct.unpack_from(
+            "<HH", stream, frame_offset + 4
+        )
         if frame_length < 16 or frame_offset + frame_length > len(stream):
             raise ValueError("stream ends inside an outer frame")
         cursor = frame_offset + 16
         for _ in range(subrecord_count):
             declared_length, clear_type = struct.unpack_from("<HH", stream, cursor)
-            if declared_length < 16 or cursor + declared_length > frame_offset + frame_length:
+            if (
+                declared_length < 16
+                or cursor + declared_length > frame_offset + frame_length
+            ):
                 raise ValueError("outer frame ends inside a subrecord")
             payload = stream[cursor + 16 : cursor + declared_length]
             if clear_type == 3:
@@ -244,12 +265,12 @@ def build_fixture(captures_repo: Path) -> dict:
     for streams in sessions:
         client_number = struct.unpack_from("<I", streams["c2s"], 0x84)[0]
         credential = streams["c2s"][0x44:0x54]
-        records = _decrypted_type3_records(
-            streams["s2c"], client_number, credential
-        )
+        records = _decrypted_type3_records(streams["s2c"], client_number, credential)
         opcodes = [struct.unpack_from("<H", record, 2)[0] for record in records]
         opcode_sequences.append(opcodes)
-        selected = [record for record, opcode in zip(records, opcodes) if opcode == 0x000D]
+        selected = [
+            record for record, opcode in zip(records, opcodes) if opcode == 0x000D
+        ]
         per_session_counts.append(len(selected))
         occurrences.extend(selected)
     if per_session_counts != [0, 1]:
@@ -292,8 +313,12 @@ def build_fixture(captures_repo: Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--captures-repo", type=Path, help="explicit xivl-captures checkout")
-    parser.add_argument("--write", action="store_true", help="write the reproduced fixture")
+    parser.add_argument(
+        "--captures-repo", type=Path, help="explicit xivl-captures checkout"
+    )
+    parser.add_argument(
+        "--write", action="store_true", help="write the reproduced fixture"
+    )
     args = parser.parse_args()
 
     committed = json.loads(FIXTURE.read_text(encoding="utf-8"))
@@ -311,7 +336,10 @@ def main() -> int:
         print("lobby character-list fixture: wrote sanitized reproduction")
         return 0
     if FIXTURE.read_text(encoding="utf-8") != rendered:
-        print("lobby character-list fixture: deterministic regeneration drift", file=sys.stderr)
+        print(
+            "lobby character-list fixture: deterministic regeneration drift",
+            file=sys.stderr,
+        )
         return 1
     print("lobby character-list fixture: restricted reproduction matched")
     return 0

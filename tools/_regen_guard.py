@@ -67,7 +67,8 @@ def check_regen_safe(out_path: Path, new_doc: dict, force: bool = False) -> bool
 def add_force_arg(ap) -> None:
     """Register the standard --force flag on an ArgumentParser."""
     ap.add_argument(
-        "--force", action="store_true",
+        "--force",
+        action="store_true",
         help="overwrite the target even if it carries accumulated top-level "
-             "blocks this generator cannot reproduce (data loss)",
+        "blocks this generator cannot reproduce (data loss)",
     )

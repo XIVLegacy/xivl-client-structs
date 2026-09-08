@@ -78,15 +78,20 @@ def _sha256(path: Path) -> str:
 
 
 def _json_sha256(value: object) -> str:
-    rendered = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    rendered = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    )
     return _sha256_bytes(rendered.encode("utf-8"))
 
 
 def _commit(repo: Path) -> str | None:
     try:
         return subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=repo, check=True,
-            capture_output=True, text=True,
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
@@ -98,7 +103,7 @@ def _line_column(line_starts: list[int], offset: int) -> tuple[int, int]:
 
 
 def _long_bracket_end(source: str, start: int) -> int | None:
-    if source[start:start + 1] != "[":
+    if source[start : start + 1] != "[":
         return None
     match = re.match(r"\[(=*)\[", source[start:])
     if not match:
@@ -146,7 +151,9 @@ def _lex(source: str) -> list[Token]:
         long_end = _long_bracket_end(source, i)
         if long_end is not None:
             line, column = _line_column(line_starts, i)
-            tokens.append(Token("string", source[i:long_end], i, long_end, line, column))
+            tokens.append(
+                Token("string", source[i:long_end], i, long_end, line, column)
+            )
             i = long_end
             continue
         if ch.isalpha() or ch == "_":
@@ -165,8 +172,14 @@ def _lex(source: str) -> list[Token]:
             tokens.append(Token("number", source[i:end], i, end, line, column))
             i = end
             continue
-        matched = next((op for op in ("...", "..", "::", "<=", ">=", "==", "~=", "->")
-                        if source.startswith(op, i)), None)
+        matched = next(
+            (
+                op
+                for op in ("...", "..", "::", "<=", ">=", "==", "~=", "->")
+                if source.startswith(op, i)
+            ),
+            None,
+        )
         value = matched or ch
         line, column = _line_column(line_starts, i)
         tokens.append(Token("punctuation", value, i, i + len(value), line, column))
@@ -177,7 +190,7 @@ def _lex(source: str) -> list[Token]:
 def _token_text(source: str, tokens: list[Token], first: int, last: int) -> str:
     if first > last:
         return ""
-    return source[tokens[first].start:tokens[last].end]
+    return source[tokens[first].start : tokens[last].end]
 
 
 def _receiver(source: str, tokens: list[Token], index: int) -> str | None:
@@ -196,7 +209,19 @@ def _receiver(source: str, tokens: list[Token], index: int) -> str | None:
         previous = tokens[first - 1]
         if previous.line != tokens[member].line:
             break
-        if previous.value in {"=", ",", ";", "return", "local", "then", "do", "else", "elseif", "function", "("}:
+        if previous.value in {
+            "=",
+            ",",
+            ";",
+            "return",
+            "local",
+            "then",
+            "do",
+            "else",
+            "elseif",
+            "function",
+            "(",
+        }:
             break
         if previous.kind == "identifier" or previous.value in {".", "]", "}"}:
             first -= 1
@@ -221,7 +246,9 @@ def _matching_close(tokens: list[Token], open_index: int) -> int | None:
     return None
 
 
-def _arguments(source: str, tokens: list[Token], open_index: int, close_index: int) -> list[str]:
+def _arguments(
+    source: str, tokens: list[Token], open_index: int, close_index: int
+) -> list[str]:
     if close_index == open_index + 1:
         return []
     parts: list[str] = []
@@ -238,9 +265,9 @@ def _arguments(source: str, tokens: list[Token], open_index: int, close_index: i
         elif value == "}":
             depth["{"] -= 1
         elif value == "," and not any(depth.values()):
-            parts.append(source[start_offset:tokens[index].start].strip())
+            parts.append(source[start_offset : tokens[index].start].strip())
             start_offset = tokens[index].end
-    parts.append(source[start_offset:tokens[close_index].start].strip())
+    parts.append(source[start_offset : tokens[close_index].start].strip())
     return [part for part in parts if part]
 
 
@@ -259,26 +286,34 @@ def _string_value(raw: str) -> str | None:
     return long_match.group(2) if long_match else None
 
 
-def _occurrences(source: str, target_set: set[str]) -> dict[str, dict[str, list[dict[str, Any]]]]:
+def _occurrences(
+    source: str, target_set: set[str]
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
     tokens = _lex(source)
-    result = {name: {"declarations": [], "references": [], "invocations": []}
-              for name in target_set}
+    result = {
+        name: {"declarations": [], "references": [], "invocations": []}
+        for name in target_set
+    }
     for index, token in enumerate(tokens):
         name = token.value if token.kind == "identifier" else _string_value(token.value)
         if name not in target_set:
             continue
         if token.kind == "string":
-            result[name]["references"].append({
-                "line": token.line,
-                "column": token.column,
-                "written": token.value,
-                "referenceKind": "string_literal",
-            })
+            result[name]["references"].append(
+                {
+                    "line": token.line,
+                    "column": token.column,
+                    "written": token.value,
+                    "referenceKind": "string_literal",
+                }
+            )
             continue
         previous = tokens[index - 1].value if index else None
         following = tokens[index + 1].value if index + 1 < len(tokens) else None
         is_function_declaration = previous == "function" or (
-            index >= 3 and tokens[index - 3].value == "function" and previous in {".", ":"}
+            index >= 3
+            and tokens[index - 3].value == "function"
+            and previous in {".", ":"}
         )
         is_assignment = following == "="
         if is_function_declaration or is_assignment:
@@ -286,10 +321,16 @@ def _occurrences(source: str, target_set: set[str]) -> dict[str, dict[str, list[
                 "line": token.line,
                 "column": token.column,
                 "written": token.value,
-                "declarationKind": "function" if is_function_declaration else "assignment",
+                "declarationKind": "function"
+                if is_function_declaration
+                else "assignment",
                 "receiver": _receiver(source, tokens, index),
             }
-            if is_function_declaration and index + 1 < len(tokens) and tokens[index + 1].value == "(":
+            if (
+                is_function_declaration
+                and index + 1 < len(tokens)
+                and tokens[index + 1].value == "("
+            ):
                 close = _matching_close(tokens, index + 1)
                 if close is not None:
                     args = _arguments(source, tokens, index + 1, close)
@@ -301,34 +342,46 @@ def _occurrences(source: str, target_set: set[str]) -> dict[str, dict[str, list[
             close = _matching_close(tokens, index + 1)
             if close is not None:
                 args = _arguments(source, tokens, index + 1, close)
-                result[name]["invocations"].append({
-                    "line": token.line,
-                    "column": token.column,
-                    "written": token.value,
-                    "receiver": _receiver(source, tokens, index),
-                    "callKind": "member" if previous in {".", ":"} else "direct",
-                    "arguments": args,
-                    "arity": len(args),
-                })
+                result[name]["invocations"].append(
+                    {
+                        "line": token.line,
+                        "column": token.column,
+                        "written": token.value,
+                        "receiver": _receiver(source, tokens, index),
+                        "callKind": "member" if previous in {".", ":"} else "direct",
+                        "arguments": args,
+                        "arity": len(args),
+                    }
+                )
                 continue
-        result[name]["references"].append({
-            "line": token.line,
-            "column": token.column,
-            "written": token.value,
-            "referenceKind": "identifier",
-        })
+        result[name]["references"].append(
+            {
+                "line": token.line,
+                "column": token.column,
+                "written": token.value,
+                "referenceKind": "identifier",
+            }
+        )
     return result
 
 
-def _source_snapshot(scripts_repo: Path, api_contract: Path, registry_path: Path,
-                     napi_path: Path, script_manifest_path: Path) -> dict[str, Any]:
+def _source_snapshot(
+    scripts_repo: Path,
+    api_contract: Path,
+    registry_path: Path,
+    napi_path: Path,
+    script_manifest_path: Path,
+) -> dict[str, Any]:
     return {
         "scripts": {
             "repository": "XIVLegacy/xivl-client-scripts",
             "commit": _commit(scripts_repo),
             "registry": {"path": "lua/registry.json", "sha256": _sha256(registry_path)},
             "napiIndex": {"path": "lua/napi_index.json", "sha256": _sha256(napi_path)},
-            "scriptManifest": {"path": "manifests/scripts.json", "sha256": _sha256(script_manifest_path)},
+            "scriptManifest": {
+                "path": "manifests/scripts.json",
+                "sha256": _sha256(script_manifest_path),
+            },
             "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
         },
         "apiContract": {
@@ -338,7 +391,9 @@ def _source_snapshot(scripts_repo: Path, api_contract: Path, registry_path: Path
     }
 
 
-def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) -> dict[str, Any]:
+def build(
+    scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT
+) -> dict[str, Any]:
     registry_path = scripts_repo / "lua" / "registry.json"
     napi_path = scripts_repo / "lua" / "napi_index.json"
     script_manifest_path = scripts_repo / "manifests" / "scripts.json"
@@ -357,10 +412,18 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
         name: {
             "name": name,
             "baseContract": {
-                "present": any(surface.get("name") == name for surface in api_contract.get("napiSurfaces", [])),
+                "present": any(
+                    surface.get("name") == name
+                    for surface in api_contract.get("napiSurfaces", [])
+                ),
                 "napiReferenceLineCount": next(
-                    (surface.get("referenceLineCount") for surface in api_contract.get("napiSurfaces", [])
-                     if surface.get("name") == name), 0),
+                    (
+                        surface.get("referenceLineCount")
+                        for surface in api_contract.get("napiSurfaces", [])
+                        if surface.get("name") == name
+                    ),
+                    0,
+                ),
             },
             "registryDeclarations": [],
             "sidecarReferences": [],
@@ -380,8 +443,13 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
         contract_row = manifest_rows.get(relative)
         if contract_row is None:
             raise ValueError(f"{relative}: missing scripts manifest row")
-        if (len(source), _sha256_bytes(source)) != (contract_row["bytes"], contract_row["sha256"]):
-            raise ValueError(f"{relative}: local source does not match reproduction manifest")
+        if (len(source), _sha256_bytes(source)) != (
+            contract_row["bytes"],
+            contract_row["sha256"],
+        ):
+            raise ValueError(
+                f"{relative}: local source does not match reproduction manifest"
+            )
         sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
         if sidecar.get("decoded") != decoded:
             raise ValueError(f"{relative}: sidecar decoded identity drifted")
@@ -392,16 +460,22 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
             "script": decoded,
             "subsystem": _subsystem(decoded),
             "class": classes[0] if len(classes) == 1 else None,
-            "receiverReason": "registry_unique_class" if len(classes) == 1 else "no_class_signal",
+            "receiverReason": "registry_unique_class"
+            if len(classes) == 1
+            else "no_class_signal",
             "scriptSha256": contract_row["sha256"],
         }
         body_hits = _occurrences(source.decode("utf-8"), target_set)
         for name in TARGETS:
             row = rows[name]
             if name in metadata.get("methods", []):
-                row["registryDeclarations"].append({**context, "kind": "registry_method"})
+                row["registryDeclarations"].append(
+                    {**context, "kind": "registry_method"}
+                )
             for line in sidecar.get("apis", {}).get(name, []):
-                row["sidecarReferences"].append({**context, "line": line, "kind": "sidecar_api"})
+                row["sidecarReferences"].append(
+                    {**context, "line": line, "kind": "sidecar_api"}
+                )
             hits = body_hits[name]
             for kind in ("declarations", "references", "invocations"):
                 for hit in hits[kind]:
@@ -410,15 +484,25 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
                     row[kind].append(enriched)
 
     for row in rows.values():
-        arities = [hit["arity"] for hit in row["declarations"] if isinstance(hit.get("arity"), int)]
-        arities += [hit["arity"] for hit in row["invocations"] if isinstance(hit.get("arity"), int)]
+        arities = [
+            hit["arity"]
+            for hit in row["declarations"]
+            if isinstance(hit.get("arity"), int)
+        ]
+        arities += [
+            hit["arity"]
+            for hit in row["invocations"]
+            if isinstance(hit.get("arity"), int)
+        ]
         row["arityRange"] = {
             "min": min(arities) if arities else None,
             "max": max(arities) if arities else None,
         }
         row["occurrenceVerdict"] = (
             "occurrences_present"
-            if row["registryDeclarations"] or row["sidecarReferences"] or row["scriptOccurrences"]
+            if row["registryDeclarations"]
+            or row["sidecarReferences"]
+            or row["scriptOccurrences"]
             else "no_occurrence_in_preserved_corpus"
         )
 
@@ -427,9 +511,15 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
         "targetCount": len(target_rows),
         "scriptsScanned": scripts_scanned,
         "sidecarsScanned": sidecars_scanned,
-        "targetsWithOccurrences": sum(row["occurrenceVerdict"] == "occurrences_present" for row in target_rows),
-        "registryDeclarationCount": sum(len(row["registryDeclarations"]) for row in target_rows),
-        "sidecarReferenceCount": sum(len(row["sidecarReferences"]) for row in target_rows),
+        "targetsWithOccurrences": sum(
+            row["occurrenceVerdict"] == "occurrences_present" for row in target_rows
+        ),
+        "registryDeclarationCount": sum(
+            len(row["registryDeclarations"]) for row in target_rows
+        ),
+        "sidecarReferenceCount": sum(
+            len(row["sidecarReferences"]) for row in target_rows
+        ),
         "declarationCount": sum(len(row["declarations"]) for row in target_rows),
         "referenceCount": sum(len(row["references"]) for row in target_rows),
         "invocationCount": sum(len(row["invocations"]) for row in target_rows),
@@ -441,12 +531,19 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
         "extraction": "2012.09.19.0001",
         "scope": "Preserved-corpus declaration, reference, and bounded syntactic invocation context for exactly 19 deferred Lua binding names. The invocation parser covers an identifier followed by a balanced parenthesized argument list; written expressions are source text and receive no semantic promotion.",
         "sourceSnapshots": _source_snapshot(
-            scripts_repo, api_contract_path, registry_path, napi_path, script_manifest_path),
+            scripts_repo,
+            api_contract_path,
+            registry_path,
+            napi_path,
+            script_manifest_path,
+        ),
         "baseContract": {
             "path": "manifests/lua_api_contract.json",
             "sha256": _sha256(api_contract_path),
             "napiSurfaceCount": len(api_contract.get("napiSurfaces", [])),
-            "deferredNamesPresent": sum(row["baseContract"]["present"] for row in target_rows),
+            "deferredNamesPresent": sum(
+                row["baseContract"]["present"] for row in target_rows
+            ),
         },
         "targets": target_rows,
         "totals": totals,
@@ -469,16 +566,26 @@ def build(scripts_repo: Path, api_contract_path: Path = DEFAULT_API_CONTRACT) ->
             "tools/extractors/build_lua_callsite_context.py",
         ],
     }
-    document["contractSha256"] = _json_sha256({"targets": target_rows, "totals": totals})
+    document["contractSha256"] = _json_sha256(
+        {"targets": target_rows, "totals": totals}
+    )
     return document
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scripts-repo", type=Path, required=True,
-                        help="Explicit xivl-client-scripts checkout containing the local corpus.")
-    parser.add_argument("--api-contract", type=Path, default=DEFAULT_API_CONTRACT,
-                        help="Base lua_api_contract.json to extend (default: this checkout).")
+    parser.add_argument(
+        "--scripts-repo",
+        type=Path,
+        required=True,
+        help="Explicit xivl-client-scripts checkout containing the local corpus.",
+    )
+    parser.add_argument(
+        "--api-contract",
+        type=Path,
+        default=DEFAULT_API_CONTRACT,
+        help="Base lua_api_contract.json to extend (default: this checkout).",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
@@ -486,8 +593,14 @@ def main() -> int:
         document = build(args.scripts_repo.resolve(), args.api_contract.resolve())
         rendered = json.dumps(document, indent=2, ensure_ascii=True) + "\n"
         if args.check:
-            if not args.out.is_file() or args.out.read_text(encoding="utf-8") != rendered:
-                print(f"error: {args.out} does not match a fresh extraction", file=sys.stderr)
+            if (
+                not args.out.is_file()
+                or args.out.read_text(encoding="utf-8") != rendered
+            ):
+                print(
+                    f"error: {args.out} does not match a fresh extraction",
+                    file=sys.stderr,
+                )
                 return 1
             print(f"OK: {args.out} matches the preserved Lua corpus")
             return 0
@@ -495,7 +608,14 @@ def main() -> int:
         args.out.write_text(rendered, encoding="utf-8", newline="\n")
         print(f"wrote {document['totals']['targetCount']} targets to {args.out}")
         return 0
-    except (OSError, UnicodeError, ValueError, KeyError, json.JSONDecodeError, subprocess.CalledProcessError) as exc:
+    except (
+        OSError,
+        UnicodeError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

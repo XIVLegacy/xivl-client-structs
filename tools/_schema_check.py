@@ -19,13 +19,33 @@ import re
 from pathlib import Path
 from typing import Any, Iterator
 
-SUPPORTED = frozenset({
-    "$schema", "$id", "$defs", "$ref", "title", "description", "examples",
-    "type", "properties", "patternProperties", "required",
-    "additionalProperties", "items", "enum", "const", "pattern",
-    "minimum", "maximum", "minItems", "minLength", "uniqueItems", "oneOf",
-    "dependentRequired",
-})
+SUPPORTED = frozenset(
+    {
+        "$schema",
+        "$id",
+        "$defs",
+        "$ref",
+        "title",
+        "description",
+        "examples",
+        "type",
+        "properties",
+        "patternProperties",
+        "required",
+        "additionalProperties",
+        "items",
+        "enum",
+        "const",
+        "pattern",
+        "minimum",
+        "maximum",
+        "minItems",
+        "minLength",
+        "uniqueItems",
+        "oneOf",
+        "dependentRequired",
+    }
+)
 
 _TYPES: dict[str, type | tuple[type, ...]] = {
     "object": dict,
@@ -65,16 +85,16 @@ def _assert_supported(node: Any, loc: str, in_name_map: bool) -> None:
         if not in_name_map:
             for key in node:
                 if key not in SUPPORTED:
-                    raise SchemaError(
-                        f"{loc}: unsupported schema keyword {key!r}")
+                    raise SchemaError(f"{loc}: unsupported schema keyword {key!r}")
             if "type" in node:
                 names = node["type"]
-                for name in ([names] if isinstance(names, str) else names):
+                for name in [names] if isinstance(names, str) else names:
                     if name not in _TYPES:
                         raise SchemaError(f"{loc}/type: unknown type {name!r}")
         for key, val in node.items():
-            _assert_supported(val, f"{loc}/{key}",
-                              in_name_map=not in_name_map and key in NAME_MAPS)
+            _assert_supported(
+                val, f"{loc}/{key}", in_name_map=not in_name_map and key in NAME_MAPS
+            )
     elif isinstance(node, list):
         for i, val in enumerate(node):
             _assert_supported(val, f"{loc}/{i}", in_name_map=False)
@@ -143,7 +163,8 @@ def _validate(value: Any, schema: dict, root: dict, loc: str) -> Iterator[str]:
         if "minItems" in schema and len(value) < schema["minItems"]:
             yield f"{loc}: {len(value)} items < minItems {schema['minItems']}"
         if schema.get("uniqueItems") and len(
-                {json.dumps(v, sort_keys=True) for v in value}) != len(value):
+            {json.dumps(v, sort_keys=True) for v in value}
+        ) != len(value):
             yield f"{loc}: items are not unique"
         if "items" in schema:
             for i, item in enumerate(value):
@@ -158,8 +179,9 @@ def _validate(value: Any, schema: dict, root: dict, loc: str) -> Iterator[str]:
                 continue
             for dependency in dependencies:
                 if dependency not in value:
-                    yield (f"{loc}: property {trigger!r} requires "
-                           f"property {dependency!r}")
+                    yield (
+                        f"{loc}: property {trigger!r} requires property {dependency!r}"
+                    )
         props = schema.get("properties", {})
         pattern_props = schema.get("patternProperties", {})
         for key, sub in value.items():
@@ -179,15 +201,23 @@ def _validate(value: Any, schema: dict, root: dict, loc: str) -> Iterator[str]:
                     yield from _validate(sub, extra, root, f"{loc}.{key}")
 
     if "oneOf" in schema:
-        matches = [i for i, sub in enumerate(schema["oneOf"])
-                   if not list(_validate(value, sub, root, loc))]
+        matches = [
+            i
+            for i, sub in enumerate(schema["oneOf"])
+            if not list(_validate(value, sub, root, loc))
+        ]
         if len(matches) != 1:
-            yield (f"{loc}: matched {len(matches)} of {len(schema['oneOf'])} "
-                   "oneOf branches, expected exactly 1")
+            yield (
+                f"{loc}: matched {len(matches)} of {len(schema['oneOf'])} "
+                "oneOf branches, expected exactly 1"
+            )
 
 
 def crosscheck(
-    document: Any, schema: dict, *, validation_errors: list[str] | None = None,
+    document: Any,
+    schema: dict,
+    *,
+    validation_errors: list[str] | None = None,
 ) -> str | None:
     """Second opinion from a real jsonschema install, when one exists.
 
@@ -199,7 +229,9 @@ def crosscheck(
         import jsonschema  # type: ignore
     except ImportError:
         return None
-    ours = bool(validate(document, schema) if validation_errors is None else validation_errors)
+    ours = bool(
+        validate(document, schema) if validation_errors is None else validation_errors
+    )
     try:
         jsonschema.validate(document, schema)
         theirs = False
@@ -208,6 +240,8 @@ def crosscheck(
     except jsonschema.SchemaError as e:
         return f"jsonschema rejects the schema itself: {e.message}"
     if ours != theirs:
-        return (f"interpreter says {'invalid' if ours else 'valid'}, "
-                f"jsonschema says {'invalid' if theirs else 'valid'}")
+        return (
+            f"interpreter says {'invalid' if ours else 'valid'}, "
+            f"jsonschema says {'invalid' if theirs else 'valid'}"
+        )
     return None

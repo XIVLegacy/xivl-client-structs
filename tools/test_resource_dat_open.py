@@ -16,7 +16,10 @@ MANIFEST = ROOT / "manifests" / "resource_dat_open.json"
 
 def validate_contract(document: dict) -> list[str]:
     errors: list[str] = []
-    if document.get("status") != "successful_open_verified_bounded_missing_file_observed":
+    if (
+        document.get("status")
+        != "successful_open_verified_bounded_missing_file_observed"
+    ):
         errors.append("manifest status")
 
     identity = document.get("inputIdentity", {})
@@ -24,11 +27,17 @@ def validate_contract(document: dict) -> list[str]:
         errors.append("build identity")
     if identity.get("size") != 15_996_808:
         errors.append("executable size")
-    if identity.get("sha256") != "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9":
+    if (
+        identity.get("sha256")
+        != "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+    ):
         errors.append("executable hash")
 
     companion = document.get("companionEvidence", {})
-    if companion.get("exactBuildSignature") != "6A 00 68 ?? ?? ?? ?? 83 C6 04 56 8B CF E8 ?? ?? ?? ??":
+    if (
+        companion.get("exactBuildSignature")
+        != "6A 00 68 ?? ?? ?? ?? 83 C6 04 56 8B CF E8 ?? ?? ?? ??"
+    ):
         errors.append("exact-build signature")
     if companion.get("patternVa") != "0x00C96972" or companion.get("matchCount") != 1:
         errors.append("signature locator")
@@ -42,7 +51,10 @@ def validate_contract(document: dict) -> list[str]:
     stack = open_boundary.get("postCallStack", {})
     if stack.get("callerReturnOffset") != "ESP+0xC4":
         errors.append("caller return offset")
-    if stack.get("retryCountOffset") != "ESP+0xD0" or stack.get("observedRetryCount") != 0:
+    if (
+        stack.get("retryCountOffset") != "ESP+0xD0"
+        or stack.get("observedRetryCount") != 0
+    ):
         errors.append("retry count boundary")
 
     experiment = document.get("missingDatExperiment", {})
@@ -63,11 +75,16 @@ def validate_contract(document: dict) -> list[str]:
         "post-call site at 0x00C96B6D and return at 0x00C96B73, followed by a "
         "15-second observation window; the successful baseline was a separate request"
     )
-    if observation.get("evidenceClass") != "sanitized machine-local live observation report":
+    if (
+        observation.get("evidenceClass")
+        != "sanitized machine-local live observation report"
+    ):
         errors.append("dynamic evidence class")
     if observation.get("boundary") != expected_boundary:
         errors.append("dynamic observation boundary")
-    if "were not reproduced by the static verification" not in observation.get("artifactBoundary", ""):
+    if "were not reproduced by the static verification" not in observation.get(
+        "artifactBoundary", ""
+    ):
         errors.append("dynamic artifact boundary")
 
     attempt = experiment.get("missingAttempt", {})
@@ -120,7 +137,10 @@ def validate_contract(document: dict) -> list[str]:
         errors.append("resource-id inference boundary")
 
     gate = document.get("hookGate", {})
-    if gate.get("stableExactBuildSignature") != "SUPPORTED for the pinned executable identity":
+    if (
+        gate.get("stableExactBuildSignature")
+        != "SUPPORTED for the pinned executable identity"
+    ):
         errors.append("signature gate")
     expected_missing_gate = (
         "BOUNDED - for one missing-path request, retry count zero produced errno 2, "
@@ -163,11 +183,28 @@ class ResourceDatOpenTests(unittest.TestCase):
         cases = (
             (("missingDatExperiment", "missingAttempt", "retryCount"), 1),
             (("missingDatExperiment", "missingAttempt", "secureCrtReturn"), 0),
-            (("missingDatExperiment", "missingAttempt", "outputFilePointerAfterCall"), "non-null"),
-            (("missingDatExperiment", "missingAttempt", "pathRestoredBeforeErrorHandling"), False),
+            (
+                (
+                    "missingDatExperiment",
+                    "missingAttempt",
+                    "outputFilePointerAfterCall",
+                ),
+                "non-null",
+            ),
+            (
+                (
+                    "missingDatExperiment",
+                    "missingAttempt",
+                    "pathRestoredBeforeErrorHandling",
+                ),
+                False,
+            ),
             (("missingDatExperiment", "downstream", "errorHelperCalls"), 2),
             (("missingDatExperiment", "downstream", "memberReturnAl"), 1),
-            (("missingDatExperiment", "downstream", "laterOriginalPathOpenObserved"), True),
+            (
+                ("missingDatExperiment", "downstream", "laterOriginalPathOpenObserved"),
+                True,
+            ),
             (("missingDatExperiment", "downstream", "fallbackPathObserved"), True),
         )
         for path, value in cases:

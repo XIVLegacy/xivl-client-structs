@@ -55,7 +55,10 @@ OUT_JSON = REPO_ROOT / "manifests" / "lua_to_opcode.json"
 def _load_json(p: Path, required: bool = True) -> dict | None:
     if not p.is_file():
         if required:
-            print(f"error: {p} missing - run the prerequisite bridge step first", file=sys.stderr)
+            print(
+                f"error: {p} missing - run the prerequisite bridge step first",
+                file=sys.stderr,
+            )
             sys.exit(1)
         return None
     with p.open(encoding="utf-8") as f:
@@ -98,21 +101,26 @@ def _build_slot_to_receiver(
     for r in receiver_manifest.get("inboundReceivers", []):
         slot = _infer_slot(r, symbols_index)
         if slot is not None:
-            out[slot].append({
-                "receiverClass": r["name"],
-                "namespace": r.get("namespace"),
-                "opcodes": r.get("opcodes", []),
-                "luaCallback": r.get("luaCallback"),
-                "confidence": r.get("confidence"),
-                "inferredSlot": slot,
-            })
+            out[slot].append(
+                {
+                    "receiverClass": r["name"],
+                    "namespace": r.get("namespace"),
+                    "opcodes": r.get("opcodes", []),
+                    "luaCallback": r.get("luaCallback"),
+                    "confidence": r.get("confidence"),
+                    "inferredSlot": slot,
+                }
+            )
     return out
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--check", action="store_true",
-                    help="verify the committed output matches a fresh build")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="verify the committed output matches a fresh build",
+    )
     args = ap.parse_args()
 
     lua_index = _load_json(LUA_INDEX_JSON)
@@ -145,20 +153,24 @@ def main() -> int:
         receivers_bound: list[dict] = []
         for slot in sorted(observed_slots):
             for r in slot_to_receiver.get(slot, []):
-                receivers_bound.append({
-                    "receiverClass": r["receiverClass"],
-                    "namespace": r["namespace"],
-                    "slot": slot,
-                    "confidence": r["confidence"],
-                })
-                for op in r["opcodes"]:
-                    opcodes_bound.append({
-                        "opcodeInt": op.get("opcodeInt"),
-                        "opcodeHex": op.get("opcodeHex"),
-                        "direction": "inbound",
+                receivers_bound.append(
+                    {
                         "receiverClass": r["receiverClass"],
+                        "namespace": r["namespace"],
                         "slot": slot,
-                    })
+                        "confidence": r["confidence"],
+                    }
+                )
+                for op in r["opcodes"]:
+                    opcodes_bound.append(
+                        {
+                            "opcodeInt": op.get("opcodeInt"),
+                            "opcodeHex": op.get("opcodeHex"),
+                            "direction": "inbound",
+                            "receiverClass": r["receiverClass"],
+                            "slot": slot,
+                        }
+                    )
 
         bindings[lua_name] = {
             "luaName": lua_name,
@@ -210,14 +222,16 @@ def main() -> int:
                 for op in bindings[lua]["opcodes"]
             )
             if not already_in_opcodes:
-                bindings[lua]["opcodes"].append({
-                    "opcodeInt": entry["opcodeInt"],
-                    "opcodeHex": entry["opcodeHex"],
-                    "direction": "inbound",
-                    "receiverClass": entry["receiverClass"],
-                    "mechanism": "apply_chain",
-                    "bindingFlavor": entry["bindingFlavor"],
-                })
+                bindings[lua]["opcodes"].append(
+                    {
+                        "opcodeInt": entry["opcodeInt"],
+                        "opcodeHex": entry["opcodeHex"],
+                        "direction": "inbound",
+                        "receiverClass": entry["receiverClass"],
+                        "mechanism": "apply_chain",
+                        "bindingFlavor": entry["bindingFlavor"],
+                    }
+                )
             apply_chain_firers_added += 1
             if entry["opcodeInt"] is not None:
                 apply_chain_opcodes_set.add(entry["opcodeInt"])
@@ -242,45 +256,50 @@ def main() -> int:
                     op_int = int(op_hex, 16)
                 except (ValueError, TypeError):
                     op_int = None
-                bindings[lua]["indirectBindings"].append({
-                    "mechanism": ib.get("mechanism", "data_dependency"),
-                    "opcodeInt": op_int,
-                    "opcodeHex": op_hex.lower() if isinstance(op_hex, str) else None,
-                    "direction": "inbound",
-                    "receiverClass": recv,
-                    "sharedField": {
-                        "actorClass": ib.get("readActorClass"),
-                        "offsets": ib.get("readsOffsets", []),
-                    },
-                    "writerBcsy": ib.get("writingReceiverBcsy"),
-                    "luaApiBcsy": ib.get("luaApiBcsy"),
-                    "luaApiImplVa": ib.get("luaApiImplVa"),
-                    "confidence": ib.get("confidence", "confirmed"),
-                    "evidence": ib.get("evidence"),
-                })
+                bindings[lua]["indirectBindings"].append(
+                    {
+                        "mechanism": ib.get("mechanism", "data_dependency"),
+                        "opcodeInt": op_int,
+                        "opcodeHex": op_hex.lower()
+                        if isinstance(op_hex, str)
+                        else None,
+                        "direction": "inbound",
+                        "receiverClass": recv,
+                        "sharedField": {
+                            "actorClass": ib.get("readActorClass"),
+                            "offsets": ib.get("readsOffsets", []),
+                        },
+                        "writerBcsy": ib.get("writingReceiverBcsy"),
+                        "luaApiBcsy": ib.get("luaApiBcsy"),
+                        "luaApiImplVa": ib.get("luaApiImplVa"),
+                        "confidence": ib.get("confidence", "confirmed"),
+                        "evidence": ib.get("evidence"),
+                    }
+                )
                 indirect_bindings_added += 1
                 if op_int is not None:
                     indirect_opcodes_set.add(op_int)
 
     lua_with_opcode = sum(1 for b in bindings.values() if b["opcodes"])
     lua_with_slot_based = sum(
-        1 for b in bindings.values()
+        1
+        for b in bindings.values()
         if any(op.get("mechanism") != "apply_chain" for op in b["opcodes"])
     )
     lua_with_apply_chain = sum(
         1 for b in bindings.values() if b.get("applyChainBindings")
     )
     lua_with_deferred_apply_chain = sum(
-        1 for b in bindings.values()
-        if any(e.get("bindingFlavor") == "deferred_via_event_condition"
-               for e in b.get("applyChainBindings", []))
+        1
+        for b in bindings.values()
+        if any(
+            e.get("bindingFlavor") == "deferred_via_event_condition"
+            for e in b.get("applyChainBindings", [])
+        )
     )
-    lua_with_indirect = sum(
-        1 for b in bindings.values() if b.get("indirectBindings")
-    )
+    lua_with_indirect = sum(1 for b in bindings.values() if b.get("indirectBindings"))
     lua_with_slot_but_no_receiver = sum(
-        1 for b in bindings.values()
-        if b["observedSlots"] and not b["receivers"]
+        1 for b in bindings.values() if b["observedSlots"] and not b["receivers"]
     )
 
     # Track inbound opcodes with no direct or indirect Lua binding.
@@ -341,7 +360,9 @@ def main() -> int:
     rendered = json.dumps(out, indent=2, ensure_ascii=False) + "\n"
     if args.check:
         if not OUT_JSON.is_file() or OUT_JSON.read_text(encoding="utf-8") != rendered:
-            print(f"error: {OUT_JSON.name} does not match a fresh build", file=sys.stderr)
+            print(
+                f"error: {OUT_JSON.name} does not match a fresh build", file=sys.stderr
+            )
             return 1
         print(f"OK: {OUT_JSON.name} matches a fresh build")
         return 0
@@ -352,14 +373,28 @@ def main() -> int:
     print(f"wrote {OUT_JSON}")
     print(f"  luaNamesIndexed:                {out['counts']['luaNamesIndexed']}")
     print(f"  luaNamesWithOpcode:             {out['counts']['luaNamesWithOpcode']}")
-    print(f"  luaNamesWithSlotBasedBinding:   {out['counts']['luaNamesWithSlotBasedBinding']}")
-    print(f"  luaNamesWithApplyChainBinding:  {out['counts']['luaNamesWithApplyChainBinding']}")
-    print(f"  luaNamesWithDeferredApplyChain: {out['counts']['luaNamesWithDeferredApplyChainBinding']}")
-    print(f"  luaNamesWithIndirectBinding:    {out['counts']['luaNamesWithIndirectBinding']}")
-    print(f"  luaNamesWithSlotNoReceiver:     {out['counts']['luaNamesWithSlotButNoReceiver']}")
+    print(
+        f"  luaNamesWithSlotBasedBinding:   {out['counts']['luaNamesWithSlotBasedBinding']}"
+    )
+    print(
+        f"  luaNamesWithApplyChainBinding:  {out['counts']['luaNamesWithApplyChainBinding']}"
+    )
+    print(
+        f"  luaNamesWithDeferredApplyChain: {out['counts']['luaNamesWithDeferredApplyChainBinding']}"
+    )
+    print(
+        f"  luaNamesWithIndirectBinding:    {out['counts']['luaNamesWithIndirectBinding']}"
+    )
+    print(
+        f"  luaNamesWithSlotNoReceiver:     {out['counts']['luaNamesWithSlotButNoReceiver']}"
+    )
     print(f"  inboundOpcodesTotal:            {out['counts']['inboundOpcodesTotal']}")
-    print(f"  inboundOpcodesWithLuaName:      {out['counts']['inboundOpcodesWithLuaName']}")
-    print(f"  inboundOpcodesIndirRez:         {out['counts']['inboundOpcodesIndirectlyResolved']}")
+    print(
+        f"  inboundOpcodesWithLuaName:      {out['counts']['inboundOpcodesWithLuaName']}"
+    )
+    print(
+        f"  inboundOpcodesIndirRez:         {out['counts']['inboundOpcodesIndirectlyResolved']}"
+    )
     print(f"  inboundOpcodesGap:              {out['counts']['inboundOpcodesGap']}")
     print(f"  applyChainFirersAdded:          {out['counts']['applyChainFirersAdded']}")
     return 0

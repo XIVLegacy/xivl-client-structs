@@ -162,7 +162,7 @@ SYMBOL_UPDATES = {
     "BCS-Y-0080": {
         "name": "SlotEmbeddedVectorCopyConstructor_FUN_00890EE0",
         "confidence": "confirmed",
-        "notes": "Copy-constructor for the embedded container at BCS-S-0009+0x2D0. It derives source count from begin/end at +0x04/+0x08 with element stride 0x30, zeroes destination begin/end/capacity at +0x04/+0x08/+0x0C, rejects counts above 0x05555555 through FUN_006D20B0, allocates count*0x30 bytes for a nonempty source, and copy-constructs the range. The control word at +0x00 is not interpreted here, and the generic 0x30 stride does not uniquely prove an element domain type. See manifests/lobby_character_list_projection.json. [apply-log fix] Address shifted from 0x00490EE0 to 0x00890EE0 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+        "notes": "Copy-constructor for the embedded container at BCS-S-0009+0x2D0. It derives source count from begin/end at +0x04/+0x08 with element stride 0x30, zeroes destination begin/end/capacity at +0x04/+0x08/+0x0C, rejects counts above 0x05555555 through FUN_006D20B0, allocates count*0x30 bytes for a nonempty source, and copy-constructs the range. The control word at +0x00 is not interpreted here, and the generic 0x30 stride does not uniquely prove an element domain type. See manifests/lobby_character_list_projection.json. [apply-log fix] Address shifted from 0x00490EE0 to 0x00890EE0 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
     },
     "BCS-Y-0091": {
         "notes": "Walks the operation-level vector at param_2 in 0x30-byte steps. For each element whose +0x04 dword equals the newly inserted BCS-S-0009 slot's +0x04 join key, it calls FUN_00DA94C0 with the slot retained as this. Every begin/end and per-element access is guarded through FUN_009D22B4. This proves equality-key use and the 0x30 stride, but not a unique domain noun for the generic record type. Called only from FUN_00DA76B0 after a new slot push. See manifests/lobby_character_list_projection.json. [apply-log fix] Address shifted from 0x009A9550 to 0x00DA9550 (+0x00400000) per the catalog-validation-report pass TYPO_RVA_NOT_VA finding: catalog originally stored the RVA instead of the PE-image-base VA; shifted address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
@@ -187,7 +187,9 @@ def _updated(data: dict, updates: dict, key: str) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="fail if catalog promotion drifted")
+    parser.add_argument(
+        "--check", action="store_true", help="fail if catalog promotion drifted"
+    )
     args = parser.parse_args()
 
     structs = load_structs()

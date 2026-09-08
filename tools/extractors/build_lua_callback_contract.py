@@ -33,15 +33,20 @@ def _load_json(path: Path) -> dict:
 
 
 def _json_sha256(value: object) -> str:
-    rendered = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    rendered = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    )
     return _sha256(rendered.encode("utf-8"))
 
 
 def _source_commit(repo: Path) -> str | None:
     try:
         return subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=repo, check=True,
-            capture_output=True, text=True,
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
@@ -56,7 +61,11 @@ def _parse_contracts(source: bytes, allowed: set[str]) -> tuple[list[dict], list
         line = raw.strip()
         function_match = FUNCTION_RE.match(line)
         if function_match:
-            params = [part.strip() for part in function_match.group(2).split(",") if part.strip()]
+            params = [
+                part.strip()
+                for part in function_match.group(2).split(",")
+                if part.strip()
+            ]
             definitions[function_match.group(1)] = (line_number, params)
             continue
         assign_match = ASSIGN_RE.match(line)
@@ -65,7 +74,9 @@ def _parse_contracts(source: bytes, allowed: set[str]) -> tuple[list[dict], list
         name = assign_match.group("name")
         target = assign_match.group("rhs")
         if target not in definitions:
-            raise ValueError(f"line {line_number}: {name} assignment lacks preceding {target} definition")
+            raise ValueError(
+                f"line {line_number}: {name} assignment lacks preceding {target} definition"
+            )
         function_line, params = definitions[target]
         row = {
             "name": name,
@@ -94,7 +105,8 @@ def build(scripts_repo: Path) -> dict:
     event_count = 0
     for decoded, metadata in sorted(registry["scripts"].items()):
         allowed = {
-            name for name in metadata.get("methods", [])
+            name
+            for name in metadata.get("methods", [])
             if name.startswith("_on") or name in SCRIPT_EVENT_NAMES
         }
         if not allowed:
@@ -103,8 +115,13 @@ def build(scripts_repo: Path) -> dict:
         source_path = scripts_repo / relative_path
         source = source_path.read_bytes()
         manifest_row = manifest_rows[relative_path]
-        if (len(source), _sha256(source)) != (manifest_row["bytes"], manifest_row["sha256"]):
-            raise ValueError(f"{relative_path}: local source does not match reproduction manifest")
+        if (len(source), _sha256(source)) != (
+            manifest_row["bytes"],
+            manifest_row["sha256"],
+        ):
+            raise ValueError(
+                f"{relative_path}: local source does not match reproduction manifest"
+            )
         callbacks, script_handlers = _parse_contracts(source, allowed)
         found = {row["name"] for row in callbacks + script_handlers}
         missing = sorted(allowed - found)
@@ -130,8 +147,12 @@ def build(scripts_repo: Path) -> dict:
         parsed_count += len(callbacks)
         event_count += len(script_handlers)
 
-    callback_script_count = sum(bool(row["callbacks"]) for row in output_scripts.values())
-    event_script_count = sum(bool(row["scriptEventHandlers"]) for row in output_scripts.values())
+    callback_script_count = sum(
+        bool(row["callbacks"]) for row in output_scripts.values()
+    )
+    event_script_count = sum(
+        bool(row["scriptEventHandlers"]) for row in output_scripts.values()
+    )
     return {
         "version": 1,
         "generated": "2026-08-14",
@@ -141,8 +162,14 @@ def build(scripts_repo: Path) -> dict:
         "sourceSnapshot": {
             "repository": "XIVLegacy/xivl-client-scripts",
             "commit": _source_commit(scripts_repo),
-            "registry": {"path": "lua/registry.json", "sha256": _sha256(registry_bytes)},
-            "scriptManifest": {"path": "manifests/scripts.json", "sha256": _sha256(manifest_bytes)},
+            "registry": {
+                "path": "lua/registry.json",
+                "sha256": _sha256(registry_bytes),
+            },
+            "scriptManifest": {
+                "path": "manifests/scripts.json",
+                "sha256": _sha256(manifest_bytes),
+            },
             "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
         },
         "totals": {
@@ -165,9 +192,13 @@ def build(scripts_repo: Path) -> dict:
         },
         "nativeTraceBoundary": {
             "status": "bounded_sample_succeeded_complete_attribution_blocked",
-            "functionalEquivalents": ["DumpStrings.java", "FindCallers.java", "exported asm corpus"],
+            "functionalEquivalents": [
+                "DumpStrings.java",
+                "FindCallers.java",
+                "exported asm corpus",
+            ],
             "missingCapability": "A reproducible string-name -> string-address -> all data/code references -> registrar/implementation mapping for every callback name.",
-            "effect": "The bounded native sample is recorded in lua_api_contract.json. This callback-only manifest does not infer native callback targets."
+            "effect": "The bounded native sample is recorded in lua_api_contract.json. This callback-only manifest does not infer native callback targets.",
         },
         "scripts": output_scripts,
         "sourceRefs": [
@@ -181,24 +212,37 @@ def build(scripts_repo: Path) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scripts-repo", type=Path, required=True,
-                        help="Explicit xivl-client-scripts checkout containing the local corpus.")
-    parser.add_argument("--out", type=Path,
-                        default=Path("manifests/lua_callback_contract.json"))
+    parser.add_argument(
+        "--scripts-repo",
+        type=Path,
+        required=True,
+        help="Explicit xivl-client-scripts checkout containing the local corpus.",
+    )
+    parser.add_argument(
+        "--out", type=Path, default=Path("manifests/lua_callback_contract.json")
+    )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     try:
         document = build(args.scripts_repo.resolve())
         rendered = json.dumps(document, indent=2, ensure_ascii=True) + "\n"
         if args.check:
-            if not args.out.is_file() or args.out.read_text(encoding="utf-8") != rendered:
-                print(f"error: {args.out} does not match a fresh extraction", file=sys.stderr)
+            if (
+                not args.out.is_file()
+                or args.out.read_text(encoding="utf-8") != rendered
+            ):
+                print(
+                    f"error: {args.out} does not match a fresh extraction",
+                    file=sys.stderr,
+                )
                 return 1
             print(f"OK: {args.out} matches the local corpus")
             return 0
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(rendered, encoding="utf-8", newline="\n")
-        print(f"wrote {document['totals']['callbackAssignments']} callbacks to {args.out}")
+        print(
+            f"wrote {document['totals']['callbackAssignments']} callbacks to {args.out}"
+        )
         return 0
     except (OSError, UnicodeError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)

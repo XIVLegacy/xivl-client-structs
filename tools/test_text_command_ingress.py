@@ -13,11 +13,22 @@ ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "manifests" / "text_command_ingress.json"
 EXPECTED_HASH = "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
 REQUIRED_CANDIDATE_KEYS = {
-    "rank", "candidate", "vas", "rvas", "classAndSlot",
-    "callingConventionAndPrototype", "signatures", "inputEncoding",
-    "inputOwnershipAndLifetime", "expectedInvocationThread",
-    "exactOnceBehavior", "consumeForwardMechanism", "cleanupObligations",
-    "unsupportedBuildBehavior", "verdict", "evidence",
+    "rank",
+    "candidate",
+    "vas",
+    "rvas",
+    "classAndSlot",
+    "callingConventionAndPrototype",
+    "signatures",
+    "inputEncoding",
+    "inputOwnershipAndLifetime",
+    "expectedInvocationThread",
+    "exactOnceBehavior",
+    "consumeForwardMechanism",
+    "cleanupObligations",
+    "unsupportedBuildBehavior",
+    "verdict",
+    "evidence",
 }
 
 
@@ -34,8 +45,9 @@ def validate_contract(document: dict) -> list[str]:
     strongest = document.get("strongestCandidate", {})
     if strongest.get("verdict") != "GO" or "lookup" not in strongest.get("name", ""):
         errors.append("lookup verdict")
-    if "0x0056D3C0" not in strongest.get("boundary", "") or \
-            "0x0056E6A4" not in strongest.get("boundary", ""):
+    if "0x0056D3C0" not in strongest.get(
+        "boundary", ""
+    ) or "0x0056E6A4" not in strongest.get("boundary", ""):
         errors.append("lookup caller gate")
     candidates = document.get("candidateVerdicts", [])
     if [row.get("rank") for row in candidates] != list(range(1, len(candidates) + 1)):
@@ -67,19 +79,28 @@ def validate_contract(document: dict) -> list[str]:
             errors.append(f"hook contract: {required}")
 
     matrix = document.get("requiredRuntimeMatrix", [])
-    expected = ["/pos", "ordinary chat", "known retail slash command", "/unknown-command",
-                "known retail command with deferred target-selection syntax"]
+    expected = [
+        "/pos",
+        "ordinary chat",
+        "known retail slash command",
+        "/unknown-command",
+        "known retail command with deferred target-selection syntax",
+    ]
     if [row.get("input") for row in matrix] != expected:
         errors.append("runtime matrix")
-    if not matrix or not matrix[0].get("currentStatus", "").startswith("partial pass 2026-09-07"):
+    if not matrix or not matrix[0].get("currentStatus", "").startswith(
+        "partial pass 2026-09-07"
+    ):
         errors.append("live runtime status")
     if any(row.get("currentStatus") != "not run" for row in matrix[1:]):
         errors.append("runtime status boundary")
 
     limits = " ".join(document.get("evidenceBoundaries", []))
-    for required in ("four preservation rows remain unverified",
-                     "Exact character encoding is unresolved",
-                     "GO applies only to the exact-build lookup hook"):
+    for required in (
+        "four preservation rows remain unverified",
+        "Exact character encoding is unresolved",
+        "GO applies only to the exact-build lookup hook",
+    ):
         if required not in limits:
             errors.append(f"evidence boundary: {required}")
 
@@ -119,12 +140,15 @@ class TextCommandIngressTests(unittest.TestCase):
         )
 
     def test_runtime_result_cannot_be_widened(self) -> None:
-        self.assert_mutation_rejected(("requiredRuntimeMatrix", 1, "currentStatus"), "passed")
+        self.assert_mutation_rejected(
+            ("requiredRuntimeMatrix", 1, "currentStatus"), "passed"
+        )
 
     def test_encoding_claim_cannot_be_widened(self) -> None:
         changed = copy.deepcopy(self.document)
         changed["evidenceBoundaries"] = [
-            line for line in changed["evidenceBoundaries"]
+            line
+            for line in changed["evidenceBoundaries"]
             if "Exact character encoding is unresolved" not in line
         ]
         self.assertNotEqual([], validate_contract(changed))

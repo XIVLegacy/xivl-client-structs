@@ -107,9 +107,13 @@ def find_lpb(install_root: Path, source_name: str) -> Path | None:
     return None
 
 
-def decode_tree(install_root: Path, out_dir: Path,
-                source_name: str | None = None,
-                *, standalone_report: bool = False) -> int:
+def decode_tree(
+    install_root: Path,
+    out_dir: Path,
+    source_name: str | None = None,
+    *,
+    standalone_report: bool = False,
+) -> int:
     """Decode one source or an entire client script tree into ``out_dir``."""
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -117,13 +121,15 @@ def decode_tree(install_root: Path, out_dir: Path,
         path = find_lpb(install_root, source_name)
         if path is None:
             enc = encode_filename(source_name)
-            print(f"error: no shipped .lpb matches source '{source_name}' "
-                  f"(ciphered: '{enc}.le.lpb')", file=sys.stderr)
+            print(
+                f"error: no shipped .lpb matches source '{source_name}' "
+                f"(ciphered: '{enc}.le.lpb')",
+                file=sys.stderr,
+            )
             return 1
         decoded = decode_lpb(path.read_bytes())
         if decoded is None:
-            print(f"error: unrecognized .lpb wrapper magic in {path}",
-                  file=sys.stderr)
+            print(f"error: unrecognized .lpb wrapper magic in {path}", file=sys.stderr)
             return 1
         out = out_dir / f"{source_name}.luac"
         out.write_bytes(decoded)
@@ -138,8 +144,9 @@ def decode_tree(install_root: Path, out_dir: Path,
 
     script_dir = install_root / "client" / "script"
     if not script_dir.is_dir():
-        print(f"error: {script_dir} missing - is this the install root?",
-              file=sys.stderr)
+        print(
+            f"error: {script_dir} missing - is this the install root?", file=sys.stderr
+        )
         return 1
 
     n_decoded = n_failed = 0
@@ -165,17 +172,29 @@ def decode_tree(install_root: Path, out_dir: Path,
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("install_root", type=Path,
-                    help="FFXIV install root (contains client/script/)")
-    ap.add_argument("source_name", nargs="?",
-                    help="Original source-side name to decode (e.g. 'Man0g0' or "
-                         "'OpeningDirector'). If omitted, bulk-decodes all .lpb.")
-    ap.add_argument("--out", type=Path, default=Path("build/lpb"),
-                    help="Output directory for decoded .luac files")
-    ap.add_argument("--show-cipher", action="store_true",
-                    help="Print the cipher mapping table and exit")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "install_root", type=Path, help="FFXIV install root (contains client/script/)"
+    )
+    ap.add_argument(
+        "source_name",
+        nargs="?",
+        help="Original source-side name to decode (e.g. 'Man0g0' or "
+        "'OpeningDirector'). If omitted, bulk-decodes all .lpb.",
+    )
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=Path("build/lpb"),
+        help="Output directory for decoded .luac files",
+    )
+    ap.add_argument(
+        "--show-cipher",
+        action="store_true",
+        help="Print the cipher mapping table and exit",
+    )
     args = ap.parse_args()
 
     if args.show_cipher:
@@ -184,8 +203,9 @@ def main() -> int:
             print(f"  {c} <-> {encode_filename(c)}")
         return 0
 
-    return decode_tree(args.install_root, args.out, args.source_name,
-                       standalone_report=True)
+    return decode_tree(
+        args.install_root, args.out, args.source_name, standalone_report=True
+    )
 
 
 if __name__ == "__main__":

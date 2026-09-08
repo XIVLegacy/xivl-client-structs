@@ -4,6 +4,7 @@ Reads the PE optional-header import directory, walks each
 IMAGE_IMPORT_DESCRIPTOR (20 bytes), resolves each Import Lookup
 Table to hint/name entries, and outputs DLL -> [function names].
 """
+
 from __future__ import annotations
 
 import struct
@@ -30,7 +31,9 @@ def extract(exe_path: str | Path) -> list[ImportEntry]:
     if import_dir_rva == 0:
         return []
 
-    import_file_off = rva_to_file_offset(data, import_dir_rva, section_table_off, num_sections)
+    import_file_off = rva_to_file_offset(
+        data, import_dir_rva, section_table_off, num_sections
+    )
     if import_file_off < 0:
         return []
 
@@ -73,7 +76,9 @@ def extract(exe_path: str | Path) -> list[ImportEntry]:
             if thunk & 0x80000000:
                 functions.append(f"Ordinal #{thunk & 0xFFFF}")
             else:
-                hint_name_off = rva_to_file_offset(data, thunk, section_table_off, num_sections)
+                hint_name_off = rva_to_file_offset(
+                    data, thunk, section_table_off, num_sections
+                )
                 if hint_name_off >= 0:
                     fname = read_cstring(data, hint_name_off + 2)
                     functions.append(fname)
@@ -98,7 +103,9 @@ def dump_to_file(exe_path: str | Path, output_path: str | Path) -> None:
             f.write("\n")
 
 
-def rva_to_file_offset(pe: bytes, rva: int, section_table_off: int, num_sections: int) -> int:
+def rva_to_file_offset(
+    pe: bytes, rva: int, section_table_off: int, num_sections: int
+) -> int:
     for i in range(num_sections):
         sec_off = section_table_off + i * 40
         va = struct.unpack_from("<I", pe, sec_off + 12)[0]

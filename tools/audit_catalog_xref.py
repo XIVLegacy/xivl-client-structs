@@ -35,6 +35,7 @@ CLI:
 
 Pure stdlib (json, pathlib, re, sys, argparse).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,13 +52,9 @@ _include_uncataloged = False
 
 BCS_Y_ID_RE = re.compile(r"\bBCS-Y-(\d{4})\b")
 # Forward form: "FUN_XXXXXXXX (BCS-Y-NNNN)" with optional whitespace.
-FORWARD_PAIR_RE = re.compile(
-    r"\bFUN_([0-9a-fA-F]{8})\b\s*\(\s*(BCS-Y-\d{4})\s*\)"
-)
+FORWARD_PAIR_RE = re.compile(r"\bFUN_([0-9a-fA-F]{8})\b\s*\(\s*(BCS-Y-\d{4})\s*\)")
 # Require "at" in reverse pairs. `BCS-Y-0273 FUN_0057ABB0` is contextual.
-REVERSE_PAIR_RE = re.compile(
-    r"\b(BCS-Y-\d{4})\b\s*\)?\s+at\s+FUN_([0-9a-fA-F]{8})\b"
-)
+REVERSE_PAIR_RE = re.compile(r"\b(BCS-Y-\d{4})\b\s*\)?\s+at\s+FUN_([0-9a-fA-F]{8})\b")
 
 
 def _load_json(path: pathlib.Path) -> Any:
@@ -108,13 +105,15 @@ def audit_entry(sym: dict, addr_idx: dict, id_idx: dict) -> list[dict]:
         if bid == sym_id:
             continue
         if bid not in id_idx:
-            findings.append({
-                "kind": "ORPHAN",
-                "inEntry": sym_id,
-                "inEntryName": sym.get("name", ""),
-                "citedId": bid,
-                "context": _context_snippet(notes, m.start(), m.end()),
-            })
+            findings.append(
+                {
+                    "kind": "ORPHAN",
+                    "inEntry": sym_id,
+                    "inEntryName": sym.get("name", ""),
+                    "citedId": bid,
+                    "context": _context_snippet(notes, m.start(), m.end()),
+                }
+            )
 
     seen_pairs: set[tuple[str, str]] = set()
     for pat, va_grp, id_grp in (
@@ -139,18 +138,20 @@ def audit_entry(sym: dict, addr_idx: dict, id_idx: dict) -> list[dict]:
             # An uncataloged FUN_VA has no alternative ID to propose.
             if real is None and not _include_uncataloged:
                 continue
-            findings.append({
-                "kind": "MISMATCH",
-                "inEntry": sym_id,
-                "inEntryName": sym.get("name", ""),
-                "citedFunVa": va,
-                "citedId": bid,
-                "citedActualAddr": cited_addr,
-                "citedName": cited.get("name", ""),
-                "expectedId": real.get("id") if real else None,
-                "expectedName": real.get("name") if real else None,
-                "context": _context_snippet(notes, m.start(), m.end()),
-            })
+            findings.append(
+                {
+                    "kind": "MISMATCH",
+                    "inEntry": sym_id,
+                    "inEntryName": sym.get("name", ""),
+                    "citedFunVa": va,
+                    "citedId": bid,
+                    "citedActualAddr": cited_addr,
+                    "citedName": cited.get("name", ""),
+                    "expectedId": real.get("id") if real else None,
+                    "expectedName": real.get("name") if real else None,
+                    "context": _context_snippet(notes, m.start(), m.end()),
+                }
+            )
     return findings
 
 
@@ -192,54 +193,59 @@ def _render_text(findings: list[dict], mismatch_only: bool) -> str:
         bucket.sort(key=lambda f: (f["inEntry"], f.get("citedId", "")))
         out.append(f"\n--- {kind}: {len(bucket)} findings ---")
         if kind == "MISMATCH":
-            out.append("    (paired FUN_VA + BCS-Y citation where the cited"
-                       " entry's address != that FUN_VA)")
+            out.append(
+                "    (paired FUN_VA + BCS-Y citation where the cited"
+                " entry's address != that FUN_VA)"
+            )
         else:
             out.append("    (BCS-Y-NNNN token references an ID not in catalog)")
         for f in bucket:
             out.append(f"\n  in {f['inEntry']} ({f['inEntryName']}):")
             if kind == "MISMATCH":
-                out.append(
-                    f"    cited      : {f['citedId']} -> {f['citedName']}"
-                )
-                out.append(
-                    f"                 (actually at {f['citedActualAddr']})"
-                )
-                out.append(
-                    f"    paired w/  : {f['citedFunVa']}"
-                )
+                out.append(f"    cited      : {f['citedId']} -> {f['citedName']}")
+                out.append(f"                 (actually at {f['citedActualAddr']})")
+                out.append(f"    paired w/  : {f['citedFunVa']}")
                 if f["expectedId"]:
                     out.append(
-                        f"    should be  : {f['expectedId']}"
-                        f" -> {f['expectedName']}"
+                        f"    should be  : {f['expectedId']} -> {f['expectedName']}"
                     )
                 else:
                     out.append(
-                        f"    should be  : (no catalog entry at"
-                        f" {f['citedFunVa']})"
+                        f"    should be  : (no catalog entry at {f['citedFunVa']})"
                     )
             else:
                 out.append(f"    orphan id  : {f['citedId']}")
             out.append(f"    context    : {f['context']}")
 
     out.append("\n" + "=" * 72)
-    out.append(f"SUMMARY: {len(by_kind['MISMATCH'])} MISMATCH"
-               f" + {len(by_kind['ORPHAN'])} ORPHAN"
-               f" = {len(findings)} total findings")
+    out.append(
+        f"SUMMARY: {len(by_kind['MISMATCH'])} MISMATCH"
+        f" + {len(by_kind['ORPHAN'])} ORPHAN"
+        f" = {len(findings)} total findings"
+    )
     out.append("=" * 72)
     return "\n".join(out)
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    p.add_argument("--json", action="store_true",
-                   help="emit machine-readable JSON instead of text report")
-    p.add_argument("--mismatch-only", action="store_true",
-                   help="suppress ORPHAN findings in text report")
-    p.add_argument("--include-uncataloged", action="store_true",
-                   help="also flag MISMATCH where no entry exists at the"
-                        " paired FUN_VA (typically vtable / finding-doc"
-                        " cross-refs; default-suppressed as non-actionable)")
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help="emit machine-readable JSON instead of text report",
+    )
+    p.add_argument(
+        "--mismatch-only",
+        action="store_true",
+        help="suppress ORPHAN findings in text report",
+    )
+    p.add_argument(
+        "--include-uncataloged",
+        action="store_true",
+        help="also flag MISMATCH where no entry exists at the"
+        " paired FUN_VA (typically vtable / finding-doc"
+        " cross-refs; default-suppressed as non-actionable)",
+    )
     args = p.parse_args()
 
     global _include_uncataloged

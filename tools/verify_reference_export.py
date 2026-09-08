@@ -28,7 +28,7 @@ def _required_number(lines: list[str], prefix: str, minimum: int = 0) -> int:
     if len(matches) != 1:
         raise VerificationError(f"expected one {prefix!r} line")
     try:
-        value = int(matches[0][len(prefix):])
+        value = int(matches[0][len(prefix) :])
     except ValueError as exc:
         raise VerificationError(f"invalid number after {prefix!r}") from exc
     if value < minimum:
@@ -58,10 +58,15 @@ def _reference_groups(lines: list[str]) -> tuple[int, int]:
             match = REF_RE.fullmatch(lines[cursor])
             if not match:
                 raise VerificationError("malformed REF row")
-            keys.append((
-                int(match.group(1), 16), int(match.group(2)), match.group(3),
-                match.group(4), match.group(5) == "true",
-            ))
+            keys.append(
+                (
+                    int(match.group(1), 16),
+                    int(match.group(2)),
+                    match.group(3),
+                    match.group(4),
+                    match.group(5) == "true",
+                )
+            )
             cursor += 1
         if len(keys) != declared:
             raise VerificationError("per-target reference count drift")
@@ -96,8 +101,11 @@ def _verify_address(lines: list[str], summary: str) -> None:
 def _verify_string(lines: list[str], summary: str) -> None:
     query_count = _required_number(lines, "String queries: ", minimum=1)
     defined_strings = _required_number(lines, "Defined strings scanned: ")
-    query_rows = [line.removeprefix("STRING QUERY: ") for line in lines
-                  if line.startswith("STRING QUERY: ")]
+    query_rows = [
+        line.removeprefix("STRING QUERY: ")
+        for line in lines
+        if line.startswith("STRING QUERY: ")
+    ]
     if len(query_rows) != query_count:
         raise VerificationError("string query count drift")
     try:
@@ -109,8 +117,11 @@ def _verify_string(lines: list[str], summary: str) -> None:
     if queries != sorted(set(queries), key=_java_string_key):
         raise VerificationError("string queries are not unique and sorted")
 
-    match_counts = [int(line.removeprefix("Defined-data matches: "))
-                    for line in lines if line.startswith("Defined-data matches: ")]
+    match_counts = [
+        int(line.removeprefix("Defined-data matches: "))
+        for line in lines
+        if line.startswith("Defined-data matches: ")
+    ]
     if len(match_counts) != query_count:
         raise VerificationError("per-query match count drift")
     matches = len([line for line in lines if line.startswith("MATCH: ")])
@@ -144,8 +155,10 @@ def _verify_string(lines: list[str], summary: str) -> None:
     groups, references = _reference_groups(lines)
     if groups != matches:
         raise VerificationError("string match/reference group drift")
-    expected = (f"defined_strings={defined_strings} queries={query_count} "
-                f"matches={matches} references={references}")
+    expected = (
+        f"defined_strings={defined_strings} queries={query_count} "
+        f"matches={matches} references={references}"
+    )
     if summary != expected:
         raise VerificationError("string completion summary drift")
 
@@ -162,8 +175,7 @@ def verify(path: Path) -> None:
         raise VerificationError("completion marker must be unique and terminal")
     summary = complete[0].removeprefix("COMPLETE: FindReferences ")
 
-    modes = [line.removeprefix("Mode: ") for line in lines
-             if line.startswith("Mode: ")]
+    modes = [line.removeprefix("Mode: ") for line in lines if line.startswith("Mode: ")]
     if modes == ["ADDRESS"]:
         _verify_address(lines, summary)
     elif modes == ["STRING"]:

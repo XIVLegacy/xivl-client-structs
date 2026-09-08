@@ -46,27 +46,86 @@ TARGETS: tuple[dict[str, str], ...] = (
     {"bcsId": "BCS-Y-1020", "kind": "function", "address": "0x00764630"},
 )
 SUPPORTING_CONTEXT = {
-    "bcsId": "BCS-Y-0280", "kind": "function", "address": "0x004D8860"
+    "bcsId": "BCS-Y-0280",
+    "kind": "function",
+    "address": "0x004D8860",
 }
 EXPECTED_OBSERVATIONS: tuple[dict[str, Any], ...] = (
-    {"kind": "write", "instruction_va": "0x004DCCDD", "owner_va": "0x004DC690", "width": "byte", "displacement": "0x00000092", "immediate": 1},
-    {"kind": "compare", "instruction_va": "0x004D8863", "owner_va": "0x004D8860", "width": "byte", "displacement": "0x00000092", "immediate": 0},
-    {"kind": "call", "instruction_va": "0x004D88AB", "owner_va": "0x004D8860", "target_va": "0x00575860"},
-    {"kind": "write", "instruction_va": "0x004D88B0", "owner_va": "0x004D8860", "width": "byte", "displacement": "0x00000092", "immediate": 0},
-    {"kind": "write", "instruction_va": "0x004D88EA", "owner_va": "0x004D8860", "width": "byte", "displacement": "0x00000092", "immediate": 0},
-    {"kind": "call", "instruction_va": "0x004D8902", "owner_va": "0x004D8860", "target_va": "0x00574780"},
-    {"kind": "call", "instruction_va": "0x005747FB", "owner_va": "0x00574780", "target_va": "0x00774AD0"},
-    {"kind": "call", "instruction_va": "0x005758C4", "owner_va": "0x00575860", "target_va": "0x00764630"},
+    {
+        "kind": "write",
+        "instruction_va": "0x004DCCDD",
+        "owner_va": "0x004DC690",
+        "width": "byte",
+        "displacement": "0x00000092",
+        "immediate": 1,
+    },
+    {
+        "kind": "compare",
+        "instruction_va": "0x004D8863",
+        "owner_va": "0x004D8860",
+        "width": "byte",
+        "displacement": "0x00000092",
+        "immediate": 0,
+    },
+    {
+        "kind": "call",
+        "instruction_va": "0x004D88AB",
+        "owner_va": "0x004D8860",
+        "target_va": "0x00575860",
+    },
+    {
+        "kind": "write",
+        "instruction_va": "0x004D88B0",
+        "owner_va": "0x004D8860",
+        "width": "byte",
+        "displacement": "0x00000092",
+        "immediate": 0,
+    },
+    {
+        "kind": "write",
+        "instruction_va": "0x004D88EA",
+        "owner_va": "0x004D8860",
+        "width": "byte",
+        "displacement": "0x00000092",
+        "immediate": 0,
+    },
+    {
+        "kind": "call",
+        "instruction_va": "0x004D8902",
+        "owner_va": "0x004D8860",
+        "target_va": "0x00574780",
+    },
+    {
+        "kind": "call",
+        "instruction_va": "0x005747FB",
+        "owner_va": "0x00574780",
+        "target_va": "0x00774AD0",
+    },
+    {
+        "kind": "call",
+        "instruction_va": "0x005758C4",
+        "owner_va": "0x00575860",
+        "target_va": "0x00764630",
+    },
 )
 
 ADDRESS_RE = re.compile(r"^0x[0-9A-F]{8}$")
 COMMON_KEYS = frozenset({"kind", "instruction_va", "owner_va"})
 FIELD_KEYS = COMMON_KEYS | {"width", "displacement", "immediate"}
 CALL_KEYS = COMMON_KEYS | {"target_va"}
-ROOT_KEYS = frozenset({
-    "check", "program", "image_base", "language", "compiler_spec",
-    "analysis_complete", "observations", "complete", "completion_marker",
-})
+ROOT_KEYS = frozenset(
+    {
+        "check",
+        "program",
+        "image_base",
+        "language",
+        "compiler_spec",
+        "analysis_complete",
+        "observations",
+        "complete",
+        "completion_marker",
+    }
+)
 
 
 class VerificationError(Exception):
@@ -82,7 +141,9 @@ def _read_json(path: Path) -> Any:
 
 
 def _fingerprints(rows: Iterable[dict[str, Any]]) -> tuple[str, ...]:
-    return tuple(sorted(json.dumps(row, sort_keys=True, separators=(",", ":")) for row in rows))
+    return tuple(
+        sorted(json.dumps(row, sort_keys=True, separators=(",", ":")) for row in rows)
+    )
 
 
 def validate_observations(value: Any) -> list[str]:
@@ -99,17 +160,23 @@ def validate_observations(value: Any) -> list[str]:
         if kind not in {"call", "write", "compare"} or frozenset(row) != expected_keys:
             errors.append("observation shape is invalid")
             continue
-        if not all(isinstance(row.get(key), str) and ADDRESS_RE.fullmatch(row[key])
-                   for key in ("instruction_va", "owner_va")):
+        if not all(
+            isinstance(row.get(key), str) and ADDRESS_RE.fullmatch(row[key])
+            for key in ("instruction_va", "owner_va")
+        ):
             errors.append("observation address is malformed")
         if kind == "call":
-            if not isinstance(row["target_va"], str) or not ADDRESS_RE.fullmatch(row["target_va"]):
+            if not isinstance(row["target_va"], str) or not ADDRESS_RE.fullmatch(
+                row["target_va"]
+            ):
                 errors.append("call target is malformed")
-        elif (row["width"] != "byte"
-              or not isinstance(row["displacement"], str)
-              or not ADDRESS_RE.fullmatch(row["displacement"])
-              or not isinstance(row["immediate"], int)
-              or isinstance(row["immediate"], bool)):
+        elif (
+            row["width"] != "byte"
+            or not isinstance(row["displacement"], str)
+            or not ADDRESS_RE.fullmatch(row["displacement"])
+            or not isinstance(row["immediate"], int)
+            or isinstance(row["immediate"], bool)
+        ):
             errors.append("field observation is malformed")
         fingerprint = json.dumps(row, sort_keys=True, separators=(",", ":"))
         if fingerprint in seen:
@@ -127,7 +194,9 @@ def _check_exact_observations(value: Any, label: str) -> list[str]:
     return []
 
 
-def _catalog_errors(symbols: Any, declared_targets: Any, declared_context: Any) -> list[str]:
+def _catalog_errors(
+    symbols: Any, declared_targets: Any, declared_context: Any
+) -> list[str]:
     if _fingerprints(declared_targets) != _fingerprints(TARGETS):
         return ["target declarations drifted"]
     if declared_context != SUPPORTING_CONTEXT:
@@ -137,8 +206,11 @@ def _catalog_errors(symbols: Any, declared_targets: Any, declared_context: Any) 
         return ["symbols catalog is malformed"]
     errors: list[str] = []
     for expected in (*TARGETS, SUPPORTING_CONTEXT):
-        matches = [entry for entry in entries
-                   if isinstance(entry, dict) and entry.get("id") == expected["bcsId"]]
+        matches = [
+            entry
+            for entry in entries
+            if isinstance(entry, dict) and entry.get("id") == expected["bcsId"]
+        ]
         if len(matches) != 1:
             errors.append("required BCS entry is not unique")
         elif any(matches[0].get(key) != expected[key] for key in ("kind", "address")):
@@ -149,14 +221,20 @@ def _catalog_errors(symbols: Any, declared_targets: Any, declared_context: Any) 
 def _retail_input_errors(document: Any) -> list[str]:
     expected = {
         "schemaVersion": 1,
-        "inputs": [{
-            "id": INPUT_ID,
-            "filename": INPUT_FILENAME,
-            "size": INPUT_SIZE,
-            "sha256": INPUT_SHA256,
-            "source": {"repository": PRIVATE_REPOSITORY, "commit": PRIVATE_COMMIT, "path": PRIVATE_PATH},
-            "allowedChecks": [CHECK_ID],
-        }],
+        "inputs": [
+            {
+                "id": INPUT_ID,
+                "filename": INPUT_FILENAME,
+                "size": INPUT_SIZE,
+                "sha256": INPUT_SHA256,
+                "source": {
+                    "repository": PRIVATE_REPOSITORY,
+                    "commit": PRIVATE_COMMIT,
+                    "path": PRIVATE_PATH,
+                },
+                "allowedChecks": [CHECK_ID],
+            }
+        ],
     }
     return [] if document == expected else ["retail input grant drifted"]
 
@@ -167,8 +245,11 @@ ZERO_COMMIT = "0" * 40
 def _git_commit(repo: Path = REPO) -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=repo, check=True,
-            capture_output=True, text=True,
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
         )
         commit = result.stdout.strip()
     except (OSError, subprocess.SubprocessError):
@@ -210,16 +291,31 @@ def verify(
     if not isinstance(check, dict):
         errors.append("check manifest is malformed")
         check = {}
-    if (check.get("schemaVersion"), check.get("checkId"), check.get("approvedInputId"),
-        check.get("approvedInputSha256")) != (SCHEMA_VERSION, CHECK_ID, INPUT_ID, INPUT_SHA256):
+    if (
+        check.get("schemaVersion"),
+        check.get("checkId"),
+        check.get("approvedInputId"),
+        check.get("approvedInputSha256"),
+    ) != (SCHEMA_VERSION, CHECK_ID, INPUT_ID, INPUT_SHA256):
         errors.append("check identity drifted")
-    if frozenset(check) != frozenset({
-        "schemaVersion", "checkId", "approvedInputId", "approvedInputSha256",
-        "targets", "supportingContext", "observations",
-    }):
+    if frozenset(check) != frozenset(
+        {
+            "schemaVersion",
+            "checkId",
+            "approvedInputId",
+            "approvedInputSha256",
+            "targets",
+            "supportingContext",
+            "observations",
+        }
+    ):
         errors.append("check manifest shape drifted")
-    errors.extend(_catalog_errors(symbols, check.get("targets"), check.get("supportingContext")))
-    errors.extend(_check_exact_observations(check.get("observations"), "expected observations"))
+    errors.extend(
+        _catalog_errors(symbols, check.get("targets"), check.get("supportingContext"))
+    )
+    errors.extend(
+        _check_exact_observations(check.get("observations"), "expected observations")
+    )
 
     if not isinstance(observations, dict) or frozenset(observations) != ROOT_KEYS:
         errors.append("observation document shape is invalid")
@@ -235,7 +331,9 @@ def verify(
         or observations.get("completion_marker") != "complete"
     ):
         errors.append("observation document identity is invalid")
-    errors.extend(_check_exact_observations(observations.get("observations"), "observations"))
+    errors.extend(
+        _check_exact_observations(observations.get("observations"), "observations")
+    )
     return errors
 
 
@@ -263,7 +361,11 @@ def main(argv: list[str] | None = None) -> int:
     if schema_errors:
         errors.append("attestation schema rejected output")
         attestation = build_attestation("fail", public_commit)
-    print(json.dumps(attestation, ensure_ascii=True, sort_keys=True, separators=(",", ":")))
+    print(
+        json.dumps(
+            attestation, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+        )
+    )
     for error in errors:
         print(f"ERROR: {error}", file=sys.stderr)
     return 1 if errors else 0

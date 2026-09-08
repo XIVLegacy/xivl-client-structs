@@ -27,6 +27,7 @@ Exit 0 if no ERRORs, 1 if any ERRORs.
 
 Pure stdlib (json, re, pathlib, sys, collections, dataclasses, typing).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -46,7 +47,9 @@ STRUCTS_PATH = REPO / "manifests" / "structs.json"
 MATRIX_PATH = REPO / "manifests" / "pcap_opcode_coverage_matrix.json"
 ROLE_REFINEMENTS_PATH = REPO / "manifests" / "role_refinements.json"
 BATTLE_RESULT_PATH = REPO / "manifests" / "battle_result_field_semantics.json"
-LUA_RESOURCE_INVENTORY_PATH = REPO / "manifests" / "preserved_lua_resource_inventory.json"
+LUA_RESOURCE_INVENTORY_PATH = (
+    REPO / "manifests" / "preserved_lua_resource_inventory.json"
+)
 LUA_RESOURCE_PATH_PATH = REPO / "manifests" / "lua_resource_path_decoding.json"
 LUA_CALLBACK_CONTRACT_PATH = REPO / "manifests" / "lua_callback_contract.json"
 LUA_API_CONTRACT_PATH = REPO / "manifests" / "lua_api_contract.json"
@@ -54,7 +57,9 @@ CAST_CHANT_PRESENTATION_PATH = REPO / "manifests" / "cast_chant_presentation.jso
 COMBAT_COMMAND_EMISSION_PATH = REPO / "manifests" / "combat_command_emission.json"
 COMMAND_SLOT_CONTEXT_PATH = REPO / "manifests" / "command_slot_context.json"
 GAM_HASH_NAMES_PATH = REPO / "manifests" / "gam_hash_names.json"
-PROPERTY_STREAM_HASH_CATALOG_PATH = REPO / "manifests" / "property_stream_hash_catalog.json"
+PROPERTY_STREAM_HASH_CATALOG_PATH = (
+    REPO / "manifests" / "property_stream_hash_catalog.json"
+)
 EXPANDED_REVERSE_BFS_PATH = REPO / "manifests" / "expanded_reverse_bfs.json"
 C2S_BRIDGE_PATH = REPO / "manifests" / "c2s_bridge_skeleton.json"
 DATA_DEPENDENCY_PATH = REPO / "manifests" / "data_dependency_catalog.json"
@@ -103,19 +108,25 @@ SIZE_CANONICAL_NONHEX_RES: tuple[re.Pattern[str], ...] = (
     re.compile(r"^unknown$"),
     re.compile(r"^n/a$"),
     re.compile(r"^pointer/string$"),
-    re.compile(r"^Lua\s+(?:table\s+entry|reference|string|closure|"
-               r"call\s+expression)$"),
+    re.compile(
+        r"^Lua\s+(?:table\s+entry|reference|string|closure|"
+        r"call\s+expression)$"
+    ),
     # Require a separator after the hex token so malformed values like 0x12g do not match.
     re.compile(r"^0x[0-9a-fA-F]+[\s(/].+$"),
     re.compile(r"^variable\s*\(.+\)$"),
-    re.compile(r"^(?:at\s+least|approximately|minimum|maximum)\s+"
-               r"0x[0-9a-fA-F]+\b.*$"),
+    re.compile(
+        r"^(?:at\s+least|approximately|minimum|maximum)\s+"
+        r"0x[0-9a-fA-F]+\b.*$"
+    ),
 )
 
 OPCODE_RE = re.compile(r"^0x[0-9a-f]{4}$")
 
 
-def check_battle_result_fields(doc: dict[str, Any], structs_doc: dict[str, Any]) -> list[Finding]:
+def check_battle_result_fields(
+    doc: dict[str, Any], structs_doc: dict[str, Any]
+) -> list[Finding]:
     """Lock the reviewed 0x0139..0x013C normalized queue contract."""
     findings: list[Finding] = []
     route = doc.get("route", {})
@@ -130,15 +141,24 @@ def check_battle_result_fields(doc: dict[str, Any], structs_doc: dict[str, Any])
 
     queue = doc.get("queueEntry", {})
     dimensions = (
-        queue.get("size"), queue.get("rowCapacity"), queue.get("rowOffset"), queue.get("rowStride")
+        queue.get("size"),
+        queue.get("rowCapacity"),
+        queue.get("rowOffset"),
+        queue.get("rowStride"),
     )
     if dimensions != (416, 18, 56, 20):
-        findings.append(Finding("ERROR", "battle-result.queue", f"dimensions are {dimensions!r}"))
+        findings.append(
+            Finding("ERROR", "battle-result.queue", f"dimensions are {dimensions!r}")
+        )
 
     variants = {
         row.get("opcodeHex"): (
-            row.get("rowCapacity"), row.get("subpacketSize"), row.get("observedOccurrences"),
-            row.get("captureCount"), row.get("retainedSamples"), row.get("status"),
+            row.get("rowCapacity"),
+            row.get("subpacketSize"),
+            row.get("observedOccurrences"),
+            row.get("captureCount"),
+            row.get("retainedSamples"),
+            row.get("status"),
         )
         for row in doc.get("wireVariants", [])
     }
@@ -149,22 +169,41 @@ def check_battle_result_fields(doc: dict[str, Any], structs_doc: dict[str, Any])
         "0x013C": (0, 72, 27, 6, 18, None),
     }
     if variants != expected_variants:
-        findings.append(Finding("ERROR", "battle-result.variants", "capture/static tuples drifted"))
+        findings.append(
+            Finding("ERROR", "battle-result.variants", "capture/static tuples drifted")
+        )
 
     structs = {row.get("id"): row for row in structs_doc.get("structs", [])}
     entry = structs.get("BCS-S-0031", {})
     target = structs.get("BCS-S-0051", {})
-    entry_fields = {field.get("offset"): (field.get("size"), field.get("name"), field.get("type")) for field in entry.get("fields", [])}
-    if entry.get("size") != "0x1A0" or entry_fields.get("0x38") != ("0x168", "targetRows", "BattleResultTargetRow[18]"):
-        findings.append(Finding("ERROR", "structs.json:BCS-S-0031", "18-row queue layout drifted"))
-    target_fields = {field.get("offset"): field.get("name") for field in target.get("fields", [])}
+    entry_fields = {
+        field.get("offset"): (field.get("size"), field.get("name"), field.get("type"))
+        for field in entry.get("fields", [])
+    }
+    if entry.get("size") != "0x1A0" or entry_fields.get("0x38") != (
+        "0x168",
+        "targetRows",
+        "BattleResultTargetRow[18]",
+    ):
+        findings.append(
+            Finding("ERROR", "structs.json:BCS-S-0031", "18-row queue layout drifted")
+        )
+    target_fields = {
+        field.get("offset"): field.get("name") for field in target.get("fields", [])
+    }
     expected_target_fields = {
-        "0x00": "targetActorId", "0x04": "numericValue", "0x08": "effectId",
-        "0x0C": "worldMasterTextId", "0x0E": "textParam",
-        "0x0F": "rowOrdinalOrFilter", "0x10": "reserved",
+        "0x00": "targetActorId",
+        "0x04": "numericValue",
+        "0x08": "effectId",
+        "0x0C": "worldMasterTextId",
+        "0x0E": "textParam",
+        "0x0F": "rowOrdinalOrFilter",
+        "0x10": "reserved",
     }
     if target.get("size") != "0x14" or target_fields != expected_target_fields:
-        findings.append(Finding("ERROR", "structs.json:BCS-S-0051", "target-row layout drifted"))
+        findings.append(
+            Finding("ERROR", "structs.json:BCS-S-0051", "target-row layout drifted")
+        )
     return findings
 
 
@@ -173,65 +212,133 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     if not isinstance(doc, dict):
         return [Finding("ERROR", "cast-chant", "manifest must be an object")]
-    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
-        3, "2026-08-27", "1.23b", "cast_ready_schedule_dispatch_closed"
-    ):
-        findings.append(Finding("ERROR", "cast-chant.metadata", "snapshot metadata drifted"))
+    if (
+        doc.get("version"),
+        doc.get("generated"),
+        doc.get("gameVersion"),
+        doc.get("status"),
+    ) != (3, "2026-08-27", "1.23b", "cast_ready_schedule_dispatch_closed"):
+        findings.append(
+            Finding("ERROR", "cast-chant.metadata", "snapshot metadata drifted")
+        )
 
     expected_snapshots = {
-        "captures": {"repository": "XIVLegacy/xivl-captures", "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4"},
-        "clientData": {"repository": "XIVLegacy/xivl-client-data", "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6"},
-        "clientScripts": {"repository": "XIVLegacy/xivl-client-scripts", "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b"},
-        "decomp": {"repository": "XIVLegacy/xivl-decomp", "commit": "51f908e6a963b7e4a33cdb3f1b9b2f3573ef31df"},
+        "captures": {
+            "repository": "XIVLegacy/xivl-captures",
+            "commit": "48c7841c947ca07aecccd5fed3db6167b3efbac4",
+        },
+        "clientData": {
+            "repository": "XIVLegacy/xivl-client-data",
+            "commit": "566c5dc3ee5e1f036008e6758e8b7bbcf9663ea6",
+        },
+        "clientScripts": {
+            "repository": "XIVLegacy/xivl-client-scripts",
+            "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
+        },
+        "decomp": {
+            "repository": "XIVLegacy/xivl-decomp",
+            "commit": "51f908e6a963b7e4a33cdb3f1b9b2f3573ef31df",
+        },
     }
     if doc.get("sourceSnapshots") != expected_snapshots:
-        findings.append(Finding("ERROR", "cast-chant.sourceSnapshots", "source snapshot drifted"))
+        findings.append(
+            Finding("ERROR", "cast-chant.sourceSnapshots", "source snapshot drifted")
+        )
 
     gauge = doc.get("activeCastGauge", {})
     if not isinstance(gauge, dict):
-        return findings + [Finding("ERROR", "cast-chant.activeCastGauge", "must be an object")]
+        return findings + [
+            Finding("ERROR", "cast-chant.activeCastGauge", "must be an object")
+        ]
     carrier = gauge.get("wireCarrier", {})
     if not isinstance(carrier, dict):
         return findings + [Finding("ERROR", "cast-chant.carrier", "must be an object")]
-    if (carrier.get("opcodeHex"), carrier.get("subpacketSize"),
-            carrier.get("observedPackets"), carrier.get("observedScenarios"),
-            carrier.get("applicationPayloadSize")) != ("0x0137", 168, 1992, 36, 136):
-        findings.append(Finding("ERROR", "cast-chant.carrier", "0x0137 capture tuple drifted"))
-    expected_framing = ("168-byte subpacket = 16-byte outer subevent framing + 152-byte game message; "
-                        "the game message is a 16-byte prefix plus the 136-byte application payload.")
+    if (
+        carrier.get("opcodeHex"),
+        carrier.get("subpacketSize"),
+        carrier.get("observedPackets"),
+        carrier.get("observedScenarios"),
+        carrier.get("applicationPayloadSize"),
+    ) != ("0x0137", 168, 1992, 36, 136):
+        findings.append(
+            Finding("ERROR", "cast-chant.carrier", "0x0137 capture tuple drifted")
+        )
+    expected_framing = (
+        "168-byte subpacket = 16-byte outer subevent framing + 152-byte game message; "
+        "the game message is a 16-byte prefix plus the 136-byte application payload."
+    )
     if carrier.get("framing") != expected_framing:
-        findings.append(Finding("ERROR", "cast-chant.framing", "0x0137 framing drifted"))
+        findings.append(
+            Finding("ERROR", "cast-chant.framing", "0x0137 framing drifted")
+        )
 
     property_rows = gauge.get("properties", [])
     if not isinstance(property_rows, list):
-        return findings + [Finding("ERROR", "cast-chant.properties", "must be an array")]
+        return findings + [
+            Finding("ERROR", "cast-chant.properties", "must be an array")
+        ]
     properties = {
         row.get("name"): (
-            row.get("idHex"), row.get("valueType"), row.get("observedRecords"),
-            row.get("observedCaptures"), row.get("observedValuesHex")
+            row.get("idHex"),
+            row.get("valueType"),
+            row.get("observedRecords"),
+            row.get("observedCaptures"),
+            row.get("observedValuesHex"),
         )
-        for row in property_rows if isinstance(row, dict)
+        for row in property_rows
+        if isinstance(row, dict)
     }
     expected_properties = {
-        "playerWork.castCommandClient": ("0xf683a451", "u32", 3, 1,
-                                          ["d26a0000", "00000000"]),
-        "playerWork.castEndClient": ("0x59c40d5d", "u32", 2, 1,
-                                      ["dc1be150", "c21de150"]),
-        "charaWork.battleTemp.castGauge_speed[0]": ("0x573fe04c", "float32", 11, 8,
-                                                     ["0000803f"]),
-        "charaWork.battleTemp.castGauge_speed[1]": ("0xbb9cc775", "float32", 11, 8,
-                                                     ["0000803e"]),
+        "playerWork.castCommandClient": (
+            "0xf683a451",
+            "u32",
+            3,
+            1,
+            ["d26a0000", "00000000"],
+        ),
+        "playerWork.castEndClient": (
+            "0x59c40d5d",
+            "u32",
+            2,
+            1,
+            ["dc1be150", "c21de150"],
+        ),
+        "charaWork.battleTemp.castGauge_speed[0]": (
+            "0x573fe04c",
+            "float32",
+            11,
+            8,
+            ["0000803f"],
+        ),
+        "charaWork.battleTemp.castGauge_speed[1]": (
+            "0xbb9cc775",
+            "float32",
+            11,
+            8,
+            ["0000803e"],
+        ),
     }
     if properties != expected_properties:
-        findings.append(Finding("ERROR", "cast-chant.properties", "cast property contract drifted"))
+        findings.append(
+            Finding("ERROR", "cast-chant.properties", "cast property contract drifted")
+        )
 
     expected_route = [
-        "FUN_004D8860", "FUN_00575070", "FUN_00759ED0", "FUN_0089E550",
-        "FUN_00775A30", "FUN_00775180", "SyncWriter vtable slot 1 (+0x04) at 0x00775652",
-        "FUN_00774220", "FUN_00773F10", "FUN_00CC7A90 _onUpdateWork",
+        "FUN_004D8860",
+        "FUN_00575070",
+        "FUN_00759ED0",
+        "FUN_0089E550",
+        "FUN_00775A30",
+        "FUN_00775180",
+        "SyncWriter vtable slot 1 (+0x04) at 0x00775652",
+        "FUN_00774220",
+        "FUN_00773F10",
+        "FUN_00CC7A90 _onUpdateWork",
     ]
     if gauge.get("propertyRoute") != expected_route:
-        findings.append(Finding("ERROR", "cast-chant.propertyRoute", "native route drifted"))
+        findings.append(
+            Finding("ERROR", "cast-chant.propertyRoute", "native route drifted")
+        )
 
     expected_boundary = (
         "FUN_00775180 lower-bounds the context property map at +0x0C by property hash, "
@@ -241,48 +348,85 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "These are not fixed CharaBase or PlayerBase offsets."
     )
     if gauge.get("firstNativeBoundary") != expected_boundary:
-        findings.append(Finding("ERROR", "cast-chant.firstNativeBoundary", "SyncWriter boundary drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.firstNativeBoundary", "SyncWriter boundary drifted"
+            )
+        )
     if gauge.get("handlerStorageBoundary") != (
         "manifests/property_stream_hash_catalog.json#applyStorageBoundary"
     ):
-        findings.append(Finding("ERROR", "cast-chant.handlerStorage", "canonical boundary ref drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.handlerStorage", "canonical boundary ref drifted"
+            )
+        )
 
     cross_check = gauge.get("captureCrossCheck", {})
     if not isinstance(cross_check, dict) or (
-        cross_check.get("scenario"), cross_check.get("target"),
-        cross_check.get("observedCommandId")
+        cross_check.get("scenario"),
+        cross_check.get("target"),
+        cross_check.get("observedCommandId"),
     ) != ("party_battle_leve.pcapng", "playerWork/castState", 27346):
-        findings.append(Finding("ERROR", "cast-chant.cross-check", "Cure same-id cross-check drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.cross-check", "Cure same-id cross-check drifted"
+            )
+        )
     duration = gauge.get("uiDuration", {})
-    expected_formula = ("remaining = player.getCastEndTime() - worldMaster._getServerTime(); "
-                        "if remaining <= 0 then remaining = 1; progressRate = 1 / remaining")
+    expected_formula = (
+        "remaining = player.getCastEndTime() - worldMaster._getServerTime(); "
+        "if remaining <= 0 then remaining = 1; progressRate = 1 / remaining"
+    )
     if not isinstance(duration, dict) or (
-        duration.get("formula"), duration.get("widget"), duration.get("storyboard"),
-        duration.get("units")
-    ) != (expected_formula, "ProgressBar_MagicCast_Main", "UILuaCommands.StartCastGauge", "whole seconds"):
-        findings.append(Finding("ERROR", "cast-chant.uiDuration", "gauge formula drifted"))
+        duration.get("formula"),
+        duration.get("widget"),
+        duration.get("storyboard"),
+        duration.get("units"),
+    ) != (
+        expected_formula,
+        "ProgressBar_MagicCast_Main",
+        "UILuaCommands.StartCastGauge",
+        "whole seconds",
+    ):
+        findings.append(
+            Finding("ERROR", "cast-chant.uiDuration", "gauge formula drifted")
+        )
     sheet = doc.get("localCommandCastTime", {})
     if not isinstance(sheet, dict):
         return findings + [Finding("ERROR", "cast-chant.sheet", "must be an object")]
     sheet_example = sheet.get("example", {})
     if not isinstance(sheet_example, dict):
-        return findings + [Finding("ERROR", "cast-chant.sheet.example", "must be an object")]
-    if (sheet.get("sheet"), sheet.get("column"), sheet.get("fieldName"),
-            sheet.get("units"), sheet_example.get("rawCastTime")) != (
-        "gameCommandBasic.csv", 76, "cast_time", "unresolved", 2
-    ):
-        findings.append(Finding("ERROR", "cast-chant.sheet", "raw cast-time contract drifted"))
+        return findings + [
+            Finding("ERROR", "cast-chant.sheet.example", "must be an object")
+        ]
+    if (
+        sheet.get("sheet"),
+        sheet.get("column"),
+        sheet.get("fieldName"),
+        sheet.get("units"),
+        sheet_example.get("rawCastTime"),
+    ) != ("gameCommandBasic.csv", 76, "cast_time", "unresolved", 2):
+        findings.append(
+            Finding("ERROR", "cast-chant.sheet", "raw cast-time contract drifted")
+        )
 
     cast_vfx = doc.get("castReadyVfx", {})
     if not isinstance(cast_vfx, dict):
         return findings + [Finding("ERROR", "cast-chant.vfx", "must be an object")]
     vfx = cast_vfx.get("mapping", {})
     if not isinstance(vfx, dict):
-        return findings + [Finding("ERROR", "cast-chant.vfx.mapping", "must be an object")]
-    if (vfx.get("effectCategoryHighByte"), vfx.get("visualResultClass"), vfx.get("name")) != (
-        "0x6f", 8, "CastOrReadyPreAction"
-    ):
-        findings.append(Finding("ERROR", "cast-chant.vfx", "cast-ready selector drifted"))
+        return findings + [
+            Finding("ERROR", "cast-chant.vfx.mapping", "must be an object")
+        ]
+    if (
+        vfx.get("effectCategoryHighByte"),
+        vfx.get("visualResultClass"),
+        vfx.get("name"),
+    ) != ("0x6f", 8, "CastOrReadyPreAction"):
+        findings.append(
+            Finding("ERROR", "cast-chant.vfx", "cast-ready selector drifted")
+        )
     expected_tail = [
         "target CharaActor+0x12F0 RaptureSchEffectController",
         "primary vftable 0x00FF5628 slot 2 (+0x08) FUN_0080E050",
@@ -290,7 +434,9 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "embedded RaptureSchEffectContainer slot 1 FUN_0080E7A0",
     ]
     if cast_vfx.get("route", [])[-4:] != expected_tail:
-        findings.append(Finding("ERROR", "cast-chant.vfx.route", "schedule dispatch tail drifted"))
+        findings.append(
+            Finding("ERROR", "cast-chant.vfx.route", "schedule dispatch tail drifted")
+        )
 
     chant = doc.get("chantStatusBoundary", {})
     if not isinstance(chant, dict):
@@ -300,10 +446,14 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "BCS-Y-0438 SubStat_getChantImpl_FUN_006F9EC0",
         "8..15; kind 1 reads bits 12..15 and kind 2 reads bits 8..11",
     ):
-        findings.append(Finding("ERROR", "cast-chant.chant", "SubStat Chant boundary drifted"))
+        findings.append(
+            Finding("ERROR", "cast-chant.chant", "SubStat Chant boundary drifted")
+        )
     semantics = doc.get("chantNibbleSemanticsSearch", {})
     if not isinstance(semantics, dict):
-        return findings + [Finding("ERROR", "cast-chant.chant-semantics", "must be an object")]
+        return findings + [
+            Finding("ERROR", "cast-chant.chant-semantics", "must be an object")
+        ]
     sample = semantics.get("sample", {})
     research_inputs = semantics.get("researchInputs", {})
     names = semantics.get("exactLuaNameCensus", {})
@@ -316,10 +466,20 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "FUN_006FA020 Breakage: bits 0..7",
     ]
     expected_accessors = [
-        "FUN_006EECB0", "FUN_006EECD0", "FUN_006FA150", "FUN_006FA1F0",
-        "FUN_006FA220", "FUN_006FA250", "FUN_006FA2C0", "FUN_006FA330",
-        "FUN_006FA980", "FUN_006FAE70", "FUN_00707FB0", "FUN_007080F0",
-        "FUN_007084B0", "FUN_007084E0",
+        "FUN_006EECB0",
+        "FUN_006EECD0",
+        "FUN_006FA150",
+        "FUN_006FA1F0",
+        "FUN_006FA220",
+        "FUN_006FA250",
+        "FUN_006FA2C0",
+        "FUN_006FA330",
+        "FUN_006FA980",
+        "FUN_006FAE70",
+        "FUN_00707FB0",
+        "FUN_007080F0",
+        "FUN_007084B0",
+        "FUN_007084E0",
     ]
     expected_boundary = (
         "A computed, indirect, dynamic, or otherwise unanchored consumer of the already-resolved "
@@ -347,62 +507,177 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "per-function decompilation establish the bounded negative."
     )
     if research_inputs != expected_research_inputs:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.inputs", "research inputs drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.chant-semantics.inputs", "research inputs drifted"
+            )
+        )
     if not isinstance(sample, dict) or (
-        sample.get("statusWordHex"), sample.get("chantKind1"), sample.get("chantKind2"),
-        sample.get("objectKinds")
+        sample.get("statusWordHex"),
+        sample.get("chantKind1"),
+        sample.get("chantKind2"),
+        sample.get("objectKinds"),
     ) != ("0x0003681F", 6, 8, [8, 1, 2]):
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.sample", "sample projection drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.sample",
+                "sample projection drifted",
+            )
+        )
     if not isinstance(names, dict) or (
-        names.get("definedStringsScanned"), names.get("queries"), names.get("nativeMatches"),
-        names.get("valueTablesFound")
+        names.get("definedStringsScanned"),
+        names.get("queries"),
+        names.get("nativeMatches"),
+        names.get("valueTablesFound"),
     ) != (
         28414,
-        ["_getSubStatChant", "_getSubStatChant_cpp", "_getSubStatChant_inl", "_setSubStatChant"],
+        [
+            "_getSubStatChant",
+            "_getSubStatChant_cpp",
+            "_getSubStatChant_inl",
+            "_setSubStatChant",
+        ],
         ["_getSubStatChant at 0x00FD7B9C -> FUN_0074ADF0"],
         0,
     ):
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.names", "exact name census drifted"))
-    elif names.get("scriptConsumers") != ["commanddebuggerdev.lua reads and prints the numeric result"]:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.names", "script consumer census drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.chant-semantics.names", "exact name census drifted"
+            )
+        )
+    elif names.get("scriptConsumers") != [
+        "commanddebuggerdev.lua reads and prints the numeric result"
+    ]:
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.names",
+                "script consumer census drifted",
+            )
+        )
     if semantics.get("status") != "bounded_negative":
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.status", "bounded verdict drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.chant-semantics.status", "bounded verdict drifted"
+            )
+        )
     if semantics.get("resolverConsumers") != expected_resolver_consumers:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.resolvers", "resolver census drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.resolvers",
+                "resolver census drifted",
+            )
+        )
     if semantics.get("storageAccessorConsumers") != expected_accessors:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.accessors", "accessor census drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.accessors",
+                "accessor census drifted",
+            )
+        )
     negatives = shapes.get("shapeOnlyNegatives", []) if isinstance(shapes, dict) else []
-    if not isinstance(negatives, list) or not all(isinstance(item, str) for item in negatives):
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "candidates must be strings"))
+    if not isinstance(negatives, list) or not all(
+        isinstance(item, str) for item in negatives
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.shapes",
+                "candidates must be strings",
+            )
+        )
     elif not isinstance(shapes, dict) or (
-        shapes.get("emittedFunctionRanges"), shapes.get("candidateFunctions"),
-        shapes.get("anchoredConsumers"), len(negatives),
-        shapes.get("statusStorageIntersections")
+        shapes.get("emittedFunctionRanges"),
+        shapes.get("candidateFunctions"),
+        shapes.get("anchoredConsumers"),
+        len(negatives),
+        shapes.get("statusStorageIntersections"),
     ) != (94894, 99, ["FUN_006F9EC0", "FUN_006F9F70"], 97, []):
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "instruction census drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.shapes",
+                "instruction census drifted",
+            )
+        )
     elif len(set(negatives)) != 97:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "candidate census has duplicates"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.shapes",
+                "candidate census has duplicates",
+            )
+        )
     elif hashlib.sha256("\n".join(negatives).encode()).hexdigest() != (
         "853e4201d09dbae717591c1b1a924c4cc1e832f86148a40f946f26b233b641d2"
     ):
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "candidate census drifted"))
-    if isinstance(shapes, dict) and shapes.get("offsetDcIntersections") != expected_offset_dc_intersections:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "+0xDC negatives drifted"))
-    if isinstance(shapes, dict) and shapes.get("methodBoundary") != expected_method_boundary:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.shapes", "method boundary drifted"))
-    if semantics.get("otherDirectStatusReader") != "FUN_006FA100 MotionPack reads only bits 0..7":
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.motion-pack", "direct reader drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.chant-semantics.shapes", "candidate census drifted"
+            )
+        )
+    if (
+        isinstance(shapes, dict)
+        and shapes.get("offsetDcIntersections") != expected_offset_dc_intersections
+    ):
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.chant-semantics.shapes", "+0xDC negatives drifted"
+            )
+        )
+    if (
+        isinstance(shapes, dict)
+        and shapes.get("methodBoundary") != expected_method_boundary
+    ):
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.chant-semantics.shapes", "method boundary drifted"
+            )
+        )
+    if (
+        semantics.get("otherDirectStatusReader")
+        != "FUN_006FA100 MotionPack reads only bits 0..7"
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.motion-pack",
+                "direct reader drifted",
+            )
+        )
     if semantics.get("conclusion") != expected_conclusion:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.conclusion", "bounded conclusion drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.conclusion",
+                "bounded conclusion drifted",
+            )
+        )
     if semantics.get("remainingBoundary") != expected_boundary:
-        findings.append(Finding("ERROR", "cast-chant.chant-semantics.boundary", "remaining boundary drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.chant-semantics.boundary",
+                "remaining boundary drifted",
+            )
+        )
     rejected = doc.get("rejectedImports", [])
     unresolved = doc.get("unresolved", [])
     if not isinstance(rejected, list) or not isinstance(unresolved, list):
-        findings.append(Finding("ERROR", "cast-chant.boundaries", "boundary sets must be arrays"))
+        findings.append(
+            Finding("ERROR", "cast-chant.boundaries", "boundary sets must be arrays")
+        )
     elif len(rejected) != 7 or len(unresolved) != 3:
-        findings.append(Finding("ERROR", "cast-chant.boundaries",
-                                "rejected-import or unresolved boundary set drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "cast-chant.boundaries",
+                "rejected-import or unresolved boundary set drifted",
+            )
+        )
     source_refs = doc.get("sourceRefs", [])
     required_refs = {
         "manifests/gam_hash_names.json",
@@ -426,12 +701,22 @@ def check_cast_chant_presentation(doc: dict[str, Any]) -> list[Finding]:
         "xivl-client-data:derived/substat_status_crosswalk.csv",
         "xivl-client-scripts:lua/scripts/commanddebugger/commanddebuggerdev.lua",
     }
-    if not isinstance(source_refs, list) or not all(isinstance(ref, str) for ref in source_refs):
-        findings.append(Finding("ERROR", "cast-chant.sourceRefs", "sourceRefs must be strings"))
+    if not isinstance(source_refs, list) or not all(
+        isinstance(ref, str) for ref in source_refs
+    ):
+        findings.append(
+            Finding("ERROR", "cast-chant.sourceRefs", "sourceRefs must be strings")
+        )
     elif not required_refs.issubset(source_refs):
-        findings.append(Finding("ERROR", "cast-chant.sourceRefs", "required evidence citation missing"))
+        findings.append(
+            Finding(
+                "ERROR", "cast-chant.sourceRefs", "required evidence citation missing"
+            )
+        )
     elif any("agent-islands" in ref or "agent-config" in ref for ref in source_refs):
-        findings.append(Finding("ERROR", "cast-chant.sourceRefs", "private island citation found"))
+        findings.append(
+            Finding("ERROR", "cast-chant.sourceRefs", "private island citation found")
+        )
     return findings
 
 
@@ -440,10 +725,15 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     if not isinstance(doc, dict):
         return [Finding("ERROR", "property-stream", "manifest must be an object")]
-    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("status")) != (
-        5, "2026-08-29", "1.23b", "main_skill_namespace_complete"
-    ):
-        findings.append(Finding("ERROR", "property-stream.metadata", "snapshot metadata drifted"))
+    if (
+        doc.get("version"),
+        doc.get("generated"),
+        doc.get("gameVersion"),
+        doc.get("status"),
+    ) != (5, "2026-08-29", "1.23b", "main_skill_namespace_complete"):
+        findings.append(
+            Finding("ERROR", "property-stream.metadata", "snapshot metadata drifted")
+        )
 
     snapshots = doc.get("sourceSnapshots", {})
     if not isinstance(snapshots, dict) or (
@@ -461,91 +751,194 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         "76d68d2036dc99bdda2917e65efcdef4f62f4b63",
         "2012.09.19.0001",
     ):
-        findings.append(Finding("ERROR", "property-stream.sourceSnapshots", "source snapshot drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "property-stream.sourceSnapshots", "source snapshot drifted"
+            )
+        )
 
     storage = doc.get("applyStorageBoundary", {})
     if not isinstance(storage, dict):
-        return findings + [Finding("ERROR", "property-stream.applyStorage", "must be an object")]
+        return findings + [
+            Finding("ERROR", "property-stream.applyStorage", "must be an object")
+        ]
     storage_tuple = (
-        storage.get("contextPropertyMapOffset"), storage.get("mapNodeKeyOffset"),
-        storage.get("mapNodeValueOffset"), storage.get("mapNodeValueType"),
-        storage.get("applyCallsite"), storage.get("applyVtableSlot"),
-        storage.get("applyVtableByteOffset"), storage.get("sharedApplyThunk"),
-        storage.get("dirtyCounterOffset"), storage.get("typedValueOffset"),
+        storage.get("contextPropertyMapOffset"),
+        storage.get("mapNodeKeyOffset"),
+        storage.get("mapNodeValueOffset"),
+        storage.get("mapNodeValueType"),
+        storage.get("applyCallsite"),
+        storage.get("applyVtableSlot"),
+        storage.get("applyVtableByteOffset"),
+        storage.get("sharedApplyThunk"),
+        storage.get("dirtyCounterOffset"),
+        storage.get("typedValueOffset"),
     )
     expected_storage = (
-        "0x0C", "0x0C", "0x10",
+        "0x0C",
+        "0x0C",
+        "0x10",
         "polymorphic SyncWriter handler*",
-        "0x00775652", 1, "0x04", "FUN_00D30C70", "0x0C", "0x10",
+        "0x00775652",
+        1,
+        "0x04",
+        "FUN_00D30C70",
+        "0x0C",
+        "0x10",
     )
     if storage_tuple != expected_storage:
-        findings.append(Finding("ERROR", "property-stream.applyStorage", "handler layout drifted"))
+        findings.append(
+            Finding("ERROR", "property-stream.applyStorage", "handler layout drifted")
+        )
     typed_writers = storage.get("typedWriters", [])
-    typed_writer_tuples = [
-        (row.get("valueType"), row.get("function"), row.get("width"))
-        for row in typed_writers if isinstance(row, dict)
-    ] if isinstance(typed_writers, list) else []
+    typed_writer_tuples = (
+        [
+            (row.get("valueType"), row.get("function"), row.get("width"))
+            for row in typed_writers
+            if isinstance(row, dict)
+        ]
+        if isinstance(typed_writers, list)
+        else []
+    )
     if typed_writer_tuples != [
-        ("u32", "FUN_00D2F9B0", 4), ("float32", "FUN_00D2FA20", 4)
+        ("u32", "FUN_00D2F9B0", 4),
+        ("float32", "FUN_00D2FA20", 4),
     ]:
-        findings.append(Finding("ERROR", "property-stream.applyStorage", "typed writer set drifted"))
+        findings.append(
+            Finding("ERROR", "property-stream.applyStorage", "typed writer set drifted")
+        )
     population = storage.get("registryPopulation", {})
     if not isinstance(population, dict):
-        findings.append(Finding("ERROR", "property-stream.registryPopulation", "must be an object"))
+        findings.append(
+            Finding("ERROR", "property-stream.registryPopulation", "must be an object")
+        )
     else:
         population_tuple = (
-            population.get("ownerType"), population.get("ownerConstructor"),
-            population.get("insertMapOffset"), population.get("insertNodeKeyOffset"),
-            population.get("insertNodeValueOffset"), population.get("insertPair"),
+            population.get("ownerType"),
+            population.get("ownerConstructor"),
+            population.get("insertMapOffset"),
+            population.get("insertNodeKeyOffset"),
+            population.get("insertNodeValueOffset"),
+            population.get("insertPair"),
         )
         expected_population = (
-            "Application::Lua::Script::Client::ActorWorkSync", "FUN_0076DC40",
-            "0x0C", "0x0C", "0x10",
+            "Application::Lua::Script::Client::ActorWorkSync",
+            "FUN_0076DC40",
+            "0x0C",
+            "0x0C",
+            "0x10",
             "u32 property hash -> writer handler owning the selected concrete SyncWriter",
         )
         if population_tuple != expected_population:
-            findings.append(Finding("ERROR", "property-stream.registryPopulation",
-                                    "registry owner or insert layout drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.registryPopulation",
+                    "registry owner or insert layout drifted",
+                )
+            )
         hash_derivation = population.get("hashDerivation", {})
         if not isinstance(hash_derivation, dict) or (
-            hash_derivation.get("pathBuilder"), hash_derivation.get("hashWrapper"),
-            hash_derivation.get("hashFunction"), hash_derivation.get("algorithm"),
+            hash_derivation.get("pathBuilder"),
+            hash_derivation.get("hashWrapper"),
+            hash_derivation.get("hashFunction"),
+            hash_derivation.get("algorithm"),
         ) != (
-            "FUN_00D278D0", "FUN_00D31540", "FUN_00D31490",
+            "FUN_00D278D0",
+            "FUN_00D31540",
+            "FUN_00D31490",
             "seed-0 backward MurmurHash2 over the canonical property path",
         ):
-            findings.append(Finding("ERROR", "property-stream.registryPopulation",
-                                    "hash derivation drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.registryPopulation",
+                    "hash derivation drifted",
+                )
+            )
         dispatch = population.get("factoryDispatch", {})
-        scalar_rows = dispatch.get("scalarWriters", []) if isinstance(dispatch, dict) else []
-        scalar_tuples = [
-            (row.get("informationType"), row.get("factory"),
-             row.get("writerType"), row.get("constructor"))
-            for row in scalar_rows if isinstance(row, dict)
-        ] if isinstance(scalar_rows, list) else []
+        scalar_rows = (
+            dispatch.get("scalarWriters", []) if isinstance(dispatch, dict) else []
+        )
+        scalar_tuples = (
+            [
+                (
+                    row.get("informationType"),
+                    row.get("factory"),
+                    row.get("writerType"),
+                    row.get("constructor"),
+                )
+                for row in scalar_rows
+                if isinstance(row, dict)
+            ]
+            if isinstance(scalar_rows, list)
+            else []
+        )
         expected_scalars = [
             ("BooleanInformation", "FUN_00D2BC30", "SyncWriterBoolean", "FUN_00D2FB80"),
-            ("Integer8Information", "FUN_00D2BDB0", "SyncWriterInteger8", "FUN_00D2FBD0"),
-            ("Integer16Information", "FUN_00D2BF40", "SyncWriterInteger16", "FUN_00D2FC10"),
-            ("Integer24Information", "FUN_00D2C0D0", "SyncWriterInteger24", "FUN_00D2FC50"),
-            ("Integer32Information", "FUN_00D2C260", "SyncWriterInteger32", "FUN_00D2FC90"),
+            (
+                "Integer8Information",
+                "FUN_00D2BDB0",
+                "SyncWriterInteger8",
+                "FUN_00D2FBD0",
+            ),
+            (
+                "Integer16Information",
+                "FUN_00D2BF40",
+                "SyncWriterInteger16",
+                "FUN_00D2FC10",
+            ),
+            (
+                "Integer24Information",
+                "FUN_00D2C0D0",
+                "SyncWriterInteger24",
+                "FUN_00D2FC50",
+            ),
+            (
+                "Integer32Information",
+                "FUN_00D2C260",
+                "SyncWriterInteger32",
+                "FUN_00D2FC90",
+            ),
             ("FloatInformation", "FUN_00D2C3F0", "SyncWriterFloat", "FUN_00D2FCD0"),
             ("StringInformation", "FUN_00D2C580", "SyncWriterString", "FUN_00D304D0"),
             ("ActorInformation", "FUN_00D2CA40", "SyncWriterActor", "FUN_00D30110"),
-            ("IndividualIndexInformation", "FUN_00D2CC70", "SyncWriterIndividualIndex",
-             "FUN_00D2FD50"),
+            (
+                "IndividualIndexInformation",
+                "FUN_00D2CC70",
+                "SyncWriterIndividualIndex",
+                "FUN_00D2FD50",
+            ),
         ]
-        if not isinstance(dispatch, dict) or (
-            dispatch.get("informationVtableSlot"),
-            dispatch.get("informationVtableByteOffset"), dispatch.get("arrayFactory"),
-        ) != (8, "0x20", "FUN_00D22030") or scalar_tuples != expected_scalars:
-            findings.append(Finding("ERROR", "property-stream.registryPopulation",
-                                    "scalar factory dispatch drifted"))
-        array_rows = dispatch.get("arrayWriters", []) if isinstance(dispatch, dict) else []
-        array_tuples = [
-            (row.get("writerType"), row.get("constructor"))
-            for row in array_rows if isinstance(row, dict)
-        ] if isinstance(array_rows, list) else []
+        if (
+            not isinstance(dispatch, dict)
+            or (
+                dispatch.get("informationVtableSlot"),
+                dispatch.get("informationVtableByteOffset"),
+                dispatch.get("arrayFactory"),
+            )
+            != (8, "0x20", "FUN_00D22030")
+            or scalar_tuples != expected_scalars
+        ):
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.registryPopulation",
+                    "scalar factory dispatch drifted",
+                )
+            )
+        array_rows = (
+            dispatch.get("arrayWriters", []) if isinstance(dispatch, dict) else []
+        )
+        array_tuples = (
+            [
+                (row.get("writerType"), row.get("constructor"))
+                for row in array_rows
+                if isinstance(row, dict)
+            ]
+            if isinstance(array_rows, list)
+            else []
+        )
         if array_tuples != [
             ("SyncWriterArray", "FUN_00D305A0"),
             ("SyncWriterActorArray", "FUN_00D30770"),
@@ -554,81 +947,158 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
             ("SyncWriterArrayEndianAdjust<int>", "FUN_00D30730"),
             ("SyncWriterArrayEndianAdjust<float>", "FUN_00D30750"),
         ]:
-            findings.append(Finding("ERROR", "property-stream.registryPopulation",
-                                    "array factory dispatch drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.registryPopulation",
+                    "array factory dispatch drifted",
+                )
+            )
         if population.get("registrationRoute") != [
-            "FUN_00D126F0/FUN_00D12670", "FUN_00CE4720", "FUN_00CCB810",
+            "FUN_00D126F0/FUN_00D12670",
+            "FUN_00CE4720",
+            "FUN_00CCB810",
             "SyncContainer vtable slot 18 (FUN_00CFD610)",
-            "ActorWorkSync listener slot 1 (FUN_00766DA0)", "FUN_006D45A0",
+            "ActorWorkSync listener slot 1 (FUN_00766DA0)",
+            "FUN_006D45A0",
         ]:
-            findings.append(Finding("ERROR", "property-stream.registryPopulation",
-                                    "registration route drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.registryPopulation",
+                    "registration route drifted",
+                )
+            )
         handler = population.get("handlerSurface", {})
         if not isinstance(handler, dict) or (
-            handler.get("wrappedApplyThunk"), handler.get("applyDispatch"),
+            handler.get("wrappedApplyThunk"),
+            handler.get("applyDispatch"),
         ) != (
             "FUN_00CFECE0",
             "The adapter's vtable slot 1 forwards to inner-writer vtable slot 1.",
         ):
-            findings.append(Finding("ERROR", "property-stream.registryPopulation",
-                                    "handler adapter boundary drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.registryPopulation",
+                    "handler adapter boundary drifted",
+                )
+            )
 
     player_hp = doc.get("playerHpWriterIdentity", {})
     if not isinstance(player_hp, dict):
-        findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                "must be an object"))
+        findings.append(
+            Finding(
+                "ERROR", "property-stream.playerHpWriterIdentity", "must be an object"
+            )
+        )
     else:
         index = player_hp.get("indexConvention", {})
         if not isinstance(index, dict) or (
-            index.get("luaToNativeHelper"), index.get("pathBuilder"),
-            index.get("hashWrapper"), index.get("hashFunction"),
+            index.get("luaToNativeHelper"),
+            index.get("pathBuilder"),
+            index.get("hashWrapper"),
+            index.get("hashFunction"),
         ) != ("FUN_00D1A620", "FUN_00D278D0", "FUN_00D31540", "FUN_00D31490"):
-            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                    "native index or hash chain drifted"))
-        property_rows = player_hp.get("properties", [])
-        property_tuples = [
-            (
-                row.get("requestedPath"), row.get("hash"), row.get("cataloged"),
-                row.get("informationType"), row.get("factory"), row.get("writerType"),
-                row.get("writerConstructor"), row.get("typedSet"),
-                row.get("nativeIndex"), row.get("luaIndex"),
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.playerHpWriterIdentity",
+                    "native index or hash chain drifted",
+                )
             )
-            for row in property_rows if isinstance(row, dict)
-        ] if isinstance(property_rows, list) else []
+        property_rows = player_hp.get("properties", [])
+        property_tuples = (
+            [
+                (
+                    row.get("requestedPath"),
+                    row.get("hash"),
+                    row.get("cataloged"),
+                    row.get("informationType"),
+                    row.get("factory"),
+                    row.get("writerType"),
+                    row.get("writerConstructor"),
+                    row.get("typedSet"),
+                    row.get("nativeIndex"),
+                    row.get("luaIndex"),
+                )
+                for row in property_rows
+                if isinstance(row, dict)
+            ]
+            if isinstance(property_rows, list)
+            else []
+        )
         expected_properties = [
             (
-                "charaWork.parameterSave.state_mainSkill[0]", "0x7532ce24", True,
+                "charaWork.parameterSave.state_mainSkill[0]",
+                "0x7532ce24",
+                True,
                 "ArrayInformation with Integer8Information elements",
                 "FUN_00D22030 via Information vtable slot 8 (+0x20)",
-                "SyncWriterArray", "FUN_00D305A0", "FUN_00D30640", 0, 1,
+                "SyncWriterArray",
+                "FUN_00D305A0",
+                "FUN_00D30640",
+                0,
+                1,
             ),
             (
-                "charaWork.parameterSave.state_mainSkillLevel", "0x96063588", True,
+                "charaWork.parameterSave.state_mainSkillLevel",
+                "0x96063588",
+                True,
                 "Integer16Information",
                 "FUN_00D2BF40 via Information vtable slot 8 (+0x20)",
-                "SyncWriterInteger16", "FUN_00D2FC10", "FUN_00D2F910", None, None,
+                "SyncWriterInteger16",
+                "FUN_00D2FC10",
+                "FUN_00D2F910",
+                None,
+                None,
             ),
             (
-                "charaWork.battleTemp.generalParameter[5]", "0x416571ac", True,
+                "charaWork.battleTemp.generalParameter[5]",
+                "0x416571ac",
+                True,
                 "ArrayInformation with Integer16Information elements",
                 "FUN_00D22030 via Information vtable slot 8 (+0x20)",
-                "SyncWriterArrayEndianAdjust<short>", "FUN_00D30710", "FUN_00D30640", 5, 6,
+                "SyncWriterArrayEndianAdjust<short>",
+                "FUN_00D30710",
+                "FUN_00D30640",
+                5,
+                6,
             ),
             (
-                "charaWork.battleTemp.hpMax[0]", "0x0ea82712", False,
-                None, None, None, None, None, 0, 1,
+                "charaWork.battleTemp.hpMax[0]",
+                "0x0ea82712",
+                False,
+                None,
+                None,
+                None,
+                None,
+                None,
+                0,
+                1,
             ),
         ]
         if property_tuples != expected_properties:
-            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                    "hash-to-writer mapping drifted"))
-        semantic_tuples = [
-            (
-                row.get("luaDescriptor"), row.get("storageTarget"),
-                row.get("consumerBoundary"),
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.playerHpWriterIdentity",
+                    "hash-to-writer mapping drifted",
+                )
             )
-            for row in property_rows if isinstance(row, dict)
-        ] if isinstance(property_rows, list) else []
+        semantic_tuples = (
+            [
+                (
+                    row.get("luaDescriptor"),
+                    row.get("storageTarget"),
+                    row.get("consumerBoundary"),
+                )
+                for row in property_rows
+                if isinstance(row, dict)
+            ]
+            if isinstance(property_rows, list)
+            else []
+        )
         expected_semantics = [
             (
                 "parameterSave.state_mainSkill = array(4, integer8)",
@@ -646,17 +1116,31 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
                 "Decoded Lua getPhysicalParameter(n) reads generalParameter[n+3]. The bonus-point widget labels n=2 as vitCurrent and n=3 as dexCurrent, so native index 5 reaches the latter Lua display projection, not the former. These labels are Lua/display evidence, not a native gameplay namespace; no direct native consumer names this element.",
             ),
             (
-                None, None,
+                None,
+                None,
                 "No battleTemp.hpMax descriptor or observed property hash exists in the retained catalog. The registry chain cannot select a writer for this unregistered exact path.",
             ),
         ]
         if semantic_tuples != expected_semantics:
-            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                    "descriptor, storage, or consumer boundary drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.playerHpWriterIdentity",
+                    "descriptor, storage, or consumer boundary drifted",
+                )
+            )
         namespace = player_hp.get("mainSkillIdentifierNamespace", {})
-        if not isinstance(namespace, dict) or namespace.get("status") != "closed_as_skill_id_namespace":
-            findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                    "namespace status drifted"))
+        if (
+            not isinstance(namespace, dict)
+            or namespace.get("status") != "closed_as_skill_id_namespace"
+        ):
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.mainSkillNamespace",
+                    "namespace status drifted",
+                )
+            )
         else:
             registration = namespace.get("scriptRegistration", {})
             if not isinstance(registration, dict) or (
@@ -670,8 +1154,13 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
                 "CharaBaseClass.getMainSkillCategory -> getStateMainSkill -> getSkillCategory(first return); the second state_mainSkill return is outside getSkillCategory's one-argument signature",
                 "CharaBaseClass.getMainSkillLevel -> getStateMainSkillLevel -> charaWork.parameterSave.state_mainSkillLevel",
             ):
-                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                        "API relationship drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.mainSkillNamespace",
+                        "API relationship drifted",
+                    )
+                )
             dependencies = namespace.get("nativeDependencies", {})
             if not isinstance(dependencies, dict) or (
                 dependencies.get("getMainSkillEquipmentLookup"),
@@ -684,13 +1173,21 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
                 "The decoded method is a Lua threshold projection over getStateMainSkill's first generic property read; no target-specific native wrapper or implementation was established",
                 "The decoded method is a Lua wrapper over the generic scalar property read; no target-specific native wrapper or implementation was established",
             ):
-                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                        "native dependency boundary drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.mainSkillNamespace",
+                        "native dependency boundary drifted",
+                    )
+                )
             native_read = namespace.get("nativeReadChain", {})
             if not isinstance(native_read, dict) or (
-                native_read.get("instanceIndex"), native_read.get("indexedMetatable"),
-                native_read.get("indexedWrapper"), native_read.get("indexedImplementation"),
-                native_read.get("indexConversion"), native_read.get("genericLookup"),
+                native_read.get("instanceIndex"),
+                native_read.get("indexedMetatable"),
+                native_read.get("indexedWrapper"),
+                native_read.get("indexedImplementation"),
+                native_read.get("indexConversion"),
+                native_read.get("genericLookup"),
             ) != (
                 "FUN_00D16D40 dispatches an ordinary member read through the selected implementation vtable slot 7 (+0x1C)",
                 "FUN_00D20540 registers indexed-container __index as FUN_00D2F220",
@@ -699,37 +1196,69 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
                 "FUN_00D1A620 decrements every positive Lua index; Lua index 1 selects native slot 0",
                 "FUN_00D1DF90 resolves a named MetamethodArray2D row and returns its payload at row+0x1C",
             ):
-                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                        "native read or index chain drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.mainSkillNamespace",
+                        "native read or index chain drifted",
+                    )
+                )
             identity = namespace.get("namespace", {})
             if not isinstance(identity, dict) or (
-                identity.get("identifier"), identity.get("notIdentifiers"),
-                identity.get("categoryProjection"), identity.get("slotRelationship"),
+                identity.get("identifier"),
+                identity.get("notIdentifiers"),
+                identity.get("categoryProjection"),
+                identity.get("slotRelationship"),
             ) != (
-                "skill id", ["category id", "discipline id", "job-only id"],
+                "skill id",
+                ["category id", "discipline id", "job-only id"],
                 "getSkillCategory maps 0 -> 0, 1..20 -> 1, 21..28 -> 21, 29..38 -> 29, and >=39 -> 39; getMainSkillCategory applies this projection to native slot 0",
                 "state_mainSkill native slot 0 / Lua index 1 is the primary skill id; Lua index 2 is the second return, and Lua index 3 is exposed separately as getStateMainSkillForSub. getMainSkill does not read this array.",
             ):
-                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                        "identifier or slot namespace drifted"))
-            mappings = [
-                (
-                    row.get("value"), row.get("skillRow"), row.get("skillName"),
-                    row.get("classRow"), row.get("className"), row.get("category"),
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.mainSkillNamespace",
+                        "identifier or slot namespace drifted",
+                    )
                 )
-                for row in namespace.get("observedMappings", []) if isinstance(row, dict)
-            ] if isinstance(namespace.get("observedMappings"), list) else []
+            mappings = (
+                [
+                    (
+                        row.get("value"),
+                        row.get("skillRow"),
+                        row.get("skillName"),
+                        row.get("classRow"),
+                        row.get("className"),
+                        row.get("category"),
+                    )
+                    for row in namespace.get("observedMappings", [])
+                    if isinstance(row, dict)
+                ]
+                if isinstance(namespace.get("observedMappings"), list)
+                else []
+            )
             if mappings != [
                 (3, 3, "Sword", 3, "Gladiator", 1),
                 (4, 4, "Axe", 4, "Marauder", 1),
             ]:
-                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                        "observed skill mapping drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.mainSkillNamespace",
+                        "observed skill mapping drifted",
+                    )
+                )
             if namespace.get("calibrationGate") != (
                 "Values 3 and 4 now identify Sword/Gladiator and Axe/Marauder on the client skill-id axis, but the two HP anchors remain only two calibration points. Their admitted HP tuples and the no-two-point-formula gate are unchanged."
             ):
-                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                        "HP calibration gate drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.mainSkillNamespace",
+                        "HP calibration gate drifted",
+                    )
+                )
             expected_refs = [
                 "manifests/lua_api_contract.json",
                 "manifests/symbols.json",
@@ -749,45 +1278,77 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
                 "xivl-client-data:csv/xtx_text_jobName.csv:rows 3-4; SHA-256 61535798445DDB716CD16E8B68B06D9C6A67F76C321FE0DD5E9840C143DE8B57",
             ]
             if namespace.get("sourceRefs") != expected_refs:
-                findings.append(Finding("ERROR", "property-stream.mainSkillNamespace",
-                                        "source reference set drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.mainSkillNamespace",
+                        "source reference set drifted",
+                    )
+                )
         correction = player_hp.get("calibrationCorrection", {})
         if not isinstance(correction, dict) or (
-            correction.get("path"), correction.get("hash"),
-            correction.get("informationType"), correction.get("factory"),
-            correction.get("writerType"), correction.get("writerConstructor"),
-            correction.get("typedSet"), correction.get("nativeIndex"),
+            correction.get("path"),
+            correction.get("hash"),
+            correction.get("informationType"),
+            correction.get("factory"),
+            correction.get("writerType"),
+            correction.get("writerConstructor"),
+            correction.get("typedSet"),
+            correction.get("nativeIndex"),
             correction.get("luaIndex"),
         ) != (
-            "charaWork.parameterSave.hpMax[0]", "0x7bcdfb69",
+            "charaWork.parameterSave.hpMax[0]",
+            "0x7bcdfb69",
             "ArrayInformation with Integer16Information elements",
             "FUN_00D22030 via Information vtable slot 8 (+0x20)",
-            "SyncWriterArrayEndianAdjust<short>", "FUN_00D30710", "FUN_00D30640", 0, 1,
+            "SyncWriterArrayEndianAdjust<short>",
+            "FUN_00D30710",
+            "FUN_00D30640",
+            0,
+            1,
         ):
-            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                    "HP calibration correction drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.playerHpWriterIdentity",
+                    "HP calibration correction drifted",
+                )
+            )
         if isinstance(correction, dict) and (
-            correction.get("luaDescriptor"), correction.get("storageTarget"),
+            correction.get("luaDescriptor"),
+            correction.get("storageTarget"),
             correction.get("consumerBoundary"),
         ) != (
             "parameterSave.hpMax = array(8, integer16)",
             "writer-local endian-adjusted short array: extent at writer+0x10 and vector storage rooted at writer+0x18; no fixed actor field offset",
             "Decoded Lua getHPMax calls getPartsHPMax with Lua index 1, which reaches getHpMaxImpl and parameterSave.hpMax[1]. CharaBase initialization also binds token 1011 to charaWork.parameterSave.hpMax. This proves the HP-maximum script/binding domain, not a fixed C++ actor field.",
         ):
-            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                    "HP correction semantic boundary drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.playerHpWriterIdentity",
+                    "HP correction semantic boundary drifted",
+                )
+            )
         evidence_runs = player_hp.get("evidenceRuns", [])
-        run_ids = {
-            row.get("id") for row in evidence_runs if isinstance(row, dict)
-        } if isinstance(evidence_runs, list) else set()
+        run_ids = (
+            {row.get("id") for row in evidence_runs if isinstance(row, dict)}
+            if isinstance(evidence_runs, list)
+            else set()
+        )
         if run_ids != {
             "lane1-player-hp-property-writers-2026-08-29",
             "lane1-property-name-reference-negative-2026-08-29",
             "lane4-main-skill-native-read-2026-08-29",
             "lane4-main-skill-name-reference-negative-2026-08-29",
         }:
-            findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                    "evidence run set drifted"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "property-stream.playerHpWriterIdentity",
+                    "evidence run set drifted",
+                )
+            )
         run_by_id = {
             run.get("id"): run for run in evidence_runs if isinstance(run, dict)
         }
@@ -807,17 +1368,31 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         }
         for run_id, expected in expected_lane4_runs.items():
             run = run_by_id.get(run_id, {})
-            actual = (run.get("script"), run.get("output"), run.get("command"), run.get("result"))
+            actual = (
+                run.get("script"),
+                run.get("output"),
+                run.get("command"),
+                run.get("result"),
+            )
             if actual != expected:
-                findings.append(Finding("ERROR", "property-stream.playerHpWriterIdentity",
-                                        f"{run_id} evidence record drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        "property-stream.playerHpWriterIdentity",
+                        f"{run_id} evidence record drifted",
+                    )
+                )
     pending = storage.get("pendingStream", {})
     if not isinstance(pending, dict) or (
-        pending.get("managerMapOffset"), pending.get("mapNodeSize"),
-        pending.get("mapNodeValueOffset"), pending.get("recordStride"),
+        pending.get("managerMapOffset"),
+        pending.get("mapNodeSize"),
+        pending.get("mapNodeValueOffset"),
+        pending.get("recordStride"),
         pending.get("initialReserveRecords"),
     ) != ("0x0C", "0x24", "0x10", "0x10", 8):
-        findings.append(Finding("ERROR", "property-stream.pendingStream", "pending layout drifted"))
+        findings.append(
+            Finding("ERROR", "property-stream.pendingStream", "pending layout drifted")
+        )
     required_refs = {
         "xivl-decomp:config/ffxivgame.rtti.json",
         "xivl-decomp:config/ffxivgame.vtable_slots.jsonl",
@@ -843,7 +1418,9 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
     }
     source_refs = doc.get("sourceRefs", [])
     if not isinstance(source_refs, list) or not required_refs.issubset(source_refs):
-        findings.append(Finding("ERROR", "property-stream.sourceRefs", "required evidence missing"))
+        findings.append(
+            Finding("ERROR", "property-stream.sourceRefs", "required evidence missing")
+        )
     return findings
 
 
@@ -867,17 +1444,39 @@ def check_lua_resource_inventory(doc: dict[str, Any]) -> list[Finding]:
     }
     for key, expected in expected_counts.items():
         if corpus.get(key) != expected:
-            findings.append(Finding("ERROR", f"lua-resource-inventory.{key}",
-                                    f"expected {expected}, got {corpus.get(key)!r}"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-resource-inventory.{key}",
+                    f"expected {expected}, got {corpus.get(key)!r}",
+                )
+            )
     expected_top_level = {
-        "root": 3, "area": 60, "chara": 1052, "command": 160,
-        "commanddebugger": 5, "debug": 5, "director": 299, "gamedata": 6,
-        "group": 26, "item": 26, "judge": 23, "quest": 629, "status": 158,
-        "system": 10, "widget": 202, "world": 7,
+        "root": 3,
+        "area": 60,
+        "chara": 1052,
+        "command": 160,
+        "commanddebugger": 5,
+        "debug": 5,
+        "director": 299,
+        "gamedata": 6,
+        "group": 26,
+        "item": 26,
+        "judge": 23,
+        "quest": 629,
+        "status": 158,
+        "system": 10,
+        "widget": 202,
+        "world": 7,
     }
     if corpus.get("topLevelCounts") != expected_top_level:
-        findings.append(Finding("ERROR", "lua-resource-inventory.topLevelCounts",
-                                "top-level script counts drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-inventory.topLevelCounts",
+                "top-level script counts drifted",
+            )
+        )
     expected_hashes = {
         "scriptManifest": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300",
         "registry": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F",
@@ -885,25 +1484,56 @@ def check_lua_resource_inventory(doc: dict[str, Any]) -> list[Finding]:
     }
     for key, expected in expected_hashes.items():
         if corpus.get(key, {}).get("sha256") != expected:
-            findings.append(Finding("ERROR", f"lua-resource-inventory.{key}",
-                                    "source snapshot hash drifted"))
-    resources = {row.get("kind"): row for row in doc.get("otherScriptLikeResources", [])}
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-resource-inventory.{key}",
+                    "source snapshot hash drifted",
+                )
+            )
+    resources = {
+        row.get("kind"): row for row in doc.get("otherScriptLikeResources", [])
+    }
     core = resources.get("embedded core Lua bytecode", {})
     if core.get("logicalCount") != 7 or core.get("blobAnchorCount") != 14:
-        findings.append(Finding("ERROR", "lua-resource-inventory.embedded-core",
-                                "embedded core inventory must remain 7 logical resources / 14 anchors"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-inventory.embedded-core",
+                "embedded core inventory must remain 7 logical resources / 14 anchors",
+            )
+        )
     if resources.get("runtime .lcb support", {}).get("logicalCount") != 0:
-        findings.append(Finding("ERROR", "lua-resource-inventory.lcb",
-                                "no captured .lcb payload may be claimed"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-inventory.lcb",
+                "no captured .lcb payload may be claimed",
+            )
+        )
     bootstrap = resources.get("embedded LGE bootstrap Lua text", {})
-    if (bootstrap.get("logicalCount"), bootstrap.get("address"), bootstrap.get("bytes"),
-            bootstrap.get("lineCount")) != (1, "0x0110E680", 327, 14):
-        findings.append(Finding("ERROR", "lua-resource-inventory.bootstrap",
-                                "embedded bootstrap metadata drifted"))
+    if (
+        bootstrap.get("logicalCount"),
+        bootstrap.get("address"),
+        bootstrap.get("bytes"),
+        bootstrap.get("lineCount"),
+    ) != (1, "0x0110E680", 327, 14):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-inventory.bootstrap",
+                "embedded bootstrap metadata drifted",
+            )
+        )
     prog = resources.get("embedded OnProgFunc chunks", {})
     if prog.get("logicalCount") != 2 or "distinct from" not in prog.get("status", ""):
-        findings.append(Finding("ERROR", "lua-resource-inventory.on-prog-func",
-                                "OnProgFunc .rdata chunks must remain distinct from core .data anchors"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-inventory.on-prog-func",
+                "OnProgFunc .rdata chunks must remain distinct from core .data anchors",
+            )
+        )
     return findings
 
 
@@ -913,45 +1543,110 @@ def check_lua_resource_paths(doc: dict[str, Any]) -> list[Finding]:
     layer_rows = doc.get("layers", [])
     layers = {row.get("name"): row for row in layer_rows}
     expected_layer_names = {
-        "LPB payload wrapper", "physical script filename",
-        "logical Lua require path", "numeric resource-id DAT path",
+        "LPB payload wrapper",
+        "physical script filename",
+        "logical Lua require path",
+        "numeric resource-id DAT path",
     }
     if len(layer_rows) != 4 or set(layers) != expected_layer_names:
-        findings.append(Finding("ERROR", "lua-resource-paths.layers",
-                                "expected exactly four unique path layers"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-paths.layers",
+                "expected exactly four unique path layers",
+            )
+        )
     if doc.get("sourceSnapshots") != {
         "xivl-client-scripts": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
         "xivl-decomp": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64",
     }:
-        findings.append(Finding("ERROR", "lua-resource-paths.sources", "source commit pins drifted"))
+        findings.append(
+            Finding("ERROR", "lua-resource-paths.sources", "source commit pins drifted")
+        )
     wrapper = layers.get("LPB payload wrapper", {})
     if wrapper.get("observedCounts") != {"rlu_0b": 1, "rle_0c": 2670}:
-        findings.append(Finding("ERROR", "lua-resource-paths.wrapper", "LPB wrapper counts drifted"))
-    if wrapper.get("algorithm", {}).get("decodedMagic") != "1B 4C 75 61 51" or wrapper.get("reversible") is not True:
-        findings.append(Finding("ERROR", "lua-resource-paths.wrapper", "LPB byte-transform contract drifted"))
+        findings.append(
+            Finding("ERROR", "lua-resource-paths.wrapper", "LPB wrapper counts drifted")
+        )
+    if (
+        wrapper.get("algorithm", {}).get("decodedMagic") != "1B 4C 75 61 51"
+        or wrapper.get("reversible") is not True
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-paths.wrapper",
+                "LPB byte-transform contract drifted",
+            )
+        )
     filename = layers.get("physical script filename", {})
     algorithm = filename.get("algorithm", {})
     if algorithm.get("mappedAlphabet") != "9876543210zyxwvutsrqponmlkjihgfedcba":
-        findings.append(Finding("ERROR", "lua-resource-paths.filename", "filename substitution table drifted"))
-    if filename.get("retailFunction") is not None or filename.get("reversibleForCanonicalLowercasePaths") is not True:
-        findings.append(Finding("ERROR", "lua-resource-paths.filename", "filename cipher boundary drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-paths.filename",
+                "filename substitution table drifted",
+            )
+        )
+    if (
+        filename.get("retailFunction") is not None
+        or filename.get("reversibleForCanonicalLowercasePaths") is not True
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-paths.filename",
+                "filename cipher boundary drifted",
+            )
+        )
     expected_vectors = {
         ("zonemoveprogtest", "kvw5xvo5usv3q5rq"),
         ("man0g0", "x9wj3j"),
         ("chara/player/playerbaseclass.lua", "729s9/uy9l5s/uy9l5s89r57y9rr.lua"),
     }
-    vectors = {(row.get("decoded"), row.get("ciphered")) for row in filename.get("knownVectors", [])}
+    vectors = {
+        (row.get("decoded"), row.get("ciphered"))
+        for row in filename.get("knownVectors", [])
+    }
     if vectors != expected_vectors:
-        findings.append(Finding("ERROR", "lua-resource-paths.filename", "known cipher vectors drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "lua-resource-paths.filename", "known cipher vectors drifted"
+            )
+        )
     require = layers.get("logical Lua require path", {})
-    if require.get("entry", {}).get("function") != "FUN_00D08A10" or require.get("resolver", {}).get("function") != "FUN_00D0CFB0":
-        findings.append(Finding("ERROR", "lua-resource-paths.require", "Lua require resolver chain drifted"))
+    if (
+        require.get("entry", {}).get("function") != "FUN_00D08A10"
+        or require.get("resolver", {}).get("function") != "FUN_00D0CFB0"
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-paths.require",
+                "Lua require resolver chain drifted",
+            )
+        )
     dat = layers.get("numeric resource-id DAT path", {})
     if (dat.get("function"), dat.get("format"), dat.get("hash")) != (
-            "FUN_0044B3A0", "\\data\\%02X\\%02X\\%02X\\%02X.DAT", None):
-        findings.append(Finding("ERROR", "lua-resource-paths.dat", "numeric DAT path contract drifted"))
-    if dat.get("example") != {"resourceId": "0x12345678", "path": "\\data\\12\\34\\56\\78.DAT"}:
-        findings.append(Finding("ERROR", "lua-resource-paths.dat", "numeric DAT path example drifted"))
+        "FUN_0044B3A0",
+        "\\data\\%02X\\%02X\\%02X\\%02X.DAT",
+        None,
+    ):
+        findings.append(
+            Finding(
+                "ERROR", "lua-resource-paths.dat", "numeric DAT path contract drifted"
+            )
+        )
+    if dat.get("example") != {
+        "resourceId": "0x12345678",
+        "path": "\\data\\12\\34\\56\\78.DAT",
+    }:
+        findings.append(
+            Finding(
+                "ERROR", "lua-resource-paths.dat", "numeric DAT path example drifted"
+            )
+        )
     required_refs = {
         "tools/decode_lpb.py",
         "xivl-client-scripts:tools/_corpus.py",
@@ -960,18 +1655,40 @@ def check_lua_resource_paths(doc: dict[str, Any]) -> list[Finding]:
         "xivl-decomp:docs/resource/sqpack.md",
     }
     if not required_refs.issubset(set(doc.get("sourceRefs", []))):
-        findings.append(Finding("ERROR", "lua-resource-paths.sources", "required source references missing"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-paths.sources",
+                "required source references missing",
+            )
+        )
     if len(doc.get("rejectedConflations", [])) != 5:
-        findings.append(Finding("ERROR", "lua-resource-paths.boundaries", "rejected-conflation fence drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-resource-paths.boundaries",
+                "rejected-conflation fence drifted",
+            )
+        )
     return findings
 
 
 def check_lua_callback_contract(doc: dict[str, Any]) -> list[Finding]:
     """Validate the frozen, script-only callback contract and its claim fence."""
     findings: list[Finding] = []
-    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("extraction")) != (
-            1, "2026-08-14", "1.23b", "2012.09.19.0001"):
-        findings.append(Finding("ERROR", "lua-callback-contract.metadata", "callback snapshot metadata drifted"))
+    if (
+        doc.get("version"),
+        doc.get("generated"),
+        doc.get("gameVersion"),
+        doc.get("extraction"),
+    ) != (1, "2026-08-14", "1.23b", "2012.09.19.0001"):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-callback-contract.metadata",
+                "callback snapshot metadata drifted",
+            )
+        )
     expected_totals = {
         "corpusScripts": 2671,
         "contractScriptCount": 88,
@@ -985,118 +1702,250 @@ def check_lua_callback_contract(doc: dict[str, Any]) -> list[Finding]:
         "scriptEventHandlerAssignments": 43,
     }
     if doc.get("totals") != expected_totals:
-        findings.append(Finding("ERROR", "lua-callback-contract.totals", "callback totals drifted"))
-    if doc.get("scope") != ("Decoded script-declared client callback and script-event contracts. "
-                            "Parameter names are decompiler slots, not semantic types. No native registrar, "
-                            "xref, packet, or server behavior is claimed."):
-        findings.append(Finding("ERROR", "lua-callback-contract.scope", "callback claim fence drifted"))
-    rendered_scripts = json.dumps(doc.get("scripts", {}), sort_keys=True, separators=(",", ":"),
-                                  ensure_ascii=True).encode("utf-8")
+        findings.append(
+            Finding("ERROR", "lua-callback-contract.totals", "callback totals drifted")
+        )
+    if doc.get("scope") != (
+        "Decoded script-declared client callback and script-event contracts. "
+        "Parameter names are decompiler slots, not semantic types. No native registrar, "
+        "xref, packet, or server behavior is claimed."
+    ):
+        findings.append(
+            Finding(
+                "ERROR", "lua-callback-contract.scope", "callback claim fence drifted"
+            )
+        )
+    rendered_scripts = json.dumps(
+        doc.get("scripts", {}), sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode("utf-8")
     actual_contract_sha256 = hashlib.sha256(rendered_scripts).hexdigest().upper()
     if (doc.get("contractSha256"), actual_contract_sha256) != (
-            "6BB26B1490FF0BA2F7410639C2FD015D07ACD4DF546BA5ABA3AEF03263BDF663",
-            "6BB26B1490FF0BA2F7410639C2FD015D07ACD4DF546BA5ABA3AEF03263BDF663"):
-        findings.append(Finding("ERROR", "lua-callback-contract.digest", "callback contract table drifted"))
+        "6BB26B1490FF0BA2F7410639C2FD015D07ACD4DF546BA5ABA3AEF03263BDF663",
+        "6BB26B1490FF0BA2F7410639C2FD015D07ACD4DF546BA5ABA3AEF03263BDF663",
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-callback-contract.digest",
+                "callback contract table drifted",
+            )
+        )
     source = doc.get("sourceSnapshot", {})
     if source != {
-            "repository": "XIVLegacy/xivl-client-scripts",
-            "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
-            "registry": {
-                "path": "lua/registry.json",
-                "sha256": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F",
-            },
-            "scriptManifest": {
-                "path": "manifests/scripts.json",
-                "sha256": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300",
-            },
-            "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
+        "repository": "XIVLegacy/xivl-client-scripts",
+        "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
+        "registry": {
+            "path": "lua/registry.json",
+            "sha256": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F",
+        },
+        "scriptManifest": {
+            "path": "manifests/scripts.json",
+            "sha256": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300",
+        },
+        "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
     }:
-        findings.append(Finding("ERROR", "lua-callback-contract.sources", "callback source snapshot drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-callback-contract.sources",
+                "callback source snapshot drifted",
+            )
+        )
     relationship = doc.get("relationshipToCompleteContract", {})
     if relationship != {
-            "status": "narrower_earlier_pass",
-            "supersededBy": "manifests/lua_api_contract.json",
-            "retainedPurpose": "Compact callback-only view with per-script positional shapes.",
+        "status": "narrower_earlier_pass",
+        "supersededBy": "manifests/lua_api_contract.json",
+        "retainedPurpose": "Compact callback-only view with per-script positional shapes.",
     }:
-        findings.append(Finding("ERROR", "lua-callback-contract.relationship",
-                                "complete-contract relationship drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-callback-contract.relationship",
+                "complete-contract relationship drifted",
+            )
+        )
     boundary = doc.get("nativeTraceBoundary", {})
     if boundary != {
-            "status": "bounded_sample_succeeded_complete_attribution_blocked",
-            "functionalEquivalents": ["DumpStrings.java", "FindCallers.java", "exported asm corpus"],
-            "missingCapability": "A reproducible string-name -> string-address -> all data/code references -> registrar/implementation mapping for every callback name.",
-            "effect": "The bounded native sample is recorded in lua_api_contract.json. This callback-only manifest does not infer native callback targets.",
+        "status": "bounded_sample_succeeded_complete_attribution_blocked",
+        "functionalEquivalents": [
+            "DumpStrings.java",
+            "FindCallers.java",
+            "exported asm corpus",
+        ],
+        "missingCapability": "A reproducible string-name -> string-address -> all data/code references -> registrar/implementation mapping for every callback name.",
+        "effect": "The bounded native sample is recorded in lua_api_contract.json. This callback-only manifest does not infer native callback targets.",
     }:
-        findings.append(Finding("ERROR", "lua-callback-contract.boundary", "native trace effect drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "lua-callback-contract.boundary", "native trace effect drifted"
+            )
+        )
     scripts = doc.get("scripts", {})
     if not isinstance(scripts, dict):
-        findings.append(Finding("ERROR", "lua-callback-contract.scripts", "scripts must be an object"))
+        findings.append(
+            Finding(
+                "ERROR", "lua-callback-contract.scripts", "scripts must be an object"
+            )
+        )
         return findings
     callback_names: set[str] = set()
     callback_count = event_count = fixed_count = variadic_count = 0
     for decoded, script in scripts.items():
         if not isinstance(script, dict):
-            findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "script row must be an object"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-callback-contract.{decoded}",
+                    "script row must be an object",
+                )
+            )
             continue
-        if (not decoded or not script.get("ciphered") or not script.get("class")
-                or not isinstance(script.get("lineCount"), int) or script.get("lineCount", 0) < 1
-                or not re.fullmatch(r"[0-9A-F]{64}", script.get("scriptSha256", ""))):
-            findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "script identity is incomplete"))
+        if (
+            not decoded
+            or not script.get("ciphered")
+            or not script.get("class")
+            or not isinstance(script.get("lineCount"), int)
+            or script.get("lineCount", 0) < 1
+            or not re.fullmatch(r"[0-9A-F]{64}", script.get("scriptSha256", ""))
+        ):
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-callback-contract.{decoded}",
+                    "script identity is incomplete",
+                )
+            )
         callbacks = script.get("callbacks", [])
         event_handlers = script.get("scriptEventHandlers", [])
         if not isinstance(callbacks, list) or not isinstance(event_handlers, list):
-            findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}",
-                                    "callback collections must be arrays"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-callback-contract.{decoded}",
+                    "callback collections must be arrays",
+                )
+            )
             continue
         for row in callbacks:
             if not isinstance(row, dict):
-                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}",
-                                        "callback row must be an object"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        f"lua-callback-contract.{decoded}",
+                        "callback row must be an object",
+                    )
+                )
                 continue
             callback_count += 1
             callback_names.add(row.get("name", ""))
             fixed_count += not row.get("variadic", False)
             variadic_count += bool(row.get("variadic", False))
             params = row.get("params")
-            if (not isinstance(params, list) or not all(isinstance(param, str) and param for param in params)
-                    or not row.get("name", "").startswith("_on")
-                    or row.get("arity") != sum(param != "..." for param in params)
-                    or row.get("variadic") != ("..." in params)
-                    or not isinstance(row.get("functionLine"), int)
-                    or not isinstance(row.get("sourceLine"), int)
-                    or row.get("functionLine", 0) < 1
-                    or row.get("sourceLine", 0) <= row.get("functionLine", 0)):
-                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "callback shape drifted"))
+            if (
+                not isinstance(params, list)
+                or not all(isinstance(param, str) and param for param in params)
+                or not row.get("name", "").startswith("_on")
+                or row.get("arity") != sum(param != "..." for param in params)
+                or row.get("variadic") != ("..." in params)
+                or not isinstance(row.get("functionLine"), int)
+                or not isinstance(row.get("sourceLine"), int)
+                or row.get("functionLine", 0) < 1
+                or row.get("sourceLine", 0) <= row.get("functionLine", 0)
+            ):
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        f"lua-callback-contract.{decoded}",
+                        "callback shape drifted",
+                    )
+                )
         for row in event_handlers:
             if not isinstance(row, dict):
-                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}",
-                                        "script event row must be an object"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        f"lua-callback-contract.{decoded}",
+                        "script event row must be an object",
+                    )
+                )
                 continue
             event_count += 1
             params = row.get("params")
-            if (row.get("name") not in {
-                    "onJobQuestCompleteFirst", "onJobQuestCompleteSecond", "onJobQuestCompleteThird"}
-                    or not isinstance(params, list)
-                    or row.get("arity") != sum(param != "..." for param in params)
-                    or row.get("variadic") != ("..." in params)
-                    or not isinstance(row.get("functionLine"), int)
-                    or not isinstance(row.get("sourceLine"), int)
-                    or row.get("sourceLine", 0) <= row.get("functionLine", 0)):
-                findings.append(Finding("ERROR", f"lua-callback-contract.{decoded}", "unexpected script event handler"))
-    if (len(scripts), callback_count, len(callback_names), fixed_count, variadic_count, event_count) != (88, 209, 81, 185, 24, 43):
-        findings.append(Finding("ERROR", "lua-callback-contract.rows", "row-derived totals drifted"))
+            if (
+                row.get("name")
+                not in {
+                    "onJobQuestCompleteFirst",
+                    "onJobQuestCompleteSecond",
+                    "onJobQuestCompleteThird",
+                }
+                or not isinstance(params, list)
+                or row.get("arity") != sum(param != "..." for param in params)
+                or row.get("variadic") != ("..." in params)
+                or not isinstance(row.get("functionLine"), int)
+                or not isinstance(row.get("sourceLine"), int)
+                or row.get("sourceLine", 0) <= row.get("functionLine", 0)
+            ):
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        f"lua-callback-contract.{decoded}",
+                        "unexpected script event handler",
+                    )
+                )
+    if (
+        len(scripts),
+        callback_count,
+        len(callback_names),
+        fixed_count,
+        variadic_count,
+        event_count,
+    ) != (88, 209, 81, 185, 24, 43):
+        findings.append(
+            Finding("ERROR", "lua-callback-contract.rows", "row-derived totals drifted")
+        )
     player = scripts.get("chara/player/playerbaseclass", {})
-    command = next((row for row in player.get("callbacks", []) if row.get("name") == "_onCommandEvent"), {})
-    if (command.get("arity"), command.get("variadic"), command.get("functionLine"), command.get("sourceLine")) != (3, True, 1820, 1881):
-        findings.append(Finding("ERROR", "lua-callback-contract.playerbase", "_onCommandEvent contract drifted"))
+    command = next(
+        (
+            row
+            for row in player.get("callbacks", [])
+            if row.get("name") == "_onCommandEvent"
+        ),
+        {},
+    )
+    if (
+        command.get("arity"),
+        command.get("variadic"),
+        command.get("functionLine"),
+        command.get("sourceLine"),
+    ) != (3, True, 1820, 1881):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-callback-contract.playerbase",
+                "_onCommandEvent contract drifted",
+            )
+        )
     if "FUN_" in json.dumps(doc):
-        findings.append(Finding("ERROR", "lua-callback-contract.scope", "script-only contract must not claim native functions"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-callback-contract.scope",
+                "script-only contract must not claim native functions",
+            )
+        )
     if doc.get("sourceRefs") != [
-            "xivl-client-scripts:lua/registry.json",
-            "xivl-client-scripts:lua/scripts/**/*.lua",
-            "xivl-client-scripts:manifests/scripts.json",
-            "manifests/lua_api_contract.json"]:
-        findings.append(Finding("ERROR", "lua-callback-contract.refs", "callback provenance references drifted"))
+        "xivl-client-scripts:lua/registry.json",
+        "xivl-client-scripts:lua/scripts/**/*.lua",
+        "xivl-client-scripts:manifests/scripts.json",
+        "manifests/lua_api_contract.json",
+    ]:
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-callback-contract.refs",
+                "callback provenance references drifted",
+            )
+        )
     return findings
 
 
@@ -1105,58 +1954,127 @@ def check_combat_command_emission(doc: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     relationship = doc.get("commandIdRelationship", {})
     if relationship.get("status") != "resolved_owner_static_actor_identity":
-        findings.append(Finding("ERROR", "combat-command.owner-id", "owner-ID relationship is not resolved"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "combat-command.owner-id",
+                "owner-ID relationship is not resolved",
+            )
+        )
         return findings
     derivation = relationship.get("derivation", {})
     if derivation != {
-            "direction": "serverbound",
-            "service": "Map (client decomp attribution)",
-            "opcodeHex": "0x012d",
-            "framing": "216-byte wire subpacket -> 200-byte retained body -> 16-byte game-message prefix -> 184-byte application payload",
-            "ownerOffset": "retained body +0x14 = application payload +0x04",
-            "ownerDecode": "little-endian u32",
-            "staticActorTest": "(ownerActorId & 0xffff0000) == 0xa0f00000",
-            "rowDecode": "ownerActorId & 0x0000ffff",
+        "direction": "serverbound",
+        "service": "Map (client decomp attribution)",
+        "opcodeHex": "0x012d",
+        "framing": "216-byte wire subpacket -> 200-byte retained body -> 16-byte game-message prefix -> 184-byte application payload",
+        "ownerOffset": "retained body +0x14 = application payload +0x04",
+        "ownerDecode": "little-endian u32",
+        "staticActorTest": "(ownerActorId & 0xffff0000) == 0xa0f00000",
+        "rowDecode": "ownerActorId & 0x0000ffff",
     }:
-        findings.append(Finding("ERROR", "combat-command.derivation", "owner-ID byte derivation drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.derivation", "owner-ID byte derivation drifted"
+            )
+        )
     distribution = relationship.get("distribution", {})
     owner_rows = distribution.get("ownerIds", [])
     block_rows = distribution.get("upper16Blocks", [])
     if distribution.get("totalOccurrences") != 126:
-        findings.append(Finding("ERROR", "combat-command.distribution", "occurrence total drifted"))
-    if (sum(row.get("count", 0) for row in owner_rows) != 126
-            or len(owner_rows) != 41
-            or sum(row.get("count", 0) for row in block_rows) != 126
-            or len(block_rows) != 9):
-        findings.append(Finding("ERROR", "combat-command.distribution", "owner-ID distribution does not reconcile"))
+        findings.append(
+            Finding("ERROR", "combat-command.distribution", "occurrence total drifted")
+        )
+    if (
+        sum(row.get("count", 0) for row in owner_rows) != 126
+        or len(owner_rows) != 41
+        or sum(row.get("count", 0) for row in block_rows) != 126
+        or len(block_rows) != 9
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "combat-command.distribution",
+                "owner-ID distribution does not reconcile",
+            )
+        )
     if {row.get("value"): row.get("count") for row in block_rows} != {
-            "0x44b0": 2, "0x44b8": 1, "0x44c0": 1, "0x44d8": 9,
-            "0x4510": 3, "0x4560": 6, "0x4670": 2, "0x47a0": 2,
-            "0xa0f0": 100,
+        "0x44b0": 2,
+        "0x44b8": 1,
+        "0x44c0": 1,
+        "0x44d8": 9,
+        "0x4510": 3,
+        "0x4560": 6,
+        "0x4670": 2,
+        "0x47a0": 2,
+        "0xa0f0": 100,
     }:
-        findings.append(Finding("ERROR", "combat-command.blocks", "owner upper-16 block distribution drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "combat-command.blocks",
+                "owner upper-16 block distribution drifted",
+            )
+        )
     expected_owner_ids = {
-        "0x44b00005": 2, "0x44b8000a": 1, "0x44c00012": 1,
-        "0x44d80009": 1, "0x44d8000a": 1, "0x44d80026": 2,
-        "0x44d8002d": 1, "0x44d8002f": 4, "0x4510000c": 1,
-        "0x45100d5b": 2, "0x45600029": 2, "0x45606e22": 2,
-        "0x45606e23": 2, "0x46700082": 2, "0x47a00007": 1,
-        "0x47a0000c": 1, "0xa0f02ee5": 1, "0xa0f02ee9": 7,
-        "0xa0f02eea": 2, "0xa0f02eee": 2, "0xa0f02eef": 3,
-        "0xa0f02ef1": 1, "0xa0f05209": 12, "0xa0f0520a": 12,
-        "0xa0f055f1": 1, "0xa0f055f3": 1, "0xa0f055f7": 2,
-        "0xa0f05e26": 2, "0xa0f05e8b": 1, "0xa0f05e93": 2,
-        "0xa0f05e9c": 4, "0xa0f05eed": 3, "0xa0f069dc": 3,
-        "0xa0f06a2e": 2, "0xa0f06a36": 12, "0xa0f06a37": 8,
-        "0xa0f06a39": 3, "0xa0f06a3e": 3, "0xa0f06a7c": 5,
-        "0xa0f06a80": 6, "0xa0f06ad2": 2,
+        "0x44b00005": 2,
+        "0x44b8000a": 1,
+        "0x44c00012": 1,
+        "0x44d80009": 1,
+        "0x44d8000a": 1,
+        "0x44d80026": 2,
+        "0x44d8002d": 1,
+        "0x44d8002f": 4,
+        "0x4510000c": 1,
+        "0x45100d5b": 2,
+        "0x45600029": 2,
+        "0x45606e22": 2,
+        "0x45606e23": 2,
+        "0x46700082": 2,
+        "0x47a00007": 1,
+        "0x47a0000c": 1,
+        "0xa0f02ee5": 1,
+        "0xa0f02ee9": 7,
+        "0xa0f02eea": 2,
+        "0xa0f02eee": 2,
+        "0xa0f02eef": 3,
+        "0xa0f02ef1": 1,
+        "0xa0f05209": 12,
+        "0xa0f0520a": 12,
+        "0xa0f055f1": 1,
+        "0xa0f055f3": 1,
+        "0xa0f055f7": 2,
+        "0xa0f05e26": 2,
+        "0xa0f05e8b": 1,
+        "0xa0f05e93": 2,
+        "0xa0f05e9c": 4,
+        "0xa0f05eed": 3,
+        "0xa0f069dc": 3,
+        "0xa0f06a2e": 2,
+        "0xa0f06a36": 12,
+        "0xa0f06a37": 8,
+        "0xa0f06a39": 3,
+        "0xa0f06a3e": 3,
+        "0xa0f06a7c": 5,
+        "0xa0f06a80": 6,
+        "0xa0f06ad2": 2,
     }
     if {row.get("value"): row.get("count") for row in owner_rows} != expected_owner_ids:
-        findings.append(Finding("ERROR", "combat-command.owner-ids", "full owner-ID distribution drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "combat-command.owner-ids",
+                "full owner-ID distribution drifted",
+            )
+        )
     retained = distribution.get("retainedSampleCap", {})
-    if (retained.get("sampleCount") != 60
-            or sum(row.get("count", 0) for row in retained.get("ownerIds", [])) != 60):
-        findings.append(Finding("ERROR", "combat-command.retained", "retained sample cap drifted"))
+    if (
+        retained.get("sampleCount") != 60
+        or sum(row.get("count", 0) for row in retained.get("ownerIds", [])) != 60
+    ):
+        findings.append(
+            Finding("ERROR", "combat-command.retained", "retained sample cap drifted")
+        )
     joins = relationship.get("joins", {})
     expected_join_counts = {
         "eligibleStaticActorSamples": 100,
@@ -1169,13 +2087,27 @@ def check_combat_command_emission(doc: dict[str, Any]) -> list[Finding]:
         "gameCommandMisses": 12,
     }
     if any(joins.get(key) != value for key, value in expected_join_counts.items()):
-        findings.append(Finding("ERROR", "combat-command.joins", "owner-ID join totals drifted"))
+        findings.append(
+            Finding("ERROR", "combat-command.joins", "owner-ID join totals drifted")
+        )
     join_rows = joins.get("rows", [])
-    if (len(join_rows) != 25
-            or sum(row.get("count", 0) for row in join_rows) != 100
-            or sum(row.get("count", 0) for row in join_rows if row.get("gameCommandHit")) != 88
-            or any(not str(row.get("staticActorClassPath", "")).startswith("/Command/") for row in join_rows)):
-        findings.append(Finding("ERROR", "combat-command.join-rows", "owner-ID join rows do not reconcile"))
+    if (
+        len(join_rows) != 25
+        or sum(row.get("count", 0) for row in join_rows) != 100
+        or sum(row.get("count", 0) for row in join_rows if row.get("gameCommandHit"))
+        != 88
+        or any(
+            not str(row.get("staticActorClassPath", "")).startswith("/Command/")
+            for row in join_rows
+        )
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "combat-command.join-rows",
+                "owner-ID join rows do not reconcile",
+            )
+        )
     expected_join_rows = {
         (owner, owner & 0xFFFF, count, path, game_hit)
         for owner, count, path, game_hit in (
@@ -1207,70 +2139,136 @@ def check_combat_command_emission(doc: dict[str, Any]) -> list[Finding]:
         )
     }
     actual_join_rows = {
-        (int(row.get("ownerActorId", "0"), 16), row.get("low16RowId"),
-         row.get("count"), row.get("staticActorClassPath"), row.get("gameCommandHit"))
+        (
+            int(row.get("ownerActorId", "0"), 16),
+            row.get("low16RowId"),
+            row.get("count"),
+            row.get("staticActorClassPath"),
+            row.get("gameCommandHit"),
+        )
         for row in join_rows
     }
     if actual_join_rows != expected_join_rows:
-        findings.append(Finding("ERROR", "combat-command.join-values", "owner-ID join values drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.join-values", "owner-ID join values drifted"
+            )
+        )
     scenarios = relationship.get("scenarioComparison", {})
     combat = scenarios.get("combatExamples", {})
     noncombat = scenarios.get("noncombatExamples", {})
-    if (combat.get("sampleCount"), combat.get("staticActorBlockCount"),
-            combat.get("outsideStaticActorBlockCount")) != (64, 61, 3):
-        findings.append(Finding("ERROR", "combat-command.combat", "combat example distribution drifted"))
-    if (noncombat.get("sampleCount"), noncombat.get("staticActorBlockCount"),
-            noncombat.get("outsideStaticActorBlockCount")) != (62, 39, 23):
-        findings.append(Finding("ERROR", "combat-command.noncombat", "noncombat example distribution drifted"))
+    if (
+        combat.get("sampleCount"),
+        combat.get("staticActorBlockCount"),
+        combat.get("outsideStaticActorBlockCount"),
+    ) != (64, 61, 3):
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.combat", "combat example distribution drifted"
+            )
+        )
+    if (
+        noncombat.get("sampleCount"),
+        noncombat.get("staticActorBlockCount"),
+        noncombat.get("outsideStaticActorBlockCount"),
+    ) != (62, 39, 23):
+        findings.append(
+            Finding(
+                "ERROR",
+                "combat-command.noncombat",
+                "noncombat example distribution drifted",
+            )
+        )
     if set(combat.get("captures", [])) != {
-            "combat_autoattack.pcapng", "combat_skills.pcapng", "party_battle_leve.pcapng"}:
-        findings.append(Finding("ERROR", "combat-command.combat", "combat capture split drifted"))
+        "combat_autoattack.pcapng",
+        "combat_skills.pcapng",
+        "party_battle_leve.pcapng",
+    }:
+        findings.append(
+            Finding("ERROR", "combat-command.combat", "combat capture split drifted")
+        )
     event_rows = {
         row.get("eventName"): (
-            row.get("count"), row.get("staticActorHits"), row.get("gameCommandHits"),
-            row.get("outsideStaticActorBlock"))
+            row.get("count"),
+            row.get("staticActorHits"),
+            row.get("gameCommandHits"),
+            row.get("outsideStaticActorBlock"),
+        )
         for row in relationship.get("eventNameComparison", [])
     }
     if event_rows != {
-            "caution": (3, 0, 0, 3),
-            "commandContent": (4, 4, 0, 0),
-            "commandDefault": (44, 44, 44, 0),
-            "commandForced": (28, 28, 28, 0),
-            "commandJudgeMode": (5, 5, 5, 0),
-            "commandRequest": (19, 19, 11, 0),
-            "exit": (3, 0, 0, 3),
-            "noticeEvent": (2, 0, 0, 2),
-            "regionChange": (1, 0, 0, 1),
-            "talkDefault": (17, 0, 0, 17),
+        "caution": (3, 0, 0, 3),
+        "commandContent": (4, 4, 0, 0),
+        "commandDefault": (44, 44, 44, 0),
+        "commandForced": (28, 28, 28, 0),
+        "commandJudgeMode": (5, 5, 5, 0),
+        "commandRequest": (19, 19, 11, 0),
+        "exit": (3, 0, 0, 3),
+        "noticeEvent": (2, 0, 0, 2),
+        "regionChange": (1, 0, 0, 1),
+        "talkDefault": (17, 0, 0, 17),
     }:
-        findings.append(Finding("ERROR", "combat-command.events", "event-name owner partition drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.events", "event-name owner partition drifted"
+            )
+        )
     mask = relationship.get("maskWidth", {})
-    if (mask.get("verdict"), mask.get("observedMaximumRowId"),
-            mask.get("commandStaticActorMaximumRowId"), mask.get("gameCommandMaximumRowId"),
-            mask.get("observedOverflowCount"), mask.get("commandStaticActorOverflowCount"),
-            mask.get("gameCommandOverflowCount")) != (
-            "supports_16_bit_command_static_actor_row_id", 27346, 30101, 30101, 0, 0, 0):
-        findings.append(Finding("ERROR", "combat-command.mask", "16-bit command-row boundary drifted"))
-    sweep = {row.get("bits"): (row.get("staticActorHits"), row.get("gameCommandHits"))
-             for row in mask.get("maskSweep", [])}
+    if (
+        mask.get("verdict"),
+        mask.get("observedMaximumRowId"),
+        mask.get("commandStaticActorMaximumRowId"),
+        mask.get("gameCommandMaximumRowId"),
+        mask.get("observedOverflowCount"),
+        mask.get("commandStaticActorOverflowCount"),
+        mask.get("gameCommandOverflowCount"),
+    ) != ("supports_16_bit_command_static_actor_row_id", 27346, 30101, 30101, 0, 0, 0):
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.mask", "16-bit command-row boundary drifted"
+            )
+        )
+    sweep = {
+        row.get("bits"): (row.get("staticActorHits"), row.get("gameCommandHits"))
+        for row in mask.get("maskSweep", [])
+    }
     retained_sweep = {
         row.get("bits"): (row.get("staticActorHits"), row.get("gameCommandHits"))
         for row in mask.get("retainedMaskSweep", [])
     }
-    if (sweep.get(13), sweep.get(14), sweep.get(15), sweep.get(16), sweep.get(20), sweep.get(21)) != (
-            (0, 0), (16, 16), (100, 88), (100, 88), (100, 88), (0, 0)):
-        findings.append(Finding("ERROR", "combat-command.mask-sweep", "full mask sweep drifted"))
-    if (retained_sweep.get(13), retained_sweep.get(14), retained_sweep.get(15),
-            retained_sweep.get(16), retained_sweep.get(20), retained_sweep.get(21)) != (
-            (0, 0), (14, 14), (41, 29), (41, 29), (41, 29), (0, 0)):
-        findings.append(Finding("ERROR", "combat-command.mask-sweep", "retained mask sweep drifted"))
+    if (
+        sweep.get(13),
+        sweep.get(14),
+        sweep.get(15),
+        sweep.get(16),
+        sweep.get(20),
+        sweep.get(21),
+    ) != ((0, 0), (16, 16), (100, 88), (100, 88), (100, 88), (0, 0)):
+        findings.append(
+            Finding("ERROR", "combat-command.mask-sweep", "full mask sweep drifted")
+        )
+    if (
+        retained_sweep.get(13),
+        retained_sweep.get(14),
+        retained_sweep.get(15),
+        retained_sweep.get(16),
+        retained_sweep.get(20),
+        retained_sweep.get(21),
+    ) != ((0, 0), (14, 14), (41, 29), (41, 29), (41, 29), (0, 0)):
+        findings.append(
+            Finding("ERROR", "combat-command.mask-sweep", "retained mask sweep drifted")
+        )
     script_route = relationship.get("scriptRoute", {})
     if script_route != {
-            "status": "command_object_supplied_as_event_owner",
-            "evidence": "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua:1823-1840",
-            "finding": "PlayerBaseClass._onCommandEvent obtains getCommandId() from A2_2 and passes the same A2_2 command object to _callServerOnCommand. The native bridge preserves an object-owner route; this script fact does not by itself prove the actor-ID packing.",
+        "status": "command_object_supplied_as_event_owner",
+        "evidence": "xivl-client-scripts:lua/scripts/chara/player/playerbaseclass.lua:1823-1840",
+        "finding": "PlayerBaseClass._onCommandEvent obtains getCommandId() from A2_2 and passes the same A2_2 command object to _callServerOnCommand. The native bridge preserves an object-owner route; this script fact does not by itself prove the actor-ID packing.",
     }:
-        findings.append(Finding("ERROR", "combat-command.script-route", "script owner route drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.script-route", "script owner route drifted"
+            )
+        )
     snapshots = relationship.get("sourceSnapshots", {})
     expected_snapshots = {
         "captures": {
@@ -1293,13 +2291,30 @@ def check_combat_command_emission(doc: dict[str, Any]) -> list[Finding]:
         },
     }
     if snapshots != expected_snapshots:
-        findings.append(Finding("ERROR", "combat-command.sources", "source snapshot drifted"))
+        findings.append(
+            Finding("ERROR", "combat-command.sources", "source snapshot drifted")
+        )
     capture_boundary = doc.get("captureBoundary", {})
-    if (capture_boundary.get("totalOccurrences"), capture_boundary.get("retainedSamples"),
-            capture_boundary.get("subpacketSizes"), set(capture_boundary.get("combatExamples", []))) != (
-            126, 60, [216], {
-                "combat_autoattack.pcapng", "combat_skills.pcapng", "party_battle_leve.pcapng"}):
-        findings.append(Finding("ERROR", "combat-command.capture-boundary", "capture boundary drifted"))
+    if (
+        capture_boundary.get("totalOccurrences"),
+        capture_boundary.get("retainedSamples"),
+        capture_boundary.get("subpacketSizes"),
+        set(capture_boundary.get("combatExamples", [])),
+    ) != (
+        126,
+        60,
+        [216],
+        {
+            "combat_autoattack.pcapng",
+            "combat_skills.pcapng",
+            "party_battle_leve.pcapng",
+        },
+    ):
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.capture-boundary", "capture boundary drifted"
+            )
+        )
     required_refs = {
         "xivl-captures:sources/pcap-1.23b/manifest.yaml#members",
         "xivl-captures:tools/extractors/extract_content_samples.py:73-144",
@@ -1309,18 +2324,34 @@ def check_combat_command_emission(doc: dict[str, Any]) -> list[Finding]:
         "tools/extractors/analyze_event_start_owner_ids.py",
     }
     if not required_refs.issubset(set(doc.get("sourceRefs", []))):
-        findings.append(Finding("ERROR", "combat-command.refs", "required evidence references missing"))
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.refs", "required evidence references missing"
+            )
+        )
     if len(relationship.get("rejectedValues", [])) != 4:
-        findings.append(Finding("ERROR", "combat-command.rejections", "imported-value fence drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "combat-command.rejections", "imported-value fence drifted"
+            )
+        )
     return findings
 
 
 def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
     """Validate the complete Lua declaration and N-API reference contract."""
     findings: list[Finding] = []
-    if (doc.get("version"), doc.get("generated"), doc.get("gameVersion"), doc.get("extraction")) != (
-            1, "2026-08-14", "1.23b", "2012.09.19.0001"):
-        findings.append(Finding("ERROR", "lua-api-contract.metadata", "API contract metadata drifted"))
+    if (
+        doc.get("version"),
+        doc.get("generated"),
+        doc.get("gameVersion"),
+        doc.get("extraction"),
+    ) != (1, "2026-08-14", "1.23b", "2012.09.19.0001"):
+        findings.append(
+            Finding(
+                "ERROR", "lua-api-contract.metadata", "API contract metadata drifted"
+            )
+        )
     expected_totals = {
         "corpusScripts": 2671,
         "classBearingScripts": 2650,
@@ -1336,14 +2367,25 @@ def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
         "napiReferenceLines": 17049,
     }
     if doc.get("totals") != expected_totals:
-        findings.append(Finding("ERROR", "lua-api-contract.totals", "API contract totals drifted"))
+        findings.append(
+            Finding("ERROR", "lua-api-contract.totals", "API contract totals drifted")
+        )
     expected_sources = {
         "scripts": {
             "repository": "XIVLegacy/xivl-client-scripts",
             "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
-            "registry": {"path": "lua/registry.json", "sha256": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F"},
-            "napiIndex": {"path": "lua/napi_index.json", "sha256": "9E63DDCDA1C3E25DBDEA65082023C4CB23FE950FD53CFC7C57D5B76DCA1234EF"},
-            "scriptManifest": {"path": "manifests/scripts.json", "sha256": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300"},
+            "registry": {
+                "path": "lua/registry.json",
+                "sha256": "957060C79FCCE34F90B1840251C889EF8EE354F8380000518B1FEB96F65DD78F",
+            },
+            "napiIndex": {
+                "path": "lua/napi_index.json",
+                "sha256": "9E63DDCDA1C3E25DBDEA65082023C4CB23FE950FD53CFC7C57D5B76DCA1234EF",
+            },
+            "scriptManifest": {
+                "path": "manifests/scripts.json",
+                "sha256": "86798306F71336EE494F12D395DB3B8EA571A21224FBD99E2EF87ECD18C61300",
+            },
             "localBodies": "lua/scripts/**/*.lua; required to regenerate, gitignored, and not copied",
         },
         "apiCatalog": {
@@ -1352,28 +2394,61 @@ def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
         },
     }
     if doc.get("sourceSnapshots") != expected_sources:
-        findings.append(Finding("ERROR", "lua-api-contract.sources", "API source snapshot drifted"))
+        findings.append(
+            Finding("ERROR", "lua-api-contract.sources", "API source snapshot drifted")
+        )
     tier_names = [row.get("tier") for row in doc.get("tierCriteria", [])]
     if tier_names != [
-            "napi_surface", "script_callback", "script_event_handler", "ordinary_script_method"]:
-        findings.append(Finding("ERROR", "lua-api-contract.tiers", "API tier criteria drifted"))
+        "napi_surface",
+        "script_callback",
+        "script_event_handler",
+        "ordinary_script_method",
+    ]:
+        findings.append(
+            Finding("ERROR", "lua-api-contract.tiers", "API tier criteria drifted")
+        )
 
     scripts = doc.get("scriptDeclarations", [])
     if not isinstance(scripts, list) or len(scripts) != 1492:
-        findings.append(Finding("ERROR", "lua-api-contract.scripts", "script declaration table drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "lua-api-contract.scripts", "script declaration table drifted"
+            )
+        )
         scripts = []
     seen_scripts: set[str] = set()
     method_count = callback_count = event_count = ordinary_count = 0
     for script in scripts:
         decoded = script.get("script")
         if not isinstance(decoded, str) or not decoded or decoded in seen_scripts:
-            findings.append(Finding("ERROR", "lua-api-contract.scripts", "script identity is missing or duplicated"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "lua-api-contract.scripts",
+                    "script identity is missing or duplicated",
+                )
+            )
             continue
         seen_scripts.add(decoded)
-        if script.get("receiverReason") not in {"registry_unique_class", "no_class_signal"}:
-            findings.append(Finding("ERROR", f"lua-api-contract.{decoded}", "receiver reason is invalid"))
-        if (script.get("receiverReason") == "registry_unique_class") != isinstance(script.get("receiverClass"), str):
-            findings.append(Finding("ERROR", f"lua-api-contract.{decoded}", "receiver class boundary drifted"))
+        if script.get("receiverReason") not in {
+            "registry_unique_class",
+            "no_class_signal",
+        }:
+            findings.append(
+                Finding(
+                    "ERROR", f"lua-api-contract.{decoded}", "receiver reason is invalid"
+                )
+            )
+        if (script.get("receiverReason") == "registry_unique_class") != isinstance(
+            script.get("receiverClass"), str
+        ):
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-api-contract.{decoded}",
+                    "receiver class boundary drifted",
+                )
+            )
         collections = [
             ("callbacks", True, False),
             ("scriptEventHandlers", False, True),
@@ -1382,71 +2457,159 @@ def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
         for key, is_callback, is_event in collections:
             rows = script.get(key, [])
             if not isinstance(rows, list):
-                findings.append(Finding("ERROR", f"lua-api-contract.{decoded}", f"{key} must be an array"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        f"lua-api-contract.{decoded}",
+                        f"{key} must be an array",
+                    )
+                )
                 continue
             for row in rows:
                 params = row.get("params")
                 name = row.get("name", "")
-                if (not isinstance(params, list)
-                        or row.get("arity") != sum(param != "..." for param in params)
-                        or row.get("variadic") != ("..." in params)
-                        or row.get("callsiteCount") is not None
-                        or not isinstance(row.get("functionLine"), int)
-                        or not isinstance(row.get("sourceLine"), int)
-                        or row.get("sourceLine", 0) <= row.get("functionLine", 0)):
-                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
-                                            "script method shape drifted"))
+                if (
+                    not isinstance(params, list)
+                    or row.get("arity") != sum(param != "..." for param in params)
+                    or row.get("variadic") != ("..." in params)
+                    or row.get("callsiteCount") is not None
+                    or not isinstance(row.get("functionLine"), int)
+                    or not isinstance(row.get("sourceLine"), int)
+                    or row.get("sourceLine", 0) <= row.get("functionLine", 0)
+                ):
+                    findings.append(
+                        Finding(
+                            "ERROR",
+                            f"lua-api-contract.{decoded}.{name}",
+                            "script method shape drifted",
+                        )
+                    )
                 if is_callback and not str(name).startswith("_on"):
-                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
-                                            "callback tier contains an ordinary method"))
+                    findings.append(
+                        Finding(
+                            "ERROR",
+                            f"lua-api-contract.{decoded}.{name}",
+                            "callback tier contains an ordinary method",
+                        )
+                    )
                 if is_event and name not in {
-                        "onJobQuestCompleteFirst", "onJobQuestCompleteSecond", "onJobQuestCompleteThird"}:
-                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
-                                            "script-event tier contains an unexpected name"))
-                if not is_callback and not is_event and (
-                        str(name).startswith("_on") or name in {
-                            "onJobQuestCompleteFirst", "onJobQuestCompleteSecond", "onJobQuestCompleteThird"}):
-                    findings.append(Finding("ERROR", f"lua-api-contract.{decoded}.{name}",
-                                            "ordinary tier contains a callback"))
+                    "onJobQuestCompleteFirst",
+                    "onJobQuestCompleteSecond",
+                    "onJobQuestCompleteThird",
+                }:
+                    findings.append(
+                        Finding(
+                            "ERROR",
+                            f"lua-api-contract.{decoded}.{name}",
+                            "script-event tier contains an unexpected name",
+                        )
+                    )
+                if (
+                    not is_callback
+                    and not is_event
+                    and (
+                        str(name).startswith("_on")
+                        or name
+                        in {
+                            "onJobQuestCompleteFirst",
+                            "onJobQuestCompleteSecond",
+                            "onJobQuestCompleteThird",
+                        }
+                    )
+                ):
+                    findings.append(
+                        Finding(
+                            "ERROR",
+                            f"lua-api-contract.{decoded}.{name}",
+                            "ordinary tier contains a callback",
+                        )
+                    )
             method_count += len(rows)
             callback_count += len(rows) if is_callback else 0
             event_count += len(rows) if is_event else 0
             ordinary_count += len(rows) if not is_callback and not is_event else 0
-    if (method_count, callback_count, event_count, ordinary_count) != (13782, 209, 43, 13530):
-        findings.append(Finding("ERROR", "lua-api-contract.methods", "row-derived method totals drifted"))
+    if (method_count, callback_count, event_count, ordinary_count) != (
+        13782,
+        209,
+        43,
+        13530,
+    ):
+        findings.append(
+            Finding(
+                "ERROR", "lua-api-contract.methods", "row-derived method totals drifted"
+            )
+        )
 
     surfaces = doc.get("napiSurfaces", [])
     if not isinstance(surfaces, list) or len(surfaces) != 433:
-        findings.append(Finding("ERROR", "lua-api-contract.napi", "N-API surface table drifted"))
+        findings.append(
+            Finding("ERROR", "lua-api-contract.napi", "N-API surface table drifted")
+        )
         surfaces = []
     seen_names: set[str] = set()
     reference_lines = 0
     for surface in surfaces:
         name = surface.get("name")
         if not isinstance(name, str) or not name or name in seen_names:
-            findings.append(Finding("ERROR", "lua-api-contract.napi", "N-API name is missing or duplicated"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    "lua-api-contract.napi",
+                    "N-API name is missing or duplicated",
+                )
+            )
             continue
         seen_names.add(name)
-        if (surface.get("arity") is not None or surface.get("variadic") is not None
-                or not surface.get("catalogRefs")):
-            findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
-                                    "N-API unknown-signature or catalog-link boundary drifted"))
+        if (
+            surface.get("arity") is not None
+            or surface.get("variadic") is not None
+            or not surface.get("catalogRefs")
+        ):
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-api-contract.napi.{name}",
+                    "N-API unknown-signature or catalog-link boundary drifted",
+                )
+            )
         receiver_total = 0
         for receiver in surface.get("receivers", []):
-            if receiver.get("arity") is not None or receiver.get("variadic") is not None:
-                findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
-                                        "receiver inferred an unsupported native signature"))
-            script_total = sum(row.get("referenceLineCount", 0) for row in receiver.get("scripts", []))
+            if (
+                receiver.get("arity") is not None
+                or receiver.get("variadic") is not None
+            ):
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        f"lua-api-contract.napi.{name}",
+                        "receiver inferred an unsupported native signature",
+                    )
+                )
+            script_total = sum(
+                row.get("referenceLineCount", 0) for row in receiver.get("scripts", [])
+            )
             if script_total != receiver.get("referenceLineCount"):
-                findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
-                                        "receiver reference counts do not reconcile"))
+                findings.append(
+                    Finding(
+                        "ERROR",
+                        f"lua-api-contract.napi.{name}",
+                        "receiver reference counts do not reconcile",
+                    )
+                )
             receiver_total += script_total
         if receiver_total != surface.get("referenceLineCount"):
-            findings.append(Finding("ERROR", f"lua-api-contract.napi.{name}",
-                                    "surface reference counts do not reconcile"))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"lua-api-contract.napi.{name}",
+                    "surface reference counts do not reconcile",
+                )
+            )
         reference_lines += receiver_total
     if reference_lines != 17049:
-        findings.append(Finding("ERROR", "lua-api-contract.napi", "N-API reference total drifted"))
+        findings.append(
+            Finding("ERROR", "lua-api-contract.napi", "N-API reference total drifted")
+        )
 
     subsystem_expected = {
         "chara/player": (1052, 1620, 68, 0, 1552, 1044, 1749, 180, 3048),
@@ -1460,31 +2623,52 @@ def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
     }
     actual_subsystems = {
         row.get("name"): (
-            row.get("scriptCount"), row.get("methodAssignments"), row.get("callbackAssignments"),
-            row.get("scriptEventAssignments"), row.get("ordinaryMethodAssignments"),
-            row.get("scriptsWithNapiReferences"), row.get("napiApiScriptReferences"),
-            row.get("distinctNapiNames"), row.get("napiReferenceLines"))
+            row.get("scriptCount"),
+            row.get("methodAssignments"),
+            row.get("callbackAssignments"),
+            row.get("scriptEventAssignments"),
+            row.get("ordinaryMethodAssignments"),
+            row.get("scriptsWithNapiReferences"),
+            row.get("napiApiScriptReferences"),
+            row.get("distinctNapiNames"),
+            row.get("napiReferenceLines"),
+        )
         for row in doc.get("subsystems", [])
     }
     if actual_subsystems != subsystem_expected:
-        findings.append(Finding("ERROR", "lua-api-contract.subsystems", "subsystem totals drifted"))
+        findings.append(
+            Finding("ERROR", "lua-api-contract.subsystems", "subsystem totals drifted")
+        )
 
     rendered = json.dumps(
-        {"scriptDeclarations": doc.get("scriptDeclarations", []),
-         "napiSurfaces": doc.get("napiSurfaces", [])},
-        sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+        {
+            "scriptDeclarations": doc.get("scriptDeclarations", []),
+            "napiSurfaces": doc.get("napiSurfaces", []),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
     ).encode("utf-8")
     actual_digest = hashlib.sha256(rendered).hexdigest().upper()
     if doc.get("contractSha256") != actual_digest:
-        findings.append(Finding("ERROR", "lua-api-contract.digest", "API contract digest drifted"))
+        findings.append(
+            Finding("ERROR", "lua-api-contract.digest", "API contract digest drifted")
+        )
     native = doc.get("nativeAttributionRetest", {})
-    if (native.get("status"), native.get("sampleSize"),
-            {row.get("name") for row in native.get("directAttributions", [])},
-            native.get("sourceSnapshot", {}).get("commit")) != (
-            "bounded_sample_succeeded_complete_attribution_blocked", 10,
-            {"_globalSave", "_globalTemp", "_memberSave"},
-            "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64"):
-        findings.append(Finding("ERROR", "lua-api-contract.native", "native retest verdict drifted"))
+    if (
+        native.get("status"),
+        native.get("sampleSize"),
+        {row.get("name") for row in native.get("directAttributions", [])},
+        native.get("sourceSnapshot", {}).get("commit"),
+    ) != (
+        "bounded_sample_succeeded_complete_attribution_blocked",
+        10,
+        {"_globalSave", "_globalTemp", "_memberSave"},
+        "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64",
+    ):
+        findings.append(
+            Finding("ERROR", "lua-api-contract.native", "native retest verdict drifted")
+        )
     expected_native_snapshot = {
         "repository": "XIVLegacy/xivl-decomp",
         "commit": "3f4bcb34a21dd3c3611f3eeafb11743f134d7c64",
@@ -1502,14 +2686,25 @@ def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
         },
     }
     if native.get("sourceSnapshot") != expected_native_snapshot:
-        findings.append(Finding("ERROR", "lua-api-contract.native-sources",
-                                "native source snapshot drifted"))
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-api-contract.native-sources",
+                "native source snapshot drifted",
+            )
+        )
     assessment = native.get("existingExporterAssessment", {})
     if assessment.get("missingCapability") != (
-            "A reproducible string-name -> string-address -> all data/code references -> "
-            "registrar/implementation mapping for every N-API name."):
-        findings.append(Finding("ERROR", "lua-api-contract.native-boundary",
-                                "native attribution blocker drifted"))
+        "A reproducible string-name -> string-address -> all data/code references -> "
+        "registrar/implementation mapping for every N-API name."
+    ):
+        findings.append(
+            Finding(
+                "ERROR",
+                "lua-api-contract.native-boundary",
+                "native attribution blocker drifted",
+            )
+        )
     expected_refs = [
         "xivl-client-scripts:lua/registry.json",
         "xivl-client-scripts:lua/napi_index.json",
@@ -1524,67 +2719,92 @@ def check_lua_api_contract(doc: dict[str, Any]) -> list[Finding]:
         "xivl-decomp:tools/ghidra_scripts/FindCallers.java:25-47",
     ]
     if doc.get("sourceRefs") != expected_refs:
-        findings.append(Finding("ERROR", "lua-api-contract.sourceRefs",
-                                "API evidence citations drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "lua-api-contract.sourceRefs", "API evidence citations drifted"
+            )
+        )
     if len(doc.get("boundaries", [])) != 5:
-        findings.append(Finding("ERROR", "lua-api-contract.boundaries", "API claim boundaries drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "lua-api-contract.boundaries", "API claim boundaries drifted"
+            )
+        )
     return findings
 
-CONFIDENCE_VALUES: frozenset[str] = frozenset({
-    "confirmed",
-    "confirmed-pcap-derived",
-    "confirmed-script-derived",
-    "probable",
-    "structural",
-    "hypothesis-strong",
-    "inferred",
-    "candidate",
-    "unverified",
-    "superseded",
-})
 
-KIND_VALUES: frozenset[str] = frozenset({
-    "function",
-    "global",
-    "data",
-    "rtti",
-    "function-cluster",
-    "function_case",
-    "function_case_block",
-    "function_pair",
-    "vtable",
-    "class",
-    "field",
-    "note",
-    "finding",
-})
+CONFIDENCE_VALUES: frozenset[str] = frozenset(
+    {
+        "confirmed",
+        "confirmed-pcap-derived",
+        "confirmed-script-derived",
+        "probable",
+        "structural",
+        "hypothesis-strong",
+        "inferred",
+        "candidate",
+        "unverified",
+        "superseded",
+    }
+)
 
-PATTERN_VALUES: frozenset[str] = frozenset({
-    "A", "B", "C", "D", "E",
-    "C2S-Builder", "C2S-Operation", "C2S-Embedded",
-    "Control", "Unknown",
-})
+KIND_VALUES: frozenset[str] = frozenset(
+    {
+        "function",
+        "global",
+        "data",
+        "rtti",
+        "function-cluster",
+        "function_case",
+        "function_case_block",
+        "function_pair",
+        "vtable",
+        "class",
+        "field",
+        "note",
+        "finding",
+    }
+)
 
-STATUS_VALUES: frozenset[str] = frozenset({
-    "covered_receiver",
-    "covered_pattern",
-    "covered_pipeline",
-    "covered_pipeline_hybrid",
-    "covered_pipeline_nullstub",
-    "covered_emitter",
-    "control",
-    "gap",
-    "noise",
-})
+PATTERN_VALUES: frozenset[str] = frozenset(
+    {
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "C2S-Builder",
+        "C2S-Operation",
+        "C2S-Embedded",
+        "Control",
+        "Unknown",
+    }
+)
+
+STATUS_VALUES: frozenset[str] = frozenset(
+    {
+        "covered_receiver",
+        "covered_pattern",
+        "covered_pipeline",
+        "covered_pipeline_hybrid",
+        "covered_pipeline_nullstub",
+        "covered_emitter",
+        "control",
+        "gap",
+        "noise",
+    }
+)
 
 # Evidence-kind vocabulary shared by role refinements and downstream reports.
 # live_validated means the retail 1.23b client accepted the behavior in a live
 # session. It is deliberately distinct from passive pcap observation.
-EVIDENCE_KIND_VALUES: frozenset[str] = frozenset({
-    "pcap_observed",
-    "pcap_unobserved",
-    "live_validated",
-})
+EVIDENCE_KIND_VALUES: frozenset[str] = frozenset(
+    {
+        "pcap_observed",
+        "pcap_unobserved",
+        "live_validated",
+    }
+)
 REVERIFY_METHOD = "live-validation against the retail 1.23b client in a live session"
 
 
@@ -1620,11 +2840,15 @@ def _check_reverify_fields(record: dict[str, Any], loc: str) -> list[Finding]:
     if "reverifyMethod" in record:
         method = record["reverifyMethod"]
         if method != REVERIFY_METHOD:
-            findings.append(err(loc, f"'reverifyMethod' must equal {REVERIFY_METHOD!r}"))
+            findings.append(
+                err(loc, f"'reverifyMethod' must equal {REVERIFY_METHOD!r}")
+            )
         if record.get("needsReverify") is not True:
             findings.append(err(loc, "'reverifyMethod' requires needsReverify=true"))
     if record.get("needsReverify") is True and "reverifyMethod" not in record:
-        findings.append(err(loc, "'reverifyMethod' is required when needsReverify is true"))
+        findings.append(
+            err(loc, "'reverifyMethod' is required when needsReverify is true")
+        )
     return findings
 
 
@@ -1647,16 +2871,25 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
         actual = len(symbols_doc["symbols"])
         declared = symbols_doc["symbolCount"]
         if not isinstance(declared, int):
-            findings.append(err("symbols.json:symbolCount",
-                                f"must be int, got {type(declared).__name__}"))
+            findings.append(
+                err(
+                    "symbols.json:symbolCount",
+                    f"must be int, got {type(declared).__name__}",
+                )
+            )
         elif declared != actual:
-            findings.append(err("symbols.json:symbolCount",
-                                f"declared {declared} != len(symbols)={actual}"))
+            findings.append(
+                err(
+                    "symbols.json:symbolCount",
+                    f"declared {declared} != len(symbols)={actual}",
+                )
+            )
 
     for top_key in ("version", "gameVersion"):
         if top_key not in symbols_doc:
-            findings.append(warn("symbols.json",
-                                 f"missing recommended top-level key '{top_key}'"))
+            findings.append(
+                warn("symbols.json", f"missing recommended top-level key '{top_key}'")
+            )
 
     seen_ids: set[str] = set()
     duplicate_ids: list[str] = []
@@ -1677,22 +2910,30 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
             if not isinstance(sym["id"], str):
                 findings.append(err(loc, "'id' must be a string"))
             elif not BCS_Y_ID_RE.match(sym["id"]):
-                findings.append(err(loc, f"id {sym['id']!r} does not match BCS-Y-\\d{{4}}"))
+                findings.append(
+                    err(loc, f"id {sym['id']!r} does not match BCS-Y-\\d{{4}}")
+                )
             else:
                 if sym["id"] in seen_ids:
                     duplicate_ids.append(sym["id"])
                 seen_ids.add(sym["id"])
 
-        if "name" in sym and (not isinstance(sym["name"], str) or not sym["name"].strip()):
+        if "name" in sym and (
+            not isinstance(sym["name"], str) or not sym["name"].strip()
+        ):
             findings.append(err(loc, "'name' must be a non-empty string"))
 
         if "kind" in sym:
             if not isinstance(sym["kind"], str):
                 findings.append(err(loc, "'kind' must be a string"))
             elif sym["kind"] not in KIND_VALUES:
-                findings.append(warn(loc,
-                                     f"kind {sym['kind']!r} not in known set "
-                                     f"({len(KIND_VALUES)} values)"))
+                findings.append(
+                    warn(
+                        loc,
+                        f"kind {sym['kind']!r} not in known set "
+                        f"({len(KIND_VALUES)} values)",
+                    )
+                )
 
         if "address" in sym:
             addr = sym["address"]
@@ -1703,21 +2944,29 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
             elif ADDRESS_RE.match(addr):
                 pass
             elif _is_canonical_nonscalar_address(addr):
-                findings.append(info(loc,
-                                     f"canonical non-scalar address form "
-                                     f"{addr!r} (multi-VA or VA range)"))
+                findings.append(
+                    info(
+                        loc,
+                        f"canonical non-scalar address form "
+                        f"{addr!r} (multi-VA or VA range)",
+                    )
+                )
             else:
-                findings.append(warn(loc,
-                                     f"address {addr!r} does not match "
-                                     "0x[0-9a-fA-F]{8}"))
+                findings.append(
+                    warn(loc, f"address {addr!r} does not match 0x[0-9a-fA-F]{{8}}")
+                )
 
         if "confidence" in sym:
             if not isinstance(sym["confidence"], str):
                 findings.append(err(loc, "'confidence' must be a string"))
             elif sym["confidence"] not in CONFIDENCE_VALUES:
-                findings.append(err(loc,
-                                    f"confidence {sym['confidence']!r} not in "
-                                    f"allowed set {sorted(CONFIDENCE_VALUES)}"))
+                findings.append(
+                    err(
+                        loc,
+                        f"confidence {sym['confidence']!r} not in "
+                        f"allowed set {sorted(CONFIDENCE_VALUES)}",
+                    )
+                )
 
         if "sourceRefs" in sym:
             sr = sym["sourceRefs"]
@@ -1728,8 +2977,9 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
             else:
                 for i, ref in enumerate(sr):
                     if not isinstance(ref, str):
-                        findings.append(err(f"{loc}.sourceRefs[{i}]",
-                                            "ref must be a string"))
+                        findings.append(
+                            err(f"{loc}.sourceRefs[{i}]", "ref must be a string")
+                        )
 
         if "notes" in sym and not isinstance(sym["notes"], str):
             findings.append(err(loc, "'notes' must be a string when present"))
@@ -1771,13 +3021,17 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
                 if sibling is member:
                     continue
                 sibling_id = sibling.get("id")
-                if (isinstance(sibling_id, str)
-                        and re.search(rf"\b{re.escape(sibling_id)}\b", notes)):
+                if isinstance(sibling_id, str) and re.search(
+                    rf"\b{re.escape(sibling_id)}\b", notes
+                ):
                     references_sibling = True
                     break
                 sibling_name = sibling.get("name")
-                if (isinstance(sibling_name, str) and sibling_name
-                        and sibling_name in notes):
+                if (
+                    isinstance(sibling_name, str)
+                    and sibling_name
+                    and sibling_name in notes
+                ):
                     references_sibling = True
                     break
             if not references_sibling:
@@ -1788,24 +3042,33 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
         # One-way links make the duplicate discoverable, so keep them INFO;
         # only fully orphaned groups are WARNING.
         if len(missing_ids) == len(members):
-            findings.append(warn(
-                "symbols.json",
-                f"duplicate {kind} address {address}: no member references "
-                f"a sibling; members {', '.join(member_ids)}",
-            ))
+            findings.append(
+                warn(
+                    "symbols.json",
+                    f"duplicate {kind} address {address}: no member references "
+                    f"a sibling; members {', '.join(member_ids)}",
+                )
+            )
         else:
-            findings.append(info(
-                "symbols.json",
-                f"duplicate {kind} address {address}: missing sibling "
-                f"back-references from {', '.join(missing_ids)}",
-            ))
+            findings.append(
+                info(
+                    "symbols.json",
+                    f"duplicate {kind} address {address}: missing sibling "
+                    f"back-references from {', '.join(missing_ids)}",
+                )
+            )
 
     return findings
 
 
-REQUIRED_STRUCT_KEYS = ("id", "name", "namespace", "size", "confidence",
-                        "fields")
-OPTIONAL_STRUCT_KEYS = ("notes", "aliases", "sourceRefs", "needsReverify", "reverifyMethod")
+REQUIRED_STRUCT_KEYS = ("id", "name", "namespace", "size", "confidence", "fields")
+OPTIONAL_STRUCT_KEYS = (
+    "notes",
+    "aliases",
+    "sourceRefs",
+    "needsReverify",
+    "reverifyMethod",
+)
 
 REQUIRED_FIELD_KEYS = ("offset", "size", "type", "name")
 OPTIONAL_FIELD_KEYS = ("notes", "evidence", "absoluteOffset")
@@ -1826,8 +3089,10 @@ def _check_field_offset(value: Any) -> tuple[str, str] | None:
     if OFFSET_HEX_RE.match(value):
         return None
     if any(p.match(value) for p in OFFSET_CANONICAL_NONHEX_RES):
-        return ("INFO", "canonical non-hex offset sentinel "
-                "(n/a, variable, element+0xNN)")
+        return (
+            "INFO",
+            "canonical non-hex offset sentinel (n/a, variable, element+0xNN)",
+        )
     return ("WARNING", "not 0x[0-9a-f]+ hex")
 
 
@@ -1852,8 +3117,11 @@ def _check_field_size(value: Any) -> tuple[str, str] | None:
         if SIZE_HEX_RE.match(value) or SIZE_INT_RE.match(value):
             return None
         if any(p.match(value) for p in SIZE_CANONICAL_NONHEX_RES):
-            return ("INFO", "canonical non-hex/int size form "
-                    "(logical sentinel, Lua-domain, or hex+annotation)")
+            return (
+                "INFO",
+                "canonical non-hex/int size form "
+                "(logical sentinel, Lua-domain, or hex+annotation)",
+            )
         return ("WARNING", "not hex/int numeric")
     return ("ERROR", f"must be string or int, got {type(value).__name__}")
 
@@ -1877,16 +3145,25 @@ def check_structs(structs_doc: Any) -> list[Finding]:
         actual = len(structs_doc["structs"])
         declared = structs_doc["structCount"]
         if not isinstance(declared, int):
-            findings.append(err("structs.json:structCount",
-                                f"must be int, got {type(declared).__name__}"))
+            findings.append(
+                err(
+                    "structs.json:structCount",
+                    f"must be int, got {type(declared).__name__}",
+                )
+            )
         elif declared != actual:
-            findings.append(err("structs.json:structCount",
-                                f"declared {declared} != len(structs)={actual}"))
+            findings.append(
+                err(
+                    "structs.json:structCount",
+                    f"declared {declared} != len(structs)={actual}",
+                )
+            )
 
     for top_key in ("version", "gameVersion"):
         if top_key not in structs_doc:
-            findings.append(warn("structs.json",
-                                 f"missing recommended top-level key '{top_key}'"))
+            findings.append(
+                warn("structs.json", f"missing recommended top-level key '{top_key}'")
+            )
 
     seen_ids: set[str] = set()
     duplicate_ids: list[str] = []
@@ -1907,7 +3184,9 @@ def check_structs(structs_doc: Any) -> list[Finding]:
             if not isinstance(st["id"], str):
                 findings.append(err(loc, "'id' must be a string"))
             elif not BCS_S_ID_RE.match(st["id"]):
-                findings.append(err(loc, f"id {st['id']!r} does not match BCS-S-\\d{{4}}"))
+                findings.append(
+                    err(loc, f"id {st['id']!r} does not match BCS-S-\\d{{4}}")
+                )
             else:
                 if st["id"] in seen_ids:
                     duplicate_ids.append(st["id"])
@@ -1933,9 +3212,13 @@ def check_structs(structs_doc: Any) -> list[Finding]:
             if not isinstance(st["confidence"], str):
                 findings.append(err(loc, "'confidence' must be a string"))
             elif st["confidence"] not in CONFIDENCE_VALUES:
-                findings.append(err(loc,
-                                    f"confidence {st['confidence']!r} not in "
-                                    f"allowed set {sorted(CONFIDENCE_VALUES)}"))
+                findings.append(
+                    err(
+                        loc,
+                        f"confidence {st['confidence']!r} not in "
+                        f"allowed set {sorted(CONFIDENCE_VALUES)}",
+                    )
+                )
 
         if "sourceRefs" in st:
             sr = st["sourceRefs"]
@@ -1964,8 +3247,9 @@ def check_structs(structs_doc: Any) -> list[Finding]:
                     floc = f"{loc}.{fname}"
                     for k in REQUIRED_FIELD_KEYS:
                         if k not in f:
-                            findings.append(err(floc,
-                                                f"field missing required key '{k}'"))
+                            findings.append(
+                                err(floc, f"field missing required key '{k}'")
+                            )
                     if "offset" in f:
                         result = _check_field_offset(f["offset"])
                         if result is not None:
@@ -1992,10 +3276,15 @@ def check_structs(structs_doc: Any) -> list[Finding]:
                         findings.append(err(floc, "'type' must be a string"))
                     if "name" in f and not isinstance(f["name"], str):
                         findings.append(err(floc, "'name' must be a string"))
-                    extra = set(f.keys()) - set(REQUIRED_FIELD_KEYS) - set(OPTIONAL_FIELD_KEYS)
+                    extra = (
+                        set(f.keys())
+                        - set(REQUIRED_FIELD_KEYS)
+                        - set(OPTIONAL_FIELD_KEYS)
+                    )
                     if extra:
-                        findings.append(info(floc,
-                                             f"unknown extra field keys: {sorted(extra)}"))
+                        findings.append(
+                            info(floc, f"unknown extra field keys: {sorted(extra)}")
+                        )
 
         extra = set(st.keys()) - set(REQUIRED_STRUCT_KEYS) - set(OPTIONAL_STRUCT_KEYS)
         if extra:
@@ -2008,16 +3297,28 @@ def check_structs(structs_doc: Any) -> list[Finding]:
 
 
 REQUIRED_MATRIX_TOP = (
-    "s2cOpcodeTable", "c2sOpcodeTable", "coverageSummary",
+    "s2cOpcodeTable",
+    "c2sOpcodeTable",
+    "coverageSummary",
 )
 RECOMMENDED_MATRIX_TOP = (
-    "version", "gameVersion", "patternLegend", "sources",
+    "version",
+    "gameVersion",
+    "patternLegend",
+    "sources",
 )
 
-REQUIRED_ROW_KEYS = ("opcode", "opcodeInt", "pcapCount", "pattern",
-                     "bcsYIds", "catalogStatus")
+REQUIRED_ROW_KEYS = (
+    "opcode",
+    "opcodeInt",
+    "pcapCount",
+    "pattern",
+    "bcsYIds",
+    "catalogStatus",
+)
 # bcsYReceiverNames preserves receiver identity when no BCS-Y constructor entry exists.
 OPTIONAL_ROW_KEYS = ("notes", "bcsYReceiverNames")
+
 
 def check_matrix(matrix_doc: Any) -> list[Finding]:
     findings: list[Finding] = []
@@ -2063,40 +3364,48 @@ def check_matrix(matrix_doc: Any) -> list[Finding]:
                 if not isinstance(row["opcode"], str):
                     findings.append(err(rloc, "'opcode' must be a string"))
                 elif not OPCODE_RE.match(row["opcode"]):
-                    findings.append(warn(rloc,
-                                         f"opcode {row['opcode']!r} not "
-                                         "0x[0-9a-f]{4}"))
+                    findings.append(
+                        warn(rloc, f"opcode {row['opcode']!r} not 0x[0-9a-f]{{4}}")
+                    )
                 else:
                     if row["opcode"] in seen_opcodes:
-                        findings.append(err(rloc,
-                                            f"duplicate opcode within {table_key} "
-                                            f"(prior at index "
-                                            f"{seen_opcodes[row['opcode']]})"))
+                        findings.append(
+                            err(
+                                rloc,
+                                f"duplicate opcode within {table_key} "
+                                f"(prior at index "
+                                f"{seen_opcodes[row['opcode']]})",
+                            )
+                        )
                     else:
                         seen_opcodes[row["opcode"]] = idx
 
             if "opcode" in row and "opcodeInt" in row:
                 opi = row["opcodeInt"]
                 if not isinstance(opi, int):
-                    findings.append(err(rloc,
-                                        f"'opcodeInt' must be int, got "
-                                        f"{type(opi).__name__}"))
+                    findings.append(
+                        err(rloc, f"'opcodeInt' must be int, got {type(opi).__name__}")
+                    )
                 else:
                     try:
                         expected = int(row["opcode"], 16)
                         if opi != expected:
-                            findings.append(err(rloc,
-                                                f"opcodeInt={opi} != "
-                                                f"int({row['opcode']!r},16)={expected}"))
+                            findings.append(
+                                err(
+                                    rloc,
+                                    f"opcodeInt={opi} != "
+                                    f"int({row['opcode']!r},16)={expected}",
+                                )
+                            )
                     except (TypeError, ValueError):
                         pass
 
             if "pcapCount" in row:
                 pc = row["pcapCount"]
                 if not isinstance(pc, int):
-                    findings.append(err(rloc,
-                                        f"'pcapCount' must be int, got "
-                                        f"{type(pc).__name__}"))
+                    findings.append(
+                        err(rloc, f"'pcapCount' must be int, got {type(pc).__name__}")
+                    )
                 elif pc < 0:
                     findings.append(err(rloc, f"pcapCount {pc} < 0"))
 
@@ -2104,18 +3413,26 @@ def check_matrix(matrix_doc: Any) -> list[Finding]:
                 if not isinstance(row["pattern"], str):
                     findings.append(err(rloc, "'pattern' must be a string"))
                 elif row["pattern"] not in PATTERN_VALUES:
-                    findings.append(warn(rloc,
-                                         f"pattern {row['pattern']!r} not in "
-                                         f"allowed set {sorted(PATTERN_VALUES)}"))
+                    findings.append(
+                        warn(
+                            rloc,
+                            f"pattern {row['pattern']!r} not in "
+                            f"allowed set {sorted(PATTERN_VALUES)}",
+                        )
+                    )
 
             if "catalogStatus" in row:
                 if not isinstance(row["catalogStatus"], str):
                     findings.append(err(rloc, "'catalogStatus' must be a string"))
                 elif row["catalogStatus"] not in STATUS_VALUES:
-                    findings.append(warn(rloc,
-                                         f"catalogStatus {row['catalogStatus']!r} "
-                                         f"not in allowed set "
-                                         f"{sorted(STATUS_VALUES)}"))
+                    findings.append(
+                        warn(
+                            rloc,
+                            f"catalogStatus {row['catalogStatus']!r} "
+                            f"not in allowed set "
+                            f"{sorted(STATUS_VALUES)}",
+                        )
+                    )
 
             if "bcsYIds" in row:
                 bids = row["bcsYIds"]
@@ -2124,28 +3441,37 @@ def check_matrix(matrix_doc: Any) -> list[Finding]:
                 else:
                     for i, b in enumerate(bids):
                         if not isinstance(b, str):
-                            findings.append(err(f"{rloc}.bcsYIds[{i}]",
-                                                "entry must be a string"))
+                            findings.append(
+                                err(f"{rloc}.bcsYIds[{i}]", "entry must be a string")
+                            )
                         elif not BCS_Y_PREFIX_RE.match(b):
-                            findings.append(warn(f"{rloc}.bcsYIds[{i}]",
-                                                 f"entry {b!r} does not start "
-                                                 "with BCS-Y-\\d{4}"))
+                            findings.append(
+                                warn(
+                                    f"{rloc}.bcsYIds[{i}]",
+                                    f"entry {b!r} does not start with BCS-Y-\\d{{4}}",
+                                )
+                            )
 
             if "bcsYReceiverNames" in row:
                 names = row["bcsYReceiverNames"]
                 if not isinstance(names, list):
-                    findings.append(err(rloc,
-                                        "'bcsYReceiverNames' must be a list"))
+                    findings.append(err(rloc, "'bcsYReceiverNames' must be a list"))
                 else:
                     for i, n in enumerate(names):
                         if not isinstance(n, str):
-                            findings.append(err(
-                                f"{rloc}.bcsYReceiverNames[{i}]",
-                                "entry must be a string"))
+                            findings.append(
+                                err(
+                                    f"{rloc}.bcsYReceiverNames[{i}]",
+                                    "entry must be a string",
+                                )
+                            )
                         elif not n.strip():
-                            findings.append(err(
-                                f"{rloc}.bcsYReceiverNames[{i}]",
-                                "entry must be a non-empty string"))
+                            findings.append(
+                                err(
+                                    f"{rloc}.bcsYReceiverNames[{i}]",
+                                    "entry must be a non-empty string",
+                                )
+                            )
 
             if "notes" in row and not isinstance(row["notes"], str):
                 findings.append(err(rloc, "'notes' must be a string when present"))
@@ -2174,8 +3500,13 @@ def check_role_refinements(role_doc: Any) -> list[Finding]:
         if not isinstance(kind, str):
             findings.append(err(loc, "'evidenceKind' must be a string"))
         elif kind not in EVIDENCE_KIND_VALUES:
-            findings.append(err(loc, f"evidenceKind {kind!r} not in allowed set "
-                                      f"{sorted(EVIDENCE_KIND_VALUES)}"))
+            findings.append(
+                err(
+                    loc,
+                    f"evidenceKind {kind!r} not in allowed set "
+                    f"{sorted(EVIDENCE_KIND_VALUES)}",
+                )
+            )
     return findings
 
 
@@ -2226,17 +3557,23 @@ def check_matrix_format(matrix_path: pathlib.Path) -> list[Finding]:
 
         if stripped.startswith("{"):
             if not OPCODE_ROW_OPEN_RE.match(stripped):
-                findings.append(err(
-                    f"matrix.{in_table}:line{lineno}",
-                    f"row does not start with '{{\"opcode\":' "
-                    f"(multi-line object opened?): {stripped[:60]!r}"))
+                findings.append(
+                    err(
+                        f"matrix.{in_table}:line{lineno}",
+                        f"row does not start with '{{\"opcode\":' "
+                        f"(multi-line object opened?): {stripped[:60]!r}",
+                    )
+                )
                 continue
             if not (stripped.endswith("},") or stripped.endswith("}")):
-                findings.append(err(
-                    f"matrix.{in_table}:line{lineno}",
-                    f"opcode row does not end on same line "
-                    f"(hybrid single-line format violated): "
-                    f"{stripped[:60]!r}"))
+                findings.append(
+                    err(
+                        f"matrix.{in_table}:line{lineno}",
+                        f"opcode row does not end on same line "
+                        f"(hybrid single-line format violated): "
+                        f"{stripped[:60]!r}",
+                    )
+                )
             continue
 
     return findings
@@ -2247,16 +3584,19 @@ def _extract_bcs_y(token: str) -> str | None:
     return m.group(1) if m else None
 
 
-def check_cross_references(symbols_doc: Any, structs_doc: Any,
-                           matrix_doc: Any) -> list[Finding]:
+def check_cross_references(
+    symbols_doc: Any, structs_doc: Any, matrix_doc: Any
+) -> list[Finding]:
     findings: list[Finding] = []
 
-    if not (isinstance(symbols_doc, dict)
-            and isinstance(symbols_doc.get("symbols"), list)):
+    if not (
+        isinstance(symbols_doc, dict) and isinstance(symbols_doc.get("symbols"), list)
+    ):
         return [err("cross", "symbols.json not loadable for cross-ref")]
 
     known_y_ids: set[str] = {
-        s["id"] for s in symbols_doc["symbols"]
+        s["id"]
+        for s in symbols_doc["symbols"]
         if isinstance(s, dict) and isinstance(s.get("id"), str)
     }
 
@@ -2276,9 +3616,12 @@ def check_cross_references(symbols_doc: Any, structs_doc: Any,
                     if yid is None:
                         continue
                     if yid not in known_y_ids:
-                        findings.append(err(
-                            f"matrix.{table_key}:{op}",
-                            f"references unknown {yid} (token {raw!r})"))
+                        findings.append(
+                            err(
+                                f"matrix.{table_key}:{op}",
+                                f"references unknown {yid} (token {raw!r})",
+                            )
+                        )
 
     # Struct notes may contain BCS-Y references that need cross-file validation.
     if isinstance(structs_doc, dict):
@@ -2292,17 +3635,22 @@ def check_cross_references(symbols_doc: Any, structs_doc: Any,
                 scan_blobs.append(("notes", st["notes"]))
             for fld in st.get("fields", []) or []:
                 if isinstance(fld, dict) and isinstance(fld.get("notes"), str):
-                    scan_blobs.append((f"fields.{fld.get('name','?')}.notes",
-                                       fld["notes"]))
+                    scan_blobs.append(
+                        (f"fields.{fld.get('name', '?')}.notes", fld["notes"])
+                    )
                 if isinstance(fld, dict) and isinstance(fld.get("evidence"), str):
-                    scan_blobs.append((f"fields.{fld.get('name','?')}.evidence",
-                                       fld["evidence"]))
+                    scan_blobs.append(
+                        (f"fields.{fld.get('name', '?')}.evidence", fld["evidence"])
+                    )
             for where, blob in scan_blobs:
                 for yid in token_re.findall(blob):
                     if yid not in known_y_ids:
-                        findings.append(warn(
-                            f"structs.json:{sid}.{where}",
-                            f"references unknown {yid}"))
+                        findings.append(
+                            warn(
+                                f"structs.json:{sid}.{where}",
+                                f"references unknown {yid}",
+                            )
+                        )
 
     return findings
 
@@ -2320,32 +3668,40 @@ def check_expanded_reverse_bfs_projection() -> list[Finding]:
         return [Finding("ERROR", "expanded-reverse-bfs", f"load failed: {exc}")]
 
     if c2s_projection != dependency_projection:
-        findings.append(Finding(
-            "ERROR",
-            "expanded-reverse-bfs.projections",
-            "c2s and data-dependency summary projections disagree",
-        ))
+        findings.append(
+            Finding(
+                "ERROR",
+                "expanded-reverse-bfs.projections",
+                "c2s and data-dependency summary projections disagree",
+            )
+        )
         return findings
     if not isinstance(c2s_projection, dict):
-        return [Finding(
-            "ERROR",
-            "expanded-reverse-bfs.projections",
-            "summary projection must be an object",
-        )]
+        return [
+            Finding(
+                "ERROR",
+                "expanded-reverse-bfs.projections",
+                "summary projection must be an object",
+            )
+        ]
 
     for key in ("generated", "reconciled", "bcsyRef", "stats"):
         if c2s_projection.get(key) != canonical.get(key):
-            findings.append(Finding(
-                "ERROR",
-                f"expanded-reverse-bfs.{key}",
-                "summary projection disagrees with the canonical manifest",
-            ))
+            findings.append(
+                Finding(
+                    "ERROR",
+                    f"expanded-reverse-bfs.{key}",
+                    "summary projection disagrees with the canonical manifest",
+                )
+            )
     if c2s_projection.get("findingsManifest") != "manifests\\expanded_reverse_bfs.json":
-        findings.append(Finding(
-            "ERROR",
-            "expanded-reverse-bfs.findingsManifest",
-            "summary projection lost its canonical manifest pointer",
-        ))
+        findings.append(
+            Finding(
+                "ERROR",
+                "expanded-reverse-bfs.findingsManifest",
+                "summary projection lost its canonical manifest pointer",
+            )
+        )
     return findings
 
 
@@ -2382,7 +3738,9 @@ def _print_section(section: SectionResult, sample_limit: int = 10) -> None:
         for f in bucket[:sample_limit]:
             print(f"    [{f.location}] {f.message}")
         if len(bucket) > sample_limit:
-            print(f"    ... {len(bucket) - sample_limit} more {sev} findings suppressed")
+            print(
+                f"    ... {len(bucket) - sample_limit} more {sev} findings suppressed"
+            )
 
 
 SYMBOL_CHECK_COUNT = 12
@@ -2394,51 +3752,115 @@ ROLE_CHECK_COUNT = 1
 BATTLE_RESULT_CHECK_COUNT = 1
 LUA_RESOURCE_INVENTORY_CHECK_COUNT = 1
 LUA_RESOURCE_PATH_CHECK_COUNT = 1
+
+
 def check_gam_hash_names(doc: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     resolved = doc.get("resolved", [])
     unresolved = doc.get("unresolved", [])
     coverage = doc.get("coverage", {})
     if (len(resolved), len(unresolved)) != (263, 0):
-        findings.append(Finding("ERROR", "gam-hash.coverage", "resolved/unresolved hash counts drifted"))
-    if (coverage.get("distinctHashes"), coverage.get("totalOccurrences"),
-            coverage.get("resolvedOccurrences"), coverage.get("unresolvedOccurrences")) != (263, 8918, 8918, 0):
-        findings.append(Finding("ERROR", "gam-hash.coverage", "occurrence-weighted coverage drifted"))
+        findings.append(
+            Finding(
+                "ERROR", "gam-hash.coverage", "resolved/unresolved hash counts drifted"
+            )
+        )
+    if (
+        coverage.get("distinctHashes"),
+        coverage.get("totalOccurrences"),
+        coverage.get("resolvedOccurrences"),
+        coverage.get("unresolvedOccurrences"),
+    ) != (263, 8918, 8918, 0):
+        findings.append(
+            Finding(
+                "ERROR", "gam-hash.coverage", "occurrence-weighted coverage drifted"
+            )
+        )
     total = 0
     expected_consumers = {
-        "playerWork.castCommandClient": ["ActionMenuWidget.updateCastInfo", "PlayerBaseClass.getCastCommand"],
-        "playerWork.castEndClient": ["ActionGaugeWidget.update", "PlayerBaseClass.getCastEndTime"],
+        "playerWork.castCommandClient": [
+            "ActionMenuWidget.updateCastInfo",
+            "PlayerBaseClass.getCastCommand",
+        ],
+        "playerWork.castEndClient": [
+            "ActionGaugeWidget.update",
+            "PlayerBaseClass.getCastEndTime",
+        ],
         "charaWork.battleTemp.castGauge_speed[0]": ["CharaBaseClass.getCastSpeed"],
         "charaWork.battleTemp.castGauge_speed[1]": ["CharaBaseClass.getCastSpeed"],
     }
     for row in resolved:
         expected = int(row.get("idHex", "0"), 16)
         names = row.get("names", [])
-        if not names or any(murmur2_backward(name.encode("ascii")) != expected for name in names):
-            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "exact name hash mismatch"))
+        if not names or any(
+            murmur2_backward(name.encode("ascii")) != expected for name in names
+        ):
+            findings.append(
+                Finding(
+                    "ERROR", f"gam-hash.{row.get('idHex')}", "exact name hash mismatch"
+                )
+            )
         profile = row.get("observedProfile", {})
-        if profile.get("occurrences") != row.get("count") or profile.get("widths") != row.get("sizes"):
-            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "observed profile drifted"))
-        if row.get("resolutionEvidence", {}).get("method") != "exact_backward_murmurhash2_seed_0":
-            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "resolution method missing"))
+        if profile.get("occurrences") != row.get("count") or profile.get(
+            "widths"
+        ) != row.get("sizes"):
+            findings.append(
+                Finding(
+                    "ERROR", f"gam-hash.{row.get('idHex')}", "observed profile drifted"
+                )
+            )
+        if (
+            row.get("resolutionEvidence", {}).get("method")
+            != "exact_backward_murmurhash2_seed_0"
+        ):
+            findings.append(
+                Finding(
+                    "ERROR", f"gam-hash.{row.get('idHex')}", "resolution method missing"
+                )
+            )
         widths = {int(key) for key in row.get("sizes", {})}
-        expected_type = {frozenset({1}): "u8_bits", frozenset({2}): "u16_le_bits",
-                         frozenset({4}): "u32_or_f32_le_bits"}.get(
-            frozenset(widths), "opaque_variable_width")
+        expected_type = {
+            frozenset({1}): "u8_bits",
+            frozenset({2}): "u16_le_bits",
+            frozenset({4}): "u32_or_f32_le_bits",
+        }.get(frozenset(widths), "opaque_variable_width")
         if row.get("wireValueType") != expected_type:
-            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "wire value type drifted"))
-        consumers = sorted({consumer for name in names for consumer in expected_consumers.get(name, [])})
+            findings.append(
+                Finding(
+                    "ERROR", f"gam-hash.{row.get('idHex')}", "wire value type drifted"
+                )
+            )
+        consumers = sorted(
+            {
+                consumer
+                for name in names
+                for consumer in expected_consumers.get(name, [])
+            }
+        )
         if row.get("consumingScriptGetters") != consumers:
-            findings.append(Finding("ERROR", f"gam-hash.{row.get('idHex')}", "consumer context drifted"))
+            findings.append(
+                Finding(
+                    "ERROR", f"gam-hash.{row.get('idHex')}", "consumer context drifted"
+                )
+            )
         total += row.get("count", 0)
     if total != 8918:
-        findings.append(Finding("ERROR", "gam-hash.occurrences", "resolved occurrence sum drifted"))
+        findings.append(
+            Finding("ERROR", "gam-hash.occurrences", "resolved occurrence sum drifted")
+        )
     profile_source = doc.get("provenance", {}).get("fullCorpusProfile", {})
-    if (profile_source.get("commit") != "54a24c87faa4e3cebde808b74d80b6f1bee4b013" or
-            not re.fullmatch(r"[0-9a-f]{64}", profile_source.get("sha256", ""))):
-        findings.append(Finding("ERROR", "gam-hash.provenance", "full-corpus source pin drifted"))
+    if profile_source.get(
+        "commit"
+    ) != "54a24c87faa4e3cebde808b74d80b6f1bee4b013" or not re.fullmatch(
+        r"[0-9a-f]{64}", profile_source.get("sha256", "")
+    ):
+        findings.append(
+            Finding("ERROR", "gam-hash.provenance", "full-corpus source pin drifted")
+        )
     if len(doc.get("provenance", {}).get("consumerContextRefs", [])) != 5:
-        findings.append(Finding("ERROR", "gam-hash.provenance", "consumer source refs drifted"))
+        findings.append(
+            Finding("ERROR", "gam-hash.provenance", "consumer source refs drifted")
+        )
     return findings
 
 
@@ -2456,7 +3878,9 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
     if not isinstance(doc, dict):
         return [Finding("ERROR", "command-slot.shape", "document is not an object")]
     if (doc.get("schemaVersion"), doc.get("kind")) != (2, "xivl-command-slot-context"):
-        findings.append(Finding("ERROR", "command-slot.header", "schema or kind drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.header", "schema or kind drifted")
+        )
     coverage = doc.get("coverage", {})
     if not isinstance(coverage, dict):
         return [Finding("ERROR", "command-slot.coverage", "coverage is not an object")]
@@ -2478,15 +3902,23 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
     }
     for key, value in expected.items():
         if coverage.get(key) != value:
-            findings.append(Finding("ERROR", f"command-slot.coverage.{key}", "count drifted"))
+            findings.append(
+                Finding("ERROR", f"command-slot.coverage.{key}", "count drifted")
+            )
     if coverage.get("categoryValueDistribution") != [{"value": 1, "occurrences": 240}]:
-        findings.append(Finding("ERROR", "command-slot.categories", "observed values drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.categories", "observed values drifted")
+        )
     rows = doc.get("rows", [])
     if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
         return [Finding("ERROR", "command-slot.rows", "rows is not an object array")]
-    encoded_rows = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("ascii")
+    encoded_rows = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode(
+        "ascii"
+    )
     rows_sha256 = hashlib.sha256(encoded_rows).hexdigest()
-    expected_rows_sha256 = "9bfb71511ee515a52452b6a0a5dd4e7a27573fa07e48afb3f4f2091c139583d2"
+    expected_rows_sha256 = (
+        "9bfb71511ee515a52452b6a0a5dd4e7a27573fa07e48afb3f4f2091c139583d2"
+    )
     if doc.get("rowsSha256") != rows_sha256 or rows_sha256 != expected_rows_sha256:
         findings.append(Finding("ERROR", "command-slot.rows", "row content drifted"))
     expected_sources = {
@@ -2508,22 +3940,27 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
     }
     sources = doc.get("sourceSnapshots", {})
     if not isinstance(sources, dict):
-        findings.append(Finding("ERROR", "command-slot.sources", "sources are malformed"))
+        findings.append(
+            Finding("ERROR", "command-slot.sources", "sources are malformed")
+        )
     else:
         for source, expected_values in expected_sources.items():
             actual = sources.get(source, {})
             if not isinstance(actual, dict) or any(
                 actual.get(key) != value for key, value in expected_values.items()
             ):
-                findings.append(Finding("ERROR", f"command-slot.sources.{source}", "source pin drifted"))
+                findings.append(
+                    Finding(
+                        "ERROR", f"command-slot.sources.{source}", "source pin drifted"
+                    )
+                )
     if any(
         not isinstance(row.get("slotObservations"), list)
         or not all(isinstance(slot, dict) for slot in row["slotObservations"])
         or any(
             not isinstance(slot.get("categoryObservations"), list)
             or not all(
-                isinstance(category, dict)
-                for category in slot["categoryObservations"]
+                isinstance(category, dict) for category in slot["categoryObservations"]
             )
             for slot in row["slotObservations"]
         )
@@ -2533,49 +3970,86 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
             Finding("ERROR", "command-slot.rows", "slot observations are malformed")
         ]
     if len(rows) != 52 or len({row.get("commandId") for row in rows}) != 52:
-        findings.append(Finding("ERROR", "command-slot.rows", "command identity set drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.rows", "command identity set drifted")
+        )
     observed = [
         row
         for row in rows
-        if any(slot.get("categoryObservations") for slot in row.get("slotObservations", []))
+        if any(
+            slot.get("categoryObservations") for slot in row.get("slotObservations", [])
+        )
     ]
     if len(observed) != 26:
-        findings.append(Finding("ERROR", "command-slot.rows", "category command count drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.rows", "category command count drifted")
+        )
     for row in rows:
         actor_id = row.get("actorIdHex", "")
         command_id = row.get("commandId")
         try:
             actor_value = int(actor_id, 16)
         except (TypeError, ValueError):
-            findings.append(Finding("ERROR", "command-slot.rows", "actor id is malformed"))
+            findings.append(
+                Finding("ERROR", "command-slot.rows", "actor id is malformed")
+            )
             continue
         if actor_value & 0xFFFF0000 != 0xA0F00000 or actor_value & 0xFFFF != command_id:
-            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "static actor decode drifted"))
+            findings.append(
+                Finding(
+                    "ERROR", f"command-slot.{actor_id}", "static actor decode drifted"
+                )
+            )
         if not str(row.get("classPath", "")).startswith("/Command/"):
-            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "class path drifted"))
+            findings.append(
+                Finding("ERROR", f"command-slot.{actor_id}", "class path drifted")
+            )
         slots = row.get("slotObservations", [])
         if len({slot.get("slot") for slot in slots}) != len(slots):
-            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "slot set drifted"))
+            findings.append(
+                Finding("ERROR", f"command-slot.{actor_id}", "slot set drifted")
+            )
         if sum(slot.get("commandOccurrences", 0) for slot in slots) != row.get(
             "commandOccurrences"
         ):
-            findings.append(Finding("ERROR", f"command-slot.{actor_id}", "slot count drifted"))
+            findings.append(
+                Finding("ERROR", f"command-slot.{actor_id}", "slot count drifted")
+            )
         for slot in slots:
             for category in slot.get("categoryObservations", []):
-                if category.get("value") != 1 or not isinstance(category.get("occurrences"), int):
-                    findings.append(Finding("ERROR", f"command-slot.{actor_id}", "category observation drifted"))
-    if sum(
-        category["occurrences"]
-        for row in observed
-        for slot in row["slotObservations"]
-        for category in slot["categoryObservations"]
-    ) != 174:
-        findings.append(Finding("ERROR", "command-slot.rows", "category occurrence sum drifted"))
+                if category.get("value") != 1 or not isinstance(
+                    category.get("occurrences"), int
+                ):
+                    findings.append(
+                        Finding(
+                            "ERROR",
+                            f"command-slot.{actor_id}",
+                            "category observation drifted",
+                        )
+                    )
+    if (
+        sum(
+            category["occurrences"]
+            for row in observed
+            for slot in row["slotObservations"]
+            for category in slot["categoryObservations"]
+        )
+        != 174
+    ):
+        findings.append(
+            Finding("ERROR", "command-slot.rows", "category occurrence sum drifted")
+        )
     corpus = doc.get("writeCorpus", {})
     writes = corpus.get("writes", []) if isinstance(corpus, dict) else []
-    if not isinstance(writes, list) or not all(isinstance(write, dict) for write in writes):
-        return findings + [Finding("ERROR", "command-slot.writes", "writes are malformed")]
-    encoded_writes = json.dumps(writes, sort_keys=True, separators=(",", ":")).encode("ascii")
+    if not isinstance(writes, list) or not all(
+        isinstance(write, dict) for write in writes
+    ):
+        return findings + [
+            Finding("ERROR", "command-slot.writes", "writes are malformed")
+        ]
+    encoded_writes = json.dumps(writes, sort_keys=True, separators=(",", ":")).encode(
+        "ascii"
+    )
     if corpus.get("writesSha256") != hashlib.sha256(encoded_writes).hexdigest():
         findings.append(Finding("ERROR", "command-slot.writes", "write digest drifted"))
     expected_boundary = {
@@ -2586,7 +4060,9 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
         "packetReplay": False,
     }
     if any(corpus.get(key) != value for key, value in expected_boundary.items()):
-        findings.append(Finding("ERROR", "command-slot.writes", "evidence boundary drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.writes", "evidence boundary drifted")
+        )
     derivation = doc.get("derivation", {})
     if (
         derivation.get("statePartition") != ["capture", "lane_index", "source_actor_id"]
@@ -2594,14 +4070,19 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
         or corpus.get("statePartition") != ["capture", "laneIndex", "sourceActorId"]
         or corpus.get("stateOrder") != "increasing recordIndex within each partition"
     ):
-        findings.append(Finding("ERROR", "command-slot.writes", "state metadata drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.writes", "state metadata drifted")
+        )
     operation_counts = Counter(write.get("operation") for write in writes)
     if operation_counts != Counter(
         {"set-command": 374, "clear": 20, "set-category": 240, "set-border": 12}
     ):
-        findings.append(Finding("ERROR", "command-slot.writes", "operation counts drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.writes", "operation counts drifted")
+        )
     identities = {
-        row.get("commandId"): (row.get("actorIdHex"), row.get("classPath")) for row in rows
+        row.get("commandId"): (row.get("actorIdHex"), row.get("classPath"))
+        for row in rows
     }
     partitions: dict[tuple[Any, Any, Any], int] = {}
     command_state: dict[tuple[tuple[Any, Any, Any], int], int] = {}
@@ -2616,7 +4097,9 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
             or type(record_index) is not int
             or record_index <= partitions.get(key, -1)
         ):
-            findings.append(Finding("ERROR", "command-slot.writes", "partition order drifted"))
+            findings.append(
+                Finding("ERROR", "command-slot.writes", "partition order drifted")
+            )
             break
         partitions[key] = record_index
         try:
@@ -2636,7 +4119,9 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
                 bytes([width]) + property_hash.to_bytes(4, "little") + value
             ).hex()
         except (KeyError, TypeError, ValueError, OverflowError):
-            findings.append(Finding("ERROR", "command-slot.writes", "record encoding is malformed"))
+            findings.append(
+                Finding("ERROR", "command-slot.writes", "record encoding is malformed")
+            )
             break
         if (
             len(value) != width
@@ -2644,21 +4129,34 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
             or not path.isascii()
             or murmur2_backward(path.encode("ascii")) != property_hash
         ):
-            findings.append(Finding("ERROR", "command-slot.writes", "record fragment drifted"))
+            findings.append(
+                Finding("ERROR", "command-slot.writes", "record fragment drifted")
+            )
             break
         operation = write.get("operation")
         common = {
-            "recordIndex", "capture", "laneIndex", "sourceActorId", "propertyPath",
-            "propertyHash", "valueWidth", "valueHex", "recordFragmentHex", "operation",
+            "recordIndex",
+            "capture",
+            "laneIndex",
+            "sourceActorId",
+            "propertyPath",
+            "propertyHash",
+            "valueWidth",
+            "valueHex",
+            "recordFragmentHex",
+            "operation",
         }
         operation_keys = {
             "clear": common | {"slot"},
             "set-command": common | {"slot", "actorIdHex", "commandId", "classPath"},
-            "set-category": common | {"slot", "categoryValue", "joinedCommandRecordIndex"},
+            "set-category": common
+            | {"slot", "categoryValue", "joinedCommandRecordIndex"},
             "set-border": common | {"borderValue"},
         }
         if operation not in operation_keys or set(write) != operation_keys[operation]:
-            findings.append(Finding("ERROR", "command-slot.writes", "operation shape drifted"))
+            findings.append(
+                Finding("ERROR", "command-slot.writes", "operation shape drifted")
+            )
             break
         if operation == "set-border":
             border = write.get("borderValue")
@@ -2669,22 +4167,34 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
                 or not 0 <= border <= 255
                 or value != bytes([border])
             ):
-                findings.append(Finding("ERROR", "command-slot.writes", "border write drifted"))
+                findings.append(
+                    Finding("ERROR", "command-slot.writes", "border write drifted")
+                )
                 break
             continue
         match = re.fullmatch(
-            r"charaWork\.commandCategory\[(\d+)\]" if operation == "set-category"
+            r"charaWork\.commandCategory\[(\d+)\]"
+            if operation == "set-category"
             else r"charaWork\.command\[(\d+)\]",
             path,
         )
         slot = write.get("slot")
-        if match is None or type(slot) is not int or not 0 <= slot < 64 or int(match.group(1)) != slot:
-            findings.append(Finding("ERROR", "command-slot.writes", "slot path drifted"))
+        if (
+            match is None
+            or type(slot) is not int
+            or not 0 <= slot < 64
+            or int(match.group(1)) != slot
+        ):
+            findings.append(
+                Finding("ERROR", "command-slot.writes", "slot path drifted")
+            )
             break
         state_key = (key, slot)
         if operation == "clear":
             if width != 4 or value != b"\0\0\0\0":
-                findings.append(Finding("ERROR", "command-slot.writes", "clear write drifted"))
+                findings.append(
+                    Finding("ERROR", "command-slot.writes", "clear write drifted")
+                )
                 break
             command_state.pop(state_key, None)
         elif operation == "set-command":
@@ -2698,7 +4208,9 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
                 or value != int(actor_id, 16).to_bytes(4, "little")
                 or identity != (actor_id, write.get("classPath"))
             ):
-                findings.append(Finding("ERROR", "command-slot.writes", "command identity drifted"))
+                findings.append(
+                    Finding("ERROR", "command-slot.writes", "command identity drifted")
+                )
                 break
             command_state[state_key] = record_index
         else:
@@ -2711,10 +4223,14 @@ def check_command_slot_context(doc: dict[str, Any]) -> list[Finding]:
                 or value != bytes([category])
                 or joined != command_state.get(state_key)
             ):
-                findings.append(Finding("ERROR", "command-slot.writes", "category join drifted"))
+                findings.append(
+                    Finding("ERROR", "command-slot.writes", "category join drifted")
+                )
                 break
     if len(partitions) != 14:
-        findings.append(Finding("ERROR", "command-slot.writes", "partition count drifted"))
+        findings.append(
+            Finding("ERROR", "command-slot.writes", "partition count drifted")
+        )
     return findings
 
 
@@ -2747,7 +4263,9 @@ def main() -> int:
     try:
         lua_resource_inventory_doc = _load_json(LUA_RESOURCE_INVENTORY_PATH)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"FATAL: failed to load {LUA_RESOURCE_INVENTORY_PATH}: {e}", file=sys.stderr)
+        print(
+            f"FATAL: failed to load {LUA_RESOURCE_INVENTORY_PATH}: {e}", file=sys.stderr
+        )
         return 2
     try:
         lua_resource_path_doc = _load_json(LUA_RESOURCE_PATH_PATH)
@@ -2757,7 +4275,9 @@ def main() -> int:
     try:
         lua_callback_contract_doc = _load_json(LUA_CALLBACK_CONTRACT_PATH)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"FATAL: failed to load {LUA_CALLBACK_CONTRACT_PATH}: {e}", file=sys.stderr)
+        print(
+            f"FATAL: failed to load {LUA_CALLBACK_CONTRACT_PATH}: {e}", file=sys.stderr
+        )
         return 2
     try:
         lua_api_contract_doc = _load_json(LUA_API_CONTRACT_PATH)
@@ -2767,12 +4287,18 @@ def main() -> int:
     try:
         cast_chant_presentation_doc = _load_json(CAST_CHANT_PRESENTATION_PATH)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"FATAL: failed to load {CAST_CHANT_PRESENTATION_PATH}: {e}", file=sys.stderr)
+        print(
+            f"FATAL: failed to load {CAST_CHANT_PRESENTATION_PATH}: {e}",
+            file=sys.stderr,
+        )
         return 2
     try:
         combat_command_emission_doc = _load_json(COMBAT_COMMAND_EMISSION_PATH)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"FATAL: failed to load {COMBAT_COMMAND_EMISSION_PATH}: {e}", file=sys.stderr)
+        print(
+            f"FATAL: failed to load {COMBAT_COMMAND_EMISSION_PATH}: {e}",
+            file=sys.stderr,
+        )
         return 2
     try:
         gam_hash_names_doc = _load_json(GAM_HASH_NAMES_PATH)
@@ -2782,23 +4308,34 @@ def main() -> int:
     try:
         property_stream_hash_catalog_doc = _load_json(PROPERTY_STREAM_HASH_CATALOG_PATH)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"FATAL: failed to load {PROPERTY_STREAM_HASH_CATALOG_PATH}: {e}", file=sys.stderr)
+        print(
+            f"FATAL: failed to load {PROPERTY_STREAM_HASH_CATALOG_PATH}: {e}",
+            file=sys.stderr,
+        )
         return 2
     try:
         command_slot_context_doc = _load_json(COMMAND_SLOT_CONTEXT_PATH)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"FATAL: failed to load {COMMAND_SLOT_CONTEXT_PATH}: {e}", file=sys.stderr)
+        print(
+            f"FATAL: failed to load {COMMAND_SLOT_CONTEXT_PATH}: {e}", file=sys.stderr
+        )
         return 2
 
     print("=" * 72)
     print("CATALOG VALIDATOR REPORT")
     print("=" * 72)
-    print(f"symbols.json: symbolCount={symbols_doc.get('symbolCount')} "
-          f"len(symbols)={len(symbols_doc.get('symbols', []))}")
-    print(f"structs.json: structCount={structs_doc.get('structCount')} "
-          f"len(structs)={len(structs_doc.get('structs', []))}")
-    print(f"matrix:       s2c rows={len(matrix_doc.get('s2cOpcodeTable', []))} "
-          f"c2s rows={len(matrix_doc.get('c2sOpcodeTable', []))}")
+    print(
+        f"symbols.json: symbolCount={symbols_doc.get('symbolCount')} "
+        f"len(symbols)={len(symbols_doc.get('symbols', []))}"
+    )
+    print(
+        f"structs.json: structCount={structs_doc.get('structCount')} "
+        f"len(structs)={len(structs_doc.get('structs', []))}"
+    )
+    print(
+        f"matrix:       s2c rows={len(matrix_doc.get('s2cOpcodeTable', []))} "
+        f"c2s rows={len(matrix_doc.get('c2sOpcodeTable', []))}"
+    )
     print(f"role refinements: rows={len(role_doc.get('refinements', []))}")
 
     matrix_findings = check_matrix(matrix_doc) + check_matrix_format(MATRIX_PATH)
@@ -2806,30 +4343,64 @@ def main() -> int:
         SectionResult("symbols.json", SYMBOL_CHECK_COUNT, check_symbols(symbols_doc)),
         SectionResult("structs.json", STRUCT_CHECK_COUNT, check_structs(structs_doc)),
         SectionResult("coverage matrix", MATRIX_CHECK_COUNT, matrix_findings),
-        SectionResult("role refinements", ROLE_CHECK_COUNT,
-                      check_role_refinements(role_doc)),
-        SectionResult("battle-result fields", BATTLE_RESULT_CHECK_COUNT,
-                      check_battle_result_fields(battle_result_doc, structs_doc)),
-        SectionResult("preserved Lua resources", LUA_RESOURCE_INVENTORY_CHECK_COUNT,
-                      check_lua_resource_inventory(lua_resource_inventory_doc)),
-        SectionResult("Lua resource paths", LUA_RESOURCE_PATH_CHECK_COUNT,
-                      check_lua_resource_paths(lua_resource_path_doc)),
-        SectionResult("Lua callback contract", LUA_CALLBACK_CONTRACT_CHECK_COUNT,
-                      check_lua_callback_contract(lua_callback_contract_doc)),
-        SectionResult("complete Lua API contract", LUA_API_CONTRACT_CHECK_COUNT,
-                      check_lua_api_contract(lua_api_contract_doc)),
-        SectionResult("cast and chant presentation", CAST_CHANT_PRESENTATION_CHECK_COUNT,
-                      check_cast_chant_presentation(cast_chant_presentation_doc)),
-        SectionResult("combat command emission", COMBAT_COMMAND_EMISSION_CHECK_COUNT,
-                      check_combat_command_emission(combat_command_emission_doc)),
-        SectionResult("property stream hash catalog", GAM_HASH_NAMES_CHECK_COUNT,
-                      check_gam_hash_names(gam_hash_names_doc)),
-        SectionResult("property stream apply storage", PROPERTY_STREAM_HASH_CATALOG_CHECK_COUNT,
-                      check_property_stream_hash_catalog(property_stream_hash_catalog_doc)),
-        SectionResult("command slot context", COMMAND_SLOT_CONTEXT_CHECK_COUNT,
-                      check_command_slot_context(command_slot_context_doc)),
-        SectionResult("cross-file references", CROSS_CHECK_COUNT,
-                      check_cross_references(symbols_doc, structs_doc, matrix_doc)),
+        SectionResult(
+            "role refinements", ROLE_CHECK_COUNT, check_role_refinements(role_doc)
+        ),
+        SectionResult(
+            "battle-result fields",
+            BATTLE_RESULT_CHECK_COUNT,
+            check_battle_result_fields(battle_result_doc, structs_doc),
+        ),
+        SectionResult(
+            "preserved Lua resources",
+            LUA_RESOURCE_INVENTORY_CHECK_COUNT,
+            check_lua_resource_inventory(lua_resource_inventory_doc),
+        ),
+        SectionResult(
+            "Lua resource paths",
+            LUA_RESOURCE_PATH_CHECK_COUNT,
+            check_lua_resource_paths(lua_resource_path_doc),
+        ),
+        SectionResult(
+            "Lua callback contract",
+            LUA_CALLBACK_CONTRACT_CHECK_COUNT,
+            check_lua_callback_contract(lua_callback_contract_doc),
+        ),
+        SectionResult(
+            "complete Lua API contract",
+            LUA_API_CONTRACT_CHECK_COUNT,
+            check_lua_api_contract(lua_api_contract_doc),
+        ),
+        SectionResult(
+            "cast and chant presentation",
+            CAST_CHANT_PRESENTATION_CHECK_COUNT,
+            check_cast_chant_presentation(cast_chant_presentation_doc),
+        ),
+        SectionResult(
+            "combat command emission",
+            COMBAT_COMMAND_EMISSION_CHECK_COUNT,
+            check_combat_command_emission(combat_command_emission_doc),
+        ),
+        SectionResult(
+            "property stream hash catalog",
+            GAM_HASH_NAMES_CHECK_COUNT,
+            check_gam_hash_names(gam_hash_names_doc),
+        ),
+        SectionResult(
+            "property stream apply storage",
+            PROPERTY_STREAM_HASH_CATALOG_CHECK_COUNT,
+            check_property_stream_hash_catalog(property_stream_hash_catalog_doc),
+        ),
+        SectionResult(
+            "command slot context",
+            COMMAND_SLOT_CONTEXT_CHECK_COUNT,
+            check_command_slot_context(command_slot_context_doc),
+        ),
+        SectionResult(
+            "cross-file references",
+            CROSS_CHECK_COUNT,
+            check_cross_references(symbols_doc, structs_doc, matrix_doc),
+        ),
         SectionResult(
             "expanded reverse-BFS projections",
             EXPANDED_REVERSE_BFS_CHECK_COUNT,

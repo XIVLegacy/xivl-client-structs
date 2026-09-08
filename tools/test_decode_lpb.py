@@ -77,7 +77,16 @@ class FilenameCipherTests(unittest.TestCase):
         self.assertEqual(decode_filename("kvw5xvo5usv3q5rq"), "zonemoveprogtest")
 
     def test_non_alphanum_passthrough(self):
-        self.assertEqual(encode_filename("a-b_c.d"), encode_filename("a") + "-" + encode_filename("b") + "_" + encode_filename("c") + "." + encode_filename("d"))
+        self.assertEqual(
+            encode_filename("a-b_c.d"),
+            encode_filename("a")
+            + "-"
+            + encode_filename("b")
+            + "_"
+            + encode_filename("c")
+            + "."
+            + encode_filename("d"),
+        )
 
 
 if __name__ == "__main__":

@@ -21,16 +21,24 @@ class LobbyCharacterListFixtureTests(unittest.TestCase):
         validate_fixture(self.fixture)
 
     def test_rejects_shifted_wire_length(self):
-        self.assert_rejected(lambda value: value["characterList"].update(bodyLength=943))
+        self.assert_rejected(
+            lambda value: value["characterList"].update(bodyLength=943)
+        )
 
     def test_rejects_shifted_record_stride(self):
-        self.assert_rejected(lambda value: value["characterList"].update(entryStride=465))
+        self.assert_rejected(
+            lambda value: value["characterList"].update(entryStride=465)
+        )
 
     def test_rejects_changed_session_occurrence(self):
-        self.assert_rejected(lambda value: value["sessions"][0].update(characterListOccurrenceCount=1))
+        self.assert_rejected(
+            lambda value: value["sessions"][0].update(characterListOccurrenceCount=1)
+        )
 
     def test_rejects_changed_record_count(self):
-        self.assert_rejected(lambda value: value["characterList"].update(recordCountReadByClient=2))
+        self.assert_rejected(
+            lambda value: value["characterList"].update(recordCountReadByClient=2)
+        )
 
     def test_rejects_unterminated_append_string_observation(self):
         self.assert_rejected(

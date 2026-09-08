@@ -29,6 +29,7 @@ Read-only. Produces a structured report covering:
       generated manifest predates a symbols.json address rebase and needs
       regeneration.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,27 +48,44 @@ STRUCTS = REPO / "manifests" / "structs.json"
 MATRIX = REPO / "manifests" / "pcap_opcode_coverage_matrix.json"
 
 # Named catalogs are maintained products. Every other JSON manifest is a snapshot.
-NAMED_CATALOGS = frozenset({
-    "c2s_bridge_skeleton.json", "client_class_registry.json", "command_slot_context.json",
-    "control_class_napi_field_access.json",
-    "control_class_napi_field_access_recursive.json",
-    "control_class_napi_map.json", "data_dependency_catalog.json",
-    "gam_hash_names.json", "ir_catalog.json", "ir_overlay.json", "lua_api_index.json",
-    "lobby_character_list_capture_correlation.json",
-    "lobby_character_list_projection.json",
-    "lua_apply_chain_firers.json", "lua_to_opcode.json",
-    "operation_opcode_map_outbound.json", "operation_opcode_map_overlay.json",
-    "receiver_field_writes.json", "receiver_opcode_map_inbound.json",
-    "receiver_opcode_map_overlay.json", "retail_actor_rebuild_check.json",
-    "retail_inputs.json", "rtti_vftable_index.json",
-    "structs.json", "symbols.json",
-})
+NAMED_CATALOGS = frozenset(
+    {
+        "c2s_bridge_skeleton.json",
+        "client_class_registry.json",
+        "command_slot_context.json",
+        "control_class_napi_field_access.json",
+        "control_class_napi_field_access_recursive.json",
+        "control_class_napi_map.json",
+        "data_dependency_catalog.json",
+        "gam_hash_names.json",
+        "ir_catalog.json",
+        "ir_overlay.json",
+        "lua_api_index.json",
+        "lobby_character_list_capture_correlation.json",
+        "lobby_character_list_projection.json",
+        "lua_apply_chain_firers.json",
+        "lua_to_opcode.json",
+        "operation_opcode_map_outbound.json",
+        "operation_opcode_map_overlay.json",
+        "receiver_field_writes.json",
+        "receiver_opcode_map_inbound.json",
+        "receiver_opcode_map_overlay.json",
+        "retail_actor_rebuild_check.json",
+        "retail_inputs.json",
+        "rtti_vftable_index.json",
+        "structs.json",
+        "symbols.json",
+    }
+)
 
 
 def _snapshots():
     """Return per-investigation snapshot manifests."""
-    return sorted(p for p in MANIFESTS_DIR.glob("*.json")
-                  if p.name not in NAMED_CATALOGS)
+    return sorted(
+        p for p in MANIFESTS_DIR.glob("*.json") if p.name not in NAMED_CATALOGS
+    )
+
+
 MANIFESTS_DIR = REPO / "manifests"
 DOCS_DIR = REPO / "docs"
 LOCAL_DOCS_DIR = DOCS_DIR / "ai_agents" / "local"
@@ -105,14 +123,24 @@ def scan_a1_matrix_vs_symbols(symbols, matrix):
         as_int = int(canonical, 16)
         short_hex = hex(as_int)
         wide_hex = f"0x{as_int:04x}"
-        return list({canonical, short_hex.lower(), wide_hex.lower(),
-                     canonical.upper(),
-                     wide_hex.upper(), short_hex.upper(),
-                     f"case 0x{as_int:X}", f"case 0x{as_int:x}",
-                     f"case {as_int}"})
+        return list(
+            {
+                canonical,
+                short_hex.lower(),
+                wide_hex.lower(),
+                canonical.upper(),
+                wide_hex.upper(),
+                short_hex.upper(),
+                f"case 0x{as_int:X}",
+                f"case 0x{as_int:x}",
+                f"case {as_int}",
+            }
+        )
 
     def references_opcode(sym, variants: list[str]) -> bool:
-        if sym.get("kind") == "global" and sym.get("name", "").lower().startswith("phase"):
+        if sym.get("kind") == "global" and sym.get("name", "").lower().startswith(
+            "phase"
+        ):
             return False
         if sym.get("address", "").lower() == "0x00000000":
             return False
@@ -125,48 +153,59 @@ def scan_a1_matrix_vs_symbols(symbols, matrix):
         "matrix_empty_bcs_ids_with_symbol_refs": [],
     }
 
-    for direction, table_key in [("s2c", "s2cOpcodeTable"),
-                                  ("c2s", "c2sOpcodeTable")]:
+    for direction, table_key in [("s2c", "s2cOpcodeTable"), ("c2s", "c2sOpcodeTable")]:
         for row in matrix[table_key]:
             opcode = row["opcode"]
             variants = opcode_variants(opcode)
             bcs_ids_raw = row.get("bcsYIds", [])
-            bcs_ids = [re.match(r"(BCS-Y-\d+)", x).group(1)
-                       for x in bcs_ids_raw if re.match(r"BCS-Y-\d+", x)]
+            bcs_ids = [
+                re.match(r"(BCS-Y-\d+)", x).group(1)
+                for x in bcs_ids_raw
+                if re.match(r"BCS-Y-\d+", x)
+            ]
             status = row.get("catalogStatus", "")
 
             for bid in bcs_ids:
                 if bid not in by_id:
-                    results["matrix_listed_ids_missing"].append({
-                        "direction": direction,
-                        "opcode": opcode,
-                        "missing_id": bid,
-                        "row_status": status,
-                    })
+                    results["matrix_listed_ids_missing"].append(
+                        {
+                            "direction": direction,
+                            "opcode": opcode,
+                            "missing_id": bid,
+                            "row_status": status,
+                        }
+                    )
 
             if status == "gap" or not bcs_ids:
-                refs = [s["id"] for s in symbols["symbols"]
-                        if references_opcode(s, variants)]
+                refs = [
+                    s["id"]
+                    for s in symbols["symbols"]
+                    if references_opcode(s, variants)
+                ]
                 if refs and status == "gap":
-                    results["matrix_gaps_with_symbol_refs"].append({
-                        "direction": direction,
-                        "opcode": opcode,
-                        "pcapCount": row.get("pcapCount"),
-                        "status": status,
-                        "matrix_notes": row.get("notes", "")[:120],
-                        "symbol_refs": refs[:10],
-                        "ref_count": len(refs),
-                    })
+                    results["matrix_gaps_with_symbol_refs"].append(
+                        {
+                            "direction": direction,
+                            "opcode": opcode,
+                            "pcapCount": row.get("pcapCount"),
+                            "status": status,
+                            "matrix_notes": row.get("notes", "")[:120],
+                            "symbol_refs": refs[:10],
+                            "ref_count": len(refs),
+                        }
+                    )
                 elif refs and not bcs_ids and status != "gap":
-                    results["matrix_empty_bcs_ids_with_symbol_refs"].append({
-                        "direction": direction,
-                        "opcode": opcode,
-                        "pcapCount": row.get("pcapCount"),
-                        "status": status,
-                        "matrix_notes": row.get("notes", "")[:120],
-                        "symbol_refs": refs[:10],
-                        "ref_count": len(refs),
-                    })
+                    results["matrix_empty_bcs_ids_with_symbol_refs"].append(
+                        {
+                            "direction": direction,
+                            "opcode": opcode,
+                            "pcapCount": row.get("pcapCount"),
+                            "status": status,
+                            "matrix_notes": row.get("notes", "")[:120],
+                            "symbol_refs": refs[:10],
+                            "ref_count": len(refs),
+                        }
+                    )
 
     return results
 
@@ -184,8 +223,7 @@ def scan_a2_duplicate_addresses(symbols):
 
 # Validate `repo:path` citations by shape. Provenance hashes establish byte identity.
 # Reject commit pins because flattened sibling histories make them dangling.
-A3_CITATION_RE = re.compile(
-    r"^[A-Za-z][A-Za-z0-9._-]+:(?![\\/])\S.*$")
+A3_CITATION_RE = re.compile(r"^[A-Za-z][A-Za-z0-9._-]+:(?![\\/])\S.*$")
 
 # Maintainer-record labels: identifiers for retired or islanded maintainer
 # records (not paths). ledger:/notes: name a topic. mdi-N and finding-N name
@@ -193,7 +231,8 @@ A3_CITATION_RE = re.compile(
 A3_RECORD_LABEL_RE = re.compile(
     r"^(ledger:|notes:|mdi-\d+$|finding-\d+$|promotion-register$|"
     r"maintainer-ledger$|open-questions-register$|"
-    r"architectural-findings-register$)")
+    r"architectural-findings-register$)"
+)
 
 
 def _exists_on_disk(rel_path: str) -> bool:
@@ -223,8 +262,11 @@ def _classify_ref(ref: str, exists=_exists_on_disk) -> tuple[str, str | None]:
         return ("ok", "record_label")
     if A3_CITATION_RE.match(ref):
         return ("ok", "citation")
-    return (("ok", "repo_relative") if exists(ref.split("#")[0])
-            else ("defect", "missing_repo_relative"))
+    return (
+        ("ok", "repo_relative")
+        if exists(ref.split("#")[0])
+        else ("defect", "missing_repo_relative")
+    )
 
 
 def scan_a3_sourcerefs(symbols, structs):
@@ -398,28 +440,31 @@ def scan_a4_wikilinks(symbols, structs):
             continue
         for lineno, line in enumerate(text.splitlines(), start=1):
             for m in WIKILINK_RE.finditer(line):
-                occurrences.append((md.relative_to(REPO).as_posix(),
-                                    lineno, m.group(1)))
+                occurrences.append(
+                    (md.relative_to(REPO).as_posix(), lineno, m.group(1))
+                )
 
     # 2) symbols.json notes
     for s in symbols.get("symbols", []):
         notes = s.get("notes", "") or ""
         for m in WIKILINK_RE.finditer(notes):
-            occurrences.append((f"manifests/symbols.json#{s['id']}",
-                                None, m.group(1)))
+            occurrences.append((f"manifests/symbols.json#{s['id']}", None, m.group(1)))
 
     # 3) structs.json notes (struct-level + per-field)
     for st in structs.get("structs", []):
         notes = st.get("notes", "") or ""
         for m in WIKILINK_RE.finditer(notes):
-            occurrences.append((f"manifests/structs.json#{st['id']}",
-                                None, m.group(1)))
+            occurrences.append((f"manifests/structs.json#{st['id']}", None, m.group(1)))
         for fld in st.get("fields", []) or []:
             fnotes = (fld.get("notes") or "") if isinstance(fld, dict) else ""
             for m in WIKILINK_RE.finditer(fnotes):
                 occurrences.append(
-                    (f"manifests/structs.json#{st['id']}.{fld.get('name','?')}",
-                     None, m.group(1)))
+                    (
+                        f"manifests/structs.json#{st['id']}.{fld.get('name', '?')}",
+                        None,
+                        m.group(1),
+                    )
+                )
 
     # 4) snapshot manifests - recursive over all string values
     for mf in _snapshots():
@@ -442,8 +487,9 @@ def scan_a4_wikilinks(symbols, structs):
                 continue
             for lineno, line in enumerate(text.splitlines(), start=1):
                 for m in WIKILINK_RE.finditer(line):
-                    occurrences.append((py.relative_to(REPO).as_posix(),
-                                        lineno, m.group(1)))
+                    occurrences.append(
+                        (py.relative_to(REPO).as_posix(), lineno, m.group(1))
+                    )
 
     results = {
         "valid_target_count": len(valid),
@@ -460,12 +506,14 @@ def scan_a4_wikilinks(symbols, structs):
         elif verdict == "skip":
             results["skip_by_category"][category] += 1
         else:
-            results["fail"].append({
-                "source": source,
-                "line": lineno,
-                "target": target,
-                "suggestions": _suggest(target, valid),
-            })
+            results["fail"].append(
+                {
+                    "source": source,
+                    "line": lineno,
+                    "target": target,
+                    "suggestions": _suggest(target, valid),
+                }
+            )
 
     # convert defaultdict for stable printing
     results["skip_by_category"] = dict(results["skip_by_category"])
@@ -524,12 +572,14 @@ def scan_a5_embedded_addresses(symbols):
                 continue
             results["pairs_checked"] += 1
             if addr.lower() != canon:
-                results["drift"].append({
-                    "manifest": mf.name,
-                    "bcsId": bid,
-                    "embedded": addr,
-                    "canonical": canon,
-                })
+                results["drift"].append(
+                    {
+                        "manifest": mf.name,
+                        "bcsId": bid,
+                        "embedded": addr,
+                        "canonical": canon,
+                    }
+                )
     return results
 
 
@@ -544,17 +594,25 @@ def main() -> int:
     print("\n--- A1: matrix vs symbols.json reconciliation ---\n")
     a1 = scan_a1_matrix_vs_symbols(symbols, matrix)
 
-    print(f"matrix-gap rows with symbol references (advisory - not gated): {len(a1['matrix_gaps_with_symbol_refs'])}")
+    print(
+        f"matrix-gap rows with symbol references (advisory - not gated): {len(a1['matrix_gaps_with_symbol_refs'])}"
+    )
     for row in a1["matrix_gaps_with_symbol_refs"]:
-        print(f"  {row['direction']} {row['opcode']} (pcap={row['pcapCount']}): {row['ref_count']} refs")
+        print(
+            f"  {row['direction']} {row['opcode']} (pcap={row['pcapCount']}): {row['ref_count']} refs"
+        )
         for rid in row["symbol_refs"][:5]:
             print(f"    -> {rid}")
 
-    print(f"\nmatrix-listed BCS-Y IDs missing from symbols.json: {len(a1['matrix_listed_ids_missing'])}")
+    print(
+        f"\nmatrix-listed BCS-Y IDs missing from symbols.json: {len(a1['matrix_listed_ids_missing'])}"
+    )
     for row in a1["matrix_listed_ids_missing"]:
         print(f"  {row['direction']} {row['opcode']}: missing {row['missing_id']}")
 
-    print(f"\nrows with empty bcsYIds but non-gap status (low priority - may be by design): {len(a1['matrix_empty_bcs_ids_with_symbol_refs'])}")
+    print(
+        f"\nrows with empty bcsYIds but non-gap status (low priority - may be by design): {len(a1['matrix_empty_bcs_ids_with_symbol_refs'])}"
+    )
     # noisy - only show count
 
     print("\n--- A2: duplicate addresses in symbols.json ---\n")
@@ -571,20 +629,28 @@ def main() -> int:
     print("category counts:")
     for cat, count in sorted(a3["categories"].items()):
         print(f"  {cat}: {count}")
-    print(f"\nabsolute-path examples ({len(a3['absolute_examples'])} total shown up to 20):")
+    print(
+        f"\nabsolute-path examples ({len(a3['absolute_examples'])} total shown up to 20):"
+    )
     for ex in a3["absolute_examples"]:
         print(f"  {ex['id']}: {ex['ref']}")
-    print(f"\nrepo-relative-backslash examples ({len(a3['backslash_examples'])} total shown up to 10):")
+    print(
+        f"\nrepo-relative-backslash examples ({len(a3['backslash_examples'])} total shown up to 10):"
+    )
     for ex in a3["backslash_examples"]:
         print(f"  {ex['id']}: {ex['ref']}")
-    print(f"\ncitation examples ({a3['categories'].get('citation', 0)} total shown up to 10):")
+    print(
+        f"\ncitation examples ({a3['categories'].get('citation', 0)} total shown up to 10):"
+    )
     for ex in a3["citation_examples"]:
         print(f"  {ex['id']}: {ex['ref']}")
     print(f"\nlive parent-dir paths (defect - gated): {len(a3['live_parent_paths'])}")
     for ex in a3["live_parent_paths"]:
         print(f"  {ex['id']}: {ex['ref']}")
-    print(f"\nin-repo relative refs MISSING on disk (reported - not gated, "
-          f"see exit-code note): {len(a3['missing_repo_relative'])}")
+    print(
+        f"\nin-repo relative refs MISSING on disk (reported - not gated, "
+        f"see exit-code note): {len(a3['missing_repo_relative'])}"
+    )
     for ex in a3["missing_repo_relative"][:10]:
         print(f"  {ex['id']}: {ex['ref']}")
 
@@ -609,8 +675,10 @@ def main() -> int:
     a5 = scan_a5_embedded_addresses(symbols)
     print(f"derived manifests scanned: {a5['manifests_scanned']}")
     print(f"embedded bcsId+address pairs checked: {a5['pairs_checked']}")
-    print(f"pairs whose address drifts from symbols.json: {len(a5['drift'])} "
-          f"(gated - regenerate the manifest; do not hand-edit addresses)")
+    print(
+        f"pairs whose address drifts from symbols.json: {len(a5['drift'])} "
+        f"(gated - regenerate the manifest; do not hand-edit addresses)"
+    )
     by_manifest = defaultdict(lambda: defaultdict(int))
     for d in a5["drift"]:
         try:
@@ -623,8 +691,8 @@ def main() -> int:
         total = sum(deltas.values())
         parts = ", ".join(
             f"{cnt}x {('%+#x' % dl) if dl is not None else 'non-scalar'}"
-            for dl, cnt in sorted(deltas.items(),
-                                  key=lambda kv: (-kv[1], kv[0] or 0)))
+            for dl, cnt in sorted(deltas.items(), key=lambda kv: (-kv[1], kv[0] or 0))
+        )
         print(f"  {manifest}: {total} drifted ({parts})")
 
     # Gate broken IDs, live parent paths, broken wiki-links, and stale

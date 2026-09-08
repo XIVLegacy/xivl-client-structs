@@ -12,6 +12,7 @@ Cross-checks:
 Usage:
     python tools\\verify_murmur2.py
 """
+
 from __future__ import annotations
 
 import json
@@ -156,8 +157,10 @@ def main() -> int:
     all_pass = tv_ok == tv_total
 
     if not gam_hash_path.exists():
-        print(f"ERROR: {gam_hash_path} missing - first-party hash-name "
-              "dataset required.", file=sys.stderr)
+        print(
+            f"ERROR: {gam_hash_path} missing - first-party hash-name dataset required.",
+            file=sys.stderr,
+        )
         return 2
 
     with gam_hash_path.open("r", encoding="utf-8") as f:
@@ -174,8 +177,11 @@ def main() -> int:
     print()
 
     if not payload_path.exists():
-        print(f"ERROR: {payload_path} missing - vendored fixture required. "
-              f"See tools/refresh_vendor.py to refresh it.", file=sys.stderr)
+        print(
+            f"ERROR: {payload_path} missing - vendored fixture required. "
+            f"See tools/refresh_vendor.py to refresh it.",
+            file=sys.stderr,
+        )
         return 2
 
     with payload_path.open("r", encoding="utf-8") as f:

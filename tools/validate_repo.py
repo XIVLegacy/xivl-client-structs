@@ -35,6 +35,8 @@ ABSOLUTE_MAINTAINER_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^]]*\]\(([^)]+)\)")
+
+
 def tracked_paths() -> list[str]:
     result = subprocess.run(
         ["git", "ls-files", "-z", "--cached"],
@@ -43,7 +45,8 @@ def tracked_paths() -> list[str]:
         capture_output=True,
     )
     return sorted(
-        path for path in result.stdout.decode("utf-8").split("\0")
+        path
+        for path in result.stdout.decode("utf-8").split("\0")
         if path and (ROOT / path).is_file()
     )
 
@@ -117,8 +120,7 @@ def check_boundary(paths: list[str], errors: list[str]) -> None:
                     )
 
     ignore_text = (
-        (ROOT / ".gitignore").read_text(encoding="utf-8")
-        .replace("\r\n", "\n")
+        (ROOT / ".gitignore").read_text(encoding="utf-8").replace("\r\n", "\n")
     )
     ignore_lines = set(ignore_text.split("\n"))
     for required in sorted(REQUIRED_AGENT_TOOLING_IGNORE_LINES):

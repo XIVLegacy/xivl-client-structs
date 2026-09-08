@@ -51,9 +51,7 @@ MANIFEST_JSON = REPO_ROOT / "manifests" / "operation_opcode_map_outbound.json"
 OVERLAY_JSON = REPO_ROOT / "manifests" / "operation_opcode_map_overlay.json"
 
 # Lines like "  00401222  MOV dword ptr [ESP + 0x1c],0x1   in FUN_004011b0@004011b0"
-HIT_RE = re.compile(
-    r"^\s+([0-9a-fA-F]+)\s+(.+?)\s+in\s+(\S+)\s*$"
-)
+HIT_RE = re.compile(r"^\s+([0-9a-fA-F]+)\s+(.+?)\s+in\s+(\S+)\s*$")
 # Headline: "=== 0x0004 (decimal 4) - 142 hits, 38 distinct functions ==="
 HEADER_RE = re.compile(
     r"^===\s+0x([0-9a-fA-F]+)\s+\(decimal\s+(\d+)\)\s+-\s+(\d+)\s+hits,\s+(\d+)\s+distinct"
@@ -80,12 +78,14 @@ def _parse_scan(path: Path) -> dict[int, list[dict]]:
                 insn = mh2.group(2).strip()
                 disp_m = DISP_RE.search(insn)
                 disp = int(disp_m.group(1), 16) if disp_m else None
-                out[current_opcode].append({
-                    "va": "0x" + mh2.group(1),
-                    "insn": insn,
-                    "function": mh2.group(3).strip(),
-                    "disp": disp,
-                })
+                out[current_opcode].append(
+                    {
+                        "va": "0x" + mh2.group(1),
+                        "insn": insn,
+                        "function": mh2.group(3).strip(),
+                        "disp": disp,
+                    }
+                )
     return out
 
 
@@ -95,8 +95,8 @@ SHORT_DISP_THRESHOLD = 0x40
 
 def _is_high_confidence(hit: dict) -> bool:
     """A hit is high-confidence if it looks like a packet-buffer write:
-       - the base register is NOT ESP/EBP (those are stack frames)
-       - the displacement is small (<= 0x40)
+    - the base register is NOT ESP/EBP (those are stack frames)
+    - the displacement is small (<= 0x40)
     """
     insn = hit["insn"]
     if STACK_REG_RE.search(insn):
@@ -107,8 +107,9 @@ def _is_high_confidence(hit: dict) -> bool:
     return True
 
 
-def _summarize_per_function(hits: list[dict],
-                            high_conf_only: bool = False) -> dict[str, int]:
+def _summarize_per_function(
+    hits: list[dict], high_conf_only: bool = False
+) -> dict[str, int]:
     """function name -> hit count for this opcode."""
     counts: dict[str, int] = defaultdict(int)
     for h in hits:
@@ -141,20 +142,32 @@ def _load_opcodes_serverbound() -> dict[int, dict]:
     out: dict[int, dict] = {}
     for bucket, ops in data["lists"].items():
         for op in ops:
-            if op.get("direction") == "serverbound" and isinstance(op.get("opcode"), int):
+            if op.get("direction") == "serverbound" and isinstance(
+                op.get("opcode"), int
+            ):
                 out[op["opcode"]] = {**op, "bucket": bucket}
     return out
 
 
-def _confidence_for_function(fname: str, hit_count: int,
-                             retail_classes: set[str]) -> str:
+def _confidence_for_function(
+    fname: str, hit_count: int, retail_classes: set[str]
+) -> str:
     """Heuristic confidence tag for a candidate emitter."""
     low = fname.lower()
     for cls in retail_classes:
         if cls.split("::")[-1].lower() in low:
             return "strong"
-    keywords = ("operation", "send_", "builder", "channel", "callback",
-                "dispatcher", "emit", "pack", "writebody")
+    keywords = (
+        "operation",
+        "send_",
+        "builder",
+        "channel",
+        "callback",
+        "dispatcher",
+        "emit",
+        "pack",
+        "writebody",
+    )
     if any(k in low for k in keywords):
         return "strong"
     if hit_count == 1:
@@ -186,29 +199,31 @@ def main() -> int:
         per_fn = _summarize_per_function(hits)
         per_fn_hc = _summarize_per_function(hits, high_conf_only=True)
         candidates = sorted(per_fn_hc.items(), key=lambda x: -x[1])
-        findings.append({
-            "opcode": opcode,
-            "opcodeHex": f"0x{opcode:04x}",
-            "name": op_meta.get("name"),
-            "bucket": op_meta["bucket"],
-            "existingRetailClass": op_meta.get("retail_class_name"),
-            "totalHits": len(hits),
-            "totalHighConfidenceHits": sum(
-                1 for h in hits if _is_high_confidence(h)
-            ),
-            "distinctFunctions": len(per_fn),
-            "distinctHighConfidenceFunctions": len(per_fn_hc),
-            "candidateEmitters": [
-                {
-                    "function": fname,
-                    "hitCount": count,
-                    "confidence": _confidence_for_function(
-                        fname, count, retail_classes
-                    ),
-                }
-                for fname, count in candidates[:10]
-            ],
-        })
+        findings.append(
+            {
+                "opcode": opcode,
+                "opcodeHex": f"0x{opcode:04x}",
+                "name": op_meta.get("name"),
+                "bucket": op_meta["bucket"],
+                "existingRetailClass": op_meta.get("retail_class_name"),
+                "totalHits": len(hits),
+                "totalHighConfidenceHits": sum(
+                    1 for h in hits if _is_high_confidence(h)
+                ),
+                "distinctFunctions": len(per_fn),
+                "distinctHighConfidenceFunctions": len(per_fn_hc),
+                "candidateEmitters": [
+                    {
+                        "function": fname,
+                        "hitCount": count,
+                        "confidence": _confidence_for_function(
+                            fname, count, retail_classes
+                        ),
+                    }
+                    for fname, count in candidates[:10]
+                ],
+            }
+        )
 
     emitter_scan = {
         "scanInput": f"XIVL_OPCODE_SET = {len(serverbound)} serverbound opcodes",
@@ -220,15 +235,18 @@ def main() -> int:
     }
 
     overlay = _load_overlay()
-    overlay.setdefault("_comment",
-        "Curated enrichment overlay merged by extract_operation_opcode_map.py.")
+    overlay.setdefault(
+        "_comment",
+        "Curated enrichment overlay merged by extract_operation_opcode_map.py.",
+    )
     top_sections = overlay.setdefault("topLevelSections", {})
     top_sections["emitterScan"] = emitter_scan
     scan_source_note = "outbound_scan.txt (Ghidra ScanOpcodeEmissions)"
     existing_sources = top_sections.get("sources", "")
     if scan_source_note not in existing_sources:
         top_sections["sources"] = (
-            f"{existing_sources} | {scan_source_note}" if existing_sources
+            f"{existing_sources} | {scan_source_note}"
+            if existing_sources
             else scan_source_note
         )
     notes_appendices = overlay.setdefault("notesAppendices", [])
@@ -244,14 +262,19 @@ def main() -> int:
         f.write("\n")
 
     print(f"wrote {OVERLAY_JSON}")
-    print(f"  total hits across all opcodes: "
-          f"{emitter_scan['totalHits']}")
-    print(f"  opcodes with at least one hit: "
-          f"{emitter_scan['opcodesWithHits']} / {len(serverbound)}")
-    print(f"  opcodes with NO hits:          "
-          f"{emitter_scan['opcodesWithoutHits']} / {len(serverbound)}")
-    print("re-run tools/extract_operation_opcode_map.py to fold this into "
-          "manifests/operation_opcode_map_outbound.json")
+    print(f"  total hits across all opcodes: {emitter_scan['totalHits']}")
+    print(
+        f"  opcodes with at least one hit: "
+        f"{emitter_scan['opcodesWithHits']} / {len(serverbound)}"
+    )
+    print(
+        f"  opcodes with NO hits:          "
+        f"{emitter_scan['opcodesWithoutHits']} / {len(serverbound)}"
+    )
+    print(
+        "re-run tools/extract_operation_opcode_map.py to fold this into "
+        "manifests/operation_opcode_map_outbound.json"
+    )
     return 0
 
 
