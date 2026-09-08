@@ -7,8 +7,9 @@ checks must pass before a change can merge.
 ## Before contributing
 
 Read the [contribution policy](docs/ai_agents/README.md) and the
-[evidence standard](docs/ai_agents/evidence-and-claims.md) before changing a
-catalog, manifest, or research claim.
+[evidence standard](docs/ai_agents/evidence-and-claims.md), then follow the
+[repository style guide](docs/style-guide.md) before changing a catalog,
+manifest, tool, or research claim.
 
 Do not submit retail client binaries, client assets, packet captures,
 decompiler project files, credentials, or other private working material.

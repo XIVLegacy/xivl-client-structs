@@ -6,6 +6,8 @@ inventories and their regeneration rules live under `manifests/`.
 
 ## Policy
 
+- [Repository style](style-guide.md) - authored code, manifests, and
+  documentation conventions.
 - [AI-assisted contributions](ai_agents/README.md) - contribution and
   documentation policy.
 - [Evidence and claims](ai_agents/evidence-and-claims.md) -
