@@ -82,12 +82,11 @@ Incidental figures go and the claim stays. When the sentence is about
 something else, a count tells the reader nothing they can act on and becomes
 stale when another run differs. Keep what was found. Drop the incidental count.
 
-A hedge needs a reason. "approximately", "roughly", "about", or a leading "~"
-may preserve a source-backed measurement, bounded estimate, or unresolved
-boundary when the prose states its method and resolution or bound. Keep that
-qualification rather than inventing precision. Cut an incidental figure that
-does not support the claim. Where an exact source exists, name that source
-instead of restating its number in prose.
+Useful rounded quantities, source-backed measurements, bounded estimates,
+and unresolved boundaries may remain when they carry the claim. State the
+method, resolution, or bound where material, and use exact values when
+precision affects correctness. Preserve uncertainty instead of inventing
+precision. Cite the source instead of repeating an incidental number.
 
 This rule governs prose authored for the repository. A figure inside a quoted or
 transcribed source is source content and stays verbatim, hedge included.
@@ -102,8 +101,7 @@ repository-name:path/to/file
 
 Add a stable row, symbol, function, address, or section locator when useful.
 When byte identity matters, record a sha256 in the relevant provenance record
-(`data/vendor/*/PROVENANCE.json`) rather than in the citation string. Commit
-hashes and date pins are not citations: repository histories are rewritten
+(`data/vendor/*/PROVENANCE.json`) rather than in the citation string. Commit hashes and date pins do not replace source locators: repository histories are rewritten
 before publication, and dated "as of" claims rot. First-party revision
 identifiers and observation dates remain source metadata.
 

@@ -18,6 +18,9 @@ verbatim. They are not shortened for style. Compress other survivors to about
 one line at the use site. Move a longer contract to the applicable README,
 schema, or policy page and leave a short pointer when one is needed.
 
+Comment length and punctuation are style guidelines. Clarity, correctness,
+source quotations, licensing, and provenance justify exceptions.
+
 Treat Python docstrings, command help, PowerShell help text, schema
 descriptions, and workflow step names as runtime or contract text. Tighten
 those texts rather than deleting them casually. Treat generated comments and
