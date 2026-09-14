@@ -29,18 +29,26 @@
     "rigidBodyOwnershipInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c565_player-rigidbody-ownership.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00A69180,0x00A692B0,0x00A681C0,0x007D4C60' } -ScriptPath @('ghidra')",
     "rigidBodyOwnershipResult": "All four requested VA sections resolved and decompiled in read-only mode; the headless report discarded changes to the read-only program.",
     "rigidBodyOwnershipSha256": "3E2B8543F9CF9C2B2A69D2D3DE887EB00EA280A36B2BCBC5CCFACDD905263974",
+    "proxyRetainedYInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c567_player-proxy-retained-y.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x007D70D0,0x007D77E0,0x007D79C0,0x007D8080,0x00AFA160,0x00AFA220,0x00A61130' } -ScriptPath @('ghidra')",
+    "proxyRetainedYResult": "All seven requested VA sections resolved and decompiled in read-only mode; HeadlessSaved was false.",
+    "proxyRetainedYSha256": "46E3D9AA54CBAC306E58ECAC2B3F2C0B6BC6A215C44E386A2E53D00E94A25A17",
+    "proxyRetainedYListingInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; tools\\ghidra\\run-headless.ps1 -Script DumpFunctionListing.java -ReadOnly -Out tools\\ghidra\\logs\\c567_player-proxy-retained-y-listing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x007D70D0,0x007D77E0,0x007D8080' } -ScriptPath @('ghidra')",
+    "proxyRetainedYListingResult": "All three exact function-entry listings completed in read-only mode; HeadlessSaved was false.",
+    "proxyRetainedYListingSha256": "B67908E110FE13A0DFAEB8255E18EF5E666AD5BDB7C6B9428DBE40F62F33BB8D",
     "runtimeCapture": "Maintainer-supplied player-render-probe.bin, 45684 committed records, zero dropped records, zero pointer-read failures",
     "runtimeCaptureSha256": "F0607C9E75D7CEF7B0B91F77ED185C5DAFA74FC4086FDEEB80AC4E4172B73E64",
     "liveSlotCapture": "Maintainer-supplied player-render-live-slots.bin, 28575 committed records across 438 Presents, zero dropped records, zero pointer-read failures",
     "liveSlotCaptureSha256": "1F774E6B95CDC5347263C4C4603E553F01981C4C8E903312A219B3A8CBB3D45A",
+    "controllerRuntimeCapture": "Maintainer-supplied player-render-controller-20260914.bin, 6016 committed records across 900 Presents, zero dropped records, zero pointer-read failures, exact entry/return pairing",
+    "controllerRuntimeCaptureSha256": "63234CC8A2B38A9084D641516BC86BE8829218FCB3E0BE31D56C1ECA537C6C5C",
     "pinnedPeAuditScript": "tools/audit_player_render_boundary.py",
     "pinnedPeAuditInvocation": "python tools\\audit_player_render_boundary.py --binary <path-to-pinned-ffxivgame.exe>",
     "pinnedPeAuditInput": "ffxivgame.exe SHA-256 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
     "existingShaderEvidence": "manifests/shader_camera_boundary.json and tools/ghidra/logs/c559_shader-camera-boundary.txt"
   },
   "verdict": {
-    "classification": "SOURCE-GATE-IDENTIFIED-NO-SAFE-SEAM",
-    "claim": "The local-player hold reaches ModelObject slot 13 through the opaque object returned by Actor+0x18 slot 29. In the normal static CharaActor construction path, Actor+0x18 is a RaptureCharacterController whose slot 29 returns a RaptureCharacterProxy backed by a RigidBody position record; both statically known controller vtables use slot 10 to consume queued position operations. The bounded capture did not record the live controller or proxy vtables, so that concrete runtime type chain and its writer cadence remain unproved. The statically identified RigidBody record is shared physics state, so no render-only correction seam is proven."
+    "classification": "VECTOR-ADJUSTED-PHYSICS-HOLD-NO-SAFE-SEAM",
+    "claim": "The bounded controller capture identifies the live local RaptureCharacterController, RaptureCharacterProxy, and RigidBody and proves that the new absolute Y enters proxy slot 1 every held frame. Slot 1 converts the absolute input to a displacement and sends it through 0x007D77E0 into the recursive vector-adjustment helper at 0x007D70D0. The call at 0x007D77B2 publishes RigidBody current position plus that helper invocation's displacement; on all 160 held frames the published Y equaled the preceding RigidBody Y. There is no Y-only old-value selector or frame-rate gate on that nested path: retained Y is reconstructed when the terminal adjusted displacement has a zero Y lane. Slot 1 does have a separate whole-record saved-current fallback outside the observed 0x007D77B7 writer path. The RigidBody record is shared input to subsequent proxy processing and ModelObject publication, so no render-only correction seam is proven."
   },
   "runtimeObservations": {
     "provenance": "Maintainer-supplied bounded retail captures from 2026-09-14, each pinned above by SHA-256; the local video is not repository evidence.",
@@ -60,9 +68,12 @@
       "The follow-up capture identified the live local ModelObject vtable as 0x010653A4 and confirmed slots 7, 13, 25, and 26 as 0x00A61620, 0x008DE970, 0x008DE790, and 0x008DEC70.",
       "Actor+0x18 was non-null, Actor+0x48 was non-null, and (Actor+0x48)+0x20 was null, proving that the local callback took the fallback slot-13 branch.",
       "Across 436 aligned 60 FPS transitions, ModelObject+0x30 Y changed 400 times and drawable Y changed 297 times. On all 103 source-change/publication-hold frames, slot 13 received the preceding published Y and copied it over the newer ModelObject+0x30 Y.",
-      "Slot 25 rebuilt the cached transform after slot 13 and supplied the exact record passed to the Drawable setter; it did not introduce the held Y."
+      "Slot 25 rebuilt the cached transform after slot 13 and supplied the exact record passed to the Drawable setter; it did not introduce the held Y.",
+      "The controller follow-up identified the live RaptureCharacterController vtable 0x00FEE17C, RaptureCharacterProxy vtable 0x00FEE210, and RigidBody vtable 0x010A9878. Controller selector +0x0C was 1 on all 900 frames and its +0x10 value supplied the new Y to proxy slot 1 on every held frame.",
+      "Across the controller follow-up, ModelObject source Y changed on 455 transitions and the RigidBody indexed-record Y changed on 295; on the other 160 source-change transitions, 0x00AFA160 calls returning to 0x007D77B7 received and wrote the preceding RigidBody Y exactly, and 0x00A61130 later read that same Y.",
+      "Static listing places 0x007D77B7 immediately after the 0x00AFA160 call at 0x007D77B2 inside 0x007D70D0. That call adds the current RigidBody [X,Y,Z,1] record to the displacement supplied to the terminal helper invocation."
     ],
-    "consequence": "CameraActor, D3DTS_VIEW, aspect ratio, navmesh, collision, server movement, packets, and authoritative actor coordinates are outside this correction investigation."
+    "consequence": "CameraActor, D3DTS_VIEW, aspect ratio, navmesh and collision-data changes, server movement, packets, and authoritative actor-coordinate changes remain outside this correction investigation."
   },
   "functions": [
     {
@@ -146,7 +157,7 @@
       "callingConvention": "__thiscall",
       "signature": "float * __thiscall(void *source_result, float out[4])",
       "entryBytes": "55 8B EC 83 E4 F0 8B 49 2C 83 EC 10 85 C9 8D 04 24",
-      "behavior": "Receives the opaque object returned by Actor+0x18 slot 29 and reads its +0x2C pointer. In the normal static CharaActor construction path that object is a CharacterProxy and +0x2C is its RigidBody. When non-null, 0x00AFA220 supplies [X, Y, Z, 1] from the active indexed 0x70-byte record; otherwise the default record at 0x00FBF760 is used. Both paths write and return out.",
+      "behavior": "Receives the object returned by Actor+0x18 slot 29 and reads its +0x2C pointer. The controller follow-up proves the live local object is a RaptureCharacterProxy and +0x2C is its RigidBody. When non-null, 0x00AFA220 supplies [X, Y, Z, 1] from the active indexed 0x70-byte record; otherwise the default record at 0x00FBF760 is used. Both paths write and return out.",
       "phase": "fallback transform-source sampling",
       "timing": "Called at 0x00A601C1 immediately before ModelObject slot 13."
     },
@@ -304,7 +315,7 @@
       "entryBytes": "56 8B F1 8B 46 0C 83 E8 01 74 3C 83 E8 01 74 1E",
       "behavior": "Dispatches CharacterController+0x0C state 1, 2, or 3 through slots 32, 33, or 34 with the four-float value at +0x10, then clears +0x0C. State zero performs no CharacterProxy or RigidBody update.",
       "phase": "fallback transform-source preparation",
-      "timing": "The static fallback invokes Actor+0x18 slot 10 once per 0x00A5FF60 call. The bounded capture did not record the live slot-10 target or its queue state."
+      "timing": "The live target ran once per Present inside 0x00A5FF60. Controller+0x0C was selector 1 on all 900 captured frames, including every held-Y frame."
     },
     {
       "bcsId": "BCS-Y-2278",
@@ -388,7 +399,7 @@
       "entryBytes": "55 8B EC 83 E4 F0 8B 45 08 0F 28 00 8B 41 10 8B",
       "behavior": "Writes value lanes 0..2 to the first three floats of the active 0x70-byte record, writes the canonical fourth-lane constant, and clears record+0x64.",
       "phase": "physics position publication",
-      "timing": "No timer or frame divider is present in this writer; callers determine cadence."
+      "timing": "No timer or frame divider is present in this writer; callers determine cadence. On every held-Y frame, its invocation returning to 0x007D77B7 received and wrote the preceding RigidBody Y exactly."
     },
     {
       "bcsId": "BCS-Y-2271",
@@ -434,9 +445,35 @@
       "callingConvention": "__thiscall",
       "signature": "void __thiscall(RaptureCharacterProxy *this, const float value[4])",
       "entryBytes": "55 8B EC 83 E4 F0 83 EC 48 A1 B0 A8 2E 01 33 C4",
-      "behavior": "When CharacterProxy+0x2C is non-null, conditionally calls opaque helpers 0x007D77E0 and 0x007D79C0, calls 0x00AFA160 on that RigidBody, and snapshots the resulting four-float record at RaptureCharacterProxy+0x70.",
+      "behavior": "When CharacterProxy+0x2C is non-null and flag +0x40 bit 8 is set, reads the current RigidBody record, subtracts it from the absolute input, and sends the resulting [dX,dY,dZ,0] displacement through 0x007D77E0, whose nested helper can publish an adjusted position. Afterward, slot 1 either writes the saved current record or skips its direct write according to the remaining budget and +0x40 bit 9. It finally snapshots the resulting four-float RigidBody record at RaptureCharacterProxy+0x70.",
       "phase": "Rapture physics-position update",
-      "timing": "Reached from queued states 1 and 2 through CharacterController slots 32 and 33."
+      "timing": "The live controller selected state 1 and reached this slot once per Present. On all 160 held-Y frames its input contained the new source Y, while a nested 0x007D70D0 writer published the preceding RigidBody Y."
+    },
+    {
+      "bcsId": "BCS-Y-2286",
+      "va": "0x007D77E0",
+      "rva": "0x003D77E0",
+      "name": "RaptureCharacterProxy segmented displacement dispatcher",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(RaptureCharacterProxy *this, const float delta[4], int32_t *budget, uint8_t *state, uint8_t *stop_flag)",
+      "entryBytes": "55 8B EC 83 E4 F0 83 EC 54 A1 B0 A8 2E 01 33 C4",
+      "exitBytes": "8B E5 5D C2 10 00",
+      "behavior": "Computes the four-lane length of delta, normalizes it, divides it into segments no longer than twice the float returned by proxy vtable slot 4, and passes each segment to 0x007D70D0. It propagates the remaining budget and can invoke 0x007D79C0 under +0x40 bit 9 and distance-threshold guards. It contains no timer, Present counter, or frame-divider test.",
+      "phase": "segmented proxy displacement processing",
+      "timing": "Called at 0x007D8118 by RaptureCharacterProxy slot 1 when its computed displacement has at least one nonzero X, Y, or Z lane."
+    },
+    {
+      "bcsId": "BCS-Y-2287",
+      "va": "0x007D70D0",
+      "rva": "0x003D70D0",
+      "name": "RaptureCharacterProxy recursive vector displacement resolver",
+      "callingConvention": "__thiscall",
+      "signature": "bool __thiscall(RaptureCharacterProxy *this, const float displacement[4], int32_t *budget, uint8_t *state)",
+      "entryBytes": "55 8B EC 83 E4 F0 6A FF 68 E0 B9 EA 00 64 A1 00",
+      "exitBytes": "8B E5 5D C2 0C 00",
+      "behavior": "Reads CharacterProxy+0x2C RigidBody position and an opaque record collection cached through +0x44, evaluates the displacement against record vectors, and can adjust it by subtracting a negative vector-projection component at 0x007D75C5..0x007D75D3 and by adding a thresholded correction along a record vector at 0x007D7612..0x007D7646. When adjustment occurred and budget remains, 0x007D7779 recursively re-enters with the adjusted displacement. The terminal writer path at 0x007D7786 reads current RigidBody position, adds the displacement supplied to that invocation, and calls 0x00AFA160 at 0x007D77B2; 0x007D77B7 is its return address. There is no direct retained-Y load or frame-rate gate on this nested path.",
+      "phase": "recursive proxy vector adjustment and RigidBody publication",
+      "timing": "The bounded capture observed the nested writer returning to 0x007D77B7 on every held-Y frame. Its input Y exactly equaled the preceding RigidBody Y, proving that the terminal displacement Y was zero on those writes; the capture did not record which internal adjustment branch made it zero."
     },
     {
       "bcsId": "BCS-Y-2275",
@@ -523,7 +560,7 @@
         "1": "0x007D8080",
         "2": "0x007D8E90"
       },
-      "behavior": "Stored at RaptureCharacterController+0x04 by the normal CharaActor construction path. Slot 1 conditionally invokes two opaque helpers before updating the owned RigidBody position; slot 2 directly forwards a position to the same RigidBody writer."
+      "behavior": "Stored at RaptureCharacterController+0x04 by the normal CharaActor construction path. Slot 1 invokes promoted segmented and recursive vector-adjustment helpers 0x007D77E0 and 0x007D70D0 and can invoke unresolved helper 0x007D79C0 before updating the owned RigidBody position; slot 2 directly forwards a position to the same RigidBody writer."
     },
     {
       "owner": "SQEX::CDev::Engine::Phieg::RigidDynamics::RigidBody",
@@ -553,7 +590,7 @@
       "offset": "0x18",
       "size": "0x04",
       "classification": "proven",
-      "meaning": "fallback CharacterController pointer; the normal CharaActor slot-68 path at 0x007CD360 installs a RaptureCharacterController, while the bounded capture proved the local pointer was non-null but did not record its vtable"
+      "meaning": "fallback CharacterController pointer; the live local object used RaptureCharacterController vtable 0x00FEE17C"
     },
     {
       "owner": "CharacterController",
@@ -591,11 +628,53 @@
       "meaning": "RigidBody pointer read by 0x00A61130 and used by CharacterProxy position-update methods"
     },
     {
+      "owner": "RaptureCharacterProxy",
+      "offset": "0x38",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "float threshold read by 0x007D70D0; broader semantics unresolved"
+    },
+    {
+      "owner": "RaptureCharacterProxy",
+      "offset": "0x3C",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "float multiplier used in opaque-record comparisons by 0x007D70D0; broader semantics unresolved"
+    },
+    {
+      "owner": "RaptureCharacterProxy",
+      "offset": "0x40",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "flag word; slot 1 gates displacement processing on bit 8, while 0x007D77E0 and slot 1 test bit 9 and related helpers test additional bits"
+    },
+    {
+      "owner": "RaptureCharacterProxy",
+      "offset": "0x44",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "ref-counted opaque collection pointer refreshed and iterated by 0x007D70D0; its records supply the vectors used for displacement adjustment"
+    },
+    {
       "owner": "CharacterProxy",
       "offset": "0x48",
       "size": "0x04",
       "classification": "proven",
       "meaning": "CharacterController backlink"
+    },
+    {
+      "owner": "RaptureCharacterProxy",
+      "offset": "0x60",
+      "size": "unresolved",
+      "classification": "proven-address",
+      "meaning": "address passed into opaque-record query setup by 0x007D70D0; field extent and semantics are unresolved"
+    },
+    {
+      "owner": "RaptureCharacterProxy",
+      "offset": "0x70",
+      "size": "0x10",
+      "classification": "proven",
+      "meaning": "prior RigidBody [X,Y,Z,1] snapshot; when the downstream-object and virtual-guard checks pass, slot 1 subtracts it from the current record and passes the result to opaque 0x00AC9770; slot 1 refreshes the snapshot before return"
     },
     {
       "owner": "RigidBody",
@@ -703,22 +782,25 @@
       "CharaActor slot 34 returns the [X, Y, Z, 1] record at ModelObject+0x30 to the controlled-actor tick.",
       "The live local ModelObject vtable was 0x010653A4. Its slots 7, 13, 25, and 26 resolved to 0x00A61620, 0x008DE970, 0x008DE790, and 0x008DEC70.",
       "Actor+0x48 was non-null but its +0x20 member was null, so the local 0x00A5FF60 callback took the Actor+0x18 fallback and never called slot 26.",
-      "The normal CharaActor slot-68 path constructs a RaptureCharacterProxy and a RaptureCharacterController, stores the proxy at controller+0x04, and stores the controller at Actor+0x18. The bounded capture did not record the live controller vtable, but both known base and Rapture controller vtables use 0x00A68000 for slot 10 and 0x008D5570 for slot 29.",
+      "The normal CharaActor slot-68 path constructs a RaptureCharacterProxy and a RaptureCharacterController, stores the proxy at controller+0x04, and stores the controller at Actor+0x18. The controller follow-up confirmed those live vtables as 0x00FEE210 and 0x00FEE17C and resolved live controller slots 10 and 29 to 0x00A68000 and 0x008D5570.",
       "On both statically known controller vtables, slot 10 dispatches the queued operation selected by controller+0x0C and clears the selector. Slot 29 returns controller+0x04; in the normal static construction path this is the CharacterProxy supplied to 0x00A61130.",
-      "0x00A61130 reads +0x2C from the opaque slot-29 result and copies its active indexed position record through 0x00AFA220. Static construction identifies this as CharacterProxy+0x2C RigidBody, but the live vtables were not captured. The reader contains no previous/current selection, interpolation, or cadence gate.",
+      "0x00A61130 reads +0x2C from the slot-29 RaptureCharacterProxy and copies its active indexed RigidBody position through 0x00AFA220. The live vtables and object identities are confirmed. The reader contains no previous/current selection, interpolation, or cadence gate.",
       "The active record address is **(RigidBody+0x14) + (RigidBody+0x10 * 0x70). Direct writer 0x00AFA160 updates [X, Y, Z, 1] at record+0x00 and clears record+0x64.",
       "For the statically constructed RaptureCharacterProxy vtable, queued states 1 and 2 reach slot 1 at 0x007D8080 and queued state 3 reaches slot 2 at 0x007D8E90. Both paths can call 0x00AFA160; state zero writes nothing and preserves the prior RigidBody position.",
+      "The live controller used queued state 1 on every captured frame. On all 160 held-Y frames, controller+0x10 and the 0x007D8080 input carried the new ModelObject Y, excluding the queue and slot-1 entry as the source of the hold.",
+      "Slot 1 subtracts the current RigidBody record from its absolute input and passes the [dX,dY,dZ,0] displacement through 0x007D77E0. That dispatcher normalizes and segments the displacement and calls recursive helper 0x007D70D0.",
+      "Inside 0x007D70D0, opaque record vectors can remove a negative projection component from the displacement and add a thresholded correction along a record vector. Adjusted displacement is recursively re-evaluated while budget remains. The terminal path adds its invocation's displacement to the current RigidBody record and calls 0x00AFA160 at 0x007D77B2.",
+      "On each captured held-Y transition, the 0x007D77B2 writer input Y equaled the preceding RigidBody Y. Therefore the terminal adjusted displacement Y was zero. The function did not load a retained Y as an alternative value; it reconstructed it as current Y plus zero displacement Y.",
       "Actor slot 32 at 0x00A5F810 queues an absolute value through controller slot 7 before ModelObject slot 16 at 0x008DDAB0 writes the same four lanes to ModelObject+0x30. This is the earliest static path that establishes both copies, but it does not prove the local runtime writer or when slot 10 consumes the queue.",
       "Static slot 13 writes shared ModelObject+0x30 and either invalidates the cached transform for slot-25 rebuild or mirrors the four-float record directly to four lanes at +0x80..+0x8C.",
       "When its drawable and dirty-bit guards pass, ModelObject slot 7 obtains the cached record, optionally transforms it under bit 0x10, and copies the resulting record to drawable+0x30..+0x6C through 0x00BB7550.",
       "On every observed hold frame, the old Y was already present in the slot-13 input. Therefore the hold is introduced before 0x00A61130 returns, not by ModelObject slot 13, slot 25, or drawable publication."
     ],
     "unresolved": [
-      "The capture did not record the live Actor+0x18 or CharacterProxy vtables, although the normal CharaActor construction path and both known controller variants agree on slots 10 and 29.",
-      "Static evidence cannot determine whether CharacterController+0x0C is zero on held frames, which queue setter supplied each changing frame, or whether another CharacterProxy/RigidBody writer ran between the queue and 0x00A5FF60.",
-      "No static timer or frame divider was found in slot 10, 0x00A61130, 0x00AFA220, or 0x00AFA160. The approximately 30 Hz producer cadence is a runtime question, not a promoted static fact.",
+      "The capture did not record internal branches or opaque record vectors inside 0x007D70D0, so it cannot distinguish whether negative-projection removal at 0x007D75C5, thresholded vector correction at 0x007D7612, or their recursive combination produced the zero terminal Y lane on each held frame.",
+      "No static timer or frame divider was found in slot 10, slot 1, 0x007D77E0, 0x007D70D0, 0x00A61130, 0x00AFA220, or 0x00AFA160. The visible cadence results from the vector-adjusted RigidBody output observed at runtime, but this evidence does not assign a timer owner.",
       "Fields outside record+0x00..+0x0F, +0x64..+0x65, and +0x6C..+0x6F do not have proven previous/current, target/current, keyframe, accumulator, or timing semantics.",
-      "The indexed record has statically identified physics readers and writers. No direct packet, gameplay-authority, collision-response, or NamePlate consumer is established by the retained evidence.",
+      "The indexed record is read as the base position by the same vector-adjustment helper that writes it and is later copied into shared ModelObject+0x30. Modifying this path would feed subsequent proxy processing and shared actor/model state; packet and server consumers are not required to reject it as a render-only seam.",
       "The trace matched register-0/count-16 player-draw tasks to previously published drawable state, but the exact task object and static data-flow edge remain unresolved."
     ]
   },
@@ -732,20 +814,15 @@
     "unknown": "The capture did not uniquely identify which of the three task objects owns the local-player world transform, and no static data-flow edge joins drawable+0x30..+0x6C to that task."
   },
   "runtimeProbe": {
-    "classification": "bounded-follow-up-only",
-    "records": [
-      "At 0x00A5FF60 entry, identify the local Actor dynamically by comparing Actor+0x0C ModelObject+0x30 against the simultaneous player-state snapshot, using the same match method as the retained capture; persist that Actor and ModelObject only for this run. Record Present ordinal, thread id, Actor+0x18, *(Actor+0x18), controller+0x0C, +0x10..+0x1C, controller+0x04, *(controller+0x04), and ModelObject+0x30..+0x3C.",
-      "At 0x00A68000 entry and return, filter ECX to the Actor+0x18 value recorded above. Record Present ordinal, return address, +0x0C, +0x10..+0x1C, controller+0x04, and the candidate +0x2C active record before and after the call.",
-      "At 0x00A61130 entry, require the enclosing local 0x00A5FF60 call and record Present ordinal, thread id, ECX, *(ECX), [ESP+4], ECX+0x2C, and the active [X,Y,Z,1] record. Use this observed ECX as the slot-29 result and this observed +0x2C value as the writer filter; do not derive either from controller+0x04.",
-      "At 0x007D8080 and 0x007D8E90 entry, filter ECX to the controller+0x04 candidate recorded at the enclosing local 0x00A5FF60 entry and set a per-thread dispatch marker. Record Present ordinal, target VA, caller return address, and input lanes; retain the event only when the later 0x00A61130 ECX for that callback matches the candidate. Consume and clear the marker at the first matching 0x00AFA160 entry; clear it unconsumed on the ordinary wrapper return or the 0x007D8E90 null-RigidBody return. This lets the marker survive the 0x007D8E90 tail jump without leaking to a later write.",
-      "At 0x00AFA160 entry, filter ECX to the +0x2C value observed at 0x00A61130. Record Present ordinal, thread id, return address, the consumed proxy dispatch marker, the four input lanes at [ESP+4], and the active record before the call; retain a separate per-call hook context to record the same record after return. A single short 60 FPS slope traversal is sufficient."
-    ],
-    "successCriteria": "On each of the already defined source-change/publication-hold frames, establish the live controller and returned-object vtables, determine whether controller+0x0C was zero, whether slot 10 changed the indexed record, and which exact 0x00AFA160 caller or marked tail-dispatch last wrote that record. This distinguishes an unqueued hold from an opaque-helper-mediated write or an earlier consumer without a broad trace.",
-    "currentBestSeam": "No correction seam is proven. The normal static CharacterController, CharacterProxy, and RigidBody path is shared scene/physics state, and live ModelObject slot 13 overwrites the shared ModelObject+0x30 record. Drawable publication remains downstream, but absence of feedback and the moving NamePlate consumer are not proven."
+    "classification": "completed-bounded-controller-trace",
+    "result": "The 6016-record controller capture satisfied the earlier bounded success criteria. It identified the live controller, proxy, and RigidBody; proved selector 1 and a new slot-1 input on every held frame; paired the retained-Y write with 0x007D77B7; and proved exact storage by 0x00AFA160 and later reading by 0x00A61130.",
+    "remainingQuestion": "The retained value is produced as current RigidBody Y plus a zero terminal adjusted displacement Y. Static analysis identifies both displacement-adjustment sites, but the existing capture does not record which site or recursive combination produced zero on each frame.",
+    "narrowProbeIfRequired": "No further probe is required to reject 0x007D70D0 and the RigidBody record as render-only seams. If per-frame attribution between the two adjustment operations becomes necessary, filter to the known local proxy and only source-change/held-Y frames; at 0x007D75C3 record the comparison result, input displacement, record vector, scalar dot product, and 0x007D75D3 output; at 0x007D7646 record its input, record vector, scalar correction, and output; and at recursive call 0x007D7779 record the child displacement. No additional addresses or persistent hooks are needed.",
+    "currentBestSeam": "No correction seam is proven. 0x007D70D0 publishes shared RigidBody state that it consumes as the base of subsequent vector-adjustment work; 0x00A61130 copies that state to a temporary output, and ModelObject slot 13 then writes it into shared ModelObject+0x30. Drawable publication remains downstream, but absence of feedback and the moving NamePlate consumer are not proven."
   },
   "ownershipBoundary": {
-    "authoritative": "The live slot-13 target 0x008DE970 overwrites ModelObject+0x30, which the controlled-actor path samples. In the normal static construction path, its upstream record is CharacterProxy+0x2C RigidBody state consumed and written by physics methods; the live type chain remains to be captured. Neither proven boundary is render-only, and this evidence does not authorize changing actor, collision, packet, server, or gameplay state.",
+    "authoritative": "The live slot-13 target 0x008DE970 overwrites ModelObject+0x30, which the controlled-actor path samples. Its upstream live object is the confirmed RaptureCharacterProxy+0x2C RigidBody. The same 0x007D70D0 vector-adjustment helper reads the current indexed RigidBody record as the base for later writes, so changing its output can feed subsequent proxy processing before shared ModelObject publication. Neither boundary is render-only.",
     "renderCandidate": "Drawable+0x30..+0x6C is downstream of ModelObject publication and feeds later draw tasks, but negative feedback into shared state and the moving NamePlate consumer are not proven.",
-    "launcherDisposition": "Do not implement interpolation. If further runtime work is authorized, limit it to the five exact filtered observations above."
+    "launcherDisposition": "Do not implement interpolation at 0x007D70D0, 0x00AFA160, the RigidBody record, 0x00A61130, or ModelObject+0x30. No downstream render-only correction seam is yet proven free of feedback or shown to feed both the player model and moving nameplate."
   }
 }

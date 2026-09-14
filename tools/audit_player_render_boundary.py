@@ -42,6 +42,8 @@ ENTRY_BYTES = {
     0x00A67FB0: bytes.fromhex("558bec83e4f08b4508c7410c02000000"),
     0x00A67FD0: bytes.fromhex("558bec83e4f08b4508c7410c03000000"),
     0x007D8080: bytes.fromhex("558bec83e4f083ec48a1b0a82e0133c4"),
+    0x007D77E0: bytes.fromhex("558bec83e4f083ec54a1b0a82e0133c4"),
+    0x007D70D0: bytes.fromhex("558bec83e4f06aff68e0b9ea0064a100"),
     0x007D8E90: bytes.fromhex("8b492c85c97405e9c4123200c20400"),
     0x00A5F810: bytes.fromhex("558bec83e4f083ec2c8b45080f280056"),
     0x008DDAB0: bytes.fromhex("558bec83e4f08b45080f28000f294130"),
@@ -212,6 +214,36 @@ def main() -> None:
         bytes.fromhex("8b45080f29008be55dc20400"),
         "transform-source reader default return",
     )
+    require_equal(
+        image.read_va(0x007D8102, 27),
+        bytes.fromhex("8d4c2417518d542420528d442420508d4c243c518bcee8c3f6ffff"),
+        "proxy slot-1 segmented-displacement call",
+    )
+    require_equal(
+        image.read_va(0x007D75B7, 31),
+        bytes.fromhex("f30f104c24640f57f60f2ff17618f30f10c90fc6c9000f59cb0f5cd10f2954"),
+        "negative vector-projection removal prefix",
+    )
+    require_equal(
+        image.read_va(0x007D7612, 56),
+        bytes.fromhex(
+            "f30f5cee0f296c2444f30f104424440fc6c0000f59c3f30f5adcf20f5cd9"
+            "f20f5acbc6442414010fc6c9000f59c10f58c20f28d00f295424"
+        ),
+        "thresholded record-vector correction prefix",
+    )
+    require_equal(
+        image.read_va(0x007D776C, 20),
+        bytes.fromhex("8b44241c50518d4c245c518bcbe852f9ffff84c0"),
+        "recursive adjusted-displacement call",
+    )
+    require_equal(
+        image.read_va(0x007D7799, 32),
+        bytes.fromhex(
+            "8b4c24200f28010f28088d5424440f58c1528bcf0f29442448e8a929320032c0"
+        ),
+        "current-plus-displacement RigidBody write",
+    )
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),
@@ -227,6 +259,8 @@ def main() -> None:
     print("actor_slot68=0x007CD360 rapture_controller_vtable=0x00FEE17C")
     print("controller_slot10=0x00A68000 controller_slot29=0x008D5570")
     print("rapture_proxy_slot1=0x007D8080 rigidbody_writer=0x00AFA160")
+    print("proxy_segment_dispatch=0x007D77E0 vector_resolver=0x007D70D0")
+    print("retained_y_writer_call=0x007D77B2 return=0x007D77B7")
     print("nameplate_slot13=0x006A3560")
 
 
