@@ -3013,7 +3013,7 @@
           "size": "0x04",
           "name": "display_name_id",
           "type": "int32_t",
-          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369) fast-path (called from [[ReceiverHybridFactory_NamesArray_FUN_00771980]] BCS-Y-1349). The display ID for the player name; -1 sentinel value indicates 'unnamed' state. Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365). Discovered earlier by decomp of the fast-path apply helper."
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369) fast-path (called from [[ReceiverHybridFactory_NamesArray_FUN_00771980]] BCS-Y-1349). A zero wire identifier is normalized to -1; that value selects the embedded custom-name string rather than the localized-identifier path. Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365)."
         },
         {
           "offset": "0x58",
@@ -3032,16 +3032,16 @@
         {
           "offset": "0xAD",
           "size": "0x01",
-          "name": "display_name_is_unnamed",
+          "name": "display_name_has_no_id",
           "type": "bool",
-          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Boolean flag computed as (display_name_id == -1). Indicates the display-name slot is in the 'unnamed' sentinel state. Discovered earlier."
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Boolean flag computed exactly as display_name_id == -1. It does not establish that the embedded custom-name string is empty."
         },
         {
           "offset": "0xAE",
           "size": "0x02",
           "name": "_pad_ae",
           "type": "uint8_t[2]",
-          "notes": "Alignment padding between display_name_is_unnamed (0xAD) and _zero_init_b0 (0xB0). NOT zero-init by ctor."
+          "notes": "Alignment padding between display_name_has_no_id (0xAD) and _zero_init_b0 (0xB0). NOT zero-init by ctor."
         },
         {
           "offset": "0xB0",
@@ -3607,10 +3607,24 @@
         },
         {
           "offset": "0x00510",
-          "size": "0x150",
-          "name": "actor_factory_context",
-          "type": "unknown[0x150]",
-          "notes": "Passed to actor creation paths as RaptureElementContainer+0x510. The packed-state handler writes its +0x38 member, but the concrete subobject type is unresolved."
+          "size": "0x008",
+          "name": "lua_frame_context_head",
+          "type": "unknown[0x08]",
+          "notes": "Header of the embedded context passed as this to LuaFrameTick FUN_00578970. Its first two dwords remain unresolved."
+        },
+        {
+          "offset": "0x00518",
+          "size": "0x004",
+          "name": "initialize_waiting_actor_container",
+          "type": "ApplicationLuaScriptClientInitializeWaitingActorContainer *",
+          "notes": "LuaFrameTick reads this pointer from its this+0x08 field and passes it to FUN_00766F00. The pointee's +0x04 GameEngine pointer anchors the statically proven local MyPlayer lookup chain in manifests/local_player_display_name.json."
+        },
+        {
+          "offset": "0x0051C",
+          "size": "0x144",
+          "name": "actor_factory_context_tail",
+          "type": "unknown[0x144]",
+          "notes": "Remaining embedded actor-factory/Lua-frame context. The packed-state handler writes context-relative +0x38, but no narrower partition is established here."
         },
         {
           "offset": "0x00660",
@@ -11843,7 +11857,12 @@
       "confidence": "structural",
       "sourceRefs": [
         "BCS-Y-1709",
-        "tools/ghidra/logs/c351_main-runtime.txt"
+        "BCS-Y-2281",
+        "BCS-Y-2282",
+        "manifests/local_player_display_name.json",
+        "tools/ghidra/logs/c351_main-runtime.txt",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt"
       ],
       "fields": [
         {
@@ -11851,42 +11870,42 @@
           "size": "0x04",
           "name": "data",
           "type": "char *",
-          "notes": "Points at inline_buffer after default construction."
+          "notes": "Current character-data pointer. It points at inline_buffer after default construction and remains there while the requested byte count does not exceed capacity; larger values may point at owned allocated storage."
         },
         {
           "offset": "0x04",
           "size": "0x04",
-          "name": "inline_capacity",
+          "name": "byte_capacity",
           "type": "uint32_t",
-          "notes": "Default constructor writes the 0x40-byte inline capacity."
+          "notes": "Current data-buffer capacity in bytes. Default construction writes 0x40; the reserve helper rounds larger allocations to 0x20-byte boundaries."
         },
         {
           "offset": "0x08",
           "size": "0x04",
-          "name": "state_08",
+          "name": "byte_count_including_nul",
           "type": "uint32_t",
-          "notes": "Default constructor initializes this unresolved string state to 1."
+          "notes": "Current stored byte count including the trailing NUL. Default construction writes 1. Constructors reserve source_length+1, assignment copies exactly this many bytes, and equality compares this value minus one before comparing content."
         },
         {
           "offset": "0x0C",
           "size": "0x04",
-          "name": "length",
+          "name": "state_0c",
           "type": "uint32_t",
-          "notes": "Default constructor clears this string length/state dword."
+          "notes": "Default construction clears this dword and copy assignment preserves it. Its semantics are not established; it is not required for a bounded byte copy."
         },
         {
           "offset": "0x10",
           "size": "0x01",
-          "name": "inline_state",
+          "name": "state_10",
           "type": "uint8_t",
-          "notes": "Default constructor initializes the first storage-mode byte to 1."
+          "notes": "Default construction initializes this byte to 1; reserve requests made by witnessed constructors clear it. It is not a reliable inline-versus-allocated discriminator."
         },
         {
           "offset": "0x11",
           "size": "0x01",
           "name": "ownership_state",
           "type": "uint8_t",
-          "notes": "Default constructor initializes the second storage-mode byte to 1; exact flag semantics remain unresolved."
+          "notes": "Default construction initializes this byte to 1. The reserve helper clears it after allocating a replacement buffer, and destruction releases data only when it is zero."
         },
         {
           "offset": "0x12",
@@ -11896,7 +11915,7 @@
           "notes": "Inline storage begins with a null terminator. Repeated 0x54-byte placements fix its full extent without asserting usable character capacity beyond the initialized 0x40 value."
         }
       ],
-      "notes": "Full byte-accounted inline string layout used pervasively by the client. Direct initialization fixes the header and inline-buffer start; ten consecutive SystemConfig members and the following Main member fix the exact 0x54-byte stride. The structural name avoids asserting a precise library template identity that RTTI does not provide.",
+      "notes": "Full byte-accounted UTF-8 string layout used pervasively by the client. Direct construction, reserve, assignment, comparison, and destruction establish the data pointer, byte capacity, byte count including NUL, and owned-allocation discriminator. Ten consecutive SystemConfig members and the following Main member fix the exact 0x54-byte stride. The structural name avoids asserting a precise library template identity that RTTI does not provide.",
       "id": "BCS-S-0135"
     },
     {
@@ -16087,9 +16106,13 @@
         "tools/ghidra/logs/c374_display-name-state-types.txt",
         "tools/ghidra/logs/c375_chara-display-name-ownership.txt",
         "tools/ghidra/logs/c376_chara-display-name-allocation.txt",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "manifests/local_player_display_name.json",
         "BCS-S-0108",
         "BCS-S-0135",
-        "BCS-Y-1613"
+        "BCS-Y-1613",
+        "BCS-Y-2283"
       ],
       "fields": [
         {
@@ -16097,7 +16120,7 @@
           "size": "0x04",
           "name": "display_name_id",
           "type": "int32_t",
-          "notes": "Initialized to -1. Lua readers and the update path treat -1 as the unnamed sentinel."
+          "notes": "Initialized to -1. The update path uses -1 when no localized display-name identifier is present; _getDisplayName then returns the embedded custom-name string and kind instead of an identifier."
         },
         {
           "offset": "0x04",
@@ -16116,9 +16139,9 @@
         {
           "offset": "0x59",
           "size": "0x01",
-          "name": "is_unnamed",
+          "name": "has_no_display_name_id",
           "type": "bool",
-          "notes": "Initialized to true and recomputed as display_name_id == -1 by both observed update paths."
+          "notes": "Initialized to true and recomputed exactly as display_name_id == -1 by both observed update paths. The byte does not mean that the embedded custom-name string is empty."
         },
         {
           "offset": "0x5A",

@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2267,
+  "symbolCount": 2272,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -3339,9 +3339,13 @@
         "manifests/actor_cluster_dispatch_model.json",
         "tools/ghidra/logs/c91_onfinalize_internals.txt",
         "tools/ghidra/logs/c91_cd7a30_decomp.txt",
-        "manifests/onfinalize_drill.json"
+        "manifests/onfinalize_drill.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "manifests/local_player_display_name.json",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt"
       ],
-      "notes": "**STD::STRING CONSTRUCTOR (CLARIFICATION, outbound-emitter clarification)**. 113-byte body at VA 0x00447260. __thiscall(int *param_1=output_std_string, char *param_2=source_c_str, size_t param_3=length_or_npos). Constructs an std::string at param_1 with SBO (small-buffer optimization, inline buffer at offset +0x12, capacity 0x40, size at +0xC). If param_3 == 0xFFFFFFFF (npos), computes strlen of param_2; otherwise uses param_3 as the explicit length. Calls FUN_00447010 (SBO grow / heap alloc fallback), then _memmove from source into the string buffer, then writes the null terminator. **200+ callers binary-wide - heavily-used utility.** **Past BCS-Y entries referencing FUN_00447260 as a Lua dispatcher** (BCS-Y-0144, BCS-Y-0146, BCS-Y-0148, BCS-Y-0149, BCS-Y-0150, BCS-Y-0151, BCS-Y-0152, BCS-Y-0156, BCS-Y-0157, BCS-Y-0158, BCS-Y-0159, BCS-Y-0297) are imprecise: the actual Lua firing happens in FUN_00CC7A90 (which itself calls FUN_00CF0910 / FUN_00CD7A30 / FUN_00CCF7D0 - the Lua-VM primitives push/get-global/pcall). FUN_00447260 only constructs the event-name std::string that gets passed to FUN_00CC7A90. **The pair signature for a Lua-fire is the COMBINATION FUN_00447260 + FUN_00CC7A90**; FUN_00447260 ALONE just builds a temporary std::string (could be for any purpose - logging, key lookup, error message, parameter packing). Future BCS-Y notes that need to identify a Lua firing site must verify FUN_00CC7A90 (or its inlined equivalents) is in the call graph, not just FUN_00447260. **Sub-3 result**: FUN_004E2850 (BCS-Y-0297, auxiliary FrontendAuth emitter) has FUN_00447260 in its callees but NOT FUN_00CC7A90 - therefore the auxiliary FrontendAuth path fires NO Lua callbacks. Confirmed by outbound-emitter analysis. | **Address correction**: address typo fixed (0x00047260 -> 0x00447260, leading 4->0 transcription error from an earlier transcription). | [fun_006f6900-_onfinalize-internals-drilled] **Cross-link to the LuaControl-hierarchy work**: this std::string ctor is used in the `_onFinalize` Lua fire pattern at [[Application_Lua_Script_Client_Control_StatusBase_secondary_vftable_slot5_onFinalize_LuaCallback_fire_FUN_006f6900]] (BCS-Y-1530) AND across all 11 LTC/LGTC-derived classes' slot 5 (per finding that FUN_006F6900 is literally shared). Pattern: `FUN_00447260(&local_string, \"_onFinalize\", DAT_00f67298)` builds a local std::string with the event name, immediately followed by `FUN_00CC7A90(this, &local_string, &args)` (BCS-Y-0398 LuaCallbackDispatcher) to invoke the named Lua callback. The drill re-verified the lua-name-to-opcode-bridge-open pass clarification: FUN_00447260 alone is just std::string construction; the Lua fire requires the COMBINATION with BCS-Y-0398. | [comprehensive-lua-fire-site-inventory] **LUA FIRE SITE INVENTORY USAGE**: confirmed as the std::string ctor used by 79 Lua fire sites (the COMBINATION FUN_00447260 + FUN_00CC7A90 forms the Lua fire signature). All 80 FUN_00CC7A90 direct callers were enumerated - 79 of them use this std::string ctor to construct the event name string. The first string-literal arg to FUN_00447260 is the EVENT NAME (e.g., \"_onFinalize\", \"_onUpdateWork\", \"_onEventCancel\"). See [[LuaCallbackDispatcher_FUN_00CC7A90]] (BCS-Y-0399) for the inventory + [[lua_fire_sites]] for the full event-name -> fire-site mapping."
+      "notes": "[Tier C566 2026-09-14] Sqex::Misc narrow-byte string constructor from a byte span. It default-constructs the 0x54-byte destination, derives strlen when the explicit length is 0xFFFFFFFF, reserves length+1 bytes through [[BCS-Y-2282]], copies exactly length bytes, and writes the trailing NUL. The destination +0x08 dword is therefore the current logical byte count including the terminator, not an unresolved state value. The helper performs no UTF-8 validation."
     },
     {
       "id": "BCS-Y-0312",
@@ -20211,9 +20215,13 @@
         "tools/ghidra/logs/c96_dispatcher_registry.txt",
         "tools/ghidra/logs/c96_class_register.txt",
         "tools/ghidra/logs/c96_cd8870.txt",
-        "manifests/class_registry_mechanism.json"
+        "manifests/class_registry_mechanism.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
       ],
-      "notes": "[this+0x1bc-writer-hunt-negative] **Secondary class-identity getter (raw)** (7 body bytes, 1 caller [[LuaControl_secondary_class_identity_getter_trampoline_FUN_00CC7510]]). Body: `int __fastcall fn(int param_1) { return param_1 + 0x220; }`. Pure pointer arithmetic: returns `this + 0x220`. **Architectural significance**: identifies a SECOND per-object class-identity field at LuaControl-derived this+0x220 (distinct from the this+0x1bc field that [[Component_Lua_GameEngine_LuaControl_derived_state_getter_FUN_00cd7a30]] BCS-Y-1581 reads). Distance between the two fields: 0x220 - 0x1BC = 0x64 = 100 bytes. Callers consume the returned pointer as a pointer to a static class metadata table, typically navigated via `*piVar3` + offsets like +0x4/+0x108. **OPEN QUESTION**: what does this+0x220 point to and how is it set? Like +0x1bc, no direct displacement writers were found in the opcode scan (suggesting same vbtable/template-init mechanism).\n\n[vbtable-hypothesis-falsified-for-this+0x1bc-and AMENDMENT - OWNER CLASS CORRECTED] The owner class of the this+0x220 field is **CharaBase-family instances** (BCS-Y-1721 NEW + sibling Control:: subclasses), NOT LTC/LGTC family. The 290+ callers of FUN_00CC7510 (this entry's trampoline parent) are CharaBase-family methods in the 0x006xxxxx..0x008xxxxx VA range. CharaBase has +0x220 field; LTC/LGTC family instances (only 0x78 bytes) do not. Cross-link to CharaBase RTTI quartet: BCS-Y-1721 (TD), [[Application_Lua_Script_Client_Control_CharaBase_ClassHierarchyDescriptor]] (BCS-Y-1722 NEW), [[Application_Lua_Script_Client_Control_CharaBase_BaseClassArray]] (BCS-Y-1723 NEW), [[Application_Lua_Script_Client_Control_CharaBase_RTTI_Complete_Object_Locator]] (BCS-Y-1724 NEW).\n\n[charabase-ctor-decomp-closes-the-c91 AMENDMENT - OWNER CLASS RE-CORRECTED] **the CharaBase attribution was WRONG. The owner is `Component::Lua::GameEngine` ([[Component_Lua_GameEngine_constructor_FUN_00CDC410]] BCS-Y-1691, 0x228 bytes).** The 7-byte `return this+0x220;` body returns `GameEngine+0x220`, where +0x220 holds the canonical 'null result holder' = pointer to a singleton [[Sqex_Misc_AnyType_Holder_GameEngine_Nil_vftable]] (BCS-Y-1741 NEW, 12-byte heap object). Definitive writer site is `param_1[0x88] = puVar5;` at line 212 of [[Component_Lua_GameEngine_constructor_FUN_00CDC410]] (BCS-Y-1691) where puVar5 = freshly-allocated 0xC-byte `Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil>` instance (vftable 0x0110EA30). The function name should be `GameEngine_holder_nil_getter` not `LuaControl_secondary_class_identity_getter`. Renaming deferred to preserve historical references."
+      "notes": "[Tier C566 2026-09-14] Historical symbol name retained. Exact body is LEA EAX,[ECX+0x220]; RET. With ECX equal to Component::Lua::GameEngine, it returns the address of the nil_holder field, not the holder pointer stored there."
     },
     {
       "id": "BCS-Y-1676",
@@ -20227,9 +20235,13 @@
         "tools/ghidra/logs/c96_dispatcher_registry.txt",
         "tools/ghidra/logs/c96_class_register.txt",
         "tools/ghidra/logs/c96_cd8870.txt",
-        "manifests/class_registry_mechanism.json"
+        "manifests/class_registry_mechanism.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
       ],
-      "notes": "[this+0x1bc-writer-hunt-negative] **Secondary class-identity getter trampoline** (7 body bytes, **290+ callers** across LuaActorImpl-area methods FUN_006xxxxx - FUN_008xxxxx). Body: `void fn() { FUN_00cd7910(); return; }`. Pure trampoline to [[LuaControl_secondary_class_identity_getter_raw_FUN_00CD7910]] - returns `this + 0x220`. **Architectural significance**: this is THE most-called accessor for the secondary class-identity field. The 290+ callers include many of the same LuaActorImpl-derived methods that also fire Lua callbacks (per inventory). Typical caller usage pattern (per FUN_006F6900 _onFinalize at BCS-Y-1530): `piVar3 = (int*)FUN_00cc7510(); ... *(*piVar3 + 4) + 0x108 ...` - navigates through static class metadata to retrieve callback-related data. **Distinct from [[Component_Lua_GameEngine_LuaControl_derived_state_alive_flag_getter_FUN_00cc7280]] (BCS-Y-1580)** which reads the +0x1bc-derived state byte at +0x80. These are TWO different accessors for TWO different per-object class-identity fields.\n\n[vbtable-hypothesis-falsified-for-this+0x1bc-and AMENDMENT - OWNER CLASS CORRECTED] The 290+ callers of this trampoline are **CharaBase-family methods** (CharaBase + PlayerBase + NpcBase + MyPlayer per BCS-Y-0184/0185/0186/0163). Their `this` argument is a CharaBase-family instance (large enough to have +0x220 field). NOT LTC/LGTC family instances (only 0x78 bytes). The +0x220 field's owner class is CharaBase per the RTTI catalog ([[Application_Lua_Script_Client_Control_CharaBase_TypeDescriptor]] BCS-Y-1721 NEW).\n\n[charabase-ctor-decomp-closes-the-c91 AMENDMENT - OWNER CLASS RE-CORRECTED + CALLER COUNT REFINED] **the CharaBase attribution was WRONG. The owner is `Component::Lua::GameEngine` ([[Component_Lua_GameEngine_constructor_FUN_00CDC410]] BCS-Y-1691, 0x228 bytes).** Caller count refined: **428 unique callers** (per FUN_00CC7510 callers list in c109_getter_finalizer_decomp.txt), not 290+ as previously stated. These 428 callers are all Lua-bridge functions that fetch the GameEngine singleton and access the Holder<Nil> instance at GameEngine+0x220 - used as a 'no result' placeholder when Lua-callable methods return nothing. The function name should be `GameEngine_holder_nil_getter_trampoline` not `LuaControl_secondary_class_identity_getter_trampoline`. Renaming deferred to preserve historical references; this amendment documents the corrected semantic."
+      "notes": "[Tier C566 2026-09-14] Historical symbol name retained. Exact body is MOV ECX,[ECX]; JMP 0x00CD7910. Given a pointer to a Component::Lua::GameEngine pointer, it returns the address of that GameEngine's +0x220 nil_holder field through BCS-Y-1675."
     },
     {
       "id": "BCS-Y-1677",
@@ -20792,9 +20804,13 @@
         "tools/ghidra/logs/c100_statusbase_ctor.txt",
         "tools/ghidra/logs/c100_parent_ctors.txt",
         "tools/ghidra/logs/c100_helpers.txt",
-        "manifests/statusbase_ctor_architecture.json"
+        "manifests/statusbase_ctor_architecture.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
       ],
-      "notes": "[statusbase-ctor-architecture-explained] **MSVC std::string default ctor** (39 body bytes, **300+ callers** - extremely common). Implements the MSVC std::string Small String Optimization (SSO) initialization pattern. Field layout written: +0x00 = data ptr (points to internal buffer at +0x12), +0x04 = capacity (0x40 = 64 bytes default SSO buffer), +0x08 = 1 (size? - investigation deferred), +0x0C = 0, +0x10 = 1 (SSO mode flag?), +0x11 = 1 (SSO mode flag?), +0x12 = 0x00 (null terminator for empty string). String object size with SSO buffer: 0x40 + 0x12 = 0x52+ bytes minimum. Used throughout the binary by every function that constructs a default std::string member or local. Catalog entry provides canonical reference for the std::string init pattern (replaces the previous 'untyped string initializer' references in earlier catalog entries that cited FUN_00445CF0 by VA only)."
+      "notes": "[Tier C566 2026-09-14] Historical symbol name retained. This is the default constructor for the 0x54-byte SqexMiscUtf8StringLayout (BCS-S-0135): data points to this+0x12, capacity is 0x40, byte count including NUL is 1, +0x0C is zero, +0x10 and ownership_state +0x11 are one, and the first inline byte is NUL."
     },
     {
       "id": "BCS-Y-1710",
@@ -28124,6 +28140,76 @@
       ],
       "notes": "[Tier C564 2026-09-14] CharacterController slot 34. Tail-dispatches the supplied four-float value to CharacterController+0x04 slot 2. Slot 10 selects it for pending state 3.",
       "id": "BCS-Y-2280"
+    },
+    {
+      "name": "Sqex_Misc_Utf8String_data_FUN_00445210",
+      "kind": "function",
+      "address": "0x00445210",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566 2026-09-14] Leaf __thiscall accessor returning the char pointer at SqexMiscUtf8StringLayout+0x00. It supplies no length, validation, ownership, or synchronization and is not by itself a complete safe-copy API.",
+      "id": "BCS-Y-2281"
+    },
+    {
+      "name": "Sqex_Misc_Utf8String_reserve_bytes_FUN_00447010",
+      "kind": "function",
+      "address": "0x00447010",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566 2026-09-14] __thiscall reserve helper with an explicit requested byte count and a mode byte that clears state +0x10 when nonzero. It stores the requested count at +0x08. Counts above +0x04 capacity allocate a 0x20-byte-rounded buffer, copy the old +0x08 bytes, release old storage only when ownership_state +0x11 is zero, set data/capacity, and clear +0x11; counts within capacity retain the existing data pointer. The count includes the trailing NUL on all witnessed string constructors and assignments.",
+      "id": "BCS-Y-2282"
+    },
+    {
+      "name": "Control_CharaBase_getDisplayName_NAPI_FUN_006FA4C0",
+      "kind": "function",
+      "address": "0x006FA4C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566 2026-09-14] Control::CharaBase _getDisplayName N-API member. Signature is void __thiscall(CharaBase *this, ExecuteParameters *params), ending in RET 4. It reads this+0x60. When display_name_id is not -1 it marshals the identifier; when it is -1 it marshals the embedded string at state+0x04 and the kind byte at +0x58. This is a Lua result builder, not a native const-char getter, so external consumers should not call it outside an established Lua invocation.",
+      "id": "BCS-Y-2283"
+    },
+    {
+      "name": "Control_WorldMaster_getMyPlayer_NAPI_FUN_00707970",
+      "kind": "function",
+      "address": "0x00707970",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566 2026-09-14] WorldMaster _getMyPlayer N-API implementation, a one-explicit-argument member-shaped function ending in RET 4; ECX is unused. From ExecuteParameters+0x04 it obtains a pointer to the Component::Lua::GameEngine pointer, follows GameEngine+0x220 -> [0] -> +0x04 -> +0x0C, and marshals the resulting Control::MyPlayer pointer through FUN_00748B30. The exact pointer chain supports read-only sampling from a RaptureElementContainer callback after the original update; the N-API function itself is not a native pointer getter, and C566 does not establish thread identity or a lock.",
+      "id": "BCS-Y-2284"
+    },
+    {
+      "name": "Control_CharaBase_setDisplayName_NAPI_FUN_00708200",
+      "kind": "function",
+      "address": "0x00708200",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566 2026-09-14] Control::CharaBase _setDisplayName N-API member. It parses a localized identifier or custom narrow-byte name and calls the same CharaBase+0x60 update helper used by SetDisplayNameReceiver. This proves the live display-name state is presentation data mutable by Lua and is not an immutable selected-character identity store; the client copy path does not validate UTF-8.",
+      "id": "BCS-Y-2285"
     }
   ]
 }

@@ -1,0 +1,184 @@
+{
+  "format": "xivl-local-player-display-name-v1",
+  "gameVersion": "1.23b",
+  "client": {
+    "version": "2012.09.19.0001",
+    "imageBase": "0x00400000",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "method": {
+    "date": "2026-09-14",
+    "projectMode": "Both Ghidra exports used -ReadOnly; HeadlessSaved was false.",
+    "scripts": [
+      "ghidra/DumpVAs.java",
+      "ghidra/DumpFunctionListing.java"
+    ],
+    "targetVAs": [
+      "0x004DA680",
+      "0x00578970",
+      "0x00766F00",
+      "0x00707970",
+      "0x006FA4C0",
+      "0x00708200",
+      "0x00445210",
+      "0x00445CF0",
+      "0x00445D20",
+      "0x00445DB0",
+      "0x00447010",
+      "0x00447260",
+      "0x00447450",
+      "0x006BF420",
+      "0x006E03B0",
+      "0x007195D0",
+      "0x00719570",
+      "0x006ECE20",
+      "0x0089D530",
+      "0x0089D610",
+      "0x006FAFF0",
+      "0x0076C4D0"
+    ],
+    "decompInvocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c566_local-player-display-name.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x004DA680,0x00578970,0x00766F00,0x00707970,0x006FA4C0,0x00708200,0x00445210,0x00445CF0,0x00445D20,0x00445DB0,0x00447010,0x00447260,0x00447450,0x006BF420,0x006E03B0,0x007195D0,0x00719570,0x006ECE20,0x0089D530,0x0089D610,0x006FAFF0,0x0076C4D0' } -ScriptPath @('ghidra')",
+    "listingInvocation": "tools\\ghidra\\run-headless.ps1 -Script DumpFunctionListing.java -ReadOnly -Out tools\\ghidra\\logs\\c566_local-player-display-name-listing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x004DA680,0x00578970,0x00766F00,0x00707970,0x006FA4C0,0x00708200,0x00445210,0x00445CF0,0x00445D20,0x00445DB0,0x00447010,0x00447260,0x00447450,0x006BF420,0x006E03B0,0x007195D0,0x00719570,0x006ECE20,0x0089D530,0x0089D610,0x006FAFF0,0x0076C4D0' } -ScriptPath @('ghidra')",
+    "helperListingInvocation": "tools\\ghidra\\run-headless.ps1 -Script DumpFunctionListing.java -ReadOnly -Out tools\\ghidra\\logs\\c566_local-player-helper-listing.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00CC7510,0x00CD7910,0x00748B30' } -ScriptPath @('ghidra')",
+    "evidence": [
+      {
+        "path": "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "sha256": "E52E241E4AC1055E6292A9848D62BC410AEFEA6814090098EF6FE0D29A98D323"
+      },
+      {
+        "path": "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "sha256": "ADC7488D3CDE45FAD9D38737D7C2DC7F6ECBCE1B48C283514672D6DF76E12717"
+      },
+      {
+        "path": "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "sha256": "F4AA2DE70A3CE980CE8A500CDD721D1A3037651CA1383DC289BF4C66B4E5AE8B"
+      }
+    ]
+  },
+  "localPlayerPointerChain": {
+    "root": "ApplicationMainRaptureElementContainer *container",
+    "steps": [
+      {
+        "expression": "waiting = *(container + 0x518)",
+        "type": "ApplicationLuaScriptClientInitializeWaitingActorContainer *",
+        "evidence": "FUN_004DA680 calls LuaFrameTick FUN_00578970 with this=container+0x510; at VA 0x005789D8 the tick loads [this+0x08] into ECX before calling FUN_00766F00."
+      },
+      {
+        "expression": "engine = *(waiting + 0x04)",
+        "type": "ComponentLuaGameEngine *",
+        "evidence": "BCS-S-0115 fixes the GameEngine pointer at +0x04."
+      },
+      {
+        "expression": "holder = *(engine + 0x220)",
+        "type": "SqexMiscAnyTypeHolderGameEngineNil * (BCS-S-0189)",
+        "evidence": "FUN_00CC7510 first loads the GameEngine from the supplied handle and tail-calls FUN_00CD7910, whose return is &engine->nil_holder; _getMyPlayer then dereferences that returned address."
+      },
+      {
+        "expression": "holder_state = *(holder + 0x04)",
+        "type": "opaque holder_state *",
+        "evidence": "BCS-Y-2284 instruction VAs 0x0070797D..0x00707982 prove the dereference; BCS-S-0189 leaves holder+0x04 unknown-typed."
+      },
+      {
+        "expression": "my_player = *(holder_state + 0x0C)",
+        "type": "Application::Lua::Script::Client::Control::MyPlayer * (BCS-S-0012)",
+        "evidence": "BCS-Y-2284 instruction VA 0x00707982; the result is marshalled as WorldMaster._getMyPlayer."
+      }
+    ],
+    "validation": "Treat every pointer load as nullable and abandon the sample on any failed readable-range check. The fixed SID 0xC0000024 is not part of this contract: it also participates in an Area/DesktopWidget/FormElement relationship and is not a unique MyPlayer resolver."
+  },
+  "displayNameState": {
+    "chain": [
+      "state = *(my_player + 0x60)",
+      "display_name_id = *(int32_t *)(state + 0x00)",
+      "custom_name = (SqexMiscUtf8StringLayout *)(state + 0x04)",
+      "display_name_kind = *(uint8_t *)(state + 0x58)",
+      "has_no_display_name_id = *(uint8_t *)(state + 0x59)"
+    ],
+    "stateType": "ApplicationLuaScriptClientControlCharaDisplayNameState (BCS-S-0198, size 0x5C)",
+    "selectionRule": "Only display_name_id == -1 selects the embedded custom-name string. Every other identifier value selects the identifier-marshalling path and must not be treated as the selected player's character name.",
+    "serverUpdate": "The packet wrapper at VA 0x0076C4D0 copies the fixed 32-byte custom-name source before calling SetDisplayNameReceiver construction at VA 0x0089D530. The constructor normalizes wire identifier zero to -1 and records the kind byte. Receiver apply VA 0x0089D610 dynamic-casts the target ActorBase to CharaBase and calls VA 0x006FAFF0 with ECX equal to that CharaBase.",
+    "classification": "The embedded string is the actor's custom display name rather than a localized NPC-name identifier. No bounded evidence routes a title or linkshell name into this field. Static code does not establish a Firstname Surname grammar, and the field is not immutable: CharaBase._setDisplayName at VA 0x00708200 calls the same update helper."
+  },
+  "utf8StringReadContract": {
+    "type": "SqexMiscUtf8StringLayout (BCS-S-0135, size 0x54)",
+    "fields": [
+      {
+        "offset": "0x00",
+        "name": "data",
+        "type": "char *"
+      },
+      {
+        "offset": "0x04",
+        "name": "byte_capacity",
+        "type": "uint32_t"
+      },
+      {
+        "offset": "0x08",
+        "name": "byte_count_including_nul",
+        "type": "uint32_t"
+      },
+      {
+        "offset": "0x11",
+        "name": "ownership_state",
+        "type": "uint8_t"
+      },
+      {
+        "offset": "0x12",
+        "name": "inline_buffer",
+        "type": "char[0x42]"
+      }
+    ],
+    "storage": "Default construction sets data=inline_buffer, capacity=0x40, byte_count=1, and ownership_state=1. Reserve requests above capacity allocate a 0x20-byte-rounded buffer, update data and capacity, and set ownership_state=0. Destruction frees data only when ownership_state is zero.",
+    "copyRules": [
+      "Require state and data to be nonnull.",
+      "Require display_name_id == -1 and has_no_display_name_id == 1.",
+      "Require 1 <= byte_count_including_nul <= byte_capacity.",
+      "Require data[byte_count_including_nul-1] == 0 and copy exactly byte_count_including_nul-1 bytes.",
+      "Apply a launcher-owned maximum before copying. A limit of 33 bytes accepts the complete fixed 32-byte source copied by the packet wrapper plus NUL, but it is only a defensive bound: the state carries no source discriminator, so the bound does not prove server origin and may reject a longer Lua replacement.",
+      "The client copy path performs no encoding validation. Validate the copied bytes as UTF-8 before using the expected character name in a filename; reject rather than repair an invalid sequence.",
+      "When ownership_state == 1, require data == string+0x12. When ownership_state == 0, accept separately allocated readable storage. Reject other ownership values.",
+      "Copy immediately into launcher-owned storage and never retain a client pointer or call the client destructor."
+    ],
+    "accessor": {
+      "bcsId": "BCS-Y-2281",
+      "va": "0x00445210",
+      "rva": "0x00045210",
+      "signature": "const char * __thiscall(SqexMiscUtf8StringLayout *this)",
+      "entryBytes": "8B 01 C3",
+      "limitation": "It returns only data and performs no length, state, ownership, lifetime, or synchronization validation. Direct validated copying is safer."
+    }
+  },
+  "napiAccessors": [
+    {
+      "bcsId": "BCS-Y-2284",
+      "name": "WorldMaster._getMyPlayer",
+      "va": "0x00707970",
+      "rva": "0x00307970",
+      "signature": "void __thiscall(void *unused_this, ExecuteParameters *params)",
+      "entryBytes": "56 8B 74 24 08 8B 4E 04",
+      "returnInstruction": "RET 4 at 0x0070799C",
+      "use": "Evidence for the pointer chain only; it marshals a Lua result and is not a native pointer getter."
+    },
+    {
+      "bcsId": "BCS-Y-2283",
+      "name": "CharaBase._getDisplayName",
+      "va": "0x006FA4C0",
+      "rva": "0x002FA4C0",
+      "signature": "void __thiscall(CharaBase *this, ExecuteParameters *params)",
+      "entryBytes": "51 56 8B F1 8B 46 60",
+      "returnInstruction": "RET 4 on both result branches",
+      "use": "Evidence for the state selection rule only; it builds Lua results and does not return borrowed string storage. Do not call it from the launcher callback."
+    }
+  ],
+  "lifecycleAndConcurrency": {
+    "validInterval": "The state is allocated during CharaBase-derived initialization at VA 0x006E03B0 and installed at CharaBase+0x60. It is absent before local-player construction and released during CharaBase-derived teardown at VA 0x006ECE20. Any null or changing intermediate pointer invalidates the sample.",
+    "characterChange": "The receiver and CharaBase._setDisplayName can change the live display-name state in place while the process remains alive. C566 does not trace a character-selection transition or prove MyPlayer replacement. Resolve the full chain and copy the string on every capture; do not cache client pointers across captures.",
+    "recommendedPhase": "Read after the original RaptureElementContainer update at VA 0x004DA680 in a consumer-owned callback. The same update calls LuaFrameTick with container+0x510, which consumes the +0x518 chain. C566 proves this call order but does not independently identify the runtime thread, prove prior launcher usage, or establish serialization with every writer.",
+    "snapshotRule": "C566 does not establish a lock. Unless the callback is independently known to serialize every writer, use a fault-contained bounded read primitive rather than raw pointer dereferences. Capture header A, copy bytes through A.data, capture header B, copy bytes through B.data, then capture header C. Accept only if all three headers and both byte copies are identical and every bounded read succeeds. This detects ordinary replacement and in-place mutation during the sample but is not a substitute for a proven lock."
+  },
+  "conclusion": {
+    "supported": "The exact read-only chain to the current local MyPlayer and its current custom display-name bytes is statically proven. It supports immediate validated copying from a consumer callback after the original RaptureElementContainer update, subject to the documented lack of a proven lock.",
+    "unresolved": "Static evidence cannot guarantee that the live CharaBase display-name value is the immutable account-selected Firstname Surname because CharaBase._setDisplayName can replace it through Lua. The lobby character-list projection does not currently expose a separately proven name field tied to the selected live character.",
+    "launcherBoundary": "If Chatlogs accepts the current in-world local actor display name, no probe is required. If it requires proof against all temporary display overrides, the remaining evidence gap is an immutable selected-character-name owner or a retained server-origin discriminator; this catalog does not claim one."
+  }
+}
