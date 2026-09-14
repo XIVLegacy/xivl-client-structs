@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "generated": "2026-09-14",
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "1.23b",
+    "build": "2012.09.19.0001",
+    "imageBase": "0x00400000",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "scope": "Static local-player model-transform and NamePlate presentation paths relevant to 30 Hz visible stepping during 60 FPS rendering.",
+  "method": {
+    "decompilationScript": "ghidra/DumpVAs.java",
+    "decompilationInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c560_player-render-boundary.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x006679C0,0x00665220,0x00661F00,0x00661FC0,0x00A60B80,0x00A5FF60,0x008DEC70,0x00A61620,0x008DE790,0x00BB7550,0x0058DF90,0x006A3560,0x006A3C00,0x00C48AB0,0x00419020' } -ScriptPath @('ghidra')",
+    "decompilationResult": "Fifteen requested VA sections resolved and decompiled in read-only mode; HeadlessSaved was false.",
+    "decompilationSha256": "424DFA3F186F2C8C069E7131AB4990CD85DC54A49F114CBB8D1302E027CEF63B",
+    "positionGetterInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c561_player-model-position-getter.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00A5F8A0,0x008DDAF0' } -ScriptPath @('ghidra')",
+    "positionGetterResult": "Both requested VA sections resolved and decompiled in read-only mode; HeadlessSaved was false.",
+    "positionGetterSha256": "B63F79C1E609FB0443D3150A91B15C71FEC28194B678AFC4788E4E8912B9285F",
+    "pinnedPeAuditScript": "tools/audit_player_render_boundary.py",
+    "pinnedPeAuditInvocation": "python tools\\audit_player_render_boundary.py --binary <path-to-pinned-ffxivgame.exe>",
+    "pinnedPeAuditInput": "ffxivgame.exe SHA-256 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "existingShaderEvidence": "manifests/shader_camera_boundary.json and tools/ghidra/logs/c559_shader-camera-boundary.txt"
+  },
+  "verdict": {
+    "classification": "INSUFFICIENT-DATA",
+    "claim": "The model-side transform publication boundary is statically identified, but no safe combined player-and-nameplate correction seam is established. Runtime evidence must still prove local-player ownership, 30 Hz input cadence, per-render callback ordering, and the NamePlate cache producer. The player-specific vertex register also remains unresolved."
+  },
+  "runtimeObservations": {
+    "provenance": "Maintainer-reported retail observations from 2026-09-14; the local video is not repository evidence.",
+    "facts": [
+      "Player Y advances at approximately 30 Hz while Present runs near 60 FPS.",
+      "The retail 30 FPS limit removes the visible player, nameplate, slope, and camera stepping.",
+      "CameraActor update 0x006195D0 runs once per presented frame and CameraActor+0x250 already yields smooth camera world Y at 60 FPS.",
+      "The fixed-function D3DTS_VIEW transform remains identity."
+    ],
+    "consequence": "CameraActor, D3DTS_VIEW, aspect ratio, navmesh, collision, server movement, packets, and authoritative actor coordinates are outside this correction investigation."
+  },
+  "functions": [
+    {
+      "bcsId": "BCS-Y-2249",
+      "va": "0x00A60B80",
+      "rva": "0x00660B80",
+      "name": "SceneObject::Actor constructor",
+      "callingConvention": "__thiscall",
+      "signature": "Actor * __thiscall(Actor *this, const char *label, uint32_t arg2, void *arg3, void *arg4)",
+      "entryBytes": "6A FF 68 EC C2 ED 00 64 A1 00 00 00 00 50 64 89",
+      "behavior": "Stores the constructed ModelObject at Actor+0x0C and registers callback thunk 0x00A61180 under UPDATE_MODEL_TRANSFORM.",
+      "phase": "Actor construction and callback registration",
+      "timing": "The registered callback's dispatcher cadence is not established statically."
+    },
+    {
+      "bcsId": "BCS-Y-0808",
+      "va": "0x006679C0",
+      "rva": "0x002679C0",
+      "name": "ControlledActor_PerFrameTick",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharaActor *this, float delta)",
+      "entryBytes": "55 8B EC 83 E4 F0 6A FF 68 CB 7F E8 00 64 A1 00",
+      "behavior": "On the controlled-actor path, invokes CharaActor vtable slot 34 and copies its four-dword result before packaging an outbound record.",
+      "phase": "actor or simulation update",
+      "timing": "Runtime cadence relative to Present is not established by static evidence."
+    },
+    {
+      "bcsId": "BCS-Y-1024",
+      "va": "0x0058DF90",
+      "rva": "0x0018DF90",
+      "name": "CharaElement per-actor frame tick",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharaElement *this)",
+      "entryBytes": "83 EC 14 56 8B F1 8A 86 6D 02 00 00 A8 40 57 74",
+      "behavior": "Runs the per-actor update sequence, then calls NamePlate slot 19 followed by slot 13 with the CharaElement pointer.",
+      "phase": "actor or simulation update",
+      "timing": "Reached virtually; cadence relative to Present requires runtime proof."
+    },
+    {
+      "bcsId": "BCS-Y-2250",
+      "va": "0x00A5F8A0",
+      "rva": "0x0065F8A0",
+      "name": "SceneObject::Actor slot 34 model-position record getter",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(Actor *this, uint32_t out[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 49 0C 8B 01 8B 50 44 FF D2",
+      "behavior": "Loads Actor+0x0C, calls ModelObject slot 17, and copies the returned four-dword record to the caller output.",
+      "phase": "actor state sampling",
+      "timing": "Invoked by the controlled-actor tick; other virtual callers are possible."
+    },
+    {
+      "bcsId": "BCS-Y-2252",
+      "va": "0x008DDAF0",
+      "rva": "0x004DDAF0",
+      "name": "ModelObject slot 17 position-record getter",
+      "callingConvention": "__thiscall",
+      "signature": "uint32_t * __thiscall(ModelObject *this)",
+      "entryBytes": "8D 41 30 C3",
+      "behavior": "Returns ModelObject+0x30.",
+      "phase": "state access",
+      "timing": "No independent cadence."
+    },
+    {
+      "bcsId": "BCS-Y-2251",
+      "va": "0x00A5FF60",
+      "rva": "0x0065FF60",
+      "name": "SceneObject::Actor UPDATE_MODEL_TRANSFORM target",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(Actor *this)",
+      "entryBytes": "55 8B EC 83 E4 F0 81 EC 44 01 00 00 53 56 8B F1",
+      "behavior": "On the attached-source path, builds a 0x40-byte transform record and calls ModelObject slot 26 at 0x00A600EF or 0x00A60183. ModelObject slot 7 is invoked afterward only when Actor+0x0C is non-null.",
+      "phase": "registered UPDATE_MODEL_TRANSFORM callback",
+      "timing": "The callback's thread, render ordering, and hit cadence require runtime proof."
+    },
+    {
+      "bcsId": "BCS-Y-2253",
+      "va": "0x008DEC70",
+      "rva": "0x004DEC70",
+      "name": "ModelObject slot 26 transform-record setter",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(ModelObject *this, const float value[16])",
+      "entryBytes": "55 8B EC 83 E4 F0 81 EC 0C 04 00 00 A1 B0 A8 2E",
+      "behavior": "Copies sixteen float lanes to ModelObject+0x50..+0x8C, sets bit 0x10, then sets bits 0x01 and 0x02 in ModelObject+0x29C. Invalid inputs can replace the copied record with fallback globals.",
+      "phase": "model transform publication",
+      "timing": "Best model-only runtime probe boundary; local-player ownership and cadence are unproved."
+    },
+    {
+      "bcsId": "BCS-Y-2254",
+      "va": "0x008DE790",
+      "rva": "0x004DE790",
+      "name": "ModelObject slot 25 cached-transform getter",
+      "callingConvention": "__thiscall",
+      "signature": "float * __thiscall(ModelObject *this)",
+      "entryBytes": "55 8B EC 83 E4 F0 83 EC 6C A1 B0 A8 2E 01 33 C4",
+      "behavior": "Returns ModelObject+0x50 after conditionally rebuilding the record from ModelObject+0x30 and other ModelObject fields when dirty bit 0x01 is clear.",
+      "phase": "model publication",
+      "timing": "Called by ModelObject slot 7 on the identified path."
+    },
+    {
+      "bcsId": "BCS-Y-2255",
+      "va": "0x00A61620",
+      "rva": "0x00661620",
+      "name": "ModelObject slot 7 drawable publication",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(ModelObject *this)",
+      "entryBytes": "55 8B EC 83 E4 F0 81 EC A8 00 00 00 56 8B F1",
+      "behavior": "When an attached drawable exists and dirty bit 0x02 is set, reads the cached transform through slot 25, optionally transforms it when bit 0x10 is set, forwards the resulting record to the drawable, updates a separate four-float derived record at drawable+0x90..+0x9C, and clears bit 0x02.",
+      "phase": "model-to-drawable publication",
+      "timing": "The slot-7 call follows the slot-26 setter on the identified attached-source path; its internal drawable publication is conditional."
+    },
+    {
+      "bcsId": "BCS-Y-2256",
+      "va": "0x00BB7550",
+      "rva": "0x007B7550",
+      "name": "Drawable transform-record setter",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(Drawable *this, const float value[16])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 45 08 0F 28 00 0F 29 41 30",
+      "behavior": "Copies sixteen lanes to drawable+0x30..+0x6C, updates drawable+0xA0, and calls FUN_00C579A0.",
+      "phase": "drawable transform publication",
+      "timing": "Downstream of ModelObject slot 7; final draw and shader consumption remain unresolved."
+    },
+    {
+      "bcsId": "BCS-Y-2257",
+      "va": "0x006A3560",
+      "rva": "0x002A3560",
+      "name": "NamePlate slot 13 cached-presentation sync",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(NamePlate *this, void *actor_context)",
+      "entryBytes": "6A FF 68 46 F1 E8 00 64 A1 00 00 00 00 50 81 EC",
+      "behavior": "Reads NamePlate+0x78..+0x84, compares them with +0x98..+0xA4, publishes changed values through FUN_00938020, then copies the current values into the comparison cache. The decompile does not dereference the actor argument directly.",
+      "phase": "per-actor NamePlate presentation update",
+      "timing": "Called through NamePlate slot 13 by CharaElement per-actor tick 0x0058DF90; source cadence is unresolved."
+    }
+  ],
+  "objectFields": [
+    {
+      "owner": "SceneObject::Actor",
+      "offset": "0x0C",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "ModelObject pointer"
+    },
+    {
+      "owner": "SceneObject::Actor",
+      "offset": "0x48",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "attached transform-source pointer; concrete type and member semantics unresolved"
+    },
+    {
+      "owner": "ModelObject",
+      "offset": "0x30",
+      "size": "0x10",
+      "classification": "proven",
+      "meaning": "four-dword record returned by slot 17 and consumed by CharaActor slot 34 and the conditional transform builder; exact coordinate convention unresolved"
+    },
+    {
+      "owner": "ModelObject",
+      "offset": "0x50",
+      "size": "0x40",
+      "classification": "proven",
+      "meaning": "cached transform record written by slot 26 and returned by slot 25"
+    },
+    {
+      "owner": "ModelObject",
+      "offset": "0xD8",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "attached drawable pointer used by slot 7"
+    },
+    {
+      "owner": "ModelObject",
+      "offset": "0x29C",
+      "size": "0x01",
+      "classification": "proven",
+      "meaning": "dirty flags; slot 26 sets bits 0x10, 0x01, and 0x02, while slot 7 tests 0x10 and clears 0x02 after conditional drawable publication"
+    },
+    {
+      "owner": "Drawable",
+      "offset": "0x30",
+      "size": "0x40",
+      "classification": "proven",
+      "meaning": "transform record copied by 0x00BB7550; final shader consumer unresolved"
+    },
+    {
+      "owner": "NamePlate",
+      "offset": "0x78",
+      "size": "0x10",
+      "classification": "proven",
+      "meaning": "four-float current presentation record read by slot 13; producer unresolved"
+    },
+    {
+      "owner": "NamePlate",
+      "offset": "0x98",
+      "size": "0x10",
+      "classification": "proven",
+      "meaning": "last-published comparison copy of NamePlate+0x78..+0x84"
+    }
+  ],
+  "modelFlow": {
+    "classification": "partly-proven",
+    "proven": [
+      "Actor+0x0C owns the ModelObject used by both CharaActor slot 34 and UPDATE_MODEL_TRANSFORM.",
+      "CharaActor slot 34 returns ModelObject+0x30 to the controlled-actor tick.",
+      "On its attached-source path, UPDATE_MODEL_TRANSFORM builds a 0x40-byte record and writes it to ModelObject+0x50..+0x8C through slot 26; slot 7 is then invoked when Actor+0x0C is non-null.",
+      "When its drawable and dirty-bit guards pass, ModelObject slot 7 obtains the cached record, optionally transforms it under bit 0x10, and copies the resulting record to drawable+0x30..+0x6C through 0x00BB7550."
+    ],
+    "unresolved": [
+      "Static evidence does not prove that the slot-34 sample and the 0x40-byte publication change on the same 30 Hz frames.",
+      "Static evidence does not join drawable+0x30..+0x6C to a player-specific vertex-shader constant task or register.",
+      "The callback dispatcher and phase ordering relative to player draw are not resolved."
+    ]
+  },
+  "namePlateFlow": {
+    "classification": "partly-proven",
+    "proven": "CharaElement per-actor tick 0x0058DF90 invokes slot 13 on the inline NamePlate subobject at CharaElement+0xBA0 and passes the CharaElement pointer as actor_context. Slot 13 reads NamePlate+0x78..+0x84, sends changed values through 0x00938020, and caches them at +0x98..+0xA4.",
+    "unresolved": "No direct static writer other than constructor initialization was found for NamePlate+0x78..+0x84. Indirect production, its relation to ModelObject+0x30 or drawable state, and its runtime cadence remain unresolved."
+  },
+  "shaderBoundary": {
+    "known": "The exact SetVertexShaderConstantF task remains 0x00435200 with task fields +0x04 start register, +0x08 vector4 count, and +0x0C float-data pointer as recorded in manifests/shader_camera_boundary.json.",
+    "unknown": "No static data-flow edge joins the identified ModelObject or Drawable transform record to 0x00435200 or assigns a player-specific register."
+  },
+  "runtimeProbe": {
+    "classification": "required-before-correction",
+    "records": [
+      "At 0x006679C0, record timestamp, thread id, Present ordinal, this, whether this equals RaptureElementContainer+0x17838, and the slot-34 four-float result.",
+      "At 0x00A5FF60, record timestamp, thread id, Present ordinal, Actor this, Actor+0x0C ModelObject, and callback hit count.",
+      "At 0x008DEC70, record timestamp, thread id, Present ordinal, ModelObject ECX, the sixteen floats at [ESP+4], and the return-address callsite. Distinguish 0x00A600EF and 0x00A60183.",
+      "At 0x00A61620 and 0x00BB7550, record ordering, ModelObject+0xD8 drawable, and the sixteen-float records before and after publication.",
+      "At 0x006A3560 entry and return, record timestamp, thread id, Present ordinal, NamePlate ECX, CharaElement actor_context [ESP+4], NamePlate+0x78..+0x84, and +0x98..+0xA4.",
+      "At 0x00435200 during the corresponding player draw window, record task+0x04, +0x08, +0x0C and the pointed-to float vectors; correlate exact values with ModelObject+0x50 and drawable+0x30 without assuming a register."
+    ],
+    "successCriteria": "A correction seam requires proof that the local player's 0x008DEC70 input is held for two Presents, that publication precedes that player's draw on the render thread, that editing only the published 0x40-byte record does not feed ModelObject+0x30 or authoritative actor state, and that the separately observed NamePlate record has an equally bounded render-only producer.",
+    "currentBestSeam": "0x008DEC70 is the smallest exact model-side probe because it receives the complete 0x40-byte record after Actor-side construction and before drawable publication. It is not yet a safe correction seam and does not cover NamePlate."
+  },
+  "ownershipBoundary": {
+    "authoritative": "The controlled-actor tick and ModelObject+0x30 sample remain read-only probe inputs. This evidence does not authorize changing actor, collision, packet, server, or gameplay state.",
+    "renderCandidate": "ModelObject+0x50..+0x8C and drawable+0x30..+0x6C are downstream model/drawable caches, but render-only exclusivity is not proven until runtime caller and phase measurements close the listed gaps.",
+    "launcherDisposition": "Do not implement interpolation from static evidence alone. The launcher may implement only the exact ordered probe above."
+  }
+}

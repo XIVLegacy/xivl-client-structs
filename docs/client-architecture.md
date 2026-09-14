@@ -1148,6 +1148,51 @@ to interpolate, and the retail 30 FPS limit remains the supported workaround.
 Refs: `manifests/shader_camera_boundary.json`; BCS-Y-0831, BCS-Y-0832,
 BCS-Y-0851, BCS-Y-2241..BCS-Y-2248.
 
+## Player model and NamePlate render boundary
+
+Maintainer-reported runtime measurements support excluding CameraActor as the
+correction target: CameraActor update runs once per presented frame, and
+inverting the row-major view record at CameraActor `+0x250` shows smooth camera
+world Y at 60 FPS. The local video is not repository evidence. The remaining
+correction candidate is therefore on the player/model side.
+
+`SceneObject::Actor` owns a ModelObject pointer at `+0x0C` and registers an
+`UPDATE_MODEL_TRANSFORM` callback. Its virtual target at `0x00A5FF60`
+(BCS-Y-2251) constructs a 0x40-byte transform record on its attached-source
+path and sends it through ModelObject slot 26 at `0x008DEC70` (BCS-Y-2253).
+When Actor `+0x0C` is non-null, it then invokes ModelObject slot 7 at
+`0x00A61620` (BCS-Y-2255). Slot 26 copies the record to ModelObject
+`+0x50..+0x8C`, with a fallback for invalid inputs. Under its drawable and
+dirty-bit guards, slot 7 retrieves that cache, may apply an additional
+transform, and forwards the result through `0x00BB7550` (BCS-Y-2256), which
+copies it to drawable `+0x30..+0x6C`.
+
+The controlled-actor tick at `0x006679C0` (BCS-Y-0808) samples a separate
+four-dword record through CharaActor slot 34. That slot resolves through
+`0x00A5F8A0` and ModelObject slot 17 to ModelObject `+0x30`. Static evidence
+does not yet prove that this sample and the published 0x40-byte transform
+change on the same 30 Hz frames, nor does it identify a player-specific
+vertex-shader register downstream of the drawable cache.
+
+NamePlate follows a separate presentation path. CharaElement per-actor tick
+`0x0058DF90` invokes slot 13 at `0x006A3560` (BCS-Y-2257) on its inline
+NamePlate subobject at `+0xBA0`, passing the CharaElement pointer. That function
+reads NamePlate `+0x78..+0x84`, publishes changed values through
+`0x00938020`, and copies them to the comparison cache at `+0x98..+0xA4`.
+No direct non-constructor writer for the current record was found, and no
+static edge equates it with ModelObject or drawable state.
+
+`0x008DEC70` is therefore the smallest exact model-only runtime probe: it sees
+the complete transform after Actor-side construction and before drawable
+publication. It is not yet a safe correction seam and does not cover the
+NamePlate. Runtime validation must establish local-player ownership, 30 Hz
+input cadence, pre-draw ordering, absence of feedback into ModelObject
+`+0x30`, and the producer of the NamePlate current record. The exact ordered
+record set and acceptance criteria are canonical in the manifest.
+
+Refs: `manifests/player_render_boundary.json`; BCS-Y-0808, BCS-Y-1024,
+BCS-Y-2249..BCS-Y-2257.
+
 ## Sqwt UI framework
 
 ### Sqwt UI factories construct elements and subscribe handlers

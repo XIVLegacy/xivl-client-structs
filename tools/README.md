@@ -49,6 +49,8 @@ below are implementation modules.
 | Test Resource DAT-open evidence | `python tools\test_resource_dat_open.py` | Asset-free mutation tests for the exact-build signature, bounded missing-file result, and unresolved launcher-hook requirements |
 | Test text-command ingress evidence | `python tools\test_text_command_ingress.py` | Asset-free contract and mutation tests for the exact-build lookup boundary and unresolved runtime claims |
 | Check lobby catalog promotion | `python tools\extractors\promote_lobby_character_list.py --check` | Deterministic BCS-S-0008/0009 and related BCS-Y projection from the canonical lobby manifest |
+| Verify player render-transform anchors | `python tools\audit_player_render_boundary.py --binary PATH` | Explicit pinned FFXIV 1.23b PE; checks model and NamePlate vtable, entry-byte, field-store, and publication anchors |
+| Promote player render-transform symbols | `python tools\extractors\promote_player_render_boundary.py` | Serialized BCS-Y projection from `manifests\player_render_boundary.json` |
 
 ### PE, Ghidra, and call-graph commands
 

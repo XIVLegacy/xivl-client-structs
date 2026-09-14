@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2235,
+  "symbolCount": 2244,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -11725,9 +11725,11 @@
       "address": "0x0058DF90",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/battle_effect_queue_consumer.json"
+        "manifests/battle_effect_queue_consumer.json",
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
       ],
-      "notes": "[battle-effect-queue-consumer battle-effect queue consumer] 299-byte per-actor frame tick orchestrator for CharaElement. Calls 4 independent ticks in sequence: (1) combat-status snapshot [[CharaElement_CombatStatusSnapshot_FUN_00585D70]], (2) action-state machine tick [[CharaActionStateTickProcessor_FUN_0058A090]] (BCS-Y-1000), (3) status-effect timer tick [[CharaElement_StatusEffectTimerTick_FUN_005861B0]], (4) battle-effect queue drain [[CharaElement_BattleEffectQueueDrain_FUN_0058DA10]]. Also broadcasts subtype 0x1E via FUN_004D7980, sets +0x264 stamp, calls vtable[19]+vtable[13] on actor+0xBA0 (Lua object). 0 instruction-level callers - reached via vtable dispatch from engine frame loop. Resolves the chara-action-state-pipeline pass TBD on FUN_0058A090's second caller. The battle-effect-queue-consumer pass architectural finding.",
+      "notes": "[battle-effect-queue-consumer; Tier C560 2026-09-14] 299-byte per-actor frame tick orchestrator for CharaElement. Calls the combat-status snapshot, action-state machine, status-effect timer, and battle-effect queue drain, then invokes slots 19 and 13 on the inline NamePlate subobject at CharaElement+0xBA0. Slot 13 receives the CharaElement pointer. It has no instruction-level callers and is reached virtually; runtime cadence relative to Present remains unresolved.",
       "id": "BCS-Y-1024"
     },
     {
@@ -27633,6 +27635,116 @@
       ],
       "notes": "[Tier C559 2026-09-13] On an anonymous selection change, submits three globals at 0x01328FF4, 0x01329034, and 0x01329074 with count 4 through [[BCS-Y-2247]]. The owning shader class, count unit, value semantics, matrix interpretation, and camera provenance remain unresolved.",
       "id": "BCS-Y-2248"
+    },
+    {
+      "name": "Application_Scene_SceneObject_Actor_constructor_FUN_00A60B80",
+      "kind": "function",
+      "address": "0x00A60B80",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C560 2026-09-14] SceneObject::Actor constructor. It stores the ModelObject at Actor+0x0C and registers the UPDATE_MODEL_TRANSFORM callback thunk at 0x00A61180.",
+      "id": "BCS-Y-2249"
+    },
+    {
+      "name": "Application_Scene_SceneObject_Actor_get_model_position_record_FUN_00A5F8A0",
+      "kind": "function",
+      "address": "0x00A5F8A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c561_player-model-position-getter.txt"
+      ],
+      "notes": "[Tier C561 2026-09-14] CharaActor vtable slot 34 inherited from SceneObject::Actor. It returns the four-dword record at ModelObject+0x30 through ModelObject slot 17. Exact coordinate semantics remain runtime-unverified.",
+      "id": "BCS-Y-2250"
+    },
+    {
+      "name": "Application_Scene_SceneObject_Actor_update_model_transform_FUN_00A5FF60",
+      "kind": "function",
+      "address": "0x00A5FF60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C560 2026-09-14] UPDATE_MODEL_TRANSFORM virtual target. On the attached-source path it builds a 0x40-byte record and publishes it through ModelObject slot 26 at 0x00A600EF or 0x00A60183. It invokes ModelObject slot 7 afterward only when Actor+0x0C is non-null. Cadence and local-player specificity require runtime proof.",
+      "id": "BCS-Y-2251"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_get_position_record_FUN_008DDAF0",
+      "kind": "function",
+      "address": "0x008DDAF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c561_player-model-position-getter.txt"
+      ],
+      "notes": "[Tier C561 2026-09-14] ModelObject vtable slot 17. Returns ModelObject+0x30, a four-dword record consumed by CharaActor slot 34 and the cached-transform builder.",
+      "id": "BCS-Y-2252"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_set_transform_record_FUN_008DEC70",
+      "kind": "function",
+      "address": "0x008DEC70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C560 2026-09-14] ModelObject vtable slot 26. Copies a 0x40-byte input into ModelObject+0x50..+0x8C, sets bits 0x10, 0x01, and 0x02 at +0x29C, and can substitute fallback globals for invalid input. World-matrix convention and render cadence remain runtime-unverified.",
+      "id": "BCS-Y-2253"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_get_cached_transform_FUN_008DE790",
+      "kind": "function",
+      "address": "0x008DE790",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C560 2026-09-14] ModelObject vtable slot 25. Returns ModelObject+0x50 after conditionally rebuilding that 0x40-byte record from ModelObject+0x30 and other ModelObject fields.",
+      "id": "BCS-Y-2254"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_publish_transform_to_drawable_FUN_00A61620",
+      "kind": "function",
+      "address": "0x00A61620",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C560 2026-09-14] ModelObject vtable slot 7. When the attached-drawable and dirty-bit guards pass, reads the cached 0x40-byte record through slot 25, optionally transforms it under bit 0x10, forwards the result through FUN_00BB7550, and clears bit 0x02.",
+      "id": "BCS-Y-2255"
+    },
+    {
+      "name": "Graphics_Render_Drawable_set_transform_record_FUN_00BB7550",
+      "kind": "function",
+      "address": "0x00BB7550",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C560 2026-09-14] Copies a 0x40-byte transform record into drawable+0x30..+0x6C, updates a flag at +0xA0, and invokes FUN_00C579A0. The final player shader register remains unresolved.",
+      "id": "BCS-Y-2256"
+    },
+    {
+      "name": "Application_NamePlate_sync_cached_presentation_FUN_006A3560",
+      "kind": "function",
+      "address": "0x006A3560",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C560 2026-09-14] NamePlate vtable slot 13, called from the per-actor frame path. It compares NamePlate+0x78..+0x84 with +0x98..+0xA4 and publishes changes through FUN_00938020. Static evidence does not identify the source writer or equate this cache with ModelObject state.",
+      "id": "BCS-Y-2257"
     }
   ]
 }
