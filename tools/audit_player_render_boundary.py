@@ -26,6 +26,25 @@ ENTRY_BYTES = {
     0x006A3560: bytes.fromhex("6aff6846f1e80064a1000000005081ec8c000000"),
     0x006A3AD0: bytes.fromhex("8b442404f30f1044240883ec108bd056"),
     0x006A2A60: bytes.fromhex("807c2404000f94c002c002c032819001"),
+    0x007CD360: bytes.fromhex("6aff685cb0ea0064a1000000005083ec"),
+    0x007D4560: bytes.fromhex("558bec83e4f06aff6805b8ea0064a100"),
+    0x007D49F0: bytes.fromhex("558bec83e4f06aff6807b9ea0064a100"),
+    0x00A68CB0: bytes.fromhex("6aff6843caed0064a100000000506489"),
+    0x00A68000: bytes.fromhex("568bf18b460c83e801743c83e801741e"),
+    0x00A68060: bytes.fromhex("8b49048b018b4004ffe0"),
+    0x00A68070: bytes.fromhex("558bec83e4f083ec2c568bf18b46048b"),
+    0x00A680D0: bytes.fromhex("8b49048b018b4008ffe0"),
+    0x008D5570: bytes.fromhex("8b4104c3"),
+    0x00AFA220: bytes.fromhex("558bec83e4f08b41148b49106bc97003"),
+    0x00AFA070: bytes.fromhex("558bec83e4f08b450883ec085333db56"),
+    0x00AFA160: bytes.fromhex("558bec83e4f08b45080f28008b41108b"),
+    0x00A67F80: bytes.fromhex("558bec83e4f08b450cc7410c01000000"),
+    0x00A67FB0: bytes.fromhex("558bec83e4f08b4508c7410c02000000"),
+    0x00A67FD0: bytes.fromhex("558bec83e4f08b4508c7410c03000000"),
+    0x007D8080: bytes.fromhex("558bec83e4f083ec48a1b0a82e0133c4"),
+    0x007D8E90: bytes.fromhex("8b492c85c97405e9c4123200c20400"),
+    0x00A5F810: bytes.fromhex("558bec83e4f083ec2c8b45080f280056"),
+    0x008DDAB0: bytes.fromhex("558bec83e4f08b45080f28000f294130"),
 }
 
 
@@ -85,6 +104,68 @@ def main() -> None:
     require_equal(image.read_u32(0x00FCF98C + 2 * 4), 0x006A3AD0, "NamePlate slot 2")
     require_equal(image.read_u32(0x00FCF98C + 19 * 4), 0x006A2A60, "NamePlate slot 19")
     require_equal(image.read_u32(0x00FC0D34 + 86 * 4), 0x00A5FF60, "CharaActor slot 86")
+    require_equal(image.read_u32(0x00FC0D34 + 68 * 4), 0x007CD360, "CharaActor slot 68")
+    require_equal(image.read_u32(0x00FC0D34 + 32 * 4), 0x00A5F810, "CharaActor slot 32")
+    require_equal(
+        image.read_u32(0x00FEE17C + 7 * 4),
+        0x00A67F80,
+        "RaptureCharacterController slot 7",
+    )
+    require_equal(
+        image.read_u32(0x00FEE17C + 8 * 4),
+        0x00A67FB0,
+        "RaptureCharacterController slot 8",
+    )
+    require_equal(
+        image.read_u32(0x00FEE17C + 9 * 4),
+        0x00A67FD0,
+        "RaptureCharacterController slot 9",
+    )
+    require_equal(
+        image.read_u32(0x00FEE17C + 10 * 4),
+        0x00A68000,
+        "RaptureCharacterController slot 10",
+    )
+    require_equal(
+        image.read_u32(0x00FEE17C + 29 * 4),
+        0x008D5570,
+        "RaptureCharacterController slot 29",
+    )
+    require_equal(
+        image.read_u32(0x00FEE17C + 32 * 4),
+        0x00A68060,
+        "RaptureCharacterController slot 32",
+    )
+    require_equal(
+        image.read_u32(0x00FEE17C + 33 * 4),
+        0x00A68070,
+        "RaptureCharacterController slot 33",
+    )
+    require_equal(
+        image.read_u32(0x00FEE17C + 34 * 4),
+        0x00A680D0,
+        "RaptureCharacterController slot 34",
+    )
+    require_equal(
+        image.read_u32(0x00FEE210 + 1 * 4),
+        0x007D8080,
+        "RaptureCharacterProxy slot 1",
+    )
+    require_equal(
+        image.read_u32(0x00FEE210 + 2 * 4),
+        0x007D8E90,
+        "RaptureCharacterProxy slot 2",
+    )
+    require_equal(
+        image.read_u32(0x010653A4 + 16 * 4),
+        0x008DDAB0,
+        "RaptureModelObject slot 16",
+    )
+    require_equal(
+        image.read_va(0x00F54F70, 4),
+        bytes.fromhex("0000803f"),
+        "RigidBody position W constant",
+    )
     require_equal(
         image.read_va(0x00A61180, 8),
         bytes.fromhex("8b01ffa058010000"),
@@ -143,6 +224,9 @@ def main() -> None:
     print("model_update=0x00A5FF60 ret=4 fallback=0x00A60195")
     print("model_slot13=0x008DE970 model_slot26=0x008DEC70")
     print("model_slot7=0x00A61620 drawable_publish=0x00BB7550")
+    print("actor_slot68=0x007CD360 rapture_controller_vtable=0x00FEE17C")
+    print("controller_slot10=0x00A68000 controller_slot29=0x008D5570")
+    print("rapture_proxy_slot1=0x007D8080 rigidbody_writer=0x00AFA160")
     print("nameplate_slot13=0x006A3560")
 
 

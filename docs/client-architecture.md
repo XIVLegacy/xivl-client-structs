@@ -1164,16 +1164,39 @@ ModelObject slot 26 at `0x008DEC70` (BCS-Y-2253). The normal CharaActor factory
 creates a `RaptureModelObject` whose slots 7, 13, 25, and 26 match the base
 implementations; the statically constructed vtable has no slot-26 override.
 
-The local trace never entered `0x008DEC70`. The fallback at `0x00A60195` is
-therefore the smallest statically identified path consistent with the observed
-cache change and later slot-7 call, but the capture did not record the live
-ModelObject vtable. The fallback samples Actor `+0x18`, prepares a four-float
-record through `0x00A61130` (BCS-Y-2258), and invokes ModelObject slot 13 at
-`0x008DE970` (BCS-Y-2259) for the normal RaptureModelObject vtable. Slot 13
-writes `[X, Y, Z, 1]` to ModelObject `+0x30`, updates cache flags, and may copy
-the four lanes to `+0x80..+0x8C`. Slot 7 at `0x00A61620` (BCS-Y-2255) obtains
-the cache through slot 25, which may rebuild it, before forwarding through
-`0x00BB7550` (BCS-Y-2256) to drawable `+0x30..+0x6C`.
+The follow-up capture identified the local ModelObject vtable as `0x010653A4`
+and confirmed slots 7, 13, 25, and 26 as `0x00A61620`, `0x008DE970`,
+`0x008DE790`, and `0x008DEC70`. Actor `+0x48` was non-null but its `+0x20`
+member was null, so the callback took the Actor `+0x18` fallback and never
+entered slot 26. On all 103 observed source-change/publication-hold frames,
+slot 13 received the preceding published Y and copied it over the newer
+ModelObject `+0x30` Y. Slot 25 then rebuilt the cache and supplied the exact
+record passed to the Drawable setter. The hold therefore existed before slot
+13; neither slot 13 nor slot 25 introduced it.
+
+The normal CharaActor slot-68 target at `0x007CD360` (BCS-Y-2262) constructs a
+RaptureCharacterProxy and RaptureCharacterController and stores the controller
+at Actor `+0x18`. Both the base and Rapture controller vtables use `0x00A68000`
+(BCS-Y-2266) for slot 10 and `0x008D5570` (BCS-Y-2267) for slot 29. In those
+static types, slot 10 consumes the pending operation selected by controller
+`+0x0C`: 1 is absolute, 2 is relative, 3 is direct, and 0 performs no proxy
+update. It clears the selector after dispatch, and slot 29 returns controller
+`+0x04` to `0x00A61130` (BCS-Y-2258). The bounded capture did not record the
+live Actor `+0x18` or returned-object vtables, so it does not prove that the
+local instance used those concrete types or slot targets.
+
+In the normal static construction path, controller `+0x04` is a
+CharacterProxy and proxy `+0x2C` is a 0x48-byte Phieg RigidBody, not the
+position record itself. The RigidBody indexes a separate 0x70-byte pool record
+through `+0x10` and `+0x14`. Reader `0x00AFA220` (BCS-Y-2268) copies
+`[X, Y, Z, 1]` from the first 16 bytes; writer `0x00AFA160` (BCS-Y-2270)
+updates those lanes and clears the word at record `+0x64`. Known
+RaptureCharacterProxy slots 1 and 2 reach that writer through `0x007D8080` and
+`0x007D8E90` (BCS-Y-2274 and BCS-Y-2275). None of slot 10, `0x00A61130`, the
+reader, or the writer contains a timer or frame-divider gate. Static evidence
+cannot show whether the live controller was one of these types, whether its
+`+0x0C` was zero on held frames, or which writer last published the retained
+record.
 
 The controlled-actor tick at `0x006679C0` (BCS-Y-0808) samples a separate
 four-float record through CharaActor slot 34. That slot resolves through
@@ -1196,15 +1219,16 @@ color records but not every indirect helper reached by slot 13. Slot 19 at
 an opaque pointer used by UI helpers; its ownership and the exact later
 world-to-screen writer remain unidentified.
 
-There is no safe correction seam yet. If the live vtable confirms the normal
-target, fallback writer `0x008DE970` is not render-only because it overwrites
+There is no safe correction seam. The RigidBody record is physics-owned, and
+the confirmed fallback slot 13 overwrites shared
 ModelObject `+0x30`, which the controlled actor path also samples. Drawable
-publication is downstream, but the exact slot-25 cache writer, absence of
-feedback, and moving NamePlate consumer are not proven. The exact bounded
-model probes and the NamePlate static gap are canonical in the manifest.
+publication is downstream, but absence of feedback and the moving NamePlate
+consumer are not proven. The exact bounded probe for controller queue state
+and RigidBody writes, plus the NamePlate static gap, are canonical in the
+manifest.
 
 Refs: `manifests/player_render_boundary.json`; BCS-Y-0808, BCS-Y-1024,
-BCS-Y-2249..BCS-Y-2261.
+BCS-Y-2249..BCS-Y-2280.
 
 ## Sqwt UI framework
 

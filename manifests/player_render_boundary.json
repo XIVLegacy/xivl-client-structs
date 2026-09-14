@@ -23,19 +23,27 @@
     "namePlatePostUpdateInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c563_nameplate-post-update.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x0058DF90,0x00796D50,0x00797FE0' } -ScriptPath @('ghidra')",
     "namePlatePostUpdateResult": "All three requested VA sections resolved and decompiled in read-only mode; HeadlessSaved was false.",
     "namePlatePostUpdateSha256": "5F459D334A9F673175DD680019AAC138A480243E59FEF9472EB0DAD79CF85DDD",
+    "transformSourceInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c564_player-transform-source.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x007CD360,0x007D4560,0x007D49F0,0x00A68CB0,0x00A68000,0x008D5570,0x00A61130,0x00AFA220,0x00AFA070,0x00AFA160,0x00A67F80,0x00A67FB0,0x00A67FD0,0x00A68060,0x00A68070,0x00A680D0,0x007D8080,0x007D8E90,0x00A5F810,0x008DDAB0' } -ScriptPath @('ghidra')",
+    "transformSourceResult": "All twenty requested VA sections resolved and decompiled in read-only mode; the headless report discarded changes to the read-only program.",
+    "transformSourceSha256": "611668D5FFB645E89C4ABED2334C269DEE95723A4100578244512DA66A98853D",
+    "rigidBodyOwnershipInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c565_player-rigidbody-ownership.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00A69180,0x00A692B0,0x00A681C0,0x007D4C60' } -ScriptPath @('ghidra')",
+    "rigidBodyOwnershipResult": "All four requested VA sections resolved and decompiled in read-only mode; the headless report discarded changes to the read-only program.",
+    "rigidBodyOwnershipSha256": "3E2B8543F9CF9C2B2A69D2D3DE887EB00EA280A36B2BCBC5CCFACDD905263974",
     "runtimeCapture": "Maintainer-supplied player-render-probe.bin, 45684 committed records, zero dropped records, zero pointer-read failures",
     "runtimeCaptureSha256": "F0607C9E75D7CEF7B0B91F77ED185C5DAFA74FC4086FDEEB80AC4E4172B73E64",
+    "liveSlotCapture": "Maintainer-supplied player-render-live-slots.bin, 28575 committed records across 438 Presents, zero dropped records, zero pointer-read failures",
+    "liveSlotCaptureSha256": "1F774E6B95CDC5347263C4C4603E553F01981C4C8E903312A219B3A8CBB3D45A",
     "pinnedPeAuditScript": "tools/audit_player_render_boundary.py",
     "pinnedPeAuditInvocation": "python tools\\audit_player_render_boundary.py --binary <path-to-pinned-ffxivgame.exe>",
     "pinnedPeAuditInput": "ffxivgame.exe SHA-256 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
     "existingShaderEvidence": "manifests/shader_camera_boundary.json and tools/ghidra/logs/c559_shader-camera-boundary.txt"
   },
   "verdict": {
-    "classification": "INSUFFICIENT-DATA",
-    "claim": "The local-player hold is introduced inside the once-per-Present UPDATE_MODEL_TRANSFORM interval after ModelObject+0x30 is sampled and before cached/drawable publication. The no-attached-source fallback through ModelObject slots 13 and 25 is the smallest statically identified path consistent with the live trace, but the capture did not record the live ModelObject vtable or distinguish the slot-25 cache write. The moving NamePlate producer remains unidentified, so no safe combined correction seam is established."
+    "classification": "SOURCE-GATE-IDENTIFIED-NO-SAFE-SEAM",
+    "claim": "The local-player hold reaches ModelObject slot 13 through the opaque object returned by Actor+0x18 slot 29. In the normal static CharaActor construction path, Actor+0x18 is a RaptureCharacterController whose slot 29 returns a RaptureCharacterProxy backed by a RigidBody position record; both statically known controller vtables use slot 10 to consume queued position operations. The bounded capture did not record the live controller or proxy vtables, so that concrete runtime type chain and its writer cadence remain unproved. The statically identified RigidBody record is shared physics state, so no render-only correction seam is proven."
   },
   "runtimeObservations": {
-    "provenance": "Maintainer-supplied bounded retail capture from 2026-09-14, pinned above by SHA-256; the local video is not repository evidence.",
+    "provenance": "Maintainer-supplied bounded retail captures from 2026-09-14, each pinned above by SHA-256; the local video is not repository evidence.",
     "facts": [
       "Player Y advances at approximately 30 Hz while Present runs near 60 FPS.",
       "The retail 30 FPS limit removes the visible player, nameplate, slope, and camera stepping.",
@@ -48,7 +56,11 @@
       "Within each Present ordinal, the local controlled sample preceded 0x00A5FF60, which enclosed 0x00A61620 and 0x00BB7550.",
       "Three exactly matched vertex-constant tasks used start register 0 and count 16 on observed player-draw frames; they ran before that ordinal's update and consumed a previously published drawable transform.",
       "The local ModelObject did not enter 0x008DEC70, although its cached transform changed inside 0x00A5FF60 before drawable publication.",
-      "NamePlate+0x78..+0x84 and +0x98..+0xA4 did not change during either movement segment."
+      "NamePlate+0x78..+0x84 and +0x98..+0xA4 did not change during either movement segment.",
+      "The follow-up capture identified the live local ModelObject vtable as 0x010653A4 and confirmed slots 7, 13, 25, and 26 as 0x00A61620, 0x008DE970, 0x008DE790, and 0x008DEC70.",
+      "Actor+0x18 was non-null, Actor+0x48 was non-null, and (Actor+0x48)+0x20 was null, proving that the local callback took the fallback slot-13 branch.",
+      "Across 436 aligned 60 FPS transitions, ModelObject+0x30 Y changed 400 times and drawable Y changed 297 times. On all 103 source-change/publication-hold frames, slot 13 received the preceding published Y and copied it over the newer ModelObject+0x30 Y.",
+      "Slot 25 rebuilt the cached transform after slot 13 and supplied the exact record passed to the Drawable setter; it did not introduce the held Y."
     ],
     "consequence": "CameraActor, D3DTS_VIEW, aspect ratio, navmesh, collision, server movement, packets, and authoritative actor coordinates are outside this correction investigation."
   },
@@ -134,7 +146,7 @@
       "callingConvention": "__thiscall",
       "signature": "float * __thiscall(void *source_result, float out[4])",
       "entryBytes": "55 8B EC 83 E4 F0 8B 49 2C 83 EC 10 85 C9 8D 04 24",
-      "behavior": "Reads source_result+0x2C. When non-null, 0x00AFA220 supplies the first four floats from an indexed 0x70-byte record; otherwise the default four-float record at 0x00FBF760 is used. Both paths write and return out. The concrete source_result type is unresolved.",
+      "behavior": "Receives the opaque object returned by Actor+0x18 slot 29 and reads its +0x2C pointer. In the normal static CharaActor construction path that object is a CharacterProxy and +0x2C is its RigidBody. When non-null, 0x00AFA220 supplies [X, Y, Z, 1] from the active indexed 0x70-byte record; otherwise the default record at 0x00FBF760 is used. Both paths write and return out.",
       "phase": "fallback transform-source sampling",
       "timing": "Called at 0x00A601C1 immediately before ModelObject slot 13."
     },
@@ -160,7 +172,7 @@
       "entryBytes": "55 8B EC 83 E4 F0 81 EC 0C 04 00 00 A1 B0 A8 2E",
       "behavior": "Copies sixteen float lanes to ModelObject+0x50..+0x8C, sets bit 0x10, then sets bits 0x01 and 0x02 in ModelObject+0x29C. Invalid inputs can replace the copied record with fallback globals.",
       "phase": "model transform publication",
-      "timing": "The local captured object never entered this address. The statically constructed RaptureModelObject and base ModelObject slot 26 resolve here, but the capture did not record the live vtable target."
+      "timing": "The follow-up capture resolved the live local slot-26 target to this address but observed zero local-player calls because the attached-source gate was inactive."
     },
     {
       "bcsId": "BCS-Y-2254",
@@ -172,7 +184,7 @@
       "entryBytes": "55 8B EC 83 E4 F0 83 EC 6C A1 B0 A8 2E 01 33 C4",
       "behavior": "Returns ModelObject+0x50 after conditionally rebuilding the record from ModelObject+0x30 and other ModelObject fields when dirty bit 0x01 is clear.",
       "phase": "model publication",
-      "timing": "Called by ModelObject slot 7 on the identified path."
+      "timing": "Called by ModelObject slot 7 after slot 13. The follow-up trace proved it rebuilt the cache and supplied the exact Drawable-setter record without introducing the held Y."
     },
     {
       "bcsId": "BCS-Y-2255",
@@ -233,6 +245,234 @@
       "behavior": "Updates only bit 0x04 at NamePlate+0x190.",
       "phase": "per-actor NamePlate visibility-state update",
       "timing": "Called immediately before slot 13 by 0x0058DF90; it is not a position producer."
+    },
+    {
+      "bcsId": "BCS-Y-2262",
+      "va": "0x007CD360",
+      "rva": "0x003CD360",
+      "name": "CharaActor slot 68 Rapture character-controller factory",
+      "callingConvention": "__thiscall",
+      "signature": "RaptureCharacterController * __thiscall(CharaActor *this)",
+      "entryBytes": "6A FF 68 5C B0 EA 00 64 A1 00 00 00 00 50 83 EC",
+      "behavior": "Destroys the prior Actor+0x18 object, constructs a 0x80-byte RaptureCharacterProxy through 0x007D4560, constructs a 0x14A0-byte RaptureCharacterController through 0x007D49F0, and stores the controller at Actor+0x18.",
+      "phase": "CharaActor controller construction",
+      "timing": "Construction only; no per-frame cadence."
+    },
+    {
+      "bcsId": "BCS-Y-2263",
+      "va": "0x007D4560",
+      "rva": "0x003D4560",
+      "name": "RaptureCharacterProxy constructor",
+      "callingConvention": "__thiscall",
+      "signature": "RaptureCharacterProxy * __thiscall(RaptureCharacterProxy *this, void *provider)",
+      "entryBytes": "55 8B EC 83 E4 F0 6A FF 68 05 B8 EA 00 64 A1 00",
+      "behavior": "Calls the base CharacterProxy constructor, then installs RaptureCharacterProxy vtable 0x00FEE210 and initializes Rapture-specific fields.",
+      "phase": "CharaActor controller construction",
+      "timing": "Construction only."
+    },
+    {
+      "bcsId": "BCS-Y-2264",
+      "va": "0x007D49F0",
+      "rva": "0x003D49F0",
+      "name": "RaptureCharacterController constructor",
+      "callingConvention": "__thiscall",
+      "signature": "RaptureCharacterController * __thiscall(RaptureCharacterController *this, CharaActor *actor, CharacterProxy *proxy)",
+      "entryBytes": "55 8B EC 83 E4 F0 6A FF 68 07 B9 EA 00 64 A1 00",
+      "behavior": "Calls 0x00A68CB0 with the Actor and supplied RaptureCharacterProxy, then installs RaptureCharacterController vtable 0x00FEE17C.",
+      "phase": "CharaActor controller construction",
+      "timing": "Construction only."
+    },
+    {
+      "bcsId": "BCS-Y-2265",
+      "va": "0x00A68CB0",
+      "rva": "0x00668CB0",
+      "name": "CharacterController base constructor",
+      "callingConvention": "__thiscall",
+      "signature": "CharacterController * __thiscall(CharacterController *this, Actor *actor, CharacterProxy *proxy)",
+      "entryBytes": "6A FF 68 43 CA ED 00 64 A1 00 00 00 00 50 64 89",
+      "behavior": "Installs CharacterController vtable 0x0109D924, stores the proxy at +0x04 and Actor at +0x08, initializes queued-operation state +0x0C and value +0x10, and stores the controller backlink at CharacterProxy+0x48.",
+      "phase": "controller construction",
+      "timing": "Construction only."
+    },
+    {
+      "bcsId": "BCS-Y-2266",
+      "va": "0x00A68000",
+      "rva": "0x00668000",
+      "name": "CharacterController slot 10 queued-position consumer",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharacterController *this)",
+      "entryBytes": "56 8B F1 8B 46 0C 83 E8 01 74 3C 83 E8 01 74 1E",
+      "behavior": "Dispatches CharacterController+0x0C state 1, 2, or 3 through slots 32, 33, or 34 with the four-float value at +0x10, then clears +0x0C. State zero performs no CharacterProxy or RigidBody update.",
+      "phase": "fallback transform-source preparation",
+      "timing": "The static fallback invokes Actor+0x18 slot 10 once per 0x00A5FF60 call. The bounded capture did not record the live slot-10 target or its queue state."
+    },
+    {
+      "bcsId": "BCS-Y-2278",
+      "va": "0x00A68060",
+      "rva": "0x00668060",
+      "name": "CharacterController slot 32 absolute-position dispatch",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharacterController *this, const float value[4])",
+      "entryBytes": "8B 49 04 8B 01 8B 40 04 FF E0",
+      "behavior": "Loads CharacterController+0x04 and tail-dispatches its slot 1 with the supplied four-float value.",
+      "phase": "queued absolute-position dispatch",
+      "timing": "Selected by slot 10 when CharacterController+0x0C is 1."
+    },
+    {
+      "bcsId": "BCS-Y-2279",
+      "va": "0x00A68070",
+      "rva": "0x00668070",
+      "name": "CharacterController slot 33 relative-position dispatch",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharacterController *this, const float delta[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 83 EC 2C 56 8B F1 8B 46 04 8B",
+      "behavior": "Reads the current four-float record through CharacterController+0x04+0x2C and 0x00AFA220, adds the supplied four lanes, then invokes CharacterController+0x04 slot 1 with the sum.",
+      "phase": "queued relative-position dispatch",
+      "timing": "Selected by slot 10 when CharacterController+0x0C is 2."
+    },
+    {
+      "bcsId": "BCS-Y-2280",
+      "va": "0x00A680D0",
+      "rva": "0x006680D0",
+      "name": "CharacterController slot 34 direct-position dispatch",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharacterController *this, const float value[4])",
+      "entryBytes": "8B 49 04 8B 01 8B 40 08 FF E0",
+      "behavior": "Loads CharacterController+0x04 and tail-dispatches its slot 2 with the supplied four-float value.",
+      "phase": "queued direct-position dispatch",
+      "timing": "Selected by slot 10 when CharacterController+0x0C is 3."
+    },
+    {
+      "bcsId": "BCS-Y-2267",
+      "va": "0x008D5570",
+      "rva": "0x004D5570",
+      "name": "CharacterController slot 29 CharacterProxy getter",
+      "callingConvention": "__thiscall",
+      "signature": "CharacterProxy * __thiscall(CharacterController *this)",
+      "entryBytes": "8B 41 04 C3",
+      "behavior": "Returns CharacterController+0x04. Both base and RaptureCharacterController vtables use this target for slot 29.",
+      "phase": "fallback transform-source access",
+      "timing": "Called immediately after slot 10 by 0x00A5FF60."
+    },
+    {
+      "bcsId": "BCS-Y-2268",
+      "va": "0x00AFA220",
+      "rva": "0x006FA220",
+      "name": "RigidBody indexed position reader",
+      "callingConvention": "__thiscall",
+      "signature": "float * __thiscall(RigidBody *this, float out[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 41 14 8B 49 10 6B C9 70 03",
+      "behavior": "Copies the first four floats from **(RigidBody+0x14) + (RigidBody+0x10 * 0x70) to out and returns out.",
+      "phase": "physics position access",
+      "timing": "No independent cadence; 0x00A61130 calls it after CharacterController slot 10."
+    },
+    {
+      "bcsId": "BCS-Y-2269",
+      "va": "0x00AFA070",
+      "rva": "0x006FA070",
+      "name": "RigidBody constructor and indexed-record allocator",
+      "callingConvention": "__thiscall",
+      "signature": "RigidBody * __thiscall(RigidBody *this, void *physics_owner)",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 45 08 83 EC 08 53 33 DB 56",
+      "behavior": "Installs RigidBody vtable 0x010A9878, obtains a pool index and base owner for a 0x70-byte record, initializes its first two four-float records and metadata, and stores the RigidBody backpointer at record+0x6C.",
+      "phase": "physics object construction",
+      "timing": "Allocation only."
+    },
+    {
+      "bcsId": "BCS-Y-2270",
+      "va": "0x00AFA160",
+      "rva": "0x006FA160",
+      "name": "RigidBody indexed position writer",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(RigidBody *this, const float value[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 45 08 0F 28 00 8B 41 10 8B",
+      "behavior": "Writes value lanes 0..2 to the first three floats of the active 0x70-byte record, writes the canonical fourth-lane constant, and clears record+0x64.",
+      "phase": "physics position publication",
+      "timing": "No timer or frame divider is present in this writer; callers determine cadence."
+    },
+    {
+      "bcsId": "BCS-Y-2271",
+      "va": "0x00A67F80",
+      "rva": "0x00667F80",
+      "name": "CharacterController slot 7 absolute-position queue",
+      "callingConvention": "__thiscall",
+      "signature": "float * __thiscall(CharacterController *this, float out[4], const float value[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 45 0C C7 41 0C 01 00 00 00",
+      "behavior": "Sets CharacterController+0x0C to 1, copies value to +0x10, and returns a copy through out.",
+      "phase": "position queueing",
+      "timing": "Producer cadence is not statically established."
+    },
+    {
+      "bcsId": "BCS-Y-2272",
+      "va": "0x00A67FB0",
+      "rva": "0x00667FB0",
+      "name": "CharacterController slot 8 relative-position queue",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharacterController *this, const float value[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 45 08 C7 41 0C 02 00 00 00",
+      "behavior": "Sets CharacterController+0x0C to 2 and copies the relative four-float value to +0x10.",
+      "phase": "position queueing",
+      "timing": "Producer cadence is not statically established."
+    },
+    {
+      "bcsId": "BCS-Y-2273",
+      "va": "0x00A67FD0",
+      "rva": "0x00667FD0",
+      "name": "CharacterController slot 9 direct-position queue",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharacterController *this, const float value[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 45 08 C7 41 0C 03 00 00 00",
+      "behavior": "Sets CharacterController+0x0C to 3, copies value to +0x10, and immediately invokes slot 10.",
+      "phase": "position queueing and immediate consumption",
+      "timing": "Producer cadence is not statically established."
+    },
+    {
+      "bcsId": "BCS-Y-2274",
+      "va": "0x007D8080",
+      "rva": "0x003D8080",
+      "name": "RaptureCharacterProxy slot 1 position update",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(RaptureCharacterProxy *this, const float value[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 83 EC 48 A1 B0 A8 2E 01 33 C4",
+      "behavior": "When CharacterProxy+0x2C is non-null, conditionally calls opaque helpers 0x007D77E0 and 0x007D79C0, calls 0x00AFA160 on that RigidBody, and snapshots the resulting four-float record at RaptureCharacterProxy+0x70.",
+      "phase": "Rapture physics-position update",
+      "timing": "Reached from queued states 1 and 2 through CharacterController slots 32 and 33."
+    },
+    {
+      "bcsId": "BCS-Y-2275",
+      "va": "0x007D8E90",
+      "rva": "0x003D8E90",
+      "name": "CharacterProxy slot 2 direct position update",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(CharacterProxy *this, const float value[4])",
+      "entryBytes": "8B 49 2C 85 C9 74 05 E9 C4 12 32 00 C2 04 00",
+      "behavior": "If CharacterProxy+0x2C is non-null, tail-calls 0x00AFA160 with the supplied value; otherwise returns with ret 4.",
+      "phase": "direct physics-position update",
+      "timing": "Reached from queued state 3 through CharacterController slot 34."
+    },
+    {
+      "bcsId": "BCS-Y-2276",
+      "va": "0x00A5F810",
+      "rva": "0x0065F810",
+      "name": "SceneObject::Actor slot 32 position publication",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(Actor *this, const float value[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 83 EC 2C 8B 45 08 0F 28 00 56",
+      "behavior": "Copies the input, sends it through Actor+0x18 slot 7 when present, then forwards the returned value to ModelObject slot 16. On the known vtables these targets are 0x00A67F80 and 0x008DDAB0, so queueing precedes the shared ModelObject+0x30 write.",
+      "phase": "Actor position publication",
+      "timing": "The local runtime caller and cadence are not established."
+    },
+    {
+      "bcsId": "BCS-Y-2277",
+      "va": "0x008DDAB0",
+      "rva": "0x004DDAB0",
+      "name": "ModelObject slot 16 position-record setter",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(ModelObject *this, const float value[4])",
+      "entryBytes": "55 8B EC 83 E4 F0 8B 45 08 0F 28 00 0F 29 41 30",
+      "behavior": "Copies four lanes to ModelObject+0x30..+0x3C and updates the ModelObject+0x29C cache state.",
+      "phase": "shared model position publication",
+      "timing": "The local runtime caller and cadence are not established."
     }
   ],
   "objectTypes": [
@@ -256,6 +496,41 @@
         "26": "0x008DEC70"
       },
       "behavior": "Calls base ModelObject constructor 0x00A62CA0 and installs vtable 0x010653A4. Slots 7, 13, 25, and 26 match the base ModelObject implementations."
+    },
+    {
+      "owner": "Application::Scene::Controllers::RaptureCharacterController",
+      "vtableVa": "0x00FEE17C",
+      "constructorVa": "0x007D49F0",
+      "constructorRva": "0x003D49F0",
+      "slots": {
+        "7": "0x00A67F80",
+        "8": "0x00A67FB0",
+        "9": "0x00A67FD0",
+        "10": "0x00A68000",
+        "29": "0x008D5570",
+        "32": "0x00A68060",
+        "33": "0x00A68070",
+        "34": "0x00A680D0"
+      },
+      "behavior": "The CharaActor slot-68 construction path stores this object at Actor+0x18 and supplies a RaptureCharacterProxy at controller+0x04. Slots 7 through 34 listed here match the base CharacterController targets."
+    },
+    {
+      "owner": "Application::Scene::Controllers::RaptureCharacterProxy",
+      "vtableVa": "0x00FEE210",
+      "constructorVa": "0x007D4560",
+      "constructorRva": "0x003D4560",
+      "slots": {
+        "1": "0x007D8080",
+        "2": "0x007D8E90"
+      },
+      "behavior": "Stored at RaptureCharacterController+0x04 by the normal CharaActor construction path. Slot 1 conditionally invokes two opaque helpers before updating the owned RigidBody position; slot 2 directly forwards a position to the same RigidBody writer."
+    },
+    {
+      "owner": "SQEX::CDev::Engine::Phieg::RigidDynamics::RigidBody",
+      "vtableVa": "0x010A9878",
+      "constructorVa": "0x00AFA070",
+      "constructorRva": "0x006FA070",
+      "behavior": "The RaptureCharacterProxy owns a pointer to this 0x48-byte object at +0x2C. The object indexes a separate pool of 0x70-byte records."
     }
   ],
   "objectFields": [
@@ -278,7 +553,84 @@
       "offset": "0x18",
       "size": "0x04",
       "classification": "proven",
-      "meaning": "fallback transform-source pointer created through Actor slot 67 at 0x00A5FB90; concrete type and runtime installation timing unresolved"
+      "meaning": "fallback CharacterController pointer; the normal CharaActor slot-68 path at 0x007CD360 installs a RaptureCharacterController, while the bounded capture proved the local pointer was non-null but did not record its vtable"
+    },
+    {
+      "owner": "CharacterController",
+      "offset": "0x04",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "CharacterProxy pointer returned by slot 29"
+    },
+    {
+      "owner": "CharacterController",
+      "offset": "0x08",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "owning Actor pointer"
+    },
+    {
+      "owner": "CharacterController",
+      "offset": "0x0C",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "pending position-operation selector: 0 none, 1 absolute, 2 relative, or 3 direct; slot 10 clears it after dispatch"
+    },
+    {
+      "owner": "CharacterController",
+      "offset": "0x10",
+      "size": "0x10",
+      "classification": "proven",
+      "meaning": "four-float value consumed according to the +0x0C selector"
+    },
+    {
+      "owner": "CharacterProxy",
+      "offset": "0x2C",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "RigidBody pointer read by 0x00A61130 and used by CharacterProxy position-update methods"
+    },
+    {
+      "owner": "CharacterProxy",
+      "offset": "0x48",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "CharacterController backlink"
+    },
+    {
+      "owner": "RigidBody",
+      "offset": "0x10",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "index into the owner's 0x70-byte record pool"
+    },
+    {
+      "owner": "RigidBody",
+      "offset": "0x14",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "pointer to the current base pointer for the 0x70-byte record pool"
+    },
+    {
+      "owner": "RigidBody indexed 0x70-byte record",
+      "offset": "0x00",
+      "size": "0x10",
+      "classification": "proven",
+      "meaning": "current [X, Y, Z, 1] position record read by 0x00AFA220 and written by 0x00AFA160"
+    },
+    {
+      "owner": "RigidBody indexed 0x70-byte record",
+      "offset": "0x64",
+      "size": "0x02",
+      "classification": "proven",
+      "meaning": "word cleared by each 0x00AFA160 position write; broader semantics unresolved"
+    },
+    {
+      "owner": "RigidBody indexed 0x70-byte record",
+      "offset": "0x6C",
+      "size": "0x04",
+      "classification": "proven",
+      "meaning": "RigidBody backpointer initialized by 0x00AFA070"
     },
     {
       "owner": "ModelObject",
@@ -349,23 +701,31 @@
     "proven": [
       "Actor+0x0C owns the ModelObject used by both CharaActor slot 34 and UPDATE_MODEL_TRANSFORM.",
       "CharaActor slot 34 returns the [X, Y, Z, 1] record at ModelObject+0x30 to the controlled-actor tick.",
-      "The RaptureModelObject installed by the normal CharaActor factory chain uses the base targets for slots 7, 13, 25, and 26; the capture did not record the live local ModelObject vtable.",
-      "The two attached-source branches in 0x00A5FF60 necessarily call slot 26. The local trace observed no 0x008DEC70 hit, making the fallback branch beginning at 0x00A60195 the smallest identified candidate without excluding an unobserved live override.",
-      "That fallback samples Actor+0x18 through slots 10 and 29, converts the returned object through 0x00A61130, calls ModelObject slot 13 at 0x00A601CD, and calls slot 7 at 0x00A601DD. The concrete live targets require one filtered record.",
+      "The live local ModelObject vtable was 0x010653A4. Its slots 7, 13, 25, and 26 resolved to 0x00A61620, 0x008DE970, 0x008DE790, and 0x008DEC70.",
+      "Actor+0x48 was non-null but its +0x20 member was null, so the local 0x00A5FF60 callback took the Actor+0x18 fallback and never called slot 26.",
+      "The normal CharaActor slot-68 path constructs a RaptureCharacterProxy and a RaptureCharacterController, stores the proxy at controller+0x04, and stores the controller at Actor+0x18. The bounded capture did not record the live controller vtable, but both known base and Rapture controller vtables use 0x00A68000 for slot 10 and 0x008D5570 for slot 29.",
+      "On both statically known controller vtables, slot 10 dispatches the queued operation selected by controller+0x0C and clears the selector. Slot 29 returns controller+0x04; in the normal static construction path this is the CharacterProxy supplied to 0x00A61130.",
+      "0x00A61130 reads +0x2C from the opaque slot-29 result and copies its active indexed position record through 0x00AFA220. Static construction identifies this as CharacterProxy+0x2C RigidBody, but the live vtables were not captured. The reader contains no previous/current selection, interpolation, or cadence gate.",
+      "The active record address is **(RigidBody+0x14) + (RigidBody+0x10 * 0x70). Direct writer 0x00AFA160 updates [X, Y, Z, 1] at record+0x00 and clears record+0x64.",
+      "For the statically constructed RaptureCharacterProxy vtable, queued states 1 and 2 reach slot 1 at 0x007D8080 and queued state 3 reaches slot 2 at 0x007D8E90. Both paths can call 0x00AFA160; state zero writes nothing and preserves the prior RigidBody position.",
+      "Actor slot 32 at 0x00A5F810 queues an absolute value through controller slot 7 before ModelObject slot 16 at 0x008DDAB0 writes the same four lanes to ModelObject+0x30. This is the earliest static path that establishes both copies, but it does not prove the local runtime writer or when slot 10 consumes the queue.",
       "Static slot 13 writes shared ModelObject+0x30 and either invalidates the cached transform for slot-25 rebuild or mirrors the four-float record directly to four lanes at +0x80..+0x8C.",
       "When its drawable and dirty-bit guards pass, ModelObject slot 7 obtains the cached record, optionally transforms it under bit 0x10, and copies the resulting record to drawable+0x30..+0x6C through 0x00BB7550.",
-      "The bounded trace places the disproportionate 60 FPS Y hold between the earlier ModelObject+0x30 sample and the cached/drawable publication inside 0x00A5FF60."
+      "On every observed hold frame, the old Y was already present in the slot-13 input. Therefore the hold is introduced before 0x00A61130 returns, not by ModelObject slot 13, slot 25, or drawable publication."
     ],
     "unresolved": [
-      "The completed trace did not record the local ModelObject vtable or hook 0x008DE970/0x008DE790, so it cannot yet confirm the concrete slot-13/slot-25 targets or distinguish their cache writes.",
-      "The concrete type and ownership of the Actor+0x18 slot-29 result and its +0x2C indexed-record owner remain unresolved.",
+      "The capture did not record the live Actor+0x18 or CharacterProxy vtables, although the normal CharaActor construction path and both known controller variants agree on slots 10 and 29.",
+      "Static evidence cannot determine whether CharacterController+0x0C is zero on held frames, which queue setter supplied each changing frame, or whether another CharacterProxy/RigidBody writer ran between the queue and 0x00A5FF60.",
+      "No static timer or frame divider was found in slot 10, 0x00A61130, 0x00AFA220, or 0x00AFA160. The approximately 30 Hz producer cadence is a runtime question, not a promoted static fact.",
+      "Fields outside record+0x00..+0x0F, +0x64..+0x65, and +0x6C..+0x6F do not have proven previous/current, target/current, keyframe, accumulator, or timing semantics.",
+      "The indexed record has statically identified physics readers and writers. No direct packet, gameplay-authority, collision-response, or NamePlate consumer is established by the retained evidence.",
       "The trace matched register-0/count-16 player-draw tasks to previously published drawable state, but the exact task object and static data-flow edge remain unresolved."
     ]
   },
   "namePlateFlow": {
     "classification": "position-owner-unresolved",
-    "proven": "CharaElement per-actor tick 0x0058DF90 invokes slot 19 and then slot 13 on the inline NamePlate subobject at CharaElement+0xBA0. Slot 19 at 0x006A2A60 only updates bit 0x04 at NamePlate+0x190. Slot 13 synchronizes presentation state and index-1 RGBA color; the captured +0x78/+0x98 records remained constant during movement. The two calls after slot 13 are not position writers: 0x00796D50 synchronizes two UI extents and 0x00797FE0 updates a countdown popup. NamePlate is not a Sqwt FrameworkElement; +0x194 is an opaque pointer used by UI helpers.",
-    "unresolved": "No static edge identifies which object stores or publishes the moving screen-space anchor. The +0x78/+0x98 color records are excluded, but slot 13 still reaches indirect helpers 0x006A2D50 and 0x006A2E90 whose downstream writes have not been fully resolved. NamePlate+0x194 ownership and relevance are also unresolved."
+    "proven": "CharaElement per-actor tick 0x0058DF90 invokes slot 19 and then slot 13 on the inline NamePlate subobject at CharaElement+0xBA0. Slot 19 at 0x006A2A60 only updates bit 0x04 at NamePlate+0x190. Slot 13 synchronizes presentation state and index-1 RGBA color; the captured +0x78/+0x98 records remained constant during movement. After slot 13, 0x00796D50 reads and copies two opaque records and calls 0x00923FE0, while 0x00797FE0 updates a countdown popup. NamePlate is not a Sqwt FrameworkElement; +0x194 is an opaque pointer used by UI helpers.",
+    "unresolved": "No static edge identifies which object stores or publishes the moving screen-space anchor. The +0x78/+0x98 color records are excluded, but slot 13 still reaches indirect helpers 0x006A2D50 and 0x006A2E90 whose downstream writes have not been fully resolved. The presentation effect of 0x00796D50, plus NamePlate+0x194 ownership and relevance, remains unresolved."
   },
   "shaderBoundary": {
     "known": "The exact SetVertexShaderConstantF task remains 0x00435200 with task fields +0x04 start register, +0x08 vector4 count, and +0x0C float-data pointer as recorded in manifests/shader_camera_boundary.json. Runtime exact matching found three start-register-0/count-16 tasks on observed player-draw frames consuming a previously published drawable transform.",
@@ -374,16 +734,18 @@
   "runtimeProbe": {
     "classification": "bounded-follow-up-only",
     "records": [
-      "At 0x00A5FF60 entry, filter Actor+0x0C to the identified local ModelObject. Record Present ordinal, thread id, Actor+0x0C, +0x18, +0x48, the nested pointer at (Actor+0x48)+0x20 when readable, ModelObject[0], and the live targets at vtable slots 13, 25, and 26. One record is sufficient unless these gates or the vtable change.",
-      "At the recorded live slot-13 target (expected 0x008DE970), filter ECX to the local ModelObject. Record Present ordinal, thread id, return address, the four floats at [ESP+4], ModelObject+0x30..+0x3C, +0x50..+0x8C, and flag byte +0x29C at entry and return.",
-      "At the recorded live slot-25 target (expected 0x008DE790), filter ECX to the local ModelObject. Record Present ordinal, thread id, return address, ModelObject+0x30..+0x3C, +0x50..+0x8C, and flag byte +0x29C at entry and return. Hook the recorded live slot-26 target with the same local-object filter, including when it is 0x008DEC70, and record its return address, sixteen input lanes, ModelObject+0x50..+0x8C, and flag byte +0x29C at entry and return. One short 60 FPS slope segment is sufficient for all three filtered hooks."
+      "At 0x00A5FF60 entry, identify the local Actor dynamically by comparing Actor+0x0C ModelObject+0x30 against the simultaneous player-state snapshot, using the same match method as the retained capture; persist that Actor and ModelObject only for this run. Record Present ordinal, thread id, Actor+0x18, *(Actor+0x18), controller+0x0C, +0x10..+0x1C, controller+0x04, *(controller+0x04), and ModelObject+0x30..+0x3C.",
+      "At 0x00A68000 entry and return, filter ECX to the Actor+0x18 value recorded above. Record Present ordinal, return address, +0x0C, +0x10..+0x1C, controller+0x04, and the candidate +0x2C active record before and after the call.",
+      "At 0x00A61130 entry, require the enclosing local 0x00A5FF60 call and record Present ordinal, thread id, ECX, *(ECX), [ESP+4], ECX+0x2C, and the active [X,Y,Z,1] record. Use this observed ECX as the slot-29 result and this observed +0x2C value as the writer filter; do not derive either from controller+0x04.",
+      "At 0x007D8080 and 0x007D8E90 entry, filter ECX to the controller+0x04 candidate recorded at the enclosing local 0x00A5FF60 entry and set a per-thread dispatch marker. Record Present ordinal, target VA, caller return address, and input lanes; retain the event only when the later 0x00A61130 ECX for that callback matches the candidate. Consume and clear the marker at the first matching 0x00AFA160 entry; clear it unconsumed on the ordinary wrapper return or the 0x007D8E90 null-RigidBody return. This lets the marker survive the 0x007D8E90 tail jump without leaking to a later write.",
+      "At 0x00AFA160 entry, filter ECX to the +0x2C value observed at 0x00A61130. Record Present ordinal, thread id, return address, the consumed proxy dispatch marker, the four input lanes at [ESP+4], and the active record before the call; retain a separate per-call hook context to record the same record after return. A single short 60 FPS slope traversal is sufficient."
     ],
-    "successCriteria": "The records must confirm the local concrete targets, identify whether slot 13, slot 25, or slot 26 writes each held cache value, and capture the source lanes. A correction seam still requires proof that its output is render-only and cannot feed ModelObject+0x30, actor state, collision, packets, or gameplay. No exact NamePlate runtime probe is specified because static analysis has not yet identified a destination field, write width, or source operand; that is the precise remaining static gap.",
-    "currentBestSeam": "No correction seam is proven. Static 0x008DE970 writes ModelObject+0x30 and therefore crosses shared actor/model state; 0x008DE790 can also rebuild the cache. 0x00BB7550 is downstream, but drawable-only ownership and the nameplate consumer are not proven."
+    "successCriteria": "On each of the already defined source-change/publication-hold frames, establish the live controller and returned-object vtables, determine whether controller+0x0C was zero, whether slot 10 changed the indexed record, and which exact 0x00AFA160 caller or marked tail-dispatch last wrote that record. This distinguishes an unqueued hold from an opaque-helper-mediated write or an earlier consumer without a broad trace.",
+    "currentBestSeam": "No correction seam is proven. The normal static CharacterController, CharacterProxy, and RigidBody path is shared scene/physics state, and live ModelObject slot 13 overwrites the shared ModelObject+0x30 record. Drawable publication remains downstream, but absence of feedback and the moving NamePlate consumer are not proven."
   },
   "ownershipBoundary": {
-    "authoritative": "ModelObject+0x30 is read by the controlled-actor path and is overwritten by static slot 13 at 0x008DE970, so that target cannot be classified as render-only if the live vtable confirms it. This evidence does not authorize changing actor, collision, packet, server, or gameplay state.",
+    "authoritative": "The live slot-13 target 0x008DE970 overwrites ModelObject+0x30, which the controlled-actor path samples. In the normal static construction path, its upstream record is CharacterProxy+0x2C RigidBody state consumed and written by physics methods; the live type chain remains to be captured. Neither proven boundary is render-only, and this evidence does not authorize changing actor, collision, packet, server, or gameplay state.",
     "renderCandidate": "Drawable+0x30..+0x6C is downstream of ModelObject publication and feeds later draw tasks, but negative feedback into shared state and the moving NamePlate consumer are not proven.",
-    "launcherDisposition": "Do not implement interpolation. The launcher may run only the two exact bounded follow-up records above."
+    "launcherDisposition": "Do not implement interpolation. If further runtime work is authorized, limit it to the five exact filtered observations above."
   }
 }
