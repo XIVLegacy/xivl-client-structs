@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2227,
+  "symbolCount": 2235,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -9531,25 +9531,29 @@
       "id": "BCS-Y-0830"
     },
     {
-      "name": "AsyncEvent_Producer_CameraElement_op13_FUN_0061B5A0",
+      "name": "Application_Scene_Actor_System_CameraActor_constructor_FUN_0061B5A0",
       "kind": "function",
       "address": "0x0061B5A0",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/async_producers_catalog.json"
+        "manifests/async_producers_catalog.json",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Third producer for CameraElement opcode 0x13",
+      "notes": "[Tier C559 2026-09-13] Exact 0x490-byte CameraActor constructor. It writes vftable 0x00FB906C and installs eleven camera-mode contexts. It also emits CameraElement async opcode 0x13; that side effect does not define the function's owner.",
       "id": "BCS-Y-0831"
     },
     {
-      "name": "AsyncEvent_Producer_CameraElement_op13and2E_FUN_006195D0",
+      "name": "Application_Scene_Actor_System_CameraActor_update_FUN_006195D0",
       "kind": "function",
       "address": "0x006195D0",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/async_producers_catalog.json"
+        "manifests/async_producers_catalog.json",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Multi-opcode producer for CameraElement slot-8 opcodes 0x13 and 0x2E via FUN_007CE7B0 (fires both)",
+      "notes": "[Tier C559 2026-09-13] CameraActor update called by UPDATE_CAMERA_RAPTURE. It dispatches the active mode context, runs [[BCS-Y-0851]], and writes the sixteen-dword record at CameraActor+0x370. It also emits CameraElement async opcodes 0x13 and 0x2E. Render cadence and a shader consumer remain unresolved.",
       "id": "BCS-Y-0832"
     },
     {
@@ -9752,14 +9756,16 @@
       "id": "BCS-Y-0850"
     },
     {
-      "name": "AsyncEvent_Producer_SqwtElement_op2A_FUN_00617A80",
+      "name": "Application_Scene_Actor_System_CameraActor_build_derived_transforms_FUN_00617A80",
       "kind": "function",
       "address": "0x00617A80",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/async_producers_catalog.json"
+        "manifests/async_producers_catalog.json",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Fires SqwtElement slot-8 opcode 0x2A via FUN_007CE7B0. The element-vtable8-bulk pass maps 0x2A to Sqwt::RoutedEventArgs construction + UI event routing - the producer must be a UI event source",
+      "notes": "[Tier C559 2026-09-13] CameraActor derived-transform builder. It reads the +0x310/+0x320 endpoint records and writes sixteen-float records at +0x210, +0x250, and +0x2D0 plus a scalar at +0x420 before calling through a singleton returned by FUN_00B8E7D0. The singleton owner is unresolved; no shader register or final render consumer is established. It also emits SqwtElement async opcode 0x2A.",
       "id": "BCS-Y-0851"
     },
     {
@@ -27528,6 +27534,105 @@
       ],
       "notes": "[Tier C548 2026-09-06] DesktopWidget _chat N-API registration owner. It passes code label 0x006DE7D0 to the generic member binder and registers the literal _chat through FUN_00CCCAD0. Direct pinned-PE inspection identifies the label as a virtual thunk through byte offset 0x10C; MyPlayer vtable 0x00FD785C resolves that slot to [[BCS-Y-2016]]. The paired cancellation contract and its runtime evidence boundary are recorded in the source manifest.",
       "id": "BCS-Y-2240"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_vftable",
+      "kind": "rtti",
+      "address": "0x00FB906C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] RTTI-confirmed CameraActor vftable with 164 executable slots.",
+      "id": "BCS-Y-2241"
+    },
+    {
+      "name": "Application_Scene_UPDATE_CAMERA_RAPTURE_callback_FUN_004E8B50",
+      "kind": "function",
+      "address": "0x004E8B50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] Callback registered under UPDATE_CAMERA_RAPTURE by FUN_004EA870. It retrieves the shared scene object and conditionally calls [[BCS-Y-0832]]. Callback ordering and render-frame cadence remain unresolved.",
+      "id": "BCS-Y-2242"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_FPS_context_update_FUN_007F31A0",
+      "kind": "function",
+      "address": "0x007F31A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] FPS camera-context vtable slot 1. This __thiscall-shaped update consumes a float delta and writes CameraActor+0x330..+0x34C.",
+      "id": "BCS-Y-2243"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_TPS_context_update_FUN_007F3BA0",
+      "kind": "function",
+      "address": "0x007F3BA0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] TPS camera-context vtable slot 1. This __thiscall-shaped update consumes a float delta, reads the followed actor, performs collision and smoothing work, and writes CameraActor+0x330..+0x34C.",
+      "id": "BCS-Y-2244"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_get_endpoint0_FUN_0060E7B0",
+      "kind": "function",
+      "address": "0x0060E7B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] CameraActor vtable slot 34. Copies exactly four dwords from CameraActor+0x310..+0x31C to the caller output; this is a 0x10-byte endpoint record, not a 4x4 matrix.",
+      "id": "BCS-Y-2245"
+    },
+    {
+      "name": "Shader_indexed_parameter_submit_FUN_00419020",
+      "kind": "function",
+      "address": "0x00419020",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] Indexed shader-parameter submission primitive. It passes a pointer through FUN_00419B60 and submits it with count 4 through [[BCS-Y-2247]]. The pointed-to type, count unit, index meaning, matrix interpretation, and camera provenance remain unresolved.",
+      "id": "BCS-Y-2246"
+    },
+    {
+      "name": "Shader_parameter_conditional_submit_FUN_00422F90",
+      "kind": "function",
+      "address": "0x00422F90",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] Conditional shader-parameter submission wrapper. It invokes the selected parameter object's unresolved virtual setter only when unresolved FUN_00423A40 returns zero. C559 does not join that indirect target to the SetVertexShaderConstantF task family or identify a register or camera owner.",
+      "id": "BCS-Y-2247"
+    },
+    {
+      "name": "Shader_submit_global_parameter_blocks_FUN_00419240",
+      "kind": "function",
+      "address": "0x00419240",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559 2026-09-13] On an anonymous selection change, submits three globals at 0x01328FF4, 0x01329034, and 0x01329074 with count 4 through [[BCS-Y-2247]]. The owning shader class, count unit, value semantics, matrix interpretation, and camera provenance remain unresolved.",
+      "id": "BCS-Y-2248"
     }
   ]
 }

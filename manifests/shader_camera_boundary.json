@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "generated": "2026-09-13",
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "1.23b",
+    "build": "2012.09.19.0001",
+    "imageBase": "0x00400000",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "scope": "Static camera-update and D3D9 vertex-shader-constant boundary relevant to 60 FPS slope-motion stepping.",
+  "method": {
+    "cameraAndRenderDumpScript": "ghidra/DumpVAs.java",
+    "cameraAndRenderDumpInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c559_shader-camera-boundary.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x004EA870,0x004E8B50,0x006195D0,0x00617A80,0x007F31A0,0x007F3BA0,0x0060E7B0,0x0061A6C0,0x0061B5A0,0x0079F7E0,0x00620A80,0x00620B60,0x00620C40,0x00620D00,0x00B8E7D0,0x00B4FBF0,0x004337E0,0x00433870,0x00436BC0,0x00436C50,0x00419020,0x00419240,0x00422F90,0x00C48AB0,0x00C28B80' } -ScriptPath @('ghidra')",
+    "pinnedPeAuditScript": "tools/audit_shader_constant_task.py",
+    "pinnedPeAuditInvocation": "python tools\\audit_shader_constant_task.py --binary <path-to-pinned-ffxivgame.exe>",
+    "pinnedPeAuditInput": "ffxivgame.exe SHA-256 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "existingRttiEvidence": {
+      "script": "tools/ghidra/ExtractRtti.java",
+      "invocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script ExtractRtti.java -ReadOnly -ScriptEnv @{ XIVL_RTTI_OUT='tools\\ghidra\\logs\\c314_async-queue-rtti.txt' } -ScriptPath @('ghidra')",
+      "inputs": "Full MSVC RTTI index from ffxivgame.exe SHA-256 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9; relevant exact mangled names are .?AVCameraActor@System@Actor@Scene@Application@@, .?AVCameraActorContextFPS@System@Actor@Scene@Application@@, and .?AVCameraActorContextTPS@System@Actor@Scene@Application@@."
+    },
+    "existingCallbackEvidence": "tools/ghidra/logs/c405_scene-callback-records.txt; its producing invocation is retained in manifests/structs.json C405 provenance."
+  },
+  "verdict": {
+    "classification": "INSUFFICIENT-DATA",
+    "claim": "No safe render-only launcher seam is established. The CameraActor update path and the D3D9 SetVertexShaderConstantF task are independently identified, but no verified data-flow edge joins a CameraActor transform to a shader register, and the update callback's cadence and order relative to each rendered frame remain unproved."
+  },
+  "runtimeObservations": {
+    "provenance": "Maintainer-reported retail and launcher observations from 2026-09-13; the local video is not repository evidence.",
+    "facts": [
+      "At the 60 FPS limit, player height, nameplate height, and camera motion advance in visible held steps on slopes; the retail 30 FPS limit removes the visible stepping.",
+      "Present cadence is near 60 Hz while player-position changes have a median gap of two rendered frames.",
+      "Removing the launcher player-state hook and both deployed Gridania navmeshes did not change the behavior.",
+      "The inspected retail collision is smooth at the route.",
+      "A 12000-frame D3D9 trace read D3DTS_VIEW before overlay drawing and observed the identity matrix throughout the active route."
+    ],
+    "consequence": "The identity trace plus visible scene-camera motion supports the inference that this route is shader-driven; it does not establish the shader data-flow path. A Present-time or fixed-function D3DTS_VIEW patch is outside the supported seam."
+  },
+  "cameraActor": {
+    "class": "Application::Scene::Actor::System::CameraActor",
+    "vftable": {
+      "va": "0x00FB906C",
+      "rva": "0x00BB906C",
+      "slots": 164
+    },
+    "allocationSize": "0x490",
+    "constructor": {
+      "bcsId": "BCS-Y-0831",
+      "va": "0x0061B5A0",
+      "rva": "0x0021B5A0",
+      "signature": "CameraActor * __thiscall(CameraActor *this, uint32_t arg1, int32_t arg2, uint32_t arg3, uint32_t *arg4)",
+      "evidence": "FUN_0079F7E0 allocates 0x490 bytes and calls this function; the function writes the CameraActor vftable and installs eleven camera-mode contexts."
+    },
+    "fields": [
+      {
+        "offset": "0x1B0",
+        "size": "unknown",
+        "name": "mode_context_registry",
+        "classification": "supported",
+        "notes": "FUN_006222B0 resolves registered context keys from this CameraActor region. The complete member layout is not established."
+      },
+      {
+        "offset": "0x210",
+        "size": "0x40",
+        "name": "derived_transform_210",
+        "classification": "proven",
+        "notes": "FUN_00617A80 writes sixteen float lanes. Final renderer meaning is unresolved."
+      },
+      {
+        "offset": "0x250",
+        "size": "0x40",
+        "name": "derived_transform_250",
+        "classification": "proven",
+        "notes": "FUN_00617A80 writes sixteen float lanes. Final renderer meaning is unresolved."
+      },
+      {
+        "offset": "0x2D0",
+        "size": "0x40",
+        "name": "derived_transform_2d0",
+        "classification": "proven",
+        "notes": "FUN_00617A80 writes sixteen float lanes. Final renderer meaning is unresolved."
+      },
+      {
+        "offset": "0x310",
+        "size": "0x10",
+        "name": "working_endpoint_0",
+        "classification": "proven",
+        "notes": "Four-dword record read by FUN_00617A80. CameraActor vfunc 34 at 0x0060E7B0 copies exactly this 0x10-byte record, not a 4x4 matrix."
+      },
+      {
+        "offset": "0x320",
+        "size": "0x10",
+        "name": "working_endpoint_1",
+        "classification": "proven",
+        "notes": "Four-dword record paired with +0x310 by FUN_00617A80."
+      },
+      {
+        "offset": "0x330",
+        "size": "0x10",
+        "name": "context_endpoint_0",
+        "classification": "proven",
+        "notes": "Written by the active first-person and third-person context update implementations."
+      },
+      {
+        "offset": "0x340",
+        "size": "0x10",
+        "name": "context_endpoint_1",
+        "classification": "proven",
+        "notes": "Written by the active first-person and third-person context update implementations."
+      },
+      {
+        "offset": "0x370",
+        "size": "0x40",
+        "name": "derived_transform_370",
+        "classification": "proven",
+        "notes": "FUN_006195D0 writes a sixteen-dword transformed record obtained through the object at +0x114. No shader consumer is established."
+      },
+      {
+        "offset": "0x420",
+        "size": "0x04",
+        "name": "derived_bearing",
+        "classification": "supported",
+        "notes": "FUN_00617A80 writes the scalar derived from the two working endpoints and passes this field to the active context slot at vtable offset +0x14."
+      },
+      {
+        "offset": "0x434",
+        "size": "0x04",
+        "name": "active_context_key",
+        "classification": "proven",
+        "notes": "Selects the registered camera-mode context."
+      },
+      {
+        "offset": "0x440",
+        "size": "0x04",
+        "name": "target_actor_id",
+        "classification": "supported",
+        "notes": "Used to resolve a scene actor; 0xC0000000 selects the fallback actor path."
+      },
+      {
+        "offset": "0x448",
+        "size": "0x01",
+        "name": "camera_flags",
+        "classification": "proven",
+        "notes": "Bit-tested by the update and transform paths. Individual bit semantics are only partly resolved."
+      }
+    ]
+  },
+  "updatePath": {
+    "registration": {
+      "va": "0x004EA870",
+      "rva": "0x000EA870",
+      "behavior": "Registers the UPDATE_CAMERA_RAPTURE callback separately from the Rapture draw callbacks."
+    },
+    "callback": {
+      "bcsId": "BCS-Y-2242",
+      "va": "0x004E8B50",
+      "rva": "0x000E8B50",
+      "signature": "void callback(void)",
+      "behavior": "Retrieves the shared scene object and conditionally calls FUN_00617330 and CameraActor update FUN_006195D0."
+    },
+    "cameraUpdate": {
+      "bcsId": "BCS-Y-0832",
+      "va": "0x006195D0",
+      "rva": "0x002195D0",
+      "signature": "void __thiscall(CameraActor *this, int32_t *delta_source)",
+      "behavior": "Dispatches the active mode context, runs FUN_00617A80, and writes the +0x370 sixteen-dword derived transform. Its only listed direct caller is the UPDATE_CAMERA_RAPTURE callback."
+    },
+    "derivedTransformBuilder": {
+      "bcsId": "BCS-Y-0851",
+      "va": "0x00617A80",
+      "rva": "0x00217A80",
+      "signature": "void __thiscall(CameraActor *this, float delta)",
+      "behavior": "Reads the working endpoints and writes the +0x210, +0x250, and +0x2D0 sixteen-float records and +0x420 scalar before calling through a singleton returned by FUN_00B8E7D0.",
+      "limit": "The retained evidence does not identify that singleton or establish a graphics-renderer edge."
+    },
+    "firstPersonContextUpdate": {
+      "bcsId": "BCS-Y-2243",
+      "va": "0x007F31A0",
+      "rva": "0x003F31A0",
+      "vftable": "0x00FF101C",
+      "slot": 1,
+      "signature": "void __thiscall(FPSContext *this, CameraActor *camera, float delta)",
+      "behavior": "Uses the supplied delta and writes CameraActor +0x330..+0x34C."
+    },
+    "thirdPersonContextUpdate": {
+      "bcsId": "BCS-Y-2244",
+      "va": "0x007F3BA0",
+      "rva": "0x003F3BA0",
+      "vftable": "0x00FF10BC",
+      "slot": 1,
+      "signature": "void __thiscall(TPSContext *this, CameraActor *camera, float delta)",
+      "behavior": "Reads the followed actor, performs collision and delta-based smoothing, and writes CameraActor +0x330..+0x34C."
+    },
+    "endpointGetter": {
+      "bcsId": "BCS-Y-2245",
+      "va": "0x0060E7B0",
+      "rva": "0x0020E7B0",
+      "vftableSlot": 34,
+      "signature": "void __thiscall(CameraActor *this, uint32_t out[4])",
+      "behavior": "Copies four dwords from CameraActor +0x310..+0x31C."
+    }
+  },
+  "shaderSubmission": {
+    "classification": "proven",
+    "taskVftable": "0x00F64900",
+    "processCodeRange": "0x00435200..0x0043521F",
+    "processRvaRange": "0x00035200..0x0003521F",
+    "deviceVtableOffset": "0x178",
+    "operation": "IDirect3DDevice9::SetVertexShaderConstantF",
+    "taskFields": [
+      {
+        "offset": "0x04",
+        "name": "start_register",
+        "type": "uint32_t"
+      },
+      {
+        "offset": "0x08",
+        "name": "vector4_count",
+        "type": "uint32_t"
+      },
+      {
+        "offset": "0x0C",
+        "name": "float_data",
+        "type": "const float *"
+      }
+    ],
+    "producers": [
+      "0x004337E0",
+      "0x00433870",
+      "0x00436BC0",
+      "0x00436C50"
+    ],
+    "producerBehavior": "Each producer passes the source, vector4_count * 16 byte size, and literal third argument 4 to unresolved FUN_00417AE0, stores the returned pointer with start_register and vector4_count in an exact 0x10-byte task, and submits it through FUN_0043C2D0.",
+    "limit": "The process range is executable code but is not defined as a Ghidra function. No observed producer argument or pointed-to float data has been joined to a CameraActor field, and no camera matrix register is known."
+  },
+  "anonymousIndexedSubmission": {
+    "classification": "proven",
+    "indexedSubmit": {
+      "bcsId": "BCS-Y-2246",
+      "va": "0x00419020",
+      "rva": "0x00019020",
+      "callingConvention": "unresolved",
+      "signature": "void function(int32_t parameter_index, const void *value)",
+      "behavior": "Passes a pointer through FUN_00419B60 and submits it with count 4 through the selected anonymous parameter object at FUN_00422F90. The pointed-to type, count unit, index meaning, and matrix interpretation are unresolved."
+    },
+    "conditionalParameterSubmit": {
+      "bcsId": "BCS-Y-2247",
+      "va": "0x00422F90",
+      "rva": "0x00022F90",
+      "signature": "void __thiscall(anonymous_parameter *this, unresolved arguments)",
+      "behavior": "Calls unresolved FUN_00423A40 and invokes the selected parameter object's unresolved virtual setter only when that helper returns zero. The helper's semantics are unknown, and C559 does not join the indirect target to the 0x00F64900 task family."
+    },
+    "globalBlocks": {
+      "bcsId": "BCS-Y-2248",
+      "va": "0x00419240",
+      "rva": "0x00019240",
+      "callingConvention": "unresolved",
+      "signature": "void function(int32_t selection_index, char suppress_global_blocks)",
+      "behavior": "On a selection change, submits three globals at 0x01328FF4, 0x01329034, and 0x01329074 with count 4 through FUN_00422F90. The owning shader class and the unit represented by count 4 are unresolved."
+    },
+    "sceneCandidate": {
+      "classification": "supported",
+      "va": "0x00C48AB0",
+      "rva": "0x00848AB0",
+      "signature": "void __fastcall(void *object)",
+      "behavior": "An anonymous render-path function submits its object +0x60 and +0x20 values through FUN_00419020 with indices 2 and 1, then submits a computed local value with index 0. FUN_00C28B80 reaches this function.",
+      "limit": "The values are matrix-like candidates, not proven matrices. Their concrete owner, semantics, and any edge to CameraActor are unresolved."
+    }
+  },
+  "timingBoundary": {
+    "classification": "INSUFFICIENT-DATA",
+    "known": "UPDATE_CAMERA_RAPTURE and the Rapture draw callbacks are distinct registered callback records.",
+    "unknown": "The callback-list dispatcher, exact update-versus-draw order, and whether the camera context update executes at actor/simulation cadence or once per rendered frame are unresolved.",
+    "requiredProof": "Record ordered timestamps and hit counts for 0x004E8B50, 0x007F31A0 or 0x007F3BA0, 0x00C48AB0, callback labels LAB_004E8AA0 (DRAW_DEBUG_3D_RAPTURE) and LAB_004E8AB0 (DRAW_RAPTURE_WORLD_RAPTURE), and 0x00435200 while render rate and simulation delta are varied independently. At 0x00435200 also record start register, vector count, and pointed-to float data, then correlate those values against the three candidate values submitted by 0x00C48AB0 and CameraActor +0x210, +0x250, +0x2D0, +0x310..+0x340, and +0x370."
+  },
+  "ownershipBoundary": {
+    "authoritativeState": "Actor and collision coordinates remain outside the identified CameraActor context-output records; this investigation found no evidence authorizing writes to gameplay, packet, collision, or server-coordinate state.",
+    "renderOnlyState": "No field in this snapshot is classified as render-only because no pre-render shader consumer and cadence are proven.",
+    "launcherDisposition": "Do not hook or interpolate any listed function or field yet. Continue using the retail 30 FPS limit as the known workaround."
+  },
+  "evidence": {
+    "ghidra": [
+      "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+      "tools/ghidra/logs/c405_scene-callback-records.txt",
+      "tools/ghidra/logs/c314_async-queue-rtti.txt"
+    ],
+    "staticInstructionAudit": "The committed pinned-PE audit verifies the complete bytes at 0x00435200..0x0043521F and maps vftable 0x00F64900 slot +0x04 to that range. The verified instruction bytes call device vtable offset +0x178 with task fields +0x04, +0x08, and +0x0C.",
+    "limits": "DumpVAs supplies direct bodies and caller/callee lists only for requested defined functions. Static reference exports exclude computed, indirect, dynamic, and unanalyzed references. No negative claim relies on absent direct callers alone."
+  }
+}

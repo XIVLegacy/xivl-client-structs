@@ -1096,6 +1096,58 @@ canonical in the manifest.
 Refs: `manifests/text_command_ingress.json`; BCS-Y-0163, BCS-Y-2016,
 BCS-Y-2230..BCS-Y-2232, BCS-Y-2240.
 
+## Scene camera and shader boundary
+
+On the measured route, a maintainer-reported 12,000-frame runtime trace read
+`D3DTS_VIEW` immediately before overlay drawing and observed the identity
+matrix while scene-camera motion remained visible. This supports a
+shader-driven-camera inference for that route; it does not establish the
+shader data-flow path. The static client has a separate vertex-shader constant
+task at `0x00435200..0x0043521F`:
+it calls the `IDirect3DDevice9::SetVertexShaderConstantF` vtable slot with a
+start register, vector count, and a float-data pointer stored at task offsets
+`+0x04`, `+0x08`, and `+0x0C`. No proven data-flow edge currently joins a
+scene-camera value to this task, so the camera matrix register is unknown.
+
+A separate anonymous indexed shader-parameter path is also known.
+`FUN_00419020` (BCS-Y-2246) passes a pointer through `FUN_00419B60`, then
+submits it with count 4 through the conditional parameter wrapper
+`FUN_00422F90` (BCS-Y-2247), which invokes an unresolved virtual setter. An
+anonymous render-path function at `0x00C48AB0`, reached by `FUN_00C28B80`,
+submits object values at `+0x60` and `+0x20` with indices 2 and 1, followed by
+a computed local value with index 0. These are matrix-like candidates, not
+proven matrices. Their concrete owner, semantics, path to the raw
+shader-constant task, and any edge from CameraActor remain unresolved.
+
+`Application::Scene::Actor::System::CameraActor` has vftable `0x00FB906C` and
+an exact allocation size of `0x490`. The callback registered as
+`UPDATE_CAMERA_RAPTURE` (`0x004E8B50`, BCS-Y-2242) calls its update at
+`0x006195D0` (BCS-Y-0832). The active FPS and TPS context updates
+(`0x007F31A0` and `0x007F3BA0`, BCS-Y-2243 and BCS-Y-2244) consume a float
+delta and write two four-dword endpoint records at CameraActor `+0x330` and
+`+0x340`. The common builder at `0x00617A80` (BCS-Y-0851) derives three
+sixteen-float transform records at `+0x210`, `+0x250`, and `+0x2D0`, then the
+outer update writes another sixteen-dword record at `+0x370`. The singleton
+used near the end of the builder is not identified by the retained evidence;
+those calls do not prove a graphics-renderer connection.
+
+CameraActor vfunc 34 at `0x0060E7B0` (BCS-Y-2245) copies only the four dwords
+at `+0x310..+0x31C`. It is an endpoint getter, not a 4x4 matrix getter. The
+adjacent methods `0x00620A80..0x00620D00` likewise set or get two four-dword
+records on an attached object; their view/projection meaning is not proven.
+
+No render-only hook seam is established. The callback dispatcher and exact
+update-versus-draw order are unresolved, static evidence does not distinguish
+simulation cadence from rendered-frame cadence, and no shader upload has been
+correlated with any CameraActor record. A valid continuation must measure
+ordered callback/draw/constant-upload hits and correlate the constant register,
+count, and float values with the known CameraActor fields while render and
+simulation rates vary independently. Until then, none of these fields is safe
+to interpolate, and the retail 30 FPS limit remains the supported workaround.
+
+Refs: `manifests/shader_camera_boundary.json`; BCS-Y-0831, BCS-Y-0832,
+BCS-Y-0851, BCS-Y-2241..BCS-Y-2248.
+
 ## Sqwt UI framework
 
 ### Sqwt UI factories construct elements and subscribe handlers
