@@ -13,19 +13,24 @@ import _symbols_io  # noqa: E402
 
 SOURCE_REFS = [
     "tools/ghidra/logs/c560_player-render-boundary.txt",
+    "tools/ghidra/logs/c562_player-render-fallback.txt",
     "manifests/player_render_boundary.json",
 ]
 GETTER_SOURCE_REFS = [
     "tools/ghidra/logs/c561_player-model-position-getter.txt",
     *SOURCE_REFS,
 ]
+NAMEPLATE_SOURCE_REFS = [
+    "tools/ghidra/logs/c563_nameplate-post-update.txt",
+    *SOURCE_REFS,
+]
 
 REFINEMENTS = {
     "0x0058DF90": {
-        "notes": "[battle-effect-queue-consumer; Tier C560 2026-09-14] 299-byte per-actor frame tick orchestrator for CharaElement. Calls the combat-status snapshot, action-state machine, status-effect timer, and battle-effect queue drain, then invokes slots 19 and 13 on the inline NamePlate subobject at CharaElement+0xBA0. Slot 13 receives the CharaElement pointer. It has no instruction-level callers and is reached virtually; runtime cadence relative to Present remains unresolved.",
+        "notes": "[battle-effect-queue-consumer; Tier C560/C562 2026-09-14] 299-byte per-actor frame tick orchestrator for CharaElement. Calls the combat-status snapshot, action-state machine, status-effect timer, and battle-effect queue drain, then invokes slots 19 and 13 on the inline NamePlate subobject at CharaElement+0xBA0. Slot 19 only updates NamePlate+0x190 bit 0x04. The sampled slot-13 color records are not moving position, but its indirect helper path remains unresolved.",
         "sourceRefs": [
             "manifests/battle_effect_queue_consumer.json",
-            *SOURCE_REFS,
+            *NAMEPLATE_SOURCE_REFS,
         ],
     }
 }
@@ -38,7 +43,7 @@ NEW_SYMBOLS = [
         "address": "0x00A60B80",
         "confidence": "confirmed",
         "sourceRefs": SOURCE_REFS,
-        "notes": "[Tier C560 2026-09-14] SceneObject::Actor constructor. It stores the ModelObject at Actor+0x0C and registers the UPDATE_MODEL_TRANSFORM callback thunk at 0x00A61180.",
+        "notes": "[Tier C560/C562 2026-09-14] SceneObject::Actor constructor. It stores the ModelObject at Actor+0x0C, zeros Actor+0x18 and +0x48, and registers the UPDATE_MODEL_TRANSFORM callback thunk at 0x00A61180. The normal RaptureActor chain supplies RaptureModelObjectFactory.",
     },
     {
         "name": "Application_Scene_SceneObject_Actor_get_model_position_record_FUN_00A5F8A0",
@@ -54,7 +59,7 @@ NEW_SYMBOLS = [
         "address": "0x00A5FF60",
         "confidence": "confirmed",
         "sourceRefs": SOURCE_REFS,
-        "notes": "[Tier C560 2026-09-14] UPDATE_MODEL_TRANSFORM virtual target. On the attached-source path it builds a 0x40-byte record and publishes it through ModelObject slot 26 at 0x00A600EF or 0x00A60183. It invokes ModelObject slot 7 afterward only when Actor+0x0C is non-null. Cadence and local-player specificity require runtime proof.",
+        "notes": "[Tier C560/C562 2026-09-14] UPDATE_MODEL_TRANSFORM virtual target: __thiscall(Actor *this, uint32_t ignored_arg), ending in RET 4. Attached-source paths publish through slot 26; the fallback at 0x00A60195 samples Actor+0x18, calls ModelObject slot 13 at 0x00A601CD, then slot 7. The local bounded trace ran this once per Present and never entered base slot 26; its live ModelObject vtable was not recorded.",
     },
     {
         "name": "Graphics_Scene_ModelObject_get_position_record_FUN_008DDAF0",
@@ -70,7 +75,7 @@ NEW_SYMBOLS = [
         "address": "0x008DEC70",
         "confidence": "confirmed",
         "sourceRefs": SOURCE_REFS,
-        "notes": "[Tier C560 2026-09-14] ModelObject vtable slot 26. Copies a 0x40-byte input into ModelObject+0x50..+0x8C, sets bits 0x10, 0x01, and 0x02 at +0x29C, and can substitute fallback globals for invalid input. World-matrix convention and render cadence remain runtime-unverified.",
+        "notes": "[Tier C560/C562 2026-09-14] Base and statically constructed RaptureModelObject vtable slot 26. Copies a 0x40-byte input into ModelObject+0x50..+0x8C, updates +0x29C flags, and can substitute fallback globals for invalid input. The local bounded trace never entered this address, but did not capture the live vtable target.",
     },
     {
         "name": "Graphics_Scene_ModelObject_get_cached_transform_FUN_008DE790",
@@ -101,8 +106,40 @@ NEW_SYMBOLS = [
         "kind": "function",
         "address": "0x006A3560",
         "confidence": "confirmed",
+        "sourceRefs": NAMEPLATE_SOURCE_REFS,
+        "notes": "[Tier C560/C562 2026-09-14] NamePlate vtable slot 13. It compares the index-1 RGBA color at NamePlate+0x78..+0x84 with +0x98..+0xA4 and publishes changes through FUN_00938020. Both records remained constant during captured movement, ruling out those records as moving position; indirect helpers in this slot remain unresolved.",
+    },
+    {
+        "name": "Application_Scene_Actor_read_transform_source_position_FUN_00A61130",
+        "kind": "function",
+        "address": "0x00A61130",
+        "confidence": "confirmed",
         "sourceRefs": SOURCE_REFS,
-        "notes": "[Tier C560 2026-09-14] NamePlate vtable slot 13, called from the per-actor frame path. It compares NamePlate+0x78..+0x84 with +0x98..+0xA4 and publishes changes through FUN_00938020. Static evidence does not identify the source writer or equate this cache with ModelObject state.",
+        "notes": "[Tier C562 2026-09-14] Fallback transform-source reader. Reads source_result+0x2C, writes four floats from its indexed 0x70-byte record through FUN_00AFA220 or the default record at 0x00FBF760, and returns the output pointer. Called at 0x00A601C1 immediately before ModelObject slot 13.",
+    },
+    {
+        "name": "Graphics_Scene_ModelObject_set_position_record_FUN_008DE970",
+        "kind": "function",
+        "address": "0x008DE970",
+        "confidence": "confirmed",
+        "sourceRefs": SOURCE_REFS,
+        "notes": "[Tier C562 2026-09-14] Base and statically constructed RaptureModelObject vtable slot 13. Copies [X,Y,Z,1] to ModelObject+0x30..+0x3C, updates +0x29C cache flags, and conditionally mirrors the four lanes at +0x80..+0x8C. The fallback calls slot 13 at 0x00A601CD; if the live vtable resolves here, it is shared-state mutation rather than a render-only seam.",
+    },
+    {
+        "name": "Application_NamePlate_set_indexed_color_FUN_006A3AD0",
+        "kind": "function",
+        "address": "0x006A3AD0",
+        "confidence": "confirmed",
+        "sourceRefs": NAMEPLATE_SOURCE_REFS,
+        "notes": "[Tier C562 2026-09-14] NamePlate vtable slot 2. Writes four color lanes into the indexed 0x10-byte record beginning at NamePlate+0x68; index 1 is +0x78..+0x84. This record remained constant during captured movement and is not the moving position.",
+    },
+    {
+        "name": "Application_NamePlate_set_flag_0x04_FUN_006A2A60",
+        "kind": "function",
+        "address": "0x006A2A60",
+        "confidence": "confirmed",
+        "sourceRefs": NAMEPLATE_SOURCE_REFS,
+        "notes": "[Tier C562 2026-09-14] NamePlate vtable slot 19. Updates only bit 0x04 at NamePlate+0x190. Called immediately before slot 13 by the per-actor frame tick; it is not a position producer.",
     },
 ]
 

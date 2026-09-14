@@ -1150,48 +1150,61 @@ BCS-Y-0851, BCS-Y-2241..BCS-Y-2248.
 
 ## Player model and NamePlate render boundary
 
-Maintainer-reported runtime measurements support excluding CameraActor as the
-correction target: CameraActor update runs once per presented frame, and
-inverting the row-major view record at CameraActor `+0x250` shows smooth camera
-world Y at 60 FPS. The local video is not repository evidence. The remaining
-correction candidate is therefore on the player/model side.
+The bounded retail capture excludes CameraActor as the correction target:
+CameraActor update runs once per presented frame, and inverting the row-major
+view record at CameraActor `+0x250` shows smooth camera world Y at 60 FPS. The
+local video is not repository evidence. The remaining hold is on the
+player/model side.
 
 `SceneObject::Actor` owns a ModelObject pointer at `+0x0C` and registers an
 `UPDATE_MODEL_TRANSFORM` callback. Its virtual target at `0x00A5FF60`
-(BCS-Y-2251) constructs a 0x40-byte transform record on its attached-source
-path and sends it through ModelObject slot 26 at `0x008DEC70` (BCS-Y-2253).
-When Actor `+0x0C` is non-null, it then invokes ModelObject slot 7 at
-`0x00A61620` (BCS-Y-2255). Slot 26 copies the record to ModelObject
-`+0x50..+0x8C`, with a fallback for invalid inputs. Under its drawable and
-dirty-bit guards, slot 7 retrieves that cache, may apply an additional
-transform, and forwards the result through `0x00BB7550` (BCS-Y-2256), which
-copies it to drawable `+0x30..+0x6C`.
+(BCS-Y-2251) takes one ignored stack argument and ends in `ret 4`. Its two
+attached-source branches construct a 0x40-byte record and necessarily call
+ModelObject slot 26 at `0x008DEC70` (BCS-Y-2253). The normal CharaActor factory
+creates a `RaptureModelObject` whose slots 7, 13, 25, and 26 match the base
+implementations; the statically constructed vtable has no slot-26 override.
+
+The local trace never entered `0x008DEC70`. The fallback at `0x00A60195` is
+therefore the smallest statically identified path consistent with the observed
+cache change and later slot-7 call, but the capture did not record the live
+ModelObject vtable. The fallback samples Actor `+0x18`, prepares a four-float
+record through `0x00A61130` (BCS-Y-2258), and invokes ModelObject slot 13 at
+`0x008DE970` (BCS-Y-2259) for the normal RaptureModelObject vtable. Slot 13
+writes `[X, Y, Z, 1]` to ModelObject `+0x30`, updates cache flags, and may copy
+the four lanes to `+0x80..+0x8C`. Slot 7 at `0x00A61620` (BCS-Y-2255) obtains
+the cache through slot 25, which may rebuild it, before forwarding through
+`0x00BB7550` (BCS-Y-2256) to drawable `+0x30..+0x6C`.
 
 The controlled-actor tick at `0x006679C0` (BCS-Y-0808) samples a separate
-four-dword record through CharaActor slot 34. That slot resolves through
-`0x00A5F8A0` and ModelObject slot 17 to ModelObject `+0x30`. Static evidence
-does not yet prove that this sample and the published 0x40-byte transform
-change on the same 30 Hz frames, nor does it identify a player-specific
-vertex-shader register downstream of the drawable cache.
+four-float record through CharaActor slot 34. That slot resolves through
+`0x00A5F8A0` and ModelObject slot 17 to ModelObject `+0x30`. At 60 FPS the
+source Y changed on 493 of 533 transitions while published Y changed on 358;
+135 source-change frames retained the preceding publication. At 30 FPS the
+corresponding counts were 259, 241, and 18. The callback and both publication
+functions ran once per Present. Three exactly matched register-0/count-16
+vertex-constant tasks consumed the preceding drawable publication on observed
+player-draw frames, but the individual task owner remains unresolved.
 
 NamePlate follows a separate presentation path. CharaElement per-actor tick
 `0x0058DF90` invokes slot 13 at `0x006A3560` (BCS-Y-2257) on its inline
 NamePlate subobject at `+0xBA0`, passing the CharaElement pointer. That function
-reads NamePlate `+0x78..+0x84`, publishes changed values through
-`0x00938020`, and copies them to the comparison cache at `+0x98..+0xA4`.
-No direct non-constructor writer for the current record was found, and no
-static edge equates it with ModelObject or drawable state.
+reads the index-1 RGBA color at NamePlate `+0x78..+0x84`, publishes changed
+color through `0x00938020`, and copies it to the comparison cache at
+`+0x98..+0xA4`. Both records stayed constant during movement, ruling out those
+color records but not every indirect helper reached by slot 13. Slot 19 at
+`0x006A2A60` only updates a flag at NamePlate `+0x190`. NamePlate `+0x194` is
+an opaque pointer used by UI helpers; its ownership and the exact later
+world-to-screen writer remain unidentified.
 
-`0x008DEC70` is therefore the smallest exact model-only runtime probe: it sees
-the complete transform after Actor-side construction and before drawable
-publication. It is not yet a safe correction seam and does not cover the
-NamePlate. Runtime validation must establish local-player ownership, 30 Hz
-input cadence, pre-draw ordering, absence of feedback into ModelObject
-`+0x30`, and the producer of the NamePlate current record. The exact ordered
-record set and acceptance criteria are canonical in the manifest.
+There is no safe correction seam yet. If the live vtable confirms the normal
+target, fallback writer `0x008DE970` is not render-only because it overwrites
+ModelObject `+0x30`, which the controlled actor path also samples. Drawable
+publication is downstream, but the exact slot-25 cache writer, absence of
+feedback, and moving NamePlate consumer are not proven. The exact bounded
+model probes and the NamePlate static gap are canonical in the manifest.
 
 Refs: `manifests/player_render_boundary.json`; BCS-Y-0808, BCS-Y-1024,
-BCS-Y-2249..BCS-Y-2257.
+BCS-Y-2249..BCS-Y-2261.
 
 ## Sqwt UI framework
 
