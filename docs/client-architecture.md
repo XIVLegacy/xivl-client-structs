@@ -1181,9 +1181,10 @@ at Actor `+0x18`. Both the base and Rapture controller vtables use `0x00A68000`
 static types, slot 10 consumes the pending operation selected by controller
 `+0x0C`: 1 is absolute, 2 is relative, 3 is direct, and 0 performs no proxy
 update. It clears the selector after dispatch, and slot 29 returns controller
-`+0x04` to `0x00A61130` (BCS-Y-2258). The bounded capture did not record the
-live Actor `+0x18` or returned-object vtables, so it does not prove that the
-local instance used those concrete types or slot targets.
+`+0x04` to `0x00A61130` (BCS-Y-2258). The controller capture confirmed the live
+controller vtable `0x00FEE17C`, proxy vtable `0x00FEE210`, and these slot
+targets. Selector 1 and the new source Y reached proxy slot 1 on every
+captured held frame; an empty controller queue did not introduce the hold.
 
 In the normal static construction path, controller `+0x04` is a
 CharacterProxy and proxy `+0x2C` is a 0x48-byte Phieg RigidBody, not the
@@ -1193,10 +1194,24 @@ through `+0x10` and `+0x14`. Reader `0x00AFA220` (BCS-Y-2268) copies
 updates those lanes and clears the word at record `+0x64`. Known
 RaptureCharacterProxy slots 1 and 2 reach that writer through `0x007D8080` and
 `0x007D8E90` (BCS-Y-2274 and BCS-Y-2275). None of slot 10, `0x00A61130`, the
-reader, or the writer contains a timer or frame-divider gate. Static evidence
-cannot show whether the live controller was one of these types, whether its
-`+0x0C` was zero on held frames, or which writer last published the retained
-record.
+reader, or the writer contains a timer or frame-divider gate. The controller
+capture paired the held-Y writer with return address `0x007D77B7` inside
+`0x007D70D0` (BCS-Y-2287), reached through the segmented-displacement helper
+`0x007D77E0` (BCS-Y-2286) from proxy slot 1.
+
+The completed vector-adjustment capture identified the zero-dY producer on
+all 261 captured source-change/publication-hold frames. Negative-projection
+removal at `0x007D75C5..0x007D75D3`, selected by branch `0x007D75C3`, changed
+nonzero dY to exact positive zero. The projection scalar equaled the input dY
+bit-for-bit. Recursion at `0x007D7779` received zero dY, and the terminal
+`0x007D77B2 -> 0x00AFA160` call received the preceding RigidBody Y plus zero.
+Threshold correction at `0x007D7646` changed dY but never zeroed it in this
+capture. Projection and recursion also occurred on non-held frames, so this
+is not a held-frame-only cadence gate. This arithmetic does not establish
+that the adjustment is incorrect or identify surface-normal, floor-projection,
+or timing semantics for the opaque record vectors. Capture accounting,
+final-writer versus whole-Present counts, and pairing limitations are canonical
+in `manifests/player_render_boundary.json#proxyAdjustmentRuntime`.
 
 The controlled-actor tick at `0x006679C0` (BCS-Y-0808) samples a separate
 four-float record through CharaActor slot 34. That slot resolves through
@@ -1219,16 +1234,16 @@ color records but not every indirect helper reached by slot 13. Slot 19 at
 an opaque pointer used by UI helpers; its ownership and the exact later
 world-to-screen writer remain unidentified.
 
-There is no safe correction seam. The RigidBody record is physics-owned, and
+No safe correction seam is proven. The RigidBody record is physics-owned, and
 the confirmed fallback slot 13 overwrites shared
 ModelObject `+0x30`, which the controlled actor path also samples. Drawable
 publication is downstream, but absence of feedback and the moving NamePlate
-consumer are not proven. The exact bounded probe for controller queue state
-and RigidBody writes, plus the NamePlate static gap, are canonical in the
-manifest.
+consumer are not proven. The operation-attribution question is closed for the
+completed capture; no additional probe is requested. The remaining ownership
+and NamePlate gaps are canonical in the manifest.
 
 Refs: `manifests/player_render_boundary.json`; BCS-Y-0808, BCS-Y-1024,
-BCS-Y-2249..BCS-Y-2280.
+BCS-Y-2249..BCS-Y-2280, BCS-Y-2286..BCS-Y-2287.
 
 ## Sqwt UI framework
 

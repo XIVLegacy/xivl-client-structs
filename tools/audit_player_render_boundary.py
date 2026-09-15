@@ -220,17 +220,19 @@ def main() -> None:
         "proxy slot-1 segmented-displacement call",
     )
     require_equal(
-        image.read_va(0x007D75B7, 31),
-        bytes.fromhex("f30f104c24640f57f60f2ff17618f30f10c90fc6c9000f59cb0f5cd10f2954"),
-        "negative vector-projection removal prefix",
+        image.read_va(0x007D75B7, 33),
+        bytes.fromhex(
+            "f30f104c24640f57f60f2ff17618f30f10c90fc6c9000f59cb0f5cd10f29542454"
+        ),
+        "negative vector-projection removal through output store",
     )
     require_equal(
-        image.read_va(0x007D7612, 56),
+        image.read_va(0x007D7612, 57),
         bytes.fromhex(
             "f30f5cee0f296c2444f30f104424440fc6c0000f59c3f30f5adcf20f5cd9"
-            "f20f5acbc6442414010fc6c9000f59c10f58c20f28d00f295424"
+            "f20f5acbc6442414010fc6c9000f59c10f58c20f28d00f29542454"
         ),
-        "thresholded record-vector correction prefix",
+        "thresholded record-vector correction through output store",
     )
     require_equal(
         image.read_va(0x007D776C, 20),

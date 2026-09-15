@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generated": "2026-09-14",
+  "generated": "2026-09-15",
   "binary": {
     "name": "ffxivgame.exe",
     "version": "1.23b",
@@ -41,6 +41,8 @@
     "liveSlotCaptureSha256": "1F774E6B95CDC5347263C4C4603E553F01981C4C8E903312A219B3A8CBB3D45A",
     "controllerRuntimeCapture": "Maintainer-supplied player-render-controller-20260914.bin, 6016 committed records across 900 Presents, zero dropped records, zero pointer-read failures, exact entry/return pairing",
     "controllerRuntimeCaptureSha256": "63234CC8A2B38A9084D641516BC86BE8829218FCB3E0BE31D56C1ECA537C6C5C",
+    "adjustmentRuntimeCapture": "Maintainer-supplied player-render-adjustment-probe.bin, 12472 committed records across 1200 Presents on one thread, zero dropped records and zero pointer-read failures; all 261 held-frame terminal writers paired, but three non-held writer entries lacked return observations",
+    "adjustmentRuntimeCaptureSha256": "6BED727FE0F74230013EF4939251766D410EA59827158EFDACE6664344BD26A7",
     "pinnedPeAuditScript": "tools/audit_player_render_boundary.py",
     "pinnedPeAuditInvocation": "python tools\\audit_player_render_boundary.py --binary <path-to-pinned-ffxivgame.exe>",
     "pinnedPeAuditInput": "ffxivgame.exe SHA-256 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
@@ -48,10 +50,10 @@
   },
   "verdict": {
     "classification": "VECTOR-ADJUSTED-PHYSICS-HOLD-NO-SAFE-SEAM",
-    "claim": "The bounded controller capture identifies the live local RaptureCharacterController, RaptureCharacterProxy, and RigidBody and proves that the new absolute Y enters proxy slot 1 every held frame. Slot 1 converts the absolute input to a displacement and sends it through 0x007D77E0 into the recursive vector-adjustment helper at 0x007D70D0. The call at 0x007D77B2 publishes RigidBody current position plus that helper invocation's displacement; on all 160 held frames the published Y equaled the preceding RigidBody Y. There is no Y-only old-value selector or frame-rate gate on that nested path: retained Y is reconstructed when the terminal adjusted displacement has a zero Y lane. Slot 1 does have a separate whole-record saved-current fallback outside the observed 0x007D77B7 writer path. The RigidBody record is shared input to subsequent proxy processing and ModelObject publication, so no render-only correction seam is proven."
+    "claim": "The bounded vector-adjustment capture identifies negative-projection removal at 0x007D75C5..0x007D75D3 as the retained-Y operation on all 261 source-change/publication-hold frames. Its nonzero input dY equaled the projection scalar bit-for-bit, its output was exact positive zero, recursion at 0x007D7779 received zero dY, and the terminal 0x007D77B2 writer received preceding RigidBodyY + 0.0. Threshold correction did not zero dY. Projection and recursion also occurred on non-held frames, so this is not a held-frame-only frame-rate gate. The observation neither proves the adjustment incorrect nor establishes a render-only correction seam: the RigidBody record remains shared physics/model state."
   },
   "runtimeObservations": {
-    "provenance": "Maintainer-supplied bounded retail captures from 2026-09-14, each pinned above by SHA-256; the local video is not repository evidence.",
+    "provenance": "Maintainer-supplied bounded retail captures from 2026-09-14, each pinned above by SHA-256; decoded vector-adjustment observations are preserved in proxyAdjustmentRuntime. The local video is not repository evidence.",
     "facts": [
       "Player Y advances at approximately 30 Hz while Present runs near 60 FPS.",
       "The retail 30 FPS limit removes the visible player, nameplate, slope, and camera stepping.",
@@ -74,6 +76,72 @@
       "Static listing places 0x007D77B7 immediately after the 0x00AFA160 call at 0x007D77B2 inside 0x007D70D0. That call adds the current RigidBody [X,Y,Z,1] record to the displacement supplied to the terminal helper invocation."
     ],
     "consequence": "CameraActor, D3DTS_VIEW, aspect ratio, navmesh and collision-data changes, server movement, packets, and authoritative actor-coordinate changes remain outside this correction investigation."
+  },
+  "proxyAdjustmentRuntime": {
+    "classification": "bounded-runtime-operation-identified",
+    "observed": "2026-09-14",
+    "provenance": {
+      "artifact": "player-render-adjustment-probe.bin",
+      "sha256": "6BED727FE0F74230013EF4939251766D410EA59827158EFDACE6664344BD26A7",
+      "inputBoundary": "Maintainer-supplied decoded observations from the pinned bounded retail capture; no repository-local raw-capture decoder reproduces these observations.",
+      "clientSha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+      "identification": "Component-wise ModelObject/player-state agreement and live vtable checks; observed heap identities are run-local and are not reusable filters.",
+      "proxyVtableVa": "0x00FEE210",
+      "controllerVtableVa": "0x00FEE17C",
+      "rigidBodyVtableVa": "0x010A9878",
+      "proxySlot1Va": "0x007D8080",
+      "controllerSlot10Va": "0x00A68000",
+      "controllerSlot29Va": "0x008D5570"
+    },
+    "method": "Correlate Present ordinal and local object identity; delimit the final-writer segment ending at the last 0x007D77B2 -> 0x00AFA160 writer (return 0x007D77B7), separately from all events in that Present. Compare float32 dY and projection-scalar bits at the last 0x007D75C3 branch before recursion, result bits at 0x007D75D3, child dY at 0x007D7779, and paired terminal writer input/output against immediately preceding RigidBody and published Y. Record threshold-correction results at 0x007D7646 independently.",
+    "capture": {
+      "committedRecords": 12472,
+      "presents": 1200,
+      "threads": 1,
+      "droppedRecords": 0,
+      "pointerReadFailures": 0,
+      "terminalWriterPresents": 1170,
+      "sourceChangeTransitions": 1169,
+      "heldTransitions": 261,
+      "nonHeldSourceChangeTransitions": 908,
+      "writerEntries": 2146,
+      "writerReturns": 2143,
+      "nonHeldEntriesWithoutReturn": 3,
+      "unpairedReason": "Simultaneous identity-filter changes between entry and return; none of these entries participates in the held-frame proof."
+    },
+    "heldFrameProof": {
+      "pairedTerminalWriters": 261,
+      "nonzeroProjectionInputDY": 261,
+      "projectionScalarEqualsInputDYBitwise": 261,
+      "projectionOutputPositiveZeroDY": 261,
+      "recursiveInputZeroDY": 261,
+      "terminalInputEqualsPrecedingRigidBodyYPlusZero": 261,
+      "terminalOutputEqualsPrecedingPublishedY": 261,
+      "zeroFloat32Bits": "0x00000000",
+      "removalVaRange": "0x007D75C5..0x007D75D3",
+      "recursionCallVa": "0x007D7779",
+      "writerCallVa": "0x007D77B2",
+      "writerReturnVa": "0x007D77B7"
+    },
+    "wholeCaptureOperations": {
+      "projectionChecks": 3623,
+      "executedRemovals": 2452,
+      "executedRemovalsZeroingNonzeroDY": 2452,
+      "thresholdCorrections": 882,
+      "thresholdCorrectionsChangingDY": 882,
+      "thresholdCorrectionsZeroingDY": 0,
+      "recursiveCalls": 1226,
+      "observedRecursiveDepth": 1,
+      "remainingBudget": 4
+    },
+    "nonHeldSourceChangeOperations": {
+      "transitions": 908,
+      "finalWriterSegmentsWithProjectionAndRecursion": 513,
+      "wholePresentsWithProjectionAndRecursion": 907,
+      "finalWriterSegmentsWithThresholdCorrection": 414
+    },
+    "conclusion": "Negative-projection removal uniquely introduced zero terminal dY on the captured held frames. Threshold correction never zeroed dY; no deeper recursion was observed. Projection/recursion also occurred on non-held source-change Presents, so this operation is not a held-frame-only cadence gate.",
+    "limitations": "One bounded capture proves the observed arithmetic and operation attribution, not that the adjustment is incorrect, a timer owner, general behavior on all routes, or a safe render-only smoothing seam. The resolver, RigidBody writer, and indexed record remain shared physics/model state; absence of feedback is not proven."
   },
   "functions": [
     {
@@ -473,7 +541,7 @@
       "exitBytes": "8B E5 5D C2 0C 00",
       "behavior": "Reads CharacterProxy+0x2C RigidBody position and an opaque record collection cached through +0x44, evaluates the displacement against record vectors, and can adjust it by subtracting a negative vector-projection component at 0x007D75C5..0x007D75D3 and by adding a thresholded correction along a record vector at 0x007D7612..0x007D7646. When adjustment occurred and budget remains, 0x007D7779 recursively re-enters with the adjusted displacement. The terminal writer path at 0x007D7786 reads current RigidBody position, adds the displacement supplied to that invocation, and calls 0x00AFA160 at 0x007D77B2; 0x007D77B7 is its return address. There is no direct retained-Y load or frame-rate gate on this nested path.",
       "phase": "recursive proxy vector adjustment and RigidBody publication",
-      "timing": "The bounded capture observed the nested writer returning to 0x007D77B7 on every held-Y frame. Its input Y exactly equaled the preceding RigidBody Y, proving that the terminal displacement Y was zero on those writes; the capture did not record which internal adjustment branch made it zero."
+      "timing": "The vector-adjustment capture directly observed negative-projection removal producing exact positive-zero dY before depth-one recursion and a paired terminal writer on all 261 held frames. The operation also occurred on non-held frames; it is not a held-frame-only frame-rate gate. Exact counts and pairing limitations are canonical in proxyAdjustmentRuntime."
     },
     {
       "bcsId": "BCS-Y-2275",
@@ -797,7 +865,7 @@
       "On every observed hold frame, the old Y was already present in the slot-13 input. Therefore the hold is introduced before 0x00A61130 returns, not by ModelObject slot 13, slot 25, or drawable publication."
     ],
     "unresolved": [
-      "The capture did not record internal branches or opaque record vectors inside 0x007D70D0, so it cannot distinguish whether negative-projection removal at 0x007D75C5, thresholded vector correction at 0x007D7612, or their recursive combination produced the zero terminal Y lane on each held frame.",
+      "The runtime proof identifies negative-projection removal as the zero-dY producer on the captured held frames, but does not establish that the adjustment is incorrect or assign surface-normal, floor-projection, or timing semantics to the opaque record vectors.",
       "No static timer or frame divider was found in slot 10, slot 1, 0x007D77E0, 0x007D70D0, 0x00A61130, 0x00AFA220, or 0x00AFA160. The visible cadence results from the vector-adjusted RigidBody output observed at runtime, but this evidence does not assign a timer owner.",
       "Fields outside record+0x00..+0x0F, +0x64..+0x65, and +0x6C..+0x6F do not have proven previous/current, target/current, keyframe, accumulator, or timing semantics.",
       "The indexed record is read as the base position by the same vector-adjustment helper that writes it and is later copied into shared ModelObject+0x30. Modifying this path would feed subsequent proxy processing and shared actor/model state; packet and server consumers are not required to reject it as a render-only seam.",
@@ -814,10 +882,9 @@
     "unknown": "The capture did not uniquely identify which of the three task objects owns the local-player world transform, and no static data-flow edge joins drawable+0x30..+0x6C to that task."
   },
   "runtimeProbe": {
-    "classification": "completed-bounded-controller-trace",
-    "result": "The 6016-record controller capture satisfied the earlier bounded success criteria. It identified the live controller, proxy, and RigidBody; proved selector 1 and a new slot-1 input on every held frame; paired the retained-Y write with 0x007D77B7; and proved exact storage by 0x00AFA160 and later reading by 0x00A61130.",
-    "remainingQuestion": "The retained value is produced as current RigidBody Y plus a zero terminal adjusted displacement Y. Static analysis identifies both displacement-adjustment sites, but the existing capture does not record which site or recursive combination produced zero on each frame.",
-    "narrowProbeIfRequired": "No further probe is required to reject 0x007D70D0 and the RigidBody record as render-only seams. If per-frame attribution between the two adjustment operations becomes necessary, filter to the known local proxy and only source-change/held-Y frames; at 0x007D75C3 record the comparison result, input displacement, record vector, scalar dot product, and 0x007D75D3 output; at 0x007D7646 record its input, record vector, scalar correction, and output; and at recursive call 0x007D7779 record the child displacement. No additional addresses or persistent hooks are needed.",
+    "classification": "completed-bounded-vector-adjustment-trace",
+    "result": "The operation-attribution question is closed by proxyAdjustmentRuntime: negative-projection removal produced exact positive-zero dY before recursion and the terminal currentY + 0.0 write on every captured held frame. Threshold correction did not zero dY. All held-frame terminal writers were paired; three non-held entries lacked return observations. No additional probe is requested.",
+    "remainingQuestion": "No operation-attribution ambiguity remains for this capture. Correctness of the adjustment and a feedback-free render-only smoothing seam are not established by this evidence.",
     "currentBestSeam": "No correction seam is proven. 0x007D70D0 publishes shared RigidBody state that it consumes as the base of subsequent vector-adjustment work; 0x00A61130 copies that state to a temporary output, and ModelObject slot 13 then writes it into shared ModelObject+0x30. Drawable publication remains downstream, but absence of feedback and the moving NamePlate consumer are not proven."
   },
   "ownershipBoundary": {
