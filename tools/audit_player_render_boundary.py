@@ -246,6 +246,35 @@ def main() -> None:
         ),
         "current-plus-displacement RigidBody write",
     )
+    require_equal(
+        image.read_va(0x00C579A0, 18),
+        bytes.fromhex("558bec83e4f083ec108bc183a0a0000000bf"),
+        "Drawable derived-flag update entry",
+    )
+    require_equal(image.read_u32(0x00FCF98C + 20 * 4), 0x006A2A80, "NamePlate slot 20")
+    require_equal(image.read_u32(0x00FCF98C + 23 * 4), 0x006A2E60, "NamePlate slot 23")
+    require_equal(
+        image.read_va(0x006A2A80, 16),
+        bytes.fromhex("0fb68190010000c1e802f7d083e001c3"),
+        "NamePlate slot-20 state predicate",
+    )
+    require_equal(
+        image.read_va(0x006A2E60, 34),
+        bytes.fromhex(
+            "568bf18b068b5050ffd284c074108b8694010000f30f2c80ac0100005ec333c05ec3"
+        ),
+        "NamePlate slot-23 opaque scalar getter",
+    )
+    require_equal(
+        image.read_va(0x006A3E1A, 21),
+        bytes.fromhex("8b86200100006860f5fc008d4c2438898694010000"),
+        "NamePlate UI pointer alias publication",
+    )
+    require_equal(
+        image.read_va(0x006A41D9, 3),
+        bytes.fromhex("c20800"),
+        "NamePlate constructor RET 8",
+    )
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),

@@ -1223,6 +1223,13 @@ functions ran once per Present. Three exactly matched register-0/count-16
 vertex-constant tasks consumed the preceding drawable publication on observed
 player-draw frames, but the individual task owner remains unresolved.
 
+The Drawable setter calls `0x00C579A0` (BCS-Y-2288) after copying the transform.
+That function reads nine float lanes from the same Drawable and updates only
+bit `0x40` at `+0xA0` from a sign comparison. It has no callees or stores other
+than Drawable `this+0xA0`. This proves the extent of this one side effect, not
+that other Drawable consumers are feedback-free or that the setter is a
+just-before-draw boundary.
+
 NamePlate follows a separate presentation path. CharaElement per-actor tick
 `0x0058DF90` invokes slot 13 at `0x006A3560` (BCS-Y-2257) on its inline
 NamePlate subobject at `+0xBA0`, passing the CharaElement pointer. That function
@@ -1232,7 +1239,15 @@ color through `0x00938020`, and copies it to the comparison cache at
 color records but not every indirect helper reached by slot 13. Slot 19 at
 `0x006A2A60` only updates a flag at NamePlate `+0x190`. NamePlate `+0x194` is
 an opaque pointer used by UI helpers; its ownership and the exact later
-world-to-screen writer remain unidentified.
+world-to-screen writer remain unidentified. Slot 23 at `0x006A2E60`
+(BCS-Y-2290) calls slot 20 at `0x006A2A80` (BCS-Y-2289), then conditionally
+reads float32 at the `+0x194` pointee's `+0x1AC` and returns its integer
+conversion. Slot 20 checks only bit `0x04` at NamePlate `+0x190`.
+Slot 23 has no direct pointee null check. `0x00796D50` consumes its return and
+passes an adjusted float derived from that integer to `0x00923FE0`.
+The constructor initially clears `+0x194`, then copies the opaque UI pointer
+from `+0x120` to `+0x194`. This scalar's producer, concrete pointee type and
+position semantics are not established by the getter or UI handoff.
 
 No safe correction seam is proven. The RigidBody record is physics-owned, and
 the confirmed fallback slot 13 overwrites shared
@@ -1243,7 +1258,7 @@ completed capture; no additional probe is requested. The remaining ownership
 and NamePlate gaps are canonical in the manifest.
 
 Refs: `manifests/player_render_boundary.json`; BCS-Y-0808, BCS-Y-1024,
-BCS-Y-2249..BCS-Y-2280, BCS-Y-2286..BCS-Y-2287.
+BCS-Y-2249..BCS-Y-2280, BCS-Y-2286..BCS-Y-2290.
 
 ## Sqwt UI framework
 
