@@ -548,6 +548,71 @@ def main() -> None:
     require_equal(
         image.read_u32(0x008CF3B8 + 4 * 0x0E), 0x008CF0A9, "context operation 0E"
     )
+    report_anchors = (
+        (
+            0x0054F019,
+            "f6465a20741d85c974196a006a006a20e8a2c0ffff3c01750480665adf",
+            "slot-49 flag publication",
+        ),
+        (0x008CF3A8, "c6833001000001", "operation 20 report enable"),
+        (0x008CEB37, "80be300100000074078bcee8e9d8ffff", "draw-time report dispatch"),
+        (0x008CEBB7, "80be300100000074078bcee849d2ffff", "non-drawing report dispatch"),
+        (0x008CC430, "558bec83e4f081ec78020000", "context actor-report entry"),
+        (
+            0x008CC450,
+            "8bc685c0740c8b487485c98b407074f2eb0885c90f8467050000",
+            "parent walk to associated actor",
+        ),
+        (
+            0x007F8CC0,
+            "8b81ac0100008b89180100005083c154e87b74faffc3",
+            "associated actor resolution",
+        ),
+        (
+            0x008CC9C2,
+            "8d842490010000508bcfe82f15d9ff",
+            "stack payload and CharaActor ECX report",
+        ),
+        (0x008CC9E4, "c3", "context actor-report plain RET"),
+        (
+            0x0065DF00,
+            "8b4424046a20506a4fe8a2081700c20400",
+            "operation 4F producer complete body",
+        ),
+        (
+            0x0058E504,
+            "f30f7e07660fd68644020000f30f7e4708660fd6864c020000f30f7e4710660fd68654020000f30f7e4718660fd6865c020000",
+            "operation 4F receiver 32-byte copy",
+        ),
+    )
+    for va, expected_hex, label in report_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
+    require_equal(
+        image.read_u32(0x008CF3B8 + 4 * 0x20), 0x008CF3A8, "context operation 20"
+    )
+    require_equal(
+        image.read_u32(0x0058E6B0 + 4 * (0x4F - 0x4A)),
+        0x0058E504,
+        "element operation 4F",
+    )
+    command_draw_anchors = (
+        (0x008CE530, "558bec83e4f06aff68ad33ec00", "command-stream draw entry"),
+        (
+            0x008CE6C1,
+            "8d8c249c000000518d4c243ce8ce92dcff",
+            "stack-local record container binding",
+        ),
+        (
+            0x008CE730,
+            "8b542420f30f7e86000100008d0c3a660fd684247c010000f30f7e86080100008d54243852660fd684248801000089bc24740100008b018b40048d9424f000000052ffd003f8",
+            "command ECX, explicit records and byte-cursor advancement",
+        ),
+        (0x008CE7C1, "c20400", "command-stream draw RET 4"),
+    )
+    for va, expected_hex, label in command_draw_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),
