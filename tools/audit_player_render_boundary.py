@@ -307,6 +307,58 @@ def main() -> None:
         bytes.fromhex("c20800"),
         "NamePlate constructor RET 8",
     )
+    visual_offset_anchors = (
+        (
+            0x00939720,
+            "8b542404d98178010000d9420c83ec08",
+            "rectangle pair forwarding entry",
+        ),
+        (0x00939782, "e88969000083c408c20400", "rectangle pair call and RET 4"),
+        (
+            0x00940110,
+            "8b44240c8b542408508b4424085268fc9735016800fe9300515083c124e8ae100000c20c00",
+            "VisualOffset wrapper",
+        ),
+        (
+            0x009411E0,
+            "538b5c240c568bf1f6460810578b7c241c",
+            "float-pair property setter entry",
+        ),
+        (
+            0x00941210,
+            "84d2740d84c0751180fa01750c84ca75125f5e32c05bc21800",
+            "property rejection gates and RET 24",
+        ),
+        (
+            0x00941253,
+            "804e0804807c2424018b0189068b4904894e0475118b5424186a01575253568bcee857fbffff5f5eb0015bc21800",
+            "pair stores, conditional notification and RET 24",
+        ),
+        (
+            0x00F23210,
+            "6898c40601b9fc973501e8c1d69effc7051098350100000000c3",
+            "VisualOffset metadata initializer and ID zero",
+        ),
+        (0x0106C498, "56697375616c4f666673657400", "VisualOffset property name"),
+        (0x00940DD0, "6aff68fbe8ec0064a10000000050", "pair notification entry"),
+        (
+            0x00940E55,
+            "8d442414508bcfc78424a000000000000000ffd3",
+            "owner-bound event callback call",
+        ),
+        (0x00940EA1, "c21400", "pair notification RET 20"),
+        (
+            0x0093FE00,
+            "56578b7c240c8bf18b068b501857ffd2e82b44030084c00f85cd00000083bea0000000000f95c084c00f84bb0000008b47708b401483f80a0f87ac000000ff248540ff93008b8ea00000008b118b52348d462450ffd2",
+            "callback guards, property dispatch and +0xA0 slot-13 call",
+        ),
+    )
+    for va, expected_hex, label in visual_offset_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
+    require_equal(
+        image.read_u32(0x0093FF40), 0x0093FE45, "VisualOffset ID-zero dispatch"
+    )
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),
