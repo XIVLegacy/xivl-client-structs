@@ -493,6 +493,61 @@ def main() -> None:
     for va, expected_hex, label in publication_anchors:
         expected = bytes.fromhex(expected_hex)
         require_equal(image.read_va(va, len(expected)), expected, label)
+    consumer_anchors = (
+        (0x007FA2B0, "558bec83e4f86aff6860cfea00", "WindowActor dispatcher entry"),
+        (0x007FA916, "c20c00", "WindowActor dispatcher RET 12"),
+        (0x007FA703, "8b5d0c8d530452b9a4e03401e8eca5e9ff8938", "association map value"),
+        (0x007FA759, "89b8a4010000894774", "actor and context reciprocal stores"),
+        (
+            0x007FA59A,
+            "8b400456508986a0010000e866fcffff83c408",
+            "selected context store",
+        ),
+        (
+            0x007FA8EA,
+            "8bb6a00100003bf374108b55108b450c52508bce57e85c430d00",
+            "selected context forwarding",
+        ),
+        (
+            0x008CEC60,
+            "558bec83e4f88b450881ec74020000538bd9808b2801000002",
+            "context dispatcher entry and flag",
+        ),
+        (
+            0x008CF0A9,
+            "8b450cf30f7e008b4008660fd644242cf30f1044242cf30f114328f30f1044243089442434f30f11432cf30f10442434f30f114330c6832d01000001c6832c010000015f5e5b8be55dc20c00",
+            "operation 0E triplet copy and RET 12",
+        ),
+        (0x008CD700, "558bec83e4f06aff68a532ec00", "derived processor entry"),
+        (
+            0x008CD765,
+            "8a9e2d0100008a8e2c0100000a5d100a45140a4d1884db88442434885c2438c6862d01000000884c2430c6862c01000000",
+            "selector combination and state clear",
+        ),
+        (
+            0x008CDA9E,
+            "8b467085c07514d94628d95e34d9462cd95e38d94630d95e3ceb9c",
+            "parent guard and derived triplet copy",
+        ),
+        (0x008CDDE5, "c21400", "derived processor RET 20"),
+        (0x008CE7D0, "81ec88000000568bf18b4e74", "context draw entry"),
+        (
+            0x008CE9C4,
+            "837e20007506837e240074068b4e2451eb0d8d542458528bcee87e0e0000508d4c241ce874b1b4ff",
+            "draw record selection and helper call",
+        ),
+        (0x008CEBB4, "c20400", "context draw RET 4"),
+        (0x008CEBCF, "c20400", "context draw alternate RET 4"),
+    )
+    for va, expected_hex, label in consumer_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
+    require_equal(
+        image.read_u32(0x00FF1CC4 + 0x274), 0x007FA2B0, "WindowActor slot 157"
+    )
+    require_equal(
+        image.read_u32(0x008CF3B8 + 4 * 0x0E), 0x008CF0A9, "context operation 0E"
+    )
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),
