@@ -613,6 +613,59 @@ def main() -> None:
     for va, expected_hex, label in command_draw_anchors:
         expected = bytes.fromhex(expected_hex)
         require_equal(image.read_va(va, len(expected)), expected, label)
+    primary_label_draw_anchors = (
+        (0x006A4270, "8b44240483ec085356578d7104508d4c", "named TextBlock lookup"),
+        (0x00955990, "6aff68a6deec0064a1000000005081ec", "TextBlock draw entry"),
+        (
+            0x00955D65,
+            "8b3a50518d4c244c518d442460508d8c245c040000518bca8b5704c684246805000009ffd2",
+            "TextBlock drawing-context slot 1 dispatch",
+        ),
+        (
+            0x00559F00,
+            "e8dbfeffff8bc8e9a438ffff",
+            "DrawingToolContext slot 1 cached-record tail dispatch",
+        ),
+        (0x0054D7B0, "6aff682fb9e60064a1000000005081ec", "DrawText producer entry"),
+        (
+            0x0054DB71,
+            "8b4c24548d879b00000083e0fc5068980000008d8424a800000050e82ff1ffff",
+            "DrawText cached-record binding and fixed-record append",
+        ),
+        (0x00553F70, "6aff6828c9e60064a100000000505156", "DrawText constructor entry"),
+        (
+            0x00553F98,
+            "c7008c28fa0033d2895424148b4c2430c700d029fa00",
+            "DrawingBase then DrawText vtable stores",
+        ),
+        (0x0054CCC0, "568bf1f6465a405774138d4e60e81e06", "command-byte append entry"),
+        (0x00697580, "81ecd0000000578bf980bf920000007f", "DrawText command consumer"),
+        (0x00697170, "6aff6892d5e80064a1000000005083ec", "DrawText render preparation"),
+        (
+            0x00697338,
+            "8b45008b5018578d4c2440518bcdffd2e9fe",
+            "text-render object slot 6 dispatch",
+        ),
+        (
+            0x0069753A,
+            "8b4c24188b018b4018578d54244052ffd0c7",
+            "alternate text-render object slot 6 dispatch",
+        ),
+    )
+    for va, expected_hex, label in primary_label_draw_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
+    require_equal(
+        image.read_u32(0x0106E840), 0x0117BD08, "TextBlock complete-object COL"
+    )
+    require_equal(image.read_u32(0x0117BD14), 0x012BD188, "TextBlock TypeDescriptor")
+    require_equal(image.read_u32(0x0106E844 + 34 * 4), 0x00955990, "TextBlock slot 34")
+    require_equal(
+        image.read_u32(0x00FA28E4 + 1 * 4),
+        0x00559F00,
+        "DrawingToolContext slot 1",
+    )
+    require_equal(image.read_u32(0x00FA29D0 + 1 * 4), 0x00697580, "DrawText slot 1")
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),
