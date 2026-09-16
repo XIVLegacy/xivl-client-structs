@@ -45,7 +45,7 @@
     },
     {
       "path": "manifests/symbols.json",
-      "sha256": "c1ee8d212c8a1d23b9145f4501b8cd5fce49ebd39270b4b1220c7804137ed831"
+      "sha256": "9730d53ffcdc8081566af3a897555299209b2d540f3f71bc6598106f6a45cce0"
     }
   ],
   "dimensions": {
@@ -103,7 +103,7 @@
   },
   "counts": {
     "types": 496,
-    "symbols": 2277,
+    "symbols": 2279,
     "citations": 1583,
     "members": 3298,
     "unknownSpans": 12,
@@ -121310,7 +121310,43 @@
       "citations": [
         "EV-0872"
       ],
-      "notes": "[Tier C571 2026-09-15] NamePlate vtable 0x00FCF98C slot 23, byte offset +0x5C. ECX is this; no explicit stack arguments. Calls slot 20; when its AL is nonzero, reads float32 at the NamePlate+0x194 pointee +0x1AC and returns CVTTSS2SI result in EAX; otherwise returns 0. No direct pointee null check. Scalar position semantics and producer are not established by this getter."
+      "notes": "[Tier C571/C577/C578/C579/C580 2026-09-15] NamePlate slot 23 at 0x006A2E60, __thiscall with no explicit stack arguments. Calls slot 20; if AL is nonzero, reads pointer +0x194 and float32 pointee+0x1AC, converts with CVTTSS2SI and returns EAX; otherwise returns zero. The bounded identity captured a Sqwt::Window primary vtable 0x0106A0BC at that pointee; static metadata identifies +0x1AC as inherited ActualHeight. It is not a moving-position contract or a feedback-free correction seam. Reproduction and pinned bytes: manifests/player_render_boundary.json:namePlateFlow.windowActualHeight and tools/audit_player_render_boundary.py."
+    },
+    {
+      "id": "BCS-Y-2291",
+      "name": "Sqwt_FrameworkElement_rect_update_actual_height_FUN_0092FD20",
+      "kind": "function",
+      "address": {
+        "kind": "scalar",
+        "raw": "0x0092FD20",
+        "values": [
+          "0x0092FD20"
+        ]
+      },
+      "addressCorroboration": "not-applicable",
+      "confidence": "confirmed",
+      "citations": [
+        "EV-0872"
+      ],
+      "notes": "[Tier C578/C579/C580 2026-09-15] RectFloat * __thiscall(FrameworkElement *this, RectFloat *out, const RectFloat *input, uint32_t selector0, uint32_t selector1). ECX is the UI object. Four explicit stack arguments are caller-owned output rectangle, input rectangle and two selectors whose low bytes select branches 0..3. Returns out in EAX and ends with RET 16 at 0x009302BF. Computes a RectTemplate<float> record, updates ActualWidth at +0x1B4 and ActualHeight at +0x1AC conditionally, and returns the rectangle through out. At 0x00930135, FSTP [EDI] writes the computed float; EDI was established as this+0x1AC at 0x009300E8. The source is the computed local float at current ESP+0x20 loaded at 0x00930116, not an actor-coordinate field. If +0x1B0 bit 0x10 is set, calls 0x009157C0 with this and metadata 0x013587F0, then clears that bit. Reads the resulting state byte. The computed store requires state & 3 nonzero and FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x00930150 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded by this test. Sets state bit 0x04 and calls 0x00953BA0 with the property record and the same metadata. No direct actor or physics field store is identified in this function, but its property notification and virtual callees preclude a whole-path non-feedback claim. This does not establish a moving nameplate anchor or a correction seam."
+    },
+    {
+      "id": "BCS-Y-2292",
+      "name": "Sqwt_FrameworkElement_dispatch_rect_update_FUN_009302F0",
+      "kind": "function",
+      "address": {
+        "kind": "scalar",
+        "raw": "0x009302F0",
+        "values": [
+          "0x009302F0"
+        ]
+      },
+      "addressCorroboration": "not-applicable",
+      "confidence": "confirmed",
+      "citations": [
+        "EV-0872"
+      ],
+      "notes": "[Tier C578/C579/C580 2026-09-15] void __thiscall(FrameworkElement *this, const RectFloat *input). ECX is this and the single stack argument is forwarded as input to 0x0092FD20. Ends with RET 4 at 0x0093043A. If byte this+0x158 is zero, conditionally writes zero to ActualWidth and ActualHeight and constructs a zero rectangle. Otherwise calls 0x0092FD20 at 0x00930412, passing a stack-local output rectangle, input and byte selectors from +0x24C/+0x24E. Both branches pass the resulting rectangle to 0x00939720 at 0x00930422. The zero-height store at 0x009303B6 uses ESI=this+0x1AC from 0x0093037A. After the optional metadata refresh/bit-0x10 clear, it requires +0x1B0 & 3 nonzero and FCOM / FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x009303D0 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded. It sets bit 0x04 and notifies 0x00953BA0 with metadata 0x013587F0. The meaning of +0x158 is not promoted. The capture did not pair either write site with a live instance. These are statically proven ActualHeight paths, not an exclusive-writer claim. Metadata refresh, property notification, rectangle forwarding and the 0x0092FD20 call remain in scope; the whole path does not establish non-feedback, a moving nameplate anchor or a correction seam."
     }
   ],
   "citations": [
@@ -132151,7 +132187,9 @@
         "BCS-Y-2287",
         "BCS-Y-2288",
         "BCS-Y-2289",
-        "BCS-Y-2290"
+        "BCS-Y-2290",
+        "BCS-Y-2291",
+        "BCS-Y-2292"
       ]
     },
     {

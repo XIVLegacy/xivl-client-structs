@@ -10,6 +10,11 @@
   },
   "scope": "Static and bounded-runtime local-player model-transform and NamePlate presentation paths relevant to 30 Hz visible stepping during 60 FPS rendering.",
   "method": {
+    "windowRttiInvocation": "tools\\ghidra\\run-headless.ps1 -Script ExtractRtti.java -ReadOnly -ScriptEnv @{ XIVL_RTTI_DETAILS_OUT='<output>/c577_window-rtti.txt'; XIVL_RTTI_DETAILS_TARGETS='.?AVWindow@Sqwt@@' } -ScriptPath @('tools/ghidra')",
+    "windowScalarInvocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools/ghidra/logs/c578_window-scalar-path.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x009246F0,0x0092F640,0x0092FD20,0x009302F0,0x00930440,0x00922530,0x00923FE0,0x00796D50' } -ScriptPath @('ghidra')",
+    "windowPropertyNameInvocation": "tools\\ghidra\\export-references.ps1 -Strings 'ActualHeight','ActualWidth' -Out tools/ghidra/logs/c579_window-dimension-names.txt",
+    "windowPropertyHelpersInvocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools/ghidra/logs/c580_window-property-helpers.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x009108E0,0x009C1FD0,0x00953BA0,0x00939720' } -ScriptPath @('ghidra')",
+    "windowEvidenceEnvironment": "Use the explicit BCS_GHIDRA_HOME, BCS_GHIDRA_PROJECTS, BCS_GHIDRA_PROJECT=ffxivgame and BCS_JAVA_HOME settings from presentationDecompilationInvocation. All window exports were read-only; PE byte assertions are reproduced by tools/audit_player_render_boundary.py --binary <pinned-client>.",
     "presentationDecompilationInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c568_player-presentation-paths.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00A61620,0x00BB7550,0x006A2D50,0x006A2E90,0x00796D50,0x00923FE0,0x006A3560,0x0058DF90' } -ScriptPath @('ghidra')",
     "presentationDecompilationSha256": "A95771D3E8143EF9B8DC4A2F390930497E22E895AA886FD4C0E89FFAFA28F28B",
     "drawableConsumerInvocation": "$env:BCS_GHIDRA_HOME='<ghidra-12.1.3>'; $env:BCS_GHIDRA_PROJECTS='<project-parent>'; $env:BCS_GHIDRA_PROJECT='ffxivgame'; $env:BCS_JAVA_HOME='<jdk-21>'; Remove-Item Env:BCS_GHIDRA_PROGRAM -ErrorAction SilentlyContinue; tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c569_drawable-consumers.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00C579A0,0x00C39B10,0x00BB5290,0x00BE5E40' } -ScriptPath @('ghidra')",
@@ -186,7 +191,37 @@
       "behavior": "Calls slot 20 at vtable+0x50. When AL is nonzero, loads NamePlate+0x194, reads its pointee+0x1AC as float32, converts with CVTTSS2SI and returns EAX. Otherwise returns 0. ECX is this; no explicit stack arguments. No direct pointee null check.",
       "callers": ["0x00796D50 via vtable+0x5C", "0x00562290 via vtable+0x5C"],
       "evidenceLocator": "c571_nameplate-slot23.txt VA 0x006A2E60; c568_player-presentation-paths.txt VA 0x00796D50; c573_nameplate-lifecycle.txt VA 0x00562290; pinned NamePlate vtable 0x00FCF98C +0x5C",
-      "limitations": "The getter does not establish the float's position semantics, its producer, the pointee's live ownership, or a feedback-free correction boundary."
+      "limitations": "The bounded identity capture and Window property path identify this scalar as ActualHeight, not a moving position. This getter does not establish a feedback-free correction boundary."
+    },
+    {
+      "bcsId": "BCS-Y-2291",
+      "va": "0x0092FD20",
+      "rva": "0x0052FD20",
+      "name": "FrameworkElement rectangle and ActualHeight update",
+      "callingConvention": "__thiscall",
+      "signature": "RectFloat * __thiscall(FrameworkElement *this, RectFloat *out, const RectFloat *input, uint32_t selector0, uint32_t selector1)",
+      "entryBytes": "6A FF 68 4B AE EC 00 64 A1 00 00 00 00 50 83 EC 54 53",
+      "behavior": "ECX is the UI object. Four explicit stack arguments are caller-owned output rectangle, input rectangle and two selectors whose low bytes select branches 0..3. Returns out in EAX and ends with RET 16 at 0x009302BF. Computes a RectTemplate<float> record, updates ActualWidth at +0x1B4 and ActualHeight at +0x1AC conditionally, and returns the rectangle through out. At 0x00930135, FSTP [EDI] writes the computed float; EDI was established as this+0x1AC at 0x009300E8. The source is the computed local float at current ESP+0x20 loaded at 0x00930116, not an actor-coordinate field.",
+      "condition": "If +0x1B0 bit 0x10 is set, calls 0x009157C0 with this and metadata 0x013587F0, then clears that bit. Reads the resulting state byte. The computed store requires state & 3 nonzero and FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x00930150 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded by this test. Sets state bit 0x04 and calls 0x00953BA0 with the property record and the same metadata.",
+      "callers": ["0x00925490", "0x009302F0"],
+      "phase": "UI rectangle/property update; runtime thread, cadence and ordering against model draw are not captured",
+      "evidenceLocator": "c578_window-scalar-path.txt VA 0x0092FD20; pinned instructions 0x009300E8..0x00930143; c579_window-dimension-names.txt ActualHeight; pinned name initializer 0x00F21D80",
+      "limitations": "No direct actor or physics field store is identified in this function, but its property notification and virtual callees preclude a whole-path non-feedback claim. This does not establish a moving nameplate anchor or a correction seam."
+    },
+    {
+      "bcsId": "BCS-Y-2292",
+      "va": "0x009302F0",
+      "rva": "0x005302F0",
+      "name": "FrameworkElement rectangle update dispatch",
+      "callingConvention": "__thiscall",
+      "signature": "void __thiscall(FrameworkElement *this, const RectFloat *input)",
+      "entryBytes": "6A FF 68 76 AE EC 00 64 A1 00 00 00 00 50 83 EC 14 53",
+      "behavior": "ECX is this and the single stack argument is forwarded as input to 0x0092FD20. Ends with RET 4 at 0x0093043A. If byte this+0x158 is zero, conditionally writes zero to ActualWidth and ActualHeight and constructs a zero rectangle. Otherwise calls 0x0092FD20 at 0x00930412, passing a stack-local output rectangle, input and byte selectors from +0x24C/+0x24E. Both branches pass the resulting rectangle to 0x00939720 at 0x00930422.",
+      "condition": "The zero-height store at 0x009303B6 uses ESI=this+0x1AC from 0x0093037A. After the optional metadata refresh/bit-0x10 clear, it requires +0x1B0 & 3 nonzero and FCOM / FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x009303D0 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded. It sets bit 0x04 and notifies 0x00953BA0 with metadata 0x013587F0. The meaning of +0x158 is not promoted.",
+      "callers": ["0x0091B7D0", "0x00925490", "0x009A5230", "0x0090EF80"],
+      "phase": "UI dispatch; no runtime phase or frequency claim",
+      "evidenceLocator": "c578_window-scalar-path.txt VA 0x009302F0; pinned 0x0093037A..0x009303C9 and 0x00930412..0x0093043C",
+      "limitations": "The capture did not pair either write site with a live instance. These are statically proven ActualHeight paths, not an exclusive-writer claim. Metadata refresh, property notification, rectangle forwarding and the 0x0092FD20 call remain in scope; the whole path does not establish non-feedback, a moving nameplate anchor or a correction seam."
     },
     {
       "bcsId": "BCS-Y-2249",
@@ -884,7 +919,7 @@
       "offset": "0x194",
       "size": "0x04",
       "classification": "proven",
-      "meaning": "opaque UI pointer initialized to zero and later copied from NamePlate+0x120 by the constructor at 0x006A3C00; concrete pointee type and moving-position relevance are unresolved"
+      "meaning": "UI pointer initialized to zero and copied from NamePlate+0x120 by constructor 0x006A3C00; the bounded live Window identity and inherited ActualHeight read are established in namePlateFlow.windowActualHeight, not a moving-anchor contract"
     }
   ],
   "modelFlow": {
@@ -919,7 +954,27 @@
   "namePlateFlow": {
     "classification": "position-owner-unresolved",
     "proven": "CharaElement per-actor tick 0x0058DF90 invokes slot 19 and then slot 13 on the inline NamePlate subobject at CharaElement+0xBA0. Slot 19 at 0x006A2A60 only updates bit 0x04 at NamePlate+0x190. Slot 13 synchronizes presentation state and index-1 RGBA color; the captured +0x78/+0x98 records remained constant during movement. After slot 13, 0x00796D50 reads the slot-23 integer scalar, compares and updates two integer caches and calls 0x00923FE0 with an adjusted float derived from that scalar; 0x00797FE0 updates a countdown popup. NamePlate is not a Sqwt FrameworkElement. Constructor 0x006A3C00 initializes +0x194 to zero and later copies +0x120 to +0x194 at instruction 0x006A3E29. Slot 23 reads the pointee+0x1AC float32 through this opaque UI pointer.",
-    "unresolved": "No static edge identifies the moving screen-space anchor's producer. The slot-23 getter establishes only an opaque integer-converted UI scalar, not a moving position. The concrete live type of the +0x120/+0x194 pointee and its +0x1AC writer remain unidentified. The slot-13 indirect helper path and the final scheduler target also remain incompletely resolved.",
+    "unresolved": "No static edge identifies the moving screen-space anchor's producer. The live +0x120/+0x194 pointee is a Sqwt::Window at complete-object offset zero, and +0x1AC is its inherited ActualHeight property. Static computed and zero-reset writers are identified, but the capture did not observe their invocation. Neither ActualHeight nor NamePlate+0x78/+0x98 establishes the moving anchor. The screen-position publication/draw boundary and its absence of gameplay feedback remain unproven.",
+    "windowActualHeight": {
+      "classification": "bounded-runtime-identity-and-static-property-path",
+      "observed": "2026-09-15",
+      "capture": {
+        "artifact": "nameplate-ui-identity.bin",
+        "sha256": "20776FCDC349314EEB0424D7455668118B10C2FE34C7956ED0F26942931D3984",
+        "sizeBytes": 64,
+        "encoding": "Sixteen little-endian uint32 values: magic, success, attempts, threadId, Present-entry ordinal, active pointer, actorId, primary vtable, +8 vtable, NamePlate pointer, NamePlate vtable, +0x190 byte zero-extended, +0x120 pointer, +0x194 pointer, pointee first word, +0x1AC raw float bits.",
+        "words": ["0x3149504E", "0x00000001", "0x00000001", "0x000072CC", "0x00002CEC", "0x049609A8", "0x0000000B", "0x00FA7C50", "0x00FA7B2C", "0x04961548", "0x00FCF98C", "0x00000000", "0x21F1FAA0", "0x21F1FAA0", "0x0106A0BC", "0x42A40000"],
+        "boundary": "Read-only established 0x004DA680 callback after original update; manually armed after local character entry. One coherent identity on attempt 1. Present ordinal counts hook entries, not completed successful presentations. Temporary instrumentation was removed and the original staged module restored.",
+        "limits": "Header values were equal before/after the bounded pointee read. This is not a lock or lifetime guarantee. Heap addresses are run-local. One snapshot does not prove cadence or a write site's live invocation."
+      },
+      "identity": "Pointee vtable 0x0106A0BC -> COL 0x01179064 -> TypeDescriptor 0x01269E20, decorated .?AVWindow@Sqwt@@. COL complete-object offset and construction displacement are zero. Constructor 0x009246F0 stores this primary vtable at 0x00924724. RTTI includes FrameworkElement ancestry. NamePlate +0x120 and +0x194 both pointed to this Window in the capture.",
+      "property": "Float32 Window+0x1AC and byte state +0x1B0 are the inherited ActualHeight record. At 0x00F21D80 PUSH 0x0106A8FC names ActualHeight; MOV ECX,0x013587F0 and CALL 0x009108E0 construct its metadata. FrameworkElement constructor 0x0092F640 initializes the record through 0x009C1FD0 with that metadata. The paired ActualWidth record is +0x1B4, state +0x1B8, metadata 0x01358910, named by the initializer at 0x00F21DB0.",
+      "writers": ["BCS-Y-2291 computed store 0x00930135", "BCS-Y-2292 zero store 0x009303B6"],
+      "rectangleContract": "RectFloat in the signatures denotes the observed 20-byte Sqwt::RectTemplate<float> record: vtable word at +0 and four float32 lanes at +4/+8/+0xC/+0x10. The output is caller-owned; 0x0092FD20 returns its pointer in EAX. Downstream 0x00939720 copies rectangle+0xC/+0x10 into object+0x178/+0x17C and forwards the +4/+8 pair through a stack-local record to 0x00940110. This forwarding does not identify the moving nameplate anchor or its drawing boundary.",
+      "value": "Captured ActualHeight raw bits 0x42A40000 represent 82.0; this is a UI property sample, not world Y.",
+      "evidenceLocator": "c577_window-rtti.txt .?AVWindow@Sqwt@@/0x0106A0BC; c578_window-scalar-path.txt VAs 0x0092F640/0x0092FD20/0x009302F0; c579_window-dimension-names.txt; c580_window-property-helpers.txt; tools/audit_player_render_boundary.py pinned byte assertions",
+      "correctionVerdict": "Do not interpolate this field as nameplate position. Its size/property role does not establish a feedback-free moving-anchor seam. No new runtime probe is specified by this identity result."
+    },
     "lifecycleEvidence": "c573_nameplate-lifecycle.txt VA 0x006A3C00; method.namePlateLifecycleInvocation; pinned source read at 0x006A3E1A and alias store at 0x006A3E29. The constructor ends in RET 8 at 0x006A41D9; its decompiler-inferred one-argument fastcall prototype is incomplete and is not a callable contract.",
     "boundedIdentityProbe": {
       "question": "What concrete live UI object is stored in the selected local CharaElement's NamePlate+0x194?",

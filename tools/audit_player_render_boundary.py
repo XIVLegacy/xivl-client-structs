@@ -12,6 +12,8 @@ from audit_shader_constant_task import PeImage, require_equal
 EXPECTED_SHA256 = "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
 
 ENTRY_BYTES = {
+    0x0092FD20: bytes.fromhex("6aff684baeec0064a1000000005083ec5453"),
+    0x009302F0: bytes.fromhex("6aff6876aeec0064a1000000005083ec1453"),
     0x0058DF90: bytes.fromhex("83ec14568bf18a866d020000a8405774"),
     0x006679C0: bytes.fromhex("558bec83e4f06aff68cb7fe80064a100"),
     0x00A60B80: bytes.fromhex("6aff68ecc2ed0064a100000000506489"),
@@ -59,6 +61,36 @@ def main() -> None:
     require_equal(digest, EXPECTED_SHA256, "binary SHA-256")
     image = PeImage(args.binary)
     require_equal(image.image_base, 0x00400000, "image base")
+
+    require_equal(image.read_u32(0x0106A0B8), 0x01179064, "Window COL pointer")
+    require_equal(image.read_u32(0x01179068), 0, "Window complete-object offset")
+    require_equal(image.read_u32(0x0117906C), 0, "Window construction displacement")
+    require_equal(image.read_u32(0x01179070), 0x01269E20, "Window TypeDescriptor")
+    require_equal(
+        image.read_va(0x01269E28, 18),
+        b".?AVWindow@Sqwt@@\0",
+        "Window decorated RTTI name",
+    )
+    window_anchors = {
+        0x00924724: "c706bca00601",
+        0x00F21D80: "68fca80601b9f0873501e851eb9eff",
+        0x00F21DB0: "680ca90601b910893501e821eb9eff",
+        0x009300E8: "8dbeac01000033dbf6470410bdb0da9200",
+        0x00930113: "8a4f04d9442420f6c1037431d907d9c1dae9dfe0f6c4447b24",
+        0x0093012C: "6a01ddd968f0873501d91f535580c90456884f04578bcfe8583a0200",
+        0x0093037A: "8db7ac01000033dbf6460410bdb0da9200",
+        0x009303A3: "8a4e04f6c1037425d816dfe0f6c4447b1c6a01d91e",
+        0x00930404: "8b4424385152508d4c2420518bcfe809f9ffff",
+        0x009302BF: "c21000",
+        0x0093043A: "c20400",
+    }
+    for va, hex_bytes in window_anchors.items():
+        expected = bytes.fromhex(hex_bytes)
+        require_equal(
+            image.read_va(va, len(expected)), expected, f"Window anchor 0x{va:08X}"
+        )
+    require_equal(image.read_va(0x0106A8FC, 13), b"ActualHeight\0", "height name")
+    require_equal(image.read_va(0x0106A90C, 12), b"ActualWidth\0", "width name")
 
     for va, expected in ENTRY_BYTES.items():
         require_equal(image.read_va(va, len(expected)), expected, f"entry 0x{va:08X}")
