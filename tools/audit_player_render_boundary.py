@@ -440,6 +440,59 @@ def main() -> None:
         (0x00FA28E4, 49, 0x0055A620),
     ):
         require_equal(image.read_u32(vtable + slot * 4), target, f"context slot {slot}")
+    publication_anchors = (
+        (
+            0x0054E890,
+            "558bec83e4f081ecb4000000",
+            "cached drawing record publisher entry",
+        ),
+        (
+            0x0054E8AF,
+            "8bf18b8ecc0300003b8ed0030000577404c6465c01807e5c00750c838604040000ffe91c080000c78604040000020000008b0da86b3301",
+            "dirty state and reclamation-value prefix",
+        ),
+        (
+            0x0054E8E0,
+            "8b0da86b330185c98944242c0f84000800006a048d542430526a22e8d0c7ffff84c00f84ea070000",
+            "context-item selection submission and prefix failure exit",
+        ),
+        (
+            0x0054F03C,
+            "f6465a80742a85c90f84a80000006a0c8d96a0000000526a0ee876c0ffff3c010f859000000080665a7f8b0da86b3301",
+            "three-float publication and success-gated dirty-bit clear",
+        ),
+        (
+            0x0054F0EE,
+            "c6465c008b8604040000",
+            "normal dirty-byte clear and full EAX result",
+        ),
+        (0x0054F10C, "c20400", "cached record publisher RET 4"),
+        (0x005527A0, "5355568bf18b86300300008b5008", "context publication loop entry"),
+        (
+            0x00552836,
+            "8b75008b4e0885c9742856e84ac0ffff85c07f1e8b7e0885ff74178bcfe8d89cffff57e8b9f2470083c404c7460800000000",
+            "record ECX, explicit item, signed result and cache reclamation",
+        ),
+        (
+            0x00552877,
+            "5f5e5db0015bc3",
+            "context publication loop AL-only result and RET",
+        ),
+        (0x0054B0D0, "558bec83e4f06aff", "internal scene submission helper entry"),
+        (
+            0x0054B115,
+            "8bf18b4d0852508b463883c11551508d4c2424e8530ffaff",
+            "scene type code plus 0x15 and builder call",
+        ),
+        (
+            0x004DAB2D,
+            "8b8f547d0100e8687c07008d4f105f5e5d83c408e93afbffff",
+            "MainModule UI publication before container-update tail jump",
+        ),
+    )
+    for va, expected_hex, label in publication_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),

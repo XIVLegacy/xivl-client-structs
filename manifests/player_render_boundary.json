@@ -10,6 +10,7 @@
   },
   "scope": "Static and bounded-runtime local-player model-transform and NamePlate presentation paths relevant to 30 Hz visible stepping during 60 FPS rendering.",
   "method": {
+    "drawingPublicationInvocation": "Run read-only DumpVAs.java as in method.visualOffsetInvocation: c601_context-record-publisher.txt targets 0x0054E890,0x0054BB10,0x0054BB40,0x0054BB80; c602_context-publish-boundary.txt target 0x005527A0; c603_context-publish-frame-order.txt target 0x004DAA10. Each requested section resolved and decompiled without ERROR or DECOMP FAILED. Verified address-reference recipe: tools\\ghidra\\export-references.ps1 -Addresses '0x01336BA8' -Out tools/ghidra/logs/c600_context-interface-global.txt, COMPLETE targets=1 references=38. Exact publisher, caller binding, reclamation and frame-order instructions are checked by tools/audit_player_render_boundary.py --binary <pinned-client>.",
     "drawingContextInvocation": "Run read-only DumpVAs.java as in method.visualOffsetInvocation: c585_ui-peer-publication.txt targets 0x0093F880,0x009405C0; c586_nameplate-peer-access.txt targets 0x006A34B0,0x0093EF90,0x00974220; c588_ui-factory-lifecycle.txt targets 0x009741F0,0x00974200,0x00974250; c589_ui-interface-owner.txt target 0x0054E190; c590_ui-context-factory.txt targets 0x005522D0,0x004D7C10,0x004D6750; c591_ui-context-proxy.txt targets 0x00553D90,0x0054B0D0; c592_drawing-context-publication.txt targets 0x0055A000,0x0055A620; c593_drawing-context-state.txt target 0x00559DE0. Each requested VA section resolved and decompiled without ERROR or DECOMP FAILED. Verified address-reference recipe: tools\\ghidra\\export-references.ps1 -Addresses '0x0135C2AC' -Out tools/ghidra/logs/c587_ui-factory-global.txt, COMPLETE targets=1 references=4. Byte identity and instruction anchors are checked by tools/audit_player_render_boundary.py --binary <pinned-client>.",
     "visualOffsetInvocation": "tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools/ghidra/logs/c581_window-position-pair.txt -ScriptEnv @{ XIVL_TARGET_VAS='0x00939720,0x00940110' } -ScriptPath @('ghidra'); repeat for c583_visual-offset-notification.txt with '0x009411E0,0x00940DD0,0x0093A870,0x00974240'. Each requested section resolved and decompiled without ERROR or DECOMP FAILED. The failed 0x0093FE00 section in exploratory c582 is not decompilation evidence; its callback dispatch observations below use pinned PE instructions only.",
     "windowRttiInvocation": "tools\\ghidra\\run-headless.ps1 -Script ExtractRtti.java -ReadOnly -ScriptEnv @{ XIVL_RTTI_DETAILS_OUT='<output>/c577_window-rtti.txt'; XIVL_RTTI_DETAILS_TARGETS='.?AVWindow@Sqwt@@' } -ScriptPath @('tools/ghidra')",
@@ -168,7 +169,11 @@
       "signature": "void __thiscall(Drawable *this)",
       "entryBytes": "55 8B EC 83 E4 F0 83 EC 10 8B C1 83 A0 A0 00 00 00 BF",
       "behavior": "Reads nine float32 lanes at +0x30, +0x34, +0x38, +0x40, +0x44, +0x48, +0x50, +0x54 and +0x58 on the same object. Clears bit 0x40 in the uint32 word at +0xA0 and sets it if the computed sign comparison is negative. No callees and no stores outside +0xA0.",
-      "callers": ["0x00BB7550", "0x00BDB0F0", "0x00C25ED0"],
+      "callers": [
+        "0x00BB7550",
+        "0x00BDB0F0",
+        "0x00C25ED0"
+      ],
       "ordering": "0x00BB7550 copies the transform, updates +0xA0, then calls this function on the same Drawable.",
       "evidenceLocator": "c569_drawable-consumers.txt VA 0x00C579A0; method.drawableConsumerInvocation",
       "limitations": "This confined derived-flag update is not a shader upload and does not prove absence of other transform consumers or upstream feedback. Runtime thread and phase of all callers are not established."
@@ -191,7 +196,10 @@
       "signature": "int32_t __thiscall(NamePlate *this)",
       "entryBytes": "56 8B F1 8B 06 8B 50 50 FF D2 84 C0 74 10 8B 86 94 01 00 00 F3 0F 2C 80 AC 01 00 00 5E C3 33 C0 5E C3",
       "behavior": "Calls slot 20 at vtable+0x50. When AL is nonzero, loads NamePlate+0x194, reads its pointee+0x1AC as float32, converts with CVTTSS2SI and returns EAX. Otherwise returns 0. ECX is this; no explicit stack arguments. No direct pointee null check.",
-      "callers": ["0x00796D50 via vtable+0x5C", "0x00562290 via vtable+0x5C"],
+      "callers": [
+        "0x00796D50 via vtable+0x5C",
+        "0x00562290 via vtable+0x5C"
+      ],
       "evidenceLocator": "c571_nameplate-slot23.txt VA 0x006A2E60; c568_player-presentation-paths.txt VA 0x00796D50; c573_nameplate-lifecycle.txt VA 0x00562290; pinned NamePlate vtable 0x00FCF98C +0x5C",
       "limitations": "The bounded identity capture and Window property path identify this scalar as ActualHeight, not a moving position. This getter does not establish a feedback-free correction boundary."
     },
@@ -205,7 +213,10 @@
       "entryBytes": "6A FF 68 4B AE EC 00 64 A1 00 00 00 00 50 83 EC 54 53",
       "behavior": "ECX is the UI object. Four explicit stack arguments are caller-owned output rectangle, input rectangle and two selectors whose low bytes select branches 0..3. Returns out in EAX and ends with RET 16 at 0x009302BF. Computes a RectTemplate<float> record, updates ActualWidth at +0x1B4 and ActualHeight at +0x1AC conditionally, and returns the rectangle through out. At 0x00930135, FSTP [EDI] writes the computed float; EDI was established as this+0x1AC at 0x009300E8. The source is the computed local float at current ESP+0x20 loaded at 0x00930116, not an actor-coordinate field.",
       "condition": "If +0x1B0 bit 0x10 is set, calls 0x009157C0 with this and metadata 0x013587F0, then clears that bit. Reads the resulting state byte. The computed store requires state & 3 nonzero and FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x00930150 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded by this test. Sets state bit 0x04 and calls 0x00953BA0 with the property record and the same metadata.",
-      "callers": ["0x00925490", "0x009302F0"],
+      "callers": [
+        "0x00925490",
+        "0x009302F0"
+      ],
       "phase": "UI rectangle/property update; runtime thread, cadence and ordering against model draw are not captured",
       "evidenceLocator": "c578_window-scalar-path.txt VA 0x0092FD20; pinned instructions 0x009300E8..0x00930143; c579_window-dimension-names.txt ActualHeight; pinned name initializer 0x00F21D80",
       "limitations": "No direct actor or physics field store is identified in this function, but its property notification and virtual callees preclude a whole-path non-feedback claim. This does not establish a moving nameplate anchor or a correction seam."
@@ -220,7 +231,12 @@
       "entryBytes": "6A FF 68 76 AE EC 00 64 A1 00 00 00 00 50 83 EC 14 53",
       "behavior": "ECX is this and the single stack argument is forwarded as input to 0x0092FD20. Ends with RET 4 at 0x0093043A. If byte this+0x158 is zero, conditionally writes zero to ActualWidth and ActualHeight and constructs a zero rectangle. Otherwise calls 0x0092FD20 at 0x00930412, passing a stack-local output rectangle, input and byte selectors from +0x24C/+0x24E. Both branches pass the resulting rectangle to 0x00939720 at 0x00930422.",
       "condition": "The zero-height store at 0x009303B6 uses ESI=this+0x1AC from 0x0093037A. After the optional metadata refresh/bit-0x10 clear, it requires +0x1B0 & 3 nonzero and FCOM / FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x009303D0 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded. It sets bit 0x04 and notifies 0x00953BA0 with metadata 0x013587F0. The meaning of +0x158 is not promoted.",
-      "callers": ["0x0091B7D0", "0x00925490", "0x009A5230", "0x0090EF80"],
+      "callers": [
+        "0x0091B7D0",
+        "0x00925490",
+        "0x009A5230",
+        "0x0090EF80"
+      ],
       "phase": "UI dispatch; no runtime phase or frequency claim",
       "evidenceLocator": "c578_window-scalar-path.txt VA 0x009302F0; pinned 0x0093037A..0x009303C9 and 0x00930412..0x0093043C",
       "limitations": "The capture did not pair either write site with a live instance. These are statically proven ActualHeight paths, not an exclusive-writer claim. Metadata refresh, property notification, rectangle forwarding and the 0x0092FD20 call remain in scope; the whole path does not establish non-feedback, a moving nameplate anchor or a correction seam."
@@ -962,9 +978,20 @@
       "factoryResult": "BCS-Y-2296 has ECX=interface, one explicit InputElement pointer, RET 4 at 0x00552416. On its successful return path it allocates a 16-byte proxy through BCS-Y-2297 at 0x00553D90. Constructor ECX=proxy, explicit arguments are backing-context value and interface pointer, RET 8 at 0x00553DF8; EAX returns the proxy. It installs DrawingToolContext vtable 0x00FA28E4, stores backing context at +0x04, initializes pointer +0x08 to zero, ORs byte +0x0C with 1, and writes the supplied interface pointer to global 0x01336BA8. The factory can return null under its guards or allocation/submission failures.",
       "windowBranch": "When the supplied InputElement dynamically casts to Window, the factory requests type 15 through 0x004D7C10 on interface+0x24. It writes the supplied UI pointer at returned element+0x94 and reads element+0x88 through 0x004D6750 as the backing-context value. A DesktopWindow cast also initializes interface+0x38 from that getter. A missing interface+0x38 rejects this branch. Non-Window inputs proceed with backing value zero. The proxy/backing association is submitted through 0x0054B0D0 with code 0x24 and an 8-byte [backing,proxy] pair. This does not establish the backing element's draw phase or a non-feedback contract.",
       "slot13": "DrawingToolContext vtable+0x34 points to BCS-Y-2298 at 0x0055A000 (RVA 0x0015A000): __thiscall, ECX=context proxy, one explicit const float pair pointer, RET 4 at 0x0055A03D. It calls BCS-Y-2299 at 0x00559DE0 on the same ECX. CVTTSS2SI followed by CVTSI2SS truncates each input lane to integer then converts it back to float32; stores are record+0xA0 and +0xA4. It zeroes float32 +0xA8, ORs byte +0x5A with 0x80 and sets byte +0x5C to 1. These are record offsets, not proxy offsets or proven world coordinates. Out-of-range/NaN conversion follows the x86 instruction, not a string or general numeric validation contract.",
-      "recordOwner": "BCS-Y-2299 at 0x00559DE0 (RVA 0x00159DE0), ECX=context proxy, no explicit arguments, RET at 0x00559E50, returns proxy+0x08 in EAX. If that pointer is zero, it allocates 0x410 bytes and initializes them through 0x0054D310 before caching the result at +0x08. The helper can return zero on allocation failure; slot 13 itself has no null-result guard. Record class, lifetime, publication consumers and runtime thread ownership are not inferred from its allocation size.",
+      "recordOwner": "BCS-Y-2299 at 0x00559DE0 (RVA 0x00159DE0), ECX=context proxy, no explicit arguments, RET at 0x00559E50, returns proxy+0x08 in EAX. If that pointer is zero, it allocates 0x410 bytes and initializes them through 0x0054D310 before caching the result at +0x08. The helper can return zero on allocation failure; slot 13 itself has no null-result guard. Publication and one cache-reclamation path are resolved in publication below; record class, complete lifetime and runtime thread ownership are not inferred from allocation size.",
+      "publication": {
+        "classification": "static-record-to-internal-scene-submission-proven",
+        "publisher": "BCS-Y-2300 at 0x0054E890 (RVA 0x0014E890), __thiscall with ECX=cached record and one explicit untyped context-item pointer, RET 4 at 0x0054F10C. EAX is the full 32-bit record+0x404 value at exit, not an AL-only status. The item argument is proven by caller 0x00552836..0x00552841; it is not item+0x04's backing pointer.",
+        "prefix": "The publisher compares record+0x3CC/+0x3D0 and sets byte +0x5C=1 if unequal. If +0x5C is zero it decrements the integer at +0x404 and exits; otherwise it sets +0x404=2. It uses global interface 0x01336BA8 to submit code 0x22 with a four-byte copy of the explicit item pointer through 0x0054B0D0. Null interface or zero AL exits before later property submission. Other state and property operations can also exit early; these prefix conditions are not the complete function contract.",
+        "floatPayload": "At 0x0054F03C, byte record+0x5A bit 0x80 gates the VisualOffset-derived payload. The reached path submits code 0x0E, pointer record+0xA0 and length 0x0C through 0x0054B0D0 at 0x0054F055. Payload is the three float32 lanes at +0xA0/+0xA4/+0xA8, already integer-converted and zero-third-lane by slot 13. AL must equal 1 before bit 0x80 is cleared at 0x0054F062. Normal completion later clears byte +0x5C at 0x0054F0EE; early returns can preserve pending state.",
+        "sceneSubmission": "0x0054B0D0, already decompiled in method.drawingContextInvocation, calls 0x004EC080 with interface+0x38, code+0x15, payload and byte length, then invokes interface+0x20 slot 3. Thus context-item selection code 0x22 becomes internal ScenePacket type 0x37, and the 12-byte code 0x0E payload becomes type 0x23. Factory backing/proxy association code 0x24 becomes type 0x39. These are client-internal scene records, not network opcode or shader-register bindings. Receiver selection and eventual drawing are not established by this producer alone.",
+        "caller": "BCS-Y-2301 at 0x005527A0 (RVA 0x001527A0), ECX=client SqwtInterface instance, no explicit stack arguments, RET at 0x0055287D; it defines AL=1 only, not the rest of EAX. It iterates four-byte context-item pointers between instance+0x10 and +0x14. At 0x00552839 ECX becomes item+0x08; if nonzero it pushes the item itself and calls the publisher. If returned signed EAX is not positive, it cleans and frees the current item+0x08 record, then writes item+0x08=0 at 0x00552861. The +0x404 value therefore controls cached-record reclamation on this path; it is not proof of a simulation or FPS divider. The scoped export does not prove the vector-insertion edge from the DrawingToolContext factory, so vector-item class identity is not promoted.",
+        "ordering": "BCS-Y-0537 at 0x004DAA10 loads MainModule+0x17D54 and calls 0x005527A0 at 0x004DAB33. It then forms MainModule+0x10 and tail-jumps to container update 0x004DA680 at 0x004DAB41. Within this invocation, cached UI publication precedes that player-state update boundary. This static ordering is not a live once-per-Present observation of the publisher, a render-thread identity, or a completed draw fence.",
+        "limits": "The source moving-anchor producer, live local Window/proxy/record binding, ScenePacket type 0x23/0x37/0x39 receiver operations, shader or UI draw consumer, thread scheduling and absence of feedback remain unresolved. The 0x410-byte cache is not safe to retain across caller reclamation. No interpolation or launcher correction seam is established.",
+        "evidence": "method.drawingPublicationInvocation; BCS-Y-2300/BCS-Y-2301; exact entry, argument-binding, payload, flag-clear, return, cache-free and frame tail-jump anchors in tools/audit_player_render_boundary.py."
+      },
       "namePlateConstruction": "NamePlate constructor helper 0x006A34B0 uses NamePlate+0xF4 and 0x006A4270 to look up TextBlock_PrimaryLabel. It calls 0x0093F880 on the returned UI object, dynamically casts the result from DrawingContext TypeDescriptor 0x0126DCE8 to DrawingToolContext TypeDescriptor 0x0126DFC8, then invokes slot 49 at 0x0055A620. Slot 49 only ORs record byte +0x5A with 0x20 and sets byte +0x5C to 1 through 0x00559DE0. This constructor-only primary-label path does not identify the moving anchor and is not the captured Window pointer at NamePlate+0x194 by assumption.",
-      "limits": "The normal static factory resolves the VisualOffset receiver to DrawingToolContext and a cached 0x410-byte record, but no live snapshot identified the local Window+0xA0 proxy or +0x08 record. Neither this float-to-integer conversion nor primary-label construction establishes the origin of held world Y, moving NamePlate position, consumer ordering before draw, cadence or absence of feedback. The next static question is how the cached record is published and consumed, and how the moving anchor reaches it. No correction seam or new runtime probe is established.",
+      "limits": "The normal static factory resolves the VisualOffset receiver to DrawingToolContext and a cached 0x410-byte record; publication below resolves its internal scene-submission edge. No live snapshot identified the local Window+0xA0 proxy or +0x08 record. Neither float-to-integer conversion nor primary-label construction establishes the origin of held world Y, moving NamePlate position, consumer ordering before draw, cadence or absence of feedback. The remaining static questions are the scene receiver/draw consumer and how the moving anchor reaches this path. No correction seam or new runtime probe is established.",
       "evidence": "method.drawingContextInvocation; BCS-Y-2296 through BCS-Y-2299; exact factory/vtable/record-write anchors in tools/audit_player_render_boundary.py."
     },
     "visualOffset": {
@@ -991,13 +1018,33 @@
         "sha256": "20776FCDC349314EEB0424D7455668118B10C2FE34C7956ED0F26942931D3984",
         "sizeBytes": 64,
         "encoding": "Sixteen little-endian uint32 values: magic, success, attempts, threadId, Present-entry ordinal, active pointer, actorId, primary vtable, +8 vtable, NamePlate pointer, NamePlate vtable, +0x190 byte zero-extended, +0x120 pointer, +0x194 pointer, pointee first word, +0x1AC raw float bits.",
-        "words": ["0x3149504E", "0x00000001", "0x00000001", "0x000072CC", "0x00002CEC", "0x049609A8", "0x0000000B", "0x00FA7C50", "0x00FA7B2C", "0x04961548", "0x00FCF98C", "0x00000000", "0x21F1FAA0", "0x21F1FAA0", "0x0106A0BC", "0x42A40000"],
+        "words": [
+          "0x3149504E",
+          "0x00000001",
+          "0x00000001",
+          "0x000072CC",
+          "0x00002CEC",
+          "0x049609A8",
+          "0x0000000B",
+          "0x00FA7C50",
+          "0x00FA7B2C",
+          "0x04961548",
+          "0x00FCF98C",
+          "0x00000000",
+          "0x21F1FAA0",
+          "0x21F1FAA0",
+          "0x0106A0BC",
+          "0x42A40000"
+        ],
         "boundary": "Read-only established 0x004DA680 callback after original update; manually armed after local character entry. One coherent identity on attempt 1. Present ordinal counts hook entries, not completed successful presentations. Temporary instrumentation was removed and the original staged module restored.",
         "limits": "Header values were equal before/after the bounded pointee read. This is not a lock or lifetime guarantee. Heap addresses are run-local. One snapshot does not prove cadence or a write site's live invocation."
       },
       "identity": "Pointee vtable 0x0106A0BC -> COL 0x01179064 -> TypeDescriptor 0x01269E20, decorated .?AVWindow@Sqwt@@. COL complete-object offset and construction displacement are zero. Constructor 0x009246F0 stores this primary vtable at 0x00924724. RTTI includes FrameworkElement ancestry. NamePlate +0x120 and +0x194 both pointed to this Window in the capture.",
       "property": "Float32 Window+0x1AC and byte state +0x1B0 are the inherited ActualHeight record. At 0x00F21D80 PUSH 0x0106A8FC names ActualHeight; MOV ECX,0x013587F0 and CALL 0x009108E0 construct its metadata. FrameworkElement constructor 0x0092F640 initializes the record through 0x009C1FD0 with that metadata. The paired ActualWidth record is +0x1B4, state +0x1B8, metadata 0x01358910, named by the initializer at 0x00F21DB0.",
-      "writers": ["BCS-Y-2291 computed store 0x00930135", "BCS-Y-2292 zero store 0x009303B6"],
+      "writers": [
+        "BCS-Y-2291 computed store 0x00930135",
+        "BCS-Y-2292 zero store 0x009303B6"
+      ],
       "rectangleContract": "RectFloat in the signatures denotes the observed 20-byte Sqwt::RectTemplate<float> record: vtable word at +0 and four float32 lanes at +4/+8/+0xC/+0x10. The output is caller-owned; 0x0092FD20 returns its pointer in EAX. Downstream 0x00939720 copies rectangle+0xC/+0x10 into object+0x178/+0x17C and forwards the +4/+8 pair through a stack-local record to 0x00940110. This forwarding does not identify the moving nameplate anchor or its drawing boundary.",
       "value": "Captured ActualHeight raw bits 0x42A40000 represent 82.0; this is a UI property sample, not world Y.",
       "evidenceLocator": "c577_window-rtti.txt .?AVWindow@Sqwt@@/0x0106A0BC; c578_window-scalar-path.txt VAs 0x0092F640/0x0092FD20/0x009302F0; c579_window-dimension-names.txt; c580_window-property-helpers.txt; tools/audit_player_render_boundary.py pinned byte assertions",
@@ -1008,7 +1055,15 @@
       "question": "What concrete live UI object is stored in the selected local CharaElement's NamePlate+0x194?",
       "boundary": "Use the established 0x004DA680 player-state capture callback after the original update returns; do not install a new graphics or UI hook.",
       "filter": "Read the established container+0x17838 active RaptureElement pointer and container+0x1783C actor ID, and require an independently identified live local CharaElement, not a guessed cast. Validate its inline NamePlate at +0xBA0 against vtable 0x00FCF98C and require a nonzero +0x194 pointee readable through +0x1AF. A clear +0x190 bit 0x04 alone is not a pointer-validity check.",
-      "records": ["thread ID and Present ordinal", "active CharaElement pointer and actor ID", "NamePlate pointer and vtable", "NamePlate+0x190 byte", "NamePlate+0x120 and +0x194 pointers", "first uint32 at the +0x194 pointee, recorded as a candidate vtable for static matching", "pointee+0x1AC raw float32 bits"],
+      "records": [
+        "thread ID and Present ordinal",
+        "active CharaElement pointer and actor ID",
+        "NamePlate pointer and vtable",
+        "NamePlate+0x190 byte",
+        "NamePlate+0x120 and +0x194 pointers",
+        "first uint32 at the +0x194 pointee, recorded as a candidate vtable for static matching",
+        "pointee+0x1AC raw float32 bits"
+      ],
       "limit": "One successful identity record, or stop after 120 existing callback captures with an explicit no-valid-identity result. No movement route or broad trace is required.",
       "safety": "Read only through fault-contained bounded reads. Capture active pointer/ID and NamePlate vtable/+0x120/+0x194 before and after the pointee reads; reject changes or failed reads. This detects ordinary replacement, not a proven lock or lifetime guarantee. Do not call slot 23 or the constructor and do not modify any actor, physics, Drawable or UI state.",
       "success": "Match the candidate vtable to the pinned client's RTTI/catalog and use that concrete class to resume a targeted +0x1AC writer search. This identity snapshot does not by itself prove that +0x1AC is position, prove timing or absence of feedback, or authorize interpolation."
