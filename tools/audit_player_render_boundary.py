@@ -359,6 +359,87 @@ def main() -> None:
     require_equal(
         image.read_u32(0x0093FF40), 0x0093FE45, "VisualOffset ID-zero dispatch"
     )
+    context_anchors = (
+        (
+            0x009741F0,
+            "8bc1c70074350701a3acc23501c3",
+            "base interface global publication",
+        ),
+        (0x00974220, "a1acc23501c3", "interface global getter"),
+        (0x0054E1D8, "c7068c2dfa00c746046c2dfa00", "concrete interface vtables"),
+        (
+            0x0093EF90,
+            "568bf1e88852030085c074128b8ea80000008b108b5204518bc8ffd25ec333c05ec3",
+            "Visual context factory dispatch",
+        ),
+        (0x0093F880, "83ec08568bf1e8b5490300", "Visual context acquisition entry"),
+        (
+            0x0093F8B1,
+            "8b068b50548bceffd285c08986a00000000f841a0200008b16508b42588bceffd0",
+            "UI slot-21 result publication and slot-22 follow-up",
+        ),
+        (
+            0x0093F8E9,
+            "f6462c0474118b8ea00000008b018b40348d562452ffd0",
+            "pending VisualOffset publication",
+        ),
+        (
+            0x005522D0,
+            "6aff68c9c3e60064a1000000005083ec08",
+            "drawing context factory entry",
+        ),
+        (0x00552416, "c20400", "drawing context factory RET 4"),
+        (0x004D7C10, "568bf1b9786b3301", "element creation entry"),
+        (0x004D6750, "8b8188000000c3", "backing context getter"),
+        (
+            0x00553D90,
+            "6aff68f8c8e60064a1000000005051",
+            "DrawingToolContext constructor entry",
+        ),
+        (
+            0x00553DC3,
+            "8b54241880480c018948088b4c241cc700e428fa00895004890da86b3301",
+            "context record initialization and concrete vtable",
+        ),
+        (0x00553DF8, "c20800", "DrawingToolContext constructor RET 8"),
+        (
+            0x00559DE0,
+            "6aff68eb70e70064a100000000505156",
+            "context record acquisition entry",
+        ),
+        (0x00559E50, "c3", "context record acquisition RET"),
+        (
+            0x0055A000,
+            "e8dbfdffff8b4c2404f30f2c11f30f2ac2f30f1180a0000000f30f2c4904f30f2ac1f30f1180a40000000f57c080485a80f30f1180a8000000c6405c01c20400",
+            "context slot-13 truncating pair setter",
+        ),
+        (
+            0x006A34B0,
+            "6aff68fbf0e80064a1000000005083ec58",
+            "NamePlate primary-label initialization entry",
+        ),
+        (
+            0x006A4090,
+            "8bcee819f4ffff",
+            "NamePlate constructor primary-label helper call",
+        ),
+        (
+            0x006A351A,
+            "8b4c24086a0068c8df260168e8dc26016a00e84fc3290050e8957133008b108bc88b82c400000083c414ffd0",
+            "primary-label context acquisition, RTTI cast and slot-49 call",
+        ),
+        (0x0055A620, "e8bbf7ffff80485a20c6405c01c3", "context slot-49 record flags"),
+    )
+    for va, expected_hex, label in context_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
+    for vtable, slot, target in (
+        (0x0106A0BC, 21, 0x0093EF90),
+        (0x00FA2D8C, 1, 0x005522D0),
+        (0x00FA28E4, 13, 0x0055A000),
+        (0x00FA28E4, 49, 0x0055A620),
+    ):
+        require_equal(image.read_u32(vtable + slot * 4), target, f"context slot {slot}")
     transform_stores = bytes.fromhex("0f28000f2946500f2840100f2946600f2840200f294670")
     require_equal(
         image.read_va(0x008DEC9F, len(transform_stores)),
