@@ -374,6 +374,16 @@ def main() -> None:
         ),
         (0x0093F880, "83ec08568bf1e8b5490300", "Visual context acquisition entry"),
         (
+            0x0093F9CC,
+            "56e85efdffff8baea00000008bf88b86a40000008b98a0000000e83548030085c0740c8b1057538bc88b420c55ffd0",
+            "Visual child, parent and preceding peer publication",
+        ),
+        (
+            0x0054BBB0,
+            "83ec0c8b5424108b442414895424046a0c8d542404894424048b44241c526a2189442414e8f7f4ffff83c40cc20c00",
+            "visual context parent operation publication",
+        ),
+        (
             0x0093F8B1,
             "8b068b50548bceffd285c08986a00000000f841a0200008b16508b42588bceffd0",
             "UI slot-21 result publication and slot-22 follow-up",
@@ -436,6 +446,7 @@ def main() -> None:
     for vtable, slot, target in (
         (0x0106A0BC, 21, 0x0093EF90),
         (0x00FA2D8C, 1, 0x005522D0),
+        (0x00FA2D8C, 3, 0x0054BBB0),
         (0x00FA28E4, 13, 0x0055A000),
         (0x00FA28E4, 49, 0x0055A620),
     ):
@@ -504,6 +515,11 @@ def main() -> None:
             "selected context store",
         ),
         (
+            0x007FA504,
+            "85ff741185f6740d8b54241052568bcfe8273f0d00",
+            "resolved parent and child context attachment",
+        ),
+        (
             0x007FA8EA,
             "8bb6a00100003bf374108b55108b450c52508bce57e85c430d00",
             "selected context forwarding",
@@ -519,6 +535,16 @@ def main() -> None:
             "operation 0E triplet copy and RET 12",
         ),
         (0x008CD700, "558bec83e4f06aff68a532ec00", "derived processor entry"),
+        (
+            0x008CE440,
+            "83ec08538b5c241055568bf18b4b7085c957740653",
+            "WindowContext child attachment entry",
+        ),
+        (
+            0x008CE4F1,
+            "895c2430e8861700008b4b7485c9b00189737088832c01000088832d010000",
+            "WindowContext child parent store and dirty flags",
+        ),
         (
             0x008CD765,
             "8a9e2d0100008a8e2c0100000a5d100a45140a4d1884db88442434885c2438c6862d01000000884c2430c6862c01000000",
