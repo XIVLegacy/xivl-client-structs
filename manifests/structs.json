@@ -24704,34 +24704,43 @@
       "id": "BCS-S-0371"
     },
     {
-      "name": "WorldOpcode00C8StatePacket",
+      "name": "TellChatApplication",
       "namespace": "FFXIV.Client.Network.Wire.C2S",
-      "size": "0x220",
-      "confidence": "structural",
+      "size": "0x228",
+      "confidence": "confirmed",
       "sourceRefs": [
         "BCS-Y-0316",
         "BCS-Y-0331",
+        "manifests/chat_wire_contract.json",
         "manifests/operation_opcode_map_outbound.json",
         "data/vendor/opcodes/opcodes.json",
-        "tools/ghidra/logs/c474_world-state-packet.txt"
+        "xivl-decomp/asm/ffxivgame/000df810_FUN_004df810.s",
+        "xivl-decomp/asm/ffxivgame/000e3750_FUN_004e3750.s"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x20",
-          "name": "header_values",
-          "type": "uint64_t[4]",
-          "notes": "Exact four-qword header copied from the emitter's zero-initialized source buffer."
+          "size": "0x08",
+          "name": "opaque_00",
+          "type": "unknown[8]",
+          "notes": "Leading application bytes supplied by World Chat framing. Preserve without interpretation."
         },
         {
-          "offset": "0x20",
+          "offset": "0x08",
+          "size": "0x20",
+          "name": "target_name",
+          "type": "char[32]",
+          "notes": "Client-supplied tell target. FUN_00447BC0 retains at most 31 content bytes plus NUL and avoids splitting a UTF-8 continuation sequence."
+        },
+        {
+          "offset": "0x28",
           "size": "0x200",
-          "name": "state_block",
-          "type": "uint32_t[128]",
-          "notes": "Exact 512-byte block copied from the emitter's zero-initialized source buffer."
+          "name": "message",
+          "type": "char[512]",
+          "notes": "Client-supplied tell message. FUN_00447BC0 retains at most 511 content bytes plus NUL and avoids splitting a UTF-8 continuation sequence."
         }
       ],
-      "notes": "Complete exact 0x220 application payload for WorldServerbound c2s 0x00C8, excluding the 0x10 game-message prefix. Retained evidence identifies a large World-channel state push without establishing a more specific operation or either copied region's inner schema.",
+      "notes": "Complete derived 0x228 application body for World Chat c2s 0x00C8 tell. FUN_004DF810 rejects an empty target, bounds target and message, calls FUN_004E3750 to build the 0x230-byte internal record, and forwards through FUN_00DB3E30. The prior state-push interpretation mistook target[32] and message[512] for an unrelated header and state block. No retail tell capture is retained, so server recipient selection, presence, echo, offline behavior, and cross-zone behavior remain unknown.",
       "id": "BCS-S-0372"
     },
     {
@@ -25204,13 +25213,15 @@
       "id": "BCS-S-0381"
     },
     {
-      "name": "PartyChatMessagePacket",
+      "name": "SelectedGroupChatApplication",
       "namespace": "FFXIV.Client.Network.Wire.C2S",
-      "size": "0x208",
+      "size": "0x210",
       "confidence": "confirmed-pcap-derived",
       "sourceRefs": [
         "BCS-Y-0306",
         "BCS-Y-0309",
+        "BCS-Y-2324",
+        "manifests/chat_wire_contract.json",
         "manifests/autotranslate_wire_format_study.json",
         "manifests/party_subsystem.json",
         "manifests/pcap_opcode_coverage_matrix.json",
@@ -25222,26 +25233,40 @@
         {
           "offset": "0x00",
           "size": "0x04",
-          "name": "chat_value",
+          "name": "selector",
           "type": "uint32_t",
-          "notes": "Leading application dword supplied by the emitter caller; its narrower selector or routing semantics remain unresolved."
+          "notes": "Observed value 10 in all 11 retained c2s 0x00C9 packets."
         },
         {
           "offset": "0x04",
+          "size": "0x04",
+          "name": "reserved_04",
+          "type": "uint32_t",
+          "notes": "Observed zero in all retained c2s 0x00C9 packets."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "group_context_opaque",
+          "type": "uint32_t",
+          "notes": "Caller-supplied selected-group context. The s2c receiver resolves the full value through FUN_005754E0 -> FUN_006C7B80, but its underlying party or linkshell identity semantics remain unresolved."
+        },
+        {
+          "offset": "0x0C",
           "size": "0x200",
           "name": "message",
           "type": "char[512]",
-          "notes": "Fixed-capacity message buffer cleared before the current source-text length is copied, then copied in full into the outbound record."
+          "notes": "NUL-terminated, zero-padded UTF-8 text in retained captures; at most 511 content bytes."
         },
         {
-          "offset": "0x204",
+          "offset": "0x20C",
           "size": "0x04",
-          "name": "unknown_204",
+          "name": "tail_opaque",
           "type": "unknown",
-          "notes": "Exact closing application span copied by the Chat forwarder but not explicitly written by the retained emitter."
+          "notes": "Captured nonconstant opaque bytes. Preserve without assigning sequence or identity semantics."
         }
       ],
-      "notes": "Exact 0x208 application payload for WorldServerbound c2s 0x00C9 PartyChatMessagePacket, excluding the 0x10 game-message prefix. The emitter constructs an exact 0x218 game-message record, and the Chat forwarder copies exactly record_size minus 0x10 application bytes. Packet observations independently retain the full framed extent and party-chat attribution. The closing dword remains unknown-typed because the emitter writes only the leading value and 512-byte message region.",
+      "notes": "Exact 0x210 application body for World Chat c2s 0x00C9 selected-group chat, corroborated by 11 retained party-chat packets and the FUN_004DF6D0 emitter. The prior 0x208 layout began at application +0x08 and omitted selector and reserved leading dwords. Party use is capture-proven. Player-linkshell use is a strong static indication from the selected-group path that cannot be capture-validated and remains unproven retail behavior.",
       "id": "BCS-S-0382"
     },
     {
@@ -32560,16 +32585,16 @@
     "c473ExistingEvidence": "BCS-Y-0313 and manifests/operation_opcode_map_outbound.json establish the MapServerbound 0x0003 emitter and exact 0x230 emitted extent. BCS-Y-0308, BCS-Y-0314, and the same manifest establish two MapServerbound 0x0006 emit sites, the LanguageCodePacket attribution, and exact 0x18 emitted extent. The vendored opcode catalog independently retains both channel bindings.",
     "c473FreshEvidence": "Emitter 0x004E0320 explicitly zeros application +0x00, writes four caller dwords at +0x04, one dword at +0x14, one word at +0x18, zeros the word at +0x1A, and copies exactly 128 dwords at +0x1C; the fixed extent leaves the closing dword at +0x21C unwritten. Emitter 0x004E0290 and tick emitter 0x004E20A0 both zero application +0x00 and write the language-code dword at +0x04.",
     "c473Limits": "MapOpcode0003StatePacket+0x21C remains unknown-typed because the dedicated emitter documents no explicit write. The 0x0003 operation, header-value semantics, and inner 512-byte state schema remain unresolved, so their names stay broad. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
-    "c474Topic": "C474 World state packet layout",
+    "c474Topic": "C474 World tell packet layout",
     "c474Scripts": "ghidra/DumpVAs.java",
     "c474ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
     "c474Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c474_world-state-packet.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004E3750,0x004DF810,0x004D83E0,0x00445210,0x004451F0,0x00DB3E30' } -ScriptPath @('ghidra')",
     "c474Inputs": "WorldServerbound 0x00C8 record builder 0x004E3750; emitter 0x004DF810; upstream caller 0x004D83E0; shared source pointer and length helpers 0x00445210 and 0x004451F0; and World-channel relay 0x00DB3E30.",
     "c474Output": "tools/ghidra/logs/c474_world-state-packet.txt",
     "c474StructOutputs": "BCS-S-0372 in manifests/structs.json.",
-    "c474ExistingEvidence": "BCS-Y-0316, BCS-Y-0331, and manifests/operation_opcode_map_outbound.json establish the WorldServerbound 0x00C8 builder and emitter, the exact 0x230 emitted extent, four-qword prefix, and 512-byte state block. The vendored opcode catalog independently retains the channel, direction, extent, and broad state-push role.",
-    "c474FreshEvidence": "Builder 0x004E3750 writes the opcode and 0x230 extent, copies exactly four qwords at record +0x18, then copies exactly 128 dwords at record +0x38. These map to application +0x00 and +0x20 and close the exact 0x220 application extent. Emitter 0x004DF810 zero-initializes both source buffers before copying their current contents and passes the completed record to relay 0x00DB3E30.",
-    "c474Limits": "The 32-byte header and 512-byte state block retain broad names because their source-buffer construction and the available consumers do not establish inner wire semantics. No retained packet sample corroborates individual values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
+    "c474ExistingEvidence": "BCS-Y-0316, BCS-Y-0331, manifests/chat_wire_contract.json, and manifests/operation_opcode_map_outbound.json establish the WorldServerbound 0x00C8 tell builder and emitter, the exact 0x230 internal record extent, target[32], and message[512]. The vendored opcode catalog independently retains the World Chat direction and tell attribution.",
+    "c474FreshEvidence": "Builder 0x004E3750 writes the opcode and 0x230 internal extent, copies target_name[32] to record +0x18, and copies message[512] to record +0x38. These map to application +0x08 and +0x28 after the leading opaque eight bytes and close the derived 0x228 application extent. Emitter 0x004DF810 rejects an empty target, uses UTF-8-aware bounded copies for both text buffers, and passes the completed record to relay 0x00DB3E30.",
+    "c474Limits": "The leading application eight bytes remain opaque. No retained tell packet corroborates values or establishes server recipient selection, presence, echo, offline, or cross-zone behavior. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
     "c475Topic": "C475 World login packet layouts",
     "c475Scripts": "ghidra/DumpVAs.java",
     "c475ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
@@ -32607,9 +32632,9 @@
     "c478Inputs": "PartyChat emitter 0x004DF6D0 and Chat forwarder 0x00DB3E30; GroupCreated builder 0x0075E950, group-state aggregator 0x006C72E0, and Map gating thunk 0x004D6D30.",
     "c478Output": "tools/ghidra/logs/c478_party-group-packets.txt",
     "c478StructOutputs": "BCS-S-0382 and BCS-S-0383 in manifests/structs.json.",
-    "c478ExistingEvidence": "BCS-Y-0309 and manifests/autotranslate_wire_format_study.json establish WorldServerbound c2s 0x00C9, the 0x218 game-message extent, and PartyChat attribution; BCS-Y-0306 establishes the Chat forwarder's exact application-copy rule. BCS-Y-0984 and manifests/op0133_groupcreated_emitter.json establish MapServerbound c2s 0x0133, the 0x38 game-message extent, two leading identifier dwords, and 32 staged bytes; BCS-Y-0985 establishes the Group aggregator. Packet observations independently retain both framed extents and semantic attributions.",
-    "c478FreshEvidence": "PartyChat emitter 0x004DF6D0 writes the caller-supplied dword at application +0x00, clears a 0x200-byte local message buffer, copies the current text bytes into it, and transfers all 128 dwords to application +0x04. Chat forwarder 0x00DB3E30 copies the full 0x208 application extent, leaving the closing dword at +0x204 unwritten by the emitter. GroupCreated builder 0x0075E950 writes two dwords at application +0x00/+0x04 and copies two cleared 16-byte staging blocks to application +0x08, closing the exact 0x28 extent; aggregator 0x006C72E0 supplies the serialized state and gating thunk 0x004D6D30 routes the finished record.",
-    "c478Limits": "PartyChat+0x00 retains a broad name because the caller-supplied dword has no resolved consumer semantics. PartyChat+0x204 remains unknown-typed because the forwarder includes it in the application copy but the emitter documents no explicit write. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions.",
+    "c478ExistingEvidence": "BCS-Y-0309, BCS-Y-2324, manifests/chat_wire_contract.json, and the retained world-party-chat-00c9-contract capture establish World Chat 0x00C9 selected-group chat, exact 0x210 c2s and 0x230 s2c application extents, and capture-proven party use. BCS-Y-0306 establishes the Chat forwarder's exact application-copy rule. BCS-Y-0984 and manifests/op0133_groupcreated_emitter.json establish MapServerbound c2s 0x0133, the 0x38 game-message extent, two leading identifier dwords, and 32 staged bytes; BCS-Y-0985 establishes the Group aggregator.",
+    "c478FreshEvidence": "The retained c2s packets contain selector 10 at application +0x00, zero at +0x04, unresolved group context at +0x08, message[512] at +0x0C, and opaque tail[4] at +0x20C. Emitter 0x004DF6D0 copies the caller-supplied context to internal record +0x18 and bounded message[512] to +0x1C. The s2c receiver at 0x004D8E7B resolves application +0x08 through FUN_005754E0 and drops the packet on a zero result. GroupCreated builder 0x0075E950 writes two dwords at application +0x00/+0x04 and copies two cleared 16-byte staging blocks to application +0x08, closing the exact 0x28 extent; aggregator 0x006C72E0 supplies the serialized state and gating thunk 0x004D6D30 routes the finished record.",
+    "c478Limits": "The selected-group context remains opaque: client code proves lookup and drop behavior but not whether the value is a party, linkshell, actor, or other identifier. Player-linkshell use is a strong static indication that cannot be capture-validated and remains unproven retail behavior. Server recipient selection, presence, echo, offline, and cross-zone behavior remain unknown. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions.",
     "c479Topic": "C479 complete group-update packet layout",
     "c479Scripts": "ghidra/DumpVAs.java plus a read-only instruction-stream audit with pefile and capstone",
     "c479ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",

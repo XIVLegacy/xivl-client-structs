@@ -1,0 +1,284 @@
+{
+  "schemaVersion": 1,
+  "title": "FFXIV 1.23b World Chat client wire contract",
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "1.23b",
+    "imageBase": "0x00400000",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "coordinateSystem": {
+    "subpacketApplicationOffset": "0x18",
+    "description": "Application offsets are relative to the byte after the 16-byte actor wrapper and the 8-byte game-message header."
+  },
+  "framing": {
+    "connectionLane": "World Chat",
+    "outerFrame": "Ordinary outer frame containing an actor-wrapped game-message subpacket.",
+    "gameMessageTag": "0x0014",
+    "distinction": "Raw World Chat framing does not translate tell or selected-group chat into Map opcode 0x0003."
+  },
+  "captureAuthority": {
+    "repositoryRevision": "6c667d039020b4ae34dd8ed15f558ce5cf2830b3",
+    "study": "studies/world-party-chat-00c9-contract",
+    "occurrenceLocator": "derived/occurrences.csv",
+    "occurrenceSha256": "6ac5e235f42165d209dfcbe97172d7a1d70378aad93f84c1eec444ea98bdbb0e",
+    "counts": {
+      "c2s_00c9": 11,
+      "s2c_00c9": 26
+    },
+    "tellCaptureRetained": false,
+    "playerLinkshellCaptureRetained": false
+  },
+  "opcodes": [
+    {
+      "opcodeHex": "0x00C8",
+      "channel": "tell",
+      "direction": "c2s",
+      "confidence": "confirmed-static",
+      "builderRecordSize": "0x230",
+      "derivedSubpacketSize": "0x240",
+      "applicationBodySize": "0x228",
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x008",
+          "name": "opaque_000",
+          "type": "opaque[8]"
+        },
+        {
+          "offset": "0x008",
+          "size": "0x020",
+          "name": "target_name",
+          "type": "char[32]",
+          "producer": "client",
+          "bounds": "At most 31 content bytes plus NUL."
+        },
+        {
+          "offset": "0x028",
+          "size": "0x200",
+          "name": "message",
+          "type": "char[512]",
+          "producer": "client",
+          "bounds": "At most 511 content bytes plus NUL."
+        }
+      ],
+      "path": [
+        "FUN_006E91F0",
+        "FUN_0075C190",
+        "FUN_004D83E0",
+        "FUN_004DF810",
+        "FUN_004E3750",
+        "FUN_00DB3E30"
+      ],
+      "locators": [
+        "xivl-decomp:asm/ffxivgame/000df810_FUN_004df810.s#0x004DF865-0x004DF942",
+        "xivl-decomp:asm/ffxivgame/000e3750_FUN_004e3750.s#0x004E3750-0x004E379C",
+        "string VA 0x00FD4C04"
+      ]
+    },
+    {
+      "opcodeHex": "0x00C8",
+      "channel": "tell",
+      "direction": "s2c",
+      "confidence": "structural",
+      "applicationBodySize": "unresolved; parser consumes through 0x227",
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x008",
+          "name": "opaque_000",
+          "type": "opaque[8]"
+        },
+        {
+          "offset": "0x008",
+          "size": "0x020",
+          "name": "display_name",
+          "type": "char[32]",
+          "producer": "server packet",
+          "semanticBoundary": "Client code proves only that these bytes become the displayed name, not authoritative sender identity."
+        },
+        {
+          "offset": "0x028",
+          "size": "0x200",
+          "name": "message",
+          "type": "char[512]",
+          "producer": "server packet"
+        }
+      ],
+      "dispatch": {
+        "function": "FUN_004D8D10",
+        "jumpTableVa": "0x004D8F58",
+        "caseVa": "0x004D8D6C",
+        "displayType": 3
+      },
+      "path": [
+        "FUN_00DB4460",
+        "FUN_004E2670",
+        "FUN_004D8D10",
+        "FUN_004D8560"
+      ],
+      "locators": [
+        "xivl-decomp:asm/ffxivgame/000d8d10_FUN_004d8d10.s#0x004D8D51-0x004D8DF2",
+        "xivl-decomp:asm/ffxivgame/000e2670_FUN_004e2670.s#0x004E26ED-0x004E26F4"
+      ]
+    },
+    {
+      "opcodeHex": "0x00C9",
+      "channel": "selected group",
+      "direction": "c2s",
+      "confidence": "confirmed-capture-and-static",
+      "builderRecordSize": "0x218",
+      "subpacketSize": "0x228",
+      "applicationBodySize": "0x210",
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "selector",
+          "type": "u32",
+          "knownValue": 10
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "reserved_004",
+          "type": "u32",
+          "knownValue": 0
+        },
+        {
+          "offset": "0x008",
+          "size": "0x004",
+          "name": "group_context_opaque",
+          "type": "u32",
+          "producer": "client selected-group path",
+          "semanticBoundary": "Not proven to be an actor, party, or linkshell identifier."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x200",
+          "name": "message",
+          "type": "char[512]",
+          "producer": "client",
+          "bounds": "At most 511 content bytes plus NUL."
+        },
+        {
+          "offset": "0x20C",
+          "size": "0x004",
+          "name": "tail_opaque",
+          "type": "opaque[4]"
+        }
+      ],
+      "path": [
+        "FUN_0075C1A0",
+        "FUN_004D82E0",
+        "FUN_004DF6D0",
+        "FUN_00DB3E30"
+      ],
+      "locators": [
+        "xivl-decomp:asm/ffxivgame/0035c1a0_FUN_0075c1a0.s",
+        "xivl-decomp:asm/ffxivgame/000d82e0_FUN_004d82e0.s#0x004D8311-0x004D8389",
+        "xivl-decomp:asm/ffxivgame/000df6d0_FUN_004df6d0.s#0x004DF722-0x004DF7B8",
+        "xivl-captures:studies/world-party-chat-00c9-contract/derived/field-matrix.csv#c2s-application"
+      ]
+    },
+    {
+      "opcodeHex": "0x00C9",
+      "channel": "selected group",
+      "direction": "s2c",
+      "confidence": "confirmed-capture-and-static",
+      "subpacketSize": "0x248",
+      "applicationBodySize": "0x230",
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x004",
+          "name": "selector",
+          "type": "u32",
+          "knownValue": 10
+        },
+        {
+          "offset": "0x004",
+          "size": "0x004",
+          "name": "reserved_004",
+          "type": "u32",
+          "knownValue": 0
+        },
+        {
+          "offset": "0x008",
+          "size": "0x004",
+          "name": "group_context_opaque",
+          "type": "u32",
+          "producer": "server packet",
+          "consumer": "FUN_005754E0 -> FUN_006C7B80",
+          "semanticBoundary": "Lookup miss returns zero and drops the message. Lookup success returns a u16 display type. The lookup does not establish the wire value's underlying noun."
+        },
+        {
+          "offset": "0x00C",
+          "size": "0x020",
+          "name": "sender_name",
+          "type": "char[32]",
+          "producer": "server packet",
+          "semanticBoundary": "Displayed sender name only; no second sender identity field is proven."
+        },
+        {
+          "offset": "0x02C",
+          "size": "0x200",
+          "name": "message",
+          "type": "char[512]",
+          "producer": "server packet"
+        },
+        {
+          "offset": "0x22C",
+          "size": "0x004",
+          "name": "tail_zero",
+          "type": "u32",
+          "knownValue": 0
+        }
+      ],
+      "dispatch": {
+        "function": "FUN_004D8D10",
+        "jumpTableVa": "0x004D8F58",
+        "caseVa": "0x004D8E7B",
+        "dropOnContextLookupMiss": true,
+        "displayTypeSource": "u16 return from group-context lookup"
+      },
+      "locators": [
+        "xivl-decomp:asm/ffxivgame/000d8d10_FUN_004d8d10.s#0x004D8E7B-0x004D8EDC",
+        "xivl-decomp:asm/ffxivgame/001754e0_FUN_005754e0.s#0x005754E0-0x005754FC",
+        "xivl-decomp:asm/ffxivgame/002c7b80_FUN_006c7b80.s",
+        "xivl-captures:studies/world-party-chat-00c9-contract/derived/occurrences.csv#occurrences-10-34,37"
+      ]
+    }
+  ],
+  "stringContract": {
+    "copyFunction": "FUN_00447BC0",
+    "copyFunctionVa": "0x00447BC0",
+    "behavior": "The bounded copy reserves one byte for NUL and backs over UTF-8 continuation bytes so truncation does not split a multibyte sequence.",
+    "limit": "This is bounded-copy behavior, not strict Unicode validation.",
+    "locator": "xivl-decomp:asm/ffxivgame/00047bc0_FUN_00447bc0.s#0x00447BC4-0x00447C4E"
+  },
+  "validation": {
+    "emptyTellTarget": "Rejected before send when FUN_00445E50 returns zero.",
+    "emptyMessage": "Unresolved.",
+    "malformedReceiveTermination": "Unresolved.",
+    "controlEncoding": "FUN_00C99E40 -> FUN_00C99B80 validates embedded 0x02...0x03 control sequences; malformed sequences return failure."
+  },
+  "linkshellBoundary": {
+    "status": "strong-static-indication",
+    "finding": "The 0x00C9 send route is the selected-group route and obtains the selected group and presentation type through the Group subsystem. That supports player-linkshell reuse of 0x00C9 but does not establish it as capture-proven.",
+    "locators": [
+      "FUN_006C0590 selected-group entry lookup",
+      "FUN_006C9690 selected-group presentation-type lookup",
+      "string VA 0x00FD4C0C"
+    ],
+    "requiredCapture": "Send player-linkshell chat while switching active linkshell and party membership, retaining c2s and s2c World Chat frames."
+  },
+  "serverPolicyUnknowns": [
+    "recipient selection",
+    "online-presence authority",
+    "sender echo",
+    "offline-recipient behavior",
+    "same-zone versus cross-zone behavior",
+    "disconnected-recipient behavior"
+  ]
+}

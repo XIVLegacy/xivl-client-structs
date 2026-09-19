@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2310,
+  "symbolCount": 2311,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -3314,9 +3314,10 @@
       "address": "0x004DF6D0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/chat_wire_contract.json"
       ],
-      "notes": "Tier-C example emitter: feeds WorldServerbound c2s 0x00C9 PartyChatMessagePacket into the Chat generic forwarder BCS-Y-0306. PUSH-imm heuristic in emission_scan.txt shows the call site at VA 0x004DF7B8 preceded by `MOV [ESP+0x78], 0xc9` (opcode) and `MOV [ESP+0x7c], 0x218` (size = 536 bytes - variable chat-body capacity). **Confirms WorldServerbound 0x00C9 = PartyChatMessagePacket emission site**. Confirmed by outbound-emitter analysis. | **Address correction**: address typo fixed (0x000DF6D0 -> 0x004DF6D0, leading 4->0 transcription error from an earlier transcription)."
+      "notes": "World Chat c2s 0x00C9 selected-group chat emitter. Writes opcode 0x00C9 and internal record size 0x218, copies the caller-supplied group context to record +0x18 and bounded message[512] to record +0x1C, then forwards through [[BCS-Y-0306]]. Captures establish the full application as selector 10 at +0x00, zero at +0x04, unresolved group context at +0x08, message[512] at +0x0C, and opaque tail[4] at +0x20C. Party use is capture-proven; player-linkshell reuse is a strong static indication that still requires a retail capture."
     },
     {
       "id": "BCS-Y-0310",
@@ -3393,14 +3394,15 @@
     },
     {
       "id": "BCS-Y-0316",
-      "name": "ChatOutbound_ComputedRecord_emitter_FUN_004DF810",
+      "name": "ChatOutbound_Tell_emitter_FUN_004DF810",
       "kind": "function",
       "address": "0x004DF810",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/chat_wire_contract.json"
       ],
-      "notes": "Tier-C Chat emitter where the opcode/size are NOT hardcoded but computed by FUN_004E3750. 398-byte body at VA 0x004DF810. __fastcall(int param_1). Sole caller: FUN_004D83E0. Body: allocates two 0x200-byte stack buffers (local_4E0, local_228) via FUN_00447BC0 + _memset; loads a body block from FUN_00445210 / FUN_004451F0 (string-pool source pointer + size); calls **FUN_004E3750(local_250, local_228)** which returns a record_ptr `uVar4`; then `FUN_00DB3E30(uVar4)` to emit. **The opcode/size literals live INSIDE FUN_004E3750** (not yet decompiled in the initial analysis) - this entry is `probable` because the emission is confirmed but the bound opcode is hidden in a deeper helper. Follow-on: decompile FUN_004E3750 to extract the bound opcode. Confirmed by outbound-emitter analysis. **Follow-up resolution**: FUN_004E3750 decompiled (79-byte body); it writes `*param_1 = 200 (0xC8)` and `param_1[1] = 0x230` then copies 4 x u64 + 0x200-byte body block from param_2/param_3 sources. **Binding confirmed: WorldServerbound 0x00C8 size 0x230 emitted by FUN_004DF810 via FUN_004E3750-built record into FUN_00DB3E30 (BCS-Y-0306, Chat generic forwarder)**. Probable -> confirmed; see BCS-Y-0331 for FUN_004E3750 detail. | **Address correction**: address typo fixed (0x000DF810 -> 0x004DF810, leading 4->0 transcription error from an earlier transcription)."
+      "notes": "World Chat c2s tell emitter. FUN_004DF810 rejects an empty target through FUN_00445E50, bounds target to 32 bytes and message to 512 bytes through the UTF-8-aware FUN_00447BC0 helper, and passes both buffers to [[BCS-Y-0331]]. FUN_004E3750 builds opcode 0x00C8 with record size 0x230, then this function forwards it through [[BCS-Y-0306]]. In the actor-wrapped wire application, opaque[8] precedes target[32] at +0x08 and message[512] at +0x28. No retail tell capture is retained; server recipient selection and delivery policy remain unknown."
     },
     {
       "id": "BCS-Y-0317",
@@ -3568,14 +3570,15 @@
     },
     {
       "id": "BCS-Y-0331",
-      "name": "ChatOutbound_RecordBuilder_FUN_004E3750_for_0x00C8",
+      "name": "ChatOutbound_Tell_record_builder_FUN_004E3750",
       "kind": "function",
       "address": "0x004E3750",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/chat_wire_contract.json"
       ],
-      "notes": "Chat record-builder that bakes WorldServerbound c2s 0x00C8 size 0x230 into the {opcode, size, body} layout consumed by FUN_004DF810 (BCS-Y-0316). 79-byte body at VA 0x004E3750. Sole caller: FUN_004DF810. __thiscall(undefined4 *param_1=output_record, undefined8 *param_2=header_qwords, undefined4 *param_3=body_dwords). Writes **`*param_1 = 200 (0xC8)`** (opcode) and **`param_1[1] = 0x230`** (size=560 bytes). Then copies 4 qwords from param_2 into output_record[6..0xC] (32 bytes header) and 0x80 dwords from param_3 into output_record[0xE..0x20E] (512 bytes body block, the largest Chat outbound payload). **Closes BCS-Y-0316's 'probable' status -> confirmed: WorldServerbound 0x00C8 size 0x230 is the FUN_004DF810 binding**. The body block (0x200 bytes) is loaded by FUN_004DF810 from the string-pool source via FUN_00445210/FUN_004451F0 - same canonical-state pattern as BCS-Y-0313 (Zone 0x0003 size 0x230). Confirmed by outbound-emitter analysis. | **Address correction**: address typo fixed (0x000E3750 -> 0x004E3750, leading 4->0 transcription error from an earlier transcription)."
+      "notes": "World Chat c2s tell record builder. Writes opcode 0x00C8 and internal record size 0x230, copies target_name[32] as four qwords from param_2 to record +0x18, and copies message[512] as 0x80 dwords from param_3 to record +0x38. Sole caller [[BCS-Y-0316]] prepares both buffers with FUN_00447BC0 and forwards the result through [[BCS-Y-0306]]. The former header/state interpretation was disproved by the caller's target and message construction."
     },
     {
       "id": "BCS-Y-0332",
@@ -28646,6 +28649,19 @@
       ],
       "notes": "[Tier C628 2026-09-19] Copies the four-float producer value to global 0x0130BBC4. The pinned downhill capture joins the call at BCS-Y-2319+0x4AD to the accepted PrimaryLabel consumer at return 0x00CA565E from 0x00CB9280.",
       "id": "BCS-Y-2323"
+    },
+    {
+      "name": "ChatInbound_WorldChat_dispatcher_FUN_004D8D10",
+      "kind": "function",
+      "address": "0x004D8D10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/chat_wire_contract.json",
+        "manifests/party_subsystem.json",
+        "xivl-decomp/asm/ffxivgame/000d8d10_FUN_004d8d10.s"
+      ],
+      "notes": "World Chat receive dispatcher. Reads the u16 opcode at game-message +0x02 and dispatches 0x00C8..0x00CB through jump table VA 0x004D8F58. Case 0x00C8 at VA 0x004D8D6C parses application display_name[32] at +0x08 and message[512] at +0x28, then supplies fixed display type 3. Case 0x00C9 at VA 0x004D8E7B passes application group_context_opaque +0x08 to FUN_005754E0 -> FUN_006C7B80, drops the packet when the returned u16 is zero, parses sender_name[32] at +0x0C and message[512] at +0x2C, and supplies the nonzero lookup result as display type. This proves context-sensitive selected-group display, not the context field's underlying party or linkshell identity.",
+      "id": "BCS-Y-2324"
     }
   ]
 }
