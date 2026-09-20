@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 2227,
+  "symbolCount": 2311,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -3309,14 +3309,15 @@
     },
     {
       "id": "BCS-Y-0309",
-      "name": "ChatOutbound_PartyChat_emitter_FUN_004DF6D0",
+      "name": "ChatOutbound_SelectedGroupChat_emitter_FUN_004DF6D0",
       "kind": "function",
       "address": "0x004DF6D0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/chat_wire_contract.json"
       ],
-      "notes": "Tier-C example emitter: feeds WorldServerbound c2s 0x00C9 PartyChatMessagePacket into the Chat generic forwarder BCS-Y-0306. PUSH-imm heuristic in emission_scan.txt shows the call site at VA 0x004DF7B8 preceded by `MOV [ESP+0x78], 0xc9` (opcode) and `MOV [ESP+0x7c], 0x218` (size = 536 bytes - variable chat-body capacity). **Confirms WorldServerbound 0x00C9 = PartyChatMessagePacket emission site**. Confirmed by outbound-emitter analysis. | **Address correction**: address typo fixed (0x000DF6D0 -> 0x004DF6D0, leading 4->0 transcription error from an earlier transcription)."
+      "notes": "World Chat c2s 0x00C9 selected-group chat emitter. Writes opcode 0x00C9 and internal record size 0x218, copies the caller-supplied selected Group entry token to record +0x18 and bounded message[512] to record +0x1C, then forwards through [[BCS-Y-0306]]. Captures establish the full application as selector 10 at +0x00, zero at +0x04, selected_group_entry_token at +0x08, message[512] at +0x0C, and opaque tail[4] at +0x20C. FUN_006C0590 selects the token from a Group-owned table. Party use is capture-proven; player-linkshell reuse is an unresolved static candidate because no edge joins the group ExecuteParameters to active-linkshell state."
     },
     {
       "id": "BCS-Y-0310",
@@ -3339,9 +3340,13 @@
         "manifests/actor_cluster_dispatch_model.json",
         "tools/ghidra/logs/c91_onfinalize_internals.txt",
         "tools/ghidra/logs/c91_cd7a30_decomp.txt",
-        "manifests/onfinalize_drill.json"
+        "manifests/onfinalize_drill.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "manifests/local_player_display_name.json",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt"
       ],
-      "notes": "**STD::STRING CONSTRUCTOR (CLARIFICATION, outbound-emitter clarification)**. 113-byte body at VA 0x00447260. __thiscall(int *param_1=output_std_string, char *param_2=source_c_str, size_t param_3=length_or_npos). Constructs an std::string at param_1 with SBO (small-buffer optimization, inline buffer at offset +0x12, capacity 0x40, size at +0xC). If param_3 == 0xFFFFFFFF (npos), computes strlen of param_2; otherwise uses param_3 as the explicit length. Calls FUN_00447010 (SBO grow / heap alloc fallback), then _memmove from source into the string buffer, then writes the null terminator. **200+ callers binary-wide - heavily-used utility.** **Past BCS-Y entries referencing FUN_00447260 as a Lua dispatcher** (BCS-Y-0144, BCS-Y-0146, BCS-Y-0148, BCS-Y-0149, BCS-Y-0150, BCS-Y-0151, BCS-Y-0152, BCS-Y-0156, BCS-Y-0157, BCS-Y-0158, BCS-Y-0159, BCS-Y-0297) are imprecise: the actual Lua firing happens in FUN_00CC7A90 (which itself calls FUN_00CF0910 / FUN_00CD7A30 / FUN_00CCF7D0 - the Lua-VM primitives push/get-global/pcall). FUN_00447260 only constructs the event-name std::string that gets passed to FUN_00CC7A90. **The pair signature for a Lua-fire is the COMBINATION FUN_00447260 + FUN_00CC7A90**; FUN_00447260 ALONE just builds a temporary std::string (could be for any purpose - logging, key lookup, error message, parameter packing). Future BCS-Y notes that need to identify a Lua firing site must verify FUN_00CC7A90 (or its inlined equivalents) is in the call graph, not just FUN_00447260. **Sub-3 result**: FUN_004E2850 (BCS-Y-0297, auxiliary FrontendAuth emitter) has FUN_00447260 in its callees but NOT FUN_00CC7A90 - therefore the auxiliary FrontendAuth path fires NO Lua callbacks. Confirmed by outbound-emitter analysis. | **Address correction**: address typo fixed (0x00047260 -> 0x00447260, leading 4->0 transcription error from an earlier transcription). | [fun_006f6900-_onfinalize-internals-drilled] **Cross-link to the LuaControl-hierarchy work**: this std::string ctor is used in the `_onFinalize` Lua fire pattern at [[Application_Lua_Script_Client_Control_StatusBase_secondary_vftable_slot5_onFinalize_LuaCallback_fire_FUN_006f6900]] (BCS-Y-1530) AND across all 11 LTC/LGTC-derived classes' slot 5 (per finding that FUN_006F6900 is literally shared). Pattern: `FUN_00447260(&local_string, \"_onFinalize\", DAT_00f67298)` builds a local std::string with the event name, immediately followed by `FUN_00CC7A90(this, &local_string, &args)` (BCS-Y-0398 LuaCallbackDispatcher) to invoke the named Lua callback. The drill re-verified the lua-name-to-opcode-bridge-open pass clarification: FUN_00447260 alone is just std::string construction; the Lua fire requires the COMBINATION with BCS-Y-0398. | [comprehensive-lua-fire-site-inventory] **LUA FIRE SITE INVENTORY USAGE**: confirmed as the std::string ctor used by 79 Lua fire sites (the COMBINATION FUN_00447260 + FUN_00CC7A90 forms the Lua fire signature). All 80 FUN_00CC7A90 direct callers were enumerated - 79 of them use this std::string ctor to construct the event name string. The first string-literal arg to FUN_00447260 is the EVENT NAME (e.g., \"_onFinalize\", \"_onUpdateWork\", \"_onEventCancel\"). See [[LuaCallbackDispatcher_FUN_00CC7A90]] (BCS-Y-0399) for the inventory + [[lua_fire_sites]] for the full event-name -> fire-site mapping."
+      "notes": "[Tier C566] Sqex::Misc narrow-byte string constructor from a byte span. It default-constructs the 0x54-byte destination, derives strlen when the explicit length is 0xFFFFFFFF, reserves length+1 bytes through [[BCS-Y-2282]], copies exactly length bytes, and writes the trailing NUL. The destination +0x08 dword is therefore the current logical byte count including the terminator, not an unresolved state value. The helper performs no UTF-8 validation."
     },
     {
       "id": "BCS-Y-0312",
@@ -3389,14 +3394,15 @@
     },
     {
       "id": "BCS-Y-0316",
-      "name": "ChatOutbound_ComputedRecord_emitter_FUN_004DF810",
+      "name": "ChatOutbound_Tell_emitter_FUN_004DF810",
       "kind": "function",
       "address": "0x004DF810",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/chat_wire_contract.json"
       ],
-      "notes": "Tier-C Chat emitter where the opcode/size are NOT hardcoded but computed by FUN_004E3750. 398-byte body at VA 0x004DF810. __fastcall(int param_1). Sole caller: FUN_004D83E0. Body: allocates two 0x200-byte stack buffers (local_4E0, local_228) via FUN_00447BC0 + _memset; loads a body block from FUN_00445210 / FUN_004451F0 (string-pool source pointer + size); calls **FUN_004E3750(local_250, local_228)** which returns a record_ptr `uVar4`; then `FUN_00DB3E30(uVar4)` to emit. **The opcode/size literals live INSIDE FUN_004E3750** (not yet decompiled in the initial analysis) - this entry is `probable` because the emission is confirmed but the bound opcode is hidden in a deeper helper. Follow-on: decompile FUN_004E3750 to extract the bound opcode. Confirmed by outbound-emitter analysis. **Follow-up resolution**: FUN_004E3750 decompiled (79-byte body); it writes `*param_1 = 200 (0xC8)` and `param_1[1] = 0x230` then copies 4 x u64 + 0x200-byte body block from param_2/param_3 sources. **Binding confirmed: WorldServerbound 0x00C8 size 0x230 emitted by FUN_004DF810 via FUN_004E3750-built record into FUN_00DB3E30 (BCS-Y-0306, Chat generic forwarder)**. Probable -> confirmed; see BCS-Y-0331 for FUN_004E3750 detail. | **Address correction**: address typo fixed (0x000DF810 -> 0x004DF810, leading 4->0 transcription error from an earlier transcription)."
+      "notes": "World Chat c2s tell emitter. FUN_004DF810 rejects an empty target through FUN_00445E50, bounds target to 32 bytes and message to 512 bytes through the UTF-8-aware FUN_00447BC0 helper, and passes both buffers to [[BCS-Y-0331]]. FUN_004E3750 builds opcode 0x00C8 with record size 0x230, then this function forwards it through [[BCS-Y-0306]]. In the actor-wrapped wire application, opaque[8] precedes target[32] at +0x08 and message[512] at +0x28. No retail tell capture is retained; server recipient selection and delivery policy remain unknown."
     },
     {
       "id": "BCS-Y-0317",
@@ -3564,14 +3570,15 @@
     },
     {
       "id": "BCS-Y-0331",
-      "name": "ChatOutbound_RecordBuilder_FUN_004E3750_for_0x00C8",
+      "name": "ChatOutbound_Tell_record_builder_FUN_004E3750",
       "kind": "function",
       "address": "0x004E3750",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/actor_cluster_dispatch_model.json"
+        "manifests/actor_cluster_dispatch_model.json",
+        "manifests/chat_wire_contract.json"
       ],
-      "notes": "Chat record-builder that bakes WorldServerbound c2s 0x00C8 size 0x230 into the {opcode, size, body} layout consumed by FUN_004DF810 (BCS-Y-0316). 79-byte body at VA 0x004E3750. Sole caller: FUN_004DF810. __thiscall(undefined4 *param_1=output_record, undefined8 *param_2=header_qwords, undefined4 *param_3=body_dwords). Writes **`*param_1 = 200 (0xC8)`** (opcode) and **`param_1[1] = 0x230`** (size=560 bytes). Then copies 4 qwords from param_2 into output_record[6..0xC] (32 bytes header) and 0x80 dwords from param_3 into output_record[0xE..0x20E] (512 bytes body block, the largest Chat outbound payload). **Closes BCS-Y-0316's 'probable' status -> confirmed: WorldServerbound 0x00C8 size 0x230 is the FUN_004DF810 binding**. The body block (0x200 bytes) is loaded by FUN_004DF810 from the string-pool source via FUN_00445210/FUN_004451F0 - same canonical-state pattern as BCS-Y-0313 (Zone 0x0003 size 0x230). Confirmed by outbound-emitter analysis. | **Address correction**: address typo fixed (0x000E3750 -> 0x004E3750, leading 4->0 transcription error from an earlier transcription)."
+      "notes": "World Chat c2s tell record builder. Writes opcode 0x00C8 and internal record size 0x230, copies target_name[32] as four qwords from param_2 to record +0x18, and copies message[512] as 0x80 dwords from param_3 to record +0x38. Sole caller [[BCS-Y-0316]] prepares both buffers with FUN_00447BC0 and forwards the result through [[BCS-Y-0306]]. The former header/state interpretation was disproved by the caller's target and message construction."
     },
     {
       "id": "BCS-Y-0332",
@@ -9531,25 +9538,29 @@
       "id": "BCS-Y-0830"
     },
     {
-      "name": "AsyncEvent_Producer_CameraElement_op13_FUN_0061B5A0",
+      "name": "Application_Scene_Actor_System_CameraActor_constructor_FUN_0061B5A0",
       "kind": "function",
       "address": "0x0061B5A0",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/async_producers_catalog.json"
+        "manifests/async_producers_catalog.json",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Third producer for CameraElement opcode 0x13",
+      "notes": "[Tier C559] Exact 0x490-byte CameraActor constructor. It writes vftable 0x00FB906C and installs eleven camera-mode contexts. It also emits CameraElement async opcode 0x13; that side effect does not define the function's owner.",
       "id": "BCS-Y-0831"
     },
     {
-      "name": "AsyncEvent_Producer_CameraElement_op13and2E_FUN_006195D0",
+      "name": "Application_Scene_Actor_System_CameraActor_update_FUN_006195D0",
       "kind": "function",
       "address": "0x006195D0",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/async_producers_catalog.json"
+        "manifests/async_producers_catalog.json",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Multi-opcode producer for CameraElement slot-8 opcodes 0x13 and 0x2E via FUN_007CE7B0 (fires both)",
+      "notes": "[Tier C559] CameraActor update called by UPDATE_CAMERA_RAPTURE. It dispatches the active mode context, runs [[BCS-Y-0851]], and writes the sixteen-dword record at CameraActor+0x370. It also emits CameraElement async opcodes 0x13 and 0x2E. Render cadence and a shader consumer remain unresolved.",
       "id": "BCS-Y-0832"
     },
     {
@@ -9752,14 +9763,16 @@
       "id": "BCS-Y-0850"
     },
     {
-      "name": "AsyncEvent_Producer_SqwtElement_op2A_FUN_00617A80",
+      "name": "Application_Scene_Actor_System_CameraActor_build_derived_transforms_FUN_00617A80",
       "kind": "function",
       "address": "0x00617A80",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/async_producers_catalog.json"
+        "manifests/async_producers_catalog.json",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Fires SqwtElement slot-8 opcode 0x2A via FUN_007CE7B0. The element-vtable8-bulk pass maps 0x2A to Sqwt::RoutedEventArgs construction + UI event routing - the producer must be a UI event source",
+      "notes": "[Tier C559] CameraActor derived-transform builder. It reads the +0x310/+0x320 endpoint records and writes sixteen-float records at +0x210, +0x250, and +0x2D0 plus a scalar at +0x420 before calling through a singleton returned by FUN_00B8E7D0. The singleton owner is unresolved; no shader register or final render consumer is established. It also emits SqwtElement async opcode 0x2A.",
       "id": "BCS-Y-0851"
     },
     {
@@ -9939,14 +9952,15 @@
       "id": "BCS-Y-0867"
     },
     {
-      "name": "AsyncEvent_Producer_CharaElement_op5E_FUN_0065DF00",
+      "name": "AsyncEvent_Producer_CharaElement_op4F_FUN_0065DF00",
       "kind": "function",
       "address": "0x0065DF00",
       "confidence": "probable",
       "sourceRefs": [
-        "manifests/async_producers_catalog.json"
+        "manifests/async_producers_catalog.json",
+        "manifests/player_render_boundary.json"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Fires CharaElement slot-8 opcode 0x5E via FUN_007CE7B0",
+      "notes": "[Tier C618/C619/C620] ECX=CharaActor, explicit payload pointer, RET4. Complete17-byte body calls [[BCS-Y-0804]] with operation0x4F and length0x20. MainPacket event type0x52 is decoded to CharaElement slot8 operation0x4F, whose receiver copies32 bytes to element244..263. Operation0x5E instead stores one byte atB39. Static context report callers 008CC430/008CBE10; no text/model draw submission or feedback-free seam proven. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.primaryLabelReport and method.primaryLabelReportInvocation; pinned anchors in tools/audit_player_render_boundary.py.",
       "id": "BCS-Y-0868"
     },
     {
@@ -11719,9 +11733,15 @@
       "address": "0x0058DF90",
       "confidence": "confirmed",
       "sourceRefs": [
-        "manifests/battle_effect_queue_consumer.json"
+        "manifests/battle_effect_queue_consumer.json",
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c563_nameplate-post-update.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
       ],
-      "notes": "[battle-effect-queue-consumer battle-effect queue consumer] 299-byte per-actor frame tick orchestrator for CharaElement. Calls 4 independent ticks in sequence: (1) combat-status snapshot [[CharaElement_CombatStatusSnapshot_FUN_00585D70]], (2) action-state machine tick [[CharaActionStateTickProcessor_FUN_0058A090]] (BCS-Y-1000), (3) status-effect timer tick [[CharaElement_StatusEffectTimerTick_FUN_005861B0]], (4) battle-effect queue drain [[CharaElement_BattleEffectQueueDrain_FUN_0058DA10]]. Also broadcasts subtype 0x1E via FUN_004D7980, sets +0x264 stamp, calls vtable[19]+vtable[13] on actor+0xBA0 (Lua object). 0 instruction-level callers - reached via vtable dispatch from engine frame loop. Resolves the chara-action-state-pipeline pass TBD on FUN_0058A090's second caller. The battle-effect-queue-consumer pass architectural finding.",
+      "notes": "[battle-effect-queue-consumer; Tier C560/C562] 299-byte per-actor frame tick orchestrator for CharaElement. Calls the combat-status snapshot, action-state machine, status-effect timer, and battle-effect queue drain, then invokes slots 19 and 13 on the inline NamePlate subobject at CharaElement+0xBA0. Slot 19 only updates NamePlate+0x190 bit 0x04. The sampled slot-13 color records are not moving position, but its indirect helper path remains unresolved.",
       "id": "BCS-Y-1024"
     },
     {
@@ -20199,9 +20219,13 @@
         "tools/ghidra/logs/c96_dispatcher_registry.txt",
         "tools/ghidra/logs/c96_class_register.txt",
         "tools/ghidra/logs/c96_cd8870.txt",
-        "manifests/class_registry_mechanism.json"
+        "manifests/class_registry_mechanism.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
       ],
-      "notes": "[this+0x1bc-writer-hunt-negative] **Secondary class-identity getter (raw)** (7 body bytes, 1 caller [[LuaControl_secondary_class_identity_getter_trampoline_FUN_00CC7510]]). Body: `int __fastcall fn(int param_1) { return param_1 + 0x220; }`. Pure pointer arithmetic: returns `this + 0x220`. **Architectural significance**: identifies a SECOND per-object class-identity field at LuaControl-derived this+0x220 (distinct from the this+0x1bc field that [[Component_Lua_GameEngine_LuaControl_derived_state_getter_FUN_00cd7a30]] BCS-Y-1581 reads). Distance between the two fields: 0x220 - 0x1BC = 0x64 = 100 bytes. Callers consume the returned pointer as a pointer to a static class metadata table, typically navigated via `*piVar3` + offsets like +0x4/+0x108. **OPEN QUESTION**: what does this+0x220 point to and how is it set? Like +0x1bc, no direct displacement writers were found in the opcode scan (suggesting same vbtable/template-init mechanism).\n\n[vbtable-hypothesis-falsified-for-this+0x1bc-and AMENDMENT - OWNER CLASS CORRECTED] The owner class of the this+0x220 field is **CharaBase-family instances** (BCS-Y-1721 NEW + sibling Control:: subclasses), NOT LTC/LGTC family. The 290+ callers of FUN_00CC7510 (this entry's trampoline parent) are CharaBase-family methods in the 0x006xxxxx..0x008xxxxx VA range. CharaBase has +0x220 field; LTC/LGTC family instances (only 0x78 bytes) do not. Cross-link to CharaBase RTTI quartet: BCS-Y-1721 (TD), [[Application_Lua_Script_Client_Control_CharaBase_ClassHierarchyDescriptor]] (BCS-Y-1722 NEW), [[Application_Lua_Script_Client_Control_CharaBase_BaseClassArray]] (BCS-Y-1723 NEW), [[Application_Lua_Script_Client_Control_CharaBase_RTTI_Complete_Object_Locator]] (BCS-Y-1724 NEW).\n\n[charabase-ctor-decomp-closes-the-c91 AMENDMENT - OWNER CLASS RE-CORRECTED] **the CharaBase attribution was WRONG. The owner is `Component::Lua::GameEngine` ([[Component_Lua_GameEngine_constructor_FUN_00CDC410]] BCS-Y-1691, 0x228 bytes).** The 7-byte `return this+0x220;` body returns `GameEngine+0x220`, where +0x220 holds the canonical 'null result holder' = pointer to a singleton [[Sqex_Misc_AnyType_Holder_GameEngine_Nil_vftable]] (BCS-Y-1741 NEW, 12-byte heap object). Definitive writer site is `param_1[0x88] = puVar5;` at line 212 of [[Component_Lua_GameEngine_constructor_FUN_00CDC410]] (BCS-Y-1691) where puVar5 = freshly-allocated 0xC-byte `Sqex::Misc::AnyType::Holder<Component::Lua::GameEngine::Nil>` instance (vftable 0x0110EA30). The function name should be `GameEngine_holder_nil_getter` not `LuaControl_secondary_class_identity_getter`. Renaming deferred to preserve historical references."
+      "notes": "[Tier C566] Historical symbol name retained. Exact body is LEA EAX,[ECX+0x220]; RET. With ECX equal to Component::Lua::GameEngine, it returns the address of the nil_holder field, not the holder pointer stored there."
     },
     {
       "id": "BCS-Y-1676",
@@ -20215,9 +20239,13 @@
         "tools/ghidra/logs/c96_dispatcher_registry.txt",
         "tools/ghidra/logs/c96_class_register.txt",
         "tools/ghidra/logs/c96_cd8870.txt",
-        "manifests/class_registry_mechanism.json"
+        "manifests/class_registry_mechanism.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
       ],
-      "notes": "[this+0x1bc-writer-hunt-negative] **Secondary class-identity getter trampoline** (7 body bytes, **290+ callers** across LuaActorImpl-area methods FUN_006xxxxx - FUN_008xxxxx). Body: `void fn() { FUN_00cd7910(); return; }`. Pure trampoline to [[LuaControl_secondary_class_identity_getter_raw_FUN_00CD7910]] - returns `this + 0x220`. **Architectural significance**: this is THE most-called accessor for the secondary class-identity field. The 290+ callers include many of the same LuaActorImpl-derived methods that also fire Lua callbacks (per inventory). Typical caller usage pattern (per FUN_006F6900 _onFinalize at BCS-Y-1530): `piVar3 = (int*)FUN_00cc7510(); ... *(*piVar3 + 4) + 0x108 ...` - navigates through static class metadata to retrieve callback-related data. **Distinct from [[Component_Lua_GameEngine_LuaControl_derived_state_alive_flag_getter_FUN_00cc7280]] (BCS-Y-1580)** which reads the +0x1bc-derived state byte at +0x80. These are TWO different accessors for TWO different per-object class-identity fields.\n\n[vbtable-hypothesis-falsified-for-this+0x1bc-and AMENDMENT - OWNER CLASS CORRECTED] The 290+ callers of this trampoline are **CharaBase-family methods** (CharaBase + PlayerBase + NpcBase + MyPlayer per BCS-Y-0184/0185/0186/0163). Their `this` argument is a CharaBase-family instance (large enough to have +0x220 field). NOT LTC/LGTC family instances (only 0x78 bytes). The +0x220 field's owner class is CharaBase per the RTTI catalog ([[Application_Lua_Script_Client_Control_CharaBase_TypeDescriptor]] BCS-Y-1721 NEW).\n\n[charabase-ctor-decomp-closes-the-c91 AMENDMENT - OWNER CLASS RE-CORRECTED + CALLER COUNT REFINED] **the CharaBase attribution was WRONG. The owner is `Component::Lua::GameEngine` ([[Component_Lua_GameEngine_constructor_FUN_00CDC410]] BCS-Y-1691, 0x228 bytes).** Caller count refined: **428 unique callers** (per FUN_00CC7510 callers list in c109_getter_finalizer_decomp.txt), not 290+ as previously stated. These 428 callers are all Lua-bridge functions that fetch the GameEngine singleton and access the Holder<Nil> instance at GameEngine+0x220 - used as a 'no result' placeholder when Lua-callable methods return nothing. The function name should be `GameEngine_holder_nil_getter_trampoline` not `LuaControl_secondary_class_identity_getter_trampoline`. Renaming deferred to preserve historical references; this amendment documents the corrected semantic."
+      "notes": "[Tier C566] Historical symbol name retained. Exact body is MOV ECX,[ECX]; JMP 0x00CD7910. Given a pointer to a Component::Lua::GameEngine pointer, it returns the address of that GameEngine's +0x220 nil_holder field through BCS-Y-1675."
     },
     {
       "id": "BCS-Y-1677",
@@ -20780,9 +20808,13 @@
         "tools/ghidra/logs/c100_statusbase_ctor.txt",
         "tools/ghidra/logs/c100_parent_ctors.txt",
         "tools/ghidra/logs/c100_helpers.txt",
-        "manifests/statusbase_ctor_architecture.json"
+        "manifests/statusbase_ctor_architecture.json",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
       ],
-      "notes": "[statusbase-ctor-architecture-explained] **MSVC std::string default ctor** (39 body bytes, **300+ callers** - extremely common). Implements the MSVC std::string Small String Optimization (SSO) initialization pattern. Field layout written: +0x00 = data ptr (points to internal buffer at +0x12), +0x04 = capacity (0x40 = 64 bytes default SSO buffer), +0x08 = 1 (size? - investigation deferred), +0x0C = 0, +0x10 = 1 (SSO mode flag?), +0x11 = 1 (SSO mode flag?), +0x12 = 0x00 (null terminator for empty string). String object size with SSO buffer: 0x40 + 0x12 = 0x52+ bytes minimum. Used throughout the binary by every function that constructs a default std::string member or local. Catalog entry provides canonical reference for the std::string init pattern (replaces the previous 'untyped string initializer' references in earlier catalog entries that cited FUN_00445CF0 by VA only)."
+      "notes": "[Tier C566] Historical symbol name retained. This is the default constructor for the 0x54-byte SqexMiscUtf8StringLayout (BCS-S-0135): data points to this+0x12, capacity is 0x40, byte count including NUL is 1, +0x0C is zero, +0x10 and ownership_state +0x11 are one, and the first inline byte is NUL."
     },
     {
       "id": "BCS-Y-1710",
@@ -27528,6 +27560,1108 @@
       ],
       "notes": "[Tier C548] DesktopWidget _chat N-API registration owner. It passes code label 0x006DE7D0 to the generic member binder and registers the literal _chat through FUN_00CCCAD0. Direct pinned-PE inspection identifies the label as a virtual thunk through byte offset 0x10C; MyPlayer vtable 0x00FD785C resolves that slot to [[BCS-Y-2016]]. The paired cancellation contract and its runtime evidence boundary are recorded in the source manifest.",
       "id": "BCS-Y-2240"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_vftable",
+      "kind": "rtti",
+      "address": "0x00FB906C",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] RTTI-confirmed CameraActor vftable with 164 executable slots.",
+      "id": "BCS-Y-2241"
+    },
+    {
+      "name": "Application_Scene_UPDATE_CAMERA_RAPTURE_callback_FUN_004E8B50",
+      "kind": "function",
+      "address": "0x004E8B50",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] Callback registered under UPDATE_CAMERA_RAPTURE by FUN_004EA870. It retrieves the shared scene object and conditionally calls [[BCS-Y-0832]]. Callback ordering and render-frame cadence remain unresolved.",
+      "id": "BCS-Y-2242"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_FPS_context_update_FUN_007F31A0",
+      "kind": "function",
+      "address": "0x007F31A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] FPS camera-context vtable slot 1. This __thiscall-shaped update consumes a float delta and writes CameraActor+0x330..+0x34C.",
+      "id": "BCS-Y-2243"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_TPS_context_update_FUN_007F3BA0",
+      "kind": "function",
+      "address": "0x007F3BA0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c314_async-queue-rtti.txt",
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] TPS camera-context vtable slot 1. This __thiscall-shaped update consumes a float delta, reads the followed actor, performs collision and smoothing work, and writes CameraActor+0x330..+0x34C.",
+      "id": "BCS-Y-2244"
+    },
+    {
+      "name": "Application_Scene_Actor_System_CameraActor_get_endpoint0_FUN_0060E7B0",
+      "kind": "function",
+      "address": "0x0060E7B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] CameraActor vtable slot 34. Copies exactly four dwords from CameraActor+0x310..+0x31C to the caller output; this is a 0x10-byte endpoint record, not a 4x4 matrix.",
+      "id": "BCS-Y-2245"
+    },
+    {
+      "name": "Shader_indexed_parameter_submit_FUN_00419020",
+      "kind": "function",
+      "address": "0x00419020",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] Indexed shader-parameter submission primitive. It passes a pointer through FUN_00419B60 and submits it with count 4 through [[BCS-Y-2247]]. The pointed-to type, count unit, index meaning, matrix interpretation, and camera provenance remain unresolved.",
+      "id": "BCS-Y-2246"
+    },
+    {
+      "name": "Shader_parameter_conditional_submit_FUN_00422F90",
+      "kind": "function",
+      "address": "0x00422F90",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] Conditional shader-parameter submission wrapper. It invokes the selected parameter object's unresolved virtual setter only when unresolved FUN_00423A40 returns zero. C559 does not join that indirect target to the SetVertexShaderConstantF task family or identify a register or camera owner.",
+      "id": "BCS-Y-2247"
+    },
+    {
+      "name": "Shader_submit_global_parameter_blocks_FUN_00419240",
+      "kind": "function",
+      "address": "0x00419240",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c559_shader-camera-boundary.txt",
+        "manifests/shader_camera_boundary.json"
+      ],
+      "notes": "[Tier C559] On an anonymous selection change, submits three globals at 0x01328FF4, 0x01329034, and 0x01329074 with count 4 through [[BCS-Y-2247]]. The owning shader class, count unit, value semantics, matrix interpretation, and camera provenance remain unresolved.",
+      "id": "BCS-Y-2248"
+    },
+    {
+      "name": "Application_Scene_SceneObject_Actor_constructor_FUN_00A60B80",
+      "kind": "function",
+      "address": "0x00A60B80",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C560/C562] SceneObject::Actor constructor. It stores the ModelObject at Actor+0x0C, zeros Actor+0x18 and +0x48, and registers the UPDATE_MODEL_TRANSFORM callback thunk at 0x00A61180. The normal RaptureActor chain supplies RaptureModelObjectFactory.",
+      "id": "BCS-Y-2249"
+    },
+    {
+      "name": "Application_Scene_SceneObject_Actor_get_model_position_record_FUN_00A5F8A0",
+      "kind": "function",
+      "address": "0x00A5F8A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c561_player-model-position-getter.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C561] CharaActor vtable slot 34 inherited from SceneObject::Actor. It returns the four-dword record at ModelObject+0x30 through ModelObject slot 17. Exact coordinate semantics remain runtime-unverified.",
+      "id": "BCS-Y-2250"
+    },
+    {
+      "name": "Application_Scene_SceneObject_Actor_update_model_transform_FUN_00A5FF60",
+      "kind": "function",
+      "address": "0x00A5FF60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C560/C562/C564] UPDATE_MODEL_TRANSFORM virtual target: __thiscall(Actor *this, uint32_t ignored_arg), ending in RET 4. The local bounded trace proved the Actor+0x18 fallback was active, resolved the live ModelObject slots, and observed slot 13 receiving the already-held position before slot 25 rebuilt the drawable cache.",
+      "id": "BCS-Y-2251"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_get_position_record_FUN_008DDAF0",
+      "kind": "function",
+      "address": "0x008DDAF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c561_player-model-position-getter.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C561] ModelObject vtable slot 17. Returns ModelObject+0x30, a four-dword record consumed by CharaActor slot 34 and the cached-transform builder.",
+      "id": "BCS-Y-2252"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_set_transform_record_FUN_008DEC70",
+      "kind": "function",
+      "address": "0x008DEC70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C560/C562/C564] Base and live RaptureModelObject vtable slot 26. Copies a 0x40-byte input into ModelObject+0x50..+0x8C, updates +0x29C flags, and can substitute fallback globals for invalid input. The follow-up trace resolved this live target but observed zero local calls because the attached-source gate was inactive.",
+      "id": "BCS-Y-2253"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_get_cached_transform_FUN_008DE790",
+      "kind": "function",
+      "address": "0x008DE790",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C560/C564] Live RaptureModelObject vtable slot 25. Returns ModelObject+0x50 after conditionally rebuilding that 0x40-byte record from ModelObject+0x30 and other fields. The follow-up trace proved it rebuilt and supplied the exact Drawable-setter record after slot 13, but did not introduce the held Y.",
+      "id": "BCS-Y-2254"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_publish_transform_to_drawable_FUN_00A61620",
+      "kind": "function",
+      "address": "0x00A61620",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C560] ModelObject vtable slot 7. When the attached-drawable and dirty-bit guards pass, reads the cached 0x40-byte record through slot 25, optionally transforms it under bit 0x10, forwards the result through FUN_00BB7550, and clears bit 0x02.",
+      "id": "BCS-Y-2255"
+    },
+    {
+      "name": "Graphics_Render_Drawable_set_transform_record_FUN_00BB7550",
+      "kind": "function",
+      "address": "0x00BB7550",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C560] Copies a 0x40-byte transform record into drawable+0x30..+0x6C, updates a flag at +0xA0, and invokes FUN_00C579A0. The final player shader register remains unresolved.",
+      "id": "BCS-Y-2256"
+    },
+    {
+      "name": "Application_NamePlate_sync_cached_presentation_FUN_006A3560",
+      "kind": "function",
+      "address": "0x006A3560",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c563_nameplate-post-update.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C560/C562] NamePlate vtable slot 13. It compares the index-1 RGBA color at NamePlate+0x78..+0x84 with +0x98..+0xA4 and publishes changes through FUN_00938020. Both records remained constant during captured movement, ruling out those records as moving position; indirect helpers in this slot remain unresolved.",
+      "id": "BCS-Y-2257"
+    },
+    {
+      "name": "Application_Scene_Actor_read_transform_source_position_FUN_00A61130",
+      "kind": "function",
+      "address": "0x00A61130",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y-listing.txt"
+      ],
+      "notes": "[Tier C562/C564/C567] Fallback transform-source reader. The bounded controller capture proves that its live input is the RaptureCharacterProxy returned by controller slot 29 and +0x2C is the live RigidBody. It copies [X,Y,Z,1] through [[BCS-Y-2268]] and returns immediately before ModelObject slot 13.",
+      "id": "BCS-Y-2258"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_set_position_record_FUN_008DE970",
+      "kind": "function",
+      "address": "0x008DE970",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C562/C564] Confirmed live RaptureModelObject vtable slot 13. Copies [X,Y,Z,1] to ModelObject+0x30..+0x3C, updates +0x29C cache flags, and conditionally mirrors the four lanes at +0x80..+0x8C. The fallback calls it at 0x00A601CD; the live trace proved its input was already held and that it overwrote newer shared ModelObject state.",
+      "id": "BCS-Y-2259"
+    },
+    {
+      "name": "Application_NamePlate_set_indexed_color_FUN_006A3AD0",
+      "kind": "function",
+      "address": "0x006A3AD0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c563_nameplate-post-update.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C562] NamePlate vtable slot 2. Writes four color lanes into the indexed 0x10-byte record beginning at NamePlate+0x68; index 1 is +0x78..+0x84. This record remained constant during captured movement and is not the moving position.",
+      "id": "BCS-Y-2260"
+    },
+    {
+      "name": "Application_NamePlate_set_flag_0x04_FUN_006A2A60",
+      "kind": "function",
+      "address": "0x006A2A60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c563_nameplate-post-update.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C562] NamePlate vtable slot 19. Updates only bit 0x04 at NamePlate+0x190. Called immediately before slot 13 by the per-actor frame tick; it is not a position producer.",
+      "id": "BCS-Y-2261"
+    },
+    {
+      "name": "Application_Scene_CharaActor_create_rapture_character_controller_FUN_007CD360",
+      "kind": "function",
+      "address": "0x007CD360",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y-listing.txt"
+      ],
+      "notes": "[Tier C564/C567] CharaActor vtable slot 68. Constructs a RaptureCharacterProxy and RaptureCharacterController, then stores the controller at Actor+0x18. The bounded controller capture confirmed the live Actor+0x18 vtable as 0x00FEE17C and its +0x04 proxy vtable as 0x00FEE210.",
+      "id": "BCS-Y-2262"
+    },
+    {
+      "name": "Application_Scene_RaptureCharacterProxy_constructor_FUN_007D4560",
+      "kind": "function",
+      "address": "0x007D4560",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] Calls the base CharacterProxy constructor and installs RaptureCharacterProxy vtable 0x00FEE210. CharaActor slot 68 supplies this proxy to the RaptureCharacterController constructor.",
+      "id": "BCS-Y-2263"
+    },
+    {
+      "name": "Application_Scene_RaptureCharacterController_constructor_FUN_007D49F0",
+      "kind": "function",
+      "address": "0x007D49F0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] Calls [[BCS-Y-2265]] with the CharaActor and supplied RaptureCharacterProxy, then installs RaptureCharacterController vtable 0x00FEE17C.",
+      "id": "BCS-Y-2264"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_constructor_FUN_00A68CB0",
+      "kind": "function",
+      "address": "0x00A68CB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] Base CharacterController constructor. Stores CharacterProxy at +0x04, Actor at +0x08, initializes queued-operation fields +0x0C/+0x10, and sets the proxy's controller backlink at +0x48.",
+      "id": "BCS-Y-2265"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot10_consume_position_queue_FUN_00A68000",
+      "kind": "function",
+      "address": "0x00A68000",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y-listing.txt"
+      ],
+      "notes": "[Tier C564/C567] CharacterController slot 10. Dispatches +0x0C state 1, 2, or 3 through slots 32, 33, or 34 with +0x10, then clears +0x0C. The live RaptureCharacterController used state 1 on all 900 captured frames, including every held-Y frame.",
+      "id": "BCS-Y-2266"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot29_get_proxy_FUN_008D5570",
+      "kind": "function",
+      "address": "0x008D5570",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] CharacterController slot 29. Returns CharacterController+0x04, the CharacterProxy passed next to [[BCS-Y-2258]]. Both base and Rapture controller vtables use this target.",
+      "id": "BCS-Y-2267"
+    },
+    {
+      "name": "Engine_Phieg_RigidBody_read_indexed_position_FUN_00AFA220",
+      "kind": "function",
+      "address": "0x00AFA220",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] Copies four floats from **(RigidBody+0x14) + RigidBody+0x10*0x70. Runtime propagation through [[BCS-Y-2258]] establishes [X,Y,Z,1] lane order.",
+      "id": "BCS-Y-2268"
+    },
+    {
+      "name": "Engine_Phieg_RigidBody_constructor_FUN_00AFA070",
+      "kind": "function",
+      "address": "0x00AFA070",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] Constructs a 0x48-byte RigidBody with vtable 0x010A9878, obtains an index and pool owner for its 0x70-byte record, initializes record data, and stores the RigidBody backpointer at record+0x6C.",
+      "id": "BCS-Y-2269"
+    },
+    {
+      "name": "Engine_Phieg_RigidBody_write_indexed_position_FUN_00AFA160",
+      "kind": "function",
+      "address": "0x00AFA160",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y-listing.txt"
+      ],
+      "notes": "[Tier C564/C567] Writes input lanes 0..2 and the canonical fourth lane to the active indexed RigidBody record and clears record+0x64. On every held-Y frame the call returning to 0x007D77B7 received and wrote the preceding RigidBody Y exactly.",
+      "id": "BCS-Y-2270"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot7_queue_absolute_position_FUN_00A67F80",
+      "kind": "function",
+      "address": "0x00A67F80",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] CharacterController slot 7. Sets pending selector +0x0C to 1 and copies the absolute four-float value to +0x10 while returning a copy to its caller.",
+      "id": "BCS-Y-2271"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot8_queue_relative_position_FUN_00A67FB0",
+      "kind": "function",
+      "address": "0x00A67FB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] CharacterController slot 8. Sets pending selector +0x0C to 2 and copies the relative four-float value to +0x10.",
+      "id": "BCS-Y-2272"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot9_queue_direct_position_FUN_00A67FD0",
+      "kind": "function",
+      "address": "0x00A67FD0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] CharacterController slot 9. Sets pending selector +0x0C to 3, copies the direct four-float value to +0x10, and immediately invokes slot 10.",
+      "id": "BCS-Y-2273"
+    },
+    {
+      "name": "Application_Scene_RaptureCharacterProxy_slot1_update_position_FUN_007D8080",
+      "kind": "function",
+      "address": "0x007D8080",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y-listing.txt"
+      ],
+      "notes": "[Tier C564/C567] Confirmed live RaptureCharacterProxy vtable slot 1. With +0x40 bit 8 set, it subtracts current RigidBody position from its absolute input and sends the resulting [dX,dY,dZ,0] through [[BCS-Y-2286]]. The bounded controller capture proved that the input had the new Y on every held frame while a nested [[BCS-Y-2287]] writer published the preceding RigidBody Y.",
+      "id": "BCS-Y-2274"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterProxy_slot2_set_direct_position_FUN_007D8E90",
+      "kind": "function",
+      "address": "0x007D8E90",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] CharacterProxy vtable slot 2. If +0x2C is non-null, tail-calls [[BCS-Y-2270]] with the supplied four-float value; otherwise returns with RET 4.",
+      "id": "BCS-Y-2275"
+    },
+    {
+      "name": "Application_Scene_Actor_slot32_publish_position_FUN_00A5F810",
+      "kind": "function",
+      "address": "0x00A5F810",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] Actor slot 32. Queues an absolute position through Actor+0x18 slot 7, then sends the returned value to ModelObject slot 16. The local runtime caller and cadence remain unobserved.",
+      "id": "BCS-Y-2276"
+    },
+    {
+      "name": "Graphics_Scene_ModelObject_slot16_set_position_record_FUN_008DDAB0",
+      "kind": "function",
+      "address": "0x008DDAB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "manifests/player_render_boundary.json",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt"
+      ],
+      "notes": "[Tier C564] ModelObject vtable slot 16. Copies four lanes to ModelObject+0x30..+0x3C and updates cache state at +0x29C. Actor slot 32 calls it after queueing the same position through the CharacterController.",
+      "id": "BCS-Y-2277"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot32_dispatch_absolute_position_FUN_00A68060",
+      "kind": "function",
+      "address": "0x00A68060",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C564] CharacterController slot 32. Tail-dispatches the supplied four-float value to CharacterController+0x04 slot 1. Slot 10 selects it for pending state 1.",
+      "id": "BCS-Y-2278"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot33_dispatch_relative_position_FUN_00A68070",
+      "kind": "function",
+      "address": "0x00A68070",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C564] CharacterController slot 33. Reads the current record through CharacterController+0x04+0x2C, adds the supplied four-float delta, and invokes CharacterController+0x04 slot 1. Slot 10 selects it for pending state 2.",
+      "id": "BCS-Y-2279"
+    },
+    {
+      "name": "Engine_SceneObject_CharacterController_slot34_dispatch_direct_position_FUN_00A680D0",
+      "kind": "function",
+      "address": "0x00A680D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c560_player-render-boundary.txt",
+        "tools/ghidra/logs/c562_player-render-fallback.txt",
+        "tools/ghidra/logs/c564_player-transform-source.txt",
+        "tools/ghidra/logs/c565_player-rigidbody-ownership.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C564] CharacterController slot 34. Tail-dispatches the supplied four-float value to CharacterController+0x04 slot 2. Slot 10 selects it for pending state 3.",
+      "id": "BCS-Y-2280"
+    },
+    {
+      "name": "Sqex_Misc_Utf8String_data_FUN_00445210",
+      "kind": "function",
+      "address": "0x00445210",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566] Leaf __thiscall accessor returning the char pointer at SqexMiscUtf8StringLayout+0x00. It supplies no length, validation, ownership, or synchronization and is not by itself a complete safe-copy API.",
+      "id": "BCS-Y-2281"
+    },
+    {
+      "name": "Sqex_Misc_Utf8String_reserve_bytes_FUN_00447010",
+      "kind": "function",
+      "address": "0x00447010",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566] __thiscall reserve helper with an explicit requested byte count and a mode byte that clears state +0x10 when nonzero. It stores the requested count at +0x08. Counts above +0x04 capacity allocate a 0x20-byte-rounded buffer, copy the old +0x08 bytes, release old storage only when ownership_state +0x11 is zero, set data/capacity, and clear +0x11; counts within capacity retain the existing data pointer. The count includes the trailing NUL on all witnessed string constructors and assignments.",
+      "id": "BCS-Y-2282"
+    },
+    {
+      "name": "Control_CharaBase_getDisplayName_NAPI_FUN_006FA4C0",
+      "kind": "function",
+      "address": "0x006FA4C0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566] Control::CharaBase _getDisplayName N-API member. Signature is void __thiscall(CharaBase *this, ExecuteParameters *params), ending in RET 4. It reads this+0x60. When display_name_id is not -1 it marshals the identifier; when it is -1 it marshals the embedded string at state+0x04 and the kind byte at +0x58. This is a Lua result builder, not a native const-char getter, so external consumers should not call it outside an established Lua invocation.",
+      "id": "BCS-Y-2283"
+    },
+    {
+      "name": "Control_WorldMaster_getMyPlayer_NAPI_FUN_00707970",
+      "kind": "function",
+      "address": "0x00707970",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566] WorldMaster _getMyPlayer N-API implementation, a one-explicit-argument member-shaped function ending in RET 4; ECX is unused. From ExecuteParameters+0x04 it obtains a pointer to the Component::Lua::GameEngine pointer, follows GameEngine+0x220 -> [0] -> +0x04 -> +0x0C, and marshals the resulting Control::MyPlayer pointer through FUN_00748B30. The exact pointer chain supports read-only sampling from a RaptureElementContainer callback after the original update; the N-API function itself is not a native pointer getter, and C566 does not establish thread identity or a lock.",
+      "id": "BCS-Y-2284"
+    },
+    {
+      "name": "Control_CharaBase_setDisplayName_NAPI_FUN_00708200",
+      "kind": "function",
+      "address": "0x00708200",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "tools/ghidra/logs/c566_local-player-helper-listing.txt",
+        "manifests/local_player_display_name.json"
+      ],
+      "notes": "[Tier C566] Control::CharaBase _setDisplayName N-API member. It parses a localized identifier or custom narrow-byte name and calls the same CharaBase+0x60 update helper used by SetDisplayNameReceiver. This proves the live display-name state is presentation data mutable by Lua and is not an immutable selected-character identity store; the client copy path does not validate UTF-8.",
+      "id": "BCS-Y-2285"
+    },
+    {
+      "name": "Application_Scene_RaptureCharacterProxy_dispatch_segmented_displacement_FUN_007D77E0",
+      "kind": "function",
+      "address": "0x007D77E0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c567_player-proxy-retained-y.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y-listing.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C567] __thiscall proxy helper with four stack arguments and RET 0x10. It normalizes and segments [dX,dY,dZ,0], then passes each segment to [[BCS-Y-2287]]. Called from live RaptureCharacterProxy slot 1 at 0x007D8118. No timer or frame divider is present.",
+      "id": "BCS-Y-2286"
+    },
+    {
+      "name": "Application_Scene_RaptureCharacterProxy_resolve_vector_displacement_FUN_007D70D0",
+      "kind": "function",
+      "address": "0x007D70D0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "tools/ghidra/logs/c567_player-proxy-retained-y.txt",
+        "tools/ghidra/logs/c567_player-proxy-retained-y-listing.txt",
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C567] __thiscall recursive proxy helper with three stack arguments and RET 0x0C. It evaluates displacement against opaque record vectors, removes a negative projection component, can add a thresholded vector correction, and recurses with adjusted displacement. Its terminal 0x007D77B2 call writes current RigidBody position plus that invocation's displacement; 0x007D77B7 is the return address. Runtime proved terminal dY was zero on all 160 held-Y writes.",
+      "id": "BCS-Y-2287"
+    },
+    {
+      "name": "Graphics_Render_Drawable_update_transform_flag_FUN_00C579A0",
+      "kind": "function",
+      "address": "0x00C579A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C569] Called after the transform copy by [[BCS-Y-2256]]. Reads nine float lanes of the same Drawable at +0x30..+0x58 and updates only bit 0x40 in its +0xA0 word from a sign comparison. No callees. This local derived-flag operation does not establish a feedback-free transform or shader seam.",
+      "id": "BCS-Y-2288"
+    },
+    {
+      "name": "Application_NamePlate_slot20_006A2A80_state_predicate",
+      "kind": "function",
+      "address": "0x006A2A80",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C571] NamePlate vtable 0x00FCF98C slot 20, byte offset +0x50. ECX is this; no explicit stack arguments; returns EAX 1 when bit 0x04 at NamePlate+0x190 is clear, otherwise 0.",
+      "id": "BCS-Y-2289"
+    },
+    {
+      "name": "Application_NamePlate_slot23_006A2E60_read_opaque_scalar",
+      "kind": "function",
+      "address": "0x006A2E60",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C571/C577/C578/C579/C580] NamePlate slot 23 at 0x006A2E60, __thiscall with no explicit stack arguments. Calls slot 20; if AL is nonzero, reads pointer +0x194 and float32 pointee+0x1AC, converts with CVTTSS2SI and returns EAX; otherwise returns zero. The bounded identity captured a Sqwt::Window primary vtable 0x0106A0BC at that pointee; static metadata identifies +0x1AC as inherited ActualHeight. It is not a moving-position contract or a feedback-free correction seam. Reproduction and pinned bytes: manifests/player_render_boundary.json:namePlateFlow.windowActualHeight and tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2290"
+    },
+    {
+      "name": "Sqwt_FrameworkElement_rect_update_actual_height_FUN_0092FD20",
+      "address": "0x0092FD20",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C578/C579/C580] RectFloat * __thiscall(FrameworkElement *this, RectFloat *out, const RectFloat *input, uint32_t selector0, uint32_t selector1). ECX is the UI object. Four explicit stack arguments are caller-owned output rectangle, input rectangle and two selectors whose low bytes select branches 0..3. Returns out in EAX and ends with RET 16 at 0x009302BF. Computes a RectTemplate<float> record, updates ActualWidth at +0x1B4 and ActualHeight at +0x1AC conditionally, and returns the rectangle through out. At 0x00930135, FSTP [EDI] writes the computed float; EDI was established as this+0x1AC at 0x009300E8. The source is the computed local float at current ESP+0x20 loaded at 0x00930116, not an actor-coordinate field. If +0x1B0 bit 0x10 is set, calls 0x009157C0 with this and metadata 0x013587F0, then clears that bit. Reads the resulting state byte. The computed store requires state & 3 nonzero and FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x00930150 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded by this test. Sets state bit 0x04 and calls 0x00953BA0 with the property record and the same metadata. No direct actor or physics field store is identified in this function, but its property notification and virtual callees preclude a whole-path non-feedback claim. This does not establish a moving nameplate anchor or a correction seam.",
+      "id": "BCS-Y-2291"
+    },
+    {
+      "name": "Sqwt_FrameworkElement_dispatch_rect_update_FUN_009302F0",
+      "address": "0x009302F0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C578/C579/C580] void __thiscall(FrameworkElement *this, const RectFloat *input). ECX is this and the single stack argument is forwarded as input to 0x0092FD20. Ends with RET 4 at 0x0093043A. If byte this+0x158 is zero, conditionally writes zero to ActualWidth and ActualHeight and constructs a zero rectangle. Otherwise calls 0x0092FD20 at 0x00930412, passing a stack-local output rectangle, input and byte selectors from +0x24C/+0x24E. Both branches pass the resulting rectangle to 0x00939720 at 0x00930422. The zero-height store at 0x009303B6 uses ESI=this+0x1AC from 0x0093037A. After the optional metadata refresh/bit-0x10 clear, it requires +0x1B0 & 3 nonzero and FCOM / FNSTSW AX / TEST AH,0x44 to leave PF set so JNP 0x009303D0 is not taken. An ordinary equal comparison skips the store; an unordered result is not excluded. It sets bit 0x04 and notifies 0x00953BA0 with metadata 0x013587F0. The meaning of +0x158 is not promoted. The capture did not pair either write site with a live instance. These are statically proven ActualHeight paths, not an exclusive-writer claim. Metadata refresh, property notification, rectangle forwarding and the 0x0092FD20 call remain in scope; the whole path does not establish non-feedback, a moving nameplate anchor or a correction seam.",
+      "id": "BCS-Y-2292"
+    },
+    {
+      "name": "Sqwt_UI_rect_pair_forward_FUN_00939720",
+      "address": "0x00939720",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C581/C583] ECX=UI owner, one explicit RectFloat pointer, RET 4. Copies rectangle+4/+8 to a stack-local pair and calls 0x00940110 with mode 0 and notify 1; conditionally updates UI+0x178/+0x17C from rectangle+0xC/+0x10. Direct caller 0x009302F0. Reproduce via manifests/player_render_boundary.json:method.visualOffsetInvocation and namePlateFlow.visualOffset; pinned entry/call/store/return bytes in tools/audit_player_render_boundary.py. Generic UI property evidence only: coordinate space, moving local NamePlate invocation, concrete UI+0xA0 owner, draw timing and feedback-free correction are not established.",
+      "id": "BCS-Y-2293"
+    },
+    {
+      "name": "Sqwt_UI_visual_offset_set_FUN_00940110",
+      "address": "0x00940110",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C581/C583] __thiscall, three explicit arguments: float-pair pointer, uint32 mode, uint32 notify; RET 12. Supplies UI+0x24 record, full owner, callback 0x0093FE00 and VisualOffset metadata 0x013597FC to 0x009411E0. AL boolean is forwarded; full EAX is not a defined return contract. Direct callers 0x00939720 and 0x0093A870. Reproduce via manifests/player_render_boundary.json:method.visualOffsetInvocation and namePlateFlow.visualOffset; pinned entry/call/store/return bytes in tools/audit_player_render_boundary.py. Generic UI property evidence only: coordinate space, moving local NamePlate invocation, concrete UI+0xA0 owner, draw timing and feedback-free correction are not established.",
+      "id": "BCS-Y-2294"
+    },
+    {
+      "name": "Sqwt_float_pair_property_set_FUN_009411E0",
+      "address": "0x009411E0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C581/C583] ECX=property record, six explicit arguments: pair, owner, callback, metadata, mode, notify; RET 24 on both exits, AL boolean. Resolves state bit 0x10, applies low-byte mode/state gates, then stores unequal or unordered float32 pairs and sets state bit 0x04. Notify low byte 1 calls 0x00940DD0. Direct callers 0x00940110 and 0x00941860. Reproduce via manifests/player_render_boundary.json:method.visualOffsetInvocation and namePlateFlow.visualOffset; pinned entry/call/store/return bytes in tools/audit_player_render_boundary.py. Generic UI property evidence only: coordinate space, moving local NamePlate invocation, concrete UI+0xA0 owner, draw timing and feedback-free correction are not established.",
+      "id": "BCS-Y-2295"
+    },
+    {
+      "name": "Application_Main_SqwtInterface_create_context_FUN_005522D0",
+      "address": "0x005522D0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C585-C593] ECX=interface, one explicit InputElement pointer, RET 4. Successful return constructs a 16-byte DrawingToolContext through 0x00553D90 and submits a backing/proxy association. Static primary vtable 0x00FA2D8C slot 1 supplies this factory to 0x0093EF90. Exact producing VA lists: manifests/player_render_boundary.json:method.drawingContextInvocation; durable flow and limits: namePlateFlow.drawingContext; pinned anchors: tools/audit_player_render_boundary.py. No moving-local-NamePlate binding, world-coordinate, cadence or feedback-free correction claim is established.",
+      "id": "BCS-Y-2296"
+    },
+    {
+      "name": "DrawingToolContext_constructor_FUN_00553D90",
+      "address": "0x00553D90",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C585-C593] ECX=proxy, two explicit arguments: backing-context value and interface pointer, RET 8, returns proxy in EAX. Installs vtable 0x00FA28E4, stores backing value at +4, initializes cached record pointer +8 to zero, ORs byte +0xC with 1 and publishes interface at global 0x01336BA8. Direct caller 0x005522D0. Exact producing VA lists: manifests/player_render_boundary.json:method.drawingContextInvocation; durable flow and limits: namePlateFlow.drawingContext; pinned anchors: tools/audit_player_render_boundary.py. No moving-local-NamePlate binding, world-coordinate, cadence or feedback-free correction claim is established.",
+      "id": "BCS-Y-2297"
+    },
+    {
+      "name": "DrawingToolContext_slot13_0055A000_pair_set_FUN_0055A000",
+      "address": "0x0055A000",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C585-C593] __thiscall, one explicit float-pair pointer, RET 4. Calls 0x00559DE0, truncates each float to int32 through CVTTSS2SI, converts back through CVTSI2SS and stores at record+0xA0/+0xA4, zeroes +0xA8, ORs byte +0x5A with 0x80 and writes byte +0x5C=1. Static vtable 0x00FA28E4 slot 13 consumes the VisualOffset pair forwarded by 0x0093FE00. Exact producing VA lists: manifests/player_render_boundary.json:method.drawingContextInvocation; durable flow and limits: namePlateFlow.drawingContext; pinned anchors: tools/audit_player_render_boundary.py. No moving-local-NamePlate binding, world-coordinate, cadence or feedback-free correction claim is established.",
+      "id": "BCS-Y-2298"
+    },
+    {
+      "name": "DrawingToolContext_cached_record_FUN_00559DE0",
+      "address": "0x00559DE0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C585-C593] ECX=context proxy, no explicit arguments, plain RET, EAX=proxy+8 pointee. Lazily allocates 0x410 bytes and initializes through 0x0054D310 when absent; caches the pointer at proxy+8. Allocation failure can return zero. Numerous DrawingToolContext setters, including 0x0055A000 and 0x0055A620, consume this pointer. Exact producing VA lists: manifests/player_render_boundary.json:method.drawingContextInvocation; durable flow and limits: namePlateFlow.drawingContext; pinned anchors: tools/audit_player_render_boundary.py. No moving-local-NamePlate binding, world-coordinate, cadence or feedback-free correction claim is established.",
+      "id": "BCS-Y-2299"
+    },
+    {
+      "name": "DrawingContext_cached_record_publish_FUN_0054E890",
+      "address": "0x0054E890",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C601/C602/C603] __thiscall with cached-record ECX and one explicit untyped context-item pointer, RET 4; full EAX returns record+0x404. Prefix tests dirty byte+0x5C and updates +0x404; code0x22 selects the context item through 0x0054B0D0. Reached +0x5A bit0x80 path submits 12 bytes from +0xA0 through code0x0E, clears the bit only on AL=1. Sole exported direct caller 0x005527A0. Reproduce using manifests/player_render_boundary.json:method.drawingPublicationInvocation; durable field/ordering/limits in namePlateFlow.drawingContext.publication; pinned instructions in tools/audit_player_render_boundary.py. Client-internal scene submission only: no moving-local-NamePlate binding, shader/draw consumer, live cadence or feedback-free correction is established.",
+      "id": "BCS-Y-2300"
+    },
+    {
+      "name": "Application_Main_SqwtInterface_publish_context_records_FUN_005527A0",
+      "address": "0x005527A0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C601/C602/C603] ECX=interface, no explicit arguments, plain RET; AL=1 only is defined. Iterates untyped context items between interface+0x10/+0x14; calls 0x0054E890 with ECX=item+8 and the item itself pushed. Nonpositive signed EAX triggers cached-record cleanup/free and item+8=0. BCS-Y-0537 calls this at 0x004DAB33 before its tail jump to container update 0x004DA680. Reproduce using manifests/player_render_boundary.json:method.drawingPublicationInvocation; durable field/ordering/limits in namePlateFlow.drawingContext.publication; pinned instructions in tools/audit_player_render_boundary.py. Client-internal scene submission only: no moving-local-NamePlate binding, shader/draw consumer, live cadence or feedback-free correction is established.",
+      "id": "BCS-Y-2301"
+    },
+    {
+      "name": "WindowActor_context_operation_dispatch_FUN_007FA2B0",
+      "address": "0x007FA2B0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C604/C605/C607/C608/C609] ECX=WindowActor; operation, payload and byte-length stack arguments; RET12. Vtable 0x00FF1CC4 slot157. Operations24/22 establish and select global-map contexts; default operation0E forwards through actor+1A0 to 008CEC60. Durable observations and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer and method.drawingConsumerInvocation; pinned anchors in tools/audit_player_render_boundary.py. Static UI scene path only; local moving-nameplate identity, live cadence, final graphics submission and feedback-free correction remain unproven.",
+      "id": "BCS-Y-2302"
+    },
+    {
+      "name": "WindowContext_operation_dispatch_FUN_008CEC60",
+      "address": "0x008CEC60",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C604/C605/C607/C608/C609] ECX=selected context; operation, payload and byte-length arguments; operation0E RET12. Entry ORs byte128 with2; table index0E copies three payload lanes to28/2C/30 and sets bytes12D/12C. No coordinate-space or return-value semantics promoted. Durable observations and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer and method.drawingConsumerInvocation; pinned anchors in tools/audit_player_render_boundary.py. Static UI scene path only; local moving-nameplate identity, live cadence, final graphics submission and feedback-free correction remain unproven.",
+      "id": "BCS-Y-2303"
+    },
+    {
+      "name": "WindowContext_derived_record_process_FUN_008CD700",
+      "address": "0x008CD700",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C604/C605/C607/C608/C609] ECX=context; five stack arguments: optional upstream record, second record, three low-byte selectors; RET20. Combines/clears12D/12C; conditional copy or parent addition from28/2C/30 to34/38/3C; alternate record24, virtual callbacks and recursive children remain part of processing. Durable observations and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer and method.drawingConsumerInvocation; pinned anchors in tools/audit_player_render_boundary.py. Static UI scene path only; local moving-nameplate identity, live cadence, final graphics submission and feedback-free correction remain unproven.",
+      "id": "BCS-Y-2304"
+    },
+    {
+      "name": "WindowContext_draw_dispatch_FUN_008CE7D0",
+      "address": "0x008CE7D0",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C604/C605/C607/C608/C609] ECX=context; one explicit argument forwarded to subordinate draw paths; RET4. Literal WindowContext::Draw; reached draw branch requires byte128=3 and byte12B nonzero, plus preceding owner/global gate. Selects a derived or alternate64-byte record, calls419B60, then invokes active context-component slot1 and recursively draws children. Durable observations and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer and method.drawingConsumerInvocation; pinned anchors in tools/audit_player_render_boundary.py. Static UI scene path only; local moving-nameplate identity, live cadence, final graphics submission and feedback-free correction remain unproven.",
+      "id": "BCS-Y-2305"
+    },
+    {
+      "name": "WindowContext_actor_record_report_FUN_008CC430",
+      "address": "0x008CC430",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C617/C618/C619/C620] ECX=context, no explicit arguments, plain RET; draw-time +0x130-enabled path walks parent70 for associated actor74, resolves/casts CharaActor, consumes context positioning records and reports32 stack-local bytes through [[BCS-Y-0868]]. No moving-anchor writer, glyph submission or feedback-free seam established. Durable facts and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.primaryLabelReport and method.primaryLabelReportInvocation; pinned anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2306"
+    },
+    {
+      "name": "WindowContext_command_stream_draw_FUN_008CE530",
+      "address": "0x008CE530",
+      "kind": "function",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C621/C622] ECX=context, one explicit pointer, RET4. Selects derived34/38/3C or alternate24 record and prepares stack-local draw records through6979A0. Byte stream14..18, cursor7C; at8CE772 ECX=current command, ESI=context, EDI=cursor; invokes command vtable+4 with two local pointers and advances cursor by returnedEAX. Concrete command ABI, local PrimaryLabel identity, shader upload and feedback-free correction unproven. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw and method.contextCommandDrawInvocation; pinned anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2307"
+    },
+    {
+      "name": "FrameworkElement_named_TextBlock_lookup_FUN_006A4270",
+      "kind": "function",
+      "address": "0x006A4270",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C623/C625] ECX=named-element lookup owner, explicit lookup key and output pointer, RET8. Resolves the named FrameworkElement and dynamically casts element+0x60 from FrameworkElement TD 0x01269E8C to TextBlock TD 0x012BD188. The NamePlate constructor caller supplies literal TextBlock_PrimaryLabel. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw.primaryLabelTypePath and method.primaryLabelDrawInvocation; pinned anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2308"
+    },
+    {
+      "name": "Sqwt_TextBlock_draw_FUN_00955990",
+      "kind": "function",
+      "address": "0x00955990",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C623/C625] TextBlock complete-object vftable 0x0106E844 slot34. ECX=TextBlock, one explicit drawing-context pointer, RET4. Computes local text-run positions and calls the supplied context vtable+4 at 0x00955D88 or 0x00955E4B with five explicit arguments. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw.textBlockProducer and method.primaryLabelDrawInvocation; pinned anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2309"
+    },
+    {
+      "name": "DrawingToolContext_DrawText_tail_FUN_00559F00",
+      "kind": "function",
+      "address": "0x00559F00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C623] DrawingToolContext vftable 0x00FA28E4 slot1. Twelve-byte thunk calls [[BCS-Y-2299]], binds returned cached record to ECX and tail-jumps to [[BCS-Y-2311]] while preserving the five explicit TextBlock draw arguments. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw.textBlockProducer and method.primaryLabelDrawInvocation; pinned vtable and complete-body anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2310"
+    },
+    {
+      "name": "DrawingToolContext_DrawText_command_publish_FUN_0054D7B0",
+      "kind": "function",
+      "address": "0x0054D7B0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C623/C624] ECX=0x410-byte drawing cached record, five explicit arguments, RET0x14. Builds DrawText through [[BCS-Y-2312]], appends a 0x98-byte fixed record at 0x0054DB8C through 0x0054CCC0, then copies text bytes at command+0x92 and terminates them. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw.drawTextCommand and method.primaryLabelDrawInvocation; pinned entry and append anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2311"
+    },
+    {
+      "name": "SceneCommand_Window_DrawText_ctor_FUN_00553F70",
+      "kind": "function",
+      "address": "0x00553F70",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C624] ECX=DrawText destination, fifteen explicit fixed-record arguments, RET0x3C. Installs DrawingBase vftable 0x00FA288C then DrawText vftable 0x00FA29D0; stores the first input pair at +0x54/+0x58. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw.drawTextCommand and method.primaryLabelDrawInvocation; pinned entry/vtable-store anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2312"
+    },
+    {
+      "name": "SceneCommand_Window_DrawText_execute_FUN_00697580",
+      "kind": "function",
+      "address": "0x00697580",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C624] DrawText vftable 0x00FA29D0 slot1 and concrete target of the generic command vtable+4 dispatch. ECX=DrawText record, two explicit local draw-state pointers, RET8. Reads +0x54/+0x58 and calls [[BCS-Y-2314]]; returned EAX is the aligned variable command size. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw.drawTextConsumer and method.primaryLabelDrawInvocation; pinned vtable and entry anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2313"
+    },
+    {
+      "name": "SceneCommand_Window_DrawText_render_prepare_FUN_00697170",
+      "kind": "function",
+      "address": "0x00697170",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C624] ECX=DrawText record, three explicit arguments are local draw-state pointer and integer X/Y adjustments, RET0x0C. Combines command-local layout data with prepared context state and invokes the resolved text-render object at vtable+0x18 at 0x00697346 or 0x00697549. No shader register, GPU upload or feedback-free correction seam is established. Durable facts/reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.commandDraw.drawTextConsumer and method.primaryLabelDrawInvocation; pinned entry/dispatch anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2314"
+    },
+    {
+      "name": "Sqwt_Media_Visual_context_peer_acquire_FUN_0093F880",
+      "kind": "function",
+      "address": "0x0093F880",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C585/C626/C627] ECX=Sqwt Media Visual, no explicit stack arguments, returns the Visual+0xA0 DrawingContext peer. Lazily calls Visual slot 21 and caches EAX at +0xA0, replays dirty Visual properties, then publishes parent/child peer association through concrete SqwtInterface slot 3 when Visual+0xA4 and its +0xA0 peer are nonzero. The NamePlate PrimaryLabel helper reaches this function on the resolved TextBlock and dynamically casts the returned peer to DrawingToolContext. Durable flow and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.primaryLabelAssociation, sceneConsumer.visualHierarchy and method.primaryLabelContextAssociationInvocation; pinned instructions in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2315"
+    },
+    {
+      "name": "SqwtInterface_visual_context_parent_publish_FUN_0054BBB0",
+      "kind": "function",
+      "address": "0x0054BBB0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C627] Concrete SqwtInterface vftable 0x00FA2D8C slot 3. Three explicit arguments, RET0x0C. Reorders child proxy, parent proxy and optional preceding proxy into a 12-byte [parent,child,preceding] payload and calls 0x0054B0D0 with operation 0x21. The receiver resolves those proxy keys to WindowContexts before calling [[BCS-Y-2317]]. Durable flow and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer.visualHierarchy and method.primaryLabelContextAssociationInvocation; complete decompilation and pinned bytes are recorded there.",
+      "id": "BCS-Y-2316"
+    },
+    {
+      "name": "WindowContext_child_attach_FUN_008CE440",
+      "kind": "function",
+      "address": "0x008CE440",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C604/C627] ECX=parent WindowContext, explicit child WindowContext and optional preceding child pointer, RET8. Removes an existing parent through 0x008CDDF0, inserts the child in the parent sequence, writes child+0x70=parent at 0x008CE501 and sets child bytes +0x12C/+0x12D to 1. Called at 0x007FA514 after operation 0x21 resolves the Visual peer payload published by [[BCS-Y-2316]]. Durable flow and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer.visualHierarchy and method.primaryLabelContextAssociationInvocation; pinned caller and store anchors in tools/audit_player_render_boundary.py.",
+      "id": "BCS-Y-2317"
+    },
+    {
+      "name": "WindowActor_anchor_state_ctor_FUN_007F95A0",
+      "kind": "function",
+      "address": "0x007F95A0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json",
+        "BCS-S-0497"
+      ],
+      "notes": "[Tier C628] WindowActor constructor for vtable 0x00FF1CC4. Constructs the attachment selector at +0x140, initializes +0x180/+0x190 to (0,0,0,1), clears low option bits and init bits, sets registry keys +0x1AC/+0x1B0 to -1, and zeroes +0x1B8. Durable contract: BCS-S-0497 and manifests/player_render_boundary.json:namePlateFlow.anchorProducer.",
+      "id": "BCS-Y-2318"
+    },
+    {
+      "name": "WindowActor_anchor_producer_FUN_007F8D20",
+      "kind": "function",
+      "address": "0x007F8D20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json",
+        "BCS-S-0497"
+      ],
+      "notes": "[Tier C628] Resolves +0x1AC/+0x1B0 scene actors, obtains the virtual attachment targets through BCS-Y-2321/2322, conditionally retains the option-0x20/0x40 first-stage value in +0x180, applies the option-0x200 stage into +0x190, adds +0x164, forces W=1, and publishes through BCS-Y-2323. With neither first-stage option selected, the raw stack target bypasses +0x180. The pinned capture joins the output to the accepted PrimaryLabel consumer but does not record the active option bits or resolved actor vtables.",
+      "id": "BCS-Y-2319"
+    },
+    {
+      "name": "WindowActor_anchor_tick_FUN_007F9D00",
+      "kind": "function",
+      "address": "0x007F9D00",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json",
+        "BCS-S-0497"
+      ],
+      "notes": "[Tier C628] WindowActor vtable 0x00FF1CC4 slot 135. Updates timer state at +0x128..+0x13C and invokes BCS-Y-2319 with current timer minus +0x130 only when the +0x1AC registry lookup succeeds.",
+      "id": "BCS-Y-2320"
+    },
+    {
+      "name": "SceneActor_attachment_position_FUN_007CCAF0",
+      "kind": "function",
+      "address": "0x007CCAF0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C628] ECX points to the WindowActor+0x140 attachment selector; explicit arguments are output float4 and a resolved scene actor. Dispatches scene-actor vtable slot 91. For CharaActor, the shared slot-91 implementation resolves a bounded attachment name through CharaActor slot 21 and passes its index to slot 92. Nonnegative indices return the selected node-transform translation through slot 25; a negative index returns actor slot-34 output, including when slot 171 makes slot 21 return -1. Runtime subtype, branch and selected name were not captured.",
+      "id": "BCS-Y-2321"
+    },
+    {
+      "name": "SceneActor_secondary_attachment_position_FUN_007CCBC0",
+      "kind": "function",
+      "address": "0x007CCBC0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C628] Explicit arguments are output float4, primary scene actor, and secondary scene actor. Dispatches primary actor vtable slot 94 and copies the returned transform translation. CharaActor slot 94 uses mode -9 and dynamically casts both inputs. Null-cast cases fall back to an available world position or zero/default result; with both actors, distance below 0.001f selects primary slot-95 index 0, otherwise indices 0..15 are searched by horizontal XZ distance and returned as a translation-only result. Runtime subtypes and branch were not captured.",
+      "id": "BCS-Y-2322"
+    },
+    {
+      "name": "WindowActor_anchor_publish_FUN_00CA3E10",
+      "kind": "function",
+      "address": "0x00CA3E10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "[Tier C628] Copies the four-float producer value to global 0x0130BBC4. The pinned downhill capture joins the call at BCS-Y-2319+0x4AD to the accepted PrimaryLabel consumer at return 0x00CA565E from 0x00CB9280.",
+      "id": "BCS-Y-2323"
+    },
+    {
+      "name": "ChatInbound_WorldChat_dispatcher_FUN_004D8D10",
+      "kind": "function",
+      "address": "0x004D8D10",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/chat_wire_contract.json",
+        "manifests/party_subsystem.json",
+        "xivl-decomp/asm/ffxivgame/000d8d10_FUN_004d8d10.s"
+      ],
+      "notes": "World Chat receive dispatcher. Reads the u16 opcode at game-message +0x02 and dispatches 0x00C8..0x00CB through jump table VA 0x004D8F58. Case 0x00C8 at VA 0x004D8D6C parses application display_name[32] at +0x08 and message[512] at +0x28, then supplies fixed display type 3. Case 0x00C9 at VA 0x004D8E7B passes application selected_group_entry_token +0x08 to FUN_005754E0 -> FUN_006C7B80 and drops the packet when the returned u16 is zero. FUN_006C13D0 matches the full token in a Group-record vector at +0x74, and the match index selects a u16 presentation value from a secondary node range at +0x28. The case parses sender_name[32] at +0x0C and message[512] at +0x2C. This proves context-sensitive selected-group display, not an actor, party, linkshell, or sender identifier or the presentation enum values.",
+      "id": "BCS-Y-2324"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 496,
+  "structCount": 497,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -3013,7 +3013,7 @@
           "size": "0x04",
           "name": "display_name_id",
           "type": "int32_t",
-          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369) fast-path (called from [[ReceiverHybridFactory_NamesArray_FUN_00771980]] BCS-Y-1349). The display ID for the player name; -1 sentinel value indicates 'unnamed' state. Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365). Discovered earlier by decomp of the fast-path apply helper."
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369) fast-path (called from [[ReceiverHybridFactory_NamesArray_FUN_00771980]] BCS-Y-1349). A zero wire identifier is normalized to -1; that value selects the embedded custom-name string rather than the localized-identifier path. Receiver class: [[SetDisplayNameReceiver_ctor_FUN_0089D530]] (BCS-Y-1365)."
         },
         {
           "offset": "0x58",
@@ -3032,16 +3032,16 @@
         {
           "offset": "0xAD",
           "size": "0x01",
-          "name": "display_name_is_unnamed",
+          "name": "display_name_has_no_id",
           "type": "bool",
-          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Boolean flag computed as (display_name_id == -1). Indicates the display-name slot is in the 'unnamed' sentinel state. Discovered earlier."
+          "notes": "Writable by [[SetDisplayName_ApplyToCache_FUN_00771230]] (BCS-Y-1369). Boolean flag computed exactly as display_name_id == -1. It does not establish that the embedded custom-name string is empty."
         },
         {
           "offset": "0xAE",
           "size": "0x02",
           "name": "_pad_ae",
           "type": "uint8_t[2]",
-          "notes": "Alignment padding between display_name_is_unnamed (0xAD) and _zero_init_b0 (0xB0). NOT zero-init by ctor."
+          "notes": "Alignment padding between display_name_has_no_id (0xAD) and _zero_init_b0 (0xB0). NOT zero-init by ctor."
         },
         {
           "offset": "0xB0",
@@ -3607,10 +3607,24 @@
         },
         {
           "offset": "0x00510",
-          "size": "0x150",
-          "name": "actor_factory_context",
-          "type": "unknown[0x150]",
-          "notes": "Passed to actor creation paths as RaptureElementContainer+0x510. The packed-state handler writes its +0x38 member, but the concrete subobject type is unresolved."
+          "size": "0x008",
+          "name": "lua_frame_context_head",
+          "type": "unknown[0x08]",
+          "notes": "Header of the embedded context passed as this to LuaFrameTick FUN_00578970. Its first two dwords remain unresolved."
+        },
+        {
+          "offset": "0x00518",
+          "size": "0x004",
+          "name": "initialize_waiting_actor_container",
+          "type": "ApplicationLuaScriptClientInitializeWaitingActorContainer *",
+          "notes": "LuaFrameTick reads this pointer from its this+0x08 field and passes it to FUN_00766F00. The pointee's +0x04 GameEngine pointer anchors the statically proven local MyPlayer lookup chain in manifests/local_player_display_name.json."
+        },
+        {
+          "offset": "0x0051C",
+          "size": "0x144",
+          "name": "actor_factory_context_tail",
+          "type": "unknown[0x144]",
+          "notes": "Remaining embedded actor-factory/Lua-frame context. The packed-state handler writes context-relative +0x38, but no narrower partition is established here."
         },
         {
           "offset": "0x00660",
@@ -11843,7 +11857,12 @@
       "confidence": "structural",
       "sourceRefs": [
         "BCS-Y-1709",
-        "tools/ghidra/logs/c351_main-runtime.txt"
+        "BCS-Y-2281",
+        "BCS-Y-2282",
+        "manifests/local_player_display_name.json",
+        "tools/ghidra/logs/c351_main-runtime.txt",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt"
       ],
       "fields": [
         {
@@ -11851,42 +11870,42 @@
           "size": "0x04",
           "name": "data",
           "type": "char *",
-          "notes": "Points at inline_buffer after default construction."
+          "notes": "Current character-data pointer. It points at inline_buffer after default construction and remains there while the requested byte count does not exceed capacity; larger values may point at owned allocated storage."
         },
         {
           "offset": "0x04",
           "size": "0x04",
-          "name": "inline_capacity",
+          "name": "byte_capacity",
           "type": "uint32_t",
-          "notes": "Default constructor writes the 0x40-byte inline capacity."
+          "notes": "Current data-buffer capacity in bytes. Default construction writes 0x40; the reserve helper rounds larger allocations to 0x20-byte boundaries."
         },
         {
           "offset": "0x08",
           "size": "0x04",
-          "name": "state_08",
+          "name": "byte_count_including_nul",
           "type": "uint32_t",
-          "notes": "Default constructor initializes this unresolved string state to 1."
+          "notes": "Current stored byte count including the trailing NUL. Default construction writes 1. Constructors reserve source_length+1, assignment copies exactly this many bytes, and equality compares this value minus one before comparing content."
         },
         {
           "offset": "0x0C",
           "size": "0x04",
-          "name": "length",
+          "name": "state_0c",
           "type": "uint32_t",
-          "notes": "Default constructor clears this string length/state dword."
+          "notes": "Default construction clears this dword and copy assignment preserves it. Its semantics are not established; it is not required for a bounded byte copy."
         },
         {
           "offset": "0x10",
           "size": "0x01",
-          "name": "inline_state",
+          "name": "state_10",
           "type": "uint8_t",
-          "notes": "Default constructor initializes the first storage-mode byte to 1."
+          "notes": "Default construction initializes this byte to 1; reserve requests made by witnessed constructors clear it. It is not a reliable inline-versus-allocated discriminator."
         },
         {
           "offset": "0x11",
           "size": "0x01",
           "name": "ownership_state",
           "type": "uint8_t",
-          "notes": "Default constructor initializes the second storage-mode byte to 1; exact flag semantics remain unresolved."
+          "notes": "Default construction initializes this byte to 1. The reserve helper clears it after allocating a replacement buffer, and destruction releases data only when it is zero."
         },
         {
           "offset": "0x12",
@@ -11896,7 +11915,7 @@
           "notes": "Inline storage begins with a null terminator. Repeated 0x54-byte placements fix its full extent without asserting usable character capacity beyond the initialized 0x40 value."
         }
       ],
-      "notes": "Full byte-accounted inline string layout used pervasively by the client. Direct initialization fixes the header and inline-buffer start; ten consecutive SystemConfig members and the following Main member fix the exact 0x54-byte stride. The structural name avoids asserting a precise library template identity that RTTI does not provide.",
+      "notes": "Full byte-accounted UTF-8 string layout used pervasively by the client. Direct construction, reserve, assignment, comparison, and destruction establish the data pointer, byte capacity, byte count including NUL, and owned-allocation discriminator. Ten consecutive SystemConfig members and the following Main member fix the exact 0x54-byte stride. The structural name avoids asserting a precise library template identity that RTTI does not provide.",
       "id": "BCS-S-0135"
     },
     {
@@ -16087,9 +16106,13 @@
         "tools/ghidra/logs/c374_display-name-state-types.txt",
         "tools/ghidra/logs/c375_chara-display-name-ownership.txt",
         "tools/ghidra/logs/c376_chara-display-name-allocation.txt",
+        "tools/ghidra/logs/c566_local-player-display-name.txt",
+        "tools/ghidra/logs/c566_local-player-display-name-listing.txt",
+        "manifests/local_player_display_name.json",
         "BCS-S-0108",
         "BCS-S-0135",
-        "BCS-Y-1613"
+        "BCS-Y-1613",
+        "BCS-Y-2283"
       ],
       "fields": [
         {
@@ -16097,7 +16120,7 @@
           "size": "0x04",
           "name": "display_name_id",
           "type": "int32_t",
-          "notes": "Initialized to -1. Lua readers and the update path treat -1 as the unnamed sentinel."
+          "notes": "Initialized to -1. The update path uses -1 when no localized display-name identifier is present; _getDisplayName then returns the embedded custom-name string and kind instead of an identifier."
         },
         {
           "offset": "0x04",
@@ -16116,9 +16139,9 @@
         {
           "offset": "0x59",
           "size": "0x01",
-          "name": "is_unnamed",
+          "name": "has_no_display_name_id",
           "type": "bool",
-          "notes": "Initialized to true and recomputed as display_name_id == -1 by both observed update paths."
+          "notes": "Initialized to true and recomputed exactly as display_name_id == -1 by both observed update paths. The byte does not mean that the embedded custom-name string is empty."
         },
         {
           "offset": "0x5A",
@@ -24681,34 +24704,43 @@
       "id": "BCS-S-0371"
     },
     {
-      "name": "WorldOpcode00C8StatePacket",
+      "name": "TellChatApplication",
       "namespace": "FFXIV.Client.Network.Wire.C2S",
-      "size": "0x220",
-      "confidence": "structural",
+      "size": "0x228",
+      "confidence": "confirmed",
       "sourceRefs": [
         "BCS-Y-0316",
         "BCS-Y-0331",
+        "manifests/chat_wire_contract.json",
         "manifests/operation_opcode_map_outbound.json",
         "data/vendor/opcodes/opcodes.json",
-        "tools/ghidra/logs/c474_world-state-packet.txt"
+        "xivl-decomp/asm/ffxivgame/000df810_FUN_004df810.s",
+        "xivl-decomp/asm/ffxivgame/000e3750_FUN_004e3750.s"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x20",
-          "name": "header_values",
-          "type": "uint64_t[4]",
-          "notes": "Exact four-qword header copied from the emitter's zero-initialized source buffer."
+          "size": "0x08",
+          "name": "opaque_00",
+          "type": "unknown[8]",
+          "notes": "Leading application bytes supplied by World Chat framing. Preserve without interpretation."
         },
         {
-          "offset": "0x20",
+          "offset": "0x08",
+          "size": "0x20",
+          "name": "target_name",
+          "type": "char[32]",
+          "notes": "Client-supplied tell target. FUN_00447BC0 retains at most 31 content bytes plus NUL and avoids splitting a UTF-8 continuation sequence."
+        },
+        {
+          "offset": "0x28",
           "size": "0x200",
-          "name": "state_block",
-          "type": "uint32_t[128]",
-          "notes": "Exact 512-byte block copied from the emitter's zero-initialized source buffer."
+          "name": "message",
+          "type": "char[512]",
+          "notes": "Client-supplied tell message. FUN_00447BC0 retains at most 511 content bytes plus NUL and avoids splitting a UTF-8 continuation sequence."
         }
       ],
-      "notes": "Complete exact 0x220 application payload for WorldServerbound c2s 0x00C8, excluding the 0x10 game-message prefix. Retained evidence identifies a large World-channel state push without establishing a more specific operation or either copied region's inner schema.",
+      "notes": "Complete derived 0x228 application body for World Chat c2s 0x00C8 tell. FUN_004DF810 rejects an empty target, bounds target and message, calls FUN_004E3750 to build the 0x230-byte internal record, and forwards through FUN_00DB3E30. The prior state-push interpretation mistook target[32] and message[512] for an unrelated header and state block. No retail tell capture is retained, so server recipient selection, presence, echo, offline behavior, and cross-zone behavior remain unknown.",
       "id": "BCS-S-0372"
     },
     {
@@ -25181,13 +25213,15 @@
       "id": "BCS-S-0381"
     },
     {
-      "name": "PartyChatMessagePacket",
+      "name": "SelectedGroupChatApplication",
       "namespace": "FFXIV.Client.Network.Wire.C2S",
-      "size": "0x208",
+      "size": "0x210",
       "confidence": "confirmed-pcap-derived",
       "sourceRefs": [
         "BCS-Y-0306",
         "BCS-Y-0309",
+        "BCS-Y-2324",
+        "manifests/chat_wire_contract.json",
         "manifests/autotranslate_wire_format_study.json",
         "manifests/party_subsystem.json",
         "manifests/pcap_opcode_coverage_matrix.json",
@@ -25199,26 +25233,40 @@
         {
           "offset": "0x00",
           "size": "0x04",
-          "name": "chat_value",
+          "name": "selector",
           "type": "uint32_t",
-          "notes": "Leading application dword supplied by the emitter caller; its narrower selector or routing semantics remain unresolved."
+          "notes": "Observed value 10 in all 11 retained c2s 0x00C9 packets."
         },
         {
           "offset": "0x04",
+          "size": "0x04",
+          "name": "reserved_04",
+          "type": "uint32_t",
+          "notes": "Observed zero in all retained c2s 0x00C9 packets."
+        },
+        {
+          "offset": "0x08",
+          "size": "0x04",
+          "name": "selected_group_entry_token",
+          "type": "uint32_t",
+          "notes": "FUN_006C0590 selects this full u32 from a Group-owned entry table. FUN_006C13D0 later matches it in a Group-record vector, but its allocation domain is not proven to be a party, linkshell, actor, or sender identifier."
+        },
+        {
+          "offset": "0x0C",
           "size": "0x200",
           "name": "message",
           "type": "char[512]",
-          "notes": "Fixed-capacity message buffer cleared before the current source-text length is copied, then copied in full into the outbound record."
+          "notes": "NUL-terminated, zero-padded UTF-8 text in retained captures; at most 511 content bytes."
         },
         {
-          "offset": "0x204",
+          "offset": "0x20C",
           "size": "0x04",
-          "name": "unknown_204",
+          "name": "tail_opaque",
           "type": "unknown",
-          "notes": "Exact closing application span copied by the Chat forwarder but not explicitly written by the retained emitter."
+          "notes": "Captured nonconstant opaque bytes. Preserve without assigning sequence or identity semantics."
         }
       ],
-      "notes": "Exact 0x208 application payload for WorldServerbound c2s 0x00C9 PartyChatMessagePacket, excluding the 0x10 game-message prefix. The emitter constructs an exact 0x218 game-message record, and the Chat forwarder copies exactly record_size minus 0x10 application bytes. Packet observations independently retain the full framed extent and party-chat attribution. The closing dword remains unknown-typed because the emitter writes only the leading value and 512-byte message region.",
+      "notes": "Exact 0x210 application body for World Chat c2s 0x00C9 selected-group chat, corroborated by 11 retained party-chat packets and the FUN_004DF6D0 emitter. The prior 0x208 layout began at application +0x08 and omitted selector and reserved leading dwords. Party use is capture-proven. Player-linkshell use is an unresolved static candidate; no new retail capture is possible, so promotion requires an already-preserved archival specimen or a static producer edge tying group ExecuteParameters to active-linkshell state.",
       "id": "BCS-S-0382"
     },
     {
@@ -31306,6 +31354,135 @@
       ],
       "notes": "Complete byte-accounted retail Sqwt::ResourceDictionary. BCS-Y-2225 allocates exactly 0xC4 bytes, BCS-Y-2223 constructs it, and BCS-Y-2226 performs deleting destruction. SqwtXmlDataMaker derives from this class, so its group_marker_data key is owned in the inherited +0x4C wrapper while MapScreenControl only borrows the returned complete object.",
       "id": "BCS-S-0496"
+    },
+    {
+      "id": "BCS-S-0497",
+      "name": "WindowActorAnchorProducerState",
+      "namespace": "Application::Scene::Actor::Window",
+      "size": "0x84",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json",
+        "BCS-Y-2302",
+        "BCS-Y-2318",
+        "BCS-Y-2319",
+        "BCS-Y-2320"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x14",
+          "name": "attachment_selector",
+          "type": "unknown[0x14]",
+          "notes": "Embedded at WindowActor+0x140. Operation 0x1E first reads 16 payload bytes into a local record, then copies at most 15 bytes here, NUL-terminates byte 15, and restores the trailing dword to -2. The branch mutates the owner reached through receiver+0x1A0 then context+0x74. BCS-Y-2302."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x10",
+          "name": "producer_offset_a",
+          "type": "float[4]",
+          "notes": "WindowActor+0x154 vector. Its producer role beyond the bounded anchor path remains unresolved."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x10",
+          "name": "published_anchor_offset",
+          "type": "float[4]",
+          "notes": "WindowActor+0x164 vector added to retained_anchor at BCS-Y-2319 before publication. It was all-zero in every accepted sample of the pinned downhill capture."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x0C",
+          "name": "unknown_174",
+          "type": "unknown[0x0C]",
+          "notes": "Unpartitioned producer state between the two observed vector groups."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x10",
+          "name": "first_retained_target",
+          "type": "float[4]",
+          "notes": "WindowActor+0x180. When option 0x20 or 0x40 is selected, BCS-Y-2319 writes the raw or filtered target and marks init_state bit 0x01. With neither option selected, the producer skips this field and feeds the raw stack target directly to stage two."
+        },
+        {
+          "offset": "0x50",
+          "size": "0x10",
+          "name": "retained_anchor",
+          "type": "float[4]",
+          "notes": "WindowActor+0x190. BCS-Y-2319 writes the direct or option-0x200 second-stage result. This vector equaled the consumed PrimaryLabel anchor in all 1,199 accepted samples of the pinned capture."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "selected_context",
+          "type": "void *",
+          "notes": "WindowActor+0x1A0 selected by operation 0x22. Exact source type is bounded separately by the PrimaryLabel context contract."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "owned_window_context",
+          "type": "void *",
+          "notes": "WindowActor+0x1A4 reciprocal owner link for the WindowContext created by operation 0x24."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x04",
+          "name": "alternate_context_input",
+          "type": "void *",
+          "notes": "WindowActor+0x1A8 optional context input used by a separate draw path; ownership and anchor semantics are not promoted here."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x04",
+          "name": "primary_scene_actor_key",
+          "type": "int32_t",
+          "notes": "WindowActor+0x1AC. Constructor value -1; operation 0x1C replaces it and seeds previous_distance with 99999.0f when it changes. BCS-Y-2302 and BCS-Y-2319."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x04",
+          "name": "secondary_scene_actor_key",
+          "type": "int32_t",
+          "notes": "WindowActor+0x1B0. Constructor value -1; operation 0x1D replaces it. A distinct nonnull resolved actor enables the 0.4 target blend in BCS-Y-2319."
+        },
+        {
+          "offset": "0x74",
+          "size": "0x04",
+          "name": "unknown_1b4",
+          "type": "unknown[4]",
+          "notes": "Constructor-cleared dword not interpreted by this investigation."
+        },
+        {
+          "offset": "0x78",
+          "size": "0x04",
+          "name": "previous_distance",
+          "type": "float",
+          "notes": "WindowActor+0x1B8. Option-0x200 state compares the XYZ distance between the selected target and retained_anchor, then stores the pre-blend comparison distance on each decreasing-distance iteration."
+        },
+        {
+          "offset": "0x7C",
+          "size": "0x04",
+          "name": "anchor_options",
+          "type": "uint32_t",
+          "notes": "WindowActor+0x1BC. Constructor clears the low ten bits and operation 0x1B replaces only those bits. Relevant producer masks are 0x20, 0x40, and 0x200; captured runtime values are unknown."
+        },
+        {
+          "offset": "0x80",
+          "size": "0x01",
+          "name": "init_state",
+          "type": "uint8_t",
+          "notes": "WindowActor+0x1C0. Bit 0x01 initializes the first stage, bit 0x02 marks the operation-0x29 deferred state, and bit 0x04 initializes the option-0x200 stage."
+        },
+        {
+          "offset": "0x81",
+          "size": "0x03",
+          "name": "unknown_1c1",
+          "type": "unknown[3]",
+          "notes": "Trailing bytes included only to close the bounded dword-aligned producer-state view."
+        }
+      ],
+      "notes": "Complete byte-accounted view of WindowActor+0x140..+0x1C3, promoted as a descriptive embedded producer state rather than a separately RTTI-named class. The pinned capture proves the local PrimaryLabel consumed retained_anchor, but does not prove active option bits, resolved actor identities, attachment selection, or a correction seam."
     }
   ],
   "method": {
@@ -32408,16 +32585,16 @@
     "c473ExistingEvidence": "BCS-Y-0313 and manifests/operation_opcode_map_outbound.json establish the MapServerbound 0x0003 emitter and exact 0x230 emitted extent. BCS-Y-0308, BCS-Y-0314, and the same manifest establish two MapServerbound 0x0006 emit sites, the LanguageCodePacket attribution, and exact 0x18 emitted extent. The vendored opcode catalog independently retains both channel bindings.",
     "c473FreshEvidence": "Emitter 0x004E0320 explicitly zeros application +0x00, writes four caller dwords at +0x04, one dword at +0x14, one word at +0x18, zeros the word at +0x1A, and copies exactly 128 dwords at +0x1C; the fixed extent leaves the closing dword at +0x21C unwritten. Emitter 0x004E0290 and tick emitter 0x004E20A0 both zero application +0x00 and write the language-code dword at +0x04.",
     "c473Limits": "MapOpcode0003StatePacket+0x21C remains unknown-typed because the dedicated emitter documents no explicit write. The 0x0003 operation, header-value semantics, and inner 512-byte state schema remain unresolved, so their names stay broad. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
-    "c474Topic": "C474 World state packet layout",
+    "c474Topic": "C474 World tell packet layout",
     "c474Scripts": "ghidra/DumpVAs.java",
     "c474ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
     "c474Invocation": ".\\tools\\ghidra\\run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools\\ghidra\\logs\\c474_world-state-packet.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x004E3750,0x004DF810,0x004D83E0,0x00445210,0x004451F0,0x00DB3E30' } -ScriptPath @('ghidra')",
     "c474Inputs": "WorldServerbound 0x00C8 record builder 0x004E3750; emitter 0x004DF810; upstream caller 0x004D83E0; shared source pointer and length helpers 0x00445210 and 0x004451F0; and World-channel relay 0x00DB3E30.",
     "c474Output": "tools/ghidra/logs/c474_world-state-packet.txt",
     "c474StructOutputs": "BCS-S-0372 in manifests/structs.json.",
-    "c474ExistingEvidence": "BCS-Y-0316, BCS-Y-0331, and manifests/operation_opcode_map_outbound.json establish the WorldServerbound 0x00C8 builder and emitter, the exact 0x230 emitted extent, four-qword prefix, and 512-byte state block. The vendored opcode catalog independently retains the channel, direction, extent, and broad state-push role.",
-    "c474FreshEvidence": "Builder 0x004E3750 writes the opcode and 0x230 extent, copies exactly four qwords at record +0x18, then copies exactly 128 dwords at record +0x38. These map to application +0x00 and +0x20 and close the exact 0x220 application extent. Emitter 0x004DF810 zero-initializes both source buffers before copying their current contents and passes the completed record to relay 0x00DB3E30.",
-    "c474Limits": "The 32-byte header and 512-byte state block retain broad names because their source-buffer construction and the available consumers do not establish inner wire semantics. No retained packet sample corroborates individual values. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
+    "c474ExistingEvidence": "BCS-Y-0316, BCS-Y-0331, manifests/chat_wire_contract.json, and manifests/operation_opcode_map_outbound.json establish the WorldServerbound 0x00C8 tell builder and emitter, the exact 0x230 internal record extent, target[32], and message[512]. The vendored opcode catalog independently retains the World Chat direction and tell attribution.",
+    "c474FreshEvidence": "Builder 0x004E3750 writes the opcode and 0x230 internal extent, copies target_name[32] to record +0x18, and copies message[512] to record +0x38. These map to application +0x08 and +0x28 after the leading opaque eight bytes and close the derived 0x228 application extent. Emitter 0x004DF810 rejects an empty target, uses UTF-8-aware bounded copies for both text buffers, and passes the completed record to relay 0x00DB3E30.",
+    "c474Limits": "The leading application eight bytes remain opaque. No retained tell packet corroborates values or establishes server recipient selection, presence, echo, offline, or cross-zone behavior. DumpVAs supplies direct bodies and caller/callee lists only for the six requested functions.",
     "c475Topic": "C475 World login packet layouts",
     "c475Scripts": "ghidra/DumpVAs.java",
     "c475ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",
@@ -32455,9 +32632,9 @@
     "c478Inputs": "PartyChat emitter 0x004DF6D0 and Chat forwarder 0x00DB3E30; GroupCreated builder 0x0075E950, group-state aggregator 0x006C72E0, and Map gating thunk 0x004D6D30.",
     "c478Output": "tools/ghidra/logs/c478_party-group-packets.txt",
     "c478StructOutputs": "BCS-S-0382 and BCS-S-0383 in manifests/structs.json.",
-    "c478ExistingEvidence": "BCS-Y-0309 and manifests/autotranslate_wire_format_study.json establish WorldServerbound c2s 0x00C9, the 0x218 game-message extent, and PartyChat attribution; BCS-Y-0306 establishes the Chat forwarder's exact application-copy rule. BCS-Y-0984 and manifests/op0133_groupcreated_emitter.json establish MapServerbound c2s 0x0133, the 0x38 game-message extent, two leading identifier dwords, and 32 staged bytes; BCS-Y-0985 establishes the Group aggregator. Packet observations independently retain both framed extents and semantic attributions.",
-    "c478FreshEvidence": "PartyChat emitter 0x004DF6D0 writes the caller-supplied dword at application +0x00, clears a 0x200-byte local message buffer, copies the current text bytes into it, and transfers all 128 dwords to application +0x04. Chat forwarder 0x00DB3E30 copies the full 0x208 application extent, leaving the closing dword at +0x204 unwritten by the emitter. GroupCreated builder 0x0075E950 writes two dwords at application +0x00/+0x04 and copies two cleared 16-byte staging blocks to application +0x08, closing the exact 0x28 extent; aggregator 0x006C72E0 supplies the serialized state and gating thunk 0x004D6D30 routes the finished record.",
-    "c478Limits": "PartyChat+0x00 retains a broad name because the caller-supplied dword has no resolved consumer semantics. PartyChat+0x204 remains unknown-typed because the forwarder includes it in the application copy but the emitter documents no explicit write. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions.",
+    "c478ExistingEvidence": "BCS-Y-0309, BCS-Y-2324, manifests/chat_wire_contract.json, and the retained world-party-chat-00c9-contract capture establish World Chat 0x00C9 selected-group chat, exact 0x210 c2s and 0x230 s2c application extents, and capture-proven party use. BCS-Y-0306 establishes the Chat forwarder's exact application-copy rule. BCS-Y-0984 and manifests/op0133_groupcreated_emitter.json establish MapServerbound c2s 0x0133, the 0x38 game-message extent, two leading identifier dwords, and 32 staged bytes; BCS-Y-0985 establishes the Group aggregator.",
+    "c478FreshEvidence": "The retained c2s packets contain selector 10 at application +0x00, zero at +0x04, selected Group entry token at +0x08, message[512] at +0x0C, and opaque tail[4] at +0x20C. Emitter 0x004DF6D0 copies the caller-supplied token to internal record +0x18 and bounded message[512] to +0x1C. FUN_006C0590 selects the token from a Group-owned table. The s2c receiver at 0x004D8E7B resolves application +0x08 through FUN_005754E0; FUN_006C13D0 matches it in a Group-record vector and the match index selects a u16 presentation value from a secondary node range. A zero result drops the packet. GroupCreated builder 0x0075E950 writes two dwords at application +0x00/+0x04 and copies two cleared 16-byte staging blocks to application +0x08, closing the exact 0x28 extent; aggregator 0x006C72E0 supplies the serialized state and gating thunk 0x004D6D30 routes the finished record.",
+    "c478Limits": "The selected Group entry-token role is established, but its allocation domain is not proven to be a party, linkshell, actor, or sender identifier and the u16 presentation enum remains unresolved. Player-linkshell use is an unresolved static candidate. No new retail capture is possible; promotion requires an already-preserved archival specimen or a static producer edge tying group ExecuteParameters to active-linkshell state. Server recipient selection, presence, echo, offline, and cross-zone behavior remain unknown. GroupCreated's 32-byte serialized state remains a broad byte array because its internal schema is not established by the builder. ParameterDataRequestPacket was screened but not started: retained evidence leaves its final four bytes unwritten while packet observations show nonconstant values, so a complete layout would require new consumer evidence. DumpVAs supplies direct bodies and caller/callee lists only for the five requested functions.",
     "c479Topic": "C479 complete group-update packet layout",
     "c479Scripts": "ghidra/DumpVAs.java plus a read-only instruction-stream audit with pefile and capstone",
     "c479ProjectMode": "The headless call used -ReadOnly against the configured client project with BCS_GHIDRA_PROGRAM unset. No Ghidra or Java process held the project before invocation.",

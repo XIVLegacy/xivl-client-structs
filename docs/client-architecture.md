@@ -1096,6 +1096,170 @@ canonical in the manifest.
 Refs: `manifests/text_command_ingress.json`; BCS-Y-0163, BCS-Y-2016,
 BCS-Y-2230..BCS-Y-2232, BCS-Y-2240.
 
+## Scene camera and shader boundary
+
+On the measured route, a maintainer-reported 12,000-frame runtime trace read
+`D3DTS_VIEW` immediately before overlay drawing and observed the identity
+matrix while scene-camera motion remained visible. This supports a
+shader-driven-camera inference for that route; it does not establish the
+shader data-flow path. The static client has a separate vertex-shader constant
+task at `0x00435200..0x0043521F`:
+it calls the `IDirect3DDevice9::SetVertexShaderConstantF` vtable slot with a
+start register, vector count, and a float-data pointer stored at task offsets
+`+0x04`, `+0x08`, and `+0x0C`. No proven data-flow edge currently joins a
+scene-camera value to this task, so the camera matrix register is unknown.
+
+A separate anonymous indexed shader-parameter path is also known.
+`FUN_00419020` (BCS-Y-2246) passes a pointer through `FUN_00419B60`, then
+submits it with count 4 through the conditional parameter wrapper
+`FUN_00422F90` (BCS-Y-2247), which invokes an unresolved virtual setter. An
+anonymous render-path function at `0x00C48AB0`, reached by `FUN_00C28B80`,
+submits object values at `+0x60` and `+0x20` with indices 2 and 1, followed by
+a computed local value with index 0. These are matrix-like candidates, not
+proven matrices. Their concrete owner, semantics, path to the raw
+shader-constant task, and any edge from CameraActor remain unresolved.
+
+`Application::Scene::Actor::System::CameraActor` has vftable `0x00FB906C` and
+an exact allocation size of `0x490`. The callback registered as
+`UPDATE_CAMERA_RAPTURE` (`0x004E8B50`, BCS-Y-2242) calls its update at
+`0x006195D0` (BCS-Y-0832). The active FPS and TPS context updates
+(`0x007F31A0` and `0x007F3BA0`, BCS-Y-2243 and BCS-Y-2244) consume a float
+delta and write two four-dword endpoint records at CameraActor `+0x330` and
+`+0x340`. The common builder at `0x00617A80` (BCS-Y-0851) derives three
+sixteen-float transform records at `+0x210`, `+0x250`, and `+0x2D0`, then the
+outer update writes another sixteen-dword record at `+0x370`. The singleton
+used near the end of the builder is not identified by the retained evidence;
+those calls do not prove a graphics-renderer connection.
+
+CameraActor vfunc 34 at `0x0060E7B0` (BCS-Y-2245) copies only the four dwords
+at `+0x310..+0x31C`. It is an endpoint getter, not a 4x4 matrix getter. The
+adjacent methods `0x00620A80..0x00620D00` likewise set or get two four-dword
+records on an attached object; their view/projection meaning is not proven.
+
+No render-only hook seam is established. The callback dispatcher and exact
+update-versus-draw order are unresolved, static evidence does not distinguish
+simulation cadence from rendered-frame cadence, and no shader upload has been
+correlated with any CameraActor record. A valid continuation must measure
+ordered callback/draw/constant-upload hits and correlate the constant register,
+count, and float values with the known CameraActor fields while render and
+simulation rates vary independently. Until then, none of these fields is safe
+to interpolate, and the retail 30 FPS limit remains the supported workaround.
+
+Refs: `manifests/shader_camera_boundary.json`; BCS-Y-0831, BCS-Y-0832,
+BCS-Y-0851, BCS-Y-2241..BCS-Y-2248.
+
+## Player model and NamePlate render boundary
+
+The bounded retail capture excludes CameraActor as the correction target:
+CameraActor update runs once per presented frame, and inverting the row-major
+view record at CameraActor `+0x250` shows smooth camera world Y at 60 FPS. The
+local video is not repository evidence. The remaining hold is on the
+player/model side.
+
+`SceneObject::Actor` owns a ModelObject pointer at `+0x0C` and registers an
+`UPDATE_MODEL_TRANSFORM` callback. Its virtual target at `0x00A5FF60`
+(BCS-Y-2251) takes one ignored stack argument and ends in `ret 4`. Its two
+attached-source branches construct a 0x40-byte record and necessarily call
+ModelObject slot 26 at `0x008DEC70` (BCS-Y-2253). The normal CharaActor factory
+creates a `RaptureModelObject` whose slots 7, 13, 25, and 26 match the base
+implementations; the statically constructed vtable has no slot-26 override.
+
+The follow-up capture identified the local ModelObject vtable as `0x010653A4`
+and confirmed slots 7, 13, 25, and 26 as `0x00A61620`, `0x008DE970`,
+`0x008DE790`, and `0x008DEC70`. Actor `+0x48` was non-null but its `+0x20`
+member was null, so the callback took the Actor `+0x18` fallback and never
+entered slot 26. On all 103 observed source-change/publication-hold frames,
+slot 13 received the preceding published Y and copied it over the newer
+ModelObject `+0x30` Y. Slot 25 then rebuilt the cache and supplied the exact
+record passed to the Drawable setter. The hold therefore existed before slot
+13; neither slot 13 nor slot 25 introduced it.
+
+The normal CharaActor slot-68 target at `0x007CD360` (BCS-Y-2262) constructs a
+RaptureCharacterProxy and RaptureCharacterController and stores the controller
+at Actor `+0x18`. Both the base and Rapture controller vtables use `0x00A68000`
+(BCS-Y-2266) for slot 10 and `0x008D5570` (BCS-Y-2267) for slot 29. In those
+static types, slot 10 consumes the pending operation selected by controller
+`+0x0C`: 1 is absolute, 2 is relative, 3 is direct, and 0 performs no proxy
+update. It clears the selector after dispatch, and slot 29 returns controller
+`+0x04` to `0x00A61130` (BCS-Y-2258). The controller capture confirmed the live
+controller vtable `0x00FEE17C`, proxy vtable `0x00FEE210`, and these slot
+targets. Selector 1 and the new source Y reached proxy slot 1 on every
+captured held frame; an empty controller queue did not introduce the hold.
+
+In the normal static construction path, controller `+0x04` is a
+CharacterProxy and proxy `+0x2C` is a 0x48-byte Phieg RigidBody, not the
+position record itself. The RigidBody indexes a separate 0x70-byte pool record
+through `+0x10` and `+0x14`. Reader `0x00AFA220` (BCS-Y-2268) copies
+`[X, Y, Z, 1]` from the first 16 bytes; writer `0x00AFA160` (BCS-Y-2270)
+updates those lanes and clears the word at record `+0x64`. Known
+RaptureCharacterProxy slots 1 and 2 reach that writer through `0x007D8080` and
+`0x007D8E90` (BCS-Y-2274 and BCS-Y-2275). None of slot 10, `0x00A61130`, the
+reader, or the writer contains a timer or frame-divider gate. The controller
+capture paired the held-Y writer with return address `0x007D77B7` inside
+`0x007D70D0` (BCS-Y-2287), reached through the segmented-displacement helper
+`0x007D77E0` (BCS-Y-2286) from proxy slot 1.
+
+The completed vector-adjustment capture identified the zero-dY producer on
+all 261 captured source-change/publication-hold frames. Negative-projection
+removal at `0x007D75C5..0x007D75D3`, selected by branch `0x007D75C3`, changed
+nonzero dY to exact positive zero. The projection scalar equaled the input dY
+bit-for-bit. Recursion at `0x007D7779` received zero dY, and the terminal
+`0x007D77B2 -> 0x00AFA160` call received the preceding RigidBody Y plus zero.
+Threshold correction at `0x007D7646` changed dY but never zeroed it in this
+capture. Projection and recursion also occurred on non-held frames, so this
+is not a held-frame-only cadence gate. This arithmetic does not establish
+that the adjustment is incorrect or identify surface-normal, floor-projection,
+or timing semantics for the opaque record vectors. Capture accounting,
+final-writer versus whole-Present counts, and pairing limitations are canonical
+in `manifests/player_render_boundary.json#proxyAdjustmentRuntime`.
+
+The controlled-actor tick at `0x006679C0` (BCS-Y-0808) samples a separate
+four-float record through CharaActor slot 34. That slot resolves through
+`0x00A5F8A0` and ModelObject slot 17 to ModelObject `+0x30`. At 60 FPS the
+source Y changed on 493 of 533 transitions while published Y changed on 358;
+135 source-change frames retained the preceding publication. At 30 FPS the
+corresponding counts were 259, 241, and 18. The callback and both publication
+functions ran once per Present. Three exactly matched register-0/count-16
+vertex-constant tasks consumed the preceding drawable publication on observed
+player-draw frames, but the individual task owner remains unresolved.
+
+The Drawable setter calls `0x00C579A0` (BCS-Y-2288) after copying the transform.
+That function reads nine float lanes from the same Drawable and updates only
+bit `0x40` at `+0xA0` from a sign comparison. It has no callees or stores other
+than Drawable `this+0xA0`. This proves the extent of this one side effect, not
+that other Drawable consumers are feedback-free or that the setter is a
+just-before-draw boundary.
+
+NamePlate follows a separate presentation path. CharaElement per-actor tick
+`0x0058DF90` invokes slot 13 at `0x006A3560` (BCS-Y-2257) on its inline
+NamePlate subobject at `+0xBA0`, passing the CharaElement pointer. That function
+reads the index-1 RGBA color at NamePlate `+0x78..+0x84`, publishes changed
+color through `0x00938020`, and copies it to the comparison cache at
+`+0x98..+0xA4`. Both records stayed constant during movement, ruling out those
+color records but not every indirect helper reached by slot 13. Slot 19 at
+`0x006A2A60` only updates a flag at NamePlate `+0x190`. NamePlate `+0x194` is
+an opaque pointer used by UI helpers; its ownership and the exact later
+world-to-screen writer remain unidentified. Slot 23 at `0x006A2E60`
+(BCS-Y-2290) calls slot 20 at `0x006A2A80` (BCS-Y-2289), then conditionally
+reads float32 at the `+0x194` pointee's `+0x1AC` and returns its integer
+conversion. Slot 20 checks only bit `0x04` at NamePlate `+0x190`.
+Slot 23 has no direct pointee null check. `0x00796D50` consumes its return and
+passes an adjusted float derived from that integer to `0x00923FE0`.
+The constructor initially clears `+0x194`, then copies the opaque UI pointer
+from `+0x120` to `+0x194`. This scalar's producer, concrete pointee type and
+position semantics are not established by the getter or UI handoff.
+
+No safe correction seam is proven. The RigidBody record is physics-owned, and
+the confirmed fallback slot 13 overwrites shared
+ModelObject `+0x30`, which the controlled actor path also samples. Drawable
+publication is downstream, but absence of feedback and the moving NamePlate
+consumer are not proven. The operation-attribution question is closed for the
+completed capture; no additional probe is requested. The remaining ownership
+and NamePlate gaps are canonical in the manifest.
+
+Refs: `manifests/player_render_boundary.json`; BCS-Y-0808, BCS-Y-1024,
+BCS-Y-2249..BCS-Y-2280, BCS-Y-2286..BCS-Y-2290.
+
 ## Sqwt UI framework
 
 ### Sqwt UI factories construct elements and subscribe handlers
