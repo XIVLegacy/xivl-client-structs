@@ -9,7 +9,7 @@
   "inputs": [
     {
       "path": "manifests/c2s_bridge_skeleton.json",
-      "sha256": "86bb93e317901a5844c8496096c1469acc82902d772bc1b1f91fdc82f683172b"
+      "sha256": "a8fcebedad726f99a419c6f9f0d4c933b19c8c1e470613edfeb5e8e2489bdcb8"
     },
     {
       "path": "manifests/ir_overlay.json",
@@ -21,11 +21,11 @@
     },
     {
       "path": "manifests/operation_opcode_map_outbound.json",
-      "sha256": "7efd7d127b3f494dca02361d2a663475c7c372ad365d9d72fb117ae56d455d04"
+      "sha256": "f20334cc3bbae4019974324e94d708b813d7c3e90fedab86ee347bf4cc951da6"
     },
     {
       "path": "manifests/pcap_opcode_coverage_matrix.json",
-      "sha256": "dd73dad6973e3aaae3c286229851f689a0a721a0f26facd0be6185d52b9695f0"
+      "sha256": "22840974f1d821b6d572c5fb13375958cdd3c20b384b70e11d3c484ea364f3f4"
     },
     {
       "path": "manifests/receiver_field_writes.json",
@@ -41,11 +41,11 @@
     },
     {
       "path": "manifests/structs.json",
-      "sha256": "8a246f3fcfe0d6af43b14f509f9bc22a6a09efc51496cdaf6dd73ae8e076cc62"
+      "sha256": "df8eb64d4191c8ffad734a25ad78acb7556327f8a115995f36e632904c53f9f9"
     },
     {
       "path": "manifests/symbols.json",
-      "sha256": "b45522957d15a72f3560721a4bc914a331479a1b6a2059c3a1de80977da20f01"
+      "sha256": "5d8761b61b546371d9ff142cf52ca85fb9d9595a3306bd49ca8534b7a919b58a"
     }
   ],
   "dimensions": {
@@ -61910,7 +61910,7 @@
         },
         {
           "kind": "field",
-          "name": "group_context_opaque",
+          "name": "selected_group_entry_token",
           "offset": {
             "kind": "exact",
             "raw": "0x08",
@@ -61922,7 +61922,7 @@
             "bytes": 4
           },
           "type": "uint32_t",
-          "notes": "Caller-supplied selected-group context. The s2c receiver resolves the full value through FUN_005754E0 -> FUN_006C7B80, but its underlying party or linkshell identity semantics remain unresolved."
+          "notes": "FUN_006C0590 selects this full u32 from a Group-owned entry table. FUN_006C13D0 later matches it in a Group-record vector, but its allocation domain is not proven to be a party, linkshell, actor, or sender identifier."
         },
         {
           "kind": "field",
@@ -61969,7 +61969,7 @@
         "EV-0694",
         "EV-1321"
       ],
-      "notes": "Exact 0x210 application body for World Chat c2s 0x00C9 selected-group chat, corroborated by 11 retained party-chat packets and the FUN_004DF6D0 emitter. The prior 0x208 layout began at application +0x08 and omitted selector and reserved leading dwords. Party use is capture-proven. Player-linkshell use is a strong static indication from the selected-group path that cannot be capture-validated and remains unproven retail behavior."
+      "notes": "Exact 0x210 application body for World Chat c2s 0x00C9 selected-group chat, corroborated by 11 retained party-chat packets and the FUN_004DF6D0 emitter. The prior 0x208 layout began at application +0x08 and omitted selector and reserved leading dwords. Party use is capture-proven. Player-linkshell use is an unresolved static candidate; no new retail capture is possible, so promotion requires an already-preserved archival specimen or a static producer edge tying group ExecuteParameters to active-linkshell state."
     },
     {
       "id": "BCS-S-0383",
@@ -83059,7 +83059,7 @@
     },
     {
       "id": "BCS-Y-0309",
-      "name": "ChatOutbound_PartyChat_emitter_FUN_004DF6D0",
+      "name": "ChatOutbound_SelectedGroupChat_emitter_FUN_004DF6D0",
       "kind": "function",
       "address": {
         "kind": "scalar",
@@ -83074,7 +83074,7 @@
         "EV-0707",
         "EV-0748"
       ],
-      "notes": "World Chat c2s 0x00C9 selected-group chat emitter. Writes opcode 0x00C9 and internal record size 0x218, copies the caller-supplied group context to record +0x18 and bounded message[512] to record +0x1C, then forwards through [[BCS-Y-0306]]. Captures establish the full application as selector 10 at +0x00, zero at +0x04, unresolved group context at +0x08, message[512] at +0x0C, and opaque tail[4] at +0x20C. Party use is capture-proven; player-linkshell reuse is a strong static indication that still requires a retail capture."
+      "notes": "World Chat c2s 0x00C9 selected-group chat emitter. Writes opcode 0x00C9 and internal record size 0x218, copies the caller-supplied selected Group entry token to record +0x18 and bounded message[512] to record +0x1C, then forwards through [[BCS-Y-0306]]. Captures establish the full application as selector 10 at +0x00, zero at +0x04, selected_group_entry_token at +0x08, message[512] at +0x0C, and opaque tail[4] at +0x20C. FUN_006C0590 selects the token from a Group-owned table. Party use is capture-proven; player-linkshell reuse is an unresolved static candidate because no edge joins the group ExecuteParameters to active-linkshell state."
     },
     {
       "id": "BCS-Y-0310",
@@ -122288,7 +122288,7 @@
         "EV-0871",
         "EV-1557"
       ],
-      "notes": "World Chat receive dispatcher. Reads the u16 opcode at game-message +0x02 and dispatches 0x00C8..0x00CB through jump table VA 0x004D8F58. Case 0x00C8 at VA 0x004D8D6C parses application display_name[32] at +0x08 and message[512] at +0x28, then supplies fixed display type 3. Case 0x00C9 at VA 0x004D8E7B passes application group_context_opaque +0x08 to FUN_005754E0 -> FUN_006C7B80, drops the packet when the returned u16 is zero, parses sender_name[32] at +0x0C and message[512] at +0x2C, and supplies the nonzero lookup result as display type. This proves context-sensitive selected-group display, not the context field's underlying party or linkshell identity."
+      "notes": "World Chat receive dispatcher. Reads the u16 opcode at game-message +0x02 and dispatches 0x00C8..0x00CB through jump table VA 0x004D8F58. Case 0x00C8 at VA 0x004D8D6C parses application display_name[32] at +0x08 and message[512] at +0x28, then supplies fixed display type 3. Case 0x00C9 at VA 0x004D8E7B passes application selected_group_entry_token +0x08 to FUN_005754E0 -> FUN_006C7B80 and drops the packet when the returned u16 is zero. FUN_006C13D0 matches the full token in a Group-record vector at +0x74, and the match index selects a u16 presentation value from a secondary node range at +0x28. The case parses sender_name[32] at +0x0C and message[512] at +0x2C. This proves context-sensitive selected-group display, not an actor, party, linkshell, or sender identifier or the presentation enum values."
     }
   ],
   "citations": [
@@ -145037,11 +145037,11 @@
         "int": 201,
         "names": [
           {
-            "name": "PartyChatMessagePacket",
+            "name": "SelectedGroupChatMessagePacket",
             "source": "c2s-skeleton"
           },
           {
-            "name": "PartyChatMessagePacket",
+            "name": "SelectedGroupChatMessagePacket",
             "source": "operation-map"
           }
         ],

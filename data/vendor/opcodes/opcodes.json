@@ -341,7 +341,7 @@
           "notes": "login_service_exclusion=map_main_lane; login_evidence=xivl-captures:derived/lane_observations.json#lanes/main/c2s/0x0006; login_capture_sha256=28e06b54fe559870031f077f8549b9244caafa7e5177dbca08a7feae6c2b1b62"
         },
         {
-          "name": "PartyChatMessagePacket",
+          "name": "SelectedGroupChatMessagePacket",
           "opcode": 201,
           "opcodeHex": "0x00c9",
           "service": "world",
@@ -356,7 +356,7 @@
             552
           ],
           "confidence": "implemented",
-          "notes": "pcap_observations merged from xivl-client-structs pcap_opcode_evidence.json.; bcsy_ref=BCS-Y-0309; exact 0x228 subpacket and 0x210 application: selector u32 10 at +0x00, zero u32 at +0x04, opaque group-context u32 at +0x08, NUL-terminated UTF-8 message[512] at +0x0c, and opaque tail[4] at +0x20c; the context is not proven to be an actor, party, or linkshell identifier; client_semantics_evidence=data/client_opcode_semantics.json#c2s-00c9; dependency_status=closed"
+          "notes": "pcap_observations merged from xivl-client-structs pcap_opcode_evidence.json.; bcsy_ref=BCS-Y-0309; exact 0x228 subpacket and 0x210 application: selector u32 10 at +0x00, zero u32 at +0x04, selected Group entry token u32 at +0x08, NUL-terminated UTF-8 message[512] at +0x0c, and opaque tail[4] at +0x20c; FUN_006C0590 selects the token from a Group-owned entry table and FUN_006C13D0 matches it in a Group-record vector; it is not proven to be an actor, party, linkshell, or sender identifier; an empty message reaches emission because FUN_00C99B80 accepts an initial NUL and no later nonempty check exists; client_semantics_evidence=data/client_opcode_semantics.json#c2s-00c9; dependency_status=closed"
         },
         {
           "name": "GroupWorkUpdatePacket",
@@ -417,7 +417,7 @@
             576
           ],
           "confidence": "decomp_routed",
-          "notes": "decomp_source=retail_chat_wire_trace; bcsy_ref=BCS-Y-0331 + BCS-Y-0316; FUN_004DF810 rejects an empty target and bounds target/message through FUN_00447BC0 before FUN_004E3750 writes opcode 0x00c8, builder-record size 0x230, target[32] at record +0x18, and message[512] at record +0x38; FUN_00DB3E30 forwards it on the World Chat lane; derived subpacket size 0x240 and application size 0x228 with opaque[8] at +0x00, target[32] at +0x08, and message[512] at +0x28; no retail tell capture; server recipient selection, presence, echo, offline behavior, and cross-zone behavior remain unknown; client_semantics_evidence=data/client_opcode_semantics.json#c2s-00c8; dependency_status=closed"
+          "notes": "decomp_source=retail_chat_wire_trace; bcsy_ref=BCS-Y-0331 + BCS-Y-0316; FUN_004DF810 rejects an empty target but does not reject an empty message, and bounds target/message through FUN_00447BC0 before FUN_004E3750 writes opcode 0x00c8, builder-record size 0x230, target[32] at record +0x18, and message[512] at record +0x38; FUN_00DB3E30 forwards it on the World Chat lane; derived subpacket size 0x240 and application size 0x228 with opaque[8] at +0x00, target[32] at +0x08, and message[512] at +0x28; no retail tell capture; server recipient selection, presence, echo, offline behavior, and cross-zone behavior remain unknown; client_semantics_evidence=data/client_opcode_semantics.json#c2s-00c8; dependency_status=closed"
         }
       ],
       "WorldClientbound": [
@@ -461,7 +461,7 @@
           "notes": "Retail jump table at VA 0x004D8F58 routes 0x00c8 to case VA 0x004D8D6C. The parser consumes display-name[32] at application +0x08 and message[512] at +0x28 after opaque[8], then displays type 3. The consumed application span is 0x228, but the complete clientbound extent has no retained capture and is not independently established. The packet supplies the displayed name and message; whether that name is authoritative sender identity and all server recipient, presence, echo, offline, and cross-zone behavior remain unknown."
         },
         {
-          "name": "PartyChatMessagePacket",
+          "name": "SelectedGroupChatMessagePacket",
           "opcode": 201,
           "opcodeHex": "0x00c9",
           "service": "world",
@@ -476,7 +476,7 @@
             584
           ],
           "confidence": "pcap_observed",
-          "notes": "World Chat s2c 0x00c9 relay, observed 26 times across party_battle_leve.pcapng and war_quest_update2.pcapng. Exact 0x248 subpacket and 0x230 application: selector u32 10 at +0x00, zero u32 at +0x04, opaque group-context u32 at +0x08, senderName[32] at +0x0c, message[512] at +0x2c, and zero tail[4] at +0x22c. FUN_004D8D10 case VA 0x004D8E7B passes the full context to FUN_005754E0 -> FUN_006C7B80, drops the message when lookup returns zero, and uses the returned u16 as the display type. This proves a live selected-group context, not an actor ID or stable party/linkshell identifier. Player-linkshell use is a strong static indication from the selected-group path but lacks a retail capture. Server recipient selection, presence, echo, offline behavior, and cross-zone behavior remain unknown."
+          "notes": "World Chat s2c 0x00c9 relay, observed 26 times across party_battle_leve.pcapng and war_quest_update2.pcapng. Exact 0x248 subpacket and 0x230 application: selector u32 10 at +0x00, zero u32 at +0x04, selected Group entry token u32 at +0x08, senderName[32] at +0x0c, message[512] at +0x2c, and zero tail[4] at +0x22c. FUN_004D8D10 case VA 0x004D8E7B passes the full token to FUN_005754E0 -> FUN_006C7B80 and drops the message when lookup returns zero. FUN_006C13D0 matches it in a Group-record u32 vector at +0x74; the match index selects a u16 presentation value from a secondary node range at +0x28. This proves a selected Group entry-token lookup, not an actor, party, linkshell, or sender identifier or the presentation enum values. Player-linkshell use is only an unresolved static candidate: the Group ExecuteParameters producer has not been joined to active-linkshell state, and no retained retail linkshell specimen exists. Server recipient selection, presence, echo, offline behavior, and cross-zone behavior remain unknown."
         },
         {
           "name": "SynchGroupWorkValuesPacket",
