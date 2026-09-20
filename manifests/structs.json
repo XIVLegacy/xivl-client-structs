@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 496,
+  "structCount": 497,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -31329,6 +31329,135 @@
       ],
       "notes": "Complete byte-accounted retail Sqwt::ResourceDictionary. BCS-Y-2225 allocates exactly 0xC4 bytes, BCS-Y-2223 constructs it, and BCS-Y-2226 performs deleting destruction. SqwtXmlDataMaker derives from this class, so its group_marker_data key is owned in the inherited +0x4C wrapper while MapScreenControl only borrows the returned complete object.",
       "id": "BCS-S-0496"
+    },
+    {
+      "id": "BCS-S-0497",
+      "name": "WindowActorAnchorProducerState",
+      "namespace": "Application::Scene::Actor::Window",
+      "size": "0x84",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json",
+        "BCS-Y-2302",
+        "BCS-Y-2318",
+        "BCS-Y-2319",
+        "BCS-Y-2320"
+      ],
+      "fields": [
+        {
+          "offset": "0x00",
+          "size": "0x14",
+          "name": "attachment_selector",
+          "type": "unknown[0x14]",
+          "notes": "Embedded at WindowActor+0x140. Operation 0x1E first reads 16 payload bytes into a local record, then copies at most 15 bytes here, NUL-terminates byte 15, and restores the trailing dword to -2. The branch mutates the owner reached through receiver+0x1A0 then context+0x74. BCS-Y-2302."
+        },
+        {
+          "offset": "0x14",
+          "size": "0x10",
+          "name": "producer_offset_a",
+          "type": "float[4]",
+          "notes": "WindowActor+0x154 vector. Its producer role beyond the bounded anchor path remains unresolved."
+        },
+        {
+          "offset": "0x24",
+          "size": "0x10",
+          "name": "published_anchor_offset",
+          "type": "float[4]",
+          "notes": "WindowActor+0x164 vector added to retained_anchor at BCS-Y-2319 before publication. It was all-zero in every accepted sample of the pinned downhill capture."
+        },
+        {
+          "offset": "0x34",
+          "size": "0x0C",
+          "name": "unknown_174",
+          "type": "unknown[0x0C]",
+          "notes": "Unpartitioned producer state between the two observed vector groups."
+        },
+        {
+          "offset": "0x40",
+          "size": "0x10",
+          "name": "first_retained_target",
+          "type": "float[4]",
+          "notes": "WindowActor+0x180. When option 0x20 or 0x40 is selected, BCS-Y-2319 writes the raw or filtered target and marks init_state bit 0x01. With neither option selected, the producer skips this field and feeds the raw stack target directly to stage two."
+        },
+        {
+          "offset": "0x50",
+          "size": "0x10",
+          "name": "retained_anchor",
+          "type": "float[4]",
+          "notes": "WindowActor+0x190. BCS-Y-2319 writes the direct or option-0x200 second-stage result. This vector equaled the consumed PrimaryLabel anchor in all 1,199 accepted samples of the pinned capture."
+        },
+        {
+          "offset": "0x60",
+          "size": "0x04",
+          "name": "selected_context",
+          "type": "void *",
+          "notes": "WindowActor+0x1A0 selected by operation 0x22. Exact source type is bounded separately by the PrimaryLabel context contract."
+        },
+        {
+          "offset": "0x64",
+          "size": "0x04",
+          "name": "owned_window_context",
+          "type": "void *",
+          "notes": "WindowActor+0x1A4 reciprocal owner link for the WindowContext created by operation 0x24."
+        },
+        {
+          "offset": "0x68",
+          "size": "0x04",
+          "name": "alternate_context_input",
+          "type": "void *",
+          "notes": "WindowActor+0x1A8 optional context input used by a separate draw path; ownership and anchor semantics are not promoted here."
+        },
+        {
+          "offset": "0x6C",
+          "size": "0x04",
+          "name": "primary_scene_actor_key",
+          "type": "int32_t",
+          "notes": "WindowActor+0x1AC. Constructor value -1; operation 0x1C replaces it and seeds previous_distance with 99999.0f when it changes. BCS-Y-2302 and BCS-Y-2319."
+        },
+        {
+          "offset": "0x70",
+          "size": "0x04",
+          "name": "secondary_scene_actor_key",
+          "type": "int32_t",
+          "notes": "WindowActor+0x1B0. Constructor value -1; operation 0x1D replaces it. A distinct nonnull resolved actor enables the 0.4 target blend in BCS-Y-2319."
+        },
+        {
+          "offset": "0x74",
+          "size": "0x04",
+          "name": "unknown_1b4",
+          "type": "unknown[4]",
+          "notes": "Constructor-cleared dword not interpreted by this investigation."
+        },
+        {
+          "offset": "0x78",
+          "size": "0x04",
+          "name": "previous_distance",
+          "type": "float",
+          "notes": "WindowActor+0x1B8. Option-0x200 state compares the XYZ distance between the selected target and retained_anchor, then stores the pre-blend comparison distance on each decreasing-distance iteration."
+        },
+        {
+          "offset": "0x7C",
+          "size": "0x04",
+          "name": "anchor_options",
+          "type": "uint32_t",
+          "notes": "WindowActor+0x1BC. Constructor clears the low ten bits and operation 0x1B replaces only those bits. Relevant producer masks are 0x20, 0x40, and 0x200; captured runtime values are unknown."
+        },
+        {
+          "offset": "0x80",
+          "size": "0x01",
+          "name": "init_state",
+          "type": "uint8_t",
+          "notes": "WindowActor+0x1C0. Bit 0x01 initializes the first stage, bit 0x02 marks the operation-0x29 deferred state, and bit 0x04 initializes the option-0x200 stage."
+        },
+        {
+          "offset": "0x81",
+          "size": "0x03",
+          "name": "unknown_1c1",
+          "type": "unknown[3]",
+          "notes": "Trailing bytes included only to close the bounded dword-aligned producer-state view."
+        }
+      ],
+      "notes": "Complete byte-accounted view of WindowActor+0x140..+0x1C3, promoted as a descriptive embedded producer state rather than a separately RTTI-named class. The pinned capture proves the local PrimaryLabel consumed retained_anchor, but does not prove active option bits, resolved actor identities, attachment selection, or a correction seam."
     }
   ],
   "method": {
