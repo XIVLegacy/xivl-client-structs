@@ -30,6 +30,8 @@ inventories and their regeneration rules live under `manifests/`.
   LGE class system (5 Lua metatables, registration pipeline, write chokepoint).
 - [Command-slot actor and category context](actor/command-slot-context.md) -
   joins observed property-stream slot values to static command identities.
+- [Retail repair contract](repair-contract.md) - client, wire, metadata, and
+  capture boundaries for NPC repair and CraftCommand 22013 self-repair.
 
 ## Related contracts
 

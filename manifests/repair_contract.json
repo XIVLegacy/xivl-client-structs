@@ -1,0 +1,239 @@
+{
+  "version": 1,
+  "generated": "2026-09-19",
+  "gameVersion": "1.23b",
+  "extraction": "2012.09.19.0001",
+  "status": "bounded_retail_contract",
+  "scope": "Client and retained retail-capture contract for NPC repair and self-repair. Client presentation, generic event transport, item metadata, and observed charges are separated from unresolved server mutation policy.",
+  "binary": {
+    "name": "ffxivgame.exe",
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "imageBase": "0x00400000",
+    "addressConvention": "absolute Ghidra VA"
+  },
+  "sourceSnapshots": {
+    "clientScripts": {
+      "repository": "XIVLegacy/xivl-client-scripts",
+      "commit": "6d0bc47dcf699408e0f3a004057bce9d62138b9b",
+      "archiveSha256": "0e8f902f7a2f592fc1220d41b89a3f35ec395cfb261806d4bd590a530099ae31"
+    },
+    "clientData": {
+      "repository": "XIVLegacy/xivl-client-data",
+      "commit": "bd3515848fe5564bab9eb901558ab918c427a709",
+      "archiveSha256": "006f9438a8cfd9277376f0ab28474500c67e4665050aa631cae64c9e6f38a5b0"
+    },
+    "capture": {
+      "repository": "XIVLegacy/xivl-captures",
+      "baseCommit": "76c54834a900e6bedf037a43dc8813b9dad300a1",
+      "path": "sources/pcap-1.23b/objects/repair_items.pcapng",
+      "sha256": "bbd829cbd3f42b2cbfb3aa8a74a1cc35d4e2c16c99e5a4a20ca76573f02dd90f",
+      "provenance": "owner-attested retail live-server capture; not emulator traffic",
+      "locatorConvention": "zero-based capture packet and reconstructed directional application-event indices"
+    }
+  },
+  "records": [
+    {
+      "id": "REPAIR-C-0001",
+      "subject": "PopulaceItemRepairer.selectItem",
+      "confidence": "confirmed",
+      "evidenceClass": "retail_client_script",
+      "signature": "selectItem(self,A1,A2,A3,A4,A5,A6,A7,A8,A9)",
+      "contract": "A2 is the page in the observed event call shape; A3 and A4..A8 are passed to askForEventMode as presentation arguments. Pages wrap over 1..3. A normal row result maps to 5*page+result-7. Special results -1/-2 page, -3 cancels; page 1 results 1 and 2 are reserved exits.",
+      "boundary": "The script returns a selected row index. It does not construct a durable server item identity or compute tariff/durability.",
+      "sourceRefs": [
+        "xivl-client-scripts:lua/scripts/chara/npc/populace/populaceitemrepairer.lua:541-680",
+        "script-sha256:027ac93ef6e805ee4c2197d5fa7353a0ebdff125f6d52f0d6c08bedfb5218ea3"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0002",
+      "subject": "PopulaceItemRepairer.confirmRepairItem",
+      "confidence": "confirmed",
+      "evidenceClass": "retail_client_script_plus_capture",
+      "signature": "confirmRepairItem(self,player,tariff,itemCatalogId,presentationCount)",
+      "contract": "Calls askExtendWidget(self,6,2,1,1,itemCatalogId,presentationCount,tariff,player:getMoneyOnHand()) and returns true only for widget result 1.",
+      "captureJoin": "Six s2c 0x0130 calls supplied tariff 1, item catalog IDs 4030013/8011608/8070218/8090608/8050611/8080819, and final value 1. The actor parameter is client-resolved for getMoneyOnHand. The server supplied tariff, item catalog ID, and final presentation/count value through RunEventFunction.",
+      "boundary": "The final value is retained as a presentation/count argument; capture plus script do not prove it is a unique item identity. The function performs no local tariff calculation, inventory mutation, or durability mutation.",
+      "sourceRefs": [
+        "xivl-client-scripts:lua/scripts/chara/npc/populace/populaceitemrepairer.lua:683-707",
+        "script-sha256:027ac93ef6e805ee4c2197d5fa7353a0ebdff125f6d52f0d6c08bedfb5218ea3",
+        "xivl-captures:studies/retail-repair-contract/derived/npc-repair-observations.csv"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0003",
+      "subject": "PopulaceItemRepairer.confirmUseFacility and finishTalkTurn",
+      "confidence": "confirmed",
+      "evidenceClass": "retail_client_script_plus_capture",
+      "contract": "confirmUseFacility(self,player,tariff) calls askExtendWidget(self,self,9,2,1,1,tariff,player:getMoneyOnHand()) and returns true only for widget result 1. finishTalkTurn(self) only delegates to finishCliantTalkTurn(self).",
+      "captureJoin": "finishTalkTurn arrived in s2c event 405 at capture packet 250 and timestamp 1356920886.160453.",
+      "sourceRefs": [
+        "xivl-client-scripts:lua/scripts/chara/npc/populace/populaceitemrepairer.lua:710-742",
+        "script-sha256:027ac93ef6e805ee4c2197d5fa7353a0ebdff125f6d52f0d6c08bedfb5218ea3",
+        "xivl-captures:studies/retail-repair-contract/derived/verdicts.md"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0004",
+      "subject": "CraftJudge.startRepair",
+      "confidence": "confirmed",
+      "evidenceClass": "retail_client_script",
+      "signature": "startRepair(self,A1,A2,A3,A4,A5,A6,A7,A8,A9)",
+      "contract": "Creates a virtual item from A4/A5. For a player actor it cancels the main target and opens askCraftRepairWidget(0,0,A3,virtualItem,A6,A7,A8). Accepted positive temporary-item indices are resolved through actor:_getExtendedTemporaryItem(1,index). Return modes 1 and 2 are remapped to 5 and 6, and returned ItemBaseClass values are ordered before non-item values.",
+      "boundary": "This is a UI selection and event-coroutine resume delegate. It is not CraftCommand 22013's emitter, and it neither consumes materials nor changes durability.",
+      "sourceRefs": [
+        "xivl-client-scripts:lua/scripts/judge/craft/craftjudge.lua:473-588",
+        "script-sha256:5019a3e9acaf99a23210a451e0df2b0f4a73e5d44f764a480bb3b23953c9076f"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0005",
+      "subject": "CraftCommand 22013 self-repair entry",
+      "confidence": "confirmed",
+      "evidenceClass": "retail_client_script_plus_static_data",
+      "contract": "DesktopWidget.executeRepairMyPlayerItem(package,slot) resolves getItem(currentPlayer,package,slot), rejects a missing item, then calls executePlayerReadyCommand(22013,nil,item,nil,currentPlayer). The ready-command path resolves the player's mapped command pair and delegates to generic executePlayerCommand. updateReadyCommand maps 22013 to ready slot 8.",
+      "targeting": "CraftCommand.canAimForRelation returns true,false,false for 22013; only 22012 and 22016 return true,true,false.",
+      "identity": "Static command data identifies 22013 as Repair under /Command/Game/CraftCommand.",
+      "boundary": "Package and slot are client UI inputs, not a proven repair-specific wire layout. No retained self-repair execution establishes the generic command's emitted payload or server result.",
+      "sourceRefs": [
+        "xivl-client-scripts:lua/scripts/widget/desktopwidget_connector.lua:12442-12444,13739-13786,14705-14730",
+        "script-sha256:9c33f21c1f70a0056147e716d53300634efabe5b744ef6e8690114db21613a01",
+        "xivl-client-scripts:lua/scripts/command/game/craftcommand.lua:1-46",
+        "script-sha256:7f4e8f7d1cc81432753f6798b3e26050ea6642995980dfbafd1e849f325578fa",
+        "xivl-client-data:derived/command_battle_params.csv:command_id=22013"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0006",
+      "subject": "Repair item metadata and eligibility",
+      "confidence": "confirmed",
+      "evidenceClass": "retail_client_script_plus_static_data",
+      "fields": {
+        "itemData[64]": "repairSkill; equipment only",
+        "itemData[65]": "repairItem catalog ID; equipment or materia",
+        "itemData[66]": "repairItemNum; equipment or materia",
+        "itemData[67]": "repairLevel; equipment only",
+        "itemData[68]": "repairLicence; equipment only; spelling preserved from client method"
+      },
+      "eligibility": "isRepairable accepts equipment or furniture, rejects stackable items and nonpositive lifeMax, requires nonzero repairSkill and repairItem, and requires repairItemNum in 1..8. canRepair also requires condition below 100 and, when a threshold is supplied, below that threshold; failures return 40213, 40214, or 40217.",
+      "boundary": "The meaning of repairLicence is unresolved. Its value is zero on all six capture-joined specimens.",
+      "sourceRefs": [
+        "xivl-client-scripts:lua/scripts/item/itembaseclass_common.lua:1170-1307,3958-4054",
+        "script-sha256:7620492917230c3e060ed84d3197bf164c234a3ab73e48a0939bc65107f6b7fa",
+        "xivl-client-data:csv/itemData.csv:columns 64-68"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0007",
+      "subject": "Player repair commission amount",
+      "confidence": "confirmed",
+      "evidenceClass": "retail_client_script",
+      "contract": "For a repairable item, getRepairAmount computes floor((itemLevel-1)/10) and returns 100, 200, 300, 400, or 500 for successive bands; otherwise zero. RepairEquipmentWidget consumes this value for player-to-player repair commission presentation.",
+      "contradictionResolved": "This is not the NPC tariff formula. Six retail NPC confirmations quote one gil across item levels 15 through 30, including levels whose commission bands would be 200 or 300.",
+      "sourceRefs": [
+        "xivl-client-scripts:lua/scripts/item/itembaseclass_common.lua:4215-4250",
+        "xivl-client-scripts:lua/scripts/widget/repairequipmentwidget.lua:404-486,2008-2020,2329-2340,2577-2593",
+        "xivl-captures:studies/retail-repair-contract/derived/npc-repair-observations.csv"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0008",
+      "subject": "NPC repair generic wire and accepted charge",
+      "confidence": "confirmed_bounded",
+      "evidenceClass": "retail_packet_capture_plus_client_decomp",
+      "serverToClient": {
+        "lane": "clear map lane",
+        "opcode": "0x0130",
+        "name": "RunEventFunction",
+        "subpacketSize": 176,
+        "applicationBodySize": 152,
+        "applicationLayout": {
+          "+0x00": "8 opaque bytes",
+          "+0x08": "u32 trigger actor ID",
+          "+0x0C": "u32 owner actor ID",
+          "+0x10": "u8 event type",
+          "+0x11": "char[32] eventName",
+          "+0x31": "char[32] functionName",
+          "+0x51": "64-byte typed Lua parameter area",
+          "+0x91": "7 opaque trailing bytes"
+        },
+        "typedParameters": "Tag 0x06 plus four-byte big-endian actor ID; tag 0x00 plus four-byte big-endian integer; observed boolean-like tag 0x03 plus one byte is preserved without broader semantic assignment."
+      },
+      "clientToServer": {
+        "lane": "clear map lane",
+        "opcode": "0x012E",
+        "name": "EventUpdate",
+        "subpacketSize": 120,
+        "applicationBodySize": 96,
+        "applicationLayout": {
+          "+0x00": "8 opaque bytes",
+          "+0x08": "four generic event-context dwords; semantics unresolved here",
+          "+0x18": "64-byte event-return area",
+          "+0x58": "8 opaque trailing bytes"
+        }
+      },
+      "chargeObservation": "All six confirmations supplied tariff 1. Each accepted response was followed by a bracketed inventory update whose 0x0148 application body carried catalog ID 1000001 and a gil quantity sequence decreasing by one, from 1346697 through 1346692.",
+      "nativeLocators": {
+        "runEventParser": "FUN_0076C220 at 0x0076C220",
+        "runEventSubmit": "FUN_007859B0 at 0x007859B0",
+        "runEventReceive": "FUN_0089EB20 -> FUN_0089E8E0",
+        "runEventApply": "FUN_0089E260 -> FUN_006E1140 -> FUN_00896F70",
+        "eventUpdateWrapper": "FUN_00894090 at 0x00894090 (BCS-Y-0982)",
+        "eventUpdateBuilder": "FUN_0075E670 at 0x0075E670 (BCS-Y-0981)",
+        "eventSendGate": "FUN_004D6D30 at 0x004D6D30 (BCS-Y-0983)",
+        "genericForwarder": "FUN_004E0240 at 0x004E0240 (BCS-Y-0312)"
+      },
+      "boundary": "One-gil tariff is proven for these six item levels 15..30 only. The capture does not justify a global fixed-tariff rule.",
+      "sourceRefs": [
+        "manifests/event_block_execution_state.json:runEventFunction_0x0130",
+        "manifests/op012e_eventupdate_emitter.json",
+        "manifests/symbols.json:BCS-Y-0981..BCS-Y-0983",
+        "xivl-captures:studies/retail-repair-contract/derived/npc-repair-observations.csv",
+        "xivl-captures:studies/retail-repair-contract/derived/verdicts.md"
+      ]
+    },
+    {
+      "id": "REPAIR-C-0009",
+      "subject": "Repair result and server authority boundary",
+      "confidence": "mixed",
+      "evidenceClass": "first_party_design_intent_plus_negative_capture_finding",
+      "firstPartyIntent": "The retained 1.x Lodestone manual says self-repair restores condition to 100 percent and consumes the appropriate grade of dark matter without shards or crystals. It says NPC repair is less extensive and does not restore mint condition.",
+      "captureFinding": "No target item in repair_items.pcapng has an attributable before/after durability update. The nearby 0x018F/0x0190/0x0191 transaction remains semantically opaque and is not linked to a repaired target item.",
+      "boundary": "Self-repair 100 percent is first-party design intent, not retained runtime proof. NPC result percentage is unresolved. Client code does not prove server-side validation, mutation, material consumption, or atomicity.",
+      "sourceRefs": [
+        "xivl-captures:sources/lodestone-manual/objects/pages/repair.md",
+        "xivl-captures:studies/retail-repair-contract/derived/verdicts.md",
+        "xivl-captures:studies/map-0190-transaction-census/derived/verdicts.md"
+      ]
+    }
+  ],
+  "bahamutHandoff": {
+    "checkpoint": "cfd458fdd3ba6463dd1ddf048b04450d78436252",
+    "safeToImplement": [
+      "Use server-supplied item catalog ID and tariff as the PopulaceItemRepairer confirmation arguments; the client does not derive them.",
+      "Treat client package/slot as UI selection inputs for command 22013 and resolve them to an item before entering the generic command path.",
+      "Use itemData columns 64..68 and the proven eligibility checks for client-compatible presentation/rejection.",
+      "Keep player commission bands separate from NPC tariff."
+    ],
+    "boundedChoice": "A one-gil NPC tariff exactly matches all six retained specimens. Generalizing that tariff to every item is an inference and must be labeled/tested as such.",
+    "mustRemainGated": [
+      "NPC resulting condition percentage",
+      "Self-repair runtime success and exact command/event payload",
+      "Dark-matter consumption and failure transaction",
+      "Server-side revalidation and atomicity"
+    ],
+    "missingObservation": "An attributable repaired target item condition before and after an accepted NPC repair, plus a retained self-repair execution showing command/event payload, selected item identity, material decrement, result condition, rejection behavior, and cleanup."
+  },
+  "contradictions": [
+    "The 100/200/300/400/500 getRepairAmount formula is a player commission amount, not an NPC tariff; applying it to NPC repair conflicts with six retail one-gil prompts.",
+    "The Lodestone manual's qualitative NPC result wording cannot be converted into a numeric percentage from current evidence.",
+    "The 0x018F/0x0190/0x0191 teardown-near transaction cannot be promoted as repair durability without a linked consumer or state change."
+  ],
+  "unresolved": [
+    "Global NPC tariff policy outside captured item levels 15..30",
+    "NPC resulting condition percentage",
+    "Self-repair runtime packet/event arguments and result",
+    "Server rejection, material consumption, validation, and atomicity",
+    "Repair licence semantics"
+  ]
+}
