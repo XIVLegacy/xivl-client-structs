@@ -45,7 +45,7 @@
     },
     {
       "path": "manifests/symbols.json",
-      "sha256": "914f90894a644e48ef28043dd218e0c7c7ca3d65f897e4b47911b9452bc7244e"
+      "sha256": "63dd8c5a89c39de324cf298e29b2570dc163d45657d59abb27e94063b2149120"
     }
   ],
   "dimensions": {
@@ -93136,7 +93136,7 @@
     },
     {
       "id": "BCS-Y-0853",
-      "name": "AsyncEvent_Producer_CharaElement_op4E_FUN_007F8C10",
+      "name": "AsyncEvent_Producer_WindowActor_op2A_FUN_007F8C10",
       "kind": "function",
       "address": {
         "kind": "scalar",
@@ -93146,11 +93146,12 @@
         ]
       },
       "addressCorroboration": "not-applicable",
-      "confidence": "probable",
+      "confidence": "confirmed",
       "citations": [
-        "EV-0717"
+        "EV-0717",
+        "EV-0879"
       ],
-      "notes": "[async-producers-catalog async event bus producer] Fires CharaElement slot-8 opcode 0x4E via FUN_007CE7B0"
+      "notes": "[Tier C628 2026-09-19] WindowActor vtable 0x00FF1CC4 slot 141. When WindowActor+0x1A4 exists, 0x008CDEA0 accepts the context, and +0x1C0 bit 0x02 is set, submits internal operation 0x2A through BCS-Y-0804 and clears that bit. This is not CharaElement operation 0x4E."
     },
     {
       "id": "BCS-Y-0854",
@@ -120978,7 +120979,7 @@
         "EV-1405",
         "EV-1404"
       ],
-      "notes": "[Tier C562/C564/C567 2026-09-14] Fallback transform-source reader. The bounded controller capture proves that its live input is the RaptureCharacterProxy returned by controller slot 29 and +0x2C is the live RigidBody. It copies [X,Y,Z,1] through [[BCS-Y-2268]] and returns immediately before ModelObject slot 13."
+      "notes": "[Tier C562/C564 2026-09-14] Fallback transform-source reader. It reads +0x2C from the opaque Actor+0x18 slot-29 result. Normal static CharaActor construction identifies that result as a CharacterProxy and +0x2C as a RigidBody, but the bounded capture did not record the live controller or proxy vtables. It copies [X,Y,Z,1] through [[BCS-Y-2268]] or uses the default record, then returns immediately before ModelObject slot 13."
     },
     {
       "id": "BCS-Y-2259",
@@ -121070,7 +121071,7 @@
         "EV-1405",
         "EV-1404"
       ],
-      "notes": "[Tier C564/C567 2026-09-14] CharaActor vtable slot 68. Constructs a RaptureCharacterProxy and RaptureCharacterController, then stores the controller at Actor+0x18. The bounded controller capture confirmed the live Actor+0x18 vtable as 0x00FEE17C and its +0x04 proxy vtable as 0x00FEE210."
+      "notes": "[Tier C564 2026-09-14] CharaActor vtable slot 68. Constructs a RaptureCharacterProxy and RaptureCharacterController, then stores the controller at Actor+0x18. The bounded local trace proved Actor+0x18 was the active fallback source but did not record that object's vtable."
     },
     {
       "id": "BCS-Y-2263",
@@ -121160,7 +121161,7 @@
         "EV-1405",
         "EV-1404"
       ],
-      "notes": "[Tier C564/C567 2026-09-14] CharacterController slot 10. Dispatches +0x0C state 1, 2, or 3 through slots 32, 33, or 34 with +0x10, then clears +0x0C. The live RaptureCharacterController used state 1 on all 900 captured frames, including every held-Y frame."
+      "notes": "[Tier C564 2026-09-14] CharacterController slot 10. Dispatches +0x0C state 1, 2, or 3 through slots 32, 33, or 34 with +0x10, then clears +0x0C. State zero performs no CharacterProxy/RigidBody update. Both base and Rapture controller vtables use this target."
     },
     {
       "id": "BCS-Y-2267",
@@ -121250,7 +121251,7 @@
         "EV-1405",
         "EV-1404"
       ],
-      "notes": "[Tier C564/C567 2026-09-14] Writes input lanes 0..2 and the canonical fourth lane to the active indexed RigidBody record and clears record+0x64. On every held-Y frame the call returning to 0x007D77B7 received and wrote the preceding RigidBody Y exactly."
+      "notes": "[Tier C564 2026-09-14] Writes input lanes 0..2 and the canonical fourth-lane constant to the active indexed 0x70-byte RigidBody record, then clears record+0x64. The function has no timer or frame-divider gate; cadence is caller-owned."
     },
     {
       "id": "BCS-Y-2271",
@@ -121340,7 +121341,7 @@
         "EV-1405",
         "EV-1404"
       ],
-      "notes": "[Tier C564/C567 2026-09-14] Confirmed live RaptureCharacterProxy vtable slot 1. With +0x40 bit 8 set, it subtracts current RigidBody position from its absolute input and sends the resulting [dX,dY,dZ,0] through [[BCS-Y-2286]]. The bounded controller capture proved that the input had the new Y on every held frame while a nested [[BCS-Y-2287]] writer published the preceding RigidBody Y."
+      "notes": "[Tier C564 2026-09-14] RaptureCharacterProxy vtable slot 1. It conditionally calls opaque helpers 0x007D77E0 and 0x007D79C0, writes CharacterProxy+0x2C RigidBody through [[BCS-Y-2270]], and snapshots the resulting position at RaptureCharacterProxy+0x70."
     },
     {
       "id": "BCS-Y-2275",
@@ -121887,7 +121888,7 @@
       "citations": [
         "EV-0879"
       ],
-      "notes": "[Tier C604/C605/C607/C608/C609 2026-09-15] ECX=WindowActor; operation, payload and byte-length stack arguments; RET12. Vtable 0x00FF1CC4 slot157. Operations24/22 establish and select global-map contexts; default operation0E forwards through actor+1A0 to 008CEC60. Durable observations and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer and method.drawingConsumerInvocation; pinned anchors in tools/audit_player_render_boundary.py. Static UI scene path only; local moving-nameplate identity, live cadence, final graphics submission and feedback-free correction remain unproven."
+      "notes": "[Tier C604/C605/C607/C608/C609/C628 2026-09-15/2026-09-19] ECX=WindowActor; operation, payload and byte-length stack arguments; RET12. Vtable 0x00FF1CC4 slot157. Operations 0x24/0x22 establish and select global-map contexts; default operation 0x0E forwards through actor+0x1A0 to 0x008CEC60. Operations 0x1B/0x1C/0x1D/0x1E write anchor-producer options, primary key, secondary key and bounded attachment selector through the selected-context owner chain; operation 0x29 marks deferred-state bit 0x02. Durable observations and reproduction: manifests/player_render_boundary.json:namePlateFlow.drawingContext.sceneConsumer and namePlateFlow.anchorProducer; pinned anchors in tools/audit_player_render_boundary.py. The active local option payloads, final graphics submission and feedback-free correction remain unproven."
     },
     {
       "id": "BCS-Y-2303",
@@ -122195,7 +122196,7 @@
         "EV-0879",
         "EV-0123"
       ],
-      "notes": "[Tier C628 2026-09-19] Resolves +0x1AC/+0x1B0 scene actors, obtains the virtual attachment targets through BCS-Y-2321/2322, conditionally retains the option-0x20/0x40 first-stage value in +0x180, applies the option-0x200 stage into +0x190, adds +0x164, forces W=1, and publishes through BCS-Y-2323. With neither first-stage option selected, the raw stack target bypasses +0x180. The pinned capture joins the output to the accepted PrimaryLabel consumer but does not record the active option bits or resolved actor vtables."
+      "notes": "[Tier C628 2026-09-19] Resolves +0x1AC/+0x1B0 scene actors, obtains the virtual attachment targets through BCS-Y-2321/2322, conditionally retains the option-0x20/0x40 first-stage value in +0x180, and applies the option-0x200 stage into +0x190. It loads +0x190 at 0x007F913E and the stack-built +0x164 vector at 0x007F9175, adds them at 0x007F917A, forces W=1, and publishes through BCS-Y-2323. With neither first-stage option selected, the raw stack target bypasses +0x180. The pinned capture joins the output to the accepted PrimaryLabel consumer but does not record the active option bits, attachment selector or resolved actor vtables."
     },
     {
       "id": "BCS-Y-2320",
@@ -122232,7 +122233,7 @@
       "citations": [
         "EV-0879"
       ],
-      "notes": "[Tier C628 2026-09-19] ECX points to the WindowActor+0x140 attachment selector; explicit arguments are output float4 and a resolved scene actor. Dispatches scene-actor vtable slot 91. For CharaActor, the shared slot-91 implementation resolves a bounded attachment name through CharaActor slot 21 and passes its index to slot 92. Nonnegative indices return the selected node-transform translation through slot 25; a negative index returns actor slot-34 output, including when slot 171 makes slot 21 return -1. Runtime subtype, branch and selected name were not captured."
+      "notes": "[Tier C628 2026-09-19] ECX points to the WindowActor+0x140 attachment selector; explicit arguments are output float4 and a resolved scene actor. Dispatches scene-actor vtable slot 91. For CharaActor, the shared slot-91 implementation resolves a bounded attachment name through CharaActor slot 21 and passes its index to slot 92. Nonnegative indices return the selected node-transform translation through slot 25; a negative index returns actor slot-34 output, including when slot 171 makes slot 21 return -1. CharaActor+0x143C stores its owner at helper+0xE4; 0x00664890 refreshes the helper's attachment tables and owner+0x1960 records. Runtime subtype, branch, selected name and selected record were not captured."
     },
     {
       "id": "BCS-Y-2322",
@@ -122250,7 +122251,7 @@
       "citations": [
         "EV-0879"
       ],
-      "notes": "[Tier C628 2026-09-19] Explicit arguments are output float4, primary scene actor, and secondary scene actor. Dispatches primary actor vtable slot 94 and copies the returned transform translation. CharaActor slot 94 uses mode -9 and dynamically casts both inputs. Null-cast cases fall back to an available world position or zero/default result; with both actors, distance below 0.001f selects primary slot-95 index 0, otherwise indices 0..15 are searched by horizontal XZ distance and returned as a translation-only result. Runtime subtypes and branch were not captured."
+      "notes": "[Tier C628 2026-09-19] Explicit arguments are output float4, primary scene actor, and secondary scene actor. Dispatches primary actor vtable slot 94 and copies the returned transform translation. CharaActor slot 94 uses mode -9 and dynamically casts both inputs. Null-cast cases fall back to an available world position or zero/default result; with both actors, distance below 0.001f selects primary slot-95 index 0, otherwise indices 0..15 are searched by horizontal XZ distance and returned as a translation-only result. Generic slot 94 at 0x007CD090 instead dispatches slot 25 at index 0 and ignores the secondary actors; generic slot 95 at 0x007CD1A0 obtains the index-0 transform through 0x00A5FEF0. Runtime subtypes and branch were not captured."
     },
     {
       "id": "BCS-Y-2323",
@@ -133171,6 +133172,7 @@
       "path": "manifests/player_render_boundary.json",
       "referencedBy": [
         "BCS-S-0497",
+        "BCS-Y-0853",
         "BCS-Y-0868",
         "BCS-Y-1024",
         "BCS-Y-2249",
