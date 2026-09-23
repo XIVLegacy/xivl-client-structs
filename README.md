@@ -26,11 +26,6 @@ are research references, not build dependencies.
 - [Manifest catalog](manifests/README.md)
 - [Tooling and regeneration](tools/README.md)
 
-## Contributing
-
-Pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
-opening one.
-
 ## License
 
 <a href="LICENSE-DATA"><img src="https://i.creativecommons.org/l/by/4.0/88x31.png" alt="Creative Commons Attribution 4.0 International license"></a>
