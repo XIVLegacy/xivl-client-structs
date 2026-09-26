@@ -102,7 +102,7 @@ the same writer check; do not infer abandonment from its age.
 
 ### Bridge build pipeline
 
-- `extract_lua_api_index.py`: harvests Lua API names from `symbols.json` (backtick-quoted prose + `_slotN_<name>_FUN_` patterns in symbol names). Emits `manifests\lua_api_index.json`; `--check` writes nothing and fails on drift.
+- `extract_lua_api_index.py`: reads explicit `symbols.json` Lua references and indexes mentions from other symbol names and prose. Emits `manifests\lua_api_index.json`; `--check` writes nothing and fails on drift. The [symbol reference contract](../manifests/README.md#structured-lua-references) owns the fields and evidence categories.
 - `extractors\build_lua_callsite_context.py`: scans the explicit local Lua
   corpus, registry, and per-script call sidecars for the fixed 19-name deferred
   binding set. It separates registry declarations, sidecar references, lexical
@@ -115,7 +115,7 @@ the same writer check; do not infer abandonment from its age.
 - `extract_receiver_opcode_map.py`: normalizes the vendored `data\vendor\opcodes\client_receivers.json` fixture into BCS-Y-cross-referenced inbound + client-internal + strong / candidate buckets, then deterministically merges the curated `manifests\receiver_opcode_map_overlay.json` layer. Emits `manifests\receiver_opcode_map_inbound.json`; `--check` writes nothing and fails on drift.
 - `extract_operation_opcode_map.py`: scaffolds the outbound side by inventorying the vendored `data\vendor\opcodes\opcodes.json` fixture's `retail_class_name` Operation classes, then deterministically merges the curated `manifests\operation_opcode_map_overlay.json` layer. Emits `manifests\operation_opcode_map_outbound.json`; `--check` writes nothing and fails on drift.
 - `build_lua_to_opcode.py`: joins the bridge inputs into `manifests\lua_to_opcode.json`; `--check` writes nothing and fails on drift.
-  The join excludes `_paired` and `_secondary` LuaActorImpl references: BCS-Y-0238 slot 63 is the SendLogReceiver path, while the real `_onUpdateDisplayName` fire is the slot 62 apply chain confirmed by the apply-chain evidence.
+  Slot joins require the symbol's explicit `bindsOpcode` eligibility and the receiver map's `luaActorImplSlot`. BCS-Y-0238 explicitly excludes slot 63: it is the SendLogReceiver path, while the `_onUpdateDisplayName` fire is the slot 62 apply chain confirmed by the apply-chain evidence. Slot eligibility does not depend on names or prose.
 - `analyze_outbound_emissions.py`: parses the Ghidra `ScanOpcodeEmissions` output and writes per-opcode candidate emitter lists + high-confidence filters into `manifests\operation_opcode_map_overlay.json`. Re-run `extract_operation_opcode_map.py` afterward to fold the updated overlay into `manifests\operation_opcode_map_outbound.json`. The underlying Ghidra script is an external input to the research run.
 - `build_c2s_bridge_skeleton.py`: builds the C2S catalog from `c2s_bridge_overlay.json`; `--check` verifies exact output bytes without writing. `--candidates` prints unpromoted token-match proposals from the current outbound, capture-observation, and Lua catalogs without changing any file.
 - `extractors\build_data_dependency_catalog.py`: rebuilds the data-dependency catalog from its curated inputs and local field observations; `--check` verifies exact output bytes without writing. `--normalize-citations` updates declared sibling path moves in `data_dependency_overlay.json` under its catalog lock, then rebuilds the output.

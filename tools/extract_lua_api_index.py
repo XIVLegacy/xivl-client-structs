@@ -1,20 +1,5 @@
 #!/usr/bin/env python3
-"""Build a Lua-API-name -> BCS-Y-entry index from manifests/symbols.json.
-
-Step 3 of the Lua-name to opcode bridge. The 270+ BCS-Y entries written during MDI-019 record
-Lua API names (e.g. `_setNameplate`, `_onCheckTargetable`) inline in
-their `notes` prose, backtick-quoted. This tool extracts every such
-mention and emits a queryable index so downstream stages can resolve
-"which receiver/dispatcher fires this Lua name?".
-
-Outputs:
-    manifests/lua_api_index.json - the index. Schema:
-            version, gameVersion, luaApiCount, totalRefs,
-            apis: { luaName -> [ { bcsId, name, kind, address, slot? } ] }
-
-Run:
-    python tools\\extract_lua_api_index.py
-"""
+"""Build the Lua API index from explicit symbol references and prose mentions."""
 
 from __future__ import annotations
 
@@ -26,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _lua_api_refs import lua_api_refs  # noqa: E402
 from _symbols_io import load_symbols  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -40,7 +26,7 @@ LUA_NAME_NOTES_RE = re.compile(
 
 LUA_NAME_IN_SYMNAME_RE = re.compile(r"_slot\d+_([a-z][A-Za-z0-9]*)(?:_FUN_|_fn_|$)")
 
-# Only LuaActorImpl vftable names contribute to opcode binding; other vftables use orthogonal slots.
+# New LuaActorImpl bindings require explicit references instead of name parsing.
 LUA_NAME_IN_LUAACTORIMPL_RE = re.compile(
     r"LuaActorImpl::vftable_slot\d+_([a-z][A-Za-z0-9]*)(?:_[A-Za-z0-9]+)*_FUN_"
 )
@@ -70,7 +56,7 @@ SLOT_RE = re.compile(r"\bslot\s+(\d+)\b", re.IGNORECASE)
 
 VFTABLE_SLOT_RE = re.compile(r"vftable(?:\[(\d+)\]|\s+slot\s+(\d+))", re.IGNORECASE)
 
-# A slot encoded in the symbol name is authoritative.
+# Unstructured mention indexing prefers the name's slot over prose.
 SLOT_IN_SYMNAME_RE = re.compile(r"_slot(\d+)_", re.IGNORECASE)
 
 
@@ -88,37 +74,18 @@ def _extract_slot(name: str, notes: str) -> int | None:
 
 
 def build_index(symbols: list[dict]) -> tuple[dict[str, list[dict]], int]:
-    """Build { luaName -> [reference, ...] }. Returns (index, totalRefs).
-
-    Pulls Lua names from two locations and tags each ref with a
-    confidence source:
-      - source='name': the camelCase token between `_slotN_` and `_FUN_`
-        in the symbol NAME. High confidence - the symbol's identity
-        names its Lua API.
-      - source='notes': backtick-quoted or bare camelCase tokens in
-        `notes` prose. Weaker - the symbol mentions the name but isn't
-        necessarily its dispatcher.
-
-    Downstream (build_lua_to_opcode.py) requires source='name' for
-    opcode binding to avoid false positives from prose mentions.
-    """
+    """Build {luaName: [reference, ...]}, preserving each evidence category."""
     index: dict[str, list[dict]] = {}
     total_refs = 0
     for sym in symbols:
         notes = sym.get("notes", "") or ""
         name_field = sym["name"]
         seen_in_sym: set[tuple[str, str]] = set()
-        slot = _extract_slot(name_field, notes)
+        explicit = lua_api_refs(sym)
 
-        def _record(lua_name: str, source: str):
-            """source = 'name' for symbol-NAME-encoded, 'notes' for prose mention.
-
-            name-encoded refs are higher confidence (the symbol's identity
-            directly names the Lua API). notes-only refs are weaker - the
-            symbol mentions the name but isn't necessarily its dispatcher.
-            """
+        def _record(lua_name: str, source: str, slot: int | None):
             nonlocal total_refs
-            if lua_name in PROSE_PREFIX_NOISE:
+            if explicit is None and lua_name in PROSE_PREFIX_NOISE:
                 return
             seen_key = (lua_name, source)
             if seen_key in seen_in_sym:
@@ -137,19 +104,19 @@ def build_index(symbols: list[dict]) -> tuple[dict[str, list[dict]], int]:
             index.setdefault(lua_name, []).append(ref)
             total_refs += 1
 
-        # LuaActorImpl names are the high-confidence opcode-binding source.
-        lua_actor_impl_names: set[str] = set()
-        for match in LUA_NAME_IN_LUAACTORIMPL_RE.finditer(name_field):
-            lua_actor_impl_names.add("_" + match.group(1))
-            _record("_" + match.group(1), "name-luaactorimpl")
+        if explicit is not None:
+            for row in explicit:
+                _record(row["luaName"], row["source"], row["slot"])
+            continue
+        if LUA_NAME_IN_LUAACTORIMPL_RE.search(name_field):
+            raise ValueError(f"{sym['id']} requires explicit luaApiRefs")
+        slot = _extract_slot(name_field, notes)
         # Other vftables remain indexed but are tagged separately.
         for match in LUA_NAME_IN_SYMNAME_RE.finditer(name_field):
             full = "_" + match.group(1)
-            if full in lua_actor_impl_names:
-                continue
-            _record(full, "name-other")
+            _record(full, "name-other", slot)
         for match in LUA_NAME_NOTES_RE.finditer(notes):
-            _record(match.group("bt") or match.group("bare"), "notes")
+            _record(match.group("bt") or match.group("bare"), "notes", slot)
 
     return index, total_refs
 

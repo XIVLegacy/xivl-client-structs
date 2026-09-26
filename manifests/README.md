@@ -45,6 +45,43 @@ The two IR schemas and the retail-evidence attestation schema live in
 schema is loaded by the retail verifier and its normal-CI tests. A schema that
 is not loaded by validation does not belong in this repository.
 
+## Structured Lua references
+
+A `symbols.json` entry may own `luaApiRefs`, an ordered list of explicit Lua
+references. When present, the list completely determines that symbol's Lua
+index entries. An empty list explicitly supplies none. Editing the symbol's
+display name or notes does not change the references.
+
+Each reference has exactly these fields:
+
+| Field | Contract |
+| --- | --- |
+| `luaName` | An underscore-prefixed Lua identifier. |
+| `slot` | A nonnegative integer in the referenced vtable's slot namespace. |
+| `source` | `name-luaactorimpl`, `name-other`, or `notes`. These retained evidence categories distinguish a LuaActorImpl identity, another vtable's identity, and a prose mention. Explicit storage does not increase confidence. |
+| `bindsOpcode` | Boolean eligibility for the slot-based opcode join. Only `name-luaactorimpl` may be true. Eligibility alone does not establish a receiver or wire opcode. |
+
+The pair `(luaName, source)` is unique within one symbol. Address, BCS identity,
+confidence, and citations remain owned by that symbol. Preserve its source
+locators and the reason for any exclusion in its notes. A `notes` reference is
+still a mention, not proof that the symbol fires that callback.
+
+Symbols without `luaApiRefs` retain mention indexing from other vtable names
+and prose. A LuaActorImpl callback name requires explicit references before
+the index can be built. New binding claims need the usual evidence review;
+parsing a name or copying a mention is not a promotion procedure.
+
+`build_lua_to_opcode.py` checks the indexed LuaActorImpl name and slot against
+the canonical reference and uses its `bindsOpcode` flag. It joins only the
+receiver map's explicit `luaActorImplSlot`; missing receiver slots remain
+unresolved. Other-vtable and prose references cannot supply opcode slots.
+
+After editing canonical references, rebuild `lua_api_index.json`, then
+`lua_to_opcode.json`, then the IR using the commands in the
+[tools guide](../tools/README.md#bridge-build-pipeline). Run the complete
+repository checks. `tools/validate_catalog.py` validates reference fields,
+and `tools/test_lua_api_refs.py` verifies the prose-independent binding boundary.
+
 ## Lobby character-list contract
 
 `lobby_character_list_projection.json` is the canonical offset, projection,

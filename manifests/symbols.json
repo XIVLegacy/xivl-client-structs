@@ -1396,7 +1396,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 23 -> Lua event `_onMoveAtSit`.** 20 byte wrapper at VA 0x00759920. Slot position derived from vtable byte address 0x00FDFB88 minus base 0x00FDFB2C = 0x5C = 92 bytes = slot 23. Body: `FUN_008a3e60(param_1+4, *(undefined4 *)(param_1+8))` - calls the dynamic-cast trampoline (BCS-Y-0138-paired) with (LuaActorImpl::this+4=output_slot_address, LuaActorImpl::this+8=actor_pointer). Trampoline FUN_008A3E60 does `__RTDynamicCast(actor_ptr, ActorBase->MyPlayer)` then calls BCS-Y-0138 FUN_006F8200 which fires the named Lua callback. This is the FIRST confirmed slot-to-Lua-API mapping in LuaActorImpl::vftable (a non-Receiver slot - the existing slots 75/79/85/86/88 from MDI-022 are Receiver wrappers, this is a Lua-event-only slot). Identified via Ghidra static scan ScanLuaCallbackNames.java (harvested 76 `_on*` strings with xrefs from 106 candidates) + manual caller-chain decomp through trampoline BCS-Y-0138. The discovery methodology is reusable for the remaining ~52 stateless wrappers in slots 1..52 and the 29 wrappers in slots 53..89; each Lua-event-firing slot is identifiable by string xrefs of `_onXxx` near its backend's call to FUN_00447260. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759920 (20 byte body, follow-up of MDI-019). Address corrected from 0x00359920 to 0x00759920 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 23 -> Lua event `_onMoveAtSit`.** 20 byte wrapper at VA 0x00759920. Slot position derived from vtable byte address 0x00FDFB88 minus base 0x00FDFB2C = 0x5C = 92 bytes = slot 23. Body: `FUN_008a3e60(param_1+4, *(undefined4 *)(param_1+8))` - calls the dynamic-cast trampoline (BCS-Y-0138-paired) with (LuaActorImpl::this+4=output_slot_address, LuaActorImpl::this+8=actor_pointer). Trampoline FUN_008A3E60 does `__RTDynamicCast(actor_ptr, ActorBase->MyPlayer)` then calls BCS-Y-0138 FUN_006F8200 which fires the named Lua callback. This is the FIRST confirmed slot-to-Lua-API mapping in LuaActorImpl::vftable (a non-Receiver slot - the existing slots 75/79/85/86/88 from MDI-022 are Receiver wrappers, this is a Lua-event-only slot). Identified via Ghidra static scan ScanLuaCallbackNames.java (harvested 76 `_on*` strings with xrefs from 106 candidates) + manual caller-chain decomp through trampoline BCS-Y-0138. The discovery methodology is reusable for the remaining ~52 stateless wrappers in slots 1..52 and the 29 wrappers in slots 53..89; each Lua-event-firing slot is identifiable by string xrefs of `_onXxx` near its backend's call to FUN_00447260. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759920 (20 byte body, follow-up of MDI-019). Address corrected from 0x00359920 to 0x00759920 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onMoveAtSit",
+          "slot": 23,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onMoveAtSit",
+          "slot": 23,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onXxx",
+          "slot": 23,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0140",
@@ -1407,7 +1427,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 24 -> Lua events `_onCheckTargetable` / `_onCheckTargetableNearest`.** Wrapper at VA 0x0075D710. Slot position derived from vtable byte address 0x00FDFB8C minus base 0x00FDFB2C = 0x60 = 96 bytes = slot 24. Wrapper callees FUN_008A36B0 + FUN_008A36C0; FUN_008A36C0 calls firer FUN_006FE720 (561 bytes at VA 0x006FE720) which branches on `*(byte *)(param_1+0x78)` between `FUN_00447260(\"_onCheckTargetable\",...)` (when flag == 0) and `FUN_00447260(\"_onCheckTargetableNearest\",...)` (when flag != 0), then dispatches via FUN_00CC7A90 (the Lua-VM invoke). So this single slot has TWO possible Lua API surfaces depending on the actor's `+0x78` flag. Identified via ScanLuaCallbackNames.java harvest + caller-chain decomp. Pattern matches BCS-Y-0139 (slot 23): wrapper -> 008A3xxx trampoline -> firer in 006Fxxxx region. The 008A3-family-trampoline + 006F-region-firer combination is now confirmed as the signature for Lua-event-firing slots in LuaActorImpl::vftable. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075D710 (follow-up of MDI-019). Address corrected from 0x0035D710 to 0x0075D710 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 24 -> Lua events `_onCheckTargetable` / `_onCheckTargetableNearest`.** Wrapper at VA 0x0075D710. Slot position derived from vtable byte address 0x00FDFB8C minus base 0x00FDFB2C = 0x60 = 96 bytes = slot 24. Wrapper callees FUN_008A36B0 + FUN_008A36C0; FUN_008A36C0 calls firer FUN_006FE720 (561 bytes at VA 0x006FE720) which branches on `*(byte *)(param_1+0x78)` between `FUN_00447260(\"_onCheckTargetable\",...)` (when flag == 0) and `FUN_00447260(\"_onCheckTargetableNearest\",...)` (when flag != 0), then dispatches via FUN_00CC7A90 (the Lua-VM invoke). So this single slot has TWO possible Lua API surfaces depending on the actor's `+0x78` flag. Identified via ScanLuaCallbackNames.java harvest + caller-chain decomp. Pattern matches BCS-Y-0139 (slot 23): wrapper -> 008A3xxx trampoline -> firer in 006Fxxxx region. The 008A3-family-trampoline + 006F-region-firer combination is now confirmed as the signature for Lua-event-firing slots in LuaActorImpl::vftable. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075D710 (follow-up of MDI-019). Address corrected from 0x0035D710 to 0x0075D710 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onCheckTargetable",
+          "slot": 24,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onCheckTargetable",
+          "slot": 24,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onCheckTargetableNearest",
+          "slot": 24,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0141",
@@ -1429,7 +1469,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 76 -> Lua event `_onReceiveAchievementId`.** Wrapper at VA 0x0075A5B0. Slot position derived from vtable byte address 0x00FDFC5C minus base 0x00FDFB2C = 0x130 = 304 bytes = slot 76. Wrapper calls trampoline FUN_0089C6D0 (45 bytes), which performs `__RTDynamicCast(this+8_actor_ptr, ActorBase->MyPlayer)` via FUN_009DA6CC then calls firer FUN_00704430 (606 bytes) which fires `_onReceiveAchievementId` via FUN_00447260+FUN_00CC7A90. The MyPlayer dynamic-cast establishes this is a player-only callback. Slot 76 sits adjacent to slot 75 (AchievementTitleReceiver wrapper, MDI-019) and slot 77 (BCS-Y-0143 _onReceiveAchievementRate), forming a contiguous Achievement-system cluster. Identified via firer-caller-chain decomp following the ScanLuaCallbackNames.java harvest from. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A5B0 (follow-up of MDI-019). Address corrected from 0x0035A5B0 to 0x0075A5B0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 76 -> Lua event `_onReceiveAchievementId`.** Wrapper at VA 0x0075A5B0. Slot position derived from vtable byte address 0x00FDFC5C minus base 0x00FDFB2C = 0x130 = 304 bytes = slot 76. Wrapper calls trampoline FUN_0089C6D0 (45 bytes), which performs `__RTDynamicCast(this+8_actor_ptr, ActorBase->MyPlayer)` via FUN_009DA6CC then calls firer FUN_00704430 (606 bytes) which fires `_onReceiveAchievementId` via FUN_00447260+FUN_00CC7A90. The MyPlayer dynamic-cast establishes this is a player-only callback. Slot 76 sits adjacent to slot 75 (AchievementTitleReceiver wrapper, MDI-019) and slot 77 (BCS-Y-0143 _onReceiveAchievementRate), forming a contiguous Achievement-system cluster. Identified via firer-caller-chain decomp following the ScanLuaCallbackNames.java harvest from. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A5B0 (follow-up of MDI-019). Address corrected from 0x0035A5B0 to 0x0075A5B0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onReceiveAchievementId",
+          "slot": 76,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onReceiveAchievementId",
+          "slot": 76,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onReceiveAchievementRate",
+          "slot": 76,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0143",
@@ -1440,7 +1500,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 77 -> Lua event `_onReceiveAchievementRate`.** Wrapper at VA 0x0075A630. Slot position derived from vtable byte address 0x00FDFC60 minus base 0x00FDFB2C = 0x134 = 308 bytes = slot 77. Wrapper calls trampoline FUN_0089C7C0 (58 bytes), which performs `__RTDynamicCast(param_3=this+8_actor_ptr, ActorBase->MyPlayer)` via FUN_009DA6CC then calls firer FUN_00704690 with 4 args derived from `(param_2, this+4, *(this+8), *(this+0xC))` - so the wrapper forwards multiple data fields, not just two. Firer FUN_00704690 (390 bytes) does the standard FUN_00447260(\"_onReceiveAchievementRate\",...) + FUN_00CC7A90 fire pattern. Slot 77 completes the consecutive Achievement-cluster (slot 75 AchievementTitle write, slot 76 BCS-Y-0142 ReceiveAchievementId, slot 77 ReceiveAchievementRate). Identified via firer-caller-chain decomp. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A630 (follow-up of MDI-019). Address corrected from 0x0035A630 to 0x0075A630 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 77 -> Lua event `_onReceiveAchievementRate`.** Wrapper at VA 0x0075A630. Slot position derived from vtable byte address 0x00FDFC60 minus base 0x00FDFB2C = 0x134 = 308 bytes = slot 77. Wrapper calls trampoline FUN_0089C7C0 (58 bytes), which performs `__RTDynamicCast(param_3=this+8_actor_ptr, ActorBase->MyPlayer)` via FUN_009DA6CC then calls firer FUN_00704690 with 4 args derived from `(param_2, this+4, *(this+8), *(this+0xC))` - so the wrapper forwards multiple data fields, not just two. Firer FUN_00704690 (390 bytes) does the standard FUN_00447260(\"_onReceiveAchievementRate\",...) + FUN_00CC7A90 fire pattern. Slot 77 completes the consecutive Achievement-cluster (slot 75 AchievementTitle write, slot 76 BCS-Y-0142 ReceiveAchievementId, slot 77 ReceiveAchievementRate). Identified via firer-caller-chain decomp. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A630 (follow-up of MDI-019). Address corrected from 0x0035A630 to 0x0075A630 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onReceiveAchievementRate",
+          "slot": 77,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onReceiveAchievementRate",
+          "slot": 77,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0144",
@@ -1451,7 +1525,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 87 -> Lua event `_onChangeSubStatMode`.** Wrapper at VA 0x0075AA20. Slot position derived from vtable byte address 0x00FDFC88 minus base 0x00FDFB2C = 0x15C = 348 bytes = slot 87. Wrapper calls trampoline FUN_008A3310 (52 bytes), which performs `__RTDynamicCast(param_2=this+8_actor_ptr, ActorBase->CharaBase)` via FUN_009DA6CC then calls firer FUN_007084E0 (689 bytes) which fires `_onChangeSubStatMode` via FUN_00447260+FUN_00CC7A90. Note the dynamic-cast target is **CharaBase** (not MyPlayer like slot 23/76/77) - so this callback runs for ANY CharaBase-typed actor, not just the local player. Slot 87 sits adjacent to slot 86 (ChangeActorSubStatModeBorderReceiver wrapper FUN_0075A9A0 per MDI-022) and slot 88 (ChangeActorSubStatStatusReceiver wrapper FUN_0076C720) - the three slots form a SubStat-cluster: slot 86 is the byte-state write (no Lua firing), slot 87 is the mode-change Lua callback, slot 88 is the status-change Receiver with its own Lua callback `_onChangeSubStatStatus` (firer FUN_00707D60, fires from slot 88's apply path). Identified via firer-caller-chain decomp. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075AA20 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035AA20 to 0x0075AA20 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 87 -> Lua event `_onChangeSubStatMode`.** Wrapper at VA 0x0075AA20. Slot position derived from vtable byte address 0x00FDFC88 minus base 0x00FDFB2C = 0x15C = 348 bytes = slot 87. Wrapper calls trampoline FUN_008A3310 (52 bytes), which performs `__RTDynamicCast(param_2=this+8_actor_ptr, ActorBase->CharaBase)` via FUN_009DA6CC then calls firer FUN_007084E0 (689 bytes) which fires `_onChangeSubStatMode` via FUN_00447260+FUN_00CC7A90. Note the dynamic-cast target is **CharaBase** (not MyPlayer like slot 23/76/77) - so this callback runs for ANY CharaBase-typed actor, not just the local player. Slot 87 sits adjacent to slot 86 (ChangeActorSubStatModeBorderReceiver wrapper FUN_0075A9A0 per MDI-022) and slot 88 (ChangeActorSubStatStatusReceiver wrapper FUN_0076C720) - the three slots form a SubStat-cluster: slot 86 is the byte-state write (no Lua firing), slot 87 is the mode-change Lua callback, slot 88 is the status-change Receiver with its own Lua callback `_onChangeSubStatStatus` (firer FUN_00707D60, fires from slot 88's apply path). Identified via firer-caller-chain decomp. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075AA20 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035AA20 to 0x0075AA20 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onChangeSubStatMode",
+          "slot": 87,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onChangeSubStatMode",
+          "slot": 87,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onChangeSubStatStatus",
+          "slot": 87,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0145",
@@ -1474,7 +1568,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 85 -> Lua events `_onChangeNetStatUser` (bits 8..15) and `_onChangeNetStatSystem` (bits 16/17/18 as local_ac=1/2/3 indices).** Wrapper at VA 0x0075A920. Slot position derived from vtable byte address 0x00FDFC80 minus base 0x00FDFB2C = 0x154 = 340 bytes = slot 85. Chain: wrapper FUN_0075A920 (113 bytes) constructs ChangeActorExtraStatReceiver via FUN_0089C8E0 (ctor BCS-Y-0118) then calls FUN_0089C990 (apply BCS-Y-0119) then FUN_0089C940 (dtor BCS-Y-0120). The apply RTTI-casts ActorBase->CharaBase via FUN_009DA6CC then tail-calls FUN_006FA980(target, stat_value, 1). Firer FUN_006FA980 (1255 bytes) reads old extra-stat u32 from `*(uint *)(actor+0x10)`, compares against new param_3; if different, writes new value back and iterates an 8-bit loop over bits 8..15 firing `_onChangeNetStatUser` for each bit that changed (with local_ac = iVar2 - 7 as the bit index 1..8), then handles bits 16, 17, 18 each firing `_onChangeNetStatSystem` with local_ac = 1, 2, 3 respectively. So a SINGLE slot-85 receiver-apply invocation can fire UP TO 11 distinct Lua callback calls (8 User + 3 System). The dynamic-cast target is CharaBase (matching slot 87's pattern, broader than slots 23/76/77 MyPlayer-only). Firer FUN_006FA980 has a SECOND caller FUN_007080F0 (BCS-Y-0148, polling/refresh path) which fires the same callbacks based on a computed XOR-delta against current state. Identified via firer-caller-chain decomp following the ScanLuaCallbackNames.java harvest from. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A920 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035A920 to 0x0075A920 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 85 -> Lua events `_onChangeNetStatUser` (bits 8..15) and `_onChangeNetStatSystem` (bits 16/17/18 as local_ac=1/2/3 indices).** Wrapper at VA 0x0075A920. Slot position derived from vtable byte address 0x00FDFC80 minus base 0x00FDFB2C = 0x154 = 340 bytes = slot 85. Chain: wrapper FUN_0075A920 (113 bytes) constructs ChangeActorExtraStatReceiver via FUN_0089C8E0 (ctor BCS-Y-0118) then calls FUN_0089C990 (apply BCS-Y-0119) then FUN_0089C940 (dtor BCS-Y-0120). The apply RTTI-casts ActorBase->CharaBase via FUN_009DA6CC then tail-calls FUN_006FA980(target, stat_value, 1). Firer FUN_006FA980 (1255 bytes) reads old extra-stat u32 from `*(uint *)(actor+0x10)`, compares against new param_3; if different, writes new value back and iterates an 8-bit loop over bits 8..15 firing `_onChangeNetStatUser` for each bit that changed (with local_ac = iVar2 - 7 as the bit index 1..8), then handles bits 16, 17, 18 each firing `_onChangeNetStatSystem` with local_ac = 1, 2, 3 respectively. So a SINGLE slot-85 receiver-apply invocation can fire UP TO 11 distinct Lua callback calls (8 User + 3 System). The dynamic-cast target is CharaBase (matching slot 87's pattern, broader than slots 23/76/77 MyPlayer-only). Firer FUN_006FA980 has a SECOND caller FUN_007080F0 (BCS-Y-0148, polling/refresh path) which fires the same callbacks based on a computed XOR-delta against current state. Identified via firer-caller-chain decomp following the ScanLuaCallbackNames.java harvest from. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A920 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035A920 to 0x0075A920 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onChangeNetStatSystem",
+          "slot": 85,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onChangeNetStatUser",
+          "slot": 85,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onChangeNetStat",
+          "slot": 85,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        }
+      ]
     },
     {
       "id": "BCS-Y-0147",
@@ -1485,7 +1599,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**PROBABLE LuaActorImpl::vftable slot 88 -> Lua event `_onChangeSubStatStatus` (INDIRECT, via ChangeActorSubStatStatusReceiver's OWN vtable, not directly from apply).** Wrapper at VA 0x0076C720 (the rich 0x0076Cxxx pattern). Slot position derived from vtable byte address 0x00FDFC8C minus base 0x00FDFB2C = 0x160 = 352 bytes = slot 88. Chain shape DIFFERS from slots 76/77/85/87: wrapper FUN_0076C720 (426 bytes, two branches on a game-state flag `*(*(*(*piVar1+4)+0xf4)+0x10)`) constructs ChangeActorSubStatStatusReceiver via FUN_008A3350 (combined ctor+apply BCS-Y-0124) which RECORDS state to receiver_storage[+0x10, +0x14, +0x15] but does NOT directly fire the Lua callback. The Lua callback `_onChangeSubStatStatus` is fired from firer FUN_00707D60 (588 bytes), which is called by thunk FUN_007084B0 (36 bytes: `FUN_006eec00(args); FUN_00707d60(args);`), which is called by TWO paths: (a) FUN_008A3630 (97 bytes, likely slot 2 of ChangeActorSubStatStatusReceiver's vtable per its instance-storage access pattern accessing +0x10/+0x14 of receiver_storage; reads them and calls FUN_007084B0 after RTTI-casting CharaBase) - this is the trigger that reads back the recorded receiver state and fires the callback; (b) FUN_007643F0 (138 bytes, iterates a vector at param_1+8/+0xC, calling FUN_007084B0 for each element) - a polling iterator called from FUN_006EECD0. So slot 88's full chain is: LuaActorImpl::vftable[88] wrapper -> receiver apply records state -> separately, ChangeActorSubStatStatusReceiver's own slot 2 (FUN_008A3630) or polling iterator (FUN_007643F0) fires `_onChangeSubStatStatus` from the recorded state. This is the FIRST observed slot using indirect Lua-event firing via the Receiver's own vtable rather than the apply directly. Marked PROBABLE because the slot-88 wrapper provably routes data into the receiver and the receiver provably fires the callback later, but the time-of-fire is decoupled from the slot-88 vtable dispatch itself (separate scheduling). Identified in a follow-up. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0076C720 (follow-up of MDI-019). Address corrected from 0x0036C720 to 0x0076C720 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [hygiene act-on-c1-audit] Promoted probable -> confirmed. docs/receiver_dispatch_via_actorimpl.md:128 confirms FUN_0076c720 is slot 88 -> ChangeActorSubStatStatusReceiver."
+      "notes": "**PROBABLE LuaActorImpl::vftable slot 88 -> Lua event `_onChangeSubStatStatus` (INDIRECT, via ChangeActorSubStatStatusReceiver's OWN vtable, not directly from apply).** Wrapper at VA 0x0076C720 (the rich 0x0076Cxxx pattern). Slot position derived from vtable byte address 0x00FDFC8C minus base 0x00FDFB2C = 0x160 = 352 bytes = slot 88. Chain shape DIFFERS from slots 76/77/85/87: wrapper FUN_0076C720 (426 bytes, two branches on a game-state flag `*(*(*(*piVar1+4)+0xf4)+0x10)`) constructs ChangeActorSubStatStatusReceiver via FUN_008A3350 (combined ctor+apply BCS-Y-0124) which RECORDS state to receiver_storage[+0x10, +0x14, +0x15] but does NOT directly fire the Lua callback. The Lua callback `_onChangeSubStatStatus` is fired from firer FUN_00707D60 (588 bytes), which is called by thunk FUN_007084B0 (36 bytes: `FUN_006eec00(args); FUN_00707d60(args);`), which is called by TWO paths: (a) FUN_008A3630 (97 bytes, likely slot 2 of ChangeActorSubStatStatusReceiver's vtable per its instance-storage access pattern accessing +0x10/+0x14 of receiver_storage; reads them and calls FUN_007084B0 after RTTI-casting CharaBase) - this is the trigger that reads back the recorded receiver state and fires the callback; (b) FUN_007643F0 (138 bytes, iterates a vector at param_1+8/+0xC, calling FUN_007084B0 for each element) - a polling iterator called from FUN_006EECD0. So slot 88's full chain is: LuaActorImpl::vftable[88] wrapper -> receiver apply records state -> separately, ChangeActorSubStatStatusReceiver's own slot 2 (FUN_008A3630) or polling iterator (FUN_007643F0) fires `_onChangeSubStatStatus` from the recorded state. This is the FIRST observed slot using indirect Lua-event firing via the Receiver's own vtable rather than the apply directly. Marked PROBABLE because the slot-88 wrapper provably routes data into the receiver and the receiver provably fires the callback later, but the time-of-fire is decoupled from the slot-88 vtable dispatch itself (separate scheduling). Identified in a follow-up. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0076C720 (follow-up of MDI-019). Address corrected from 0x0036C720 to 0x0076C720 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [hygiene act-on-c1-audit] Promoted probable -> confirmed. docs/receiver_dispatch_via_actorimpl.md:128 confirms FUN_0076c720 is slot 88 -> ChangeActorSubStatStatusReceiver.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onChangeSubStatStatus",
+          "slot": 88,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onChangeSubStatStatus",
+          "slot": 88,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0148",
@@ -1518,7 +1646,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 38 -> Lua event `_onPreCutSceneCancel`.** Wrapper at VA 0x00759AD0. Slot position derived from vtable byte address 0x00FDFBC4 minus base 0x00FDFB2C = 0x98 = 152 bytes = slot 38. Wrapper makes UNCONDITIONAL_CALL from 0x00759B0D to FUN_008A45D0 which fires `_onPreCutSceneCancel` via FUN_00447260+FUN_00CC7A90. Slot 38 pairs with slot 39 (BCS-Y-0151 _onPostCutSceneCancel) - paired Pre/Post hooks following the pattern of slot 23/24 Move-state and slot 76/77 Achievement clusters. Identified via FindAllReferences.java showing FUN_008A45D0 has only 1 instruction xref (this wrapper). Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759AD0 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359AD0 to 0x00759AD0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 38 -> Lua event `_onPreCutSceneCancel`.** Wrapper at VA 0x00759AD0. Slot position derived from vtable byte address 0x00FDFBC4 minus base 0x00FDFB2C = 0x98 = 152 bytes = slot 38. Wrapper makes UNCONDITIONAL_CALL from 0x00759B0D to FUN_008A45D0 which fires `_onPreCutSceneCancel` via FUN_00447260+FUN_00CC7A90. Slot 38 pairs with slot 39 (BCS-Y-0151 _onPostCutSceneCancel) - paired Pre/Post hooks following the pattern of slot 23/24 Move-state and slot 76/77 Achievement clusters. Identified via FindAllReferences.java showing FUN_008A45D0 has only 1 instruction xref (this wrapper). Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759AD0 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359AD0 to 0x00759AD0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onPreCutSceneCancel",
+          "slot": 38,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onPreCutSceneCancel",
+          "slot": 38,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onPostCutSceneCancel",
+          "slot": 38,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0151",
@@ -1529,7 +1677,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 39 -> Lua event `_onPostCutSceneCancel`.** Wrapper at VA 0x00759B40. Slot position derived from vtable byte address 0x00FDFBC8 minus base 0x00FDFB2C = 0x9C = 156 bytes = slot 39. Wrapper makes UNCONDITIONAL_CALL from 0x00759B7D to FUN_008A4720 which fires `_onPostCutSceneCancel`. Pairs with BCS-Y-0150 slot 38. Identified via FindAllReferences.java. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759B40 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359B40 to 0x00759B40 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 39 -> Lua event `_onPostCutSceneCancel`.** Wrapper at VA 0x00759B40. Slot position derived from vtable byte address 0x00FDFBC8 minus base 0x00FDFB2C = 0x9C = 156 bytes = slot 39. Wrapper makes UNCONDITIONAL_CALL from 0x00759B7D to FUN_008A4720 which fires `_onPostCutSceneCancel`. Pairs with BCS-Y-0150 slot 38. Identified via FindAllReferences.java. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759B40 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359B40 to 0x00759B40 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onPostCutSceneCancel",
+          "slot": 39,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onPostCutSceneCancel",
+          "slot": 39,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0152",
@@ -1540,7 +1702,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 59 -> Lua event `_onReceiveDataPacket`.** Wrapper at VA 0x00759E50, identified as the `UserDataReceiver` wrapper. Slot position derived from vtable byte address 0x00FDFC18 minus base 0x00FDFB2C = 0xEC = 236 bytes = slot 59. Wrapper makes UNCONDITIONAL_CALL from 0x00759E9D to FUN_008A0190 which is `Application::Lua::Script::Client::Command::Network::UserDataReceiver::vftable[1]` (slot 1 = apply method, at offset +0x4 from UserDataReceiver::vftable @ 0x010574A4 = BCS-Y-0155). The apply method fires `_onReceiveDataPacket` via FUN_00447260+FUN_00CC7A90. So this is a Receiver-pattern wrapper where the receiver's apply ALSO fires a Lua callback (same dual-purpose pattern as slot 88 ChangeActorSubStatStatus per BCS-Y-0147, except here the apply fires the callback directly rather than recording state for later firing). Identified via FindAllReferences.java which discovered both the instruction xref (the LuaActorImpl wrapper) AND the data ref (UserDataReceiver::vftable[1]). Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759E50 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359E50 to 0x00759E50 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 59 -> Lua event `_onReceiveDataPacket`.** Wrapper at VA 0x00759E50, identified as the `UserDataReceiver` wrapper. Slot position derived from vtable byte address 0x00FDFC18 minus base 0x00FDFB2C = 0xEC = 236 bytes = slot 59. Wrapper makes UNCONDITIONAL_CALL from 0x00759E9D to FUN_008A0190 which is `Application::Lua::Script::Client::Command::Network::UserDataReceiver::vftable[1]` (slot 1 = apply method, at offset +0x4 from UserDataReceiver::vftable @ 0x010574A4 = BCS-Y-0155). The apply method fires `_onReceiveDataPacket` via FUN_00447260+FUN_00CC7A90. So this is a Receiver-pattern wrapper where the receiver's apply ALSO fires a Lua callback (same dual-purpose pattern as slot 88 ChangeActorSubStatStatus per BCS-Y-0147, except here the apply fires the callback directly rather than recording state for later firing). Identified via FindAllReferences.java which discovered both the instruction xref (the LuaActorImpl wrapper) AND the data ref (UserDataReceiver::vftable[1]). Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x00759E50 (follow-up of MDI-019). **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359E50 to 0x00759E50 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onReceiveDataPacket",
+          "slot": 59,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onReceiveDataPacket",
+          "slot": 59,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0153",
@@ -1584,7 +1760,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "LuaActorImpl::vftable slot 25 (offset +0x64 from 0x00FDFB2C). Function VA 0x0075D750. Wrapper calls trampoline FUN_008A3EA0 (one of the 008A3xxx _dynamic_cast + firer family) which calls firer FUN_006FE960 -> fires Lua callback `_onTargetChanged` via FUN_00447260+FUN_00CC7A90. Identified via FindAllReferences three-hop chain: (1) firer FUN_006FE960 <- caller FUN_008A3EA0 (008Axxxx tramp); (2) tramp FUN_008A3EA0 <- caller FUN_0075D750; (3) FUN_0075D750 has one data ref @ 0x00FDFB90 = LuaActorImpl::vftable +0x64 (slot 25). Pattern matches the 008A3E60-family trampoline pipeline seen in slots 23/24/38/39/59 from turns 6-8. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035D750 to 0x0075D750 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "LuaActorImpl::vftable slot 25 (offset +0x64 from 0x00FDFB2C). Function VA 0x0075D750. Wrapper calls trampoline FUN_008A3EA0 (one of the 008A3xxx _dynamic_cast + firer family) which calls firer FUN_006FE960 -> fires Lua callback `_onTargetChanged` via FUN_00447260+FUN_00CC7A90. Identified via FindAllReferences three-hop chain: (1) firer FUN_006FE960 <- caller FUN_008A3EA0 (008Axxxx tramp); (2) tramp FUN_008A3EA0 <- caller FUN_0075D750; (3) FUN_0075D750 has one data ref @ 0x00FDFB90 = LuaActorImpl::vftable +0x64 (slot 25). Pattern matches the 008A3E60-family trampoline pipeline seen in slots 23/24/38/39/59 from turns 6-8. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035D750 to 0x0075D750 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onTargetChanged",
+          "slot": 25,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onTargetChanged",
+          "slot": 25,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0157",
@@ -1595,7 +1785,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "LuaActorImpl::vftable slot 26 (offset +0x68 from 0x00FDFB2C). Function VA 0x0075D780. Wrapper calls trampoline FUN_008A3ED0 -> firer FUN_006FEBB0 -> fires `_onTargetDecided`. Paired with slot 25 (Changed/Decided pair). FindAllReferences chain: firer FUN_006FEBB0 <- FUN_008A3ED0 <- FUN_0075D780 (data ref @ 0x00FDFB94 = LuaActorImpl::vftable +0x68). Adjacent layout (slots 25/26 consecutive) confirms this is a Pre/Post-style target-state pair. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035D780 to 0x0075D780 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "LuaActorImpl::vftable slot 26 (offset +0x68 from 0x00FDFB2C). Function VA 0x0075D780. Wrapper calls trampoline FUN_008A3ED0 -> firer FUN_006FEBB0 -> fires `_onTargetDecided`. Paired with slot 25 (Changed/Decided pair). FindAllReferences chain: firer FUN_006FEBB0 <- FUN_008A3ED0 <- FUN_0075D780 (data ref @ 0x00FDFB94 = LuaActorImpl::vftable +0x68). Adjacent layout (slots 25/26 consecutive) confirms this is a Pre/Post-style target-state pair. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x0035D780 to 0x0075D780 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onTargetDecided",
+          "slot": 26,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onTargetDecided",
+          "slot": 26,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0158",
@@ -1606,7 +1810,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "LuaActorImpl::vftable slot 41 (offset +0xA4 from 0x00FDFB2C). Function VA 0x00759BB0. Wrapper calls trampoline FUN_008A4410 -> firer FUN_006FEDE0 -> fires `_onPreWarp`. Identified. **Cross-class observation**: NullActorImpl::vftable (BCS-Y-0162 @ VA 0x00FE02AC) has a peer wrapper FUN_0075AE30 also at offset +0xA4 (its slot 41), confirming the LuaActorImpl/NullActorImpl vftable layout is parallel (NullActorImpl is the null-pattern stub variant). The trampoline FUN_008A4410 also appears in TriggerBoxReceiver::vftable (see BCS-Y-0164) suggesting the Pre-Warp event is shared with trigger-box-enter logic. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359BB0 to 0x00759BB0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "LuaActorImpl::vftable slot 41 (offset +0xA4 from 0x00FDFB2C). Function VA 0x00759BB0. Wrapper calls trampoline FUN_008A4410 -> firer FUN_006FEDE0 -> fires `_onPreWarp`. Identified. **Cross-class observation**: NullActorImpl::vftable (BCS-Y-0162 @ VA 0x00FE02AC) has a peer wrapper FUN_0075AE30 also at offset +0xA4 (its slot 41), confirming the LuaActorImpl/NullActorImpl vftable layout is parallel (NullActorImpl is the null-pattern stub variant). The trampoline FUN_008A4410 also appears in TriggerBoxReceiver::vftable (see BCS-Y-0164) suggesting the Pre-Warp event is shared with trigger-box-enter logic. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359BB0 to 0x00759BB0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onPreWarp",
+          "slot": 41,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onPreWarp",
+          "slot": 41,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0159",
@@ -1617,7 +1835,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "LuaActorImpl::vftable slot 42 (offset +0xA8 from 0x00FDFB2C). Function VA 0x00759C20. Wrapper calls trampoline FUN_008A44D0 -> firer FUN_006FEF10 -> fires `_onPostWarp`. Paired with slot 41 (Pre/Post Warp pair). The trampoline FUN_008A44D0 also appears as TriggerBoxReceiver::vftable[1] (BCS-Y-0165) - shared with trigger-box-leave logic. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359C20 to 0x00759C20 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "LuaActorImpl::vftable slot 42 (offset +0xA8 from 0x00FDFB2C). Function VA 0x00759C20. Wrapper calls trampoline FUN_008A44D0 -> firer FUN_006FEF10 -> fires `_onPostWarp`. Paired with slot 41 (Pre/Post Warp pair). The trampoline FUN_008A44D0 also appears as TriggerBoxReceiver::vftable[1] (BCS-Y-0165) - shared with trigger-box-leave logic. **The lua-name-to-opcode-bridge-open pass verification**: FUN_00CC7A90 (the actual Lua dispatcher per BCS-Y-0311) confirmed present in this firer's callee set via decomp dump verify_lua.txt; the fire pattern is `FUN_00447260(\"<event_name>\", DAT_00f67298); FUN_00CC7A90(target, local_60, local_a0);` - std::string ctor for the event name immediately followed by the Lua-VM dispatcher. The original binding claim stands; only the wording (which lumped std::string ctor and Lua dispatcher together as a single 'fire primitive') needed sharpening. Address corrected from 0x00359C20 to 0x00759C20 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onPostWarp",
+          "slot": 42,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onPostWarp",
+          "slot": 42,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0160",
@@ -1628,7 +1860,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "LuaActorImpl::vftable slot 62 (offset +0xF8 from 0x00FDFB2C). Function VA 0x0076C4D0. Wrapper invokes apply-method FUN_0089D610 (which is also SetDisplayNameReceiver::vftable[1], see BCS-Y-0167) -> firer FUN_006FAFF0 -> fires `_onUpdateDisplayName`. **Receiver-pattern wrapper** (not trampoline-via-008A3E60). FindAllReferences chain: firer FUN_006FAFF0 <- FUN_0089D610 (which has data ref @ 0x0105738C = SetDisplayNameReceiver::vftable +0x4 = its slot 1) <- FUN_0076C4D0 (data ref @ 0x00FDFC24 = LuaActorImpl::vftable +0xF8). Note there are TWO _onUpdateDisplayName firers in the binary (FUN_006FAFF0 and FUN_006FB280); this slot wraps the first one. Address corrected from 0x0036C4D0 to 0x0076C4D0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "LuaActorImpl::vftable slot 62 (offset +0xF8 from 0x00FDFB2C). Function VA 0x0076C4D0. Wrapper invokes apply-method FUN_0089D610 (which is also SetDisplayNameReceiver::vftable[1], see BCS-Y-0167) -> firer FUN_006FAFF0 -> fires `_onUpdateDisplayName`. **Receiver-pattern wrapper** (not trampoline-via-008A3E60). FindAllReferences chain: firer FUN_006FAFF0 <- FUN_0089D610 (which has data ref @ 0x0105738C = SetDisplayNameReceiver::vftable +0x4 = its slot 1) <- FUN_0076C4D0 (data ref @ 0x00FDFC24 = LuaActorImpl::vftable +0xF8). Note there are TWO _onUpdateDisplayName firers in the binary (FUN_006FAFF0 and FUN_006FB280); this slot wraps the first one. Address corrected from 0x0036C4D0 to 0x0076C4D0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onUpdateDisplayName",
+          "slot": 62,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onUpdateDisplayName",
+          "slot": 62,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0161",
@@ -1639,7 +1885,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "LuaActorImpl::vftable slot 65 (offset +0x104 from 0x00FDFB2C). Function VA 0x0075A0E0. Wrapper invokes apply-method FUN_0089C8B0 (which is also AddictLoginTimeKindReceiver::vftable[1], see BCS-Y-0166) -> firer FUN_00704230 -> fires `_onReceiveLimitAddicted`. **Receiver-pattern wrapper**. Chain: firer FUN_00704230 <- FUN_0089C8B0 (data ref @ 0x010572E0 = AddictLoginTimeKindReceiver::vftable +0x4 = its slot 1) <- FUN_0075A0E0 (data ref @ 0x00FDFC30 = LuaActorImpl::vftable +0x104). Matches the MDI-022 Receiver template: a single-slot apply method shared between LuaActorImpl-side wrapper and a Network::*Receiver class. The `_onReceiveLimitAddicted` callback (login-time addiction-warning per regional rules) is a network-domain event consuming a server packet - the Receiver class is AddictLoginTimeKindReceiver. Address corrected from 0x0035A0E0 to 0x0075A0E0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [duplicate-address resolution] Legitimate dual perspective: the receiver apply-wrapper identity and LuaActorImpl vtable-slot callback identity describe distinct roles of the same function; sibling entries [[BCS-Y-0109]], [[BCS-Y-0161]]."
+      "notes": "LuaActorImpl::vftable slot 65 (offset +0x104 from 0x00FDFB2C). Function VA 0x0075A0E0. Wrapper invokes apply-method FUN_0089C8B0 (which is also AddictLoginTimeKindReceiver::vftable[1], see BCS-Y-0166) -> firer FUN_00704230 -> fires `_onReceiveLimitAddicted`. **Receiver-pattern wrapper**. Chain: firer FUN_00704230 <- FUN_0089C8B0 (data ref @ 0x010572E0 = AddictLoginTimeKindReceiver::vftable +0x4 = its slot 1) <- FUN_0075A0E0 (data ref @ 0x00FDFC30 = LuaActorImpl::vftable +0x104). Matches the MDI-022 Receiver template: a single-slot apply method shared between LuaActorImpl-side wrapper and a Network::*Receiver class. The `_onReceiveLimitAddicted` callback (login-time addiction-warning per regional rules) is a network-domain event consuming a server packet - the Receiver class is AddictLoginTimeKindReceiver. Address corrected from 0x0035A0E0 to 0x0075A0E0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [duplicate-address resolution] Legitimate dual perspective: the receiver apply-wrapper identity and LuaActorImpl vtable-slot callback identity describe distinct roles of the same function; sibling entries [[BCS-Y-0109]], [[BCS-Y-0161]].",
+      "luaApiRefs": [
+        {
+          "luaName": "_onReceiveLimitAddicted",
+          "slot": 65,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onReceiveLimitAddicted",
+          "slot": 65,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0162",
@@ -1720,7 +1980,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 16 -> Lua event `_onHoverHelp`.** Wrapper at VA 0x0075D6D0. Slot derived from vftable byte address 0x00FDFB6C minus base 0x00FDFB2C = 0x40 = 64 bytes = slot 16. Wrapper calls trampoline FUN_008A4100 -> firer FUN_00707610 -> fires `_onHoverHelp` via FUN_00447260+FUN_00CC7A90. Identified via FindAllReferences three-hop chain. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075D6D0 (follow-up of MDI-019). Address corrected from 0x0035D6D0 to 0x0075D6D0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 16 -> Lua event `_onHoverHelp`.** Wrapper at VA 0x0075D6D0. Slot derived from vftable byte address 0x00FDFB6C minus base 0x00FDFB2C = 0x40 = 64 bytes = slot 16. Wrapper calls trampoline FUN_008A4100 -> firer FUN_00707610 -> fires `_onHoverHelp` via FUN_00447260+FUN_00CC7A90. Identified via FindAllReferences three-hop chain. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075D6D0 (follow-up of MDI-019). Address corrected from 0x0035D6D0 to 0x0075D6D0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onHoverHelp",
+          "slot": 16,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onHoverHelp",
+          "slot": 16,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0172",
@@ -1731,7 +2005,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 29 -> Lua event `_onInitializationClip`.** Wrapper at VA 0x0075D860. Slot derived from vftable byte address 0x00FDFBA0 minus base 0x00FDFB2C = 0x74 = 116 bytes = slot 29. Wrapper calls trampoline FUN_008A3990 -> firer FUN_006FBE80 -> fires `_onInitializationClip` via FUN_00447260+FUN_00CC7A90. First slot of the **7-slot UI Clip family cluster (slots 29..35)**: Init/Show/Hide/Show/Hide/Open/Finalize for UI and Widget clips. Identified via FindAllReferences. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075D860 (follow-up of MDI-019). Address corrected from 0x0035D860 to 0x0075D860 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 29 -> Lua event `_onInitializationClip`.** Wrapper at VA 0x0075D860. Slot derived from vftable byte address 0x00FDFBA0 minus base 0x00FDFB2C = 0x74 = 116 bytes = slot 29. Wrapper calls trampoline FUN_008A3990 -> firer FUN_006FBE80 -> fires `_onInitializationClip` via FUN_00447260+FUN_00CC7A90. First slot of the **7-slot UI Clip family cluster (slots 29..35)**: Init/Show/Hide/Show/Hide/Open/Finalize for UI and Widget clips. Identified via FindAllReferences. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075D860 (follow-up of MDI-019). Address corrected from 0x0035D860 to 0x0075D860 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onInitializationClip",
+          "slot": 29,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onInitializationClip",
+          "slot": 29,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0173",
@@ -1742,7 +2030,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 30 -> Lua event `_onShowUIClip`.** Wrapper at VA 0x0075D890. Slot at vftable byte address 0x00FDFBA4 (offset +0x78 = slot 30). Trampoline FUN_008A39E0 -> firer FUN_006FC080 -> `_onShowUIClip`. Part of the UI Clip family cluster (slots 29..35). Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D890 (follow-up of MDI-019). Address corrected from 0x0035D890 to 0x0075D890 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 30 -> Lua event `_onShowUIClip`.** Wrapper at VA 0x0075D890. Slot at vftable byte address 0x00FDFBA4 (offset +0x78 = slot 30). Trampoline FUN_008A39E0 -> firer FUN_006FC080 -> `_onShowUIClip`. Part of the UI Clip family cluster (slots 29..35). Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D890 (follow-up of MDI-019). Address corrected from 0x0035D890 to 0x0075D890 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onShowUIClip",
+          "slot": 30,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onShowUIClip",
+          "slot": 30,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0174",
@@ -1753,7 +2055,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 31 -> Lua event `_onHideUIClip`.** Wrapper at VA 0x0075D8D0. Slot at vftable byte address 0x00FDFBA8 (offset +0x7c = slot 31). Trampoline FUN_008A3A40 -> firer FUN_006FC260 -> `_onHideUIClip`. Part of the UI Clip family cluster. Note: slot 31 (offset +0x7c) is ALSO present in 4 OTHER actor-impl vftables (0x00FD5CAC, 0x00FD5E04, 0x00FD647C, 0x00FD785C = Control::MyPlayer::vftable BCS-Y-0163) where it points to FUN_006FB430 firing `_onChangeAccessibleInServer` instead - so slot 31 has different bindings depending on actor-impl class (this is a Lua-class differentiation pattern beyond the LuaActorImpl/NullActorImpl pair). Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D8D0 (follow-up of MDI-019). Address corrected from 0x0035D8D0 to 0x0075D8D0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 31 -> Lua event `_onHideUIClip`.** Wrapper at VA 0x0075D8D0. Slot at vftable byte address 0x00FDFBA8 (offset +0x7c = slot 31). Trampoline FUN_008A3A40 -> firer FUN_006FC260 -> `_onHideUIClip`. Part of the UI Clip family cluster. Note: slot 31 (offset +0x7c) is ALSO present in 4 OTHER actor-impl vftables (0x00FD5CAC, 0x00FD5E04, 0x00FD647C, 0x00FD785C = Control::MyPlayer::vftable BCS-Y-0163) where it points to FUN_006FB430 firing `_onChangeAccessibleInServer` instead - so slot 31 has different bindings depending on actor-impl class (this is a Lua-class differentiation pattern beyond the LuaActorImpl/NullActorImpl pair). Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D8D0 (follow-up of MDI-019). Address corrected from 0x0035D8D0 to 0x0075D8D0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onHideUIClip",
+          "slot": 31,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onHideUIClip",
+          "slot": 31,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onChangeAccessibleInServer",
+          "slot": 31,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0175",
@@ -1764,7 +2086,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 32 -> Lua event `_onShowWidgetClip`.** Wrapper at VA 0x00759940. Slot at vftable byte address 0x00FDFBAC (offset +0x80 = slot 32). Trampoline FUN_008A3AA0 -> firer FUN_006FC3A0 -> `_onShowWidgetClip`. Part of the UI Clip family cluster. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x00759940 (follow-up of MDI-019). Address corrected from 0x00359940 to 0x00759940 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 32 -> Lua event `_onShowWidgetClip`.** Wrapper at VA 0x00759940. Slot at vftable byte address 0x00FDFBAC (offset +0x80 = slot 32). Trampoline FUN_008A3AA0 -> firer FUN_006FC3A0 -> `_onShowWidgetClip`. Part of the UI Clip family cluster. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x00759940 (follow-up of MDI-019). Address corrected from 0x00359940 to 0x00759940 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onShowWidgetClip",
+          "slot": 32,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onShowWidgetClip",
+          "slot": 32,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0176",
@@ -1775,7 +2111,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 33 -> Lua event `_onHideWidgetClip`.** Wrapper at VA 0x007599E0. Slot at vftable byte address 0x00FDFBB0 (offset +0x84 = slot 33). Trampoline FUN_008A3B00 -> firer FUN_006FC4D0 -> `_onHideWidgetClip`. Part of the UI Clip family cluster. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x007599E0 (follow-up of MDI-019). Address corrected from 0x003599E0 to 0x007599E0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 33 -> Lua event `_onHideWidgetClip`.** Wrapper at VA 0x007599E0. Slot at vftable byte address 0x00FDFBB0 (offset +0x84 = slot 33). Trampoline FUN_008A3B00 -> firer FUN_006FC4D0 -> `_onHideWidgetClip`. Part of the UI Clip family cluster. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x007599E0 (follow-up of MDI-019). Address corrected from 0x003599E0 to 0x007599E0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onHideWidgetClip",
+          "slot": 33,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onHideWidgetClip",
+          "slot": 33,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0177",
@@ -1786,7 +2136,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 34 -> Lua event `_onOpenUIClip`.** Wrapper at VA 0x0075D900. Slot at vftable byte address 0x00FDFBB4 (offset +0x88 = slot 34). Trampoline FUN_008A3B50 -> firer FUN_006FC5F0 -> `_onOpenUIClip`. Part of the UI Clip family cluster. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D900 (follow-up of MDI-019). Address corrected from 0x0035D900 to 0x0075D900 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 34 -> Lua event `_onOpenUIClip`.** Wrapper at VA 0x0075D900. Slot at vftable byte address 0x00FDFBB4 (offset +0x88 = slot 34). Trampoline FUN_008A3B50 -> firer FUN_006FC5F0 -> `_onOpenUIClip`. Part of the UI Clip family cluster. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D900 (follow-up of MDI-019). Address corrected from 0x0035D900 to 0x0075D900 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onOpenUIClip",
+          "slot": 34,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onOpenUIClip",
+          "slot": 34,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0178",
@@ -1797,7 +2161,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 35 -> Lua event `_onFinalizeClip`.** Wrapper at VA 0x0075D950. Slot at vftable byte address 0x00FDFBB8 (offset +0x8c = slot 35). Trampoline FUN_008A3910 -> firer FUN_006FBC50 -> firer FUN_006FB9C0 -> `_onFinalizeClip` (two-firer chain unique to this slot - the trampoline calls FUN_006FBC50 which has its own logic before tail-calling FUN_006FB9C0 which is the actual Lua firer). Last slot of the **7-slot UI Clip family cluster (slots 29..35)**. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D950 (follow-up of MDI-019). Address corrected from 0x0035D950 to 0x0075D950 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 35 -> Lua event `_onFinalizeClip`.** Wrapper at VA 0x0075D950. Slot at vftable byte address 0x00FDFBB8 (offset +0x8c = slot 35). Trampoline FUN_008A3910 -> firer FUN_006FBC50 -> firer FUN_006FB9C0 -> `_onFinalizeClip` (two-firer chain unique to this slot - the trampoline calls FUN_006FBC50 which has its own logic before tail-calling FUN_006FB9C0 which is the actual Lua firer). Last slot of the **7-slot UI Clip family cluster (slots 29..35)**. Identified. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075D950 (follow-up of MDI-019). Address corrected from 0x0035D950 to 0x0075D950 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onFinalizeClip",
+          "slot": 35,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onFinalizeClip",
+          "slot": 35,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0179",
@@ -1808,7 +2186,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 70 -> Lua event `_onGetGoobbue` (via VehicleGradeReceiver).** Wrapper at VA 0x0075A380 (per BCS-Y-0092 labeled `System::VehicleGradeReceiver`). Slot at vftable byte address 0x00FDFC44 (offset +0x118 = slot 70). The wrapper constructs+applies the receiver whose apply method is slot 1 of `VehicleGradeReceiver::vftable` (BCS-Y-0180) - the slot-1 apply method is [[VehicleGradeReceiver::apply_FUN_008A31E0]] (BCS-Y-1137) -> firer FUN_006F8350 -> fires `_onGetGoobbue` via FUN_00447260+FUN_00CC7A90. Naming reconciliation: BCS-Y-0092 enumeration listed slot 70 as VehicleGradeReceiver (the C++ class name in the binary's RTTI); the Lua event it fires is `_onGetGoobbue` (Goobbue is the player-mount class for vehicles in 1.x - the two names refer to the same domain). Identified formalization. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075A380 (follow-up of MDI-019). Address corrected from 0x0035A380 to 0x0075A380 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 70 -> Lua event `_onGetGoobbue` (via VehicleGradeReceiver).** Wrapper at VA 0x0075A380 (per BCS-Y-0092 labeled `System::VehicleGradeReceiver`). Slot at vftable byte address 0x00FDFC44 (offset +0x118 = slot 70). The wrapper constructs+applies the receiver whose apply method is slot 1 of `VehicleGradeReceiver::vftable` (BCS-Y-0180) - the slot-1 apply method is [[VehicleGradeReceiver::apply_FUN_008A31E0]] (BCS-Y-1137) -> firer FUN_006F8350 -> fires `_onGetGoobbue` via FUN_00447260+FUN_00CC7A90. Naming reconciliation: BCS-Y-0092 enumeration listed slot 70 as VehicleGradeReceiver (the C++ class name in the binary's RTTI); the Lua event it fires is `_onGetGoobbue` (Goobbue is the player-mount class for vehicles in 1.x - the two names refer to the same domain). Identified formalization. Decoded from Ghidra 12.1 auto-decompiler at VA 0x0075A380 (follow-up of MDI-019). Address corrected from 0x0035A380 to 0x0075A380 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onGetGoobbue",
+          "slot": 70,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onGetGoobbue",
+          "slot": 70,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0180",
@@ -1877,7 +2269,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 64 -> Lua event `_onChangeSystemFlag`.** Wrapper at VA 0x0075A060. Slot at vftable byte address 0x00FDFC2C (offset +0x100 = slot 64). Chain: wrapper FUN_0075A060 constructs+applies+destructs `ChangeSystemStatReceiver` (BCS-Y-0183 @ 0x010572F4) via apply method FUN_0089CA80 (slot 1 of receiver vftable) which calls firer FUN_006FAE70 -> fires `_onChangeSystemFlag` via FUN_00447260+FUN_00CC7A90. This binding **confirms and lifts BCS-Y-0092's prior slot 64 identification of `Network::ChangeSystemStatReceiver` to also include the Lua-event firing semantics**. Identified via FindAllReferences three-hop chain. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A060 (follow-up of MDI-019). Address corrected from 0x0035A060 to 0x0075A060 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 64 -> Lua event `_onChangeSystemFlag`.** Wrapper at VA 0x0075A060. Slot at vftable byte address 0x00FDFC2C (offset +0x100 = slot 64). Chain: wrapper FUN_0075A060 constructs+applies+destructs `ChangeSystemStatReceiver` (BCS-Y-0183 @ 0x010572F4) via apply method FUN_0089CA80 (slot 1 of receiver vftable) which calls firer FUN_006FAE70 -> fires `_onChangeSystemFlag` via FUN_00447260+FUN_00CC7A90. This binding **confirms and lifts BCS-Y-0092's prior slot 64 identification of `Network::ChangeSystemStatReceiver` to also include the Lua-event firing semantics**. Identified via FindAllReferences three-hop chain. Decoded from Ghidra 12.1 auto-decompiler on the 1.23b ffxivgame.exe at VA 0x0075A060 (follow-up of MDI-019). Address corrected from 0x0035A060 to 0x0075A060 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onChangeSystemFlag",
+          "slot": 64,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onChangeSystemFlag",
+          "slot": 64,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0183",
@@ -2077,7 +2483,21 @@
         "mdi-019",
         "xivl-opcodes:data/client_receivers.json"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 7 -> Lua event `_onDebugInput`.** Wrapper at VA 0x00759630. Slot at vftable byte address 0x00FDFB48 (offset +0x1C = slot 7). Direct-trampoline pattern: wrapper calls trampoline FUN_008A3C10 then firer FUN_008A4880 (depth 1). FUN_008A4880 explicitly: `FUN_00447260(\"_onDebugInput\", DAT_00f67298)` at 0x008A4880+~0x418. **Cross-confirms the lua-name-to-opcode-bridge-open pass gap-receiver analysis**: DebugInputReceiver (per `client_receivers.json` lua_callback field) feeds the SAME firer FUN_008A4880, so the LuaActorImpl slot binding and the opcode-side receiver binding converge on a single firer. The firer iterates a vector of debug-input records (stride 0x54), branches per record on type (string vs ActorBase-typed value via RTTI on Control::ActorBase / Control::MyPlayer), then calls `_onDebugInput` for each record. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp on both wrapper and firer."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 7 -> Lua event `_onDebugInput`.** Wrapper at VA 0x00759630. Slot at vftable byte address 0x00FDFB48 (offset +0x1C = slot 7). Direct-trampoline pattern: wrapper calls trampoline FUN_008A3C10 then firer FUN_008A4880 (depth 1). FUN_008A4880 explicitly: `FUN_00447260(\"_onDebugInput\", DAT_00f67298)` at 0x008A4880+~0x418. **Cross-confirms the lua-name-to-opcode-bridge-open pass gap-receiver analysis**: DebugInputReceiver (per `client_receivers.json` lua_callback field) feeds the SAME firer FUN_008A4880, so the LuaActorImpl slot binding and the opcode-side receiver binding converge on a single firer. The firer iterates a vector of debug-input records (stride 0x54), branches per record on type (string vs ActorBase-typed value via RTTI on Control::ActorBase / Control::MyPlayer), then calls `_onDebugInput` for each record. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp on both wrapper and firer.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onDebugInput",
+          "slot": 7,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onDebugInput",
+          "slot": 7,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0201",
@@ -2088,7 +2508,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 19 -> Lua event `_onReaction`.** Wrapper at VA 0x00759720. Slot at vftable byte address 0x00FDFB78 (offset +0x4C = slot 19). Deep-chain pattern (depth 3): wrapper -> trampoline FUN_008A3D00 -> sub-trampoline FUN_008A4270 -> firer FUN_00706F60. FUN_00706F60 explicitly fires `_onReaction` at 0x00706F60+~0x4FF after iterating a reaction-record vector (stride 0x5C) filtering by `param_4 == reaction_id` and `param_6 != record_filter_byte`. Paired with slot 20 (BCS-Y-0202) - both reach the SAME firer FUN_00706F60 through different trampoline chains. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp. | [duplicate-address resolution] Legitimate dual perspective: the Lua callback-slot identity and the paired receiver-wrapper identity are independently useful perspectives; sibling entries [[BCS-Y-0201]], [[BCS-Y-0260]]."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 19 -> Lua event `_onReaction`.** Wrapper at VA 0x00759720. Slot at vftable byte address 0x00FDFB78 (offset +0x4C = slot 19). Deep-chain pattern (depth 3): wrapper -> trampoline FUN_008A3D00 -> sub-trampoline FUN_008A4270 -> firer FUN_00706F60. FUN_00706F60 explicitly fires `_onReaction` at 0x00706F60+~0x4FF after iterating a reaction-record vector (stride 0x5C) filtering by `param_4 == reaction_id` and `param_6 != record_filter_byte`. Paired with slot 20 (BCS-Y-0202) - both reach the SAME firer FUN_00706F60 through different trampoline chains. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp. | [duplicate-address resolution] Legitimate dual perspective: the Lua callback-slot identity and the paired receiver-wrapper identity are independently useful perspectives; sibling entries [[BCS-Y-0201]], [[BCS-Y-0260]].",
+      "luaApiRefs": [
+        {
+          "luaName": "_onReaction",
+          "slot": 19,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onReaction",
+          "slot": 19,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0202",
@@ -2099,7 +2533,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 20 -> Lua event `_onReaction`.** Wrapper at VA 0x007597A0. Slot at vftable byte address 0x00FDFB7C (offset +0x50 = slot 20). Deep-chain pattern (depth 3): wrapper -> trampoline FUN_008A3D70 -> sub-trampoline FUN_008A4340 -> firer FUN_00706F60 (SAME firer as slot 19 / BCS-Y-0201). Slot 19/20 are a sibling-pair binding to the same callback name through different entry-point trampolines (one is `apply` style, the other is `prepare` or `receive` style - distinct C++ wrappers, identical Lua effect). Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 20 -> Lua event `_onReaction`.** Wrapper at VA 0x007597A0. Slot at vftable byte address 0x00FDFB7C (offset +0x50 = slot 20). Deep-chain pattern (depth 3): wrapper -> trampoline FUN_008A3D70 -> sub-trampoline FUN_008A4340 -> firer FUN_00706F60 (SAME firer as slot 19 / BCS-Y-0201). Slot 19/20 are a sibling-pair binding to the same callback name through different entry-point trampolines (one is `apply` style, the other is `prepare` or `receive` style - distinct C++ wrappers, identical Lua effect). Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onReaction",
+          "slot": 20,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onReaction",
+          "slot": 20,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0203",
@@ -2110,7 +2558,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 21 -> Lua event `_onTouch` (touch-begin variant).** Wrapper at VA 0x00759820. Slot at vftable byte address 0x00FDFB80 (offset +0x54 = slot 21). Chain (depth 3): wrapper -> FUN_00776A50 + trampoline FUN_008A3DE0 -> firer FUN_00898D20. FUN_00898D20 sets `uStack_b9 = 1` (touch-begin flag) before firing `_onTouch` at 0x00898D20+~0x2E2. Paired with slot 22 (BCS-Y-0204) which sets `uStack_b9 = 0` (touch-end). The pair is a touch-state Begin/End dispatcher - both fire the same callback name but with a different begin/end discriminator byte. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp showing the uStack_b9 = 1/0 split. | [duplicate-address resolution] Corrected attribution: the direct AttributeTypeEventReceiver wrapper evidence outweighs the older depth-3 callback-walk attribution; superseded by [[BCS-Y-0262]]."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 21 -> Lua event `_onTouch` (touch-begin variant).** Wrapper at VA 0x00759820. Slot at vftable byte address 0x00FDFB80 (offset +0x54 = slot 21). Chain (depth 3): wrapper -> FUN_00776A50 + trampoline FUN_008A3DE0 -> firer FUN_00898D20. FUN_00898D20 sets `uStack_b9 = 1` (touch-begin flag) before firing `_onTouch` at 0x00898D20+~0x2E2. Paired with slot 22 (BCS-Y-0204) which sets `uStack_b9 = 0` (touch-end). The pair is a touch-state Begin/End dispatcher - both fire the same callback name but with a different begin/end discriminator byte. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp showing the uStack_b9 = 1/0 split. | [duplicate-address resolution] Corrected attribution: the direct AttributeTypeEventReceiver wrapper evidence outweighs the older depth-3 callback-walk attribution; superseded by [[BCS-Y-0262]].",
+      "luaApiRefs": [
+        {
+          "luaName": "_onTouch",
+          "slot": 21,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onTouch",
+          "slot": 21,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0204",
@@ -2121,7 +2583,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 22 -> Lua event `_onTouch` (touch-end variant).** Wrapper at VA 0x007598A0. Slot at vftable byte address 0x00FDFB84 (offset +0x58 = slot 22). Chain (depth 3): wrapper -> trampoline FUN_008A3E20 + FUN_00776B70 -> firer FUN_00898EB0 (DIFFERENT firer from slot 21's FUN_00898D20). FUN_00898EB0 sets `uStack_b9 = 0` (touch-end flag) before firing `_onTouch` at 0x00898EB0+~0x2DD. The slot 21/22 pair uses TWO distinct firer functions (rather than one firer with a parameter) - a Mirror-pair pattern - but both fire the same `_onTouch` callback name with different begin/end discriminators. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 22 -> Lua event `_onTouch` (touch-end variant).** Wrapper at VA 0x007598A0. Slot at vftable byte address 0x00FDFB84 (offset +0x58 = slot 22). Chain (depth 3): wrapper -> trampoline FUN_008A3E20 + FUN_00776B70 -> firer FUN_00898EB0 (DIFFERENT firer from slot 21's FUN_00898D20). FUN_00898EB0 sets `uStack_b9 = 0` (touch-end flag) before firing `_onTouch` at 0x00898EB0+~0x2DD. The slot 21/22 pair uses TWO distinct firer functions (rather than one firer with a parameter) - a Mirror-pair pattern - but both fire the same `_onTouch` callback name with different begin/end discriminators. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onTouch",
+          "slot": 22,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onTouch",
+          "slot": 22,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0205",
@@ -2132,7 +2608,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 28 -> Lua event `_onInitializationClip` (preview-setup variant) + Lua function `PreviewSetupClip`.** Wrapper at VA 0x0075D830. Slot at vftable byte address 0x00FDFB9C (offset +0x70 = slot 28). Chain (depth 2): wrapper -> trampoline FUN_008A3950 + setup FUN_008A3960 -> firer FUN_006FBCC0. FUN_006FBCC0 fires TWO Lua names per call: first `PreviewSetupClip` (non-`_on*` Lua function name) at 0x006FBCC0+~0x182 via `FUN_00447260(PTR_s_PreviewSetupClip_012bfb54,...)`, THEN `_onInitializationClip` at 0x006FBCC0+~0x193. This makes slot 28 a sibling dispatcher to slot 29 (BCS-Y-0172, also fires _onInitializationClip but via different firer FUN_006FBF60 wrapped behind tramp FUN_008A39E0). The two slots together form the 'init clip' family: slot 28 fires the preview-setup variant (sets up clip ahead of presentation), slot 29 fires the show-clip variant (presents the clip). Both share the `_onInitializationClip` Lua name to let scripts hook the unified initialization event. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp showing both `PreviewSetupClip` and `_onInitializationClip` strings in the firer."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 28 -> Lua event `_onInitializationClip` (preview-setup variant) + Lua function `PreviewSetupClip`.** Wrapper at VA 0x0075D830. Slot at vftable byte address 0x00FDFB9C (offset +0x70 = slot 28). Chain (depth 2): wrapper -> trampoline FUN_008A3950 + setup FUN_008A3960 -> firer FUN_006FBCC0. FUN_006FBCC0 fires TWO Lua names per call: first `PreviewSetupClip` (non-`_on*` Lua function name) at 0x006FBCC0+~0x182 via `FUN_00447260(PTR_s_PreviewSetupClip_012bfb54,...)`, THEN `_onInitializationClip` at 0x006FBCC0+~0x193. This makes slot 28 a sibling dispatcher to slot 29 (BCS-Y-0172, also fires _onInitializationClip but via different firer FUN_006FBF60 wrapped behind tramp FUN_008A39E0). The two slots together form the 'init clip' family: slot 28 fires the preview-setup variant (sets up clip ahead of presentation), slot 29 fires the show-clip variant (presents the clip). Both share the `_onInitializationClip` Lua name to let scripts hook the unified initialization event. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp showing both `PreviewSetupClip` and `_onInitializationClip` strings in the firer.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onInitializationClip",
+          "slot": 28,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onInitializationClip",
+          "slot": 28,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0206",
@@ -2143,7 +2633,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 61 -> Lua event `_onReceiveTimingPacket`.** Wrapper at VA 0x00759F50. Slot at vftable byte address 0x00FDFC20 (offset +0xF4 = slot 61). Chain (depth 2): wrapper -> trampoline FUN_0089DFA0 + FUN_008A04B0 + cleanup FUN_0089E010 -> firer FUN_008A0370. FUN_008A0370 fires `_onReceiveTimingPacket` at 0x008A0370+~0x130 after constructing two int args (low/high timestamp halves) via `FUN_00585020` calls and a `FUN_00793830` clock-snapshot helper. The firer takes the packet payload via stack frame args (param_2 = packet timing data), unwraps the timing fields, and pushes them as Lua args alongside the callback name. This is the client-side hook for any inbound timing-sync packet - server timestamps that need to update local game-clock state. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 61 -> Lua event `_onReceiveTimingPacket`.** Wrapper at VA 0x00759F50. Slot at vftable byte address 0x00FDFC20 (offset +0xF4 = slot 61). Chain (depth 2): wrapper -> trampoline FUN_0089DFA0 + FUN_008A04B0 + cleanup FUN_0089E010 -> firer FUN_008A0370. FUN_008A0370 fires `_onReceiveTimingPacket` at 0x008A0370+~0x130 after constructing two int args (low/high timestamp halves) via `FUN_00585020` calls and a `FUN_00793830` clock-snapshot helper. The firer takes the packet payload via stack frame args (param_2 = packet timing data), unwraps the timing fields, and pushes them as Lua args alongside the callback name. This is the client-side hook for any inbound timing-sync packet - server timestamps that need to update local game-clock state. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onReceiveTimingPacket",
+          "slot": 61,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onReceiveTimingPacket",
+          "slot": 61,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0207",
@@ -2154,7 +2658,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 79 -> Lua event `_onChangeJob`.** Wrapper at VA 0x0075A6B0. Slot at vftable byte address 0x00FDFC68 (offset +0x13C = slot 79). Chain (depth 2): wrapper -> trampoline FUN_0089CAB0 + FUN_0089CB60 + cleanup FUN_0089CB10 -> firer FUN_00706DC0. FUN_00706DC0 reads current job byte from `*(char *)(param_1 + 0xF1)`; only fires when `param_3 != current_job_byte` (the diff guard at 0x00706DC0+~0x4B); writes new job to actor field at +0xF1, then fires `_onChangeJob` at 0x00706DC0+~0x119 with TWO int args: new job id (just-written) and old job id (cVar1). This is the canonical job-change event - any inbound job-set packet (likely 0x0137 SetActorProperty when the property path resolves to a job slot) routes through this slot to fire the `_onChangeJob(newJobId, oldJobId)` Lua callback. The +0xF1 byte offset is the actor's current-job storage field. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp showing the if-diff guard pattern. | [duplicate-address resolution] Legitimate dual perspective: the receiver apply-wrapper identity and LuaActorImpl vtable-slot callback identity describe distinct roles of the same function; sibling entries [[BCS-Y-0102]], [[BCS-Y-0207]]."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 79 -> Lua event `_onChangeJob`.** Wrapper at VA 0x0075A6B0. Slot at vftable byte address 0x00FDFC68 (offset +0x13C = slot 79). Chain (depth 2): wrapper -> trampoline FUN_0089CAB0 + FUN_0089CB60 + cleanup FUN_0089CB10 -> firer FUN_00706DC0. FUN_00706DC0 reads current job byte from `*(char *)(param_1 + 0xF1)`; only fires when `param_3 != current_job_byte` (the diff guard at 0x00706DC0+~0x4B); writes new job to actor field at +0xF1, then fires `_onChangeJob` at 0x00706DC0+~0x119 with TWO int args: new job id (just-written) and old job id (cVar1). This is the canonical job-change event - any inbound job-set packet (likely 0x0137 SetActorProperty when the property path resolves to a job slot) routes through this slot to fire the `_onChangeJob(newJobId, oldJobId)` Lua callback. The +0xF1 byte offset is the actor's current-job storage field. Identified via WalkWrappersForLuaCallbacks.java BFS depth 3, verified via DumpFunctionDecomp showing the if-diff guard pattern. | [duplicate-address resolution] Legitimate dual perspective: the receiver apply-wrapper identity and LuaActorImpl vtable-slot callback identity describe distinct roles of the same function; sibling entries [[BCS-Y-0102]], [[BCS-Y-0207]].",
+      "luaApiRefs": [
+        {
+          "luaName": "_onChangeJob",
+          "slot": 79,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onChangeJob",
+          "slot": 79,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0208",
@@ -2452,7 +2970,39 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 3 -> Lua events `_onUpdateMemberInformation` + `_onUpdateGroupInformation`.** Wrapper at VA 0x00759600. Slot at vftable byte address 0x00FDFB38 (offset +0xC = slot 3). Depth-6 walk reveals at depth 6 the firers FUN_00700760 (`_onUpdateMemberInformation`) and FUN_00709CA0 (`_onUpdateGroupInformation`). This is the LuaActor-side of the Group/Update event family - the same _onUpdateMember*/_onUpdateGroup* events that Group::EntryLinkShellBuilder::vftable[12] dispatches (BCS-Y-0188). Multi-name firing pattern (similar to slot 28 BCS-Y-0205). Identified via depth-6 broad-prefix walk on 56 LuaActor zero-hits. Address corrected from 0x00359600 to 0x00759600 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 3 -> Lua events `_onUpdateMemberInformation` + `_onUpdateGroupInformation`.** Wrapper at VA 0x00759600. Slot at vftable byte address 0x00FDFB38 (offset +0xC = slot 3). Depth-6 walk reveals at depth 6 the firers FUN_00700760 (`_onUpdateMemberInformation`) and FUN_00709CA0 (`_onUpdateGroupInformation`). This is the LuaActor-side of the Group/Update event family - the same _onUpdateMember*/_onUpdateGroup* events that Group::EntryLinkShellBuilder::vftable[12] dispatches (BCS-Y-0188). Multi-name firing pattern (similar to slot 28 BCS-Y-0205). Identified via depth-6 broad-prefix walk on 56 LuaActor zero-hits. Address corrected from 0x00359600 to 0x00759600 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onUpdateGroupInformation",
+          "slot": 3,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onUpdateMember",
+          "slot": 3,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onUpdateMemberInformation",
+          "slot": 3,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onUpdateMemberInformation",
+          "slot": 3,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onUpdateGroup",
+          "slot": 3,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0236",
@@ -2474,7 +3024,21 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 60 -> Lua event `_onUpdateWork`** (5th known call path to firer FUN_00773F10). Wrapper at VA 0x00759ED0. Slot at vftable byte address 0x00FDFC1C (offset +0xF0 = slot 60). Joins the 4 existing call paths to `_onUpdateWork`: (1) Control::CharaBase::vftable[11] (BCS-Y-0214), (2) Control::CharaBase::vftable[12] (BCS-Y-0193), (3) Group::EntryLinkShellBuilder::vftable[12] (BCS-Y-0188), (4) SyncMemoryReceiver::apply third-path (BCS-Y-0199). LuaActor[60] is the 5th. So `_onUpdateWork` fires via at least 5 distinct vtable dispatch paths - the most-shared callback name in the binary. Identified via depth-6 broad-prefix walk. Address corrected from 0x00359ED0 to 0x00759ED0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 60 -> Lua event `_onUpdateWork`** (5th known call path to firer FUN_00773F10). Wrapper at VA 0x00759ED0. Slot at vftable byte address 0x00FDFC1C (offset +0xF0 = slot 60). Joins the 4 existing call paths to `_onUpdateWork`: (1) Control::CharaBase::vftable[11] (BCS-Y-0214), (2) Control::CharaBase::vftable[12] (BCS-Y-0193), (3) Group::EntryLinkShellBuilder::vftable[12] (BCS-Y-0188), (4) SyncMemoryReceiver::apply third-path (BCS-Y-0199). LuaActor[60] is the 5th. So `_onUpdateWork` fires via at least 5 distinct vtable dispatch paths - the most-shared callback name in the binary. Identified via depth-6 broad-prefix walk. Address corrected from 0x00359ED0 to 0x00759ED0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA.",
+      "luaApiRefs": [
+        {
+          "luaName": "_onUpdateWork",
+          "slot": 60,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": true
+        },
+        {
+          "luaName": "_onUpdateWork",
+          "slot": 60,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0238",
@@ -2485,7 +3049,27 @@
       "sourceRefs": [
         "mdi-019"
       ],
-      "notes": "**CONFIRMED LuaActorImpl::vftable slot 63 -> Lua event `_onUpdateDisplayName`** (3rd known call path; paired with slot 62 BCS-Y-0157). Wrapper at VA 0x00759FD0. Slot at vftable byte address 0x00FDFC28 (offset +0xFC = slot 63). The `_onUpdateDisplayName` event now has 3 distinct call paths: (1) LuaActor[62] (BCS-Y-0157, via SetDisplayNameReceiver::apply -> FUN_006FAFF0), (2) Group::EntryLinkShellBuilder::vftable[8] (BCS-Y-0213, via FUN_006FB280), (3) LuaActor[63] (this entry, via FUN_006FB280 at depth 6). Slots 62/63 form a paired display-name dispatcher with the same Mirror-pair pattern observed in slots 21/22 (_onTouch) and the 8-slot 8-15 UI Command family (BCS-Y-0236). Identified. Address corrected from 0x00359FD0 to 0x00759FD0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [duplicate-address resolution] Corrected attribution: the direct construct-apply-destruct body identifies SendLogReceiver slot 63, correcting the older paired onUpdateDisplayName attribution; superseded by [[BCS-Y-0252]]."
+      "notes": "**CONFIRMED LuaActorImpl::vftable slot 63 -> Lua event `_onUpdateDisplayName`** (3rd known call path; paired with slot 62 BCS-Y-0157). Wrapper at VA 0x00759FD0. Slot at vftable byte address 0x00FDFC28 (offset +0xFC = slot 63). The `_onUpdateDisplayName` event now has 3 distinct call paths: (1) LuaActor[62] (BCS-Y-0157, via SetDisplayNameReceiver::apply -> FUN_006FAFF0), (2) Group::EntryLinkShellBuilder::vftable[8] (BCS-Y-0213, via FUN_006FB280), (3) LuaActor[63] (this entry, via FUN_006FB280 at depth 6). Slots 62/63 form a paired display-name dispatcher with the same Mirror-pair pattern observed in slots 21/22 (_onTouch) and the 8-slot 8-15 UI Command family (BCS-Y-0236). Identified. Address corrected from 0x00359FD0 to 0x00759FD0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [duplicate-address resolution] Corrected attribution: the direct construct-apply-destruct body identifies SendLogReceiver slot 63, correcting the older paired onUpdateDisplayName attribution; superseded by [[BCS-Y-0252]].",
+      "luaApiRefs": [
+        {
+          "luaName": "_onUpdateDisplayName",
+          "slot": 63,
+          "source": "name-luaactorimpl",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onUpdateDisplayName",
+          "slot": 63,
+          "source": "notes",
+          "bindsOpcode": false
+        },
+        {
+          "luaName": "_onTouch",
+          "slot": 63,
+          "source": "notes",
+          "bindsOpcode": false
+        }
+      ]
     },
     {
       "id": "BCS-Y-0239",

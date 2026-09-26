@@ -39,6 +39,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from _lua_api_refs import lua_api_refs
 from verify_murmur2 import murmur2_backward
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
@@ -2830,7 +2831,13 @@ def _load_json(path: pathlib.Path) -> Any:
 
 
 REQUIRED_SYMBOL_KEYS = ("id", "name", "kind", "address", "confidence")
-OPTIONAL_SYMBOL_KEYS = ("notes", "sourceRefs", "needsReverify", "reverifyMethod")
+OPTIONAL_SYMBOL_KEYS = (
+    "notes",
+    "sourceRefs",
+    "needsReverify",
+    "reverifyMethod",
+    "luaApiRefs",
+)
 
 
 def _check_reverify_fields(record: dict[str, Any], loc: str) -> list[Finding]:
@@ -2985,6 +2992,10 @@ def check_symbols(symbols_doc: Any) -> list[Finding]:
             findings.append(err(loc, "'notes' must be a string when present"))
 
         findings.extend(_check_reverify_fields(sym, loc))
+        try:
+            lua_api_refs(sym)
+        except ValueError as exc:
+            findings.append(err(loc, str(exc)))
 
         extra = set(sym.keys()) - set(REQUIRED_SYMBOL_KEYS) - set(OPTIONAL_SYMBOL_KEYS)
         if extra:
@@ -3743,7 +3754,7 @@ def _print_section(section: SectionResult, sample_limit: int = 10) -> None:
             )
 
 
-SYMBOL_CHECK_COUNT = 12
+SYMBOL_CHECK_COUNT = 13
 STRUCT_CHECK_COUNT = 14
 MATRIX_CHECK_COUNT = 14
 CROSS_CHECK_COUNT = 2
