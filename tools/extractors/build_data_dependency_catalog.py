@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-ref: build the data-dependency catalog from existing
-BCS-Y receiver field-write evidence + control_class_napi_field_access.json's
-field-read evidence. Each match (opcode X writes field Y) x (Lua API Z reads
-field Y) = one indirect opcode binding.
-
-For the pilot pass, we seed the catalog from BCS-Y-0278 (which documents the
-11 PURE-NATIVE inbound receiver apply VAs and the specific actor-state field
-offsets each writes). Cross-ref against the 206 N-API map.
-"""
+"""Build the data-dependency catalog from local observations and curated inputs."""
 
 from __future__ import annotations
 
@@ -18,7 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "tools"))
-from _regen_guard import add_force_arg, check_regen_safe  # noqa: E402
+from _catalog_lock import catalog_lock  # noqa: E402
 
 NAPI_FIELD_ACCESS = REPO_ROOT / "manifests" / "control_class_napi_field_access.json"
 NAPI_FIELD_ACCESS_RECURSIVE = (
@@ -26,6 +18,8 @@ NAPI_FIELD_ACCESS_RECURSIVE = (
 )
 VTABLE_RESOLVED_EVIDENCE = REPO_ROOT / "manifests" / "vtable_resolved_evidence.json"
 RECEIVER_FIELD_WRITES = REPO_ROOT / "manifests" / "receiver_field_writes.json"
+CURATED_JSON = REPO_ROOT / "manifests" / "data_dependency_overlay.json"
+C2S_CURATED_JSON = REPO_ROOT / "manifests" / "c2s_bridge_overlay.json"
 OUT_JSON = REPO_ROOT / "manifests" / "data_dependency_catalog.json"
 
 CITATION_RENAMES = {
@@ -60,65 +54,12 @@ def normalize_citations(value: object) -> tuple[object, int]:
     return value, 0
 
 
-# BCS-Y-0278 is hand-curated because its offsets/types are documented in prose; other writes are extracted from receiver_field_writes.json.
-PURE_NATIVE_RECEIVER_WRITES = [
-    {
-        "receiver": "HateStatusReceiver",
-        "opcode": "0x0195",
-        "bcsyRef": "BCS-Y-0278",
-        "writes": [
-            {
-                "actorClass": "NpcBase",
-                "offset": "0x154",
-                "type": "u32",
-                "semantic": "enmity amount",
-            },
-            {
-                "actorClass": "NpcBase",
-                "offset": "0x158",
-                "type": "u16",
-                "semantic": "enmity kind",
-            },
-        ],
-        "applyVa": "0x0089D030",
-    },
-    {
-        "receiver": "ChangeShadowActorFlagReceiver",
-        "opcode": "0x017B",
-        "bcsyRef": "BCS-Y-0278",
-        "writes": [
-            {
-                "actorClass": "CharaBase",
-                "offset": "0x5D",
-                "type": "u8",
-                "semantic": "shadow-actor flag",
-            },
-        ],
-        "applyVa": "0x0089CC70",
-    },
-    {
-        "receiver": "KickClientOrderEventReceiver",
-        "opcode": "0x012F",
-        "bcsyRef": "BCS-Y-0278",
-        "writes": [
-            {
-                "actorClass": "param_2",
-                "offset": "0x0",
-                "type": "u8",
-                "semantic": "kick result byte (not actor field)",
-            },
-        ],
-        "applyVa": "0x0089E450",
-        "note": "writes to packet result buffer, not actor state",
-    },
-]
-
-
-def build_receiver_writes() -> list[dict]:
-    """Merge BCS-Y-0278's curated PURE-NATIVE writes with the auto-extracted
-    writes for the other 26 receivers."""
-    out = list(PURE_NATIVE_RECEIVER_WRITES)
-    receiver_classification = json.load(RECEIVER_FIELD_WRITES.open(encoding="utf-8"))
+def build_receiver_writes(curated: dict) -> list[dict]:
+    """Combine curated native writes with extracted receiver writes."""
+    out = list(curated["nativeReceiverWrites"])
+    receiver_classification = json.loads(
+        RECEIVER_FIELD_WRITES.read_text(encoding="utf-8")
+    )
     for r in receiver_classification["perReceiver"]:
         if not r["unifiedWrites"]:
             continue
@@ -143,194 +84,14 @@ def build_receiver_writes() -> list[dict]:
                 "workers": r["workers"],
             }
         )
-    # GrandCompanyReceiver resolves through PlayerBase::vftable[0xA4] to FUN_006DEB00, which writes PlayerBase+0xED-0xF0.
-    out.append(
-        {
-            "receiver": "GrandCompanyReceiver",
-            "opcode": "0x0194",
-            "bcsyRef": "src-12f",
-            "writes": [
-                {
-                    "actorClass": "PlayerBase",
-                    "offset": "0xed",
-                    "type": "u8",
-                    "semantic": "grand-company rank cluster byte 0 (vtable[0xa4]->FUN_006DEB00)",
-                },
-                {
-                    "actorClass": "PlayerBase",
-                    "offset": "0xee",
-                    "type": "u8",
-                    "semantic": "grand-company rank cluster byte 1",
-                },
-                {
-                    "actorClass": "PlayerBase",
-                    "offset": "0xef",
-                    "type": "u8",
-                    "semantic": "grand-company rank cluster byte 2",
-                },
-                {
-                    "actorClass": "PlayerBase",
-                    "offset": "0xf0",
-                    "type": "u8",
-                    "semantic": "grand-company rank cluster byte 3",
-                },
-            ],
-            "applyVa": "0x0089CD60",
-            "kind": "trivial_with_vtable_dispatch",
-            "vtableTarget": "0x006DEB00",
-        }
-    )
+    out.extend(curated["virtualReceiverWrites"])
     return out
 
 
-KNOWN_INDIRECT_BINDINGS = [
-    {
-        "luaName": "_isEnmity",
-        "luaNameClass": "NpcBase",
-        "luaApiBcsy": "BCS-Y-0212",
-        "luaApiRegistrationVa": "0x00750A70",
-        "readsOffsets": ["0x154", "0x158"],
-        "readActorClass": "NpcBase",
-        "writingReceiver": "HateStatusReceiver",
-        "writingOpcode": "0x0195",
-        "writingReceiverBcsy": "BCS-Y-0278",
-        "confidence": "confirmed",
-        "evidence": (
-            "BCS-Y-0278 documents HateStatusReceiver's apply method FUN_0089D030 "
-            "performs PURE-NATIVE memory writes of NpcBase+0x154 (enmity amount u32) "
-            "and NpcBase+0x158 (enmity kind u16). BCS-Y-0212 catalogs _isEnmity as "
-            "an NpcBase vftable[2] 8-API entry (registration at 0x00750A70). The "
-            "_isEnmity impl reads the same NpcBase+0x154/+0x158 fields (per "
-            "BCS-Y-0278's example narrative). This is the canonical indirect "
-            "binding mechanism the data-dependency catalog tracks."
-        ),
-    },
-    {
-        "luaName": "_getBelongGrandCompany",
-        "luaNameClass": "PlayerBase",
-        "luaApiImplVa": "0x00706CC0",
-        "readsOffsets": ["0xed"],
-        "readActorClass": "PlayerBase",
-        "writingReceiver": "GrandCompanyReceiver",
-        "writingOpcode": "0x0194",
-        "writingReceiverBcsy": "src-12f",
-        "confidence": "confirmed",
-        "evidence": (
-            "Vtable resolution: GrandCompanyReceiver's slot1Fn "
-            "FUN_0089CD60 performs a virtual call PlayerBase::vftable[0xA4] "
-            "which resolves to FUN_006DEB00 (43B body) writing param_1+0xED..0xF0 "
-            "(4 consecutive bytes). _getBelongGrandCompany (PlayerBase N-API "
-            "impl 0x00706CC0) reads PlayerBase+0xED directly. Match was found "
-            "by the auto cross-ref (pilot matches: direct/exact) after adding "
-            "GrandCompany's vtable-resolved writes to receiver_field_writes."
-        ),
-    },
-    {
-        "luaName": "_getChocoboRidingGrade",
-        "luaNameClass": "PlayerBase",
-        "luaApiImplVa": "0x0071E4D0",
-        "readsOffsets": ["0x15d"],
-        "readActorClass": "PlayerBase",
-        "writingReceivers": ["GoobbueReceiver", "ChocoboReceiver"],
-        "writingOpcodes": ["0x01a0", "0x0198"],
-        "writingReceiverBcsy": "receiver_classification",
-        "confidence": "confirmed",
-        "evidence": (
-            "Vtable resolution: _getChocoboRidingGrade is an N-API "
-            "impl (0x0071E4D0) that's also reached as a PlayerBase virtual "
-            "method. Direct decomp shows it reads param_1+0x15D and writes "
-            "param_1+0x15F. GoobbueReceiver (opcode 0x01a0) writes MyPlayer"
-            "+0x15D and 0x15F (per the auto-extracted receiver writes); ChocoboReceiver (opcode 0x0198) "
-            "writes MyPlayer+0x158/+0x15C/+0x15D/+0x15F. Match is hierarchy "
-            "(PlayerBase API on MyPlayer-derived object via runtime dispatch)."
-        ),
-    },
-    {
-        "luaName": "_isEnabledGoobbue",
-        "luaNameClass": "PlayerBase",
-        "luaApiImplVa": "0x0071E4E0",
-        "readsOffsets": ["0x160"],
-        "readActorClass": "PlayerBase",
-        "writingReceiver": "VehicleGradeReceiver",
-        "writingOpcode": "0x01a1",
-        "writingReceiverBcsy": "receiver_classification",
-        "confidence": "confirmed",
-        "evidence": (
-            "Vtable resolution: _isEnabledGoobbue (PlayerBase N-API "
-            "impl 0x0071E4E0) reads param_1+0x160. VehicleGradeReceiver (opcode "
-            "0x01a1) writes MyPlayer+0x160 (per the auto-extracted receiver writes). Match is hierarchy "
-            "(PlayerBase API on MyPlayer-derived object)."
-        ),
-    },
-    {
-        "luaName": "_getJob",
-        "luaNameClass": "CharaBase",
-        "luaApiImplVa": "0x0071E020",
-        "readsOffsets": ["0xf1"],
-        "readActorClass": "PlayerBase",
-        "writingReceiver": "JobChangeReceiver",
-        "writingOpcode": "0x01a4",
-        "writingReceiverBcsy": "receiver_classification",
-        "confidence": "confirmed",
-        "evidence": (
-            "Vtable resolution + hierarchy preference fix: _getJob "
-            "is a CharaBase N-API (impl 0x0071E020) that calls "
-            "CharaBase::vftable[0x9c]. CharaBase's slot is FUN_00776340 (small), "
-            "but PlayerBase override at the same slot is FUN_00706D90 (37B, "
-            "reads param_1+0xF1). JobChangeReceiver (opcode 0x01A4) writes "
-            "PlayerBase+0xF1 (per the auto-extracted receiver writes). Found by widening the "
-            "hierarchy preference to include PlayerBase override for CharaBase "
-            "casts (originally only MyPlayer was preferred)."
-        ),
-    },
-    {
-        "luaName": "_getLookAtCharacter",
-        "luaNameClass": "CharaBase",
-        "luaApiImplVa": "0x006FA690",
-        "readsOffsets": ["0x154"],
-        "readActorClass": "NpcBase",
-        "writingReceiver": "HateStatusReceiver",
-        "writingOpcode": "0x0195",
-        "writingReceiverBcsy": "BCS-Y-0278",
-        "confidence": "confirmed",
-        "evidence": (
-            "Vtable resolution: _getLookAtCharacter (CharaBase N-API "
-            "impl 0x006FA690) calls CharaBase::vftable[0xA0]. CharaBase's slot "
-            "is FUN_0071E030 (1-liner, returns constant); NpcBase override is "
-            "FUN_0072D000 (4-line copy-out reading param_1+0x154). "
-            "HateStatusReceiver (opcode 0x0195) writes NpcBase+0x154 per "
-            "BCS-Y-0278. When the runtime actor is an NPC, _getLookAtCharacter "
-            "returns the NPC's hate-target slot - this is a 2nd reader of "
-            "NpcBase+0x154 alongside _isEnmity (BCS-Y-0338). Semantic "
-            "interpretation: NPCs reuse the look-at-character slot for "
-            "current-hate-target tracking."
-        ),
-    },
-]
-
-
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    add_force_arg(ap)
-    ap.add_argument(
-        "--normalize-citations",
-        action="store_true",
-        help="update moved sibling citation paths while preserving accumulated blocks",
-    )
-    args = ap.parse_args()
-
-    if args.normalize_citations:
-        existing = json.load(OUT_JSON.open(encoding="utf-8"))
-        updated, changes = normalize_citations(existing)
-        with OUT_JSON.open("w", encoding="utf-8", newline="\n") as f:
-            json.dump(updated, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-        print(f"updated {changes} citation strings in {OUT_JSON}")
-        return 0
-
-    fa = json.load(NAPI_FIELD_ACCESS.open(encoding="utf-8"))
-    fa_recursive = json.load(NAPI_FIELD_ACCESS_RECURSIVE.open(encoding="utf-8"))
-    receiver_writes = build_receiver_writes()
+def build_cross_refs(curated: dict) -> tuple[dict, dict, dict]:
+    fa = json.loads(NAPI_FIELD_ACCESS.read_text(encoding="utf-8"))
+    fa_recursive = json.loads(NAPI_FIELD_ACCESS_RECURSIVE.read_text(encoding="utf-8"))
+    receiver_writes = build_receiver_writes(curated)
 
     write_offset_to_receivers: dict[str, list[dict]] = {}
     for r in receiver_writes:
@@ -427,7 +188,7 @@ def main() -> int:
 
     vtable_evidence: dict[str, dict] = {}
     if VTABLE_RESOLVED_EVIDENCE.exists():
-        ve = json.load(VTABLE_RESOLVED_EVIDENCE.open(encoding="utf-8"))
+        ve = json.loads(VTABLE_RESOLVED_EVIDENCE.read_text(encoding="utf-8"))
         for e in ve.get("perImplEvidence", []):
             vtable_evidence[e["implVa"]] = {
                 "reads": [o.lower() for o in e.get("derivedReads", [])],
@@ -475,59 +236,148 @@ def main() -> int:
                     }
                 )
 
-    out = {
-        "version": "1",
-        "gameVersion": "1.23b",
-        "source": [
-            "manifests\\control_class_napi_map.json",
-            "manifests\\control_class_napi_field_access.json",
-            "manifests\\symbols.json (BCS-Y-0278, BCS-Y-0210/0211/0212/0208)",
-        ],
-        "description": (
-            "Indirect opcode -> Lua API bindings via shared actor-state fields. "
-            "For each known {receiver writes field, API reads field} pair, "
-            "the receiver's opcode indirectly drives the API's data domain. "
-            "Pilot scope: BCS-Y-0278's 11 PURE-NATIVE receivers + the 14 "
-            "successfully-decomped N-API impls from the pilot cross-ref "
-            "(DirectorBase + NpcBase). Next: scale "
-            "receiver-write evidence to all 38 receivers (need apply-method "
-            "decomp pass), scale N-API impl decomp to all 206 entries."
-        ),
-        "receiverWriteIndex": {
+    return (
+        {
             f"{cls}.{off}": writers
             for (cls, off), writers in write_offset_to_receivers.items()
         },
-        "confirmedIndirectBindings": KNOWN_INDIRECT_BINDINGS,
-        "pilotCrossRef": {
-            "matches": pilot_matches,
-            "noMatch": pilot_no_match,
-        },
-        "recursiveCrossRef": {
-            "matches": recursive_matches,
-        },
-        "totals": {
-            "confirmedBindings": len(KNOWN_INDIRECT_BINDINGS),
-            "receiverWritesIndexed": sum(
-                len(w) for w in write_offset_to_receivers.values()
-            ),
-            "pilotApisChecked": len(pilot_matches) + len(pilot_no_match),
-            "pilotMatches": len(pilot_matches),
-            "pilotNoMatch": len(pilot_no_match),
-        },
+        {"matches": pilot_matches, "noMatch": pilot_no_match},
+        {"matches": recursive_matches},
+    )
+
+
+def add_sections(out: dict, sections: dict) -> None:
+    if out.keys() & sections.keys():
+        raise ValueError("curated sections collide with generated catalog fields")
+    out.update(sections)
+
+
+def build_catalog(curated: dict | None = None) -> dict:
+    if curated is None:
+        curated = json.loads(CURATED_JSON.read_text(encoding="utf-8"))
+    if set(curated) != {
+        "metadata",
+        "nativeReceiverWrites",
+        "virtualReceiverWrites",
+        "additionalReceiverWriteIndex",
+        "confirmedIndirectBindings",
+        "recursiveMatchSources",
+        "totalsExtras",
+        "relationshipFindings",
+        "directEmissionMining",
+        "payloadFindings",
+    }:
+        raise ValueError(
+            "data-dependency curated input has missing or unowned sections"
+        )
+    if set(curated["metadata"]) != {
+        "version",
+        "gameVersion",
+        "generated",
+        "source",
+        "description",
+    }:
+        raise ValueError("data-dependency metadata has missing or unowned fields")
+    write_index, pilot, recursive = build_cross_refs(curated)
+    add_sections(write_index, curated["additionalReceiverWriteIndex"])
+
+    # Preserve the recorded evidence tier when direct and resolved reads overlap.
+    for assertion in curated["recursiveMatchSources"]:
+        matches = [
+            match
+            for api in recursive["matches"]
+            if all(
+                api[key] == assertion[key] for key in ("luaName", "luaClass", "implVa")
+            )
+            for match in api["matches"]
+            if match["offset"] == assertion["offset"]
+        ]
+        if len(matches) != 1 or matches[0]["source"] != assertion["expectedSource"]:
+            raise ValueError(
+                f"recursive evidence source changed: {assertion['luaName']} {assertion['offset']}"
+            )
+        matches[0]["source"] = assertion["source"]
+
+    totals = {
+        "confirmedBindings": len(curated["confirmedIndirectBindings"]),
+        "receiverWritesIndexed": len(write_index),
+        "pilotApisChecked": len(pilot["matches"]) + len(pilot["noMatch"]),
+        "pilotMatches": len(pilot["matches"]),
+        "pilotNoMatch": len(pilot["noMatch"]),
     }
+    add_sections(totals, curated["totalsExtras"])
+    out = {
+        **curated["metadata"],
+        "receiverWriteIndex": write_index,
+        "confirmedIndirectBindings": curated["confirmedIndirectBindings"],
+        "pilotCrossRef": pilot,
+        "recursiveCrossRef": recursive,
+        "totals": totals,
+    }
+    add_sections(out, curated["relationshipFindings"])
+    shared = json.loads(C2S_CURATED_JSON.read_text(encoding="utf-8"))[
+        "outboundFindings"
+    ]
+    if "directEmissionMining" not in shared:
+        raise ValueError("outbound findings lack the direct-emission projection")
+    shared["directEmissionMining"] = curated["directEmissionMining"]
+    add_sections(out, shared)
+    add_sections(out, curated["payloadFindings"])
+    return out
 
-    if not check_regen_safe(OUT_JSON, out, args.force):
+
+def write_curated(curated: dict) -> None:
+    """Atomically replace the curated input while its catalog lock is held."""
+    temporary = CURATED_JSON.with_name(CURATED_JSON.name + ".tmp")
+    temporary.write_text(
+        json.dumps(curated, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    temporary.replace(CURATED_JSON)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument(
+        "--check",
+        action="store_true",
+        help="check the committed catalog without writing",
+    )
+    modes.add_argument(
+        "--normalize-citations",
+        action="store_true",
+        help="normalize curated citation paths, then rebuild the catalog",
+    )
+    args = parser.parse_args()
+    try:
+        if args.normalize_citations:
+            with catalog_lock(CURATED_JSON):
+                curated = json.loads(CURATED_JSON.read_text(encoding="utf-8"))
+                curated, changes = normalize_citations(curated)
+                document = build_catalog(curated)
+                if changes:
+                    write_curated(curated)
+                print(f"normalized {changes} curated citation strings")
+        else:
+            document = build_catalog()
+        rendered = (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode(
+            "utf-8"
+        )
+        if args.check:
+            if not OUT_JSON.is_file() or OUT_JSON.read_bytes() != rendered:
+                print(f"out of date: {OUT_JSON.name}", file=sys.stderr)
+                return 1
+            print(f"up to date: {OUT_JSON.name}")
+        else:
+            OUT_JSON.write_bytes(rendered)
+            print(f"wrote {OUT_JSON}")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
         return 1
-
-    with OUT_JSON.open("w", encoding="utf-8", newline="\n") as f:
-        json.dump(out, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-    print(f"wrote {OUT_JSON}")
-    print(f"  confirmed indirect bindings: {len(KNOWN_INDIRECT_BINDINGS)}")
-    print(f"  pilot matches (direct only): {len(pilot_matches)}")
-    print(f"  recursive matches (direct + 1-level chase): {len(recursive_matches)}")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

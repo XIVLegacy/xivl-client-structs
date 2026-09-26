@@ -19,9 +19,8 @@ Two match mechanisms beyond the existing flat-offset cross-ref:
     (b) reader's deepReads contains the outer offset and the reader's
     Lua-name semantic matches the writer's semantic.
 
-Output: appends new entries to data_dependency_catalog.json
-`confirmedIndirectBindings[]` AND records the cross-ref pass in a
-dedicated `crossRef` section.
+Output: appends new entries to data_dependency_overlay.json, records the
+cross-ref in its curated findings, and rebuilds data_dependency_catalog.json.
 
 Run:
     python tools\\extractors\\build_substruct_cross_ref.py
@@ -34,10 +33,11 @@ import re
 import sys
 from pathlib import Path
 
-sys.stdout.reconfigure(encoding="utf-8")
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-CATALOG = REPO_ROOT / "manifests" / "data_dependency_catalog.json"
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+from _catalog_lock import catalog_lock  # noqa: E402
+from extractors import build_data_dependency_catalog as catalog  # noqa: E402
+
 FA_DIRECT = REPO_ROOT / "manifests" / "control_class_napi_field_access.json"
 FA_RECURSIVE = (
     REPO_ROOT / "manifests" / "control_class_napi_field_access_recursive.json"
@@ -104,10 +104,10 @@ def parse_chain_key(k: str):
     return m.group(1), m.group(2).lower(), m.group(3).lower()
 
 
-def main() -> int:
-    cat = json.load(CATALOG.open(encoding="utf-8"))
-    fa = json.load(FA_DIRECT.open(encoding="utf-8"))
-    fa_rec = json.load(FA_RECURSIVE.open(encoding="utf-8"))
+def promote(curated: dict) -> int:
+    cat = catalog.build_catalog(curated)
+    fa = json.loads(FA_DIRECT.read_text(encoding="utf-8"))
+    fa_rec = json.loads(FA_RECURSIVE.read_text(encoding="utf-8"))
 
     write_index = cat["receiverWriteIndex"]
     chain_writes: dict[tuple[str, str, str], list[dict]] = {}
@@ -315,12 +315,25 @@ def main() -> int:
     if src_marker not in srcs:
         srcs.append(src_marker)
 
-    with CATALOG.open("w", encoding="utf-8", newline="\n") as f:
-        json.dump(cat, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-    print(f"updated {CATALOG}")
+    curated["confirmedIndirectBindings"] = cat["confirmedIndirectBindings"]
+    curated["relationshipFindings"]["crossRef"] = cat["crossRef"]
+    curated["metadata"]["source"] = cat["source"]
+    rebuilt = catalog.build_catalog(curated)
+    catalog.write_curated(curated)
+    catalog.OUT_JSON.write_text(
+        json.dumps(rebuilt, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    print(f"updated {catalog.CURATED_JSON} and {catalog.OUT_JSON}")
     print(f"  totals.confirmedBindings now {cat['totals']['confirmedBindings']}")
     return 0
+
+
+def main() -> int:
+    with catalog_lock(catalog.CURATED_JSON):
+        curated = json.loads(catalog.CURATED_JSON.read_text(encoding="utf-8"))
+        return promote(curated)
 
 
 if __name__ == "__main__":

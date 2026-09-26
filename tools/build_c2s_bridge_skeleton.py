@@ -1,23 +1,5 @@
 #!/usr/bin/env python3
-"""Build the c2s outbound bridge skeleton.
-
-Combines the outbound bridge inputs:
-  - serverboundGap entries not yet class-attributed
-  - operationClasses with vtable-mapped emissions
-  - pcap_validation c2sOpcodeHistogram observations
-  - lua_api_index Lua N-API names
-
-Output: manifests/c2s_bridge_skeleton.json with per-opcode rows:
-  - opcode
-  - observedInPcaps (count + capture names)
-  - anchor names from the pinned outbound catalog and local decomp anchors
-  - candidateLuaApis (Lua names whose token matches the anchor name)
-
-This is a SKELETON, not a confirmed binding map. Each row is a hypothesis
-that requires decompilation evidence. The matching is token-based on the
-anchor names, so false positives are expected. The output prioritizes likely
-targets for follow-up analysis.
-"""
+"""Build the curated C2S bridge, or report unpromoted token-match candidates."""
 
 from __future__ import annotations
 
@@ -28,15 +10,12 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-sys.stdout.reconfigure(encoding="utf-8")
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "tools"))
-from _regen_guard import add_force_arg, check_regen_safe  # noqa: E402
 
 OUTBOUND_MAP = REPO_ROOT / "manifests" / "operation_opcode_map_outbound.json"
 PCAP_VALIDATION = REPO_ROOT / "manifests" / "pcap_validation.json"
 LUA_INDEX = REPO_ROOT / "manifests" / "lua_api_index.json"
+CURATED_JSON = REPO_ROOT / "manifests" / "c2s_bridge_overlay.json"
 OUT_JSON = REPO_ROOT / "manifests" / "c2s_bridge_skeleton.json"
 
 
@@ -57,14 +36,11 @@ def tokens_from_anchor(anchor: str | None) -> list[str]:
     ]
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    add_force_arg(ap)
-    args = ap.parse_args()
+def build_candidates() -> dict:
 
-    outbound = json.load(OUTBOUND_MAP.open(encoding="utf-8"))
-    pcap = json.load(PCAP_VALIDATION.open(encoding="utf-8"))
-    lua = json.load(LUA_INDEX.open(encoding="utf-8"))
+    outbound = json.loads(OUTBOUND_MAP.read_text(encoding="utf-8"))
+    pcap = json.loads(PCAP_VALIDATION.read_text(encoding="utf-8"))
+    lua = json.loads(LUA_INDEX.read_text(encoding="utf-8"))
 
     gap_entries = outbound.get("serverboundGap", [])
     op_classes = outbound.get("operationClasses", [])
@@ -124,7 +100,9 @@ def main() -> int:
         op_hex = entry["opcodeHex"]
         anchor_b = entry.get("implementationAnchor")
         anchor_d = entry.get("decompAnchor")
-        tokens = list(set(tokens_from_anchor(anchor_b) + tokens_from_anchor(anchor_d)))
+        tokens = sorted(
+            set(tokens_from_anchor(anchor_b) + tokens_from_anchor(anchor_d))
+        )
         pcap_count = observed_c2s.get(op_hex, 0)
         rows.append(
             {
@@ -197,30 +175,79 @@ def main() -> int:
             "the inverse of confirmedIndirectBindings.",
         ],
     }
-    if not check_regen_safe(OUT_JSON, out, args.force):
-        return 1
+    return out
 
-    OUT_JSON.write_text(
-        json.dumps(out, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-        newline="\n",
-    )
-    print(f"wrote {OUT_JSON}")
-    print(f"  serverboundGap: {len(rows)}")
-    print(f"  observed in pcaps: {intersect_count}")
-    print(
-        f"  already class-attributed: {sum(1 for r in rows if r['alreadyClassAttributed'])}"
-    )
 
-    print()
-    print("=== Top 10 high-EV outbound targets ===")
-    for r in rows[:10]:
-        cands = r["candidateLuaApis"][:3]
-        print(
-            f"  {r['opcodeHex']} ({r['observedInPcaps']['count']:6d}x) "
-            f"{r['name']:30s} "
-            f"candidates={cands}"
+def build_catalog() -> dict:
+    curated = json.loads(CURATED_JSON.read_text(encoding="utf-8"))
+    if set(curated) != {
+        "metadata",
+        "verifiedOutboundBindings",
+        "rows",
+        "nextSteps",
+        "outboundFindings",
+    }:
+        raise ValueError("C2S curated input has missing or unowned sections")
+    if set(curated["metadata"]) != {
+        "version",
+        "gameVersion",
+        "generated",
+        "description",
+        "method",
+    }:
+        raise ValueError("C2S metadata has missing or unowned fields")
+    rows = curated["rows"]
+    out = {
+        **curated["metadata"],
+        "totals": {
+            "serverboundGap": len(rows),
+            "observedInPcaps": sum(row["observedInPcaps"]["count"] > 0 for row in rows),
+            "alreadyClassAttributed": sum(
+                row["alreadyClassAttributed"] for row in rows
+            ),
+            "verifiedOutboundBindings": curated["verifiedOutboundBindings"],
+        },
+        "rows": rows,
+        "nextSteps": curated["nextSteps"],
+    }
+    if out.keys() & curated["outboundFindings"].keys():
+        raise ValueError("outbound findings collide with C2S catalog fields")
+    out.update(curated["outboundFindings"])
+    return out
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument(
+        "--check",
+        action="store_true",
+        help="check the committed catalog without writing",
+    )
+    modes.add_argument(
+        "--candidates",
+        action="store_true",
+        help="print unpromoted token-match candidates as JSON without writing the catalog",
+    )
+    args = parser.parse_args()
+    try:
+        document = build_candidates() if args.candidates else build_catalog()
+        rendered = (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode(
+            "utf-8"
         )
+        if args.candidates:
+            print(rendered.decode("utf-8"), end="")
+        elif args.check:
+            if not OUT_JSON.is_file() or OUT_JSON.read_bytes() != rendered:
+                print(f"out of date: {OUT_JSON.name}", file=sys.stderr)
+                return 1
+            print(f"up to date: {OUT_JSON.name}")
+        else:
+            OUT_JSON.write_bytes(rendered)
+            print(f"wrote {OUT_JSON}")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 

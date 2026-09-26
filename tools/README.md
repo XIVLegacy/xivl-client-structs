@@ -77,7 +77,6 @@ powershell -ExecutionPolicy Bypass -File tools\validate-json.ps1
 
 ### Shared helpers
 
-- `_regen_guard.py`: refuse-to-clobber check for partial manifest generators. `check_regen_safe()` compares the target manifest's on-disk top-level keys against the document about to be written and refuses the write if the file carries accumulated blocks the generator cannot reproduce. Used by `build_c2s_bridge_skeleton.py` and `extractors\build_data_dependency_catalog.py`; both exit 1 on refusal and take `--force` to override.
 - `_symbols_io.py`: the single home for `manifests\symbols.json` I/O.
 - `load_symbols()` always opens UTF-8 to avoid Windows cp1252 decoding.
 - `next_bcsy_id()` allocates the next `BCS-Y-NNNN` from `max()` over the parsed ids (never array position, which is not globally sorted).
@@ -118,16 +117,44 @@ the same writer check; do not infer abandonment from its age.
 - `build_lua_to_opcode.py`: joins the bridge inputs into `manifests\lua_to_opcode.json`; `--check` writes nothing and fails on drift.
   The join excludes `_paired` and `_secondary` LuaActorImpl references: BCS-Y-0238 slot 63 is the SendLogReceiver path, while the real `_onUpdateDisplayName` fire is the slot 62 apply chain confirmed by the apply-chain evidence.
 - `analyze_outbound_emissions.py`: parses the Ghidra `ScanOpcodeEmissions` output and writes per-opcode candidate emitter lists + high-confidence filters into `manifests\operation_opcode_map_overlay.json`. Re-run `extract_operation_opcode_map.py` afterward to fold the updated overlay into `manifests\operation_opcode_map_outbound.json`. The underlying Ghidra script is an external input to the research run.
-- `build_c2s_bridge_skeleton.py`: reconstructs the initial c2s bridge seed from outbound-emission attribution; it does not reproduce accumulated evidence in the retained manifest.
-- `extractors\build_data_dependency_catalog.py`: reconstructs the initial data-dependency seed, including its original indirect bindings. `--normalize-citations` updates declared sibling path moves in the existing record while preserving accumulated blocks.
+- `build_c2s_bridge_skeleton.py`: builds the C2S catalog from `c2s_bridge_overlay.json`; `--check` verifies exact output bytes without writing. `--candidates` prints unpromoted token-match proposals from the current outbound, capture-observation, and Lua catalogs without changing any file.
+- `extractors\build_data_dependency_catalog.py`: rebuilds the data-dependency catalog from its curated inputs and local field observations; `--check` verifies exact output bytes without writing. `--normalize-citations` updates declared sibling path moves in `data_dependency_overlay.json` under its catalog lock, then rebuilds the output.
 - `extractors\build_apply_chain_firers.py`: aggregates the `receiver_apply_findings_*.json` snapshots into `lua_apply_chain_firers.json`; `--check` writes nothing and fails on drift.
-- `extractors\build_substruct_cross_ref.py`: substruct chain-key cross-ref builder.
+- `extractors\build_substruct_cross_ref.py`: appends supported substruct relationships to `data_dependency_overlay.json` under its catalog lock, then rebuilds the catalog. It never uses the generated catalog as an input.
 
-The two seed builders are research recipes, not refresh commands for their
-enriched manifests. `_regen_guard.py` detects dropped top-level keys only; a
-passing guard does not prove that rows or nested evidence are preserved.
-`--force` can discard accumulated evidence. Review the complete proposed
-record against the retained artifact before any intentional replacement.
+### Curated bridge ownership
+
+The two bridge catalogs can be rebuilt without their previous output files or
+private assets. Edit the curated inputs or the owning observation source,
+rebuild the affected catalogs, then run their `--check` commands. Review source
+and output changes together; removing curated input deliberately removes it
+from the generated view.
+
+| Input | Owned fields |
+|---|---|
+| `manifests/c2s_bridge_overlay.json` | Catalog metadata, retained candidate rows and their confirmations, the verified-binding summary assertion, next-step evidence boundaries, and shared `outboundFindings`. Candidate discovery does not automatically replace these reviewed rows. |
+| `manifests/data_dependency_overlay.json` | Catalog metadata, native and virtual receiver-write observations, additional index entries, confirmed indirect bindings, recursive-match source assertions, summary assertions, relationship findings, and payload findings. Its `directEmissionMining` is the data-dependency-specific projection. |
+| `receiver_field_writes.json`, direct/recursive N-API field-access catalogs, and `vtable_resolved_evidence.json` | Extracted receiver writes and flat/recursive candidate cross-references. Their producing tools and evidence policies remain authoritative. |
+
+C2S generation derives row, capture-observation, and class-attribution counts.
+Data-dependency generation combines curated native/virtual writes with the
+extracted receiver writes, derives flat/recursive candidates from that base,
+and adds the curated index entries used by substruct matching. It derives the
+confirmed-binding, indexed-key, and pilot-match counts. Other summary values
+retain their recorded research scope and are curated assertions.
+
+The C2S input owns the shared outbound findings used by both catalogs. The
+data-dependency builder substitutes only its explicitly owned direct-emission
+projection. Curated sections cannot overwrite derived fields, and a recursive
+evidence-source assertion must still match its declared candidate and prior
+source classification. Drift fails the build instead of silently choosing a
+different evidence tier.
+
+Curated input writes by the citation and substruct tools use the catalog lock
+and atomic file replacement. Generated files are individually reproducible;
+the input and output files are not published as one atomic transaction. Run
+the builder again after an interrupted publication. CI checks both complete
+catalogs, including rows and nested findings.
 
 ### LPB decode pipeline
 

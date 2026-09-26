@@ -51,12 +51,14 @@ MATRIX = REPO / "manifests" / "pcap_opcode_coverage_matrix.json"
 NAMED_CATALOGS = frozenset(
     {
         "c2s_bridge_skeleton.json",
+        "c2s_bridge_overlay.json",
         "client_class_registry.json",
         "command_slot_context.json",
         "control_class_napi_field_access.json",
         "control_class_napi_field_access_recursive.json",
         "control_class_napi_map.json",
         "data_dependency_catalog.json",
+        "data_dependency_overlay.json",
         "gam_hash_names.json",
         "ir_catalog.json",
         "ir_overlay.json",
