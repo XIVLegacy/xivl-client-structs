@@ -30,7 +30,7 @@ below are implementation modules.
 | Build deferred Lua callsite context | `python tools\extractors\build_lua_callsite_context.py --scripts-repo PATH [--check]` | Requires an explicit `xivl-client-scripts` checkout with its local corpus; emits metadata only for the 19 fixed binding names |
 | Analyze EventStart owner IDs | `python tools\extractors\analyze_event_start_owner_ids.py --captures-repo PATH --client-data-repo PATH [--check]` | Requires explicit capture and client-data checkouts; updates only `combat_command_emission.json#commandIdRelationship` |
 | Build command-slot context | `python tools\extractors\build_command_slot_context.py --captures-repo PATH --client-data-repo PATH [--check]` | Joins ordered `0x0137` command slots to static actors and observed category writes |
-| Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit tracked decomp assembly inputs and emits the bounded Group-family static manifest |
+| Build director/Group wire identity | `python tools\extractors\build_director_group_wire_identity.py --decomp-repo PATH [--check]` | Hashes explicit local decomp assembly exports and emits the bounded Group-family static manifest |
 
 ### Catalog and evidence checks
 
@@ -87,6 +87,14 @@ powershell -ExecutionPolicy Bypass -File tools\validate-json.ps1
 - Importing tools add `sys.path.insert(0, str(Path(__file__).resolve().parent))` then `from _symbols_io import load_symbols`.
 - New readers or writers of symbols.json should use it rather than re-rolling the read / allocate / write.
 
+Both catalog transactions use `_catalog_lock.py`. A lock records its owner PID
+and a unique acquisition token. Its age never permits another writer to take
+it, and release removes only the matching token. A timeout leaves the lock
+untouched. For abandoned-lock recovery, inspect the owner PID and verify that
+the owning process has exited and no catalog transaction is active before
+removing that exact `.lock` file. An unreadable or empty owner record requires
+the same writer check; do not infer abandonment from its age.
+
 ### Vendor fixtures
 
 - `refresh_vendor.py`: the only path for updating a vendored fixture. Re-fetches each declared file from its `PROVENANCE.json` source and restamps the entry's sha256. First-party source checkouts are named with repeatable `--repo NAME=PATH`; there is no workspace-layout default, and an entry whose repo is not named is skipped. `refreshMode: copy` reads the bytes from the source checkout's committed state (`git show HEAD:<path>`), not "<commit>:<path>"/"pinned to the commit". `--only <fixture> --promote` accepts a newer source state (add `--source-path` when the file moved).
@@ -110,10 +118,16 @@ powershell -ExecutionPolicy Bypass -File tools\validate-json.ps1
 - `build_lua_to_opcode.py`: joins the bridge inputs into `manifests\lua_to_opcode.json`; `--check` writes nothing and fails on drift.
   The join excludes `_paired` and `_secondary` LuaActorImpl references: BCS-Y-0238 slot 63 is the SendLogReceiver path, while the real `_onUpdateDisplayName` fire is the slot 62 apply chain confirmed by the apply-chain evidence.
 - `analyze_outbound_emissions.py`: parses the Ghidra `ScanOpcodeEmissions` output and writes per-opcode candidate emitter lists + high-confidence filters into `manifests\operation_opcode_map_overlay.json`. Re-run `extract_operation_opcode_map.py` afterward to fold the updated overlay into `manifests\operation_opcode_map_outbound.json`. The underlying Ghidra script is an external input to the research run.
-- `build_c2s_bridge_skeleton.py`: builds the c2s side of the bridge from outbound-emission attribution.
-- `extractors\build_data_dependency_catalog.py`: builds the data-dependency catalog (indirect bindings). `--normalize-citations` updates declared sibling path moves while preserving accumulated blocks that the base generator cannot reproduce.
+- `build_c2s_bridge_skeleton.py`: reconstructs the initial c2s bridge seed from outbound-emission attribution; it does not reproduce accumulated evidence in the retained manifest.
+- `extractors\build_data_dependency_catalog.py`: reconstructs the initial data-dependency seed, including its original indirect bindings. `--normalize-citations` updates declared sibling path moves in the existing record while preserving accumulated blocks.
 - `extractors\build_apply_chain_firers.py`: aggregates the `receiver_apply_findings_*.json` snapshots into `lua_apply_chain_firers.json`; `--check` writes nothing and fails on drift.
 - `extractors\build_substruct_cross_ref.py`: substruct chain-key cross-ref builder.
+
+The two seed builders are research recipes, not refresh commands for their
+enriched manifests. `_regen_guard.py` detects dropped top-level keys only; a
+passing guard does not prove that rows or nested evidence are preserved.
+`--force` can discard accumulated evidence. Review the complete proposed
+record against the retained artifact before any intentional replacement.
 
 ### LPB decode pipeline
 

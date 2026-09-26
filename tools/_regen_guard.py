@@ -23,11 +23,12 @@ from pathlib import Path
 
 
 def check_regen_safe(out_path: Path, new_doc: dict, force: bool = False) -> bool:
-    """Return True if writing new_doc over out_path is non-destructive.
+    """Return whether new_doc keeps the existing document's top-level keys.
 
     Prints an explanation to stderr and returns False when the existing file
     carries top-level keys the generator does not emit. A missing or
-    unparseable target is always safe to write.
+    unparseable target passes this check. Rows and nested evidence are not
+    compared, so a passing result is not a preservation guarantee.
     """
     if not out_path.is_file():
         return True

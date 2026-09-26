@@ -33,18 +33,14 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from contextlib import contextmanager
 from pathlib import Path
+
+from _catalog_lock import catalog_lock
 
 SYMBOLS_PATH = Path(__file__).resolve().parent.parent / "manifests" / "symbols.json"
 
 BCSY_PREFIX = "BCS-Y-"
-
-# O_CREAT|O_EXCL acquisition is atomic. Stale locks are treated as abandoned.
-LOCK_TIMEOUT_S = 30.0
-LOCK_STALE_S = 300.0
-LOCK_POLL_S = 0.1
 
 
 def load_symbols(path: Path = SYMBOLS_PATH) -> dict:
@@ -99,43 +95,6 @@ def write_symbols(data: dict, path: Path = SYMBOLS_PATH) -> None:
 
 
 @contextmanager
-def _symbols_lock(path: Path = SYMBOLS_PATH):
-    """Hold an exclusive advisory lock on path for the duration of the block."""
-    lock = path.with_name(path.name + ".lock")
-    deadline = time.monotonic() + LOCK_TIMEOUT_S
-    fd = None
-    while True:
-        try:
-            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            break
-        except FileExistsError:
-            try:
-                if time.time() - lock.stat().st_mtime > LOCK_STALE_S:
-                    lock.unlink()
-                    continue
-            except OSError:
-                continue  # the holder released it between the check and stat
-            if time.monotonic() > deadline:
-                raise TimeoutError(
-                    f"could not acquire {lock.name} within {LOCK_TIMEOUT_S}s; "
-                    "another writer is active (delete the lock file if stale)"
-                )
-            time.sleep(LOCK_POLL_S)
-    try:
-        os.write(fd, str(os.getpid()).encode("ascii"))
-        os.close(fd)
-        fd = None
-        yield
-    finally:
-        if fd is not None:
-            os.close(fd)
-        try:
-            lock.unlink()
-        except OSError:
-            pass
-
-
-@contextmanager
 def symbols_transaction(path: Path = SYMBOLS_PATH):
     """Serialized read-modify-write of symbols.json.
 
@@ -146,7 +105,7 @@ def symbols_transaction(path: Path = SYMBOLS_PATH):
         with symbols_transaction() as d:
             print(append_symbol(d, entry))
     """
-    with _symbols_lock(path):
+    with catalog_lock(path):
         data = load_symbols(path)
         yield data
         write_symbols(data, path)
