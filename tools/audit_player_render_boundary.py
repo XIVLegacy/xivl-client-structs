@@ -448,9 +448,247 @@ def main() -> None:
         (0x00FA2D8C, 1, 0x005522D0),
         (0x00FA2D8C, 3, 0x0054BBB0),
         (0x00FA28E4, 13, 0x0055A000),
+        (0x00FA28E4, 41, 0x0055A650),
+        (0x00FA28E4, 47, 0x0055A5A0),
         (0x00FA28E4, 49, 0x0055A620),
+        (0x00FF1CC4, 42, 0x007F8C60),
+        (0x00FF1CC4, 94, 0x007CD090),
+        (0x00FF1CC4, 95, 0x007CD1A0),
+        (0x00FF1CC4, 135, 0x007F9D00),
+        (0x00FF1CC4, 141, 0x007F8C10),
+        (0x00FF1CC4, 157, 0x007FA2B0),
     ):
-        require_equal(image.read_u32(vtable + slot * 4), target, f"context slot {slot}")
+        require_equal(
+            image.read_u32(vtable + slot * 4),
+            target,
+            f"vtable 0x{vtable:08X} slot {slot}",
+        )
+    anchor_producer_anchors = (
+        (
+            0x007F95A0,
+            "558bec83e4f06aff6883ceea0064a1000000005083ec2853",
+            "WindowActor constructor entry",
+        ),
+        (
+            0x007F8D20,
+            "558bec83e4f083ec34a1b0a82e0133c48944243053568bf1",
+            "WindowActor anchor producer entry",
+        ),
+        (
+            0x007F9D00,
+            "83ec085356578b3d5ce5f3008bf1ffd72b86300100006a00",
+            "WindowActor anchor tick entry and timer read",
+        ),
+        (
+            0x007F8C10,
+            "51568bf18b8ea401000085c9743c8a86c0010000d0e88d542407240152884424",
+            "WindowActor deferred-operation producer entry",
+        ),
+        (
+            0x007F8C36,
+            "f686c001000002741b807c24070074146a006a006a2a8bcee85d5bfdff80a6c0010000fd",
+            "WindowActor operation 0x2A submission and state clear",
+        ),
+        (
+            0x007CCAF0,
+            "8bc18b4c24088b11568b742408508b826c01000056ffd0",
+            "scene-actor attachment slot-91 dispatch",
+        ),
+        (
+            0x007CCBC0,
+            "558bec83e4f083ec5ca1b0a82e0133c4894424588b4d0c8b45108b118b927801",
+            "scene-actor secondary slot-94 dispatch entry",
+        ),
+        (
+            0x007CD090,
+            "8b018b5064568b7424086a0056ffd28bc65ec20c00",
+            "generic scene-actor slot-94 index-0 path",
+        ),
+        (
+            0x007CD1A0,
+            "568b7424086a0056e8432d29008bc65ec20800",
+            "generic scene-actor slot-95 index-0 path",
+        ),
+        (
+            0x00855150,
+            "8bc18b4c24048988e4000000c20400",
+            "Chara attachment-helper owner store",
+        ),
+        (
+            0x0055A5A0,
+            "535657e838f8ffff8b5c24108bcb8bf0",
+            "DrawingToolContext selector writer entry",
+        ),
+        (
+            0x0055A5B5,
+            "8dbe88030000660fefc0660fd6078bcb660fd64708e841aceeff6a0f506a1057e8a7054800804e5a08",
+            "DrawingToolContext selector copy and dirty-bit writer",
+        ),
+        (
+            0x0055A650,
+            "e88bf7ffff80485b02c6405c01c3",
+            "DrawingToolContext deferred-state dirty writer",
+        ),
+        (
+            0x0054EFB9,
+            "f6465a08742a85c90f842b0100006a108d9688030000526a1ee8f9c0ffff3c010f851301000080665af78b0da86b3301",
+            "cached selector operation 0x1E submission",
+        ),
+        (
+            0x0054F06C,
+            "f6465b02742185c90f84780000006a006a006a29e84bc0ffff3c01756980665bfd8b0da8",
+            "cached deferred operation 0x29 submission",
+        ),
+        (
+            0x0055EE60,
+            "83ec108b442414f30f7e00660fd60424f30f7e40086a108d442404506a1b660fd6442414e8f78af7ff83c410c20400",
+            "generic operation 0x1B emitter complete body",
+        ),
+        (
+            0x0055C970,
+            "6a006a006a1ce805b0f7ffc3",
+            "generic operation 0x1C emitter complete body",
+        ),
+        (
+            0x0055C980,
+            "6a006a006a1de8f5aff7ffc3",
+            "generic operation 0x1D emitter complete body",
+        ),
+        (
+            0x00664A4C,
+            "8d8e3c140000e809071f00",
+            "Chara attachment-table refresh call",
+        ),
+        (
+            0x00664B44,
+            "8d9e601900000f284424206a016a008d4c241851578bcb0f29442420e80b1d1e006a01578bcbe8711b1e0083c70183ff077cd3",
+            "Chara owner attachment-record refresh loop",
+        ),
+        (
+            0x007F9175,
+            "0f284424240f58c1f30f100d704ff5000f28d00fc6c9000f15c10fc6d0c40f29542424f30f10442424f30f11442414f30f10442428f30f11442418f30f1044242c8d442414f30f1144241cf30f1044243050f30f11442424e83eac4a00",
+            "anchor offset addition, W force and publication call",
+        ),
+    )
+    for va, expected_hex, label in anchor_producer_anchors:
+        expected = bytes.fromhex(expected_hex)
+        require_equal(image.read_va(va, len(expected)), expected, label)
+    attachment_name_tables = {
+        0x012D1380: (
+            0x01043310,
+            0x01043304,
+            0x010432F8,
+            0x010432EC,
+            0x010432E0,
+            0x010432D4,
+            0x010432C8,
+            0x010432BC,
+            0x010432B0,
+            0x010432A4,
+            0x01043298,
+            0x0104328C,
+            0x01043280,
+            0x01043274,
+            0x01043268,
+            0x0104325C,
+        ),
+        0x012D13C0: (
+            0x01043250,
+            0x01043244,
+            0x01043238,
+            0x0104322C,
+            0x01043220,
+            0x01043214,
+            0x01043208,
+            0x010431FC,
+            0x010431F0,
+            0x010431E8,
+            0x010431E0,
+            0x010431D8,
+            0x010431D0,
+            0x010431C8,
+            0x010431C0,
+            0x010431B8,
+            0x010431B0,
+            0x010431A8,
+            0x010431A0,
+            0x01043198,
+            0x01043190,
+            0x01043188,
+            0x01043180,
+            0x01043178,
+            0x01043170,
+            0x01043168,
+            0x01043160,
+            0x01043158,
+            0x01043150,
+            0x01043148,
+            0x01043140,
+            0x01043138,
+            0x01043130,
+            0x01043128,
+            0x01043120,
+            0x01043118,
+            0x01043110,
+            0x01043108,
+            0x01043100,
+            0x010430F0,
+            0x010430E0,
+        ),
+    }
+    for table_va, expected_pointers in attachment_name_tables.items():
+        actual_pointers = tuple(
+            image.read_u32(table_va + index * 4)
+            for index in range(len(expected_pointers))
+        )
+        require_equal(
+            actual_pointers,
+            expected_pointers,
+            f"attachment-name table 0x{table_va:08X}",
+        )
+    attachment_names = {
+        0x012D1380: (
+            "EID_DAM_N",
+            "EID_DAM_NNE",
+            "EID_DAM_NE",
+            "EID_DAM_NEE",
+            "EID_DAM_E",
+            "EID_DAM_SEE",
+            "EID_DAM_SE",
+            "EID_DAM_SSE",
+            "EID_DAM_S",
+            "EID_DAM_SSW",
+            "EID_DAM_SW",
+            "EID_DAM_SWW",
+            "EID_DAM_W",
+            "EID_DAM_NWW",
+            "EID_DAM_NW",
+            "EID_DAM_NNW",
+        ),
+        0x012D13C0: (
+            "EID_NONE",
+            "EID_L_FOOT",
+            "EID_R_FOOT",
+            "EID_L2_FOOT",
+            "EID_R2_FOOT",
+            "EID_L3_FOOT",
+            "EID_R3_FOOT",
+            "EID_L4_FOOT",
+            "EID_R4_FOOT",
+            *(f"EID_V{index:02d}" for index in range(1, 31)),
+            "EID_SE_FOOT_R",
+            "EID_SE_FOOT_L",
+        ),
+    }
+    for table_va, expected_names in attachment_names.items():
+        for index, expected_name in enumerate(expected_names):
+            name_va = image.read_u32(table_va + index * 4)
+            expected = expected_name.encode("ascii") + b"\0"
+            require_equal(
+                image.read_va(name_va, len(expected)),
+                expected,
+                f"attachment name {expected_name}",
+            )
     publication_anchors = (
         (
             0x0054E890,
@@ -710,6 +948,9 @@ def main() -> None:
     print("proxy_segment_dispatch=0x007D77E0 vector_resolver=0x007D70D0")
     print("retained_y_writer_call=0x007D77B2 return=0x007D77B7")
     print("nameplate_slot13=0x006A3560")
+    print("anchor_producer=0x007F8D20 publication_call=0x007F91CD")
+    print("anchor_target_helpers=0x007CCAF0,0x007CCBC0")
+    print("anchor_state_ops=0x1B,0x1C,0x1D,0x1E,0x29")
 
 
 if __name__ == "__main__":

@@ -33,15 +33,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
-SLOT_IN_SYMNAME_RE = re.compile(r"_slot(\d+)_", re.IGNORECASE)
-SLOT_IN_NOTES_RE = re.compile(
-    r"LuaActorImpl::vftable(?:\[(\d+)\]|\s+slot\s+(\d+))", re.IGNORECASE
-)
+from _lua_api_refs import lua_api_refs
+from _symbols_io import load_symbols
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LUA_INDEX_JSON = REPO_ROOT / "manifests" / "lua_api_index.json"
@@ -65,41 +62,34 @@ def _load_json(p: Path, required: bool = True) -> dict | None:
         return json.load(f)
 
 
-def _infer_slot(receiver: dict, symbols_index: dict[str, dict]) -> int | None:
-    """Infer the LuaActorImpl::vftable slot for a receiver.
-
-    Tries in priority order:
-      1. receiver.luaActorImplSlot (from client_receivers.json structured field)
-      2. _slotN_ in any cross-referenced BCS-Y symbol NAME
-      3. "LuaActorImpl::vftable slot N" in any cross-referenced BCS-Y NOTES
-    """
-    if receiver.get("luaActorImplSlot") is not None:
-        return receiver["luaActorImplSlot"]
-    bcs_refs = receiver.get("bcsRefs") or {}
-    for role_entries in bcs_refs.values():
-        for ref in role_entries:
-            m = SLOT_IN_SYMNAME_RE.search(ref.get("symbolName", ""))
-            if m:
-                return int(m.group(1))
-    for role_entries in bcs_refs.values():
-        for ref in role_entries:
-            sym = symbols_index.get(ref["bcsId"])
-            if not sym:
-                continue
-            m = SLOT_IN_NOTES_RE.search(sym.get("notes", "") or "")
-            if m:
-                return int(m.group(1) or m.group(2))
-    return None
+def _bound_slots(
+    lua_name: str, refs: list[dict], symbols_index: dict[str, dict]
+) -> set[int]:
+    """Resolve binding eligibility from canonical fields, never display names."""
+    slots = set()
+    for ref in refs:
+        if ref.get("source") != "name-luaactorimpl":
+            continue
+        explicit = lua_api_refs(symbols_index[ref["bcsId"]]) or []
+        matches = [
+            row
+            for row in explicit
+            if row["luaName"] == lua_name and row["source"] == ref["source"]
+        ]
+        if len(matches) != 1 or matches[0]["slot"] != ref.get("slot"):
+            raise ValueError(
+                f"{ref['bcsId']} {lua_name}: stale or unstructured Lua reference"
+            )
+        if matches[0]["bindsOpcode"]:
+            slots.add(matches[0]["slot"])
+    return slots
 
 
-def _build_slot_to_receiver(
-    receiver_manifest: dict,
-    symbols_index: dict[str, dict],
-) -> dict[int, list[dict]]:
+def _build_slot_to_receiver(receiver_manifest: dict) -> dict[int, list[dict]]:
     """slot N -> [receiver entries with that LuaActorImpl slot]."""
     out: dict[int, list[dict]] = defaultdict(list)
     for r in receiver_manifest.get("inboundReceivers", []):
-        slot = _infer_slot(r, symbols_index)
+        slot = r.get("luaActorImplSlot")
         if slot is not None:
             out[slot].append(
                 {
@@ -126,28 +116,14 @@ def main() -> int:
     lua_index = _load_json(LUA_INDEX_JSON)
     receiver_map = _load_json(RECEIVER_JSON)
     operation_map = _load_json(OPERATION_JSON)
-    symbols_manifest = _load_json(REPO_ROOT / "manifests" / "symbols.json")
+    symbols_manifest = load_symbols(REPO_ROOT / "manifests" / "symbols.json")
     symbols_index = {s["id"]: s for s in symbols_manifest["symbols"]}
 
-    slot_to_receiver = _build_slot_to_receiver(receiver_map, symbols_index)
+    slot_to_receiver = _build_slot_to_receiver(receiver_map)
 
-    # Only LuaActorImpl refs contribute slots; other vftables use unrelated numbering.
-    # Exclude BCS-Y-0238's paired slot 63: `_onUpdateDisplayName` fires from
-    # slot 62's SetDisplayName 0x013d apply helper, not the native SendLog range.
     bindings: dict[str, dict] = {}
     for lua_name, refs in lua_index["apis"].items():
-        observed_slots: set[int] = set()
-        for ref in refs:
-            slot = ref.get("slot")
-            if slot is None:
-                continue
-            # Older indexes without source default to LuaActorImpl for compatibility.
-            if ref.get("source", "name-luaactorimpl") != "name-luaactorimpl":
-                continue
-            sym = ref.get("symbolName", "") or ""
-            if "_paired" in sym or "_secondary" in sym:
-                continue
-            observed_slots.add(slot)
+        observed_slots = _bound_slots(lua_name, refs, symbols_index)
 
         opcodes_bound: list[dict] = []
         receivers_bound: list[dict] = []

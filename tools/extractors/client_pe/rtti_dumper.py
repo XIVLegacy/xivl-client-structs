@@ -187,11 +187,8 @@ def dump_to_file(exe_path: str | Path, output_path: str | Path) -> int:
     entries = extract_all(exe_path)
     output_path = Path(output_path)
     with output_path.open("w", encoding="utf-8") as f:
-        from datetime import datetime
-
         f.write(f"// FFXIV 1.0 (1.23b) RTTI Database - {len(entries)} classes\n")
         f.write(f"// Generated from: {Path(exe_path).name}\n")
-        f.write(f"// Date: {datetime.now():%Y-%m-%d %H:%M:%S}\n\n")
         f.write(
             "// Format: Demangled | VTable VA | VFunc Count | TypeDescriptor VA | Mangled\n"
         )

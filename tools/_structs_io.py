@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from contextlib import contextmanager
 from pathlib import Path
 
+from _catalog_lock import catalog_lock
 
 STRUCTS_PATH = Path(__file__).resolve().parent.parent / "manifests" / "structs.json"
 BCSS_PREFIX = "BCS-S-"
-LOCK_TIMEOUT_S = 30.0
-LOCK_STALE_S = 300.0
-LOCK_POLL_S = 0.1
 
 
 def load_structs(path: Path = STRUCTS_PATH) -> dict:
@@ -49,43 +46,8 @@ def write_structs(data: dict, path: Path = STRUCTS_PATH) -> None:
 
 
 @contextmanager
-def _structs_lock(path: Path = STRUCTS_PATH):
-    lock = path.with_name(path.name + ".lock")
-    deadline = time.monotonic() + LOCK_TIMEOUT_S
-    descriptor = None
-    while True:
-        try:
-            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            break
-        except FileExistsError:
-            try:
-                if time.time() - lock.stat().st_mtime > LOCK_STALE_S:
-                    lock.unlink()
-                    continue
-            except OSError:
-                continue
-            if time.monotonic() > deadline:
-                raise TimeoutError(
-                    f"could not acquire {lock.name} within {LOCK_TIMEOUT_S}s"
-                )
-            time.sleep(LOCK_POLL_S)
-    try:
-        os.write(descriptor, str(os.getpid()).encode("ascii"))
-        os.close(descriptor)
-        descriptor = None
-        yield
-    finally:
-        if descriptor is not None:
-            os.close(descriptor)
-        try:
-            lock.unlink()
-        except OSError:
-            pass
-
-
-@contextmanager
 def structs_transaction(path: Path = STRUCTS_PATH):
-    with _structs_lock(path):
+    with catalog_lock(path):
         data = load_structs(path)
         yield data
         write_structs(data, path)
