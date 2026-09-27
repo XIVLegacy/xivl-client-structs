@@ -88,9 +88,7 @@ def validate_contract(document: dict) -> list[str]:
     ]
     if [row.get("input") for row in matrix] != expected:
         errors.append("runtime matrix")
-    if not matrix or not matrix[0].get("currentStatus", "").startswith(
-        "partial pass:"
-    ):
+    if not matrix or not matrix[0].get("currentStatus", "").startswith("partial pass:"):
         errors.append("live runtime status")
     if any(row.get("currentStatus") != "not run" for row in matrix[1:]):
         errors.append("runtime status boundary")
