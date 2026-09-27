@@ -746,8 +746,8 @@ def check_property_stream_hash_catalog(doc: dict[str, Any]) -> list[Finding]:
         "3384717be917c0c9464c33bcf17c723769af77da",
         "54a24c87faa4e3cebde808b74d80b6f1bee4b013",
         "fd27d136c8ed10d3c3434ceb00968db3e0ef90fb",
-        "ac866a27c8a335eeac035f7c57010e480b97efb1",
-        "67d62ec4985f8438a7ed2d436d149814519b08c1",
+        "da2ecbf8e8d80a07988fef80c2a8af716539d7fe",
+        "ffe929b8bebd5d6d071a98ddceb78d32bc6c0d17",
         "2012.09.19.0001",
     ):
         findings.append(

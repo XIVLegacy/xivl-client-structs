@@ -96,7 +96,7 @@ def validate(manifest: dict, structs_doc: dict, symbols_doc: dict) -> list[str]:
         identity.get("rejectedCanonicalName"),
     ) != ("0x018D", "_0x018D", "PartyMapMarkerUpdatePacket"):
         errors.append("neutral opcode identity or rejected alias drifted")
-    if "234ef1c77bb87638de87db980478891f5afbb283" not in identity.get(
+    if "db9e9d770698b086f19758ecc5803012308f5891" not in identity.get(
         "wireContract", ""
     ):
         errors.append("immutable wire-contract citation drifted")
