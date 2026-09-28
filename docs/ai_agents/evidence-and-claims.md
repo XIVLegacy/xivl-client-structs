@@ -101,8 +101,8 @@ repository-name:path/to/file
 
 Add a stable row, symbol, function, address, or section locator when useful.
 When byte identity matters, record a sha256 in the relevant provenance record
-(`data/vendor/*/PROVENANCE.json`) rather than in the citation string. Commit hashes and date pins do not replace source locators: repository histories are rewritten
-before publication, and dated "as of" claims rot. First-party revision
+(`data/vendor/*/PROVENANCE.json`) rather than in the citation string. Commit
+hashes and date pins do not replace source locators. First-party revision
 identifiers and observation dates remain source metadata.
 
 In-repository `sourceRefs` use paths relative to this repository. Branch

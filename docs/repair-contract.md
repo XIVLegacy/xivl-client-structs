@@ -5,14 +5,12 @@ The canonical machine-readable record is
 joins the pinned 1.23b client scripts and native event transport to the retained
 retail repair capture without treating emulator behavior as evidence.
 
-## Bahamut decision
+## Evidence boundary
 
 The client proves the NPC dialog and self-repair entry shape, while the retail
-capture proves six accepted NPC repairs quoted at one gil. It does not prove a
-numeric NPC result condition. Bahamut can implement the confirmation flow,
-client-compatible item metadata checks, generic event cleanup, and a clearly
-bounded one-gil tariff choice. NPC durability mutation must remain gated until
-another authoritative source establishes the result.
+capture proves six accepted NPC repairs quoted at one gil. These observations
+do not establish a global NPC tariff, a numeric NPC result condition, or
+server-side durability mutation policy.
 
 Self-repair resolves package/slot to an item and enters ordinary CraftCommand
 22013 through the generic ready-command path. The first-party manual says a
@@ -26,7 +24,7 @@ captured one-gil NPC prompts.
 
 ## Exact remaining observation
 
-Closing the runtime gate requires an authoritative trace that attributes target
+Resolving the NPC result condition requires an authoritative trace of target
 item condition before and after an accepted NPC repair. Self-repair additionally
 requires a command/event trace linking item identity, material decrement, result
 condition, rejection behavior, and cleanup. The retained 1.23b corpus contains

@@ -41,7 +41,8 @@ Read these pages in order:
 2. [Comments and prose](comments-and-prose.md)
 3. [Retail-input validation](retail-input-validation.md)
 
-The [manifest contract](../../manifests/README.md) owns the catalog charter.
-The [docs index](../README.md) owns the consumer-facing documentation map, and
-the
-[tools guide](../../tools/README.md) owns generator and research-command details.
+The canonical repository guides are:
+
+- [manifest contract](../../manifests/README.md): catalog charter.
+- [docs index](../README.md): consumer-facing documentation map.
+- [tools guide](../../tools/README.md): generator and research-command details.

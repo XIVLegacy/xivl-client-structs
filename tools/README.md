@@ -217,7 +217,7 @@ representation. Reader's guide: `..\docs\ir-schema.md`.
 ### Headless Ghidra
 
 - `ghidra\run-headless.ps1`: runs any post-script against the analyzed project, replacing hand-authored per-tier `.bat` wrappers. Install and project locations are machine-local and come from `BCS_GHIDRA_HOME`, `BCS_GHIDRA_PROJECTS`, `BCS_GHIDRA_PROJECT`, `BCS_JAVA_HOME` (plus optional `BCS_GHIDRA_PROGRAM`, default `ffxivgame.exe`); the script carries no path defaults and fails naming the missing variable. Defaults to `-noanalysis`. Pass `-ReadOnly` for every read-only script so an unexpected write cannot be saved, `-Out` for the `XIVL_DUMP_PATH` convention, and `-ScriptEnv` for per-script variables. Returns status plus elapsed seconds and exits 1 on script error or project lock.
-- `ghidra\ExtractRtti.java`: read-only MSVC RTTI export. `XIVL_RTTI_OUT` writes the full RTTI index. For targeted structural details, set exact comma-separated mangled names in `XIVL_RTTI_DETAILS_TARGETS` and an output path in `XIVL_RTTI_DETAILS_OUT`; each detail row records the vftable, COL, TypeDescriptor, class hierarchy descriptor, executable slot count, base-array order, and code references that write or read the vftable.
+- `ghidra\ExtractRtti.java`: read-only MSVC RTTI export. See [Ghidra RTTI](#ghidra-rtti) for full-index and targeted-detail modes.
 
   ```powershell
   tools\ghidra\run-headless.ps1 -Script DumpVAs.java -ReadOnly `
@@ -258,6 +258,12 @@ representation. Reader's guide: `..\docs\ir-schema.md`.
 ### Ghidra RTTI
 
 - `ghidra\ExtractRtti.java`: walks the program's symbol table for MSVC RTTI Complete Object Locator symbols and emits vftable VA, COL VA, mangled name, and demangled name as tab-separated records.
+
+`XIVL_RTTI_OUT` writes the full RTTI index. For targeted structural details,
+set exact comma-separated mangled names in `XIVL_RTTI_DETAILS_TARGETS` and an
+output path in `XIVL_RTTI_DETAILS_OUT`. Each detail row records the vftable,
+COL, TypeDescriptor, class hierarchy descriptor, executable slot count,
+base-array order, and code references that write or read the vftable.
 
 ### Offline call graph
 

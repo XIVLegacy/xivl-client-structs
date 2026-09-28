@@ -7,15 +7,15 @@ This module is the single home for the two documented symbols.json gotchas:
    UnicodeDecodeError. Every read/write here passes encoding="utf-8".
 2. BCS-Y id allocation must be max-based and serialized. Max-based: take max()
    over the parsed id numbers -- never symbols[-1], whose id is not guaranteed
-   to be the maximum (the array is not globally sorted and symbolCount 1805 <
-   last id 1818 because superseded entries leave gaps). Serialized: the whole
+   to be the maximum. The array is not globally sorted, and retained ID gaps
+   mean the row count is not the maximum ID. Serialized: the whole
    load-allocate-write cycle runs under symbols_transaction(), which holds an
    exclusive lock file. Doing the cycle inside one Python process is NOT
    sufficient on its own -- the race is between concurrent processes, where two
    unlocked writers allocate the same id and the second write drops the first
    writer's entry outright. Read-only callers can use load_symbols() directly.
 
-House style for the on-disk file mirrors ../xivl-client-data/tools/_json_io.py:
+House style for the on-disk file mirrors xivl-client-data:tools/_json_io.py:
 2-space indent, ensure_ascii=False (non-ASCII kept verbatim), LF line endings
 (newline="" so json's internal "\n" is written without CRLF translation on
 Windows), and a single trailing newline, for byte-consistency with the sibling
