@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import sys
 
+from _symbols_io import load_symbols
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -57,6 +58,10 @@ EXPECTED_SYMBOLS = {
     "BCS-Y-2227": "0x0094A330",
     "BCS-Y-2228": "0x0094E800",
     "BCS-Y-2229": "0x009857F0",
+    "BCS-Y-1335": "0x0094C3A0",
+    "BCS-Y-3095": "0x00930E90",
+    "BCS-Y-3096": "0x009330D0",
+    "BCS-Y-3097": "0x00932F00",
 }
 
 
@@ -545,6 +550,164 @@ def validate(manifest: dict, structs_doc: dict, symbols_doc: dict) -> list[str]:
     ):
         errors.append("runtime registration-writer boundary drifted")
 
+    collection = manifest.get("resourceCollectionOwnership", {})
+    binary = collection.get("binary", {})
+    if (
+        binary.get("name"),
+        binary.get("gameVersion"),
+        binary.get("size"),
+        binary.get("sha256"),
+        binary.get("imageBase"),
+    ) != (
+        "ffxivgame.exe",
+        "1.23b",
+        15996808,
+        "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+        "0x00400000",
+    ):
+        errors.append("resource collection binary identity drifted")
+    method = collection.get("producingMethod", {})
+    if (
+        method.get("revision") != "c73de5724807d8e9197720bc5452388bc18d5e86"
+        or "-ReadOnly" not in method.get("dispatcher", "")
+        or method.get("completion")
+        != [
+            "COMPLETE: swept 3965883 instructions and evaluated 1209144 stores",
+            "COMPLETE: FindReferences targets=4 references=9",
+        ]
+        or not method.get("operandVerification")
+    ):
+        errors.append("resource collection producing method drifted")
+    container = collection.get("container", {})
+    if (
+        container.get("allocation"),
+        container.get("constructor"),
+        container.get("rtti"),
+        container.get("vtable"),
+        container.get("col"),
+        container.get("completeObjectOffset"),
+        container.get("slots"),
+        container.get("pointerRange"),
+    ) != (
+        "0x1C",
+        "0x00932E50",
+        ".?AV?$SharedItemContainer@VResourceDictionary@Sqwt@@VDependencyObject@2@@Sqwt@@",
+        "0x0106AB68",
+        "0x011797D4",
+        "0x00",
+        ["0x00933050", "0x00932F00", "0x00776340", "0x00776340", "0x00776340"],
+        {
+            "begin": "0x08",
+            "end": "0x0C",
+            "capacityEnd": "0x10",
+            "element": "complete ResourceDictionary-derived pointer",
+            "stride": "0x04",
+        },
+    ):
+        errors.append("resource collection construction or pointer range drifted")
+    insertion = collection.get("insertion", {})
+    removal = collection.get("removal", {})
+    release = collection.get("resourceRelease", {})
+    for record, symbol_id in (
+        (insertion.get("writer", {}), "BCS-Y-3095"),
+        (insertion.get("owningAdd", {}), "BCS-Y-3096"),
+        (removal.get("method", {}), "BCS-Y-3097"),
+        (release.get("method", {}), "BCS-Y-1335"),
+    ):
+        if (record.get("bcsId"), record.get("address")) != (
+            symbol_id,
+            EXPECTED_SYMBOLS[symbol_id],
+        ):
+            errors.append(f"resource collection method {symbol_id} drifted")
+    for symbol_id in ("BCS-Y-3095", "BCS-Y-3096", "BCS-Y-3097"):
+        symbol = symbols.get(symbol_id, {})
+        if (
+            symbol.get("confidence") != "structural"
+            or symbol.get("luaRefs") != []
+            or "manifests/s2c_018d_map_marker_presentation.json"
+            not in symbol.get("sourceRefs", [])
+        ):
+            errors.append(f"{symbol_id} structural evidence boundary drifted")
+    if (
+        insertion.get("resourceCountOffset"),
+        insertion.get("resourceFlagsOffset"),
+        insertion.get("ownershipBit"),
+        removal.get("clear"),
+        removal.get("adjustedArgument"),
+        removal.get("clearFlagOffset"),
+        removal.get("clearFlagBit"),
+    ) != ("0x38", "0x3A", 0, "0x00932900", "0x24", "0x18", 0):
+        errors.append("resource insertion or adjusted removal receiver drifted")
+    if (
+        release.get("secondaryVtable"),
+        release.get("col"),
+        release.get("completeObjectOffset"),
+        release.get("slots"),
+        release.get("deleteConditions"),
+    ) != (
+        "0x0106C8F8",
+        "0x01179D98",
+        "0x24",
+        ["0x00944D60", "0x0094C3A0"],
+        [
+            "matching K membership found",
+            "16-bit membership count becomes zero",
+            "R+0x3A bit 0 is set",
+        ],
+    ):
+        errors.append("conditional resource membership release drifted")
+    teardown = collection.get("teardown", {})
+    if (
+        teardown.get("controlDestructor"),
+        teardown.get("baseDestructor"),
+        teardown.get("cleanup"),
+        teardown.get("cleanupGuard"),
+        teardown.get("containerDestructor"),
+        teardown.get("containerDeletingDestructor"),
+    ) != (
+        "0x00678640",
+        "0x009314E0",
+        "0x00931090",
+        "C != *(0x01356E10) and *(0x01356E10) != null",
+        "0x00932FD0",
+        "0x00933050",
+    ):
+        errors.append("guarded FrameworkElement collection teardown drifted")
+    connection = collection.get("producerConnection", {})
+    if tuple(
+        connection.get(key)
+        for key in (
+            "parser",
+            "markupConstructor",
+            "parse",
+            "completion",
+            "factory",
+            "vtable",
+            "col",
+            "completeObjectOffset",
+            "completionSlot",
+            "factorySlot",
+            "ownerOffset",
+            "resultOffset",
+        )
+    ) != (
+        "0x0094A330",
+        "0x00545F20",
+        "0x00947040",
+        "0x00946660",
+        "0x0094E800",
+        "0x0106D9A4",
+        "0x0117A830",
+        "0x00",
+        7,
+        8,
+        "0xD0",
+        "0xD8",
+    ):
+        errors.append("generic XAML producer collection connection drifted")
+    if "not established" not in connection.get("boundary", ""):
+        errors.append("exact runtime resource instance boundary drifted")
+
     gate = manifest.get("pcSearchGate", {})
     if (
         gate.get("class"),
@@ -584,13 +747,13 @@ def main() -> int:
     errors = validate(
         _load(REPO / "manifests" / "s2c_018d_map_marker_presentation.json"),
         _load(REPO / "manifests" / "structs.json"),
-        _load(REPO / "manifests" / "symbols.json"),
+        load_symbols(),
     )
     if errors:
         for error in errors:
             print(f"ERROR: {error}")
         return 1
-    print("s2c 0x018D presentation: 69 invariants passed")
+    print("s2c 0x018D presentation invariants passed")
     return 0
 
 

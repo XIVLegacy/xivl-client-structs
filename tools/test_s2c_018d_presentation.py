@@ -11,6 +11,7 @@ import sys
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
 from validate_s2c_018d_presentation import validate
+from _symbols_io import load_symbols
 
 
 def _load(name: str) -> dict:
@@ -27,7 +28,7 @@ def _set(document: dict, path: tuple, value) -> None:
 def main() -> int:
     manifest = _load("s2c_018d_map_marker_presentation.json")
     structs = _load("structs.json")
-    symbols = _load("symbols.json")
+    symbols = load_symbols()
     mutations = [
         (
             "neutral opcode identity",
@@ -233,6 +234,40 @@ def main() -> int:
         ("PcSearch slot", "manifest", ("pcSearchGate", "slot"), 28),
     ]
     failures = []
+    mutations.extend(
+        (label, "manifest", ("resourceCollectionOwnership", *path), value)
+        for label, path, value in [
+            ("collection binary", ("binary", "sha256"), "mutable"),
+            ("collection completion", ("producingMethod", "completion"), []),
+            ("collection allocation", ("container", "allocation"), "0x18"),
+            ("collection vector", ("container", "pointerRange", "end"), "0x08"),
+            ("collection remove slot", ("container", "slots", 1), "0x00776340"),
+            ("collection writer", ("insertion", "writer", "address"), "0x00930F20"),
+            ("resource membership count", ("insertion", "resourceCountOffset"), "0x14"),
+            ("resource ownership flag", ("insertion", "ownershipBit"), 1),
+            ("adjusted remove", ("removal", "adjustedArgument"), "0x00"),
+            ("clear compaction flag", ("removal", "clearFlagBit"), 1),
+            (
+                "resource release adjustment",
+                ("resourceRelease", "completeObjectOffset"),
+                "0x00",
+            ),
+            (
+                "last membership condition",
+                ("resourceRelease", "deleteConditions"),
+                ["unconditional"],
+            ),
+            ("desktop cleanup guard", ("teardown", "cleanupGuard"), "always"),
+            ("XAML owner receiver", ("producerConnection", "ownerOffset"), "0x10"),
+            ("XAML completion slot", ("producerConnection", "completionSlot"), 8),
+            ("XAML factory slot", ("producerConnection", "factorySlot"), 7),
+            (
+                "runtime instance bound",
+                ("producerConnection", "boundary"),
+                "exact group_marker_data owner established",
+            ),
+        ]
+    )
     for label, owner, path, value in mutations:
         test_manifest = deepcopy(manifest)
         test_structs = deepcopy(structs)
@@ -321,11 +356,23 @@ def main() -> int:
     if not validate(manifest, structs, changed_symbols):
         failures.append("legacy apply identity")
 
+    for field, value in (
+        ("confidence", "confirmed"),
+        ("luaRefs", [{"api": "_registerResource"}]),
+    ):
+        changed_symbols = deepcopy(symbols)
+        writer = next(
+            item for item in changed_symbols["symbols"] if item["id"] == "BCS-Y-3095"
+        )
+        writer[field] = value
+        if not validate(manifest, structs, changed_symbols):
+            failures.append(f"structural resource writer {field}")
+
     if failures:
         for failure in failures:
             print(f"ERROR: mutation escaped: {failure}")
         return 1
-    print(f"s2c 0x018D presentation mutations: {len(mutations) + 9} defects detected")
+    print(f"s2c 0x018D presentation mutations: {len(mutations) + 11} defects detected")
     return 0
 
 

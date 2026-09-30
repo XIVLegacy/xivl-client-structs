@@ -46,6 +46,16 @@
     "layoutCatalog": "manifests/structs.json",
     "symbolCatalog": "manifests/symbols.json"
   },
+  "method": {
+    "resourceCollectionOwnership": {
+      "environment": "Configure BCS_GHIDRA_HOME, BCS_GHIDRA_PROJECTS, BCS_GHIDRA_PROJECT, and BCS_JAVA_HOME for the analyzed ffxivgame.exe program; run from this repository at the producing revision pinned in resourceCollectionOwnership. Outputs must be new ignored files.",
+      "decomp": "tools/ghidra/run-headless.ps1 -Script DumpVAs.java -ReadOnly -Out tools/ghidra/logs/mapscreen-resource-collection-decomp.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x0092F640,0x009314E0,0x00947040,0x00910AE0,0x00930E90,0x00930F20,0x00931090,0x00932E50,0x009330D0,0x00933070,0x00932900,0x00985560,0x00946660,0x0091AE80,0x00931F60,0x00932F00,0x00932FD0,0x00933050,0x0096C140,0x0092CFB0,0x00679ED0,0x00678640,0x0094A330,0x0094E800,0x0096C090,0x009426D0,0x009830F0,0x00546540,0x00545F20,0x00946940,0x00946C80,0x00932EC0,0x00946830,0x0094F630,0x00549330,0x00946AB0,0x00946AA0,0x00946AD0,0x0094C3A0,0x00944D60,0x009455A0,0x00915680,0x00D516D0' } -ScriptPath @('ghidra')",
+      "listing": "tools/ghidra/run-headless.ps1 -Script DumpFunctionListing.java -ReadOnly -Out tools/ghidra/logs/mapscreen-resource-collection-listing.txt -ScriptEnv @{ XIVL_TARGET_VAS = '0x00545F20,0x00946830,0x0094C3A0,0x00944D60,0x009455A0,0x0092F640,0x009314E0,0x00678640,0x0094A330,0x00947040,0x00930E90,0x00930F20,0x00931090,0x00932E50,0x009330D0,0x00933070,0x00932900,0x00985560,0x00946660,0x0094E800,0x00932F00,0x00932FD0,0x00933050,0x00931F60,0x009426D0,0x0096C140,0x00D516D0' } -ScriptPath @('ghidra')",
+      "writers": "tools/ghidra/run-headless.ps1 -Script FindCompoundOffsetWriters.java -ReadOnly -Out tools/ghidra/logs/mapscreen-resource-collection-writers.txt -ScriptEnv @{ XIVL_OFFSET_QUERY = '0x294' } -ScriptPath @('ghidra')",
+      "references": "tools/ghidra/export-references.ps1 -Addresses @('0x00946660','0x00985560','0x00932F00','0x00930F20') -Out tools/ghidra/logs/mapscreen-resource-collection-refs.txt",
+      "pe": "Read the size/SHA-256-pinned PE independently. Map each instruction/vtable VA through the section RVA and raw-file offset; decode rel32 targets as VA+5+signed displacement, little-endian table pointers and COL+4 complete-object offsets. Compare the constructor, mutation, release, teardown, and producer locators preserved in resourceCollectionOwnership. No copied bodies or raw byte dumps are public support."
+    }
+  },
   "ownershipTree": {
     "route": [
       "Application::Main::RaptureElementContainer+0x4D8 -> ClientWorkElement *",
@@ -172,7 +182,7 @@
       "vftables": ["0x01076F94", "0x01076FC0", "0x01076F70"]
     },
     "keyOwnership": "The ResourceDictionary-derived SqwtXmlDataMaker owns its lookup key string at inherited +0x4C; ResourceDictionary teardown destroys that wrapper. Accepted source rows are separately compacted into dense zero-based presentation indices through the embedded +0xCC wrapper; source record keys are not retained as row keys.",
-    "valueOwnership": "MapScreenControl slot 7 returns the complete ResourceDictionary-derived object from the pointer range held by its +0x294 resource collection and the presenter borrows that pointer. SqwtXmlDataMaker deleting destruction owns the complete-object free, but the exact collection/package owner that triggers release is unresolved. The value and operation property wrappers are embedded at +0xD4..+0x104. The five string-like wrappers at +0xE4,+0xEC,+0xF4,+0xFC,+0x104 own the pointers freed by SqwtXmlDataMaker teardown. The embedded XmlDocument owns its observed document allocation and row-node lifetime.",
+    "valueOwnership": "MapScreenControl slot 7 returns the complete ResourceDictionary-derived object from the pointer range held by its +0x294 resource collection and the presenter borrows that pointer. The inherited FrameworkElement cleanup removes collection memberships and deletes its container; the final membership removal triggers complete-object deletion only with the resource ownership bit set. The exact keyed runtime instance and other memberships remain unbound; resourceCollectionOwnership preserves the native chain. The value and operation property wrappers are embedded at +0xD4..+0x104. The five string-like wrappers at +0xE4,+0xEC,+0xF4,+0xFC,+0x104 own the pointers freed by SqwtXmlDataMaker teardown. The embedded XmlDocument owns its observed document allocation and row-node lifetime.",
     "rowCount": {"offset": "0xDC", "width": 4},
     "removal": {"address": "0x00942DB0", "bcsId": "BCS-Y-2211", "range": "inclusive [accepted count, existing count - 1]", "order": "descending", "operation": "RemoveIndex", "mutationByte": "+0x20C"}
   },
@@ -185,13 +195,139 @@
       "xamlVftable": {"address": "0x0106D9A4", "col": "0x0117A830", "slots": 9},
       "xamlFactory": {"address": "0x0094E800", "bcsId": "BCS-Y-2228", "vtableSlot": 8, "allocation": "0x210", "result": "Sqwt::Data::SqwtXmlDataMaker"},
       "alternateFactory": {"address": "0x009857F0", "bcsId": "BCS-Y-2229", "allocation": "0x210", "result": "Sqwt::Data::SqwtXmlDataMaker"},
-      "boundary": "The generic markup route proves how a SqwtXmlDataMaker can be produced. Static evidence does not identify which factory produced the group_marker_data instance or which package registered its +0x4C key in this MapScreenControl."
+      "boundary": "The generic markup route produces SqwtXmlDataMaker and inserts it into the supplied owner FrameworkElement collection through 0x00946660 -> 0x00930E90. Static evidence does not bind the exact group_marker_data instance, its M+0xD0 runtime owner, or the selected factory invocation; resourceCollectionOwnership preserves this boundary."
     },
     "packagePaths": [
       {"path": "common/mapMarker.le.spk", "definedAddress": "0x00FC3390", "staticReferenceCount": 2, "consumers": ["FUN_0067C220@0x0067C30A", "FUN_00680810@0x00680A13"], "observedUse": "MapScreen callbacks apply the package path to RTTI-cast Sqwt::Controls::SparkleControl objects with instance strings m00010 and m00020.", "ownershipBoundary": "No observed call inserts group_marker_data or passes its key; shared MapScreen co-residence is not resource ownership."},
       {"path": "debug/pc_mark_sample.le.spk", "definedAddress": "0x00FC288C", "staticReferenceCount": 1, "consumers": ["FUN_006737A0@0x00673923"], "observedUse": "MapScreenControl property-handler case 0x1F assigns the path to complete-object +0xA00.", "ownershipBoundary": "The handler does not call the group_marker_data lookup or a proven registration writer; the property value is not a source-package edge."}
     ],
     "registrationWriterVerdict": "No static writer for the exact group_marker_data key is recorded outside the presenter literal. Key installation is therefore bounded at parsed package/markup state entering the generic XAML producer and the runtime +0x294 resource collection; computed, indirect, dynamic, package-data, and runtime-only registration remain possible."
+  },
+  "resourceCollectionOwnership": {
+    "status": "supported generic native ownership chain; exact runtime keyed instance remains unbound",
+    "binary": {
+      "name": "ffxivgame.exe",
+      "gameVersion": "1.23b",
+      "size": 15996808,
+      "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+      "imageBase": "0x00400000"
+    },
+    "producingMethod": {
+      "revision": "c73de5724807d8e9197720bc5452388bc18d5e86",
+      "scripts": [
+        "ghidra/DumpVAs.java",
+        "ghidra/DumpFunctionListing.java",
+        "ghidra/FindCompoundOffsetWriters.java",
+        "ghidra/FindReferences.java"
+      ],
+      "dispatcher": "tools/ghidra/run-headless.ps1 -ReadOnly; no analysis; tools/ghidra/export-references.ps1 for address references",
+      "sectionVerification": "43 requested decomp sections each had one exact Entry, Name, and DECOMPILATION section without ERROR or DECOMP FAILED; 27 instruction listings had complete requested/completed counts.",
+      "completion": [
+        "COMPLETE: swept 3965883 instructions and evaluated 1209144 stores",
+        "COMPLETE: FindReferences targets=4 references=9"
+      ],
+      "operandVerification": "Direct PE RVA-to-file mapping verified the image base, instruction displacements/immediates, rel32 call/jump targets, and the three decisive vtable/COL pairs below. Instruction listings resolve truncated destructor decompilation and the misleading removal-call argument recovery.",
+      "boundary": "The offset scan selects candidates, not receiver types; unrelated and stack writes are not treated as FrameworkElement writes. Recorded-reference absence does not exclude computed, indirect, dynamic, or unanalyzed routes. Raw exports remain ignored investigation inputs."
+    },
+    "receivers": {
+      "control": "C = complete MapScreenControl, with FrameworkElement base at +0x00",
+      "container": "K = complete object loaded from C+0x294; collection vector receiver is K+0x04",
+      "resource": "R = complete ResourceDictionary-derived object stored in K; shared-item receiver A = R+0x24; membership vector receiver is R+0x28",
+      "markup": "M = complete XamlSqwtXmlDataMaker; M+0xD0 is owner C, M+0xD8 is complete produced R. Stack PUSH/LEA changes at 0x0094A4DF..0x0094A4E7 do not adjust M."
+    },
+    "container": {
+      "allocation": "0x1C",
+      "constructor": "0x00932E50",
+      "rtti": ".?AV?$SharedItemContainer@VResourceDictionary@Sqwt@@VDependencyObject@2@@Sqwt@@",
+      "vtable": "0x0106AB68",
+      "col": "0x011797D4",
+      "completeObjectOffset": "0x00",
+      "slots": [
+        "0x00933050",
+        "0x00932F00",
+        "0x00776340",
+        "0x00776340",
+        "0x00776340"
+      ],
+      "pointerRange": {
+        "begin": "0x08",
+        "end": "0x0C",
+        "capacityEnd": "0x10",
+        "element": "complete ResourceDictionary-derived pointer",
+        "stride": "0x04"
+      },
+      "initialization": "MapScreen constructor 0x00679ED0 calls FrameworkElement constructor 0x0092F640 on complete C. 0x0092F9E2 zeroes EBP; 0x0092FB2A stores it at C+0x294. Lazy creation at 0x00930EC5..0x00930EF6 allocates K, calls 0x00932E50(0,0), and stores K. Constructor 0x00932E79..0x00932E85 installs the vtable and zeroes begin/end/capacity; K+0x18 low two flag bits start zero."
+    },
+    "insertion": {
+      "writer": {
+        "address": "0x00930E90",
+        "bcsId": "BCS-Y-3095"
+      },
+      "owningAdd": {
+        "address": "0x009330D0",
+        "bcsId": "BCS-Y-3096"
+      },
+      "resourceCountOffset": "0x38",
+      "resourceFlagsOffset": "0x3A",
+      "ownershipBit": 0,
+      "observation": "0x009330E1..0x009330E4 appends R through vector receiver K+4; 0x009330E9 sets R+0x3A bit 0; 0x009330F2..0x009330F9 appends K through vector receiver R+0x28; 0x009330FE increments the 16-bit membership count at R+0x38. Vector helper 0x0096C140 writes at end and advances four bytes when capacity permits; its 0x0096C090 -> 0x00D516D0 insertion route reallocates when needed and stores begin/capacity/end at 0x00D517DD..0x00D517E5. Those generic helpers are not assigned exclusive resource identities.",
+      "alternate": "0x00930F20 creates the same K but calls 0x00933070(R,0), clearing R+0x3A bit 0 rather than claiming ownership. No Ghidra-recorded reference to 0x00930F20 appeared in the completed four-target export; no live MapScreen invocation of that variant is established."
+    },
+    "removal": {
+      "method": {
+        "address": "0x00932F00",
+        "bcsId": "BCS-Y-3097"
+      },
+      "clear": "0x00932900",
+      "adjustedArgument": "0x24",
+      "clearFlagOffset": "0x18",
+      "clearFlagBit": 0,
+      "observation": "0x00932900 sets K+0x18 bit 0, walks K+0x08/+0x0C, and calls K slot 1 with R+0x24 (adjustment at 0x0093294A; dispatch at 0x0093295A). 0x00932EC0 matches the complete R whose +0x24 equals the argument. 0x00932F00 compacts the K vector and subtracts four from end unless bulk clear suppresses compaction; 0x00932FB4..0x00932FBE invokes A slot 1 with K. Clear finally resets end to begin at 0x009329B3 and clears its flag."
+    },
+    "resourceRelease": {
+      "method": {
+        "address": "0x0094C3A0",
+        "bcsId": "BCS-Y-1335"
+      },
+      "secondaryVtable": "0x0106C8F8",
+      "col": "0x01179D98",
+      "completeObjectOffset": "0x24",
+      "slots": [
+        "0x00944D60",
+        "0x0094C3A0"
+      ],
+      "deleteConditions": [
+        "matching K membership found",
+        "16-bit membership count becomes zero",
+        "R+0x3A bit 0 is set"
+      ],
+      "observation": "On adjusted A=R+0x24, 0x0094C3A0 finds K in A+0x08/+0x0C (R+0x2C/+0x30), compacts unless A+0x16 bit 1 suppresses compaction, and decrements A+0x14 at 0x0094C422. Zero count and A+0x16 bit 0 gate slot-0 deletion at 0x0094C428..0x0094C440. For SqwtXmlDataMaker, thunk 0x00944D60 subtracts 0x24 then jumps to complete-object deleting destructor 0x009455A0 (BCS-Y-2210); 0x009455A3 calls 0x009426D0 (BCS-Y-2209), whose listing at 0x009427EC calls ResourceDictionary destructor 0x009830F0 (BCS-Y-2224); 0x009455B0 frees complete R with delete flag 1. BCS-Y-1335 is shared with delegate types: this is an additional structural receiver observation, not a new unique API identity."
+    },
+    "teardown": {
+      "controlDestructor": "0x00678640",
+      "baseDestructor": "0x009314E0",
+      "cleanup": "0x00931090",
+      "cleanupGuard": "C != *(0x01356E10) and *(0x01356E10) != null",
+      "containerDestructor": "0x00932FD0",
+      "containerDeletingDestructor": "0x00933050",
+      "observation": "MapScreen destructor 0x00678B43..0x00678B45 passes unchanged complete C to FrameworkElement destructor. Its desktop-global guard at 0x00931526..0x0093153D calls 0x00931090. That cleanup calls 0x00932900 on K at 0x009311AF, then loads K from C+0x294 at 0x00931388, invokes K slot 0 with flag 1 at 0x00931396..0x00931398, and nulls C+0x294 at 0x0093139A. K deleting destructor 0x00933050 runs 0x00932FD0, which clears again at 0x00933006, frees K+0x08 vector storage at 0x00933013, and resets its range; complete K is then freed. DesktopWindow teardown 0x0091AE80 calls 0x00931090 before clearing the global. The final membership-removing container triggers resource deletion only under the resource count/flag conditions; MapScreen is not proven the sole resource owner."
+    },
+    "producerConnection": {
+      "parser": "0x0094A330",
+      "markupConstructor": "0x00545F20",
+      "parse": "0x00947040",
+      "completion": "0x00946660",
+      "factory": "0x0094E800",
+      "vtable": "0x0106D9A4",
+      "col": "0x0117A830",
+      "completeObjectOffset": "0x00",
+      "completionSlot": 7,
+      "factorySlot": 8,
+      "ownerOffset": "0xD0",
+      "resultOffset": "0xD8",
+      "observation": "Parser 0x0094A498 passes its markup receiver+0x74 owner to constructor 0x00545F20, which stores it at complete M+0xD0 (0x00545F9F). The parser installs XamlSqwtXmlDataMaker vtable at 0x0094A4C3 and calls 0x00947040 on unchanged complete M at 0x0094A4E7. Parse dispatches M slot 7 at 0x009471C1..0x009471C7. Slot 7 is 0x00946660; it calls slot 8 (0x0094E800) when M+0xD8 is empty, stores complete produced R at M+0xD8, and tail-jumps to 0x00930E90 using non-null M+0xD0 as complete owner C at 0x00946684..0x00946693. Thus this generic producer reaches its supplied FrameworkElement owner collection, including the inherited MapScreen field layout.",
+      "boundary": "The concrete runtime M+0xD0 value for the group_marker_data declaration, selected factory invocation, membership count/flags at lookup or teardown, and whether lookup returns a local or parent-chain instance are not established. Package-path co-residence and matching strings do not bind them. MapMarkerParty materialization and PcSearch ownership remain separate."
+    }
   },
   "accessorMap": [
     {"bcsId": "BCS-Y-2215", "address": "0x0055D020", "result": "storage+0x14 record count"},
@@ -251,5 +387,5 @@
     "The six copied wire lanes and two helper outputs do not justify coordinate, actor, icon, label, or server field names.",
     "The PcSearchWidgetOperator +0x798 gate is not marker presentation and does not receive a storage or record pointer in its operation call."
   ],
-  "remainingBoundary": "The source-level name and semantics of the temporary 0x18-byte projection context; internal types of ClientWorkRecord+0x20 and most Sqwt dependency-property wrappers; semantic wire-field names; the exact package and runtime registration writer that supply group_marker_data; the +0x294 collection owner that triggers final resource release; the concrete runtime type materialized from the MapMarkerParty template; ownership above PcSearchWidgetOperator slot 29; and computed, indirect, dynamic, package-data, or runtime-only consumers remain unresolved."
+  "remainingBoundary": "The source-level name and semantics of the temporary 0x18-byte projection context; internal types of ClientWorkRecord+0x20 and most Sqwt dependency-property wrappers; semantic wire-field names; the exact package and runtime registration writer that supply group_marker_data; the exact runtime owner and other shared memberships of the group_marker_data instance; the concrete runtime type materialized from the MapMarkerParty template; ownership above PcSearchWidgetOperator slot 29; and computed, indirect, dynamic, package-data, or runtime-only consumers remain unresolved."
 }
