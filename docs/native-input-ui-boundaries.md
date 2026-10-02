@@ -125,6 +125,15 @@ references. This excludes only references represented by the analyzed database,
 not computed, indirect, dynamic, or unanalyzed callers. Direct instructions
 qualified the unchanged receiver, original-name lookup, and return paths.
 
+The namespace-owner qualification used read-only exports at
+`9cd5fd7618ca2e86d2218b4901441cbec4b0e6c5`. The +0xB4 displacement scan
+supplied positive candidates only. Explicit function targets included the
+constructor, publication, loader, AutoPtr, and deleting paths below. Targeted
+RTTI queried `.?AVXamlElement@Element@Main@Application@@` and
+`.?AVLuaDebugOut@LuaDebug@Window@Element@Main@Application@@`.
+Constructor instructions and independent PE COL/type/slot checks qualified
+the complete and +8 receivers and owning storage.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -672,6 +681,41 @@ TLS+0x18 counter through `FUN_0096E580`. The native factory helpers
 `FUN_00534150`, `FUN_005341F0`, and `FUN_00534290` take a receiver Q and
 pass [Q+0xB4] as the registrar receiver. Registration uses that loaded
 pointer unchanged. Q's concrete type and complete-object base remain unbound.
+
+One constructor-qualified namespace owner is
+`Application::Main::Element::XamlElement`. Let U be its complete receiver.
+`FUN_00539890` writes complete vftable `0x00FA1010`, COL `0x01144E5C`,
+offset 0, and input vftable `0x00FA0EEC`, COL `0x01144EB8`, offset 8.
+It constructs an embedded `Sqwt::AutoPtr<Sqwt::Markup::XamlControlContainer>`
+at U+0xB0 through `FUN_0052CCB0` with null storage. The AutoPtr's vftable
+is `0x00F9D444`; its +4 pointer cell is therefore U+0xB4.
+
+`FUN_0068D510` constructs
+`Application::Main::Element::Window::LuaDebug::LuaDebugOut` with complete
+vftable `0x00FC60E0`, COL `0x0115993C`, offset 0, and input vftable
+`0x00FC5FBC`, COL `0x0115999C`, offset 8. It calls `FUN_00539890` at
+`0x0068D573` and namespace publication `FUN_00534350` at `0x0068D5F7`,
+both with the complete receiver unchanged. This qualifies that producer's
+XamlElement base and publication receiver, not Q in every factory path.
+
+`FUN_00534350` uses ECX=U in that path, one stack argument, and `ret 4`.
+`FUN_0096B8C0` returns a XamlControlContainer AutoPtr. Publication takes
+its +4 pointer and zeros the temporary's storage at `0x00534391-0x00534394`.
+If that pointer differs from the value at U+0xB4, a nonnull old pointer receives
+deleting slot 0 with flag 1 before its storage is cleared. The new pointer is stored
+at `0x005343BB`. The equality path skips replacement. Temporary cleanup
+through `FUN_0052CD10` cannot delete the transferred pointer from its cleared
+cell. The loader can also return an empty AutoPtr after failed allocation.
+The publication return value does not establish a populated name map.
+
+Complete deleting slot `FUN_005439D0` enters `FUN_00539210`; the input
+thunk `FUN_00542C10` subtracts 8 first. Destruction calls `FUN_0052CD10`
+on U+0xB0 at `0x0053929A-0x005392A0`. For a nonnull stored pointer, that
+helper invokes deleting slot 0 with flag 1 and clears the cell. Replacement
+and teardown can therefore destroy this owned namespace; they do not lease
+a returned control. The selected factory receiver, readable thread/lifetime,
+and association of U's namespace with the indexed FormElement and ActionMenu
+remain unbound. These paths do not establish grid-cache invalidation.
 
 `FUN_0068DB90` uses ECX=Q and two stack arguments, with `ret 8`.
 At `0x0068DB9C` it calls `FUN_005341F0` with Q unchanged and the first
