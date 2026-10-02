@@ -81,6 +81,17 @@ and call paths below. An exact reference export for Parent descriptor
 `0x01358B3C` completed with six recorded references. Direct instructions and
 bounded PE data reads qualified its initializer and the Window vftable slots.
 
+The child-range qualification used the same committed exporters at
+`51be90574ef0e76da4fa432b8e095c5fe9fc574e`. The +0x1FC/+0x260/+0x294/+0x318
+displacement scan supplied candidates only. Targeted RTTI covered
+LogicalChildrenList, ResourceDictionary, Style, ControlTemplate,
+TriggerCollection, TriggerBase, and its SharedItemContainer specialization;
+constructor stores and independent PE COL offsets qualified the bases below.
+Exact references to Style/Template descriptors `0x01358A30/0x01359118`
+completed with nine recorded references. Initializer instructions and string
+bytes supplied their names. Direct instructions corrected the decompiler's
+removal-call receiver and truncated container-destructor recovery.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -280,6 +291,74 @@ Window's count/index slots are `FUN_00937170/140`. They enumerate the
 +0x18 to a nonzero pointer from its third range. Thus these accessors do not
 by themselves prove every result is a complete UIElement or that the search
 is confined to the original Window's visual descendants.
+
+For the inherited FrameworkElement/Control paths, let C be the complete
+control, S its stored Style pointer, T its stored Template pointer, K a
+collection, and P a stored entry. The indexed families are:
+
+| Range | Storage and result | Qualified family |
+|---|---|---|
+| Logical children | C+0x264/+0x268 bound four-byte entries; returns P unchanged | FrameworkElement logical-child pointers; embedded LogicalChildrenList at C+0x258 has vftable `0x0106AB38` and IEnumerator<FrameworkElement &> RTTI. |
+| Resources | K=[C+0x294], K+8/+0xC bound four-byte entries; returns P unchanged | Complete ResourceDictionary-derived pointers; the base's complete/shared-item receivers are P and P+0x24. |
+| Style triggers | S=[C+0x1FC], S+0x2C/+0x30 bound four-byte entries; returns nonzero P+0x18 | Embedded TriggerCollection at S+0x24 stores TriggerBase pointers; +0x18 is DependencyObject in the qualified TriggerBase base layout. |
+| Optional Template | T=[C+0x318]; returns T unchanged after the three ranges | A concrete ContentControl construction path supplies a ControlTemplate to the Template setter; the current stored instance still needs qualification. |
+
+`FUN_0092F640:0x0092FA6D-0x0092FA86` initializes the logical-child list
+and its range. Parent attach `FUN_009313C0:0x00931478-0x00931482`
+appends the complete child through `FUN_00813050` on C+0x260. Detach
+uses `FUN_0092CB70` on C+0x258 to compact entries and reduce the end
+pointer. `FUN_009314E0:0x00931542-0x0093156B` frees the pointer buffer
+and zeros its bounds. These establish mutable pointer storage, not ownership
+of every child or a lease on an indexed child.
+The resource collection's membership, conditional final-member deletion,
+and FrameworkElement cleanup are already qualified in
+[the presentation manifest](../manifests/s2c_018d_map_marker_presentation.json),
+`resourceCollectionOwnership`. Those rules apply to the inherited collection;
+they do not bind a particular LogicalFocus result.
+
+Style descriptor `0x01358A30`, index `0x0F`, is initialized from string
+`0x0106A998` at `0x00F21FE0-0x00F21FF9` and bound to C+0x1FC by
+`FUN_0092F640:0x0092F835-0x0092F84E`. The index-0x0F branch in
+`FUN_00930440:0x009307FD-0x00930842` constructs a Style through
+`FUN_009A6230` (vftable `0x0107BFFC`) and passes it to `FUN_0092F220`.
+This identifies a producer, not universal setter admission or the current S.
+FrameworkTemplate constructors `FUN_0099B1C0/0099B3A0` initialize
+TriggerCollection at receiver+0x24 through `FUN_009C27B0`, whose vftable
+is `0x01082664`. TriggerBase constructor
+`FUN_009C2620:0x009C2662-0x009C268E` constructs DependencyObject at
+P+0x18 and stores complete/adjusted vftables `0x01082650/0x01082614`.
+Their COLs `0x01182270/0x01182284` have offsets 0/+0x18. TriggerBase,
+ResourceDictionary, Style, and ControlTemplate base RTTI includes
+DependencyObject and contains no InputElement base. Their occurrence in a
+name-search range cannot justify the registration site's mechanical +0xB4.
+
+TriggerCollection teardown `FUN_009C2610 -> FUN_009C27E0` clears memberships
+through `FUN_00557C70`, frees its entry buffer, and zeros the bounds.
+Removal `FUN_005580F0:0x00558198-0x005581A2` calls stored P's vtable+4
+with K; in the TriggerBase base vftable that slot is `FUN_0094C3A0`.
+A matching membership decrements the word at P+0x14.
+A zero result with P+0x16 mask 1 set invokes
+P's deleting slot; the TriggerBase base vftable selects
+`FUN_009C2890 -> FUN_009C25A0`, then frees P. The actual derived trigger's
+complete-object base and deleting override, insertion/ownership-bit writers,
+and other memberships remain unqualified. Copying an entry or its adjusted
+receiver provides no lease.
+
+Template descriptor `0x01359118`, index `0x11`, is initialized from
+`0x0106B994` at `0x00F22640-0x00F22659` and bound to C+0x318 by
+`FUN_00938C80:0x00938E94-0x00938EAE`. ContentControl constructor
+`FUN_00936190:0x009362E3-0x00936306` constructs FrameworkTemplate,
+stamps ControlTemplate vftable `0x00FCB0BC`, and supplies it to
+`FUN_00938140`. Its inherited count/index slots `FUN_0099B0C0/0099B4B0`
+enumerate only the raw T+0xB0 root when nonzero; without that root they
+enumerate the embedded trigger collection at +0x24 and return P+0x18.
+The root's concrete type remains unqualified. FrameworkTemplate destructor
+`FUN_0099B0F0` conditionally invokes `FUN_0093CC70` on the root and destroys
+its TriggerCollection. FrameworkElement and Control teardown can delete stored
+Style/Template objects through their property flags
+(`0x00931660-0x00931679`, `0x00936CB2-0x00936D35`); the Template callback
+`FUN_00936DF0` also replaces cached C+0x334 and can delete its old value.
+These paths establish invalidation, not a current-instance or same-thread lease.
 
 The Window +0x0C slot at `0x0106A0C8` is `FUN_0092B5D0`, which returns
 the stored dword at complete object+0x240 without resolving property flags.
