@@ -187,6 +187,13 @@ Independent PE/instruction checks qualified the callback crossings and the
 map-erasure and cleanup tails omitted after annotated free calls. Fresh
 program-byte authentication preserved the file-backed limits above.
 
+The InputBinding qualification used those exporters at
+`9e73ad53de40ef45dc1b23b5e6c68aaac8b5622f`. Field searches for
+`0x2170/0x2174/0x2178/0x217C` supplied positive candidates only. Explicit
+function exports, independent PE COL/type/base/slot reads, and constructor,
+callback, removal, and deletion instructions established the contracts below.
+Fresh program-byte authentication preserved the same file-backed limits.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -445,6 +452,68 @@ checks and normal teardown ordering do not prove callback exclusion from
 owner/context destruction or TLS replacement. The concrete selected
 preprocessor, recipient, and cleanup implementations remain the missing edges;
 no actual overlapping teardown is established by these static paths.
+
+### InputBinding registration and inert preprocessor slots
+
+Let B be the complete InputBinding receiver. Its primary vtable is
+`0x01076C54`, COL `0x0117DF34`, complete-object offset 0, and type descriptor
+`0x0126E36C`, `.?AVInputBinding@Input@Sqwt@@`. Its SharedItem bases have
+displacement 0. Constructors `FUN_00982170` and `FUN_00982300` use ECX=B
+and seven 32-bit stack arguments, ending in `ret 0x1C`. Both preserve the
+upper bits of B+0x9C and pack the low bits of arguments 5/6/7 into masks
+1/2/4 (`0x009821F7-0x0098223F`, `0x00982383-0x009823CC`).
+
+When mask 4 is set, each constructor reads the invoking thread's TLS+0x1C
+as H and calls `FUN_00813050` with ECX=H+0x2170 and the address of a local
+dword containing B (`0x009822AF-0x009822DC`,
+`0x0098243E-0x0098246C`). These sequences have no H-null guard. The helper's
+available-capacity path copies that dword into the end entry and advances
+the end by 4 (`0x00813079-0x0081308E`). Its growth path calls
+`FUN_008CFC80` at `0x008130AC`; that helper calls `FUN_007A07C0` at
+`0x008CFCD0`. Growth ownership effects remain unqualified here. The separate
+SharedItem membership operations earlier in each constructor are not an H
+registry retention contract. Registration records no H owner alongside B.
+
+`FUN_00982010` uses ECX=B and tests the same mask at `0x00982043`.
+When set, it searches the current thread's H+0x2170 collection for the first
+dword equal to B (`0x00982058-0x009820BD`). It reloads H during the search
+and removal, with identity diagnostics after dependent reads. A found entry
+shifts later dwords at `0x00982110` and decrements the end by 4 at
+`0x00982118`, before embedded-member and base teardown. It does not use a
+saved registration H. Changing thread or TLS context before destruction is
+therefore not qualified as safe. Slot-0 deleting entry `FUN_00982490` calls
+this destructor on B and conditionally frees B when its argument's low bit
+is set (`0x00982493-0x009824AB`).
+
+The inspected concrete primary vtables share the same slot +8:
+
+| Type / vtable | Complete receiver proof | COL / type descriptor | Slot 0 |
+|---|---|---|---|
+| InputBinding / `0x01076C54` | Constructors above | `0x0117DF34` / `0x0126E36C` | `0x00982490` |
+| KeyBinding / `0x00FC49BC` | `FUN_0069BE80:0x0069BECB-0x0069BEDA` calls the base constructor on unchanged B, then stamps this vtable | `0x01158D10` / `0x012BB444` | `0x0068B660` |
+| MouseBinding / `0x0106D658` | `FUN_00973190:0x009734FA-0x00973514` constructs B=ScrollViewer+0xB88, then stamps this vtable | `0x01179F5C` / `0x012E1430` | `0x0094C2F0` |
+
+KeyBinding/MouseBinding type names are `.?AVKeyBinding@Input@Sqwt@@` and
+`.?AVMouseBinding@Input@Sqwt@@`. Their COL offsets and InputBinding base
+displacements are 0. All three slot +8 entries point to `FUN_00981F40`,
+whose entire body is `xor al,al; ret 0xC` (`0x00981F40-0x00981F45`). It
+reads no receiver or arguments, invokes no callback, and returns zero in AL.
+Upper EAX bits are not a result contract. Thus this slot cannot produce
+the preprocessor's exact-1 stop for these vtables. It does not classify text
+entry, modality, session validity, or recipient slot +0x34 behavior.
+
+ScrollViewer's primary vtable `0x010733D4` has COL `0x0117D30C`, offset 0,
+and descriptor `0x012E45A4`, `.?AVScrollViewer@Controls@Sqwt@@`; its store
+at `0x009731F3` anchors the enclosing complete receiver above.
+The inspected ScrollViewer construction supplies zero for arguments 5/6/7
+(`0x009734EC-0x009734EE`), so this MouseBinding instance does not take the
+H registration branch. The KeyBinding and MouseBinding deleting entries
+call `FUN_00982010` on the unchanged complete B and conditionally free B
+(`0x0068B696-0x0068B6BD`, `0x0094C2F9-0x0094C311`). These normal teardown
+paths do not retain H or exclude dispatch during destruction. The actual
+selected entry's type, registration flags, invoking thread, readable storage,
+and same-H lifetime remain required. Other derived slot +8 implementations
+and recipient/cleanup callback effects are not established by these vtables.
 
 ### Borrowed native keyboard-focus recipient
 
