@@ -73,6 +73,14 @@ with the function and global VAs below. LLVM objdump 22.1.4 supplied the
 instruction-level membership, teardown, and setter-policy observations.
 These continuations preserve the binary identity and ABI limits above.
 
+The LogicalFocus lookup continuation used the committed exporters and
+`ghidra/FindFieldRefs.java` at
+`9bfbdb316b5fd2663bab7b2b62c6150b2bdd2eba`. The +0x240 displacement scan
+supplied candidates only; complete-object identity came from the constructor
+and call paths below. An exact reference export for Parent descriptor
+`0x01358B3C` completed with six recorded references. Direct instructions and
+bounded PE data reads qualified its initializer and the Window vftable slots.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -244,8 +252,51 @@ the Window's own I when its stored name is empty. Otherwise
 `FUN_00922AC0:0x00922AC6-0x00922B04` resolves the name from Window+0x3C0
 through `FUN_00910980` with fallback enabled, adds +0xB4 to the result,
 and registers it under the Window's I key. This proves a Window key with a
-name-resolved target; lookup scope, concrete target type, live role, and
-lease remain unqualified.
+name-resolved target with the mechanical lookup scope below. Concrete target
+type, live role, and lease remain unqualified.
+
+`FUN_00910980:0x00910980-0x00910A0B` takes a lookup receiver in ECX and
+three 32-bit stack slots: a key-sequence pointer, a fallback byte, and an
+excluded receiver. It returns a raw pointer or zero in EAX and ends in
+`ret 0x0C`. The sequence count is at sequence+0x28; zero count returns zero.
+For each key it invokes receiver vtable+0x20 with the key address and excluded
+receiver, then uses the result as the next receiver. Only fallback byte 1
+permits a failed sequence to restart through the current attempt's starting
+receiver's vtable+0x0C. Zero or equality with global `0x01356B90` stops that
+restart.
+Otherwise it retries the full sequence on that pointer and passes the previous
+receiver as the exclusion argument.
+That global comparison is a lookup boundary, not session validation.
+
+The Window complete-object vftable's +0x20 slot at `0x0106A0DC` is
+`FUN_00910A10:0x00910A10-0x00910A6F`. It first compares the key dword with
+receiver+0x1C and can return the receiver itself. Otherwise it enumerates
+vtable+0x14 count and vtable+0x10 indexed results in increasing order,
+skips the excluded pointer, tests result+0x1C, and recursively invokes that
+result's +0x20 slot with exclusion zero. The first nonzero match wins.
+Window's count/index slots are `FUN_00937170/140`. They enumerate the
+`FUN_0092C2F0/0092D680` ranges before an optional stored pointer at +0x318.
+`FUN_0092D680` returns stored pointers for its first two ranges and applies
++0x18 to a nonzero pointer from its third range. Thus these accessors do not
+by themselves prove every result is a complete UIElement or that the search
+is confined to the original Window's visual descendants.
+
+The Window +0x0C slot at `0x0106A0C8` is `FUN_0092B5D0`, which returns
+the stored dword at complete object+0x240 without resolving property flags.
+The FrameworkElement constructor `FUN_0092F640:0x0092F992-0x0092F9B0`
+registers that storage with descriptor `0x01358B3C`; initializer
+`0x00F21D50-0x00F21D73` names it Parent from string `0x0106A8F4`.
+`FUN_009313C0` receives a parent in ECX and a child in its one stack slot
+(`ret 4`); its admitted update stores the parent in child+0x240 at
+`0x0093145B`. Detach `FUN_0092FBE0` can clear that storage at `0x0092FCC0`.
+Both paths resolve pending mask 0x80 at child+0x248 and gate their direct
+storage updates on mask 0x03. These are mutation edges, not a lifetime lease.
+The raw lookup result is registered with +0xB4 at
+`0x00922AF8-0x00922B04` without a concrete-type check there. Qualifying each
+selected result's vftable, complete-object base, virtual lookup override,
+replacement/destruction, and same-thread lifetime remains necessary before
+reading it or using it to classify pad recipients. Captured tokens remain
+opaque.
 
 IsModal is descriptor `0x0135722C`, index `0x0B`, initialized at
 `0x00F20C40-0x00F20C59` from string `0x01069D54`. Its Window callback
