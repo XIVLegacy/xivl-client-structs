@@ -99,6 +99,12 @@ EventTrigger, and the TriggersMarkupObject/TemplateMarkupObject classes.
 Constructor stores, independently mapped vftable/COL data, and direct
 instructions qualified insertion, deleting overrides, and property replacement.
 
+The default-root and name-lookup qualification used read-only function exports
+and targeted RTTI at `27e7fdf154698503e6c013d60314c52edf3410fa`.
+The exact `.?AVContentPresenter@Controls@Sqwt@@` query returned three records.
+Independent PE COL/slot checks and direct instructions qualified the receiver
+adjustments, deleting paths, fallback lookup, and cleanup collection below.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -386,7 +392,8 @@ stamps ControlTemplate vftable `0x00FCB0BC`, and supplies it to
 `FUN_00938140`. Its inherited count/index slots `FUN_0099B0C0/0099B4B0`
 enumerate only the raw T+0xB0 root when nonzero; without that root they
 enumerate the embedded trigger collection at +0x24 and return P+0x18.
-The root's concrete type remains unqualified. FrameworkTemplate destructor
+The default constructor's root is qualified below; an arbitrary current root's
+concrete type remains unbound. FrameworkTemplate destructor
 `FUN_0099B0F0` conditionally invokes `FUN_0093CC70` on the root and destroys
 its TriggerCollection. FrameworkElement and Control teardown can delete stored
 Style/Template objects through their property flags
@@ -421,6 +428,41 @@ A null current Template returns without clearing the cached value.
 Thus C+0x334 is not an unconditional current-template reader. Property changes
 can invalidate both a searched subtree and its holder; their concrete current
 identity, virtual overrides, and same-thread lifetime still need qualification.
+
+The default ContentControl path allocates a 0x2C4-byte root R and calls
+`FUN_0099D650`, which first constructs FrameworkElement and stamps the
+ContentPresenter vftables at `0x0099D6A0-0x0099D6B0`. RTTI identifies
+`Sqwt::Controls::ContentPresenter`, TypeDescriptor `0x012E0C74` and CHD
+`0x0117FF04`, with FrameworkElement/UIElement and InputElement bases.
+
+| Receiver | Vftable | COL / complete-object offset | Deleting entry |
+|---|---|---|---|
+| R | `0x0107A9B4` | `0x0117FEF0` / 0 | `FUN_0099D8E0` |
+| R+0xB4, input interface | `0x0107A88C` | `0x0117FF60` / 0xB4 | `FUN_0099D8D0` |
+| R+0x194, secondary interface | `0x0107A878` | `0x0117FF74` / 0x194 | `FUN_0099D8C0` |
+
+The secondary deleting entries subtract their listed offsets before reaching
+`FUN_0099D8E0`. That entry calls destructor `FUN_0099C890`, whose base teardown
+calls `FUN_009314E0` at `0x0099C965`. The deleting entry then frees complete R
+when its argument's low bit is set. R's +0x20 lookup slot is `FUN_00910A10`.
+`FUN_0099B1C0`, with ECX=T and owner/root in two stack slots (`ret 8`), stores
+a supplied non-null R at T+0xB0 and sets T+0xCD to 1 at
+`0x0099B287-0x0099B28E`. This qualifies this constructor path, not the current
+ActionMenu root or a markup-selected root. For markup-selected roots,
+`FUN_0099AF80` and TemplateMarkupObject's +8 slot `FUN_0094AD90` are producer
+candidates; concrete factory results and root publication remain unqualified.
+ContentPresenter's name and interfaces do not establish a gameplay or
+text-entry role.
+
+Root cleanup `FUN_0093CC70` takes R in one caller-cleaned stack slot and reads
+the current thread's TLS context at +0x1C. A null context returns immediately.
+Otherwise it invokes the Visibility engine, then, when raw R+0x240 is nonzero,
+calls `FUN_00940800` and `FUN_0092FBE0` using that stored parent. It searches
+the context's +0x2028/+0x202C pointer range and appends R through the +0x2024
+container when absent (`0x0093CCDC-0x0093CD83`). It does not directly invoke
+R's deleting slot. Its callbacks, the collection's later consumer, and the
+selected root's lifetime remain unqualified. This establishes a calling-thread
+dependency, not a named UI thread or a lease through deferred work.
 
 The Window +0x0C slot at `0x0106A0C8` is `FUN_0092B5D0`, which returns
 the stored dword at complete object+0x240 without resolving property flags.
@@ -549,13 +591,28 @@ The generic `0x006F4F70 -> 0x0073DF10` path supplies no replacement proof.
 `FUN_00537950`, RVA `0x00137950`, uses ECX=the property engine, a native
 control-name string object pointer and an element index in two stack slots,
 and `ret 8`. `FUN_00535690`, RVA `0x00135690`, resolves that index through
-the engine's map pointer at +0xD4. The name resolver uses an index/name cache
-at engine+0x1DC; a miss first consults `FUN_0053E480`, then, when the
-resolved element's +0x30 is non-null, another name-scope lookup path.
+the engine's map pointer at +0xD4. Let X be that returned indexed record.
+The name resolver uses an index/name cache at engine+0x1DC; a miss first
+consults `FUN_0053E480` with ECX=X. It searches X+4 and returns the name-map
+node's +0x60 pointer. If this fails and X+0x30 is nonzero, that stored pointer
+becomes the fallback lookup receiver at `0x00537A73-0x00537A98`.
+`FUN_0053C310` forwards the constructed key sequence, fallback byte 1, and
+excluded pointer 0 to `FUN_00910980`, preserving that ECX receiver, and copies
+its raw result to the caller's output. This enters the generic virtual search
+and fallback mechanism above. The fallback receiver's concrete type and
+virtual overrides remain unbound. It does not apply the input-interface +0xB4
+adjustment or acquire a lease.
 These are index-scoped native lookups, not direct global string-to-grid
 addresses. Cache insertion and a returned pointer do not supply a lifetime
 lease. The live ActionMenu index, concrete returned type, ActionMenu/grid
 cache eviction, and replacement identity remain unqualified.
+
+The cache-hit return at `0x005379F6-0x00537A00` neither re-reads X+0x30 nor
+checks the cached result's Template or generation. The qualified Template
+replacement and root-cleanup paths establish subtree mutation edges, but their
+link to this engine cache is unresolved. X's concrete type, its name-map/root
+registration and destruction, and invalidation of a cached grid result on
+scope or Template replacement remain necessary before retaining a receiver.
 
 The direct instructions at `0x00535690-0x005356F6` return the pointer
 stored at map-node+0x10 without acquiring a lifetime lease.
@@ -679,9 +736,6 @@ two stack arguments, the complete object and property descriptor. When
 TLS+0x1C exists, it either calls a thread-local provider's vtable+0x20 or
 enqueues resolution through `FUN_009A3850` at context+0x2180. Calling it
 from a different thread cannot qualify a current-preference read.
-`FUN_0093CC70` also sets the Visibility property through this engine and
-uses TLS+0x1C queues, providing
-a direct thread-context dependency in native UI lifecycle processing.
 
 The missing contract is the live ActionMenu instance -> each named grid's
 complete UIElement receiver, plus a typed full-state getter/setter and
