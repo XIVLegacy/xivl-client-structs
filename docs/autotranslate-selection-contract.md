@@ -50,10 +50,12 @@ destination message field for c2s opcode 0x00C8 with record size 0x230.
 Neither source object is proven to be a 0x200-byte buffer.
 
 No retained export edge connects an auto-translate selection callback or editor
-writer to token insertion and the chat send boundary. The first missing edge is:
-
-Auto-translate selection callback/editor write -> token serialization into a
-caller-supplied string/control object -> FUN_006E91F0 and the channel wrappers.
+writer to token insertion and the chat send boundary. The native Completion
+record reader and handler are recovered below. The
+remaining edge is the concrete parent editor/event callback -> token insertion
+and serialization into a caller-supplied string/control object -> FUN_006E91F0
+and the channel wrappers. The actual auto-translate UI origin and family/table
+identity of the selected Completion record are also unresolved.
 
 Allocation, ownership, retention, and release of candidate UI token/editor state
 remain unresolved in the retained exports.
@@ -99,7 +101,8 @@ RaptureTextBox vtables using the exact 0x00F3E000..0x01264FFF to
 file-offset-11788288 mapping. It preserves 11 distinct 0x0066xxxx method
 candidates with their source slots. FUN_0066C580 receives a candidate
 property/input pointer and reaches FUN_00698400, FUN_006984B0, and
-FUN_00684A70, but no static edge joins that slot to _setTextProperty_cpp,
+FUN_00684A70. Its this+0x1994 offset +0x20 call resolves to CompletionModule
+slot 8 (FUN_00C9BBD0), but no static edge joins it to _setTextProperty_cpp,
 token bytes, or the chat source object. FUN_00754A60 is the BCS-Y-0225
 WidgetBase Lua dispatcher candidate at 0x00FD5A74; its verified body has 24
 direct handler callsites and does not identify the _setTextProperty_cpp handler.
@@ -111,6 +114,56 @@ the destination to FUN_00C99E40. Their prior parser callsites
 0x004C34E9, 0x004C361F, 0x004BC365, 0x004BF393, 0x00548687, and
 0x005487F5 resolve to the three UI handlers or those clipboard helpers; they
 do not establish a token producer role.
+
+The authenticated Lua submission trace (AT-LUA-002) wires
+TextBox_ChatInput to PressEnter in logwidget.lua:85-143 and :213-245.
+PressEnter calls processInputWordAnalyze; pending command target selection
+stores the input in control user work slot 3, and the decided-subtarget handler
+at :464-482 retrieves it for executeTextCommand. In
+desktopwidget_connector.lua:7103-7115 and :20074-20110, this analysis route
+reaches the native _parseTextCommand bridge. The chatDirect path at
+:7290-7436 converts pronouns and calls the player's _chat bridge. These script
+edges do not identify the native Completion selection or its token writer.
+A literal-name search over all 2671 authenticated Lua bodies found no matches
+for the retained completion/phrase search terms; it does not exclude native,
+indirectly named, or runtime handlers.
+
+## Native Completion boundary
+
+AT-COMP-001 resolves the CompletionModule provider stored at RaptureTextBox
+this+0x1994 by FUN_0066C1A0. FUN_004D74F0 returns the container's embedded
+module at +0x664, constructed by FUN_00C9CFA0. Six cells in its primary vtable
+at 0x01108E40 were read from the authenticated executable; slot 5 points to
+FUN_00C9BC40.
+
+FUN_00C9BC40 reads a selected 32-bit Completion entry and interprets its
+signed low 7 bits and unsigned upper 25 bits. Low value -2 returns the upper
+value. Low value -1 copies an indexed string through this+0xD8 and returns -2.
+Other low values construct `<fixed(%d,%d)>` with those two values, pass it to
+the interface at this+0x10, copy the returned text, and return -1 after cleaning
+up local string temporaries. This is an internal record and formatter-input
+observation; neither the expression nor its bits are authenticated wire fields.
+The virtual formatter and the resulting bytes remain unresolved.
+
+FUN_00C9D550 reaches candidate preparation at FUN_00C9D0D0, which packs
+`(index << 7) | 0x7E` into a Completion record. The retained exports do not
+join that prepared vector to the handler's selected vector or identify the
+index as a fixedPhrase, item, place, or wire key.
+
+AT-COMP-002 resolves FUN_0066AB10's call at 0x0066ABA8 to CompletionModule
+slot 5. Its instruction listing preserves the two local pointers, incoming
+argument, and this+0x1A60 field supplied on the stack; it does not identify the
+local objects as editor buffers or packet sources. The -2/-1 branch reaches
+FUN_0066A730 and FUN_0066A330. At 0x0066A399 the latter invokes the parent
+pointer's +0xB4 interface through vtable offset +0x34. The concrete callback
+and its insertion or serialization effects are unresolved. No retained edge
+connects it to FUN_006E91F0 or the Map/World chat source objects.
+
+AT-COMP-003 authenticates CompletionDocument's 23-slot vtable at 0x00FC1744
+and its FUN_0066BA70 factory. The RaptureTextBox constructor wraps that
+document through FUN_0098DAA0; FUN_0066BD00 uses CompletionModule slots 7 and
+8 while synchronizing text and candidate ranges. Complete ownership,
+retention, release, and callback registration remain unresolved.
 
 ## Adjacent control parser
 
@@ -139,8 +192,9 @@ are auto-translate wire fields.
 
 The fixedPhrase table path
 FUN_004DAA10 -> FUN_004DA680 -> FUN_00447260("xtx/_fixedPhrase") ->
-FUN_00C9D550 is independent of the selection dispatch, Map and World senders,
-and generic renderer FUN_007906C0 in the retained target set. The
+FUN_00C9D550 reaches Completion candidate preparation at FUN_00C9D0D0. That
+candidate vector is not joined to the selected RaptureTextBox vector, Map or World
+senders, or generic renderer FUN_007906C0 in the retained target set. The
 receive-side lookup from a token to a fixedPhrase row, and the choice between
 rendering and forwarding, remain unresolved.
 
@@ -158,8 +212,8 @@ from those values.
 
 ## Evidence boundary
 
-The manifest retains exact read-only Ghidra invocations, target lists, output
-hashes, and the required environment names. The new targeted RTTI export
+The manifest retains read-only Ghidra invocations, target lists, output
+hashes, and the required environment names. The RaptureTextBox RTTI export
 reports one target and three records with output SHA256
 E13A818BBE9C8E197DCABB27E4F84C43E82A7C09500A11912B212FC420A571DB. The
 candidate, helper, event, RTTI method-listing, and method DumpVAs exports contain
@@ -168,3 +222,16 @@ export reports COMPLETE with four queries, zero defined string matches, and
 zero references. The authenticated Lua source hashes and line spans, the
 RaptureTextBox method-pointer mapping, and the native dispatcher candidate are
 retained in the manifest; no token producer is promoted.
+
+The Completion recipes AT-GH-014 through AT-GH-024 retain exporter revisions,
+script hashes, sanitized reproduction invocations, and output hashes. The
+targeted Completion RTTI export covers six names and eight records. The handler
+listing reports COMPLETE with three requested and three completed entries.
+The lifecycle dump preserves its repeated requests and all eleven sections;
+those represent nine distinct function targets.
+
+The optional passive observation checklist is retained in the manifest. It
+requests the identified client and locale, exact UI selection, repeated sparse
+keys, token-only and literal/token/literal examples, raw source/message bytes,
+direction, and independently observed rendering. Any owner-supplied local
+preserved-client test remains non-retail corroboration.
