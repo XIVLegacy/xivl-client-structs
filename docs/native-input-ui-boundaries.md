@@ -105,6 +105,12 @@ The exact `.?AVContentPresenter@Controls@Sqwt@@` query returned three records.
 Independent PE COL/slot checks and direct instructions qualified the receiver
 adjustments, deleting paths, fallback lookup, and cleanup collection below.
 
+The indexed-container ownership qualification used read-only function exports
+and targeted RTTI at `d1ca042b9e15a043afaf6a74ba987946552e5f33`.
+Exact FormElement, XamlControlContainer, and CloseWindowListener queries returned
+four records. Independent PE COL/deleting-slot checks and direct instructions
+qualified map publication, ownership transfer, and conditional teardown below.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -604,15 +610,62 @@ virtual overrides remain unbound. It does not apply the input-interface +0xB4
 adjustment or acquire a lease.
 These are index-scoped native lookups, not direct global string-to-grid
 addresses. Cache insertion and a returned pointer do not supply a lifetime
-lease. The live ActionMenu index, concrete returned type, ActionMenu/grid
+lease. The actual ActionMenu index, concrete returned grid types, ActionMenu/grid
 cache eviction, and replacement identity remain unqualified.
+
+The constructor `FUN_0053AF60` identifies one property-engine producer as
+`Application::Main::Element::FormElement`. Its complete receiver E has vftable
+`0x00FA1200`, COL `0x01145194`, offset 0; its input receiver E+8 has vftable
+`0x00FA10DC`, COL `0x011451F0`, offset 8. Deleting slot 0 is
+`FUN_005455B0`; the input thunk `FUN_005455A0` subtracts 8 before entering it.
+The constructor publishes the same allocated index map K at E+0xD0 and E+0xD4
+at `0x0053B011-0x0053B017`, and initializes the separate cache at E+0x1DC.
+
+`FUN_0096E4D0` constructs `Sqwt::Markup::XamlControlContainer`: complete
+vftable `0x010724D4`, COL `0x0117D0C4`, offset 0, deleting slot 0
+`FUN_0096EA30`. Its own name map begins at X+4; X+0x2C and fallback-root
+storage X+0x30 start null. `FUN_0096B220` and `FUN_0096BCA0` allocate 0x48
+bytes and call this constructor. This qualifies those producer paths, not every
+raw record or either named grid returned from its map.
+
+`FUN_00538760` registers a raw record with ECX=E, X and integer index in two
+stack slots, returns the index in EAX, and uses `ret 8`. It calls
+`FUN_00542410` on K to find or insert the index, then stores X in that node's
++0x10 value cell at `0x0053877C`. The store itself neither releases a previous
+value nor leases X. The pending-load callback `FUN_005387F0` takes the supplied
+AutoPtr's stored pointer, zeros that storage, and passes it to this registrar
+at `0x0053894C-0x00538963`. Its thread and the actual ActionMenu request/index
+remain unbound. The registrar has no direct E+0x1DC cache-clear operation;
+its calls and callbacks do not establish replacement-to-cache invalidation.
+
+`FUN_0053AC10` has conditional index-map teardown. If index 0 is absent or
+its record's X+0x2C is null, `FUN_00534FD0` invokes deleting slot 0 with flag
+1 on each nonnull map value, clears the nodes, and the destructor destroys and
+frees K through `FUN_00542010`. Otherwise it attempts to construct a 0x30-byte
+`Application::Main::Element::CloseWindowListener` using K. The listener
+constructor `FUN_0053A0E0` stores K at listener+0x2C, registers its embedded
+handler through the root's +0xB4 input receiver, virtual slot +0x24, descriptor
+`0x01336A84`, and calls `FUN_00921B00` on the root. Failure to resolve that
+root deletes the listener immediately. Listener vftable `0x00FA1054`, COL
+`0x01144ECC`, offset 0 has deleting slot `FUN_005441A0`; its destructor
+`FUN_00539480` deletes nonnull K values, destroys K, and frees it.
+
+For constructor-qualified X, deleting slot `FUN_0096EA30` calls
+`FUN_0096E380`, which enters named-control cleanup `FUN_0096E030` and destroys
+the name map. Independently of immediate or listener-mediated K teardown,
+FormElement destruction calls `FUN_00542B30` on E+0x1DC at
+`0x0053AE4D-0x0053AE5B`, destroying the cache nodes and sentinel. These are
+conditional ownership paths, not a lease on E, X, a root, or a cached grid.
 
 The cache-hit return at `0x005379F6-0x00537A00` neither re-reads X+0x30 nor
 checks the cached result's Template or generation. The qualified Template
 replacement and root-cleanup paths establish subtree mutation edges, but their
-link to this engine cache is unresolved. X's concrete type, its name-map/root
-registration and destruction, and invalidation of a cached grid result on
-scope or Template replacement remain necessary before retaining a receiver.
+link to this engine cache is unresolved. The actual engine/index/container,
+named-grid registration and destruction, fallback-root virtual overrides, and
+invalidation of a cached grid result on index, scope, or Template replacement
+remain necessary before retaining a receiver. The listener notification and
+cleanup consumers do not establish a readable-thread or lifetime contract for
+those selected instances.
 
 The direct instructions at `0x00535690-0x005356F6` return the pointer
 stored at map-node+0x10 without acquiring a lifetime lease.
@@ -624,7 +677,8 @@ at `0x0053B0BE-0x0053B0C8`. In `FUN_0053A630`, the path through
 and invokes `FUN_0093CC70` on success. It then reaches cache clearing at
 `0x0053A6D8-0x0053A704`, including the sentinel links and size reset.
 `FUN_0053CB90` destroys cache tree nodes; it is not the search helper.
-`FUN_0053EB20` erases the owning map node and decrements its count.
+`FUN_0053EB20` erases a per-name record in the separate E+0xEC map and
+decrements its count; it does not erase the E+0xD4 indexed-container node.
 The recorded direct caller of `FUN_0053A630` is `FUN_0075B930`, which
 first calls `FUN_004D9910` and then forwards its second argument to the
 removal path. This identifies generic map/cache eviction, not ActionMenu
