@@ -32,6 +32,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   joins observed property-stream slot values to static command identities.
 - [Retail repair contract](repair-contract.md) - client, wire, metadata, and
   capture boundaries for NPC repair and CraftCommand 22013 self-repair.
+- [Additive custom-zone selection](map-layout-selector.md) - SetMap framing,
+  allocation constraints and the independent-scene acceptance boundary.
 
 ## Related contracts
 
