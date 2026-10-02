@@ -67,6 +67,12 @@ references. `ghidra/FindFieldRefs.java` with offsets `0x158,0x159` supplied
 instruction candidates only; matching a displacement does not establish
 an object's type or a getter contract.
 
+The route-membership, cache-lifecycle, and getter continuations used those
+same read-only exporters at `9c8f95dc5af306791400ae81aa9647d0d67be18e`,
+with the function and global VAs below. LLVM objdump 22.1.4 supplied the
+instruction-level membership, teardown, and setter-policy observations.
+These continuations preserve the binary identity and ABI limits above.
+
 ## Pad receiver and first consumer
 
 Let `M` be the complete `Application::Main::MainModule`, `C = M+0x10` its
@@ -182,6 +188,50 @@ at the selected-pad boundary. Keyboard focus alone does not establish all
 pad routing: `FUN_0091ED80` also constructs the route collection used by
 `FUN_0091EE90` from `0x01357060` and the desktop root.
 
+### Additional route membership and precedence
+
+The collection at `0x01357060` has begin/end/capacity pointers at
+`0x01357064/68/6C`. The membership paths traverse eight-byte entries,
+using the first dword as a route key and entry+4 as a recipient pointer.
+`FUN_0091E3E0` searches through `FUN_009456B0`, writes an accepted
+recipient into entry+4, and also reaches collection mutation through
+`FUN_00CB1120` with ECX=`0x01357060`. The DesktopWindow constructor
+`FUN_0091B020` supplies one concrete focus-registration caller. This
+is recipient membership, distinct from event-descriptor registration.
+
+`FUN_0091D930` locates entries by their first dword and passes a matching
+entry to `FUN_00A76BE0`. `FUN_0091DBD0` zeros the first matching entry+4
+recipient when found, and clears the current-focus token when it equals
+the destroyed object. Global teardown `FUN_00F35720`
+releases the collection's begin pointer and zeros begin/end/capacity.
+These operations identify removal paths, but do not establish the route-key
+producer, the helpers' ownership/refcount contract, or a recipient lease.
+Construction and replacement of each concrete route recipient remain
+unqualified. Do not retain or traverse this collection asynchronously.
+
+`FUN_0091EE90` requires non-null current focus and event descriptor before
+using this collection. `FUN_0091ED80` uses the desktop root's +0xB4
+InputElement as its route sentinel when a root exists. Neither condition
+proves a valid gameplay session. `FUN_0091E1C0` dispatches through a
+recipient's vtable+0x34 or +0x60 ancestor chain according to the event
+descriptor, and the router can stop on event+0x17. The owner and meaning
+of that stop byte must be resolved before assigning modal precedence.
+
+The same dispatcher handles kind `0x57` through PreviewTextInput
+(`0x01359780`) and TextInput (`0x01359710`), conditional on two
+`FUN_00445D60` queries involving `0x01069148` and `0x0106914C`.
+Those queries and ordered event names do not establish a readable text-entry
+mode or priority over pad routing. Native InputElement/TextBox RTTI alone
+does not connect a captured token to those types. The token remains opaque.
+
+The exact classification blockers are the concrete focus/route-recipient
+construction and type relation, text-entry/modal precedence before the
+selected-pad boundary, and a session-generation validity rule. Object
+destruction clearing focus does not establish logout/login invalidation.
+No role, precedence, or session field in these paths is qualified for pad
+consumption. The supported receiver adjustments and synchronous lifetime
+rules above still apply.
+
 A safe gameplay-context reader remains unproved. The missing fact is a
 readable, current native recipient/text-entry/modal/session classification
 at or before pad consumption, with receiver identity and lifetime, on
@@ -228,8 +278,24 @@ at engine+0x1DC; a miss first consults `FUN_0053E480`, then, when the
 resolved element's +0x30 is non-null, another name-scope lookup path.
 These are index-scoped native lookups, not direct global string-to-grid
 addresses. Cache insertion and a returned pointer do not supply a lifetime
-lease. The live ActionMenu index, concrete returned type, cache eviction,
-and replacement identity remain unqualified.
+lease. The live ActionMenu index, concrete returned type, ActionMenu/grid
+cache eviction, and replacement identity remain unqualified.
+
+The direct instructions at `0x00535690-0x005356F6` return the pointer
+stored at map-node+0x10 without acquiring a lifetime lease.
+Cache hits return the stored pointer
+at `0x005379F6`; misses insert through `FUN_005408E0` at `0x00537A5E` or
+`0x00537AD8`. The engine constructor initializes the cache at +0x1DC
+at `0x0053B0BE-0x0053B0C8`. In `FUN_0053A630`, the path through
+`0x0053A691` resolves a named element, tries a native FrameworkElement cast,
+and invokes `FUN_0093CC70` on success. It then reaches cache clearing at
+`0x0053A6D8-0x0053A704`, including the sentinel links and size reset.
+`FUN_0053CB90` destroys cache tree nodes; it is not the search helper.
+`FUN_0053EB20` erases the owning map node and decrements its count.
+The recorded direct caller of `FUN_0053A630` is `FUN_0075B930`, which
+first calls `FUN_004D9910` and then forwards its second argument to the
+removal path. This identifies generic map/cache eviction, not ActionMenu
+registration, the two grids' destruction, or a rebuild generation.
 
 The exact `_getProperty` string at `0x00FD76B4` has registrations in
 `FUN_00744990` and `FUN_0074D940`, with callbacks `0x006EBA80` and
@@ -242,6 +308,18 @@ helpers also contain the `Anime`/`UIElement.Execute` lookup path.
 This is a concrete getter-bridge lead, not a typed Visibility reader or
 proof that the returned string is the current native preference of either
 grid. Its VM arguments and result processor are not stable control handles.
+
+The first unresolved value-resolution edge is
+`FUN_00537FA0 -> FUN_00911020`. Its registry lookup through
+`FUN_00910ED0` returns the value stored at entry+0x20, after which
+resolution depends on receiver vtable slots +0x30 or +0xC and handler
+slot +8. The parallel
+`FUN_00537AF0 -> FUN_00911180` type/default path reaches
+`FUN_00910F60` and `FUN_009A2C90`. These are generic dynamic property
+paths. A concrete Visibility handler for each live grid, resolved full-state
+return, and native-writer precedence remain unproved. Even a resolved
+effective Visibility value would not by itself supply a separate current
+native preference while another caller owns presentation.
 
 The Visibility name initializer at `0x00F22900-0x00F22923` associates
 `"Visibility"` at `0x0106BEB8` with descriptor `0x013596BC`, property
@@ -270,10 +348,24 @@ It passes descriptor `0x013596BC` and callback `FUN_0093B700` to
 
 `FUN_009BCB50` uses the byte at property-state+0 as the value and
 property-state+1 as flags. It may resolve pending property state through
-`FUN_009157C0`, refuse a write according to flag bit 1 and argument 2,
-clear flag bit 0 on one accepted path, mark bit 2 on a changed value,
-and dispatch notification through `FUN_009BC9E0` when argument 3 equals 1.
-This establishes full-state storage at complete UIElement+0x158 and
+`FUN_009157C0`. Its direct instructions at `0x009BCB58-0x009BCBA0`
+establish the following policy for the wrapper's argument 2, after pending
+mask `0x10` resolution and clearing:
+
+| Argument 2 byte | Write admission | Accepted flag update |
+|---|---|---|
+| 0 | Rejected when flag mask `0x02` is set | Clears mask `0x01` |
+| 1 | Requires either mask `0x02` or `0x01` | Preserves mask `0x01` |
+| Other | Passes these admission tests | Preserves mask `0x01` |
+
+An accepted changed value sets mask `0x04` and dispatches notification
+through `FUN_009BC9E0` only when argument 3 byte equals 1. Other values
+skip notification, as does an unchanged accepted value.
+AL reports 0 for policy rejection and 1 for acceptance, including an
+unchanged accepted value (`0x009BCB91-0x009BCBD7`). This mechanical policy
+does not establish safe override arguments or an independent preference
+channel. The wrapper preserves that low-byte return but has no full-EAX
+boolean contract. This establishes full-state storage at complete UIElement+0x158 and
 companion flags at +0x159, not permission to write either byte directly.
 The property's resolution, precedence, and notification path must be
 preserved. A cached-byte read alone has not been qualified as the current
@@ -287,7 +379,14 @@ updates VisualVisibility (descriptor `0x01359940`, UIElement+0x84).
 Their name initialization calls are at `0x00F22A00-0x00F22A0A` and
 `0x00F23350-0x00F2335A`, using strings `0x0106BF24` and `0x0106C534`.
 Both receive false for Hidden and Collapsed. This native notification path
-does not authorize choosing those policy arguments for an override.
+can reject the derived writes. The IsVisible path reaches
+`FUN_0093E120`, which rejects policy 0 when packed-state mask `0x04`
+is set (`0x0093E13F-0x0093E165`). VisualVisibility reaches
+`FUN_0095E290`, which rejects policy 0 when its state mask `0x02`
+is set (`0x0095E2AF-0x0095E2D3`). These are different property layouts.
+Notification intent therefore does not prove that stored or effective
+visibility changed. It does not authorize choosing those policy arguments
+for an override.
 
 IsHitTestVisible is a separate property: its initializer at
 `0x00F22930-0x00F22949` associates string `0x0106BEC4` with descriptor
