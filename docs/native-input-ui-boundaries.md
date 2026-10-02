@@ -73,6 +73,14 @@ with the function and global VAs below. LLVM objdump 22.1.4 supplied the
 instruction-level membership, teardown, and setter-policy observations.
 These continuations preserve the binary identity and ABI limits above.
 
+The ancestor-key and Window continuations used the committed tools at
+`4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
+`tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
+`.?AVDesktopWindow@Sqwt@@`; constructor stores and direct instructions
+qualified the receiver bases below. Exact address references queried
+`0x01357208`, `0x01069148`, and `0x0106914C`. Property initializer
+instructions and their referenced string bytes supplied the names below.
+
 ## Pad receiver and first consumer
 
 Let `M` be the complete `Application::Main::MainModule`, `C = M+0x10` its
@@ -160,7 +168,7 @@ uses PreviewGotKeyboardFocus (`0x01359450`), GotKeyboardFocus
 are initialized at `0x00F23180-0x00F23206`, using strings at
 `0x0106C1B4`, `0x0106C1CC`, and `0x0106C1E0`.
 
-Let `I` be the InputElement receiver. For the inspected UIElement and
+Let `I` be the InputElement receiver. For the inspected UIElement, Window, and
 DesktopWindow objects, `I = complete object+0xB4`. The DesktopWindow
 constructor establishes that adjustment at `0x0091B05B` and invokes the
 focus transition with it at `0x0091B38D-0x0091B38F`. Do not apply this
@@ -193,39 +201,115 @@ pad routing: `FUN_0091ED80` also constructs the route collection used by
 The collection at `0x01357060` has begin/end/capacity pointers at
 `0x01357064/68/6C`. The membership paths traverse eight-byte entries,
 using the first dword as a route key and entry+4 as a recipient pointer.
-`FUN_0091E3E0` searches through `FUN_009456B0`, writes an accepted
-recipient into entry+4, and also reaches collection mutation through
-`FUN_00CB1120` with ECX=`0x01357060`. The DesktopWindow constructor
-`FUN_0091B020` supplies one concrete focus-registration caller. This
-is recipient membership, distinct from event-descriptor registration.
+
+`FUN_0091C370:0x0091C370-0x0091C3AC` produces the key with ECX=I,
+no stack arguments, EAX=pointer, and `ret`. It follows I+0x60 parents,
+returning the ancestor immediately below the desktop root's InputElement;
+the root itself returns itself. A null input returns null. With a root
+present, a chain ending before reaching it returns null. With no root,
+the last non-null ancestor returns as the key. The key is therefore a
+pointer into the native input tree, not a role or session identifier;
+a non-null key does not prove that a desktop root or gameplay session exists.
+
+| Entry VA | ABI | Membership operation |
+|---|---|---|
+| `0x0091DDC0` | ECX=key, one 32-bit stack recipient; acceptance in AL; `ret 4` | Replaces entry+4 when the key exists; otherwise inserts the pair at the beginning. |
+| `0x0091DEC0` | ECX=key, no stack arguments; result in AL; `ret` | Moves an existing pair to the beginning without changing its recipient; returns 0 if absent. |
+| `0x0091DFB0` | ECX=I, no stack arguments; result in AL; `ret` | Derives the key, removes its existing pair if found, and inserts `{key,I}` at the beginning; returns 0 for a null key. |
+
+The accepted focus transition in `FUN_0091E3E0:0x0091E6A4-0x0091E758`
+tests key+0x70 mask `0x08`. When clear it removes any matching pair and
+appends `{key,I}`. When set it inserts a missing pair at the beginning or
+updates the existing recipient in place. The mask's semantic owner remains
+unqualified; it is not a proved modal field.
+
+`FUN_00CB1120` inserts through `FUN_00CB0EC0`; `FUN_00CB1530` appends.
+Their pair-copy helpers `FUN_00965AD0`, `FUN_009873E0`, `FUN_006D0970`,
+and `FUN_00965AA0` copy the two dwords without recipient calls or
+retain/release operations. `FUN_00A76BE0` shifts later pairs and subtracts
+eight from the end pointer. Growth copies into new storage, frees the old
+begin pointer, and replaces begin/end/capacity at
+`FUN_00CB0EC0:0x00CB1007-0x00CB1023`. These are raw borrowed pointers.
+Neither an entry address nor a copied recipient is a lease: mutation can
+shift entries or replace their buffer, and copying does not extend object life.
+
+One concrete registration owner is `Sqwt::Window`. Its constructor
+`FUN_009246F0:0x00924724-0x00924734` stores complete-object vftable
+`0x0106A0BC`, InputElement vftable `0x01069F94` at +0xB4, and the
+secondary +0x194 vftable `0x01069F7C`. It registers `FUN_009238A0`
+as a property callback. LogicalFocus is descriptor `0x01357208`, index
+`0x0A`, initialized at `0x00F20C20-0x00F20C39` from string `0x01069D44`.
+That callback's index-0x0A branch at `0x00923AB8-0x00923ADD` registers
+the Window's own I when its stored name is empty. Otherwise
+`FUN_00922AC0:0x00922AC6-0x00922B04` resolves the name from Window+0x3C0
+through `FUN_00910980` with fallback enabled, adds +0xB4 to the result,
+and registers it under the Window's I key. This proves a Window key with a
+name-resolved target; lookup scope, concrete target type, live role, and
+lease remain unqualified.
+
+IsModal is descriptor `0x0135722C`, index `0x0B`, initialized at
+`0x00F20C40-0x00F20C59` from string `0x01069D54`. Its Window callback
+branch at `0x00923AE2-0x00923AFD` checks I's vtable+0x5C result before
+calling the mutating focus-selection helper `FUN_00923190`.
+`FUN_00922C20` and `FUN_00922E10`, reached through `FUN_00923020`,
+select/count registered Window candidates using complete object+0x3C8
+mask `0x20` together with that virtual result equaling 1. These paths
+narrow the modal-selection investigation, but do not qualify a resolved
+IsModal reader or connect the selected Window to each pad recipient.
+The registration containers and virtual eligibility contract also need
+construction, invalidation, and same-thread lifetime qualification.
 
 `FUN_0091D930` locates entries by their first dword and passes a matching
 entry to `FUN_00A76BE0`. `FUN_0091DBD0` zeros the first matching entry+4
 recipient when found, and clears the current-focus token when it equals
 the destroyed object. Global teardown `FUN_00F35720`
 releases the collection's begin pointer and zeros begin/end/capacity.
-These operations identify removal paths, but do not establish the route-key
-producer, the helpers' ownership/refcount contract, or a recipient lease.
-Construction and replacement of each concrete route recipient remain
-unqualified. Do not retain or traverse this collection asynchronously.
+When the TLS+0x10 dword is nonzero, the InputElement child-detach path
+`FUN_0091D9D0` removes a detached desktop child's key. For another parent,
+it can replace entry+4 with the derived key when the removed child is the
+recipient or its ancestor. `FUN_0091C3B0:0x0091C3B0-0x0091C3CA` tests
+that relation by walking the stack recipient's +0x60 chain against ECX,
+returning a boolean in AL and ending in `ret 4`. These are synchronous
+cleanup paths; the local route snapshot used during dispatch does not retain
+recipients. Concrete named-recipient construction/replacement and a recipient
+lease remain unqualified. Do not traverse this collection asynchronously.
+
+The inspected Window destructor has the complete-object base-destructor
+chain `FUN_00924DC0 -> FUN_00935660 -> FUN_00936C70 -> FUN_009314E0
+-> FUN_0093AC10`, ending at the InputElement destructor with receiver
++0xB4 as qualified above. This connects that concrete type to focus cleanup;
+it supplies no synchronization, retained handle, or login/logout generation.
 
 `FUN_0091EE90` requires non-null current focus and event descriptor before
 using this collection. `FUN_0091ED80` uses the desktop root's +0xB4
-InputElement as its route sentinel when a root exists. Neither condition
-proves a valid gameplay session. `FUN_0091E1C0` dispatches through a
+InputElement as its route sentinel when a root exists. Its copy helpers
+`FUN_00921500/590` preserve pair order. When the source's first key differs
+from the sentinel, the copy places a synthetic `{sentinel,sentinel}` first
+and skips matching source keys; the sentinel is zero without a desktop root.
+`FUN_0091EE90:0x0091EFFD-0x0091F00B` can move
+the focused key's pair to the local snapshot's end. At `0x0091F01D`, a
+zero event-descriptor byte +4 reverses that snapshot through `FUN_00932760`.
+The iteration then advances from begin to end and skips null recipients
+(`0x0091F17B-0x0091F1B8`). Front registration is therefore not a universal
+first-consumer rule. None of these conditions proves a valid gameplay
+session. `FUN_0091E1C0` dispatches through a
 recipient's vtable+0x34 or +0x60 ancestor chain according to the event
 descriptor, and the router can stop on event+0x17. The owner and meaning
 of that stop byte must be resolved before assigning modal precedence.
 
 The same dispatcher handles kind `0x57` through PreviewTextInput
 (`0x01359780`) and TextInput (`0x01359710`), conditional on two
-`FUN_00445D60` queries involving `0x01069148` and `0x0106914C`.
-Those queries and ordered event names do not establish a readable text-entry
-mode or priority over pad routing. Native InputElement/TextBox RTTI alone
+`FUN_00445D60` string-equality queries for newline and carriage return at
+`0x01069148` and `0x0106914C`. Its direct instructions at
+`0x00445D60-0x00445D9E` compare the receiver's string bytes with the stack
+string and return equality in AL. These are character-content checks,
+not a readable text-entry mode or priority over pad routing.
+Native InputElement/TextBox RTTI alone
 does not connect a captured token to those types. The token remains opaque.
 
-The exact classification blockers are the concrete focus/route-recipient
-construction and type relation, text-entry/modal precedence before the
+The exact classification blockers are the actual named-recipient/gameplay/text-entry
+recipient construction and role relation, the resolved modal reader and its
+registration-container lifetime, text-entry/modal precedence before the
 selected-pad boundary, and a session-generation validity rule. Object
 destruction clearing focus does not establish logout/login invalidation.
 No role, precedence, or session field in these paths is qualified for pad
