@@ -58,6 +58,15 @@ against the hash-checked file. Start at an instruction boundary. The
 tracked observations here, not local decompiled output or assembly files,
 are the durable evidence.
 
+The focus and property-resolution continuations used the same committed
+tools at `6f5fb7b31d51426d29c96202f555ebea5efec848`. Explicit reference
+targets were `0x01357020`, `0x01359438`, `0x01359420`, `0x013593D8`,
+`0x01359940`, `0x01359450`, `0x0135945C`, and `0x013595B4`. The exact string
+queries `_getProperty` and `IsHitTestVisible` resolved two matches and three
+references. `ghidra/FindFieldRefs.java` with offsets `0x158,0x159` supplied
+instruction candidates only; matching a displacement does not establish
+an object's type or a getter contract.
+
 ## Pad receiver and first consumer
 
 Let `M` be the complete `Application::Main::MainModule`, `C = M+0x10` its
@@ -118,11 +127,14 @@ The native initializer `0x00F207E0-0x00F20803` initializes event descriptor
 `0x01356E34` with kind 0x56 through `FUN_0097F6C0`. The 0x56 branch of
 `FUN_0091AC80:0x0091AD02-0x0091AD2B` replaces event+4 with descriptors
 `0x01359438`, then `0x01359420`, calling `FUN_0091EE90` for each.
+Their initializers at `0x00F22FA0-0x00F22FF6` name them
+PreviewPadChange and PadChange, using strings at `0x0106C11C` and
+`0x0106C130`, respectively.
 This identifies the first downstream routed pad-event path without command
 admission. The shared router uses current source `0x01357020`, obtains a
 route collection, assigns event source fields +8/+0xC, dispatches through
-`FUN_0091E1C0`, and can stop on event+0x17. Descriptor names, the complete
-focus/modal policy, and the gameplay recipient are not resolved here.
+`FUN_0091E1C0`, and can stop on event+0x17. The complete focus/modal policy
+and the gameplay recipient are not resolved here.
 
 All these calls are synchronous within the invoking Rapture update.
 The preprocessor uses that thread's TLS, so another thread cannot safely
@@ -131,6 +143,44 @@ rebuild, and session generation require qualification. P and S are embedded
 in M, and are usable only while that instance lives. PadEventArgs is local
 to `FUN_00548160`; neither it nor its source pointers may be retained as
 handles after the dispatch. Reacquisition is required after M is replaced.
+
+### Borrowed native keyboard-focus recipient
+
+The current source at `0x01357020`, RVA `0x00F57020`, is a native
+InputElement keyboard-focus recipient. This identifies its UI role, not
+whether gameplay is permitted. The focus transition in `FUN_0091E3E0`
+uses PreviewGotKeyboardFocus (`0x01359450`), GotKeyboardFocus
+(`0x0135945C`), and LostKeyboardFocus (`0x013595B4`). Their names and kinds
+are initialized at `0x00F23180-0x00F23206`, using strings at
+`0x0106C1B4`, `0x0106C1CC`, and `0x0106C1E0`.
+
+Let `I` be the InputElement receiver. For the inspected UIElement and
+DesktopWindow objects, `I = complete object+0xB4`. The DesktopWindow
+constructor establishes that adjustment at `0x0091B05B` and invokes the
+focus transition with it at `0x0091B38D-0x0091B38F`. Do not apply this
+adjustment to an arbitrary InputElement type without its own layout proof.
+
+| VA / RVA | ABI | Observation |
+|---|---|---|
+| `0x0091C4A0` / `0x0051C4A0` | ECX=I; no stack arguments; EAX=0 or 1; `ret` | Tests exact equality with the current recipient. |
+| `0x0091C4B0` / `0x0051C4B0` | ECX=I; no stack arguments; boolean in AL; `ret` | Tests I against the current recipient and its +0x60 ancestor chain. Upper EAX bits are not a boolean contract. |
+| `0x0091E3E0` / `0x0051E3E0` | ECX=I; no stack arguments | Validates native eligibility and focus routing; its accepted transition stores I at `0x0091E75C`. This is a mutating native operation, not a diagnostic reader. |
+| `0x0091DBD0` / `0x0051DBD0` | ECX=I; no stack arguments | InputElement destruction clears the global at `0x0091DC8D` if it still equals I, then updates dependent focus state. |
+
+`FUN_0093AC10:0x0093AC3B,0x0093ACAC-0x0093ACB3` supplies the
+UIElement+0xB4 receiver to that destructor. A same-thread copy of the current
+token can therefore identify the native focus recipient for one observation;
+it cannot keep the object alive or make an asynchronous pointer usable.
+There is no generation or synchronization proof for retained tokens.
+The equality helpers neither validate their receiver's lifetime nor supply
+chat, modal, or session semantics. A null token is not gameplay permission.
+
+The recipient exists independently of command admissions. The remaining
+classification requires the actual recipient/ancestor types and their native
+roles across gameplay, chat, menus, modals, and invalid sessions, correlated
+at the selected-pad boundary. Keyboard focus alone does not establish all
+pad routing: `FUN_0091ED80` also constructs the route collection used by
+`FUN_0091EE90` from `0x01357060` and the desktop root.
 
 A safe gameplay-context reader remains unproved. The missing fact is a
 readable, current native recipient/text-entry/modal/session classification
@@ -170,6 +220,29 @@ enters `FUN_00912850`. That general engine can process bindings and
 property-specific callbacks. It is not a typed Visibility-only setter.
 The generic `0x006F4F70 -> 0x0073DF10` path supplies no replacement proof.
 
+`FUN_00537950`, RVA `0x00137950`, uses ECX=the property engine, a native
+control-name string object pointer and an element index in two stack slots,
+and `ret 8`. `FUN_00535690`, RVA `0x00135690`, resolves that index through
+the engine's map pointer at +0xD4. The name resolver uses an index/name cache
+at engine+0x1DC; a miss first consults `FUN_0053E480`, then, when the
+resolved element's +0x30 is non-null, another name-scope lookup path.
+These are index-scoped native lookups, not direct global string-to-grid
+addresses. Cache insertion and a returned pointer do not supply a lifetime
+lease. The live ActionMenu index, concrete returned type, cache eviction,
+and replacement identity remain unqualified.
+
+The exact `_getProperty` string at `0x00FD76B4` has registrations in
+`FUN_00744990` and `FUN_0074D940`, with callbacks `0x006EBA80` and
+`0x00700450`. The first callback reaches `0x0075B870` or `0x0075B8A0`,
+then `0x00538500 -> 0x00538130` or `0x00538130` directly. That engine
+selects an element index and obtains a value and type through
+`FUN_00537FA0` and `FUN_00537AF0`. It supports several property types;
+its string-result cases use the supplied processor's vtable+0xC. Those
+helpers also contain the `Anime`/`UIElement.Execute` lookup path.
+This is a concrete getter-bridge lead, not a typed Visibility reader or
+proof that the returned string is the current native preference of either
+grid. Its VM arguments and result processor are not stable control handles.
+
 The Visibility name initializer at `0x00F22900-0x00F22923` associates
 `"Visibility"` at `0x0106BEB8` with descriptor `0x013596BC`, property
 index 1 and metadata value 5. `FUN_0093C750` constructs a
@@ -206,12 +279,33 @@ The property's resolution, precedence, and notification path must be
 preserved. A cached-byte read alone has not been qualified as the current
 native preference getter.
 
-In `FUN_0093B700`, property index 1 reads that byte, compares it with 2,
-calls `FUN_0093A3B0` and `FUN_009404A0`, and has additional work when
-the value is 0. That is a concrete distinction between Hidden and
-Collapsed in native processing. The helper effects and each target grid's
-actual hit-test path remain unqualified. `FUN_0093CC70` also sets the
-Visibility property through this engine and uses TLS+0x1C queues, providing
+In `FUN_0093B700:0x0093B7E0-0x0093B804`, property index 1 compares the
+state with 2, then passes that boolean to `FUN_0093A3B0` and
+`FUN_009404A0` with policy/notification arguments 0 and 1. The former
+updates IsVisible (descriptor `0x013593D8`, UIElement+0x135); the latter
+updates VisualVisibility (descriptor `0x01359940`, UIElement+0x84).
+Their name initialization calls are at `0x00F22A00-0x00F22A0A` and
+`0x00F23350-0x00F2335A`, using strings `0x0106BF24` and `0x0106C534`.
+Both receive false for Hidden and Collapsed. This native notification path
+does not authorize choosing those policy arguments for an override.
+
+IsHitTestVisible is a separate property: its initializer at
+`0x00F22930-0x00F22949` associates string `0x0106BEC4` with descriptor
+`0x01359354`, property index 2. The Visibility branch does not directly
+assign that descriptor. Derived visibility may still affect hit testing;
+the two grids' actual hit-test consumers remain unqualified.
+
+Collapsed also has distinct layout effects. `FUN_009302F0` selects zero
+layout values and a zero rectangle when UIElement+0x158 is 0.
+`FUN_0093A870` substitutes a zero rectangle for that state while updating
+layout through the current TLS context. This is not mouse-region exclusion
+proof for Hidden. `FUN_009157C0`, RVA `0x005157C0`, is a cdecl helper with
+two stack arguments, the complete object and property descriptor. When
+TLS+0x1C exists, it either calls a thread-local provider's vtable+0x20 or
+enqueues resolution through `FUN_009A3850` at context+0x2180. Calling it
+from a different thread cannot qualify a current-preference read.
+`FUN_0093CC70` also sets the Visibility property through this engine and
+uses TLS+0x1C queues, providing
 a direct thread-context dependency in native UI lifecycle processing.
 
 The missing contract is the live ActionMenu instance -> each named grid's
