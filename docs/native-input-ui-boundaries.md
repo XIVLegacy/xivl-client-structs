@@ -175,6 +175,12 @@ Fifteen assembly reports with 3113 instruction encodings, receiver/call/table
 assertions, and six USER32 import bindings matched the pinned executable.
 Fresh program-byte authentication preserved the file-backed limits above.
 
+The owned-module coordinate reconciliation reused the qualified construction
+and initialization exports above. Independent PE reads matched all 1224
+instruction encodings in their two bounded disassemblies and 28 targeted
+receiver/field assertions, including the ten pointer stores listed below.
+These checks authenticate static instructions, not initialized runtime objects.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -286,6 +292,29 @@ pad/mouse/keyboard records at Q+0x6C/+0xC4/+0xE4, and calls
 caller. These callback-relative coordinates translate to complete
 R+0x68 for M and R+0x70/+0xC8/+0xE8 for the records. They do not validate
 readability or lifetime.
+
+`BCS-S-0134` uses complete-Rapture coordinates. Initialization preserves
+Q in EDI at `0x004B2E39`; its owned-module result stores therefore translate
+as follows. These stores can publish zero on allocation failure.
+
+| Catalog field | Q offset | Complete R offset | Store in FUN_004B2DF0 |
+|---|---|---|---|
+| pad_device | +0x40 | +0x44 | 0x004B35F6 |
+| mouse_device | +0x44 | +0x48 | 0x004B3627 |
+| keyboard_device | +0x48 | +0x4C | 0x004B365B |
+| file_thread | +0x4C | +0x50 | 0x004B3386 |
+| resource_module | +0x50 | +0x54 | 0x004B33C8 |
+| font_module | +0x54 | +0x58 | 0x004B351A |
+| excel_module | +0x58 | +0x5C | 0x004B33FC |
+| scene_module | +0x5C | +0x60 | 0x004B3585 |
+| network_module | +0x60 | +0x64 | 0x004B36E7 |
+| main_module | +0x64 | +0x68 | 0x004B36AD |
+
+The complete-R constructor preserves R in ESI at `0x004B3B75`, writes
+0xFFFFFFFF to R+0x40 at `0x004B3BB6`, and clears R+0x44 through R+0x6C
+at `0x004B3BB9-0x004B3BD7`. R+0x40 and R+0x6C have unresolved semantic
+roles; the latter is one dword before the unchanged R+0x70 input records.
+The row remains fully byte-accounted through its 0x370-byte extent.
 
 The admitted outer path in `FUN_00403640` publishes the constructed A at
 `0x013232B8` (`0x004038C1-0x004038D1`), invokes initialization through
