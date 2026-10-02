@@ -4,13 +4,16 @@ This note records the retained static boundary for UI selection and chat
 submission. The machine-readable record is
 [manifests/autotranslate_wire_format_study.json](../manifests/autotranslate_wire_format_study.json).
 
-The two inspected executable candidates agree at size 15996808 and SHA256
-9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9, with
-image base 0x00400000 and Ghidra 12.1.3. The retained build value
-2012.09.19.0001 comes from xivl-client-structs:manifests/input_stack_routing.json
-(binary.build). No game.ver file was read in this pass, and matching candidates
-do not authenticate the imported Ghidra program. Addresses below are absolute
-Ghidra virtual addresses.
+The authenticated executable is 15996808 bytes with SHA256
+9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9, image
+base 0x00400000, and Ghidra 12.1.3. Its adjacent game.ver is 15 bytes with
+SHA256 3DBEED87AE1F2805BEC69D63137E3DECA9DD444AD5CAA3EA5DEDB68B8A50BFEF
+and contains 2012.09.19.0001. VerifyProgramFileBytes.java authenticated the
+retained original, modified, and mapped bytes for seven loaded initialized
+file-backed ranges, covering 15990784 bytes; the two excluded initialized
+non-executable ranges are 0x01324000..0x0137C93F and
+0xFFDFF000..0xFFDFFFFF. Addresses below are absolute Ghidra virtual
+addresses.
 
 ## Recovered chat boundary
 
@@ -46,31 +49,68 @@ local source areas before FUN_004E3750 copies a fixed source area into the
 destination message field for c2s opcode 0x00C8 with record size 0x230.
 Neither source object is proven to be a 0x200-byte buffer.
 
-No retained export edge connects a UI selection callback or editor writer to
-token insertion and the chat send boundary. The first missing edge is:
+No retained export edge connects an auto-translate selection callback or editor
+writer to token insertion and the chat send boundary. The first missing edge is:
 
-RaptureTextBox or LogWidget callback/editor write -> token insertion into a
+Auto-translate selection callback/editor write -> token serialization into a
 caller-supplied string/control object -> FUN_006E91F0 and the channel wrappers.
 
 Allocation, ownership, retention, and release of candidate UI token/editor state
 remain unresolved in the retained exports.
 
 The candidate class is
-Application::Main::SqwtInterface::CustomControl::RaptureTextBox. Tracked
-RTTI references in xivl-decomp:config/ffxivgame.rtti.json list vtables at
-0x00FC1454 (4 slots) and 0x00FC146C (72 slots). The 0x00FC1594 (99 slot)
-locator comes from the preserved local artifact; it is not authenticated
-Ghidra evidence and no slot is tied to selection insertion. The methods
-setKeyboardFocusToChatControl, appendStringForChatControl,
-startChatInputForPadMode, and appendTextIdForChatControl in
-xivl-client-scripts:lua/registry.json are declarations only; their native
-callbacks remain unresolved.
+Application::Main::SqwtInterface::CustomControl::RaptureTextBox. The
+targeted RTTI export authenticates vtables at 0x00FC1454 (4 slots),
+0x00FC146C (72 slots), and 0x00FC1594 (99 slots), with vtable stores in
+FUN_0066A5B0's destructor path and FUN_0066C1A0's constructor path. The
+three vtable values occur at this+0x194, this+0xB4, and this+0 across those
+paths; FUN_0066A5B0 frees fields at listing VAs 0x0066A619, 0x0066A66A,
+and 0x0066A68E. These records do not map a slot to selection insertion. The
+registry names setKeyboardFocusToChatControl, appendStringForChatControl,
+startChatInputForPadMode, and appendTextIdForChatControl. Authenticated script
+bodies corroborate appendStringForChatControl and appendTextIdForChatControl:
+appendStringForChatControl concatenates the focused chat input
+and calls setText("TextBox_ChatInput", value); appendTextIdForChatControl
+calls setMacroText("TextBox_ChatInput", suppliedValue, ...). Numeric
+setMacroText calls _setTextProperty(nil, controlName, "TextUI", value, ...),
+whose _inl wrapper returns "self", "_setTextProperty_cpp". An exact
+defined-string reference export found no native string references for the
+method names, so the native callback or vtable slot remains unresolved. This
+numeric TextUI bridge is an adjacent formatted-text candidate: setTellAddress
+calls appendTextIdForChatControl(2256, 103, address), but the path is not
+proven to encode auto-translate selection or to be mandatory for token insertion.
 
-Uncommitted local disassembly supplied candidate body locators 0x004C2A20, 0x004BBEA0,
-0x004BD170, 0x00548630, and 0x00548740, with parser callsites
+The verified candidate trace resolves 0x004C2A20, 0x004BBEA0, and
+0x004BD170 as UI state and result handlers dispatched through FUN_004CDAD0
+from FUN_004CDE10. They read named controls and parser-backed text but submit
+separate event records, not chat tokens. FUN_004BBEA0 reaches
+FUN_004B7A20, whose FUN_004CFD10 builder writes event 0x1C3 with size 0x1D0;
+FUN_004BD170 reads Result_Maker fields such as purposeInt, placeInt,
+socialInt, and skillInt, then FUN_004B7C10 uses FUN_004CFDA0 to write event
+0x1C7 with size 0x48 after a TextBox_PersonName source length check below
+0x20. FUN_004C2A20 reaches FUN_004B80E0 and FUN_004B82A0, whose builders
+write events 0x1D2 with size 0x18 and 0x1D5 with size 0x898. The latter
+copies a 0x20-dword block and a 0x200-dword block from its caller record.
+Each event passes through FUN_004E0240 to FUN_00DAE010, but no exported edge
+joins these records to FUN_006E91F0 or a token insertion writer.
+
+The authenticated pointer read covers all 175 source slots across the three
+RaptureTextBox vtables using the exact 0x00F3E000..0x01264FFF to
+file-offset-11788288 mapping. It preserves 11 distinct 0x0066xxxx method
+candidates with their source slots. FUN_0066C580 receives a candidate
+property/input pointer and reaches FUN_00698400, FUN_006984B0, and
+FUN_00684A70, but no static edge joins that slot to _setTextProperty_cpp,
+token bytes, or the chat source object. FUN_00754A60 is the BCS-Y-0225
+WidgetBase Lua dispatcher candidate at 0x00FD5A74; its verified body has 24
+direct handler callsites and does not identify the _setTextProperty_cpp handler.
+
+The verified 0x00548630 and 0x00548740 bodies are clipboard copy and paste
+helpers around FUN_00C99E40. The paste body sanitizes clipboard UTF-16 and
+passes local clipboard-derived source local_64 with caller object param_1 as
+the destination to FUN_00C99E40. Their prior parser callsites
 0x004C34E9, 0x004C361F, 0x004BC365, 0x004BF393, 0x00548687, and
-0x005487F5. These are unsupported candidate locators only; they do not
-authenticate behavior or a producer role.
+0x005487F5 resolve to the three UI handlers or those clipboard helpers; they
+do not establish a token producer role.
 
 ## Adjacent control parser
 
@@ -119,13 +159,12 @@ from those values.
 ## Evidence boundary
 
 The manifest retains exact read-only Ghidra invocations, target lists, output
-hashes, and the required environment names. The producer-anchor,
-selection-control, and control-listing exports contain the requested target
-sections and no exporter error; the function-listing export reports
-COMPLETE: requested=6 completed=6.
-
-The targeted RTTI export was stopped because the ffxivgame project was held
-by another Ghidra instance. Its blocked query targeted
-.?AVRaptureTextBox@CustomControl@SqwtInterface@Main@Application@@ for the
-candidate class and its vtables, to resolve callback slots and code references
-for the first missing edge. The export stopped on that project lock.
+hashes, and the required environment names. The new targeted RTTI export
+reports one target and three records with output SHA256
+E13A818BBE9C8E197DCABB27E4F84C43E82A7C09500A11912B212FC420A571DB. The
+candidate, helper, event, RTTI method-listing, and method DumpVAs exports contain
+every requested section with no exporter error. The exact callback-string
+export reports COMPLETE with four queries, zero defined string matches, and
+zero references. The authenticated Lua source hashes and line spans, the
+RaptureTextBox method-pointer mapping, and the native dispatcher candidate are
+retained in the manifest; no token producer is promoted.
