@@ -155,6 +155,16 @@ positive TLS-writer candidates only. Direct instructions qualified context
 publication, teardown, and the free-call tails omitted by decompilation.
 The same file-backed authentication limits apply to TLS/global runtime state.
 
+The selected-update ownership qualification used those read-only tools at
+`4482b53a1f49ceb320a46e09675521ad6aa28c4b`. Its 19 explicit function
+sections passed entry/body checks. Exact references to `0x004B3C50`,
+`0x004D6570`, `0x004DC3A0`, and `0x004DBE10` completed with four recorded
+references. Seventeen assembly reports with 2287 instruction encodings and
+receiver/call/data-pointer assertions matched the pinned executable. Direct
+instructions qualified M's destructor tail omitted after an annotated free
+call. A fresh program-byte verification preserved the authentication limits
+above; no TLS/global runtime contents were authenticated.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -239,6 +249,51 @@ rebuild, and session generation require qualification. P and S are embedded
 in M, and are usable only while that instance lives. PadEventArgs is local
 to `FUN_00548160`; neither it nor its source pointers may be retained as
 handles after the dispatch. Reacquisition is required after M is replaced.
+
+### Selected update owner and context lifetime
+
+Let Q be the receiver of `FUN_004B2DF0` and `FUN_004B3C50`; its complete
+type and invoking thread are not qualified here. The former calls M's
+constructor `FUN_004DC3A0` at `0x004B3697` and stores its result at Q+0x64
+at `0x004B36AD`. The allocation-failure branch stores zero there.
+The latter loads ECX=M from Q+0x64 at `0x004B3DBE`, passes borrowed
+pad/mouse/keyboard records at Q+0x6C/+0xC4/+0xE4, and calls
+`FUN_004D6570` at `0x004B3DCC`. This is the update's sole recorded direct
+caller. The recorded reference to `FUN_004B3C50` is the data pointer at
+`0x00F8CC20`; the analyzed reference database does not qualify its actual
+callback caller, thread, or synchronization.
+
+M's constructor calls `FUN_004DBF40` with ECX=C=M+0x10 at
+`0x004DC401-0x004DC414`. Its base-constructor chain preserves that
+complete C receiver:
+`FUN_004DBF40 -> FUN_0091B020 -> FUN_009246F0 -> FUN_00936190 ->
+FUN_00938C80 -> FUN_0092F640 -> FUN_0093C750 -> FUN_009405C0 ->
+FUN_00912DB0`. At `0x0093C78B-0x0093C78C`, C+0xB4 is a stack
+argument; ECX remains C. The last constructor reaches the empty-slot
+`FUN_009924E0` initialization qualified under "Additional route membership
+and precedence". This binds H initialization to this construction path's
+calling thread. It does not establish the same OS thread or H instance
+through later update, route-container removal, and destruction.
+
+M's destructor `FUN_004DBE10` passes C to `FUN_004D9BC0` at
+`0x004DBE49-0x004DBE4E`; that helper calls `FUN_00919D60` at
+`0x004D9BCF`, connecting the raw byte's write of 1 to this cleanup path
+without session semantics. M's destructor then passes ECX=P=M+0x17C80 to
+`FUN_00919C30` at `0x004DBE8F-0x004DBE9E`. That seven-byte stub writes
+vftable `0x00FA2600` and returns; it does not clear P+4 or test active
+dispatch. Later, `0x004DBF18-0x004DBF1A` passes C to `FUN_004DBAF0`,
+whose normal tail calls `FUN_0091AE80` with ECX=C at
+`0x004DBDEC-0x004DBDEE`, reaching the qualified H teardown. The complete
+C and M vftables at `0x00F912E4` and `0x00F9142C` point to deleting
+entries `0x004DEE50` and `0x004DEE70`, which call those destructors with
+unchanged receivers before conditional complete-object free.
+
+Normal M destruction therefore performs this pad base teardown before C/H
+teardown. No active-event exclusion or recipient lease is established.
+The actual Q callback, construction/update/destruction thread binding, and
+reentrant effects of preprocessor/recipient callbacks remain required before
+using Q, M, P, S, or H across dispatch. In particular, the construction path
+does not prove that H survives until the local route container unregisters.
 
 ### Borrowed native keyboard-focus recipient
 
