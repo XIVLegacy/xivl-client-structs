@@ -111,6 +111,12 @@ Exact FormElement, XamlControlContainer, and CloseWindowListener queries returne
 four records. Independent PE COL/deleting-slot checks and direct instructions
 qualified map publication, ownership transfer, and conditional teardown below.
 
+The name-registration qualification used the same read-only exporters at
+`ef29730ca0b72e85bdd5d8efc5058b0b7f59b219`. The +0x298 displacement scan
+supplied candidates only. Explicit function exports and direct instructions
+qualified the name-map insertion, collision, removal, markup traversal, and
+calling-thread collection paths below.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -627,6 +633,41 @@ vftable `0x010724D4`, COL `0x0117D0C4`, offset 0, deleting slot 0
 storage X+0x30 start null. `FUN_0096B220` and `FUN_0096BCA0` allocate 0x48
 bytes and call this constructor. This qualifies those producer paths, not every
 raw record or either named grid returned from its map.
+
+`FUN_0096E580` is the name-map registrar with ECX=X, a native name-string
+object pointer and raw control pointer P in two stack slots, and `ret 8`.
+If P+0x298 is nonzero, it first calls `FUN_0096DEF0` with that old container
+as ECX and P unchanged. It searches for an unused key, adding `"(n)"` to the
+supplied name on collisions, beginning at n=1. `FUN_0094D580` returns the
+chosen node's +0x60 value cell. The registrar stores P there and X at P+0x298
+at `0x0096E753-0x0096E75A`. Registration itself does not acquire a lease on P.
+It also searches the calling thread's TLS+0x1C context collection at
++0x2108, whose +0x210C/+0x2110 fields bound raw X pointers, and appends X
+when absent. This path assumes a nonnull context. It establishes a thread
+dependency, not a named UI thread or an externally retainable control.
+
+`FUN_0096DEF0` takes ECX=X, P in one stack slot, and uses `ret 4`.
+It clears X+0x2C when that pointer equals P, then `FUN_0096E900` searches
+the name map by node+0x60 pointer equality. Only a found entry is erased
+through `FUN_009A0230`, after which P+0x298 is cleared at `0x0096DF5E`.
+When the map becomes empty, it removes X from the same calling-thread
+context collection. It does not directly clear fallback storage X+0x30.
+`FUN_0096E290` repeats this removal until the name map is empty.
+FrameworkElement cleanup `FUN_00931090:0x00931359-0x00931367`, reached
+from `FUN_009314E0`, reads P+0x298 and calls the remover with complete P
+unchanged. No +0xB4 input-interface adjustment is applied to the map value.
+
+Markup traversal `FUN_00947040` uses the raw object P=[B+0x10] and
+container X=[B+4]. For nonnull P with null P+0x298, it registers the
+nonempty name stored at P+8 or a generated name from the calling thread's
+TLS+0x18 counter through `FUN_0096E580`. The native factory helpers
+`FUN_00534150`, `FUN_005341F0`, and `FUN_00534290` take a receiver Q and
+pass [Q+0xB4] as the registrar receiver. Registration uses that loaded
+pointer unchanged. Q's concrete type and complete-object base remain unbound.
+These publication and removal paths have no direct FormElement+0x1DC cache
+clear. Their indirect calls do not qualify cache invalidation on a rebuild.
+The actual builder result, name after collisions, factory receiver, namespace,
+and its association with the ActionMenu index and two grids remain unbound.
 
 `FUN_00538760` registers a raw record with ECX=E, X and integer index in two
 stack slots, returns the index in EAX, and uses `ret 8`. It calls
