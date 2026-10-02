@@ -16,6 +16,8 @@ are owned by:
   lookup widths, normal enumeration and derived-resource fallback.
 - `xivl-decomp:docs/resource/map-layout-request-boundary.md`, conditional
   manager request, name reuse, concrete ResourceModule target and native ABIs.
+- `xivl-decomp:docs/resource/region-auxiliary-resource.md`, embedded resource
+  event, completion/decoder boundary and unresolved payload-consumer targets.
 - `xivl-decomp:docs/resource/resource-path-producer.md`, numeric formatter,
   asynchronous FileThread/LocalFile opens and bounded observation seams.
 
@@ -88,6 +90,12 @@ low indices below `0xFFFF` so the derived key does not overflow into group bits.
 In formatter mode zero, numeric byte-group filenames alone are insufficient;
 the resource path-table mapping must also be supported and additive.
 
+The auxiliary completion trace reaches a generic resource decoder and a
+forwarded actor consumer. It does not establish an authored payload profile
+or prove that auxiliary failure is harmless. Layout-manager readiness alone
+does not test this resource. The cited completion finding owns the precise
+remaining virtual edges and native observation arguments.
+
 Preserve every existing root/child record byte-for-byte and in order,
 including type 0/1 rows. Append the candidate group, update only demonstrated
 count/size metadata, and retain opaque bytes. Compare every retail root's
@@ -156,6 +164,13 @@ render/collision edits and live server changes.
    `0x00C99130`; FileThread callsite `0x00C9697F`; and LocalFile `0x00453C00`.
    Record ordered requests from both manager and auxiliary paths. Cache hits
    and helper `0x0044B350` returning true are not file-open success.
+   For the auxiliary path, extend observation through primary event completion
+   `0x00631C70`, the decoder call at `0x00631DEB` when reached, and forwarding
+   at `0x00620917`. If the alternative decoder branch occurs, record
+   `0x00631970` and its queued continuation instead. Preserve actual bases,
+   targets, arguments and branch
+   selectors using the completion finding's ABI. An absent request or failed
+   control completion is evidence to retain, not a reason to invent a dummy DAT.
 5. Join each producer return Resource pointer to the later path-wrapper
    argument minus four, preserving request epoch and object lifetime. Record
    monotonic sequence, thread, caller, actual registers/stack arguments,
