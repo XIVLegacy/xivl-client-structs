@@ -32,6 +32,10 @@ catalog. Machine-readable inventories and regeneration rules live under
   joins observed property-stream slot values to static command identities.
 - [Native pad routing and UI visibility](native-input-ui-boundaries.md) -
   exact-client receiver, dispatch, three-state conversion, and ownership limits.
+- [Action movement wait](action-movement-wait.md) - native timer producers,
+  consumers, and action eligibility limits.
+- [Login state boundaries](login-state-boundaries.md) - roster projection,
+  selection operations, and identity and readiness limits.
 - [Retail repair contract](repair-contract.md) - client, wire, metadata, and
   capture boundaries for NPC repair and CraftCommand 22013 self-repair.
 - [Additive custom-zone selection](map-layout-selector.md) - SetMap framing,
