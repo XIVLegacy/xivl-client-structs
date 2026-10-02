@@ -134,6 +134,18 @@ RTTI queried `.?AVXamlElement@Element@Main@Application@@` and
 Constructor instructions and independent PE COL/type/slot checks qualified
 the complete and +8 receivers and owning storage.
 
+The call-local route-container qualification used read-only exporters at
+`51bf28c4c69a746f71323d9919493b0ad87c80f2`. The 12 explicit function
+sections passed entry/body checks. Exact references to `0x01357060/64/68/6C`
+completed with 124 recorded references; `0x00F35720` had one recorded
+reference. These counts cover the analyzed reference database only.
+`ghidra/VerifyProgramFileBytes.java` matched the imported program's retained
+original/modified bytes and all seven loaded initialized file-backed ranges
+to the executable above. Its excluded unbacked/mapped ranges include the
+route globals; this check does not authenticate their runtime contents or
+initialization. Direct instructions qualified the contracts below, including
+the local destructor tail truncated by the decompiler's free-call annotation.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -537,6 +549,42 @@ cleanup paths; the local route snapshot used during dispatch does not retain
 recipients. Concrete named-recipient construction/replacement and a recipient
 lease remain unqualified. Do not traverse this collection asynchronously.
 
+For this local-container contract, let L be the stack route container in
+`FUN_0091EE90` and H the context pointer at the calling thread's TLS+0x1C.
+At `0x0091EEDC`, the router constructs L through `FUN_00921450` with
+ECX=L and one byte argument, 1 (`ret 4`). The constructor zeros L+4/+8/+0xC
+(pair begin/end/capacity) and stores that byte at L+0x10. At
+`0x0092149E-0x009214AC`, it calls `FUN_0096C140` with ECX=H and a
+stack pointer to L's address. That helper appends a raw dword to H's
++4/+8 range, growing through `FUN_0096C090` when needed. Registration
+stores L's address; it does not retain its borrowed recipients.
+
+On the normal route exit at `0x0091F1BD-0x0091F1C1`, ECX=L reaches
+`FUN_0091FAD0`. That destructor reads the calling thread's TLS+0x1C,
+searches H's raw dword range for L, shifts later entries when found, and
+decreases H+8 by four. It then frees nonnull L+4 and zeros L+4/+8/+0xC
+(`0x0091FB8F-0x0091FBA9`, no stack argument). Neither constructor nor
+destructor guards a null H. This requires a surviving calling-thread
+context; it does not identify a named UI thread, qualify context construction
+or teardown, prove cross-thread invalidation, or supply a selected-recipient lease.
+
+InputElement destruction passes its adjusted InputElement receiver I in a
+caller-cleaned stack slot to `FUN_0091CE90` at `0x0091DC9F-0x0091DCA0`.
+The callee returns early for null H only when `FUN_00919D30` returns AL=1;
+that predicate's meaning is unqualified. With H present it walks H+4..H+8,
+calling `FUN_0091F8D0` with ECX=each registered L and I in one stack slot
+(`0x0091CEFA-0x0091CF01`, `ret 4` in the pair helper). The helper first
+clears both dwords of the first pair whose key equals I
+(`0x0091F94A-0x0091F94C`). Only without a key match and with L+0x10=1
+does it search the first recipient equal to I. It looks up that pair's key
+in global `0x01357060`: a found recipient differing from I replaces the
+local recipient while preserving its key (`0x0091FA76-0x0091FA79`);
+otherwise the local recipient becomes zero, retaining the key if the global
+pair exists and clearing it if absent (`0x0091FA85-0x0091FA9A`). These
+paths do not shrink the pair range or clear all duplicates. Thus the local
+copy can be changed during synchronous destruction; registration is an
+invalidation mechanism, not an immutable snapshot or lifetime lease.
+
 The inspected Window destructor has the complete-object base-destructor
 chain `FUN_00924DC0 -> FUN_00935660 -> FUN_00936C70 -> FUN_009314E0
 -> FUN_0093AC10`, ending at the InputElement destructor with receiver
@@ -559,6 +607,16 @@ session. `FUN_0091E1C0` dispatches through a
 recipient's vtable+0x34 or +0x60 ancestor chain according to the event
 descriptor, and the router can stop on event+0x17. The owner and meaning
 of that stop byte must be resolved before assigning modal precedence.
+
+The initial nonnull focus/descriptor tests do not prove a readable source
+range. `FUN_0091ED80:0x0091EDC0-0x0091EDDE` calls `FUN_009D22B4`
+on invalid/empty ranges and then reads the first key if that call returns;
+the builder itself does not return an empty snapshot there. A readable,
+nonempty source is required for that read. Before the later null-recipient
+skips, `FUN_0091EE90:0x0091F0F0-0x0091F115` reads the matched focused
+pair's recipient+0x64/+0x68 into event+0xC/+8 without a recipient-null
+guard. That recipient's identity and readability must hold at those reads;
+the offsets are not qualified gameplay/text-entry/session fields.
 
 The same dispatcher handles kind `0x57` through PreviewTextInput
 (`0x01359780`) and TextInput (`0x01359710`), conditional on two
