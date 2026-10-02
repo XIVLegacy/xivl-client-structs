@@ -51,6 +51,7 @@ below are implementation modules.
 | Check lobby catalog promotion | `python tools\extractors\promote_lobby_character_list.py --check` | Deterministic BCS-S-0008/0009 and related BCS-Y projection from the canonical lobby manifest |
 | Verify player render-transform anchors | `python tools\audit_player_render_boundary.py --binary PATH` | Explicit pinned FFXIV 1.23b PE; checks model, NamePlate, WindowActor anchor-producer, target-helper, state-operation, field-store, and publication anchors |
 | Promote player render-transform symbols | `python tools\extractors\promote_player_render_boundary.py` | Serialized BCS-Y projection from `manifests\player_render_boundary.json` |
+| Promote retained function-name candidates | `python tools\extractors\promote_function_name_candidates.py [--check]` | Deterministic BCS-Y projection of the vendored `data\vendor\client_function_names\candidate_symbols.json` (retained `__FUNCTION__` strings bound to Ghidra function boundaries); skips addresses already catalogued, `--check` reports drift |
 
 ### PE, Ghidra, and call-graph commands
 
