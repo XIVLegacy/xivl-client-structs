@@ -146,6 +146,15 @@ route globals; this check does not authenticate their runtime contents or
 initialization. Direct instructions qualified the contracts below, including
 the local destructor tail truncated by the decompiler's free-call annotation.
 
+The TLS context qualification used the same read-only exporters and program
+byte verifier at `537e28ecd1700751c51f16f7cf54870e32544a40`. Its 16 explicit
+function sections passed entry/body checks. Exact references to
+`0x01356E14/0x00919D60` completed with five recorded references, and
+`0x009924E0/0x00992570` with three. A bounded byte-pattern search supplied
+positive TLS-writer candidates only. Direct instructions qualified context
+publication, teardown, and the free-call tails omitted by decompilation.
+The same file-backed authentication limits apply to TLS/global runtime state.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -565,13 +574,48 @@ searches H's raw dword range for L, shifts later entries when found, and
 decreases H+8 by four. It then frees nonnull L+4 and zeros L+4/+8/+0xC
 (`0x0091FB8F-0x0091FBA9`, no stack argument). Neither constructor nor
 destructor guards a null H. This requires a surviving calling-thread
-context; it does not identify a named UI thread, qualify context construction
-or teardown, prove cross-thread invalidation, or supply a selected-recipient lease.
+context; it does not identify a named UI thread, prove cross-thread invalidation,
+or supply a selected-recipient lease. The generic context paths below do not
+prove that selected pad dispatch and context teardown cannot overlap.
+
+`FUN_009924E0` takes one caller-cleaned pointer argument and uses the calling
+thread's TLS+0x1C. If H is already nonnull it leaves that slot unchanged.
+Otherwise it publishes a nonnull supplied pointer directly, without invoking
+the constructor or checking its type. With a zero argument it requests 0x30B4
+bytes through `FUN_009D1B35`, calls `FUN_00991AA0` with ECX=the nonnull
+allocation, and publishes its result (`0x00992511-0x0099254A`). A zero
+allocation publishes zero; this path supplies no nonnull-result guarantee.
+The constructor returns the complete allocation and zeros its route-registry
+begin/end/capacity at H+4/+8/+0xC (`0x00991ACD-0x00991AD3`). Recorded
+constructor caller `FUN_00912DB0:0x00912E79-0x00912E8A` invokes this
+factory with zero only when its calling-thread slot is empty, then reads H.
+
+Teardown `FUN_00992570` first calls `FUN_00991160` with ECX=current H
+before any H-null guard (`0x00992580-0x00992587`). That helper reads
+H+0x21B8 and loops through `FUN_0095F2A0` while that dword is nonzero;
+its callback effects remain unqualified. Teardown then reloads H from TLS, calls
+`FUN_00991270` with ECX=nonnull H, frees H, and clears TLS+0x1C
+(`0x0099258C-0x009925A6`). The destructor's route-registry tail frees
+nonnull H+4 and zeros H+4/+8/+0xC (`0x00991A6F-0x00991A85`). That tail
+does not iterate the registered L addresses. The recorded caller
+`FUN_0091AE80:0x0091AEF6` reaches teardown before clearing the desktop-root
+global at `0x0091AEFD`. This qualifies these storage teardown edges, not
+dispatch exclusion or a lease across their earlier callbacks.
+
+The other factory caller, `FUN_0096A7A0:0x0096A821-0x0096A828`, can
+pass its receiver+0xE8 pointer when receiver+0x140 is nonzero. Its admitted
+path later clears the calling thread's TLS+0x1C directly at `0x0096A8D3`,
+without a context-free call at that store. Thus TLS publication can be
+temporary; these paths alone do not establish ownership of every supplied
+context, its caller/thread identity, or a lifetime bound for the selected route.
 
 InputElement destruction passes its adjusted InputElement receiver I in a
 caller-cleaned stack slot to `FUN_0091CE90` at `0x0091DC9F-0x0091DCA0`.
-The callee returns early for null H only when `FUN_00919D30` returns AL=1;
-that predicate's meaning is unqualified. With H present it walks H+4..H+8,
+The callee returns early for null H only when `FUN_00919D30` returns AL=1.
+That six-byte getter reads raw byte `0x01356E14` at `0x00919D30-0x00919D35`.
+`FUN_00919D60` and `FUN_0091A1F0` write 1 before reaching
+`FUN_0096A940`; this does not qualify a gameplay/session-validity meaning
+or tie the byte to H's generation. With H present it walks H+4..H+8,
 calling `FUN_0091F8D0` with ECX=each registered L and I in one stack slot
 (`0x0091CEFA-0x0091CF01`, `ret 4` in the pair helper). The helper first
 clears both dwords of the first pair whose key equals I
