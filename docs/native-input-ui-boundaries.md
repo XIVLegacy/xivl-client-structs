@@ -165,6 +165,16 @@ instructions qualified M's destructor tail omitted after an annotated free
 call. A fresh program-byte verification preserved the authentication limits
 above; no TLS/global runtime contents were authenticated.
 
+The enclosing-owner qualification used those tools at
+`f2c3e91f140080d2e74bd3ec9bc6b6009ca89d2f`. Its 17 explicit function
+sections passed entry/body checks. Exact references to the two Rapture
+vftables completed with four references, and four loop/shutdown targets with
+seven. Targeted RTTI supplied three Rapture/IRapture records. Independent PE
+COL/type/base checks also verified Main's identity and complete receiver.
+Fifteen assembly reports with 3113 instruction encodings, receiver/call/table
+assertions, and six USER32 import bindings matched the pinned executable.
+Fresh program-byte authentication preserved the file-backed limits above.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -252,16 +262,62 @@ handles after the dispatch. Reacquisition is required after M is replaced.
 
 ### Selected update owner and context lifetime
 
-Let Q be the receiver of `FUN_004B2DF0` and `FUN_004B3C50`; its complete
-type and invoking thread are not qualified here. The former calls M's
+Let A be complete `Main`, R=A+0x30 its embedded complete
+`Application::Rapture`, and Q=R+4=A+0x34 its `Application::IRapture`
+receiver. Main's constructor `FUN_00401750:0x0040177C-0x0040178E` calls
+`FUN_004B3B50` with ECX=R. That constructor writes R's complete vftable
+`0x00F8CC30` and Q's vftable `0x00F8CC1C` at
+`0x004B3B96-0x004B3B9C`. Their COLs `0x01140B1C/0x01140BA4` and
+type descriptor `0x012695C0` identify Rapture with complete offsets 0/4;
+the base descriptor at `0x01140B88` places IRapture at +4.
+Main's vftable `0x00F54A24` has COL `0x0113EB3C` and type descriptor
+`0x0126511C`, identifying its complete receiver.
+
+Q's slots +0/+4/+8/+0xC are `FUN_004B2DF0`, `FUN_004B3C50`,
+`FUN_004B3830`, and `FUN_004B4380`. The first three use Q unchanged.
+The deleting entry subtracts 4 from ECX before reaching complete-R deleting
+entry `FUN_004B4390` (`0x004B4380-0x004B4383`).
+The initialization slot calls M's
 constructor `FUN_004DC3A0` at `0x004B3697` and stores its result at Q+0x64
 at `0x004B36AD`. The allocation-failure branch stores zero there.
-The latter loads ECX=M from Q+0x64 at `0x004B3DBE`, passes borrowed
+The update slot loads ECX=M from Q+0x64 at `0x004B3DBE`, passes borrowed
 pad/mouse/keyboard records at Q+0x6C/+0xC4/+0xE4, and calls
 `FUN_004D6570` at `0x004B3DCC`. This is the update's sole recorded direct
-caller. The recorded reference to `FUN_004B3C50` is the data pointer at
-`0x00F8CC20`; the analyzed reference database does not qualify its actual
-callback caller, thread, or synchronization.
+caller. These callback-relative coordinates translate to complete
+R+0x68 for M and R+0x70/+0xC8/+0xE8 for the records. They do not validate
+readability or lifetime.
+
+The admitted outer path in `FUN_00403640` publishes the constructed A at
+`0x013232B8` (`0x004038C1-0x004038D1`), invokes initialization through
+`FUN_00402B30`, repeats `FUN_004014B0`, then calls shutdown
+`FUN_00401460` (`0x0040391E-0x00403941`). Initialization invokes Q's
+slot +0 with ECX=A+0x34 at `0x00403537-0x0040354B`. The loop invokes
+slot +4 with that same receiver at `0x00401599-0x004015A2` and
+`0x004015BC-0x004015C5`. Its message branch instead calls TranslateMessage
+and DispatchMessageW at `0x00401564/0x0040156E`. This connects selected
+initialization, update, and normal shutdown to one invoking-thread path.
+It does not identify every caller or keep A, M, or H alive across callbacks.
+
+Shutdown invokes Q's slot +8 at `0x00401463-0x0040146C`.
+`FUN_004B3830:0x004B38B4-0x004B38CF` passes nonnull M stored at Q+0x64 to
+`FUN_004DA620`, reloads that field, conditionally invokes its current
+deleting slot with argument 1, then clears it. The cleanup helper passes
+C=M+0x10 to `FUN_004D9BC0` at `0x004DA623-0x004DA626` before further
+callbacks. Complete R destruction also calls the shutdown implementation directly
+with ECX=Q (`FUN_004B3AA0:0x004B3ACB-0x004B3AE4`). Neither field
+reload nor the later clear retains the earlier M.
+
+The loop also has a repeat-loop caller `FUN_00401810:0x00401813-0x0040181C`
+and callback `FUN_00401730:0x00401730-0x0040173F`, which reloads global A
+and enters the loop when nonnull (`ret 0x10`). `FUN_00401B70` requests
+SetTimer with this callback at `0x00401BC6-0x00401BD0`, calls MessageBoxW
+at `0x00401BE2`, then conditionally calls KillTimer at `0x00401BFE`.
+`FUN_00401C20` also requests that timer at `0x004022F6-0x00402300`.
+Both requests use timer ID 1 and interval 0x10; their return is not checked
+before setting A+0xA to 1. This identifies publication, not timer success,
+exact cadence, or gameplay permission during a native modal operation.
+The loop's A+0xB byte increment and threshold 8 select message processing
+or update (`0x004014F5-0x004014FC`); they are not an active-dispatch lease.
 
 M's constructor calls `FUN_004DBF40` with ECX=C=M+0x10 at
 `0x004DC401-0x004DC414`. Its base-constructor chain preserves that
@@ -272,8 +328,8 @@ FUN_00912DB0`. At `0x0093C78B-0x0093C78C`, C+0xB4 is a stack
 argument; ECX remains C. The last constructor reaches the empty-slot
 `FUN_009924E0` initialization qualified under "Additional route membership
 and precedence". This binds H initialization to this construction path's
-calling thread. It does not establish the same OS thread or H instance
-through later update, route-container removal, and destruction.
+calling thread. The outer path above does not establish an unchanged H
+through callbacks, later route-container removal, and destruction.
 
 M's destructor `FUN_004DBE10` passes C to `FUN_004D9BC0` at
 `0x004DBE49-0x004DBE4E`; that helper calls `FUN_00919D60` at
@@ -290,8 +346,8 @@ unchanged receivers before conditional complete-object free.
 
 Normal M destruction therefore performs this pad base teardown before C/H
 teardown. No active-event exclusion or recipient lease is established.
-The actual Q callback, construction/update/destruction thread binding, and
-reentrant effects of preprocessor/recipient callbacks remain required before
+The callback's invoking thread, same-H lifetime, and reentrant effects of
+preprocessor/recipient and message callbacks remain required before
 using Q, M, P, S, or H across dispatch. In particular, the construction path
 does not prove that H survives until the local route container unregisters.
 
