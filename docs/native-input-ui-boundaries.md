@@ -181,6 +181,12 @@ instruction encodings in their two bounded disassemblies and 28 targeted
 receiver/field assertions, including the ten pointer stores listed below.
 These checks authenticate static instructions, not initialized runtime objects.
 
+The callback-lifetime qualification used the same read-only exporters at
+`5c0935fb00c9a42b6d784484e310409b07682706` for the function entries below.
+Independent PE/instruction checks qualified the callback crossings and the
+map-erasure and cleanup tails omitted after annotated free calls. Fresh
+program-byte authentication preserved the file-backed limits above.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -379,6 +385,66 @@ The callback's invoking thread, same-H lifetime, and reentrant effects of
 preprocessor/recipient and message callbacks remain required before
 using Q, M, P, S, or H across dispatch. In particular, the construction path
 does not prove that H survives until the local route container unregisters.
+
+### Callback crossings and context identity
+
+Let H0 be the context initially read by `FUN_00981F50` from the invoking
+thread's TLS+0x1C. It keeps the H0+0x2170 collection receiver and a raw entry
+cursor. Each iteration reloads current H from TLS and reads H+0x2178 before
+comparing H+0x2170 with the original receiver
+(`0x00981F90-0x00981FB4`). A mismatch calls `FUN_009D22B4`; it does not
+restore H0. The entry's vtable+8 callback at `0x00981FDF` returns in AL.
+Exactly 1 exits at `0x00981FE3-0x00981FE6` without another H comparison.
+Otherwise the original collection's end is read before the next TLS reload
+(`0x00981FE8-0x00981FF9`). These checks require readable contexts and storage
+before diagnosing identity drift; they do not retain H0 or its entries.
+
+The diagnostic stub `FUN_009D22B4:0x009D22B4-0x009D22C3` calls
+`FUN_009D2290` with five zero arguments and returns if that call returns.
+The latter obtains an indirect target through `FUN_009DF187` and tail-jumps
+to it when nonzero (`0x009D2293-0x009D22A4`). Its installed target and effects
+remain unbound. The diagnostic is not a readable-object or lifetime contract.
+
+`FUN_0091E1C0` receives the event, InputElement I, and three flag bytes in
+five 32-bit caller-cleaned stack slots. It tests I+0x64 and can copy
+I+0x64/+0x68 into zero event source fields. Descriptor
+byte +4 equal to 1 directly invokes I's vtable+0x34 at `0x0091E229`.
+Other admitted paths construct another registered stack pair container with
+argument 0 (`0x0091E23F-0x0091E244`), collect raw ancestor pointers through
+I+0x60, and dispatch through `FUN_0091D210` at `0x0091E32C` before its
+normal container teardown at `0x0091E338`. A flag-dependent vtable+0xC
+eligibility call at `0x0091E284` precedes the next ancestor read at
+`0x0091E2A6`. The outer pad route supplies its third flag as 1; that path
+skips this eligibility call. Neither path establishes a recipient lease.
+
+`FUN_0091D210` takes the event and container in two caller-cleaned stack
+slots. Descriptor byte +4 values 1/2 walk pairs forward; 0 walks backward.
+It invokes each nonnull pair's first dword through vtable+0x34, and stops
+when event+0x17 is nonzero (`0x0091D2A6-0x0091D2B0`,
+`0x0091D2FC-0x0091D302`). The outer `FUN_0091EE90` instead tests that
+byte for exactly 1 at `0x0091F1A1`. These are scoped stop rules, not a
+modal or gameplay-precedence classification.
+
+Context drain `FUN_00991160` calls `FUN_0095F2A0` on its first recorded
+entry. The latter uses that object's +0x3C as H when nonzero, otherwise current
+TLS+0x1C (`0x0095F2A6-0x0095F2BE`), erases a found entry from H+0x21B0,
+then tail-jumps to `FUN_0095EC70` at `0x0095F30E`. The erasure's normal
+tail decrements that map's count after freeing its node
+(`0x0096009B-0x009600AD`). Cleanup invokes each nonzero stored node+0x10
+pointer's vtable slot 0 with argument 1 before clearing it
+(`0x0095ECC7-0x0095ECE0`). This reaches a virtual cleanup call while the drain
+caller still holds its original H. Concrete slot-0 implementations and their
+effects on H, TLS, M, and registered containers remain unqualified.
+
+The pad dispatcher reuses its original S after PreviewPadChange returns to
+call the PadChange route (`0x0091AD1A-0x0091AD24`). On dispatch return,
+`FUN_00548160` writes zero to the original P+0x5D at `0x005481DC`.
+Thus P/S must survive these callbacks, and each registered stack container
+requires the same surviving H until unregistration. The inspected identity
+checks and normal teardown ordering do not prove callback exclusion from
+owner/context destruction or TLS replacement. The concrete selected
+preprocessor, recipient, and cleanup implementations remain the missing edges;
+no actual overlapping teardown is established by these static paths.
 
 ### Borrowed native keyboard-focus recipient
 
@@ -733,7 +799,9 @@ factory with zero only when its calling-thread slot is empty, then reads H.
 Teardown `FUN_00992570` first calls `FUN_00991160` with ECX=current H
 before any H-null guard (`0x00992580-0x00992587`). That helper reads
 H+0x21B8 and loops through `FUN_0095F2A0` while that dword is nonzero;
-its callback effects remain unqualified. Teardown then reloads H from TLS, calls
+its drain and virtual-cleanup edges are qualified under "Callback crossings
+and context identity", but concrete callback effects remain unqualified.
+Teardown then reloads H from TLS, calls
 `FUN_00991270` with ECX=nonnull H, frees H, and clears TLS+0x1C
 (`0x0099258C-0x009925A6`). The destructor's route-registry tail frees
 nonnull H+4 and zeros H+4/+8/+0xC (`0x00991A6F-0x00991A85`). That tail
