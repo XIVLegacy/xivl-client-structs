@@ -117,6 +117,14 @@ supplied candidates only. Explicit function exports and direct instructions
 qualified the name-map insertion, collision, removal, markup traversal, and
 calling-thread collection paths below.
 
+The factory-wrapper qualification used the same read-only exporters at
+`455307eb123a2cd68b4ed65d1eb82cc38da7a8dc`. Explicit function targets were
+`0x0068DB90`, `0x00536CE0`, `0x00536D20`, `0x005370D0`, and `0x00537350`.
+The verified exact reference query for `0x0068DB90` returned no recorded
+references. This excludes only references represented by the analyzed database,
+not computed, indirect, dynamic, or unanalyzed callers. Direct instructions
+qualified the unchanged receiver, original-name lookup, and return paths.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -664,6 +672,21 @@ TLS+0x18 counter through `FUN_0096E580`. The native factory helpers
 `FUN_00534150`, `FUN_005341F0`, and `FUN_00534290` take a receiver Q and
 pass [Q+0xB4] as the registrar receiver. Registration uses that loaded
 pointer unchanged. Q's concrete type and complete-object base remain unbound.
+
+`FUN_0068DB90` uses ECX=Q and two stack arguments, with `ret 8`.
+At `0x0068DB9C` it calls `FUN_005341F0` with Q unchanged and the first
+argument as the name. It does not test that factory's return status before
+calling `FUN_00536CE0`, `FUN_00536D20`, `FUN_005370D0`, and `FUN_00537350`,
+again with Q unchanged. `FUN_00536CE0:0x00536CE4-0x00536CF0` reloads
+[Q+0xB4] and calls the qualified name-map lookup `FUN_0053E480` using the
+original name, rather than the collision key selected by the registrar.
+This lookup does not prove that the newly created pointer was selected.
+The wrapper increments Q+0xBC at `0x0068DC0A` and returns zero without
+checking those helpers' statuses. These observations do not establish control
+identity, a lifetime lease, or rebuild invalidation.
+Its caller, Q's constructor and +0xB4 publication, and the association with
+the ActionMenu index remain unbound.
+
 These publication and removal paths have no direct FormElement+0x1DC cache
 clear. Their indirect calls do not qualify cache invalidation on a rebuild.
 The actual builder result, name after collisions, factory receiver, namespace,
