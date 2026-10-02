@@ -92,6 +92,13 @@ completed with nine recorded references. Initializer instructions and string
 bytes supplied their names. Direct instructions corrected the decompiler's
 removal-call receiver and truncated container-destructor recovery.
 
+The trigger and Template ownership qualification used read-only function
+exports and targeted RTTI at `fa7db65570393fb36a681392dbdaa953ca8d883f`.
+The ten RTTI records covered Sqwt Trigger, MultiTrigger, CommandTrigger,
+EventTrigger, and the TriggersMarkupObject/TemplateMarkupObject classes.
+Constructor stores, independently mapped vftable/COL data, and direct
+instructions qualified insertion, deleting overrides, and property replacement.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -339,10 +346,37 @@ with K; in the TriggerBase base vftable that slot is `FUN_0094C3A0`.
 A matching membership decrements the word at P+0x14.
 A zero result with P+0x16 mask 1 set invokes
 P's deleting slot; the TriggerBase base vftable selects
-`FUN_009C2890 -> FUN_009C25A0`, then frees P. The actual derived trigger's
-complete-object base and deleting override, insertion/ownership-bit writers,
-and other memberships remain unqualified. Copying an entry or its adjusted
-receiver provides no lease.
+`FUN_009C2890 -> FUN_009C25A0`, then frees P. Concrete markup-produced
+families qualify that rule further:
+
+| Sqwt class | Allocation / constructor | Complete / +0x18 vftables | Complete deleting slot |
+|---|---|---|---|
+| EventTrigger | `0x7C` / `FUN_009B1BD0` | `0x0107D554 / 0x0107D518` | `FUN_009B21D0` |
+| CommandTrigger | `0xC4` / `FUN_009B1110` | `0x0107D2D4 / 0x0107D298` | `FUN_009B1490` |
+| Trigger | `0x9C` / `FUN_009B0990` | `0x0107D0D8 / 0x0107D09C` | `FUN_009B0F10` |
+| MultiTrigger | `0x9C` / `FUN_009AFE40` | `0x0107CE8C / 0x0107CE50` | `FUN_009B0330` |
+
+`FUN_009495E0`, the +8 slot of TriggersMarkupObject vftable `0x0106D9F0`,
+creates these four classes and inserts each result into K=T+0x24,
+where T is loaded from markup receiver+0x74. The insertion calls are at
+`0x00949698/0x0094973F/0x009497D0/0x00949856`. For these producer paths,
+P is the complete allocation and P+0x18 is DependencyObject; the COL offsets
+are 0/+0x18, and none of the four base hierarchies contains InputElement.
+All four complete vftables share `FUN_0094C3A0` at +4. Their deleting slots
+reach `FUN_009B1A00 -> FUN_009C25A0` through the respective derived
+destructors (CommandTrigger also uses `FUN_009547D0`) and free complete P
+when the deleting argument's low bit is set.
+
+`FUN_0094E1D0` takes K in ECX and P in one stack slot, ending in `ret 4`.
+At `0x0094E1E0-0x0094E202` it appends P through the K+4 vector receiver,
+sets P+0x16 mask 1, appends K through the P+4 membership-vector receiver,
+and increments the word at P+0x14. `FUN_0094ED00` then removes K's first
+entry through K's +4 virtual slot when K+0x18 mask 2 is set and the resulting
+count exceeds one. In the qualified TriggerCollection that is
+`FUN_005580F0`, so insertion can release and delete an older final-member
+trigger. These are owning memberships with conditional eviction; they provide
+no external lease. The selected instance's class and other memberships remain
+unbound, and copying P or P+0x18 does not extend its lifetime.
 
 Template descriptor `0x01359118`, index `0x11`, is initialized from
 `0x0106B994` at `0x00F22640-0x00F22659` and bound to C+0x318 by
@@ -356,9 +390,37 @@ The root's concrete type remains unqualified. FrameworkTemplate destructor
 `FUN_0099B0F0` conditionally invokes `FUN_0093CC70` on the root and destroys
 its TriggerCollection. FrameworkElement and Control teardown can delete stored
 Style/Template objects through their property flags
-(`0x00931660-0x00931679`, `0x00936CB2-0x00936D35`); the Template callback
-`FUN_00936DF0` also replaces cached C+0x334 and can delete its old value.
-These paths establish invalidation, not a current-instance or same-thread lease.
+(`0x00931660-0x00931679`, `0x00936CB2-0x00936D35`).
+
+Template setter `FUN_00938140` passes C+0x318 to `FUN_00926F10`, together
+with C, descriptor `0x01359118`, and callback `FUN_00937A70`.
+On an admitted changed value, `0x00926F6E-0x00926FA0` copies the previous
+pointer to C+0x31C, copies the former ownership mask 8 to mask 0x20 in
+C+0x320, marks the change, and stores the new pointer at C+0x318.
+Notification byte 1 reaches the callback through `FUN_00926DA0` on the
+calling thread. After notification, C+0x320 masks 0x10 and 0x20 with a
+non-null previous pointer permit `FUN_00915680` deletion. Admission and pending
+resolution are still part of the property engine; these observations authorize
+no direct storage write or choice of override policy.
+
+The callback's index-0x11 branch at `0x00937C3A-0x00937C7F` compares the
+previous C+0x31C value with cached C+0x334. When they differ, mask 0x20
+and a non-null previous value permit its deleting slot with argument 1.
+When they match and the previous template has a root at +0xB0, it calls
+`FUN_00940800` and Parent detach `FUN_0092FBE0` on that root. Both paths
+then call `FUN_00936DF0` with C.
+That helper uses the current C+0x318 value. Its two admitted cache-update
+paths (`0x00936E5F-0x00936EAF`, `0x00936ECC-0x00936F2C`) dispatch C's
+virtual +0x10C with old/new templates, conditionally delete the old cached
+value under C+0x338 mask 1, store the new value at C+0x334, and copy
+C+0x320 mask 8 to C+0x338 mask 1. The root path tests the raw dword at
+root+0x240 for zero before calling `FUN_00940B30` and `FUN_009313C0`.
+The latter's pending resolution and conditional Parent-store rules below
+still apply; the raw-zero check does not establish a resolved unattached state.
+A null current Template returns without clearing the cached value.
+Thus C+0x334 is not an unconditional current-template reader. Property changes
+can invalidate both a searched subtree and its holder; their concrete current
+identity, virtual overrides, and same-thread lifetime still need qualification.
 
 The Window +0x0C slot at `0x0106A0C8` is `FUN_0092B5D0`, which returns
 the stored dword at complete object+0x240 without resolving property flags.
