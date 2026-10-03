@@ -1063,8 +1063,9 @@ ECX=raw supplied receiver W, loads [W+0x3D0] and passes it unchanged
 `FUN_00910980` on [Q+0x1A0], where Q is its supplied receiver, and immediately
 passes the returned pointer as W without a null check
 (`0x0050863E-0x00508664`). It later invokes Q's +0x34 with its original two
-arguments (`0x0050868B-0x00508694`). W's constructor/type, selected result,
-and +0x3D0-to-V association remain unbound.
+arguments (`0x0050868B-0x00508694`). The
+[KeyConfigControl contract](#keyconfigcontrol-construction-and-stored-owner)
+qualifies a constructed +0x3D0 owner path. Its selection as W remains unbound.
 
 The other caller, `FUN_00683E80`, ECX=raw supplied Y and one stack record E,
 `ret 4`, calls `FUN_0092D1F0(E)`, then reads byte [[E+0x10]]. When that byte
@@ -1080,6 +1081,65 @@ virtual calls. Selected V/F/G/W/Y identity and storage, selector validity,
 the actual extension hit, and callback survival remain required. No gameplay,
 invalid-session, modal/text-entry precedence, or safe pad-consumption predicate
 follows. Captured focus tokens remain opaque.
+
+### KeyConfigControl construction and stored owner
+
+Read-only exports used `ghidra/DumpVAs.java`, `ghidra/FindFieldRefs.java`,
+and the reference wrapper at source-tools revision
+`1aca1b3fbd6f94b5ef4c0c25348eeb3bfbcd51ad`. Exact entries were
+`0x00681CC0,0x00684400,0x0052D420,0x00910980,0x00549330,0x0054CDE0,`
+`0x004EC300,0x005463E0,0x0054E190,0x0054BD70,0x004DC3A0`.
+The field query was `0x3D0`. Verified reference inputs were string
+`KeyConfig_Saver` and addresses `0x00549330,0x0054CDE0,0x00681CC0,0x00FC3DCC`.
+Independent pinned instructions and RTTI reads support the observations below.
+
+For complete KeyConfigControl W0, constructor `FUN_00681CC0` preserves
+ECX=W0, takes one stack owner O, and returns W0 with `ret 4`
+(`0x00681CE7`, `0x00682047-0x0068205C`). It installs these vtables at
+`0x00681CF8-0x00681D08`. All three COLs use type descriptor `0x012BB260`,
+`.?AVKeyConfigControl@CustomControl@SqwtInterface@Main@Application@@`.
+
+| Receiver | Vtable | COL | Complete displacement |
+|---|---|---|---|
+| W0, ContentControl/FrameworkElement/UIElement chain | `0x00FC3DCC` | `0x01158A88` | 0 |
+| InputElement/IInputElement | `0x00FC3CA4` | `0x01158B00` | +0xB4 |
+| IAddChild | `0x00FC3C90` | `0x01158B14` | +0x194 |
+
+The constructor copies O unchanged to [W0+0x3D0] at
+`0x00681F7C-0x00681F83`. It supplies no ownership or lifetime guarantee
+for that stored pointer. The recorded construction callers allocate 0x3D4
+bytes and invoke this constructor only on a nonzero allocation result:
+`FUN_00549330:0x00549B9B-0x00549BBE` passes [E0+0x10], where E0 is its
+unchanged supplied receiver. `FUN_0054CDE0:0x0054CEEA-0x0054CF0D` passes
+[T+4], where T is its unchanged supplied receiver. The primary vtables
+`0x00FA2808/0x00FA283C` identify CustomControlExtension/CustomControlFactor
+through COLs `0x01145758/0x01145824` and type descriptors
+`0x0126DD98/0x0126DE50`. Their +4/+0x0C cells respectively contain these
+callers. T's current stored owner is not qualified by its method pointer.
+
+One constructor-backed E0 owner is the complete V from the config-root
+contract. `FUN_004DC3A0` retains M, constructs V=M+0x10 with
+`FUN_004DBF40`, and supplies unchanged V as the second stack argument to
+`FUN_0054E190` (`0x004DC401-0x004DC414`, `0x004DC56B-0x004DC59B`).
+For its newly allocated RaptureSqwtInterface S, that constructor passes V
+unchanged to `FUN_005463E0` with ECX=E0=S+0x2E0
+(`0x0054E1D2`, `0x0054E258-0x0054E260`). The latter stores its first
+stack argument at E0+0x10 (`0x00546416-0x00546427`). Thus a W0 constructed
+through that E0 path stores complete V at +0x3D0, rather than S or S+4.
+The copy itself supplies no retention of V or callback-survival guarantee.
+
+The earlier unchecked lookup supplies literal `KeyConfig_Saver` through
+pointer cell `0x0126AB90`, whose pinned value is string `0x00F94B64`
+(`0x00508622-0x0050864D`). Its fallback and excluded-receiver arguments
+are both zero (`0x00508652-0x0050865D`). The existing name-search contract
+therefore supplies no parent fallback on this path. Neither the literal nor
+W0's construction proves that the selected [Q+0x1A0] search returns W0.
+Before `FUN_00681C50` reads +0x3D0, the selected W must be nonnull, readable
+through that dword, and bound to the complete W0 receiver and surviving V.
+The inspected caller checks none of those conditions. Selected search
+membership/name uniqueness, stored-owner identity, invoking thread/shared
+pad TLS, and survival across lookup/parser callbacks remain unqualified.
+No modal/text-entry role, invalid-session meaning, or safe pad predicate follows.
 
 ### Command collection removal and final membership
 
