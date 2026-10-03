@@ -140,6 +140,13 @@ processUICommandEvent, whose default branch preserves them for
 LogWidget.processUICommandDefault. This is the PressEnter handler named
 by the script; its native argument producer remains to be joined.
 
+AT-LUA-005 pins the parser-declined script path from PressEnter A4_2 through
+processInputWordAnalyze and executeTextCommand to chat/chatDirect. The first
+explicit MyPlayer._chat argument is the result of convertPronouns, which can
+call the native _replaceMacroCodeString helper through replaceString. Byte
+identity between A4_2 and the _chat input remains unproved. The broader ordinary
+route is retained in manifests/text_command_ingress.json:ordinaryRoute.
+
 AT-ENTER-001 pins the native UILuaCommands.PressEnter command at 0x01344D44.
 FUN_00F141A0 supplies id 0x11 to FUN_00928D90, which stores it at command+0x78
 and inserts the RoutedCommand into the registry. This identifies command
@@ -159,6 +166,22 @@ TextBoxBase.Paste branch and Completion carriage-return acceptance are also
 distinct from the chat Enter producer. Control registration, actual handler
 coordinates, and the TextBox-to-event argument remain recoverable static
 targets; the trace has not reached a runtime-only boundary.
+
+AT-ENTER-003 traces _setUICommandCondition through its callback
+FUN_006EB6A0 -> FUN_0075B7B0 -> FUN_004D9910 -> FUN_0053AB80. The lookup
+key comes from the input container's +0xC value. The next argument is the
+control name; the command name belongs to the separately constructed condition
+object. The nonmatching branch of FUN_0053AB80 resolves the control name through
+FUN_0053A970 and, on success, reaches the relation update FUN_0053A720. The owner,
+named child, condition fields, and PressEnter invocation remain unjoined to a
+concrete chat TextBox.
+
+AT-ENTER-004 identifies the generic adapter's string member. Its third
+incoming stack argument becomes the fifth explicit argument to FUN_00713830,
+which assigns vtable 0x00FD5330 and copies that string value to object+0x104.
+The string producer and conversion of that member into Lua A4_2 remain
+unresolved. This narrows the native argument target without joining the
+reconstructed TextBox text to a submitted message.
 
 A literal-name search over all 2671 authenticated Lua bodies found no matches
 for the retained completion/phrase search terms; it does not exclude native,
@@ -363,6 +386,10 @@ AT-ENTER-001 and AT-ENTER-002. AT-ID-006 independently pins the three native
 command/event literal strings to executable file offsets and byte hashes.
 AT-LUA-004 pins command registration and
 argument forwarding on the script side.
+
+Recipes AT-GH-067 through AT-GH-072 and fresh identity AT-ID-007 support
+AT-ENTER-003 and AT-ENTER-004. AT-LUA-005 retains the script argument path and
+its macro-replacement boundary.
 
 The optional passive observation checklist is retained in the manifest. It
 requests the identified client and locale, exact UI selection, repeated sparse
