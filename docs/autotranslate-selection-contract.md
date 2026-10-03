@@ -49,16 +49,14 @@ local source areas before FUN_004E3750 copies a fixed source area into the
 destination message field for c2s opcode 0x00C8 with record size 0x230.
 Neither source object is proven to be a 0x200-byte buffer.
 
-No retained export edge connects an auto-translate selection callback or editor
-writer to token insertion and the chat send boundary. The native Completion
-record reader and handler are recovered below. The
-remaining edge is the concrete parent editor/event callback -> token insertion
-and serialization into a caller-supplied string/control object -> FUN_006E91F0
-and the channel wrappers. The actual auto-translate UI origin and family/table
-identity of the selected Completion record are also unresolved.
+The native Completion reader, formatter, event consumers, and document insertion
+path are recovered below. The remaining edge is the retained CompletionDocument
+control record -> serialization into the submitted string/control object ->
+FUN_006E91F0 and the channel wrappers. The exact auto-translate UI origin and
+family/table identity of the selected Completion record are also unresolved.
 
-Allocation, ownership, retention, and release of candidate UI token/editor state
-remain unresolved in the retained exports.
+Complete ownership, release, invalidation, and serialization of retained
+UI/editor state remain unresolved.
 
 The candidate class is
 Application::Main::SqwtInterface::CustomControl::RaptureTextBox. The
@@ -143,7 +141,40 @@ Other low values construct `<fixed(%d,%d)>` with those two values, pass it to
 the interface at this+0x10, copy the returned text, and return -1 after cleaning
 up local string temporaries. This is an internal record and formatter-input
 observation; neither the expression nor its bits are authenticated wire fields.
-The virtual formatter and the resulting bytes remain unresolved.
+AT-COMP-005 resolves that formatter through the complete TextModule at
+container+0x554: its vtable 0x01108F70 slot 5, cell 0x01108F84, points to
+FUN_00C9EEC0. FUN_004DBF40 supplies this TextModule pointer as the second
+explicit CompletionModule constructor argument, stored at module+0x10;
+the other argument is stored separately at module+0x0C.
+FUN_00C9EEC0 passes TextModule+0x4C to FUN_00CB6880 -> FUN_00CB6510.
+AT-COMP-007 resolves its `fixed` registry entry: FUN_00CB68A0 declares
+selector 0x2E and two numeric descriptors. The authenticated descriptor string
+`nn` starts at 0x0110C9EC; the key `fixed` starts at 0x0110C9F0.
+The constructor supplies the first `n` as literal 0x6E and reads the second
+from 0x0110C9ED. The descriptor count does not prove arity rejection.
+
+For successfully parsed literal numeric arguments, the internal control is
+`02 2E E(payload byte count) payload 03`, with the two encoded arguments
+concatenated in the payload. FUN_00CB2210 supplies E: unsigned values below
+0xCF become one byte value+1. Larger values use prefix 0xEF+mask, where mask
+marks the nonzero bytes of the 32-bit value, followed by those bytes from most
+to least significant. FUN_00CB4CD0 appends the result; FUN_00CB6510 uses the
+same helper for the payload byte count.
+
+These literal examples come directly from the authenticated registry and
+numeric-helper branches. They are internal formatter examples, without an
+observed UI selection, table join, or retail message:
+
+| Formatter input | Internal bytes |
+| --- | --- |
+| `<fixed(0,0)>` | `02 2E 03 01 01 03` |
+| `<fixed(1,207)>` | `02 2E 04 02 F0 CF 03` |
+| `<fixed(1,256)>` | `02 2E 04 02 F1 01 03` |
+
+The argument values do not identify a table or row. Negative numeric conversion,
+macro expression branches, malformed/truncated controls, exact selected UI
+vector origin, and chat wire serialization remain unresolved. This internal
+contract does not justify a wire decoder.
 
 FUN_00C9D550 reaches candidate preparation at FUN_00C9D0D0, which packs
 `(index << 7) | 0x7E` into a Completion record. The retained exports do not
@@ -155,9 +186,36 @@ slot 5. Its instruction listing preserves the two local pointers, incoming
 argument, and this+0x1A60 field supplied on the stack; it does not identify the
 local objects as editor buffers or packet sources. The -2/-1 branch reaches
 FUN_0066A730 and FUN_0066A330. At 0x0066A399 the latter invokes the parent
-pointer's +0xB4 interface through vtable offset +0x34. The concrete callback
-and its insertion or serialization effects are unresolved. No retained edge
-connects it to FUN_006E91F0 or the Map/World chat source objects.
+pointer's +0xB4 interface through vtable offset +0x34. AT-COMP-004 resolves
+the parent as the complete RaptureElementContainer C at MainModule M+0x10.
+The constructor chain FUN_004DC3A0 -> FUN_0054E190 -> FUN_005463E0 stores
+C in the extension field read by the _ChatInput branch of FUN_00549330.
+The C+0xB4 vtable at 0x00F911BC has slot 13, cell 0x00F911F0, pointing
+to thunk FUN_004D71C0 -> FUN_0091AC80. This callback dispatches on the
+byte at `*(*(event+4)+5)` into UI/event consumers; nested event payload and
+vector element types remain unclassified. This parent event path is distinct
+from the accepted-text insertion below.
+
+AT-COMP-006 resolves the insertion branch in FUN_0066AB10. On a -2/-1
+result it copies the first output to CompletionDocument+0x60, constructs an
+accepted-text event from the first output for -2 or the second output for -1,
+and invokes the TextBox's +0xB4 interface slot 34 at 0x0066ACCE. The
+authenticated cell 0x00FC14F4 points to FUN_0066B5F0. The event's source
+pointer passes through FUN_00545CF0 and FUN_00545DD0 into event+0x1C;
+FUN_0066B5F0 -> FUN_0097A570 invokes primary slot 72 (FUN_0095B3F0).
+Its insertion route reaches slot 71 (FUN_00958C80) -> FUN_009586C0 ->
+WrapTextDocument slot 5 (FUN_0098C180) -> CompletionDocument slot 5
+(FUN_0066B400). These are guarded branches, not an unconditional write.
+
+FUN_0066C1A0 stores the CompletionDocument factory result at TextBox+0x1A70
+before wrapping it in FUN_0098DAA0. FUN_0066B400 delegates text insertion
+to its +0x58 LineTextDocument's slot 5 (FUN_0098C8F0). When its +0x60
+string is nonempty, it copies that string into a record in the +0xB4 vector
+through FUN_0066DAE0, alongside insertion position and length. Thus the
+formatted control and editor text have separate storage. FUN_0066AB10 clears
+the +0x60 temporary after the event call at 0x0066ACDE. Retrieval of those
+stored controls into the submitted chat source remains unresolved; no retained
+edge joins them to FUN_006E91F0 or the Map/World packet source objects.
 
 AT-COMP-003 authenticates CompletionDocument's 23-slot vtable at 0x00FC1744
 and its FUN_0066BA70 factory. The RaptureTextBox constructor wraps that
@@ -229,6 +287,13 @@ targeted Completion RTTI export covers six names and eight records. The handler
 listing reports COMPLETE with three requested and three completed entries.
 The lifecycle dump preserves its repeated requests and all eleven sections;
 those represent nine distinct function targets.
+
+The indirect-target and fixed-macro recipes AT-GH-025 through AT-GH-051
+support AT-COMP-004 through AT-COMP-007. Fresh owner listing and decompilation
+exports cover all sixteen requested insertion-path functions. Eight pointer
+cells and the required descriptor/key bytes were independently read from the
+authenticated executable. Constructor, subobject, and complete-object
+coordinates remain explicit in the manifest.
 
 The optional passive observation checklist is retained in the manifest. It
 requests the identified client and locale, exact UI selection, repeated sparse
