@@ -248,6 +248,14 @@ COL/type/slot data qualified embedded storage, separate selector/index inputs,
 the root markup receiver, and temporary command-owner cleanup. Fresh program-byte
 authentication retained the same file-backed limits and runtime/TLS exclusions.
 
+The extension-registry qualification used the same read-only exporters at
+`af799fbe5be21bcdce89e7c2726c336a4b8cb6c8`, with explicit function addresses
+below and exact reference targets `0x0094AAB0` and `0x01359C70`.
+Independent pinned instructions qualified the name-recording, overwrite,
+unregistration, and node-free tails. Fresh program-byte authentication retained
+the same file-backed limits and runtime/TLS exclusions. Reference coverage
+does not include every computed, indirect, dynamic, or unanalyzed writer.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -945,11 +953,69 @@ the qualified XamlControlContainer teardown, before A cleanup. Thus this
 factory does not retain the parsing command owner for later B callbacks.
 The existing conditional command-membership rule still governs J's deletion.
 
-Selected V/F/G and q validity, successful/readable R, the actual registry hit
-and its removal/replacement policy, current B/J memberships and flags, callback
+The [extension-registry contract](#extension-registry-replacement-and-removal)
+qualifies the inspected removal/replacement policy. Selected V/F/G and q
+validity, successful/readable R, the actual registry hit,
+current B/J memberships and flags, callback
 thread, and survival across reentrant callbacks remain unbound. The constructor
 chain and recorded i=0/1 calls qualify neither a current gameplay classifier
 nor safe pad consumption. Captured focus tokens remain opaque.
+
+### Extension registry replacement and removal
+
+Use A for a complete constructor-qualified RaptureKeyConfigExtension.
+Its base constructor `FUN_0094A980`, ECX=A, constructs an empty recorded-name
+tree at A+4, stores its sentinel at A+8, and zeros its count at A+0xC
+(`0x0094A9A9-0x0094A9D3`). The qualified derived constructor passes unchanged
+A, the `RaptureKeyConfig` Name, and flag 1 to `FUN_0094AA00`
+(`0x0054C841-0x0054C84A`). This registry is process-global storage selected
+through `0x01359C70`, not the preprocessor's TLS collection.
+
+`FUN_0094AA00`, ECX=extension and two stack arguments Name/flag, `ret 8`,
+locks registry+0x18 and searches its name map. A found name with flag byte 0
+returns after unlocking, before recording that name on the extension
+(`0x0094AA4E-0x0094AA71`). Otherwise it records the Name through
+`FUN_00906110` with ECX=extension+4, obtains the map value cell through
+`FUN_0094D580` with ECX=registry+4, stores the unchanged extension pointer,
+and unlocks (`0x0094AA74-0x0094AAA9`). The latter helper reuses a matching
+node or takes its insertion branch and returns node+0x60
+(`0x0094D5C0-0x0094D62D`). Thus flag 1 permits overwriting an existing raw
+hit. This overwrite does not save the previous hit for restoration or invoke
+its deleting slot in the inspected registration path.
+
+Normal extension-base destruction `FUN_0094AD00` calls `FUN_0094AAB0` on
+the unchanged complete receiver before destroying/freeing its recorded-name
+tree (`0x0094AD24-0x0094AD70`). `FUN_0094AAB0`, ECX=extension and no stack
+arguments, locks the same registry, iterates that extension's recorded Names,
+and searches the current global map for each Name. A found node is passed to
+`FUN_009A0230` with ECX=registry+4 (`0x0094AB17-0x0094ABAF`). There is no
+comparison between the node's +0x60 pointer and the extension being removed.
+The helper then clears the extension's recorded-name tree/count and unlocks
+(`0x0094ABCE-0x0094AC0B`).
+
+The map eraser adjusts tree links, cleans the erased node's Name at node+0xC,
+frees that node, and decrements the map count when nonzero
+(`0x009A04A6-0x009A04C9`). Its normal tail returns with `ret 0xC`, beyond
+the decompiler's free-call cutoff. The recorded-name clear helper
+`FUN_00905B30` likewise cleans Name storage and frees its own tree nodes
+(`0x00905B41-0x00905B6A`). These inspected removal/free paths neither restore
+a displaced hit nor invoke an extension's deleting slot through the raw value.
+Consequently, after admitted same-name registrations A1 then A2, removal of
+either recorded name erases the current map entry, including an A2 entry during
+A1 cleanup. This is a consequence of the qualified name-only removal rule,
+not an observation that overlapping registrations occur at runtime.
+
+The qualified lookup releases the lock before the borrowed hit's virtual +4
+dispatch. Normal wrapper cleanup later unregisters its stack A, but supplies
+no synchronization covering that earlier lookup-to-call interval. For a hit
+that is this constructed A, `FUN_0054A760` copies A's G/i/t fields before
+parsing temporary C (`0x0054A799-0x0054A7D4`); this limits subsequent A reads
+in that method, not G/D/C/R or binding lifetime across nested callbacks.
+Replacement/removal locking establishes no lease or callback-destruction
+exclusion. Actual selected-hit identity/readability, overlapping or nested
+registration order, invoking thread, and survival across callbacks remain
+unbound. Other writers and derived callbacks are outside this contract.
+These facts supply neither safe pad consumption nor a gameplay/session predicate.
 
 ### Command collection removal and final membership
 
