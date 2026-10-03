@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bite proofs for the text-command lookup boundary contract."""
+"""Mutation tests for the text-command lookup boundary contract."""
 
 from __future__ import annotations
 

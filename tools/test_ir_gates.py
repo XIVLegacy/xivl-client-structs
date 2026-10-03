@@ -1,24 +1,16 @@
-"""Bite proofs for the IR builder's refusals and the IR validator's invariants.
+"""Mutation tests for the IR builder and validator.
 
-A green gate proves nothing unless it would go red on the defect it claims to
-guard. Every case here plants exactly one defect into a copy of the real
-inputs and asserts the named gate fires.
+Each case inserts one defect into a copy of the real inputs and requires the
+corresponding check to fail. Five of the thirteen invariants also check that
+no other invariant fails.
 
-Two limits worth knowing rather than discovering. The cross-talk check
-(`expect_others_quiet`, "only this gate fired") runs over five of the thirteen
-invariants, the ones taking documents this harness can hand them. And the
-determinism cases compare two builds inside one process, so they catch
-ordering and iteration bugs but not cross-machine ones -- line endings,
-locale, and untracked working-tree state are handled at the source instead:
-`.gitattributes` pins the inputs to LF and `build_ir.tracked_paths()` decides
-citation resolution from tracked content rather than from disk.
+Determinism tests compare builds within one process. They do not establish
+cross-machine agreement. .gitattributes fixes LF input endings, and
+build_ir.tracked_paths() resolves citations from tracked files rather than
+local working-tree contents.
 
-CLI:
-  python tools/test_ir_gates.py
-Exit 0 when every gate bit, 1 otherwise.
-
-Pure stdlib.
-"""
+Run python tools/test_ir_gates.py. Exit 0 if every test passes, 1 otherwise.
+This test suite uses only the standard library."""
 
 from __future__ import annotations
 

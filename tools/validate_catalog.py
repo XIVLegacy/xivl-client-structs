@@ -1,6 +1,6 @@
 """Structural validator for the xivl-client-structs manifests.
 
-Read-only. Verifies that the three primary catalog files conform to the
+Read-only. Verifies that the primary catalog files conform to the
 shape invariants the rest of the tooling assumes. Goal: catch data
 corruption (typos, copy-paste mistakes, schema drift) early -- before a
 downstream tool silently does the wrong thing.
@@ -13,7 +13,7 @@ Files checked:
 
 Per-file checks live in independent `check_*` functions; each returns a
 list of `(severity, location, message)` tuples. Cross-file checks run at
-the end against all three loaded datasets.
+the end against the loaded datasets.
 
 Severities:
   ERROR    - shape violation; downstream tooling can reasonably break.
@@ -1673,7 +1673,7 @@ def check_lua_resource_paths(doc: dict[str, Any]) -> list[Finding]:
 
 
 def check_lua_callback_contract(doc: dict[str, Any]) -> list[Finding]:
-    """Validate the frozen, script-only callback contract and its claim fence."""
+    """Validate the frozen script-only callback contract and its evidence limits."""
     findings: list[Finding] = []
     if (
         doc.get("version"),

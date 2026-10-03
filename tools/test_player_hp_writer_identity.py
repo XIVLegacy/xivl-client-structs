@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bite proofs for exact player-HP property hash-to-writer mappings."""
+"""Mutation tests for exact player-HP property hash-to-writer mappings."""
 
 from __future__ import annotations
 

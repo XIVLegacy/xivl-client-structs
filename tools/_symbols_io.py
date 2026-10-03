@@ -1,27 +1,19 @@
-"""Shared reader/writer for manifests/symbols.json (the BCS-Y catalog).
+"""Read and write manifests/symbols.json, the BCS-Y catalog.
 
-This module is the single home for the two documented symbols.json gotchas:
+Use UTF-8 because catalog notes contain characters that Windows cp1252
+cannot decode. Allocate IDs from the greatest numeric suffix, not the last
+row or row count: the array is unsorted and may contain ID gaps.
 
-1. UTF-8 must be explicit. symbols.json carries multibyte content in its notes
-   prose; opening it under the Windows default cp1252 codec raises
-   UnicodeDecodeError. Every read/write here passes encoding="utf-8".
-2. BCS-Y id allocation must be max-based and serialized. Max-based: take max()
-   over the parsed id numbers -- never symbols[-1], whose id is not guaranteed
-   to be the maximum. The array is not globally sorted, and retained ID gaps
-   mean the row count is not the maximum ID. Serialized: the whole
-   load-allocate-write cycle runs under symbols_transaction(), which holds an
-   exclusive lock file. Doing the cycle inside one Python process is NOT
-   sufficient on its own -- the race is between concurrent processes, where two
-   unlocked writers allocate the same id and the second write drops the first
-   writer's entry outright. Read-only callers can use load_symbols() directly.
+Hold symbols_transaction() across the entire load, allocate, and write
+operation. Its exclusive file lock prevents concurrent processes from
+allocating the same ID or overwriting each other. Read-only callers may use
+load_symbols() directly.
 
-House style for the on-disk file mirrors xivl-client-data:tools/_json_io.py:
-2-space indent, ensure_ascii=False (non-ASCII kept verbatim), LF line endings
-(newline="" so json's internal "\n" is written without CRLF translation on
-Windows), and a single trailing newline, for byte-consistency with the sibling
-repo.
+Formatting follows xivl-client-data:tools/_json_io.py: two-space indentation,
+ensure_ascii=False, LF endings without Windows newline translation, and one
+trailing newline. This module uses only the standard library.
 
-Stdlib only. Import from a sibling tool with:
+Import from another tool in this directory:
 
     import sys
     from pathlib import Path
@@ -50,11 +42,9 @@ def load_symbols(path: Path = SYMBOLS_PATH) -> dict:
 
 
 def next_bcsy_id(data: dict) -> str:
-    """Return the next free BCS-Y-NNNN id for the loaded document.
+    """Return one more than the greatest BCS-Y numeric suffix, padded to four digits.
 
-    Max-based: parses the numeric suffix of every BCS-Y- id and returns
-    max + 1, zero-padded to four digits. Never trusts array position.
-    """
+    Array order does not determine the next ID."""
     nums = [
         int(s["id"].split("-")[-1])
         for s in data["symbols"]
@@ -67,7 +57,7 @@ def append_symbol(data: dict, entry: dict) -> str:
     """Append entry to data, allocating its id if absent, and return the id.
 
     If entry already carries an "id", it is kept as-is (pinned by the caller).
-    otherwise next_bcsy_id() allocates one. Keeps data["symbolCount"] in
+    Otherwise next_bcsy_id() allocates one. Keep data["symbolCount"] in
     sync with the array length.
     """
     sym_id = entry.get("id") or next_bcsy_id(data)

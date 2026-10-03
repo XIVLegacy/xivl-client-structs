@@ -126,7 +126,7 @@ def _opcode_case_patterns(opcode_hex: str) -> list[re.Pattern[str]]:
     n = int(op, 16)
     upper = f"{n:X}"
     lower = f"{n:x}"
-    # This lookahead is what kills the `CaseC -> CaseCA` false match.
+    # Reject a longer hex suffix so CaseC does not match CaseCA.
     terminator = r"(?![0-9A-Fa-f])"
     raw_patterns = {
         rf"Case0x{upper}{terminator}",

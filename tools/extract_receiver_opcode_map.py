@@ -4,7 +4,7 @@
 Combines two sources:
     1. data/vendor/opcodes/client_receivers.json - a vendored copy of the
        receiver catalog with per-receiver opcode bindings and
-       confidence tiers (prior receiver-catalog work). The fields we care about:
+       confidence tiers. Relevant fields:
             name, namespace, rtti_rva, slots, slot1_fn,
             lua_actor_impl_slot, mapping{opcode, confidence,
             catalog_entry, evidence, lua_callback, body_shape,
@@ -13,14 +13,13 @@ Combines two sources:
        reached by string-matching the receiver name into the symbol
        name. Gives us bcsId pointers for class/ctor/dtor/apply/slot1.
 
-The MDI-019 saturation pass classified all 43 receivers; we partition
-into:
+Receivers are grouped by mapping.confidence:
     - inboundReceivers      : mapping.confidence == 'confirmed'
-                              (15 receivers; the resolved opcode set)
+                              (the resolved opcode set)
     - clientInternalReceivers: mapping.confidence == 'client_internal'
-                              (5 receivers, slots 7/19/20/21/22)
+                              (slots 7/19/20/21/22)
     - strongCandidates      : mapping.confidence in {'strong','candidate'}
-                              (23 receivers, retained for follow-on work)
+                              (unconfirmed mappings)
 
 Curated enrichment (e.g. the pcap wire-confirmation pass) lives
 in manifests/receiver_opcode_map_overlay.json and is merged on top of the

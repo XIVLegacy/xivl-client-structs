@@ -2,8 +2,8 @@
 """End-to-end .le.lpb -> .luac -> .lua pipeline.
 
 Wraps `decode_lpb.py` (this directory) and an external unluac.jar to turn
-shipped client/script/*.le.lpb files into greppable Lua source. This is
-the repository's Lua-name -> opcode bridge foundation.
+shipped client/script/*.le.lpb files into searchable Lua source for the
+Lua-name -> opcode bridge.
 
 External dependencies (the caller provides these; neither is vendored):
     UNLUAC_JAR env var (or --unluac-jar) - path to unluac.jar.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bite proofs for the bounded Resource DAT missing-file observation."""
+"""Mutation tests for the bounded Resource DAT missing-file observation."""
 
 from __future__ import annotations
 

@@ -3,7 +3,7 @@
 manifests/receiver_apply_findings_wire_derived.json into a dedicated bridge
 ingest file at manifests/lua_apply_chain_firers.json.
 
-An 'apply-chain firer' is a Lua-name fired from the apply helper of an
+An 'apply-chain firer' is a Lua name dispatched by the apply helper of an
 inbound receiver (depth >= 2 of the receiver's apply chain), NOT from a
 LuaActorImpl::vftable slot dispatcher. The Lua-name to opcode bridge's slot-based
 source filter cannot capture these because there is no LuaActorImpl slot

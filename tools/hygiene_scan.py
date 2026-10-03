@@ -14,7 +14,7 @@ Read-only. Produces a structured report covering:
       the register names) are ok (category "record_label"). An in-repo
       relative path is still resolved on disk and reported if missing.
       Absolute paths and other shapes keep their prior buckets.
-  A4: Wiki-link integrity sweep (folds in the earlier manual pass) over
+  A4: Wiki-link integrity check over
       docs/*.md, symbols.json/structs.json notes, snapshot-manifest
       string values, and tools/extractors/*.py. Classifies each [[link]] as
       PASS (target in valid set), SKIP (known false positive), or FAIL

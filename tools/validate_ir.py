@@ -2,10 +2,9 @@
 
 Two schemas under `schemas/` are loaded from disk and enforced here, so the
 directory is a contract rather than documentation. On top of schema shape,
-thirteen invariants encode the things a schema cannot say: that the IR did not
-renumber a BCS identifier, did not move a confidence tier, did not lose a
-source reference, did not quietly begin populating a dimension a later phase
-owns, and that every relationship edge resolves in both directions.
+thirteen invariants encode the things a schema cannot say: that BCS identifiers, confidence tiers, and source references are preserved,
+that unsupported dimensions remain empty, and that every relationship edge
+resolves in both directions.
 
 CLI:
   python tools/validate_ir.py

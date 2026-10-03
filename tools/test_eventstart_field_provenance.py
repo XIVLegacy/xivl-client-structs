@@ -1,4 +1,4 @@
-"""Bite proofs for the direct PlayerBase EventStart field and SID-domain contract."""
+"""Mutation tests for the direct PlayerBase EventStart field and SID-domain contract."""
 
 from __future__ import annotations
 

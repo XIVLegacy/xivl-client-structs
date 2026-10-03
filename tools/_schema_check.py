@@ -1,16 +1,10 @@
-"""Minimal JSON Schema validator for the schemas/ directory.
+"""Validate the supported JSON Schema keywords using the standard library.
 
-Stdlib only, because the repo's CI installs no packages and the local gate
-must run from a bare checkout. It supports exactly the draft 2020-12
-keywords the in-repo schemas use, and raises on any keyword it does not
-implement -- an unimplemented keyword must fail loudly rather than pass
-silently, which is the failure mode that makes hand-rolled validators
-worthless.
+The validator rejects unsupported keywords at every depth so a bare checkout
+can enforce the repository schemas without optional packages.
 
-Where a real `jsonschema` install is available, `crosscheck()` runs it over
-the same (schema, document) pair and reports disagreement. That is an
-optional second opinion on this interpreter, never the gate itself.
-"""
+When jsonschema is installed, crosscheck() compares its result with this
+validator. Disagreement is advisory and does not decide the validation result."""
 
 from __future__ import annotations
 
@@ -73,14 +67,10 @@ def load_schema(path: Path) -> dict:
 
 
 def _assert_supported(node: Any, loc: str, in_name_map: bool) -> None:
-    """Reject any keyword this module does not implement.
+    """Reject unsupported schema keywords at every depth.
 
-    An unimplemented keyword that validates silently is worse than no
-    validator, so the guard runs once at load and covers every depth.
-    `in_name_map` is threaded rather than recovered from `loc`, because a
-    document property legitimately named "properties" would otherwise make
-    its whole subtree look like a name map and skip the check.
-    """
+    Pass in_name_map explicitly: a document property named "properties" must not
+    make its subtree look like a schema name map and bypass this check."""
     if isinstance(node, dict):
         if not in_name_map:
             for key in node:

@@ -7,11 +7,10 @@ class-annotated set and a larger set without `retail_class_name`; there is no
 client-side Operation-class catalog analogous to
 `data/vendor/opcodes/client_receivers.json` for the outbound direction.
 
-This tool produces a *scaffolding* manifest. It inventories the class-annotated
-Operation entries and records every serverbound opcode without a class.
+The manifest lists class-annotated Operation entries and records every
+serverbound opcode without a class.
 
-Curated enrichment layers added by one-shot follow-on passes
-live in manifests/operation_opcode_map_overlay.json
+Curated additions live in manifests/operation_opcode_map_overlay.json
 and are merged on top of the generated base map. This script does not mine
 them from prior output.
 
