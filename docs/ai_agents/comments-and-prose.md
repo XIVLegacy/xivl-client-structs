@@ -14,7 +14,7 @@ Deletion is the default. Keep a comment only when it records one of these:
 - a generated-output boundary that must remain with its owning generator
 
 Keep evidence identifiers, addresses, RTTI names, offsets, opcodes, and dates
-verbatim. They are not shortened for style. Compress other survivors to about
+verbatim. They are not shortened for style. Shorten the remaining comments to about
 one line at the use site. Move a longer contract to the applicable README,
 schema, or policy page and leave a short pointer when one is needed.
 
@@ -29,7 +29,7 @@ generator and regenerate.
 
 Remove branch-time narration, progress notes, and comments that merely repeat
 the next statement. Do not use comments to preserve a maintainer work item in a
-consumer-facing source file. When unsure, keep one concise line and flag it in
+public source file. When unsure, keep one concise line and flag it in
 the review record.
 
 Keep a source locator when it is the only durable link to the evidence:
@@ -62,8 +62,9 @@ batch-processing history. Retain dates that belong to external source or
 provenance metadata, actual evidence observations or captures, retail build or
 source identity, legal metadata, or required vendor artifact names.
 
-- Avoid over-hyphenation and invented compound modifiers. Established
-  technical terms keep their hyphens.
+- Avoid awkward compounds and strings of modifiers. Rewrite the sentence
+  rather than joining more words with hyphens. Preserve established technical
+  terms, identifiers, and quoted source text.
 - Use semicolons sparingly, preferring periods, commas, or short lists.
 - Cut parenthetical asides. If the aside matters, make it a short sentence
   of its own. If it does not, delete it.

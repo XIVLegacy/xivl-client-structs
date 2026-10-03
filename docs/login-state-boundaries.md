@@ -1,9 +1,9 @@
 # Retail 1.23b login state boundaries
 
-This page records the smallest native boundaries that can support a launcher
-observation. It keeps UI labels, native operation results, and world-ready
-identity separate. A menu label, a loading overlay, or an arbitrary actor is
-not a login success signal.
+Launcher login checks must distinguish UI labels, native operation results,
+and the identity of a player ready in the world. A menu label, loading overlay,
+or arbitrary actor does not establish login success. The native checks
+described below support only the stated observations.
 
 ## Binary and method
 

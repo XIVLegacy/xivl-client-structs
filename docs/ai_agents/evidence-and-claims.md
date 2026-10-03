@@ -60,8 +60,8 @@ historical and must not be promoted as current evidence.
 ## Claims and names
 
 Separate client layout or symbol claims from wire observations, repository
-relationships, and interpretations. A struct layout does not by itself prove
-server behavior. A catalog relationship does not by itself prove retail
+relationships, and interpretations. A struct layout alone does not prove
+server behavior. A catalog relationship alone does not prove retail
 behavior. State uncertainty when the version, address, field meaning, or
 interpretation is unresolved.
 

@@ -1,9 +1,9 @@
 # Retail 1.23b movement wait boundary
 
-This note records the bounded static result for the retail 1.23b movement wait
-state. It identifies the native setters, their countdown consumer, the
-action-like producers, and the exact eligibility edge that remains unresolved.
-It does not establish runtime acceptance or a complete action-kind classifier.
+Static analysis of the retail 1.23b client identifies the movement-wait setters,
+the countdown code, and the action-like paths that set the timer. The remaining
+eligibility question is recorded below. These findings do not establish live
+acceptance or classify every action kind.
 
 ## Evidence identity and method
 
@@ -146,7 +146,7 @@ virtual slot at byte offset `+0x258` (`0x007AA710-0x007AA731`). It selects
 at `0x007AA733-0x007AA752`. A positive selected timer returns the blocking
 true value at `0x007AA721`; a zero or negative value proceeds into additional
 identity, controller-state, owner-byte, and virtual gates before the final
-return at `0x007AA7C5`. Thus nonpositive does not by itself prove a free
+return at `0x007AA7C5`. Thus nonpositive alone does not prove a free
 movement result or a sentinel meaning on this branch.
 
 `FUN_0065A500` is an exact structural identity predicate. With the actor in

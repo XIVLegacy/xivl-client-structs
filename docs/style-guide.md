@@ -16,10 +16,9 @@ field names, evidence strength, or catalog provenance.
 
 ### Documentation
 
-The public [documentation policy](ai_agents/README.md#documentation-policy) is
-canonical for authored documentation. The
-[evidence policy](ai_agents/evidence-and-claims.md) owns claim wording,
-citations, confidence, and provenance. Structure and field naming rules live
+The public [documentation policy](ai_agents/README.md#documentation-policy) covers authored documentation. The
+[evidence policy](ai_agents/evidence-and-claims.md) explains claims, citations,
+confidence, and provenance. Structure and field naming rules live
 in [naming.md](naming.md).
 
 ## Python

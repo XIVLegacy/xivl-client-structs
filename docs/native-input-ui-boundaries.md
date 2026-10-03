@@ -1,10 +1,9 @@
 # Native pad routing and UI visibility boundaries
 
-The retail pad updater and its first routed-event consumer are identifiable.
-They do not establish a gameplay-context predicate. Native Visibility also
-has three distinct states, but the named ActionMenu grids still need live
-control identity, lifetime, and preference qualification before an override
-can use them.
+The retail pad updater and the first consumer of its routed events are known.
+They do not establish whether gameplay currently has input focus. Native
+Visibility has three states. Before overriding the named ActionMenu grids,
+live checks must establish control identity, lifetime, and applicable preferences.
 
 ## Binary and method
 

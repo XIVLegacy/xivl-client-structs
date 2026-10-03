@@ -1,8 +1,8 @@
 # FFXIV 1.23b auto-translate selection contract
 
-This note records the retained static boundary for UI selection and chat
-submission. The machine-readable record is
-[manifests/autotranslate_wire_format_study.json](../manifests/autotranslate_wire_format_study.json).
+The retained static evidence covers UI selection and chat submission.
+[manifests/autotranslate_wire_format_study.json](../manifests/autotranslate_wire_format_study.json)
+contains the structured record.
 
 The authenticated executable is 15996808 bytes with SHA256
 9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9, image

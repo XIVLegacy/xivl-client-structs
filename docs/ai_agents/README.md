@@ -22,7 +22,7 @@ boundaries.
 
 ## Documentation policy
 
-Tracked documentation is consumer-facing. It describes the current contract,
+Tracked documentation is written for repository users. It describes the current contract,
 the evidence standard, and supported research procedures. Dates that belong to
 evidence citations remain part of the record.
 
@@ -44,5 +44,5 @@ Read these pages in order:
 The canonical repository guides are:
 
 - [manifest contract](../../manifests/README.md): catalog charter.
-- [docs index](../README.md): consumer-facing documentation map.
+- [docs index](../README.md): guide to the public documentation.
 - [tools guide](../../tools/README.md): generator and research-command details.

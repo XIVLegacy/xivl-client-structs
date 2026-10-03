@@ -13,7 +13,7 @@ catalog. Machine-readable inventories and regeneration rules live under
 - [Evidence and claims](ai_agents/evidence-and-claims.md) -
   evidence classes, confidence, citations, and claim boundaries.
 - [Comments and prose](ai_agents/comments-and-prose.md) -
-  deletion default and comment doctrine.
+  rules for deciding which comments to keep.
 - [Retail-input validation](ai_agents/retail-input-validation.md) - bounded
   private-input workflow, credential boundary, and sanitized attestation.
 

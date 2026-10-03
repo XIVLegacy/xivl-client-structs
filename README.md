@@ -1,8 +1,7 @@
 <h1 align="center">XIVLegacy Client Structs</h1>
 
 <p align="center">
-Resources for reverse-engineering the Final Fantasy XIV 1.23b client,<br>
-including native structures, symbols, signatures, and RTTI.
+Native structures, symbols, signatures, and RTTI for Final Fantasy XIV 1.23b.
 </p>
 
 <p align="center">
@@ -11,19 +10,12 @@ including native structures, symbols, signatures, and RTTI.
 <a href="https://github.com/XIVLegacy/xivl-client-structs/actions/workflows/checks.yml"><img src="https://github.com/XIVLegacy/xivl-client-structs/actions/workflows/checks.yml/badge.svg" alt="Checks"></a>
 </p>
 
-## About
+Use the [client architecture guide](docs/client-architecture.md) to explore the
+findings and their supporting evidence.
 
-This repository catalogs client structures, symbols, signatures, RTTI, and
-workflow data supported by cited sources. Its manifests and tools are validated
-independently.
-
-## Documentation
-
-- [Documentation home](docs/README.md)
-- [Evidence and claims](docs/ai_agents/evidence-and-claims.md)
-- [Client architecture](docs/client-architecture.md)
+- [Documentation](docs/README.md)
 - [Manifest catalog](manifests/README.md)
-- [Tooling and regeneration](tools/README.md)
+- [Tools and regeneration](tools/README.md)
 
 ## License
 
