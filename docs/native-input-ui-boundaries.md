@@ -194,6 +194,14 @@ function exports, independent PE COL/type/base/slot reads, and constructor,
 callback, removal, and deletion instructions established the contracts below.
 Fresh program-byte authentication preserved the same file-backed limits.
 
+The additional InputBinding-derived qualification used those exporters at
+`f26110d3edc7497a6b6c9aecd1e9acfdbea938f1` for the recorded
+`FUN_00982300` callers and explicit callback/helper entries below.
+Independent constructor instructions and PE COL/type/base/slot reads supplied
+the receiver identities. This caller set is a database observation, not an
+exhaustive derived-type or runtime-registration inventory. Fresh program-byte
+authentication preserved the same limits.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -514,6 +522,80 @@ paths do not retain H or exclude dispatch during destruction. The actual
 selected entry's type, registration flags, invoking thread, readable storage,
 and same-H lifetime remain required. Other derived slot +8 implementations
 and recipient/cleanup callback effects are not established by these vtables.
+
+### Additional InputBinding-derived preprocessor effects
+
+The recorded `FUN_00982300` caller set adds the following complete-receiver
+families. Each constructor calls the base on unchanged ECX=B, then stamps
+the listed primary vtable. Each COL has complete-object offset 0 and an
+InputBinding base at displacement 0.
+
+| Type | Constructor / vtable store | Vtable / COL / type descriptor | Slot +8 |
+|---|---|---|---|
+| RaptureAxisBinding | `0x00555F30` / `0x00555F8E` | `0x00FA2CBC` / `0x011464D4` / `0x0126E9D8` | `0x00547730` |
+| RaptureKeyAxisBinding | `0x00554460` / `0x005544BA` | `0x00FA2A78` / `0x01145D80` / `0x0126E328` | `0x00547360` |
+| RaptureMouseAxisBinding | `0x005544E0` / `0x0055453A` | `0x00FA2A88` / `0x01145E10` / `0x0126E398` | `0x00981F40` |
+| PadBinding | `0x00687550` / `0x006875AA` | `0x00FC49CC` / `0x01158D64` / `0x012BB468` | `0x00981F40` |
+| InputBindingTemplate<CharGesture> | `0x0094C220` / `0x0094C24D` | `0x0106D68C` / `0x01179FC4` / `0x012E1458` | `0x00981F40` |
+
+The Rapture type descriptors are
+`.?AVRaptureAxisBinding@SqwtInterface@Main@Application@@`,
+`.?AVRaptureKeyAxisBinding@SqwtInterface@Main@Application@@`, and
+`.?AVRaptureMouseAxisBinding@SqwtInterface@Main@Application@@`.
+The others are `.?AVPadBinding@Input@Sqwt@@` and
+`.?AV?$InputBindingTemplate@VCharGesture@Input@Sqwt@@@Input@Sqwt@@`.
+`FUN_00547360:0x00547360-0x00547365` is another entire
+`xor al,al; ret 0xC` body. These KeyAxis, MouseAxis, PadBinding, and
+CharGesture slot +8 implementations have the same inert limits as above.
+The allocating PadBinding path `FUN_009CF930:0x009CF952-0x009CF9A6`
+requests 0xD8 bytes, checks allocation success, and constructs/stamps the
+same complete receiver. It does not establish a selected runtime instance.
+
+RaptureAxisBinding constructor `FUN_00555F30` takes eight 32-bit stack
+arguments and ends in `ret 0x20`. It forwards the first seven to the base,
+then stores argument 8's low byte at B+0xE8 (`0x00555F8A-0x00555FA7`).
+The successful allocation path in `FUN_00552160:0x0055224B-0x00552277`
+supplies argument 7 as 1, so it requests the base's calling-thread H registry
+insertion. It supplies argument 8 from its producer receiver+0x1A0. This
+request does not prove that its H is the selected pad updater's H.
+Deleting entry `FUN_00555FE0:0x00556016-0x0055603D` calls the base
+destructor on unchanged B and conditionally frees B, with the same current-TLS
+removal limits above.
+
+`FUN_00547730` uses ECX=B and three 32-bit stack arguments A1/A2/A3,
+ending in `ret 0xC`. Its normal exits return zero in AL, even after callbacks.
+`FUN_00680CE0:0x00680CE0-0x00680CEB` returns full EAX=0/1 from whether
+the raw dword at `0x013406F8` is nonzero. When zero, the callback requires
+the unsigned byte B+0xE8 to equal the full dword at `0x01336BC4`, then
+requires the stored pointer G at B+0x98 to be nonnull
+(`0x0054773C-0x00547754`). These gates
+have no qualified gameplay, text-entry, modal, or session-generation meaning.
+
+With those gates admitted, the callback calls `FUN_00547570(G,A2)`, then
+`FUN_00547460(G,A1)` only if the first result's AL is zero, then
+`FUN_00547380(G,A3)` only if both earlier AL results are zero
+(`0x00547756-0x00547780`). These helpers write B's input/event storage
+and invoke virtual methods on the supplied input objects. In particular,
+`FUN_00547570:0x00547590-0x005475BE` reads eight indices from G+0x20
+and uses each to read A2+0x10+4*index, updating B+0xE0 through B+0xE7
+without an index bound check there. Its raw byte gate
+`FUN_0091B590:0x0091B590-0x0091B595` reads `0x01356F31`; its zero
+path includes A2's slot +4 calls followed by B reads/writes. The other helpers
+likewise cross A1/A3 virtual calls before further B writes. Input extents,
+index validity, concrete input implementations, and B's survival through
+these calls remain required. None of these raw gates supplies a recipient lease.
+
+After helper selection, the outer callback reads the stored pointer J at B+0x18,
+loads J's vtable+8, and passes B+0x1C, the dword at B+0x94, and zero
+(`0x00547785-0x0054779A`). This path has no J-null guard and passes B+0x1C
+as borrowed storage within B. The observed producer obtains J through
+`FUN_009466B0:0x009466B3-0x009466D5`, which returns the pointer at producer+0x170,
+conditionally caching `FUN_0096E850`'s result there. J's concrete slot +8,
+cache invalidation, and lifetime are unbound. The final AL-zero return does
+not undo callback effects or establish survival of H, P, S, B, or its inputs.
+These active callback edges replace an unknown preprocessor body for this
+family; the actual selected entry and dispatch/destruction exclusion remain
+unqualified. Captured focus tokens are not tied to any of these receiver types.
 
 ### Borrowed native keyboard-focus recipient
 
