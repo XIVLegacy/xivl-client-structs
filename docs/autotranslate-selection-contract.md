@@ -49,11 +49,12 @@ local source areas before FUN_004E3750 copies a fixed source area into the
 destination message field for c2s opcode 0x00C8 with record size 0x230.
 Neither source object is proven to be a 0x200-byte buffer.
 
-The native Completion reader, formatter, event consumers, and document insertion
-path are recovered below. The remaining edge is the retained CompletionDocument
-control record -> serialization into the submitted string/control object ->
-FUN_006E91F0 and the channel wrappers. The exact auto-translate UI origin and
-family/table identity of the selected Completion record are also unresolved.
+The native Completion reader, formatter, event consumers, document insertion,
+and document-to-getter reconstruction are recovered below. The remaining edge
+is the reconstructed/cached RaptureTextBox text -> native PressEnter event
+argument -> submitted chat source -> FUN_006E91F0 and the channel wrappers.
+The exact auto-translate UI origin and family/table identity of the selected
+Completion record are also unresolved.
 
 Complete ownership, release, invalidation, and serialization of retained
 UI/editor state remain unresolved.
@@ -122,6 +123,13 @@ desktopwidget_connector.lua:7103-7115 and :20074-20110, this analysis route
 reaches the native _parseTextCommand bridge. The chatDirect path at
 :7290-7436 converts pronouns and calls the player's _chat bridge. These script
 edges do not identify the native Completion selection or its token writer.
+AT-LUA-003 distinguishes submission from property access. The PressEnter
+handler receives text as its A4_2 event argument; it passes that value to
+analysis, pending-target storage, and history. Separately, WidgetBaseClass
+getText calls getControlProperty(controlName, "Text"), which calls
+_getProperty(nil, controlName, propertyName); its _inl wrapper returns
+"self", "_getProperty_cpp". These script surfaces do not establish which
+native document read supplies the event argument or property value.
 A literal-name search over all 2671 authenticated Lua bodies found no matches
 for the retained completion/phrase search terms; it does not exclude native,
 indirectly named, or runtime handlers.
@@ -213,9 +221,29 @@ to its +0x58 LineTextDocument's slot 5 (FUN_0098C8F0). When its +0x60
 string is nonempty, it copies that string into a record in the +0xB4 vector
 through FUN_0066DAE0, alongside insertion position and length. Thus the
 formatted control and editor text have separate storage. FUN_0066AB10 clears
-the +0x60 temporary after the event call at 0x0066ACDE. Retrieval of those
-stored controls into the submitted chat source remains unresolved; no retained
-edge joins them to FUN_006E91F0 or the Map/World packet source objects.
+the +0x60 temporary after the event call at 0x0066ACDE. AT-COMP-008 recovers
+retrieval of those stored controls through document-to-getter reconstruction.
+The retained edge does not join the getter to FUN_006E91F0 or Map/World packet
+source objects.
+
+AT-COMP-008 resolves FUN_0066B0E0, called by FUN_0066C410 with the
+CompletionDocument at TextBox+0x1A70 as ECX. It copies source text when the
+retained vector is empty. Otherwise, it copies the source ranges around each
+0x5C-byte retained record, appends that record's control string, advances past
+its display range, and copies the final source tail. The getter supplies the
+source at TextBox+0x1758 when the string at +0x1A74 is empty. Its other branch
+uses cached text at +0x1980. Flag/comparison guards control the cache update
+and callback; the getter returns +0x1980 or its fallback. This reconstructs
+control-bearing text without proving a submitted retail message.
+
+AT-COMP-009 bounds the examined direct getter callers. FUN_0052C3E0 reads
+TextBox_ItemNameSearch_ChatInput, whose owner also binds
+Button_ItemNameSearch. FUN_004F5220 reads one control plus ten other text
+controls into a caller record. Its event-object match at owner+0x26C is not
+authenticated as PressEnter. These routes do not identify every indirect
+caller or join the reconstructed text to chat submission. The native
+PressEnter event argument, cache invalidation, selected record family/key,
+and Map/World source-object joins remain open static work.
 
 AT-COMP-003 authenticates CompletionDocument's 23-slot vtable at 0x00FC1744
 and its FUN_0066BA70 factory. The RaptureTextBox constructor wraps that
@@ -279,7 +307,8 @@ every requested section with no exporter error. The exact callback-string
 export reports COMPLETE with four queries, zero defined string matches, and
 zero references. The authenticated Lua source hashes and line spans, the
 RaptureTextBox method-pointer mapping, and the native dispatcher candidate are
-retained in the manifest; no token producer is promoted.
+retained in the manifest; the document getter is recovered without a
+packet-source join.
 
 The Completion recipes AT-GH-014 through AT-GH-024 retain exporter revisions,
 script hashes, sanitized reproduction invocations, and output hashes. The
@@ -294,6 +323,10 @@ exports cover all sixteen requested insertion-path functions. Eight pointer
 cells and the required descriptor/key bytes were independently read from the
 authenticated executable. Constructor, subobject, and complete-object
 coordinates remain explicit in the manifest.
+
+Recipes AT-GH-052 through AT-GH-056 and fresh identity AT-ID-004 support
+AT-COMP-008 and AT-COMP-009. AT-LUA-003 pins the distinct event-argument and
+property-getter script surfaces.
 
 The optional passive observation checklist is retained in the manifest. It
 requests the identified client and locale, exact UI selection, repeated sparse
