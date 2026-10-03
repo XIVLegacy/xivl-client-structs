@@ -130,6 +130,36 @@ getText calls getControlProperty(controlName, "Text"), which calls
 _getProperty(nil, controlName, propertyName); its _inl wrapper returns
 "self", "_getProperty_cpp". These script surfaces do not establish which
 native document read supplies the event argument or property value.
+AT-LUA-004 pins command registration and Lua event forwarding.
+setControlCommandCondition registers the control name and command string
+through _setUICommandCondition(controlName, commandName, 5), whose bridge
+pair is "self", "_setUICommandCondition_cpp". The value 5 is a registration
+argument, without an authenticated PressEnter enum meaning.
+WidgetBaseClass._onUICommandEvent forwards its arguments to
+processUICommandEvent, whose default branch preserves them for
+LogWidget.processUICommandDefault. This is the PressEnter handler named
+by the script; its native argument producer remains to be joined.
+
+AT-ENTER-001 pins the native UILuaCommands.PressEnter command at 0x01344D44.
+FUN_00F141A0 supplies id 0x11 to FUN_00928D90, which stores it at command+0x78
+and inserts the RoutedCommand into the registry. This identifies command
+metadata without proving a chat wire field or the TextBox event argument.
+
+AT-ENTER-002 recovers a separate generic event adapter:
+FUN_0075D5D0 -> FUN_008A4050 -> FUN_006F5A90 -> FUN_006F5640. The adapter
+uses event bytes +0x55 and +0x54 during argument packaging. The guarded branch
+through FUN_00896AF0 invokes the literal _onUICommandEvent name. Neither byte
+is assigned a PressEnter-specific meaning, and the buffers are not yet joined
+to Lua A4_2 or reconstructed TextBox text.
+
+The indirect +0x34 call in FUN_0091E1C0 pushes one event pointer. The adapter
+FUN_0075D5D0 takes three stack arguments and returns with RET 0xC. Matching
+slot offsets do not establish a common interface or handler instance. The
+TextBoxBase.Paste branch and Completion carriage-return acceptance are also
+distinct from the chat Enter producer. Control registration, actual handler
+coordinates, and the TextBox-to-event argument remain recoverable static
+targets; the trace has not reached a runtime-only boundary.
+
 A literal-name search over all 2671 authenticated Lua bodies found no matches
 for the retained completion/phrase search terms; it does not exclude native,
 indirectly named, or runtime handlers.
@@ -327,6 +357,12 @@ coordinates remain explicit in the manifest.
 Recipes AT-GH-052 through AT-GH-056 and fresh identity AT-ID-004 support
 AT-COMP-008 and AT-COMP-009. AT-LUA-003 pins the distinct event-argument and
 property-getter script surfaces.
+
+Recipes AT-GH-057 through AT-GH-066 and fresh identity AT-ID-005 support
+AT-ENTER-001 and AT-ENTER-002. AT-ID-006 independently pins the three native
+command/event literal strings to executable file offsets and byte hashes.
+AT-LUA-004 pins command registration and
+argument forwarding on the script side.
 
 The optional passive observation checklist is retained in the manifest. It
 requests the identified client and locale, exact UI selection, repeated sparse
