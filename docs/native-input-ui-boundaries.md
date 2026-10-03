@@ -219,6 +219,16 @@ qualified the collection and shared-item COL/type/base/slot identities,
 constructor arguments, removal flags, deleting adjustments, and cleanup
 instructions. Fresh program-byte authentication preserved the same limits.
 
+The producer-owner qualification used those read-only exporters at
+`6835c2596513b568171f7eb6a82fc7ac8db325d2`, with the function addresses
+below and exact reference targets `0x009466B0`, `0x0054BCC0`, `0x00556D20`,
+`0x00946830`, `0x0054BE00`, and `0x00FA2ACC`. The `0x170` displacement
+search supplied positive candidates only. Independent pinned PE reads and
+instructions qualified the inherited pointers, temporary producer storage,
+Command branch, binding membership, and normal removal. The same authenticated
+file-backed program ranges support these read-only exports; runtime/TLS and
+selected-instance limits remain unchanged.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -689,11 +699,80 @@ cleanup `FUN_00556DF0` delegates to `FUN_00949180` after string cleanup;
 it supplies no direct U+0x170 clearing or J-release operation. The
 [command-collection contract](#command-collection-removal-and-final-membership)
 qualifies constructor-backed removal and final-member teardown. Selected-hit
-type, cache invalidation on name/container changes, selected owner/membership
-state, callback thread, and survival of J/B/T/H across both event routes remain
+type, cache invalidation outside the
+[qualified producer path](#producer-owner-and-binding-command-membership),
+selected owner/membership state, callback thread, and survival of J/B/T/H across
+both event routes remain
 unqualified. Registry locking is not
 dispatch/destruction exclusion. No pad-consumption contract follows from this
 slot resolution alone.
+
+### Producer owner and binding command membership
+
+For the constructor-qualified RaptureInputBindingsMarkupObject, let M be its
+complete receiver. `FUN_00547970` calls `FUN_00545E60` on unchanged M and
+installs vtable `0x00FA2ACC` at `0x005479B5`. COL `0x01145EFC`, offset 0,
+and type descriptor `0x0126E478` identify
+`.?AVRaptureInputBindingsMarkupObject@SqwtInterface@Main@Application@@`.
+The base passes its supplied markup parent C to `FUN_00946830` and stores
+the other argument at M+0x74 (`0x00545E88-0x00545EAF`). `FUN_00946830`,
+ECX=complete markup receiver and five stack arguments, `ret 0x14`, copies
+[C+4] and [C+8] to receiver+4/+8 and stores C at receiver+0xC
+(`0x0094685A-0x0094688D`). These are raw inherited pointers, not acquired
+ownership. C's concrete type and selected owner still require their own proof.
+
+M's +8 slot `FUN_0054BE00`, two stack arguments and `ret 8`, admits the
+case-insensitive `AxisBinding` name at `0x0054BF09-0x0054BF20`.
+It constructs temporary U in stack storage through `FUN_0054BCC0`, supplying
+M and byte M+0x78 (`0x0054BF22-0x0054BF2C`). U's base `FUN_00556D20`
+passes M unchanged to the same markup constructor, so this path gives
+U+4 = [M+4] = [C+4] and U+0xC = M; it initializes U+0x170 to zero.
+The inherited owner is passed unchanged as `FUN_0096E850`'s ECX.
+This chain does not independently identify it as a constructed R.
+
+The factory parses the first argument with `FUN_00947040` on U, calls M's
+virtual +0x20 with U, then cleans U through `FUN_00556EA0 -> FUN_00556DF0`
+(`0x0054BF3C-0x0054BF63`). For this M, +0x20 is
+`FUN_00547A30 -> FUN_0094AC10`. That helper calls U's virtual +0x20 with
+ECX=U, selecting `FUN_00552160` for the constructed AxisBinding. A nonzero
+returned B is passed to `FUN_0068CAA0` with ECX=[M+0x74]+4
+(`0x0094AC3C-0x0094AC5A`). That attachment sets B's SharedItem mask 1,
+increments its membership count, and crosses the supplied collection's +0xC
+callback (`0x0068CAB9-0x0068CAE2`). The collection and M/U must survive these
+calls. The normal factory therefore ends U's storage lifetime after producing B;
+its U+0x170 cache is not a persistent cache on this path.
+
+AxisBinding's property slot +0xC `FUN_0054A960` falls back to
+`FUN_00948350` on unchanged U at `0x0054AEC8-0x0054AED1`.
+The latter's admitted `Command` branch assigns the supplied value to the Name
+at U+0x78 through `FUN_00447450` and returns through its common tail
+(`0x009484CB-0x009484F4`). This branch does not clear U+0x170 or detach its
+old command. Thus a nonzero cache reused after that update still selects the
+old J through the qualified accessor; the factory does not establish that such
+an update occurs after first resolution. This is a scoped absence of reset in
+the inspected branch, not an exhaustive writer inventory.
+
+Runtime B has a separate command membership. RaptureAxisBinding's constructor
+calls base `FUN_00982300` on unchanged B at `0x00555F7B-0x00555F7D`.
+That base stores argument 1, J, at B+0x18 (`0x00982342-0x0098234D`) and
+constructs K_B=B+0xBC through `FUN_00571720(0,0)` at
+`0x009823D7-0x009823E8`.
+It appends complete J to K_B's range and K_B to J's SharedItem membership
+range, clears J+0x1A mask 1, increments word J+0x18, then performs eviction
+and the collection +0xC notification (`0x00982402-0x0098243C`).
+For the constructed K_B, the cleared eviction flag and inert callbacks follow
+the [command-collection contract](#command-collection-removal-and-final-membership).
+The flag applies to J across all memberships; it is not private to B.
+
+B's normal base destructor destroys K_B at `0x00982120-0x00982126`, after
+the current-TLS preprocessor removal and before its other member/base cleanup.
+This removes the binding's command membership using the qualified conditional
+final-member rule. A still-clear J deletion mask skips final-member deletion;
+another attachment can change that shared flag. Neither this sequence nor the
+temporary producer cleanup directly clears B+0x18. Selected M/C/R/B/J identity,
+current memberships/flags, cache reset outside this factory/property path,
+readable inputs, callback thread, and dispatch/destruction exclusion remain
+required. Membership counts and flags alone do not establish safe pad consumption.
 
 ### Command collection removal and final membership
 
