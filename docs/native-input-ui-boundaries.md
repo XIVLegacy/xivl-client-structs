@@ -1068,8 +1068,9 @@ arguments (`0x0050868B-0x00508694`). The
 qualifies a constructed +0x3D0 owner path. Its selection as W remains unbound.
 
 The other caller, `FUN_00683E80`, ECX=raw supplied Y and one stack record E,
-`ret 4`, calls `FUN_0092D1F0(E)`, then reads byte [[E+0x10]]. When that byte
-is zero and [E+0x1C]=`0x01340A98`, it writes E+0x19=1 and passes [Y+0x31C]
+`ret 4`, calls `FUN_0092D1F0(E)`, then reads a byte at the pointer stored
+in E+0x10. When that byte is zero and [E+0x1C]=`0x01340A98`, it writes
+E+0x19=1 and passes [Y+0x31C]
 as V (`0x00683EB2-0x00683EE4`). The outer export records its raw code pointer
 at `0x00FC3DA8`, not a direct caller. Y/E types, descriptor meaning, readable
 nested E storage, and the selected +0x31C owner remain unqualified.
