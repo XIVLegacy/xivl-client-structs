@@ -212,6 +212,13 @@ matching another object's displacement does not identify this cache or prove
 absence of invalidation. Fresh program-byte authentication preserved the
 file-backed limits above.
 
+The command-collection teardown qualification used those exporters at
+`6c819f35b87d35f36ad1efcfde98fcabea07a553`, with the function addresses
+below and exact reference target `0x00FA6674`. Independent pinned PE reads
+qualified the collection and shared-item COL/type/base/slot identities,
+constructor arguments, removal flags, deleting adjustments, and cleanup
+instructions. Fresh program-byte authentication preserved the same limits.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -679,12 +686,85 @@ when its flag's low bit is set. That destructor searches the name registry
 and ownership map and invokes erasure helpers under their critical sections
 (`0x009286C3-0x009287C9`) before member/base cleanup. Inspected producer
 cleanup `FUN_00556DF0` delegates to `FUN_00949180` after string cleanup;
-it supplies no direct U+0x170 clearing or J-release operation. Selected-hit
-type, cache invalidation on name/container changes, collection removal and
-last-owner policy, producer-base teardown, callback thread, and survival of
-J/B/T/H across both event routes remain unqualified. Registry locking is not
+it supplies no direct U+0x170 clearing or J-release operation. The
+[command-collection contract](#command-collection-removal-and-final-membership)
+qualifies constructor-backed removal and final-member teardown. Selected-hit
+type, cache invalidation on name/container changes, selected owner/membership
+state, callback thread, and survival of J/B/T/H across both event routes remain
+unqualified. Registry locking is not
 dispatch/destruction exclusion. No pad-consumption contract follows from this
 slot resolution alone.
+
+### Command collection removal and final membership
+
+For R constructed by `FUN_0096E4D0`, R is complete XamlControlContainer
+(the X family in the [Visibility property path](#visibility-property-path)).
+Its constructor passes ECX=K=R+0x10 and two zero stack arguments to
+`FUN_00571720` at `0x0096E527-0x0096E530`. That constructor installs
+vtable `0x00FA6674`, clears the pointer range K+8/+0xC/+0x10, and clears
+flag masks 1/2 at K+0x18. COL `0x011483BC`, offset 0, type descriptor
+`0x01270460`,
+`.?AV?$SharedItemContainer@VRoutedCommand@Input@Sqwt@@V123@@Sqwt@@`,
+and its SharedItemContainerBase at displacement 0 qualify K. This identifies
+the constructed family; it does not bind every selected [U+4] owner to R.
+
+K's slot +4 is `FUN_00570BA0`, ECX=K, one stack argument Q, `ret 4`.
+K stores complete command pointers J. Search helper `FUN_00570B60` compares
+Q against each nonnull J+4 (or zero for a null entry), selecting the first
+match. Q is the SharedItem receiver, not the execution receiver.
+On a match, removal calls K's virtual +0x10 with the stored complete J,
+then compacts its four-byte entries and reduces K+0xC unless K+0x18 mask 1
+is set. It next invokes Q's virtual +4 with K
+(`0x00570C1F-0x00570C5E`). For this constructed K, virtual slots
++8/+0xC/+0x10 all select `FUN_00776340`, an inert `ret 4` body. Derived
+collection overrides and survival across their callbacks remain separate.
+
+For factory-created RoutedCommand, Q=J+4 has vtable `0x0106A780` and
+slot +4 `FUN_0094C3A0`. This method finds the first K in Q+8/+0xC.
+It compacts that membership range unless Q+0x16 mask 2 is set, and decrements
+word Q+0x14 regardless of that suppression. A resulting zero count with
+Q+0x16 mask 1 set invokes Q's deleting slot with flag 1
+(`0x0094C3F9-0x0094C440`). In complete-command coordinates these are
+word J+0x18 and flags J+0x1A. No match leaves the count unchanged.
+The inspected deletion entry is `FUN_00929360`, which subtracts 4 and tails
+to `FUN_009293A0`; the latter destroys and frees complete J. A clear ownership
+mask or nonzero remaining count skips that deletion. This is a conditional
+final-membership rule, not a lease supplied by either raw pointer cache.
+
+`FUN_005708A0` supplies attachment's conditional eviction before its +0xC
+notification: when K+0x18 mask 2 is set and the range contains at least two
+entries, it calls K's slot +4 with the first stored J+4, or zero for a null
+entry (`0x005708A4-0x005708F6`). Thus flagged insertion can delete an older
+command after its final membership is removed. The R constructor above clears
+this eviction mask; later flag changes and other instances remain unbound.
+
+Collection clear `FUN_00570980` sets K+0x18 mask 1, walks the raw range,
+and calls K's removal slot with each stored J+4. Removal's membership callback
+can delete that J. Clear suppresses per-entry K compaction until the final
+range update, then clears mask 1 (`0x00570985-0x00570A36`). Destructor
+`FUN_00570AE0` calls clear, frees the pointer buffer, and zeros its bounds.
+For constructed R, deleting entry `FUN_0096EA30 -> FUN_0096E380` first enters
+named-control cleanup `FUN_0096E030`, then destroys K at
+`0x0096E3D0-0x0096E3E0` before destroying the name map. Those earlier cleanup
+calls must return with R alive for this ordering to hold.
+
+Command destruction's SharedItem cleanup receives Q at
+`FUN_00928660:0x009287FC-0x00928804`. `FUN_0052EDE0` clears Q+0x16 mask 1
+before `FUN_0052E8E0` sets mask 2 and calls each stored collection's slot +4
+with Q. Membership callbacks therefore decrement the count without compacting
+Q's range or triggering its mask-1 deletion again. After the walk, cleanup
+clears the range and mask 2; the destructor frees and zeros the membership
+buffer (`0x0052EE17-0x0052EE3C`). Collections remain raw callback receivers.
+
+Producer-base cleanup `FUN_00949180` conditionally calls
+`FUN_00947D90([U+4],0)` when byte U+0x70 and dword U+0xC are zero
+(`0x009491AE-0x009491CD`). This does not supply a direct command-cache release.
+The qualified removal/destruction bodies do not directly clear U+0x170 or
+B+0x18. Selected R/K/J identity, other memberships and current flags, a clearing
+path for those caches, readable callback receivers, invoking thread, and
+dispatch/destruction exclusion remain required. These traversals reread owner
+storage after virtual callbacks; their mutation flags do not establish owner
+survival, a session generation, or safe pad consumption.
 
 ### Borrowed native keyboard-focus recipient
 
@@ -1309,8 +1389,10 @@ root deletes the listener immediately. Listener vftable `0x00FA1054`, COL
 `FUN_00539480` deletes nonnull K values, destroys K, and frees it.
 
 For constructor-qualified X, deleting slot `FUN_0096EA30` calls
-`FUN_0096E380`, which enters named-control cleanup `FUN_0096E030` and destroys
-the name map. Independently of immediate or listener-mediated K teardown,
+`FUN_0096E380`, which enters named-control cleanup `FUN_0096E030`, destroys
+the [command collection](#command-collection-removal-and-final-membership)
+at X+0x10, and destroys the name map. Independently of immediate or
+listener-mediated K teardown,
 FormElement destruction calls `FUN_00542B30` on E+0x1DC at
 `0x0053AE4D-0x0053AE5B`, destroying the cache nodes and sentinel. These are
 conditional ownership paths, not a lease on E, X, a root, or a cached grid.
