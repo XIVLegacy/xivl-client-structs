@@ -239,6 +239,15 @@ instructions. Positive table candidates were followed only within their
 qualified slot extents. The same authenticated file-backed ranges and
 runtime/TLS exclusions support these read-only exports.
 
+The config-root selection qualification used the same read-only exporters at
+`4a099028478d71ae451bf676fd3a2272a8d08d9c`, with explicit function addresses
+below and exact reference targets `0x0054CAF0`, `0x005531D0`, `0x01336BC4`,
+`0x0054CB90`, `0x00553280`, and `0x00FA2FA8`. It reused the qualified
+`FUN_004DBF40` constructor export. Independent pinned PE instructions and
+COL/type/slot data qualified embedded storage, separate selector/index inputs,
+the root markup receiver, and temporary command-owner cleanup. Fresh program-byte
+authentication retained the same file-backed limits and runtime/TLS exclusions.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -860,12 +869,87 @@ destroys in reverse order. P's destructor adjusts ECX by +4 before
 G/P primary deleting entries `FUN_0055C1D0`/`FUN_00558DA0` free their
 unchanged complete receiver only when the supplied deletion flag's low bit is set.
 
-Selected A/G/i, D's concrete markup type and inherited owner, readable input
+The [config-root contract](#config-root-selection-and-temporary-markup-owner)
+qualifies constructed D/R and recorded callers' root/index calculation.
+Selected A/G/i and inherited owner, readable input
 and collection ranges, current B memberships/flags, invoking thread, and
 survival of G/P/K and inherited owners through callbacks remain unbound.
 The two-block constructor extent does not validate a selected unchecked index.
 Temporary parsing and conditional membership deletion supply no recipient lease
 or dispatch/destruction exclusion. No safe pad-consumption contract follows.
+
+### Config root selection and temporary markup owner
+
+Let V be the qualified complete RaptureElementContainer and F=V+0x175AC.
+Its constructor `FUN_004DBF40` supplies unchanged V to
+`FUN_00553280` with ECX=F (`0x004DC1BD-0x004DC1D6`). That constructor
+installs F's primary vtable `0x00FA2FA8`, COL `0x01146AFC`, offset 0,
+type descriptor `0x0126EF30`, identifying RaptureInputBindingCollection.
+It constructs three 0x8C-byte G objects starting at F+4 through
+`FUN_009D61D6` with the preceding contract's G constructor/destructor
+(`0x005532B6-0x005532D1`). It stores V at each G+4 and the names
+`key_config`, `key_config2`, and `key_config3` at each G+0xC.
+
+These three config roots are separate from each G's two binding collections.
+`FUN_00547320`, ECX=F, one stack selector q and `ret 4`, replaces q=-1
+with raw dword `0x01336BC4` and returns G=F+4+0x8C*q. It supplies no
+three-element bounds guard. `FUN_004D7550` adjusts ECX=V by +0x175AC
+and tails to that helper. `FUN_00547340` stores its supplied dword unchanged
+at the same global without validation. These absences apply to the inspected
+helpers, not all writers/callers or the meaning of an invalid session.
+
+The exact wrapper reference export records two calls to `FUN_0054CAF0`.
+`FUN_0054CB90` uses unchanged supplied G and calls it with i=0, then i=1
+(`0x0054CBC0-0x0054CC27`). Its recorded caller `FUN_0054CC50`, ECX=F,
+clears all six binding collections, then selects G with that unchecked global q
+before tailing to `FUN_0054CB90` (`0x0054CC97-0x0054CCAE`).
+`FUN_006819C0` obtains G through `FUN_004D7550(V,-1)`, then also supplies
+i=0/1 (`0x00681A4F-0x00681A9D`). This bounds i at those call sites,
+not arbitrary extension callers, q, or the selected V/F storage.
+
+`FUN_0054CAF0`, ECX=G, three stack arguments i/buffer/length and `ret 0xC`,
+constructs A in stack storage with G/i and the low byte of a separate dword read
+from `0x01336BC4` (`0x0054CB13-0x0054CB23`); the constructor extracts/stores
+that byte at `0x0054C809`/`0x0054C824`. Those separate reads supply no
+coherent-snapshot guarantee. It calls `FUN_0096B220` with a stack AutoPtr result,
+buffer, and length, destroys that result through `FUN_0052CD10`, then performs
+A's normal markup-base cleanup before returning (`0x0054CB30-0x0054CB6C`).
+
+For nonnull buffer, `FUN_0096B220` constructs stack XamlReader L through
+`FUN_0096B120` and allocates R through `FUN_0096E4D0(0)`, or supplies zero
+if allocation fails. It invokes `FUN_0096A580(buffer,length,R,0)` on L.
+When DOM parsing returns a nonzero root, that method reaches `FUN_0096A4C0`,
+which constructs stack D through
+`FUN_009467D0(L,R,0x01266B10)` and calls `FUN_009472C0` on D
+(`0x0096A50D-0x0096A541`). D has primary MarkupObject vtable `0x0106D668`,
+COL `0x01179FB0`, offset 0, type descriptor `0x0126B51C`.
+The constructor stores R at D+4, L at D+8, and zero at D+0xC
+(`0x009467E2-0x009467FB`). When this D reaches the qualified C/M/U factories,
+their inherited command owner is that same R. D is destroyed before this
+reader operation returns.
+
+D's +4/+8 slots are `FUN_00946940`/`FUN_0094AD90`. For an element node,
+the former calls D's +8 with the node and its Name. The latter looks up that
+Name through `FUN_009492A0` and, for a nonzero hit A, calls A's +4 with
+unchanged D, node, and Name (`0x0094B5B3-0x0094B5CA`). The lookup reads
+the registry node's +0x60 pointer under the global registry's critical section,
+then releases it before return (`0x00949308-0x00949323`). A's constructor
+registers its `RaptureKeyConfig` name through `FUN_0094AA00` with flag 1;
+that admitted registration stores raw A in the value cell at `0x0094AA91`.
+The lock supplies no target lease or dispatch/destruction exclusion.
+
+After parsing, `FUN_0096B220` transfers R to the wrapper's stack AutoPtr.
+`FUN_0052CD10` invokes a nonzero R's primary deleting slot with flag 1 and
+clears its pointer (`0x0052CD46-0x0052CD55`). For constructed R this reaches
+the qualified XamlControlContainer teardown, before A cleanup. Thus this
+factory does not retain the parsing command owner for later B callbacks.
+The existing conditional command-membership rule still governs J's deletion.
+
+Selected V/F/G and q validity, successful/readable R, the actual registry hit
+and its removal/replacement policy, current B/J memberships and flags, callback
+thread, and survival across reentrant callbacks remain unbound. The constructor
+chain and recorded i=0/1 calls qualify neither a current gameplay classifier
+nor safe pad consumption. Captured focus tokens remain opaque.
 
 ### Command collection removal and final membership
 
