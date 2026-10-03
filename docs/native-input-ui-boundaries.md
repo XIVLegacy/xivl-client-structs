@@ -229,6 +229,16 @@ Command branch, binding membership, and normal removal. The same authenticated
 file-backed program ranges support these read-only exports; runtime/TLS and
 selected-instance limits remain unchanged.
 
+The markup-parent and binding-collection qualification used those read-only
+exporters at `82242f3612a4f205babf559253df21b4ce72604d`, with the explicit
+function addresses below and reference targets `0x0054C8A0`, `0x0054A760`,
+`0x00FA2AA8`, `0x00FA2A98`, `0x00FA2F94`, `0x00FA2ECC`, and `0x00FA2E84`.
+Independent pinned PE reads qualified constructor stores, COL/type/slot
+identities, the two-element extent, raw index calculation, and callback/cleanup
+instructions. Positive table candidates were followed only within their
+qualified slot extents. The same authenticated file-backed ranges and
+runtime/TLS exclusions support these read-only exports.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -719,7 +729,9 @@ the other argument at M+0x74 (`0x00545E88-0x00545EAF`). `FUN_00946830`,
 ECX=complete markup receiver and five stack arguments, `ret 0x14`, copies
 [C+4] and [C+8] to receiver+4/+8 and stores C at receiver+0xC
 (`0x0094685A-0x0094688D`). These are raw inherited pointers, not acquired
-ownership. C's concrete type and selected owner still require their own proof.
+ownership. The [markup-parent contract](#markup-parent-and-binding-collection-ownership)
+qualifies constructed C and its collection family; its selected owner remains
+unbound.
 
 M's +8 slot `FUN_0054BE00`, two stack arguments and `ret 8`, admits the
 case-insensitive `AxisBinding` name at `0x0054BF09-0x0054BF20`.
@@ -773,6 +785,87 @@ temporary producer cleanup directly clears B+0x18. Selected M/C/R/B/J identity,
 current memberships/flags, cache reset outside this factory/property path,
 readable inputs, callback thread, and dispatch/destruction exclusion remain
 required. Membership counts and flags alone do not establish safe pad consumption.
+
+### Markup parent and binding collection ownership
+
+Use the preceding section's U/M/C coordinates. The constructor-backed families
+below have primary COL offset 0; their descriptors identify the stated types.
+K is an embedded complete collection object, not P's primary receiver.
+
+| Receiver | Type | Primary vtable | COL | Type descriptor |
+|---|---|---|---|---|
+| C | RaptureKeyConfigMarkupObject | `0x00FA2AA8` | `0x01145EB0` | `0x0126E428` |
+| A | RaptureKeyConfigExtension | `0x00FA2A98` | `0x01145E64` | `0x0126E3E0` |
+| G | RaptureKeyConfig | `0x00FA2F94` | `0x01146AB4` | `0x0126EEF0` |
+| P | InputBindingCollection | `0x00FA2ECC` | `0x01146870` | `0x0126EC94` |
+| K=P+4 | SharedItemContainer<InputBinding> | `0x00FA2E84` | `0x011467D4` | `0x0126EC20` |
+
+C's constructor `FUN_00547830`, ECX=C, three stack arguments D/P/t and
+`ret 0xC`, passes supplied markup parent D unchanged to `FUN_00946830`.
+It stores P at C+0x74 and byte t at C+0xCC
+(`0x00547858-0x00547893`). Together with the qualified base and nested producers,
+U+4 = [M+4] = [C+4] = [D+4]. These remain raw inherited pointers.
+
+A's constructor `FUN_0054C7D0`, three stack arguments and `ret 0xC`, stores
+supplied G, full 32-bit index i, and byte t at A+0x10/+0x14/+0x18.
+Only when unsigned i < 2 does it increment dword G+0x34+0x24*i and clear
+K=G+0x18+0x24*i (`0x0054C81E-0x0054C871`). It stores i before this test;
+an out-of-range value skips clearing but is not rejected or sanitized there.
+A's slot +4 `FUN_0054A760`, three stack arguments and `ret 0xC`, uses those
+raw fields to calculate P=G+0x14+0x24*i, then constructs C in stack storage
+with D=argument 1, P, and t (`0x0054A799-0x0054A7BF`). It parses argument 2
+through `FUN_00947040` on C and destroys C through `FUN_005478C0` before
+returning normally (`0x0054A7CF-0x0054A7E8`). This method supplies no G-null
+or index-bounds guard. That absence is scoped to this method, not all callers.
+
+C's slot +8 `FUN_0054C8A0`, two stack arguments and `ret 8`, admits the
+case-insensitive `RaptureKeyConfig.InputBindings` Name (string `0x00FA1E40`).
+The admitted branch increments P+0x20 and clears K before parsing, then
+constructs temporary M with C/P/t, parses argument 1, and destroys M normally
+(`0x0054C8FD-0x0054C946`). Thus the qualified AxisBinding path attaches
+runtime B through owning `FUN_0068CAA0(K,B)` before its temporary U/M/C end.
+Neither C's inspected destructor nor A's `FUN_005477E0` directly destroys P/G;
+they delegate to their markup bases after local cleanup. P+0x20 is initialized
+to zero and mechanically incremented on these paths. These operations do not
+give that field a session-generation or saved-HUD meaning; t remains unclassified.
+
+Constructed G owns two 0x24-byte P blocks at G+0x14 and G+0x38.
+`FUN_005531D0` passes base G+0x14, size 0x24, count 2, constructor
+`FUN_00559D70`, and destructor `FUN_00558570` to `FUN_009D61D6`
+(`0x005531F9-0x0055321F`). The iterator calls each constructor with ECX equal
+to its block and advances by the supplied size. P's constructor constructs
+K=P+4 through `FUN_005595B0(0,0)` and zeros P+0x20
+(`0x00559D98-0x00559DB2`). K's pointer range K+8/+0xC/+0x10 starts empty,
+and its flag masks 1/2 are cleared. K's slots +8/+0xC/+0x10 select the
+already qualified inert `FUN_00776340`.
+
+K's slot +4 `FUN_005580F0`, one stack argument B and `ret 4`, searches the
+first exact stored complete binding pointer, with no command-style +4
+adjustment. A match calls K's +0x10 callback with that stored B, compacts
+the range unless K+0x18 mask 1 is set, then invokes the supplied B's +4 slot
+with K (`0x00558162-0x005581A2`). For constructed RaptureAxisBinding,
+primary vtable `0x00FA2CBC` has COL offset 0 and +4 `FUN_0094C3A0`.
+The qualified SharedItem rule therefore uses word B+0x14 and flags B+0x16;
+zero remaining membership count plus mask 1 deletes complete B through
+`FUN_00555FE0`, reaching its TLS removal and command-membership teardown.
+Other memberships or a clear mask skip deletion.
+
+Clear `FUN_00557C70` sets K+0x18 mask 1, walks complete B pointers through
+K's removal slot, then updates its range and clears the mask
+(`0x00557C75-0x00557D1B`). It rereads raw K storage after callbacks.
+Normal G destruction `FUN_00553150` reaches `FUN_009D1C4C` with the same
+two-element range and P destructor (`0x005531A0-0x005531AD`); the iterator
+destroys in reverse order. P's destructor adjusts ECX by +4 before
+`FUN_00558070`, which clears K, frees its pointer buffer, and zeros its bounds.
+G/P primary deleting entries `FUN_0055C1D0`/`FUN_00558DA0` free their
+unchanged complete receiver only when the supplied deletion flag's low bit is set.
+
+Selected A/G/i, D's concrete markup type and inherited owner, readable input
+and collection ranges, current B memberships/flags, invoking thread, and
+survival of G/P/K and inherited owners through callbacks remain unbound.
+The two-block constructor extent does not validate a selected unchecked index.
+Temporary parsing and conditional membership deletion supply no recipient lease
+or dispatch/destruction exclusion. No safe pad-consumption contract follows.
 
 ### Command collection removal and final membership
 
