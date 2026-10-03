@@ -256,6 +256,15 @@ unregistration, and node-free tails. Fresh program-byte authentication retained
 the same file-backed limits and runtime/TLS exclusions. Reference coverage
 does not include every computed, indirect, dynamic, or unanalyzed writer.
 
+The config-parser caller qualification used those read-only exporters at
+`9349782542636c43035aa51f58f0b5dbc340fbc9`, with explicit function addresses
+below and exact reference targets `0x006819C0`, `0x0054CC50`, `0x00683E80`,
+`0x00681C50`, `0x00553BE0`, and `0x004DB800`. Independent pinned instructions
+and secondary COL/slot data qualified receiver adjustments and call/guard
+ordering. Fresh program-byte authentication retained the same file-backed
+limits and runtime/TLS exclusions. These references do not establish every
+indirect caller or the executing thread.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -1016,6 +1025,61 @@ exclusion. Actual selected-hit identity/readability, overlapping or nested
 registration order, invoking thread, and survival across callbacks remain
 unbound. Other writers and derived callbacks are outside this contract.
 These facts supply neither safe pad consumption nor a gameplay/session predicate.
+
+### Config parser callers and reentrancy limits
+
+Use the qualified V/F/G coordinates above. The exact entry-reference export
+records three direct callers of `FUN_0054CC50`, which clears all six binding
+collections before selecting and parsing a config root:
+
+| Caller | Receiver and admitted call path |
+|---|---|
+| `FUN_004DAF00` | Restores unchanged entry receiver V to EBX, obtains the raw selector through `FUN_00443E40` with stack arguments 0/9/0, stores it through `FUN_00547340`, then calls with ECX=F=V+0x175AC (`0x004DB44E`, `0x004DB4A5-0x004DB4C1`). |
+| `FUN_004DB800` | ECX=V+0x4A4, four stack arguments, `ret 0x10`. Requires argument 1=V+0x17430 and argument 2=-1 or 0 for this branch. It obtains/stores the selector with the same helpers and calls with ECX=F (`0x004DB808-0x004DB818`, `0x004DBA56-0x004DBA7C`). |
+| `FUN_00553BE0` | ECX=F, no stack arguments. Skips when byte F+0x1A8 equals 1; otherwise calls `FUN_00553AD0` on each of three G blocks and requires all G+0x10 bytes nonzero before calling with unchanged F (`0x00553BE3-0x00553C24`). |
+
+The second row's receiver is a constructed secondary interface:
+`FUN_004DBF40` stamps vtable `0x00F9117C` at V+0x4A4
+(`0x004DBFD9`), whose +4 slot is `FUN_004DB800`. COL `0x01141B34`,
+offset 0x4A4, and type descriptor `0x01269DC4` identify the same complete
+RaptureElementContainer. Its +0x17108 calculation is therefore F, not an
+offset from complete V. The qualified constructor initializes F+0x1A8 to zero
+(`0x005532DF`).
+
+The recorded direct call to `FUN_00553BE0` is in `FUN_004DA680`, with
+ECX=V+0x175AC (`0x004DA956-0x004DA95C`). The per-root helper
+`FUN_00553AD0` crosses virtual calls on raw supplied/loaded objects and then
+reuses G storage. Its admitted completion write sets G+0x10 to 1 only when
+`FUN_00553340` returns AL=1 (`0x00553BB7-0x00553BC2`). The outer caller writes
+F+0x1A8=1 only after `FUN_0054CC50` returns (`0x00553C29`). Its inspected
+body supplies no in-progress write before clearing/parsing; this completion
+byte does not establish exclusion of nested parsing or destruction. The later
+write itself requires F to survive the earlier calls.
+
+The exact export records two direct callers of the cdecl loader
+`FUN_006819C0`, one borrowed stack V and caller cleanup. `FUN_00681C50`,
+ECX=raw supplied receiver W, loads [W+0x3D0] and passes it unchanged
+(`0x00681C50-0x00681C5D`). Its recorded caller `FUN_005085F0` uses
+`FUN_00910980` on [Q+0x1A0], where Q is its supplied receiver, and immediately
+passes the returned pointer as W without a null check
+(`0x0050863E-0x00508664`). It later invokes Q's +0x34 with its original two
+arguments (`0x0050868B-0x00508694`). W's constructor/type, selected result,
+and +0x3D0-to-V association remain unbound.
+
+The other caller, `FUN_00683E80`, ECX=raw supplied Y and one stack record E,
+`ret 4`, calls `FUN_0092D1F0(E)`, then reads byte [[E+0x10]]. When that byte
+is zero and [E+0x1C]=`0x01340A98`, it writes E+0x19=1 and passes [Y+0x31C]
+as V (`0x00683EB2-0x00683EE4`). The outer export records its raw code pointer
+at `0x00FC3DA8`, not a direct caller. Y/E types, descriptor meaning, readable
+nested E storage, and the selected +0x31C owner remain unqualified.
+
+These ordinary call/tail paths qualify synchronous instruction ordering.
+They do not bind the selected invocation to an OS thread, prove a shared TLS
+context with pad dispatch, or exclude reentrant registration/destruction from
+virtual calls. Selected V/F/G/W/Y identity and storage, selector validity,
+the actual extension hit, and callback survival remain required. No gameplay,
+invalid-session, modal/text-entry precedence, or safe pad-consumption predicate
+follows. Captured focus tokens remain opaque.
 
 ### Command collection removal and final membership
 
