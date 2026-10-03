@@ -202,6 +202,16 @@ the receiver identities. This caller set is a database observation, not an
 exhaustive derived-type or runtime-registration inventory. Fresh program-byte
 authentication preserved the same limits.
 
+The cached-command qualification used the same exporters at
+`b63c3672e2603c78a11266d86e1625411823d0f3`, with explicit function addresses
+below and exact reference targets `0x00FA2D44`, `0x0135872C`, and
+`0x01358738`. Independent pinned PE reads qualified constructor stores,
+COL/type/base/slot identities, event-name initializers, locking imports, and
+instruction encodings. The `0x170` field search supplied candidates only;
+matching another object's displacement does not identify this cache or prove
+absence of invalidation. Fresh program-byte authentication preserved the
+file-backed limits above.
+
 The ancestor-key and Window continuations used the committed tools at
 `4168c0faa5fb0f6e15d5d1d45360af0006b2c8f5`. Targeted read-only
 `tools/ghidra/ExtractRtti.java` details queried `.?AVWindow@Sqwt@@` and
@@ -590,12 +600,91 @@ loads J's vtable+8, and passes B+0x1C, the dword at B+0x94, and zero
 (`0x00547785-0x0054779A`). This path has no J-null guard and passes B+0x1C
 as borrowed storage within B. The observed producer obtains J through
 `FUN_009466B0:0x009466B3-0x009466D5`, which returns the pointer at producer+0x170,
-conditionally caching `FUN_0096E850`'s result there. J's concrete slot +8,
-cache invalidation, and lifetime are unbound. The final AL-zero return does
+conditionally caching `FUN_0096E850`'s result there. The
+[cached-command contract](#cached-command-target-and-slot-8) qualifies its
+freshly constructed target and slot +8; selected cache-hit identity,
+invalidation, and lifetime remain unbound. The final AL-zero return does
 not undo callback effects or establish survival of H, P, S, B, or its inputs.
 These active callback edges replace an unknown preprocessor body for this
 family; the actual selected entry and dispatch/destruction exclusion remain
 unqualified. Captured focus tokens are not tied to any of these receiver types.
+
+### Cached command target and slot +8
+
+Let U be the complete markup AxisBinding producer, distinct from runtime
+binding B above. `FUN_0054BCC0:0x0054BCE2-0x0054BCFC` calls its base
+constructor and installs primary vtable `0x00FA2D44`. COL `0x01146614`,
+offset 0, and type descriptor `0x0126EAC8` identify
+`.?AVAxisBinding@SqwtInterface@Main@Application@@`; slot +0x20 is producer
+`FUN_00552160`. Base constructor `FUN_00556D20:0x00556DCC` initializes
+U+0x170 to zero. `FUN_009466B0:0x009466B3-0x009466D5` returns that raw
+cache, resolving only while it is zero: ECX=[U+4], name address U+0x78,
+then store EAX at U+0x170. This accessor supplies no generation check.
+
+`FUN_0096E850`, ECX=R, one stack name argument, `ret 4`, first calls
+`FUN_00928280` at `0x0096E85D`. That lookup scans the registry at
+`[0x01358728]`, compares each entry's Name at J+0x24, and returns the first
+match after releasing the registry's critical section at +0x1C. It does not
+increment retention state. A miss calls `FUN_00928F90` at `0x0096E86C`.
+That helper looks up again under registry/map critical sections; its successful
+new allocation path requests 0x9C bytes at `0x00929076`, constructs through
+`FUN_00928C90` at `0x00929096`, and returns the complete pointer unchanged.
+Allocation failure can return zero. Its existing-entry path is separate.
+
+The constructor installs RoutedCommand primary vtable `0x0106A78C` at
+`0x00928CFC`. COL `0x01179454`, offset 0, type descriptor `0x012E0398`,
+`.?AVRoutedCommand@Input@Sqwt@@`, and the ICommand base at displacement 0
+qualify this newly constructed J. Primary slot +8 is `FUN_00927FA0`.
+The SharedItem secondary vtable `0x0106A780` has COL `0x01179468`, offset 4;
+its deleting thunk `FUN_00929360` subtracts 4 before `FUN_009293A0`.
+The outgoing ICommand call uses complete J without that adjustment.
+This constructor proof does not identify every registry hit or selected cache.
+
+On a lookup miss, `FUN_0096E850` attaches J to collection R+0x10 through
+`FUN_00599640`. On a hit, it attaches only if J is absent there, choosing
+that helper when the ownership map contains J (`FUN_00928330`), otherwise
+`FUN_005995F0(J,0)`. Attachment appends J and a collection backpointer,
+increments word J+0x18, and sets or clears flag mask 1 at J+0x1A,
+respectively (`0x00599650-0x00599672`, `0x005995F8-0x0059961E`). Both
+cross collection virtual slot +0xC before returning. These mechanical counts
+and flags do not establish a lease across that callback or later dispatch.
+
+`FUN_00927FA0` receives complete J in ECX and three stack arguments:
+parameter storage V, target value T, and optional source event E; `ret 0xC`.
+The observed AxisBinding call supplies V=B+0x1C, T=[B+0x94], E=0.
+It constructs a stack command event through `FUN_00929100` with J and V,
+using PreviewExecuted descriptor `0x0135872C`; after dispatch, it skips the
+second event only when the first handled byte equals 1 (`0x00928099`).
+Otherwise it destroys the first event, constructs another from the same J/V
+with Executed descriptor `0x01358738`, dispatches, and returns its handled
+byte in AL. Each constructed event receives normal cleanup through
+`FUN_00927E10`. Event names come from initializer instructions
+`0x00F21C80-0x00F21CD6` and strings `0x0106A6DC/0x0106A6EC`.
+With E=0, source-event flag copy/writeback paths are skipped. The outer
+RaptureAxisBinding callback still returns AL=0 after this call.
+
+`FUN_00929100:0x0092916A-0x00929196` reads V's dword +0, copies its Name
+at +4 through `FUN_00447200`, copies seven dwords +0x58..+0x70 and the
+dword +0x74, and stores E separately. It does not validate V. This requires
+readable initialized B storage and Name internals before routing; the second
+construction reuses V after the first callback. `FUN_0091F590`, a cdecl
+two-argument helper, routes a nonzero T through
+`FUN_0091E1C0(event,T,1,1,1)` at `0x0091F5A4`. With T=0 it calls
+`FUN_0091EE90` only while global keyboard-focus recipient `0x01357020` is
+nonzero. These paths inherit the borrowed-recipient and routed-callback
+limits below; they do not identify text-entry, modal, or gameplay roles.
+
+Primary deletion `FUN_009293A0` calls `FUN_00928660`, then frees complete J
+when its flag's low bit is set. That destructor searches the name registry
+and ownership map and invokes erasure helpers under their critical sections
+(`0x009286C3-0x009287C9`) before member/base cleanup. Inspected producer
+cleanup `FUN_00556DF0` delegates to `FUN_00949180` after string cleanup;
+it supplies no direct U+0x170 clearing or J-release operation. Selected-hit
+type, cache invalidation on name/container changes, collection removal and
+last-owner policy, producer-base teardown, callback thread, and survival of
+J/B/T/H across both event routes remain unqualified. Registry locking is not
+dispatch/destruction exclusion. No pad-consumption contract follows from this
+slot resolution alone.
 
 ### Borrowed native keyboard-focus recipient
 
