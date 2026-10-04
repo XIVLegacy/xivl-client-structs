@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "symbolCount": 3095,
+  "symbolCount": 3096,
   "symbols": [
     {
       "id": "BCS-Y-0001",
@@ -38645,6 +38645,17 @@
       ],
       "notes": "Retail 1.23b ffxivgame.exe VA 0x00D52150, size 0x91, observed 2026-10-04 with authenticated read-only Ghidra DumpVAs.java, complete DumpFunctionListing.java, verified address references and Capstone 5.0.7 x86-32 disassembly. Independently recovered RTTI .?AVEAKSegment@RUDP2@Socket@Sqex@@ owns vtable 0x011142F4; slot 4 at 0x01114304 selects this serializer, and slot 3 selects inherited length getter [[BCS-Y-3098]]. Calls virtual length through vtable +0x0C and returns false before destination stores/copy when signed capacity is smaller. Otherwise copies object bytes +0x04..+0x07 to destination 0..3, selects raw source/count at +0x0C/+0x10 or buffer first/end extent via +0x14, and calls memcpy at 0x009D4600 with destination +4. Returns true after copy returns. Corresponds to ARR EAKSegment::getBytes at direct code 0x1544924, descriptor 0x1B7EF50, body/declaration DIEs 0x6865027/0x686158A, for valid stable nonoverlapping raw sources and nonempty vectors. Constructor 0x00D52040 sets header-length byte to unsigned-byte list length plus 6 modulo 256; inherited getter returns that byte without recomputing the list extent. For stable constructor length n <= 249, bytes n+4/n+5 are untouched. Lengths 250..255 wrap the reported length to 0..5 while retaining raw copy count 250..255; actual producer reachability is unproved. Retail calls diagnostic 0x009D22B4 for null/empty buffer first/end state after header stores; ARR instead reaches a zero-size copy. Diagnostic effects/returns, complete ownership, library equivalence, mutable or malformed state, trailing-byte meanings, complete wire serialization and game opcodes are not promoted.",
       "id": "BCS-Y-3108"
+    },
+    {
+      "name": "Sqex_Socket_RUDP2_RUDPImpl_sendExtendedAck_FUN_00D465F0",
+      "kind": "function",
+      "address": "0x00D465F0",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "xivl-decomp:docs/arr-debug-comparison.md"
+      ],
+      "notes": "Retail 1.23b ffxivgame.exe VA 0x00D465F0, observed 2026-10-04 with authenticated read-only Ghidra DumpVAs.java, DumpFunctionListing.java, verified address references and Capstone 5.0.7 x86-32 disassembly. Ghidra body: 355 bytes, 113 instructions; full raw extent 0x00D465F0..0x00D4675B: 364 bytes, 115 instructions, including six alignment bytes and three-byte caller cleanup omitted from the analyzed body. Corresponds to the normal list-producing path in ARR RUDPImpl::sendExtendedAck at direct code 0xE387D4, size 0x2A4, body/declaration DIEs 0x6863509/0x68621E9. Returns on zero stored count at +0x1CC; otherwise clears +0xD0/+0xD4 and constructs a byte buffer from that full count through 0x005D1070 and fill leaf 0x006D1920. Traverses sentinel +0x1C8, node next +0 and segment pointer +8; copies each segment byte +6 in list order without sorting, deduplicating, removing nodes or updating the stored count. Passes buffer end minus first to EAK constructor 0x00D52040 at 0x00D46715, which consumes its low byte, with raw-storage boolean zero. Header acknowledgment byte is the low byte of object +0xCC; sequence byte is the low byte of signed32(counter+1) remainder 255 with truncation toward zero. Calls outbound method [[BCS-Y-3105]] at 0x00D46728. For stable valid matching queue count N > 0 and successful storage, constructor length is N & 0xFF; N=250..255 conditionally reaches the wrapped-header states of serializer [[BCS-Y-3108]], while N=256/512 yields constructor length zero. No 249-byte cap is present in this producer. Retail list and buffer checks call 0x009D22B4; ARR has no corresponding checks in this body. Upstream queue bounds/reachability, allocator or diagnostic effects, cleanup/ownership, malformed or concurrent state, full functional equivalence, complete wire meanings and game opcodes are not promoted.",
+      "id": "BCS-Y-3109"
     }
   ]
 }
