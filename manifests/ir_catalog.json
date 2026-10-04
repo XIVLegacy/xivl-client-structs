@@ -45,7 +45,7 @@
     },
     {
       "path": "manifests/symbols.json",
-      "sha256": "017f16b0c0ea7175102161f7fda5baf5fe1c2584c033b1de9f2a19696277cad0"
+      "sha256": "7e159b488e798af670019324f2ea1643a00fc1d202848601faa8c21f02443902"
     }
   ],
   "dimensions": {
@@ -103,7 +103,7 @@
   },
   "counts": {
     "types": 497,
-    "symbols": 3096,
+    "symbols": 3097,
     "citations": 1597,
     "members": 3318,
     "unknownSpans": 12,
@@ -137203,6 +137203,24 @@
         "EV-1569"
       ],
       "notes": "Retail 1.23b ffxivgame.exe VA 0x00D465F0, observed 2026-10-04 with authenticated read-only Ghidra DumpVAs.java, DumpFunctionListing.java, verified address references and Capstone 5.0.7 x86-32 disassembly. Ghidra body: 355 bytes, 113 instructions; full raw extent 0x00D465F0..0x00D4675B: 364 bytes, 115 instructions, including six alignment bytes and three-byte caller cleanup omitted from the analyzed body. Corresponds to the normal list-producing path in ARR RUDPImpl::sendExtendedAck at direct code 0xE387D4, size 0x2A4, body/declaration DIEs 0x6863509/0x68621E9. Returns on zero stored count at +0x1CC; otherwise clears +0xD0/+0xD4 and constructs a byte buffer from that full count through 0x005D1070 and fill leaf 0x006D1920. Traverses sentinel +0x1C8, node next +0 and segment pointer +8; copies each segment byte +6 in list order without sorting, deduplicating, removing nodes or updating the stored count. Passes buffer end minus first to EAK constructor 0x00D52040 at 0x00D46715, which consumes its low byte, with raw-storage boolean zero. Header acknowledgment byte is the low byte of object +0xCC; sequence byte is the low byte of signed32(counter+1) remainder 255 with truncation toward zero. Calls outbound method [[BCS-Y-3105]] at 0x00D46728. For stable valid matching queue count N > 0 and successful storage, constructor length is N & 0xFF; N=250..255 conditionally reaches the wrapped-header states of serializer [[BCS-Y-3108]], while N=256/512 yields constructor length zero. No 249-byte cap is present in this producer. Retail list and buffer checks call 0x009D22B4; ARR has no corresponding checks in this body. Upstream queue bounds/reachability, allocator or diagnostic effects, cleanup/ownership, malformed or concurrent state, full functional equivalence, complete wire meanings and game opcodes are not promoted."
+    },
+    {
+      "id": "BCS-Y-3110",
+      "name": "Sqex_Socket_RUDP2_RUDPImpl_onReceivedDATSegment_FUN_00D468F0",
+      "kind": "function",
+      "address": {
+        "kind": "scalar",
+        "raw": "0x00D468F0",
+        "values": [
+          "0x00D468F0"
+        ]
+      },
+      "addressCorroboration": "not-applicable",
+      "confidence": "confirmed",
+      "citations": [
+        "EV-1569"
+      ],
+      "notes": "Retail 1.23b ffxivgame.exe VA 0x00D468F0, observed 2026-10-04 with authenticated read-only Ghidra DumpVAs.java, DumpFunctionListing.java, verified address references and Capstone 5.0.7 x86-32 decoding. Complete raw/analyzed body: 642 bytes, 203 instructions, this in ECX, one stack segment argument, ret 4. Receive dispatcher [[BCS-Y-3101]] calls it at 0x00D47889 on the independently RTTI/constructor-anchored DAT category. Corresponds to the selected normal admission path in ARR RUDPImpl::onReceivedSegment(DATSegment const&) at direct code 0xE3D464, size 0x760, body/declaration DIEs 0x68645A2/0x6862037. Reads incoming byte S at segment +6 and signed stored L at object +0xCC; eligibility uses S != L and ((S < L and signed32(L-S) > 127) or (L < S and signed32(S-L) < 127)). Compares S with the full signed32(L+1) remainder 255, truncating toward zero. In-sequence admission bypasses capacity when count +0x1D8 is zero; otherwise both queue paths require signed32(I+O) < capacity +0x1E0. Out-of-sequence storage +0x1C4 uses sentinel +0x1C8, count +0x1CC and node segment pointer +8. Ordered traversal compares byte +6, stops on equality or inserts before the first predecessor; duplicate rejection depends on list order. Increments +0xD4 on admitted out-of-sequence handling, including duplicates. Calls queue advancement 0x00D45D70 with true after in-sequence insertion, EAK producer [[BCS-Y-3109]] at 0x00D46ABF when its event threshold is met, and ACK pruner [[BCS-Y-3103]] on every normal completion. For nonnegative stable matching counts without signed sum overflow, an out-of-sequence insertion gives O_after <= C-I. No fixed 249-entry cap is established. Conditional L=255, C=512, I=O=0 alternating 0/127 decisions build 256 nodes; normal runtime reachability of that initial state and counts 250..255 is unproved. Other queue writers, profile limits, clone/allocation/failure, platform timers, ownership, complete layouts, wire meanings, opcodes and full functional equivalence are not promoted."
     }
   ],
   "citations": [
@@ -160842,7 +160860,8 @@
         "BCS-Y-3106",
         "BCS-Y-3107",
         "BCS-Y-3108",
-        "BCS-Y-3109"
+        "BCS-Y-3109",
+        "BCS-Y-3110"
       ]
     },
     {
