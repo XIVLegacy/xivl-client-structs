@@ -45,7 +45,7 @@
     },
     {
       "path": "manifests/symbols.json",
-      "sha256": "7e159b488e798af670019324f2ea1643a00fc1d202848601faa8c21f02443902"
+      "sha256": "33d40011f56bd368c24004cb591a918c2532e9a1945488a947905d04f2fd5723"
     }
   ],
   "dimensions": {
@@ -82998,9 +82998,10 @@
       "confidence": "confirmed",
       "citations": [
         "EV-1001",
-        "EV-0874"
+        "EV-0874",
+        "EV-1569"
       ],
-      "notes": "Zone generic packet forwarder. 451-byte body at VA 0x00DAE010. __thiscall(int param_1=this/channel, int *param_2=src_record). Gated on the Zone channel state field `*(int *)(param_1 + 0x8c)`; state must be >= 1. Branch 1 (state==2): requires `*param_2 == 2`, calls FUN_00DC1CF0(opcode=*param_2, size=param_2[1], 0) - BCS-Y-0300 4-arg ctor. Branch 2 (state==3): calls FUN_00DC1C60(*param_2, param_2[1], param_3, 0) - BCS-Y-0301 5-arg ctor. After ctor, `_memcpy(packet+0x10, param_2+6, param_2[1] - 0x10)` copies the application payload from param_2[6..] into the allocated packet body. The opcode passes through this forwarder rather than being hardcoded: param_2[0] = opcode, param_2[1] = size, param_2[6..] = body. Callers (31, the Tier C emitter pool): includes FUN_004E0240 / FUN_004E0290 / FUN_004E0320 / FUN_004E20A0 (the 4 known); 27 more not yet inventoried. Each builds the {opcode, size, body} record from app context. Confirmed by outbound-emitter analysis. Address corrected from 0x009AE010 to 0x00DAE010 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [evidence: decomp_wrappers.txt]"
+      "notes": "ZoneClient RaptureChannelManager nonvirtual outbound record forwarder; independently named by vtable VA 0x01129094, locator 0x011A2570 and constructor 0x00DAE5E0. Complete body: 451 bytes, 142 instructions. ECX=this, two explicit stack pointer arguments (source record and replacement parameters), ret 8, boolean result in AL. Signed state +0x8C: states 1 and 2 require source dword +0 == 2 and use constructor 0x00DC1CF0(value, size, 0); state 3 uses 0x00DC1C60(value, size, replacement, 0); other states reject. Target helper 0x004E4C10 requires nonzero key +0x88 and nonnull lookup result. Buffer acquisition 0x00DAF850 failure cleans up and returns false. Both memcpy boundaries use destination NetBuffer.data +0x10, source record +0x18 and low 32 bits of size -0x10; no local minimum-size guard establishes upstream validity. Wrapper 0x00DB06A0 receives literal zero as buffer adjustment, finalizes and submits; special completion writes state 2, both successful paths clean up and return true. Five direct call sites in four functions: 0x004E0240, 0x004E0290, 0x004E0320 and 0x004E20A0. Partial normal-flow correspondence with ARR pushSendPacket VA 0x1057680; special value 2 versus 0x66, member offsets, option copying and an extra ARR caller bool differ. No retail packet meaning, wire opcode, complete layout or full send equivalence follows. See xivl-decomp:docs/arr-debug-comparison.md, ZoneClient outbound packet forwarding."
     },
     {
       "id": "BCS-Y-0305",
@@ -160849,6 +160850,7 @@
       "resolution": "external-immutable",
       "path": "xivl-decomp:docs/arr-debug-comparison.md",
       "referencedBy": [
+        "BCS-Y-0304",
         "BCS-Y-3098",
         "BCS-Y-3099",
         "BCS-Y-3100",
