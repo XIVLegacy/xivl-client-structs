@@ -56,8 +56,11 @@ Enter action to reconstruction/cache access, formatting and routed-event string
 production; AT-ENTER-006 and AT-ENTER-007 supply the conditional native
 dispatch and conversion to Lua A4_2. AT-ENTER-013/014 recover the allocated
 FormElement key, callback writer and
-value-1 LogWidget initialization. The remaining native edge is successful load,
-resolved child, namespace and installed actor selection. The
+value-1 LogWidget initialization. AT-ENTER-017/018 recover the first-request
+loaded-record publication, namespace installation and conditional dispatch
+selection. AT-ENTER-019 joins the textual root/TextBox builder, special Name
+application and same-container name map under their guards. Resource branch,
+property acceptance, name/cache selection and installed actor remain qualified. The
 submitted chat source -> FUN_006E91F0 and channel-wrapper joins remain unproved.
 The exact auto-translate UI origin and family/table identity of the selected
 Completion record are also unresolved.
@@ -277,8 +280,83 @@ selects E by K and tests FUN_00535690(E,0): the loaded-record map referenced
 by E+0xD4 must return a nonzero record for identifier 0. Its completion method
 writes C+0x64 and calls a key-selected bridge ending at the authenticated
 RET 0x4 fragment at 0x00533EC0. This is separate from the C+0x5C actor-readiness
-guard. Installation of loaded record 0, its root and namespace-name record
-remains a static writer/callback target; no runtime-only ceiling is asserted.
+guard. AT-ENTER-017/018 recover the indexed-record writer and namespace
+installation. Actual load/resume, root/child construction and name/cache
+selection remain qualified; no runtime-only ceiling is asserted.
+
+AT-ENTER-017 joins the pending form request to indexed publication. The
+constructor binds handler B at E+0x208 to complete E, FUN_005387F0 and zero
+receiver adjustment. The request registers B with a newly constructed
+XamlReader R and records (R,identifier) in E+0x1F8. E+0x94 starts at zero and
+increments after an accepted request, so the fresh owner's first accepted
+request has identifier 0. FUN_00537D50 stores its result at E+0x98. Failed
+requests remove their pending entry and return -1.
+
+The guarded timer notification supplies R and an event argument pointing to
+R+0xE0, its XamlControlContainer AutoPtr. Collection slot +0x4 selects
+FUN_0096C1B0, which invokes handler slot +0x8. The authenticated handler selects
+FUN_0095D1F0 and tail-jumps to FUN_005387F0 with complete E unchanged. The
+callback finds the pending R entry, takes X from AutoPtr+0x4, zeros that storage
+and calls FUN_00538760(E,X,identifier). The registrar finds or inserts a node
+in [E+0xD4] and writes X into node+0x10. This supplies AT-ENTER-016's record-0
+predicate on the first-request branch. A nonzero X does not prove a populated
+root or named child, and the store does not lease a returned control.
+
+AT-ENTER-018 joins namespace installation and inverse dispatch selection.
+For identifier 0 with a nonnull X+0x2C root, publication copies the root's
+slot-+0x8 name into E+0x164. When the completed identifier equals E+0x98, the
+callback inserts (E+0x164,identifier) into the E+0xEC namespace-name map through
+FUN_00537C60. A duplicate name preserves its existing identifier. Under the
+first-request, absent-name and unchanged-name guards, AT-ENTER-015's
+TextBox_ChatInput registration resolves namespace identifier 0 and selects X.
+Its cache-hit, name-map and X+0x30 fallback branches remain explicit.
+
+The dispatch reader casts source P to FrameworkElement and tries P+0x298's
+registered container, then P+0x240 ancestors. FUN_00535700 finds that exact
+container pointer in [E+0xD4]; FUN_00535450 recovers the namespace name from
+E+0xEC by identifier. FUN_00536280 separately constructs that namespace and P's
+name. It replaces the source name with _widget only when the source name equals
+the root name. For a selected condition, it compares the namespace with the
+refreshed E+0x164. Equality and event type 8 select FUN_00574BE0 on H=[E+0x80]
+with three arguments, including event+0x28 as the third. The other namespace
+branch selects FUN_00574BF0 with four arguments. Thus a source registered in
+the published record-0 container can select AT-ENTER-006/007's Lua A4_2 path
+under the name, condition, admission and actor guards. Actual child construction,
+names after collisions or replacement, cache freshness and actor readiness
+remain qualified.
+
+AT-ENTER-019 follows the textual builder with the same loaded container X.
+FUN_0096A7A0 -> FUN_0096A580 -> FUN_0096A4C0 constructs MarkupObject D with
+D+0x4=X and D+0x8=R. Its authenticated slots reach FUN_0094AD90, which first
+tries the element-extension registry. The TextBox registration made by
+FUN_005463E0 selects CustomControlExtension slot +0x4 -> FUN_00549330 under
+the current registry-hit and lifetime guards. A Name containing _ChatInput
+selects the RaptureTextBox constructor FUN_0066C1A0. Its temporary markup
+object inherits X and passes the new control to FUN_00947040.
+
+Before registration, FUN_00947040 obtains the DOM Name value and calls
+FUN_00912D50 with complete control P and arguments value,0,1. Its wrapper uses
+P+0x8 as the property receiver. On the permitted direct-value branch,
+FUN_009CB580 -> FUN_009CB460 assigns the resulting string value into [P+0x8].
+Rejected, binding and deferred branches remain guards. The later slot-+0x1C
+attribute hook is separate from this pre-registration Name path.
+
+FUN_00947040 registers a nonnull, unregistered control through FUN_0096E580.
+That function stores its pointer in X+0x4's
+name-map node+0x60 and X in control+0x298. Empty names receive a generated
+name; collisions add (n). Thus successful, unchanged and collision-free
+TextBox_ChatInput naming supplies the lookup and inverse-container path in
+AT-ENTER-018. The Window factory separately stores its root at X+0x2C; the
+X+0x30 fallback is distinct. The alternative compiled-resource builder through
+FUN_009C9250 -> FUN_009808C0 and the Name binding/deferred branches remain
+static targets. This pass does not establish which resource branch runs.
+
+Fresh AT-ENTER-012 corroboration recovers the readiness writer at 0x00767028
+in FUN_00766F00. The owner-state and resolved-handle/type gates precede the
++0x5C store and FUN_00574830. Its generic writer is documented in
+[the readiness study](../manifests/actor_5c_readiness_gate.json). The specific
+resolved object has not been joined to this LogWidget's C, and the write has
+not been ordered against C+0x64 form completion.
 
 AT-ENTER-004 identifies the generic adapter's string member. Its third
 incoming stack argument becomes the fifth explicit argument to FUN_00713830,
@@ -615,3 +693,16 @@ AT-GH-103/104 cover ten exact-entry form-wait targets each. AT-ID-018
 authenticates the shared return fragment, avoiding a containing-function
 misidentification. AT-ENTER-016 preserves separate Lua object, native control,
 FormElement, checker and thread coordinates.
+
+AT-GH-105 through AT-GH-116 and identities AT-ID-019 through AT-ID-022
+support AT-ENTER-017 through AT-ENTER-019. The consolidated exports cover
+72 exact-entry decompilation targets and 72 listing targets. Each listing
+reports COMPLETE. PE reads authenticate the handler/collection, markup,
+extension, Window and TextBox tables and factory literals; bounded LLVM
+disassembly verifies the callback tail and load-cleanup return. AT-GH-117/118
+and fresh separate-project identity AT-ID-023 corroborate 18 readiness targets
+each. All 2671 normalized Lua bodies again matched immutable and current pins.
+AT-GH-119/120 add six exact-entry Name-property/substring targets each and
+AT-ID-021 authenticates the separate Name callback jump fragment.
+Failed and containing-entry exploratory requests remain private, outside these
+promoted recipes.
