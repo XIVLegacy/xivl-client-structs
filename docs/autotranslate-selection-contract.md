@@ -54,8 +54,10 @@ and document-to-getter reconstruction are recovered below. AT-ENTER-008 pins
 the retail LogWidget owner/child declarations. AT-ENTER-009 joins their Text2
 Enter action to reconstruction/cache access, formatting and routed-event string
 production; AT-ENTER-006 and AT-ENTER-007 supply the conditional native
-dispatch and conversion to Lua A4_2. The remaining native edge is the concrete
-FormElement key, loaded child, namespace and installed actor selection. The
+dispatch and conversion to Lua A4_2. AT-ENTER-013/014 recover the allocated
+FormElement key, callback writer and
+value-1 LogWidget initialization. The remaining native edge is successful load,
+resolved child, namespace and installed actor selection. The
 submitted chat source -> FUN_006E91F0 and channel-wrapper joins remain unproved.
 The exact auto-translate UI origin and family/table identity of the selected
 Completion record are also unresolved.
@@ -142,7 +144,8 @@ argument, without an authenticated PressEnter enum meaning.
 WidgetBaseClass._onUICommandEvent forwards its arguments to
 processUICommandEvent, whose default branch preserves them for
 LogWidget.processUICommandDefault. AT-ENTER-009 recovers the resource-selected
-native string producer; concrete owner/actor selection remains unproved.
+native string producer; loaded-child, namespace and actor selection remain
+qualified.
 
 AT-LUA-005 pins the parser-declined script path from PressEnter A4_2 through
 processInputWordAnalyze and executeTextCommand to chat/chatDirect. The first
@@ -168,7 +171,7 @@ The indirect +0x34 call in FUN_0091E1C0 pushes one event pointer. The adapter
 FUN_0075D5D0 takes three stack arguments and returns with RET 0xC. Matching
 slot offsets do not establish a common interface or handler instance. The
 TextBoxBase.Paste branch and Completion carriage-return acceptance are also
-distinct from the chat Enter producer. Native owner, loaded child and actor
+distinct from the chat Enter producer. Loaded child, namespace and actor
 selection remain recoverable static targets; the trace has not reached a
 runtime-only boundary.
 
@@ -179,8 +182,9 @@ control name; the command name belongs to the separately constructed condition
 object. The nonmatching branch of FUN_0053AB80 resolves the control name through
 FUN_0053A970 and, on success, reaches the relation update FUN_0053A720.
 AT-ENTER-006 recovers the stored condition fields and their dispatch reader.
-AT-ENTER-008 identifies the named resource owner and child; their native key,
-loaded receiver and actor selection remain unjoined.
+AT-ENTER-008 identifies the named resource owner and child; AT-ENTER-013/014 join
+the allocated key and initialization. Loaded receiver and actor selection
+remain conditional.
 
 
 AT-ENTER-010 follows the declared form into its script initialization path.
@@ -203,8 +207,9 @@ constructor calls FUN_004DAB50, which stores its key at E+0x88 and submits
 (key, E) through FUN_004DA9A0 to the owner+0x17804 map. A duplicate preserves
 the existing entry. FUN_004D9910 searches the same map by the complete unsigned
 key and returns node+0x10 on success. Thus a registered FormElement is selected
-by its E+0x88 key; the actual numeric LogWidget key and upstream callback-key
-writer remain unproved. The base constructor also stores the initial actor
+by its E+0x88 key. AT-ENTER-013 recovers the upstream callback-key writer;
+a live numeric K is not a static constant. The base constructor also stores
+the initial actor
 holder at E+0x80. The LuaActorImpl replacement path writes through its own
 receiver+0x8 holder; AT-ENTER-012 recovers the alias for guarded construction
 paths while preserving actual instance-selection limits.
@@ -218,8 +223,62 @@ first explicit argument and H as the second. When record+0x5C is nonzero,
 FUN_0076C8D0 constructs LuaActorImpl and FUN_00774700 stores it through H.
 The nonready branches pass the same H into FUN_005745F0, which stores it at
 record R+0x8. This recovers the holder alias for these construction paths.
-The actual LogWidget initialization caller, readiness branch, loaded child
-and namespace selection remain unproved.
+AT-ENTER-013 identifies the creation caller and actor-init record. Readiness,
+loaded child and dispatch namespace/actor selection remain conditional.
+
+AT-ENTER-013 closes the callback owner-key writer. WidgetBase table
+0x00FD5A74 slot +0x6C selects FUN_006E3920. Its slot +0x50 returns selector
+0x1A; FUN_0075BE10 -> FUN_004D7C10 creates a FormElement and
+FUN_004D6750 returns its E+0x88 key K. The registry constructor installs
+FUN_0053B1B0 at callback-vector+0x68 (selector 0x1A times four); that factory
+allocates 0x280 and forwards K through FUN_0053AF60 -> FUN_004DAB50.
+On the fresh-object path,
+FUN_0078BBB0 -> FUN_00CC7800 -> FUN_00CDCBA0 passes K to FUN_00CE1CC0,
+which stores it at Lua object O+0x70. FUN_00D19B70 retrieves O from the Lua
+receiver and copies O+0x70 through FUN_00CC7030 into ExecuteParameters+0xC.
+The WidgetBase function-holder adapter FUN_0071AD50 preserves that parameter
+block for FUN_006EB6A0. Its successful registered lookup therefore selects E
+by the allocated K. Equality with the newly constructed owner requires its
+map insertion; a duplicate preserves an existing owner. The separate guarded
+adjusted-object+0xC write is not
+needed to establish this callback parameter coordinate.
+
+FUN_006E3920 also calls FUN_0075BE30(&K,C) with the returned native control C.
+This supplies the actor-init record to AT-ENTER-012 for the same E+0x80 holder.
+The record+0x5C readiness guard remains explicit. Scheduling _onInit through
+FUN_00CD0910 does not prove its completion before actor installation.
+
+AT-ENTER-014 selects the first declared LogWidget instance. DesktopWidget's
+setDefaultWidgetLocation creates script index 2 with default name LogWidget
+and initialization value 1, then index 3 named LogWidget2 with value 2.
+createStaticWidget forwards these through createWidget and _createActor;
+LogWidget.init registers chat Enter only for value 1. These indices are not K.
+The authenticated native registration constructs WidgetBase for
+WidgetBaseClass. The fresh _defineClass branch clones its native slot +0x4,
+which constructs another WidgetBase; the fresh _createActor branch then uses
+slot +0x6C above. Thus the script inheritance and native creation/key writer
+are joined on their successful branches. AT-LUA-006 pins the script sources;
+AT-ID-015/016 pin the program, native tables and class-name literals.
+
+AT-ENTER-015 resolves the registration namespace. The authenticated
+initializer constructs global string 0x01336A30 from "_widget"; TextBox_ChatInput
+therefore takes FUN_0053AB80's nonmatching branch. That branch retains complete
+E in ECX and passes E+0x164 as a namespace argument to FUN_0053A970. The latter
+uses E+0xEC to resolve the namespace name, then passes controlName and the
+namespace identifier to the E+0x1DC child cache. A successful child
+cast allows callback setup on child+0xB4 and relation update with ECX=E+0xF8.
+E+0x164 is not the child-cache receiver. This proves registration coordinates;
+load success, the resolved child pointer, final namespace value and the separate
+routed-event dispatch namespace/actor branch remain qualified.
+
+AT-ENTER-016 follows the form wait. _loadForm constructs checker P with K
+at P+0x4 and the address C+0x64 at P+0x8, then queues it at Lua-thread+0xE8. Its predicate
+selects E by K and tests FUN_00535690(E,0): the loaded-record map referenced
+by E+0xD4 must return a nonzero record for identifier 0. Its completion method
+writes C+0x64 and calls a key-selected bridge ending at the authenticated
+RET 0x4 fragment at 0x00533EC0. This is separate from the C+0x5C actor-readiness
+guard. Installation of loaded record 0, its root and namespace-name record
+remains a static writer/callback target; no runtime-only ceiling is asserted.
 
 AT-ENTER-004 identifies the generic adapter's string member. Its third
 incoming stack argument becomes the fifth explicit argument to FUN_00713830,
@@ -235,8 +294,8 @@ FUN_0066C1A0. Authenticated RTTI and constructor assignments identify the
 complete RaptureTextBox table 0x00FC1594, its +0xB4 table 0x00FC146C, and its
 +0x194 table 0x00FC1454. Complete-object slot +0x30 selects FUN_0066C540;
 its property branch can call FUN_0066C410. These are type/property joins;
-the concrete native LogWidget key and loaded TextBox_ChatInput child remain
-unproved. AT-ENTER-008 pins their resource declarations.
+AT-ENTER-013 recovers the allocated key path. The loaded TextBox_ChatInput
+child remains qualified; AT-ENTER-008 pins its resource declaration.
 
 AT-ENTER-006 joins condition storage to a FormElement dispatch consumer.
 FUN_0053D700 stores the copied condition at linked node+0x8, including its
@@ -311,8 +370,9 @@ constructor FUN_00929100 copies type to routed event+0x24 and string to +0x28.
 The selected FormElement type-8/namespace branch then supplies that string as
 the third FUN_0075D5D0 argument, which reaches event+0x104 and Lua A4_2 through
 AT-ENTER-004 and AT-ENTER-007. This recovers the resource-selected static
-production path. The callback key, loaded LogWidget receiver, namespace,
-installed actor and runtime cache branch remain unproved. NUL termination,
+production path. AT-ENTER-013/014 join the callback key and initialization.
+Loaded child, dispatch namespace/actor selection and runtime cache state
+remain qualified. NUL termination,
 bounded formatting and convertPronouns prevent an unrestricted byte-identity
 claim.
 
@@ -428,8 +488,8 @@ Button_ItemNameSearch. FUN_004F5220 reads one control plus ten other text
 controls into a caller record. Its event-object match at owner+0x26C is not
 authenticated as PressEnter. These routes do not identify every indirect
 caller or join the reconstructed text to packet submission. AT-ENTER-009
-recovers the indirect Text2 read for the declared Enter action. Native
-owner/actor selection, cache invalidation, selected record family/key and
+recovers the indirect Text2 read for the declared Enter action. Loaded-child,
+namespace and actor selection, cache invalidation, selected record family/key and
 Map/World source-object joins remain open static work.
 
 AT-COMP-003 authenticates CompletionDocument's 23-slot vtable at 0x00FC1744
@@ -538,3 +598,20 @@ requests the identified client and locale, exact UI selection, repeated sparse
 keys, token-only and literal/token/literal examples, raw source/message bytes,
 direction, and independently observed rendering. Any owner-supplied local
 preserved-client test remains non-retail corroboration.
+
+Recipes AT-GH-097 through AT-GH-100 and identities AT-ID-015/016 support AT-ENTER-013/014.
+Both consolidated exports contain all 33 requested exact-entry sections; the
+listing reports COMPLETE. The selector/factory exports complete six exact-entry
+targets each. All 2671 normalized Lua bodies matched their
+immutable and current manifest pins. Failed or containing-entry exploratory
+requests remain private and are not promoted as exhaustive negative evidence.
+
+AT-GH-101/102 cover ten exact-entry child/namespace targets each. AT-ID-017
+pins the bounded special-name initializer; AT-ID-016 pins its literal and
+the WaitLoadFormResumeChecker table. AT-ENTER-015 uses these initializer and
+receiver instructions instead of inferring an excluded global value.
+
+AT-GH-103/104 cover ten exact-entry form-wait targets each. AT-ID-018
+authenticates the shared return fragment, avoiding a containing-function
+misidentification. AT-ENTER-016 preserves separate Lua object, native control,
+FormElement, checker and thread coordinates.
