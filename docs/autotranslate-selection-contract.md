@@ -51,8 +51,10 @@ Neither source object is proven to be a 0x200-byte buffer.
 
 The native Completion reader, formatter, event consumers, document insertion,
 and document-to-getter reconstruction are recovered below. The remaining edge
-is the reconstructed/cached RaptureTextBox text -> native PressEnter event
-argument -> submitted chat source -> FUN_006E91F0 and the channel wrappers.
+is the concrete LogWidget owner/child and reconstructed/cached RaptureTextBox
+text -> actual PressEnter routed-event string producer -> submitted chat
+source -> FUN_006E91F0 and the channel wrappers. AT-ENTER-007 recovers the
+generic event string -> Lua A4_2 conversion.
 The exact auto-translate UI origin and family/table identity of the selected
 Completion record are also unresolved.
 
@@ -156,8 +158,9 @@ AT-ENTER-002 recovers a separate generic event adapter:
 FUN_0075D5D0 -> FUN_008A4050 -> FUN_006F5A90 -> FUN_006F5640. The adapter
 uses event bytes +0x55 and +0x54 during argument packaging. The guarded branch
 through FUN_00896AF0 invokes the literal _onUICommandEvent name. Neither byte
-is assigned a PressEnter-specific meaning, and the buffers are not yet joined
-to Lua A4_2 or reconstructed TextBox text.
+is assigned a PressEnter-specific meaning. AT-ENTER-007 joins the generic
+event string to Lua A4_2; reconstructed TextBox text remains unjoined to its
+actual producer.
 
 The indirect +0x34 call in FUN_0091E1C0 pushes one event pointer. The adapter
 FUN_0075D5D0 takes three stack arguments and returns with RET 0xC. Matching
@@ -172,16 +175,52 @@ FUN_006EB6A0 -> FUN_0075B7B0 -> FUN_004D9910 -> FUN_0053AB80. The lookup
 key comes from the input container's +0xC value. The next argument is the
 control name; the command name belongs to the separately constructed condition
 object. The nonmatching branch of FUN_0053AB80 resolves the control name through
-FUN_0053A970 and, on success, reaches the relation update FUN_0053A720. The owner,
-named child, condition fields, and PressEnter invocation remain unjoined to a
-concrete chat TextBox.
+FUN_0053A970 and, on success, reaches the relation update FUN_0053A720.
+AT-ENTER-006 recovers the stored condition fields and their dispatch reader.
+The concrete owner, named child, and PressEnter invocation remain unjoined.
 
 AT-ENTER-004 identifies the generic adapter's string member. Its third
 incoming stack argument becomes the fifth explicit argument to FUN_00713830,
 which assigns vtable 0x00FD5330 and copies that string value to object+0x104.
-The string producer and conversion of that member into Lua A4_2 remain
-unresolved. This narrows the native argument target without joining the
-reconstructed TextBox text to a submitted message.
+AT-ENTER-006 recovers a conditional routed-event string producer for this
+argument, and AT-ENTER-007 joins the member to Lua A4_2. The actual chat Enter
+source remains unresolved.
+
+AT-ENTER-005 identifies the _ChatInput construction branches. The markup
+TextBox/_ChatInput branch in FUN_00549330 and the CustomTextBoxFactor registry
+branch through FUN_0054D180/FUN_005556C0 allocate 0x1AC8 bytes and call
+FUN_0066C1A0. Authenticated RTTI and constructor assignments identify the
+complete RaptureTextBox table 0x00FC1594, its +0xB4 table 0x00FC146C, and its
++0x194 table 0x00FC1454. Complete-object slot +0x30 selects FUN_0066C540;
+its property branch can call FUN_0066C410. These are type/property joins;
+the concrete LogWidget key and resolved TextBox_ChatInput child remain unproved.
+
+AT-ENTER-006 joins condition storage to a FormElement dispatch consumer.
+FUN_0053D700 stores the copied condition at linked node+0x8, including its
+string and bytes +0x54/+0x55. FUN_0053AF60 constructs an E+0xA0 callback
+with complete FormElement receiver E and FUN_00536280. The callback reads
+the E+0xF8 relation through FUN_00535B70, comparing the stored condition
+string with incoming command+0x24. In its selected namespace branch for
+event type 8, it passes routed event+0x28 as the third stack argument through
+FUN_00574BE0 to actor slot +0x34. A LuaActorImpl receiver with table
+0x00FDFB2C selects FUN_0075D5D0 there. This is a conditional dispatch join;
+the actual command 0x01344D44, namespace branch, and installed actor instance
+have not been selected for LogWidget.
+
+AT-ENTER-007 identifies table 0x00FD5330 as UICommandEventParameterWithString
+and slot +0x8 as FUN_00749340. It serializes members +0x4, +0x58, +0xAC,
+and +0x104 in order. An empty first member still pushes one Lua nil. The
+guarded invocation reaches FUN_00CD0940 -> FUN_00CCF9B0, then callback
+resolution and FUN_00CCEE30 -> FUN_00CCFFE0. Successful callback setup
+replaces the nil placeholder with the function, leaving the retained Lua
+receiver after it. The forward operator walk pushes the four values and
+invokes Lua with the push count plus one. The fourth value therefore occupies
+A4_2 after receiver A0_2. Its UTF-8 operator consumes one native value,
+calls FUN_00CF3340, and
+pushes one Lua value. FUN_00DCE1F0 scans to NUL when creating that Lua string.
+The generic event+0x104 -> Lua A4_2 join does not prove embedded-NUL
+preservation, select the actual chat Enter source, or bypass AT-LUA-005's
+convertPronouns boundary.
 
 A literal-name search over all 2671 authenticated Lua bodies found no matches
 for the retained completion/phrase search terms; it does not exclude native,
