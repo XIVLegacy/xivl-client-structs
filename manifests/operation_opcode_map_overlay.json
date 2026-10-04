@@ -154,7 +154,7 @@
           "opcodeHex": "0x000F",
           "name": "SelectCharacterResponse (s2c)",
           "branch": "if (*(short *)(packet+2) == 0x0F)",
-          "note": "bidirectional opcode: c2s 0x0F is CharaMake's SelectCharacterConfirm (per BCS-Y-0112); s2c 0x0F is this response. opcodes.json catalogs 0x0F serverbound only; an s2c 0x0F entry would close the round-trip."
+          "note": "bidirectional opcode: c2s 0x0F is CharaMake's SelectCharacterConfirm (per BCS-Y-0112); s2c 0x0F is this response. opcodes.json catalogs 0x0F serverbound only; the s2c 0x0F response is absent from that catalog."
         }
       ]
     },
@@ -237,7 +237,7 @@
           "bodySize": "0x78",
           "stepState": 4,
           "expectedResponseHex": "0x01F5",
-          "note": "previously in serverboundGap with no class attribution; lua-name-to-opcode-bridge-open bound to LobbyLoginOperation"
+          "note": "Attributed to LobbyLoginOperation; the serverboundGap entry had no class attribution."
         }
       ],
       "confirmedReceives": [
@@ -346,7 +346,7 @@
       "size": "0x18"
     },
     "477": {
-      "note": "Static emitter attributed via the lua-name-to-opcode-bridge-open pass (BCS-Y-0325); pcap-grounded validation via the pcap-grounded-c2s-validation pass. Opcode is bidirectional; NOT this c2s emitter's counterpart."
+      "note": "Static emitter attribution: BCS-Y-0325. The pcap-grounded-c2s-validation pass provides packet-capture evidence. Opcode is bidirectional; NOT this c2s emitter's counterpart."
     }
   },
   "topLevelSections": {
@@ -1348,7 +1348,7 @@
         "ghidraScript": "<ghidra-scripts>\\OperationScan.java",
         "scanOutput": "%BCS_GHIDRA_PROJECTS%\\operation_scan.txt",
         "decompOutput": "%BCS_GHIDRA_PROJECTS%\\decomp.txt",
-        "enricher": "tools/extractors/apply_findings.py (this script)"
+        "enricher": "tools/extractors/apply_findings.py"
       },
       "packetAllocator": {
         "function": "FUN_00DA2BE0",
@@ -1416,7 +1416,7 @@
         ]
       },
       "architecturalFinding": "All 4 LobbyClient::*Operation vftables share an identical 5-slot shape: [0] SendRequest (unique per class, the opcode emitter), [1] ReceiveDispatcher (unique per class, dispatches on inbound header opcode), [2] AckResponse (shared FUN_00DAD7B0 = BCS-Y-0113), [3] Stub (shared FUN_00DAD8E0 = BCS-Y-0114, returns 0), [4] scalar deleting destructor (unique per class). Sibling subclasses of a common base (LobbyOperation, vftable 0x01128A60); overrides only at slots 0/1/4.",
-      "scopeBoundary": "The remaining 39-opcode serverbound gap (MapServerbound / WorldServerbound buckets 0x0001..0x01DD) is emitted from classes OUTSIDE the LobbyClient::*Operation family (Network::MapChannel / Network::WorldChannel + their builders) which lack retail_class_name annotations in opcodes.json. The lua-name-to-opcode-bridge-open pass (if scoped) would extend the same methodology to those channel classes."
+      "scopeBoundary": "The remaining 39-opcode serverbound gap (MapServerbound / WorldServerbound buckets 0x0001..0x01DD) is emitted from classes outside the LobbyClient::*Operation family (Network::MapChannel / Network::WorldChannel + their builders) which lack retail_class_name annotations in opcodes.json."
     },
     "tierCSweep": {
       "summary": "Tier-C sweep of FUN_00DAE010 (Zone) and FUN_00DB3E30 (Chat) direct callers. Revises BCS-Y-0304's '31 Tier-C callers' claim - only 4 direct Zone callers exist; the 31 figure refers to callers of the Tier-C wrapper FUN_004E0240 (BCS-Y-0312) which is itself one of the 4 direct callers.",
@@ -1445,7 +1445,7 @@
           "role": "single-opcode-emitter",
           "hardcodedOpcode": "0x0003",
           "size": "0x230",
-          "binding": "MapServerbound 0x0003 (NEW)"
+          "binding": "MapServerbound 0x0003"
         },
         {
           "function": "FUN_004E20A0",
@@ -1465,13 +1465,13 @@
               "size": "0x18",
               "branch": "switch case 0xe/0x11",
               "callSiteVa": "0x004E235E",
-              "note": "NEW MapServerbound 0x0004 binding"
+              "note": "MapServerbound 0x0004 binding"
             },
             {
               "opcode": "0x0001",
               "size": "0x28",
               "branch": "via thunk_FUN_004E0240 -> FUN_004E0240 -> FUN_00DAE010 (indirect)",
-              "note": "NEW MapServerbound 0x0001 binding via Tier-C wrapper path"
+              "note": "MapServerbound 0x0001 binding via Tier-C wrapper path"
             }
           ]
         }
@@ -1511,7 +1511,7 @@
               "opcode": "0x012C",
               "size": "0x18",
               "branch": "DAT_0132FB98 == 1",
-              "note": "NEW WorldServerbound 0x012C binding"
+              "note": "WorldServerbound 0x012C binding"
             }
           ]
         }
@@ -1559,7 +1559,7 @@
       "remainingGap": {
         "directPathRemaining": 0,
         "indirectViaTierCWrapper": 31,
-        "note": "Direct FUN_00DAE010 path fully mapped. 31 Tier-D callers of FUN_004E0240 (BCS-Y-0312) supply hardcoded opcodes that remain unmapped - multi-session follow-on."
+        "note": "Direct FUN_00DAE010 path fully mapped. 31 Tier-D callers of FUN_004E0240 (BCS-Y-0312) supply hardcoded opcodes that remain unmapped."
       },
       "luaFirerVerification": {
         "summary": "All 10 firer functions cited in the 11 BCS-Y entries that used 'FUN_00447260+FUN_00CC7A90' shorthand had FUN_00CC7A90 verified in their call graph via decomp.",
@@ -1631,12 +1631,12 @@
             "verified": true
           }
         ],
-        "bridgeImpact": "All 11 confirmed Lua->opcode bridge bindings remain safe; the original wording lumped std::string ctor (FUN_00447260) with the actual Lua dispatcher (FUN_00CC7A90) as a single 'fire primitive' but both calls are present in each firer."
+        "bridgeImpact": "All 11 confirmed Lua->opcode bridge bindings remain supported; the original wording combined std::string ctor (FUN_00447260) with the actual Lua dispatcher (FUN_00CC7A90) as a single 'fire primitive' but both calls are present in each firer."
       },
       "metaEntry": "BCS-Y-0317"
     },
     "tierDSweep": {
-      "summary": "Tier-D sweep: decompiled all 31 callers of FUN_004E0240 (BCS-Y-0312, Zone Tier-C generic forwarder). 27 new opcode bindings confirmed. Map/World c2s gap: 7/39 -> 34/39 bound.",
+      "summary": "Tier-D sweep: decompiled all 31 callers of FUN_004E0240 (BCS-Y-0312, Zone Tier-C generic forwarder). 27 additional opcode bindings confirmed. Map/World c2s gap: 7/39 -> 34/39 bound.",
       "callersDecompCount": 31,
       "newBindingsCount": 27,
       "bindings": [
@@ -1790,7 +1790,7 @@
           "size": "0x898",
           "channel": "MapServerbound",
           "recordKind": "stack-record",
-          "note": "LARGE 2200-byte body"
+          "note": "2200-byte body"
         },
         {
           "callerVa": "0x004B8370",
@@ -1853,7 +1853,7 @@
           "opcode": "0x00CA",
           "channel": "MapServerbound",
           "recordKind": "helper-built",
-          "note": "record built by FUN_004dd620; 3364B host function (massive)",
+          "note": "record built by FUN_004dd620; 3364B host function",
           "size": null
         }
       ],
@@ -1865,7 +1865,7 @@
           "FUN_004C7490",
           "FUN_004C73D0"
         ],
-        "note": "Opcode supplied dynamically by caller's record; 3 callers each emit their own opcode through this relay (mapping deferred to the lua-name-to-opcode-bridge-open pass)."
+        "note": "Opcode supplied dynamically by caller's record; 3 callers each emit their own opcode through this relay (mapping remains unresolved in this record)."
       },
       "gatingThunks": {
         "functions": [
@@ -1880,12 +1880,12 @@
         "totalServerbound": 39,
         "bound": 34,
         "remaining": 5,
-        "remainingNote": "Unbound opcodes likely emitted by callers of the passthrough FUN_004C7150 (3) + gating thunks (4-5). The lua-name-to-opcode-bridge-open pass follow-on."
+        "remainingNote": "Unbound opcodes likely emitted by callers of the passthrough FUN_004C7150 (3) + gating thunks (4-5)."
       },
       "metaEntry": "BCS-Y-0324"
     },
     "finalGap": {
-      "summary": "Closed the final 5 Map/World c2s gap opcodes by decompiling the 3 passthrough callers (FUN_004C7150), 4 thunk callers (FUN_004D6D10/D30/CF0 family), and the Chat helper FUN_004E3750. 6 new opcode bindings + 1 cross-confirmation. BCS-Y-0316 deferral closed (FUN_004DF810 -> WorldServerbound 0x00C8 size 0x230). Map/World c2s outbound surface FULLY MAPPED.",
+      "summary": "Closed the final 5 Map/World c2s gap opcodes by decompiling the 3 passthrough callers (FUN_004C7150), 4 thunk callers (FUN_004D6D10/D30/CF0 family), and the Chat helper FUN_004E3750. 6 additional opcode bindings + 1 cross-confirmation. BCS-Y-0316 deferral closed (FUN_004DF810 -> WorldServerbound 0x00C8 size 0x230). The Map/World c2s outbound surface covered by this gap analysis is fully mapped.",
       "newBindings": [
         {
           "caller": "FUN_004C7300",
