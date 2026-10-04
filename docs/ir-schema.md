@@ -32,6 +32,10 @@ is a validation failure (`tools/build_ir.py --check`). The hand-maintained compa
 source catalog records: type alignment and the reading of a derived unknown
 span. Each fact has one home.
 
+Type, member, and symbol notes are copied from the source catalogs. They can
+carry qualifications not represented by other fields; they are evidence data,
+not JSON Schema descriptions.
+
 Confidence and the optional `needsReverify`/`reverifyMethod` pair are copied
 verbatim. `tools/validate_ir.py` invariant I5 fails if normalization moves any
 of them. The RTTI corroboration flag on a symbol reports whether the recorded
@@ -138,7 +142,7 @@ a field value). The catalog therefore leaves the dimension explicitly deferred.
 ## Dimensions
 
 The `dimensions` block declares, per dimension, whether it is populated,
-declared-unknown, deferred, or absent. This is part of the contract:
+declared-unknown, or deferred. This is part of the contract:
 invariant I3 fails if a value appears
 in a dimension the block says is empty, so a value cannot appear without
 moving its status in the same change.
