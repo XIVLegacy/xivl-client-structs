@@ -361,6 +361,17 @@ and +0x199C. The inspected control branches use T's slots +0x10/+0x30
 under retained-table and branch guards. These observations preserve the
 separate compiled factor owners and Enter/string identity boundaries.
 
+AT-ENTER-031 follows the retained service into candidate-event production.
+Its base constructor writes T to the shared receiver cell 0x0132CF40.
+The inspected selection calls reload that cell and forward source pointer
+0x0132CF60 and an index through slots +0x44/+0x48. With the retained T
+table these reach FUN_0054B400/FUN_0054B420 and then FUN_00548DB0,
+which constructs CandidateEventArgs with mode byte, source pointer and index
+at event+0x1C/+0x20/+0x24. It dispatches the local event through
+ECX=[T+0x8]+0xB4, the retained parent's secondary callback receiver.
+The constructor retains the source pointer. Shared-state retention, routing,
+recipient state and actual string content still qualify this path.
+
 Before registration, FUN_00947040 obtains the DOM Name value and calls
 FUN_00912D50 with complete control P and arguments value,0,1. Its wrapper uses
 P+0x8 as the property receiver. On the permitted direct-value branch,
@@ -571,6 +582,17 @@ index 0 and the destination string. That read copies TextBox+0x1980 or
 fallback 0x01266B10. Thus AT-COMP-008's reconstruction/cache branch precedes
 the Enter action's Text2 read. The separate function 0x0066C6D0 is the setter.
 
+AT-ENTER-030 resolves the separate setter's descriptor adapter and cache
+guards. Descriptor slot +0xC invokes 0x0066C6D0 with the complete TextBox,
+selector, source and writer input. Selector 0 chooses Text2 at +0x1980;
+selector 1 chooses TextExtract at +0x1988. Source resolution and low flag
+bits gate the cache write and notification. The matching property-change
+hook can copy an accepted nonempty source to +0x1A74. Under its notification
+guard, callback 0x0066C0D0 synchronizes completion state and clears that
+string before requesting a TextExtract reset. These are concrete set/clear
+writers for the state tested by AT-COMP-008. They do not select the actual
+retained control's branch or establish callback order or message bytes.
+
 The action formats Text2 through %s into {CommandParameter String,%s} with
 FUN_0097FD10. Its 0x400-byte local buffer has a final NUL and a 0x3FF-byte
 __vsnprintf limit. FUN_0099DDF0 reparses the result as type 8, copying the
@@ -705,8 +727,8 @@ controls into a caller record. Its event-object match at owner+0x26C is not
 authenticated as PressEnter. These routes do not identify every indirect
 caller or join the reconstructed text to packet submission. AT-ENTER-009
 recovers the indirect Text2 read for the declared Enter action. Loaded-child,
-namespace and actor selection, cache invalidation, selected record family/key and
-Map/World source-object joins remain open static work.
+namespace and actor selection, remaining cache/source-state writers, selected
+record family/key and Map/World source-object joins remain open static work.
 
 AT-COMP-003 authenticates CompletionDocument's 23-slot vtable at 0x00FC1744
 and its FUN_0066BA70 factory. The RaptureTextBox constructor wraps that
@@ -911,3 +933,16 @@ AT-GH-162/163 and AT-GH-164/165 cover matched exact-entry owner, TextBox
 and service-consumer functions; both listings report COMPLETE. AT-ID-041
 authenticates the project before these exports. AT-ID-042 pins the raw
 RaptureTextService RTTI name, subobject offsets and selected service slots.
+
+AT-GH-169..178 cover matched service-state, forwarding and candidate-event
+functions, with COMPLETE listings. AT-ID-044 authenticates the primary
+project before the exports. AT-ID-045 pins the selected service slots and
+CandidateEventArgs raw RTTI identity; it does not assert full table extents.
+
+AT-GH-166/167 and AT-GH-179/180/181/182 cover matched state/cache functions.
+AT-GH-168/183 verify recorded-reference exports. AT-GH-184..189 cover
+matched property adapters and the clear helper. AT-ID-043 authenticates the
+worker project; AT-ID-044 authenticates the primary project. AT-ID-046 pins
+the bounded untyped bodies, descriptor slots, property array and TextExtract
+literal. The exports establish positive static joins under the recorded
+branch, receiver and retention guards.
