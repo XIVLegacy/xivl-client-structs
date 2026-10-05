@@ -61,8 +61,9 @@ loaded-record publication, namespace installation and conditional dispatch
 selection. AT-ENTER-019 joins the textual root/TextBox builder, special Name
 application and same-container name map under their guards. AT-ENTER-020
 qualifies the pinned payload format; AT-ENTER-021 joins the conditional compiled
-factor to the same container's name map. Resource selection, loaded compiled
-type/factor registration, property acceptance, name/cache selection and installed
+factor to the same container's name map. AT-ENTER-022 separates element and
+Name-property mapping. Resource selection, actual metadata IDs/cache order,
+factor registration, property acceptance, name/cache selection and installed
 actor remain qualified. The
 submitted chat source -> FUN_006E91F0 and channel-wrapper joins remain unproved.
 The exact auto-translate UI origin and family/table identity of the selected
@@ -381,13 +382,46 @@ the same X at S+0xC. FUN_009808C0 loads the indexed factor F as ECX and passes
 S explicitly to its virtual predicate and creation slots. The authenticated
 CustomTextBoxFactor table 0x00FA2864 has FUN_0054D180 at slot +0xC. Its loaded
 element-type index and installation in the factor table remain unjoined;
-the auxiliary child-type comparison below is a distinct lookup.
+AT-ENTER-022 identifies the separate Name-property lookup used below.
 
 That creation function retains F separately from S, compares a dynamically
-mapped child type and tests its name for the pinned _ChatInput substring.
+mapped Name-property ID and tests its value for the pinned _ChatInput substring.
 On a match, FUN_005556C0 allocates 0x1AC8 bytes and calls FUN_0066C1A0 with
 F+0x4/F+0x8, constructing the same RaptureTextBox family. The actual factor
 values and nonmatching/default branch remain qualified.
+
+AT-ENTER-022 separates the element and property mappings. FUN_00981C80
+expands supplied metadata into two lists of 16-byte descriptors and calls
+FUN_009816F0 with ECX=M=0x0135E790 and the two table/count pairs. The mapper
+compares names and stores each first matching loaded row index. TextBox is
+builtin element ordinal 0x11; Name is auxiliary ordinal 1. Their getters
+return u16[M+2*ordinal] and u16[M+0x94+2*ordinal], respectively. These builtin
+ordinals do not establish numeric loaded IDs. The authenticated initializer
+calls FUN_00981660, which fills all 74 element and 33 auxiliary entries with
+0xFFFF; unmatched names retain that sentinel along this initialization path.
+
+The compiled creation function caches FUN_00981F30(1), the mapped Name ID.
+With B=[S+0x8] and the current section index at u16[S+0x410], FUN_00981160
+returns Z=[B+0xC]+0x10*index. The count reader uses the signed byte pointed to by
+[Z+0x8]; the property reader returns A=[Z+0xC]+0xC*k. FUN_009810A0 reads
+the u16 pointed to by [A] as the property ID and FUN_009810C0 returns its value pointer at
+[A+0x4]. The first matching Name property's value supplies the _ChatInput
+test. Actual metadata row positions, mapping/cache order and the current
+Name value remain guards.
+
+AT-ENTER-023 binds the factor fields to constructor argument positions.
+FUN_0054BA80 receives F in ECX. It passes its first explicit argument to
+FUN_0054BA10, which stores it at F+0x4; the outer constructor stores its
+second explicit argument at F+0x8 and installs table 0x00FA2864. The caller
+and concrete native producers of those values remain unjoined.
+
+FUN_009C4B40 allocates and zeroes the global element-factor table; its
+exported body contains no CustomTextBoxFactor installation. FUN_009C4AD0
+writes a supplied pointer at a supplied index unless that index is 0xFFFF,
+which takes the nonnull pointer's virtual destructor path. The verified
+reference export supplies no direct caller for the factor constructor or
+these table helpers. Computed, indirect, dynamic and unanalyzed callers
+remain candidates; these bounded references do not establish their absence.
 
 FUN_00557600 receives S and the created child P. It uses X=[S+0xC], retains
 the first nonnull child at X+0x30 while empty, and attaches children through
@@ -769,3 +803,15 @@ the backed CustomTextBoxFactor table and _ChatInput literal. Together the
 new pairs cover 45 decompilation and 45 listing entries, plus AT-GH-133's
 one reference target. PE evidence identifies backed cells; populated global
 state remains conditional.
+
+AT-GH-138/139, AT-GH-140/141 and AT-GH-143/144 cover 15 decompilation and 15
+listing entries in total for mapping, property readers and initialization; each listing reports
+COMPLETE. AT-GH-142 verifies two mapping-global reference targets.
+AT-ID-029 authenticates the primary project and AT-ID-030 pins the two
+literals and bounded initializer disassembly. Populated IDs remain conditional.
+
+AT-GH-136/137 cover 14 exact-entry registrar and owner-candidate functions
+per modality; the listing reports COMPLETE. AT-GH-145 verifies eight
+reference targets and AT-ID-031 authenticates the worker project. Together
+this pass covers 29 decompilation and 29 listing entries and ten reference
+targets. Constructor parameter positions do not establish their input owners.
