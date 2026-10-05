@@ -125,13 +125,20 @@ the catalog uses void pointers where original retail field declarations are abse
 | `+0x8C` | 4 | Signed outbound state; zero-initialized, writes 2 on special-send completion and 3 on the inspected receive condition |
 | `+0x90` | 1 | Zero-initialized byte; its meaning and additional access widths remain unresolved |
 
+The table lists the manager anchors; the catalog also records factory-relative
+`+0x04/+0x0C/+0x10/+0x18/+0x1C` at manager
+`+0x4C/+0x54/+0x58/+0x60/+0x64` and `+0x6C/+0x74/+0x78/+0x80/+0x84`.
+The verified storage covers 86 bytes within the allocation, leaving 62 bytes
+unknown. Their source and access roles are in the linked
+factory finding.
+
 Base constructor `0x00DB1A40` supplies the original object in ECX to core
 constructor `0x00DAFC80`. It supplies addresses `this+0x48` and `this+0x68`
 to factory constructors `0x00DAFDB0 / 0x00DAFE50`. The final vtable stores
-are independently named by the corresponding retail RTTI. Only their vptr
-words are declared here; the factory interiors and complete type sizes remain
-outside this partial manager layout. Other unlisted constructor writes remain
-evidence leads rather than fully identified fields.
+are independently named by the corresponding retail RTTI. The
+[buffer-factory partial layouts](buffer-factory.md) establish six storage cells
+in each factory. Their additional cells are recorded at manager-relative
+offsets in the catalog; complete factory sizes remain unproved.
 
 State behavior has multiple retail anchors. Existing outbound function
 `0x00DAE010` (`BCS-Y-0304`) checks signed `+0x8C`, requires input value 2
@@ -188,7 +195,5 @@ Only that retail partial layout is promoted. Base sizes, unlisted bytes,
 original member names, complete container layouts, the byte's meaning,
 exceptions, complete function equivalence and runtime behavior remain unresolved.
 
-The strongest next layout target is the two embedded buffer factories:
-retail starts `+0x48/+0x68`, constructors `0x00DAFDB0 / 0x00DAFE50`,
-against ARR's named NetBufferFactoryTmpl_LF declarations. Their constructor
-and RTTI anchors can establish the interior layout independently of ARR sizes.
+The [buffer-factory finding](buffer-factory.md) owns the embedded factory
+comparison and its remaining layout boundaries.
