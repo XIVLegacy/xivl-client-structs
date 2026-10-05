@@ -432,12 +432,33 @@ explicit name,P. The shared registrar joins the same name map and P+0x298
 container backpointer used by AT-ENTER-018/019. Name acceptance, collisions,
 cache/fallback choice and readiness instance/order remain guards.
 
-Fresh AT-ENTER-012 corroboration recovers the readiness writer at 0x00767028
-in FUN_00766F00. The owner-state and resolved-handle/type gates precede the
+AT-ENTER-012 corroboration recovers the readiness writer at 0x00767028
+in FUN_00766F00. The owner-state and resolved-handle/validity gates precede the
 +0x5C store and FUN_00574830. Its generic writer is documented in
-[the readiness study](../manifests/actor_5c_readiness_gate.json). The specific
-resolved object has not been joined to this LogWidget's C, and the write has
-not been ordered against C+0x64 form completion.
+[the readiness study](../manifests/actor_5c_readiness_gate.json). AT-ENTER-024
+follows the supplied control handle and original actor holder
+through the deferred queue. Current registry association, readiness admission
+and allocation remain guards; the write is not ordered against C+0x64 form
+completion.
+
+AT-ENTER-024 joins the ordinary deferred actor path. FUN_00774700 receives
+the C and H=[E+0x80] supplied by AT-ENTER-012/013. On the nonready branch
+whose control name differs from DesktopWidget, it constructs D with its
+context API J, a control-handle pointer and H. FUN_005745F0 stores [J] at
+D+0x4 and H at D+0x8. The queue receives C,D separately and stores the
+derived control identifier at node+0x8 and D at node+0xC. The identifier
+and record context are distinct fields.
+
+For an ordinary control, the handle comes from G+0x70 where G=[C+0x4].
+The registration branch for ordinary identifiers stores G under that
+identifier in the engine registry.
+With the registration preserved, the queue's resolver returns the same C.
+The reached state-10 list pass checks a derived-state validity byte, stores
+C+0x5C=1, then calls FUN_00574830 with ECX=D and C explicitly. The installer
+writes the replacement through H=[D+0x8], the holder used by Enter dispatch.
+Special control and alternate handle categories remain qualified, along
+with current registration, admission, validity and allocation. The flag store
+precedes the installation call and does not establish form-completion order.
 
 AT-ENTER-004 identifies the generic adapter's string member. Its third
 incoming stack argument becomes the fifth explicit argument to FUN_00713830,
@@ -815,3 +836,25 @@ per modality; the listing reports COMPLETE. AT-GH-145 verifies eight
 reference targets and AT-ID-031 authenticates the worker project. Together
 this pass covers 29 decompilation and 29 listing entries and ten reference
 targets. Constructor parameter positions do not establish their input owners.
+
+AT-GH-146/147 cover 34 exact-entry owner-readiness and registry functions
+per modality; the listing reports COMPLETE. AT-ID-032 authenticates the
+primary project and AT-ID-034 pins the complete DesktopWidget branch literal.
+
+AT-ENTER-025 joins the compiled metadata lifecycle. FUN_009C4B40 loads the
+authenticated /Data.win32.tbin path and passes the returned pointer and
+stack-derived length to FUN_00981C80. After parsing, it allocates and clears
+the factor table at global 0x0136358C. The initializer's direct constructor
+candidate uses table 0x01084FD0, distinct from CustomTextBoxFactor, and its
+explicit element selectors omit TextBox ordinal 0x11. The compiled consumers
+index the same factor table and dispatch its virtual methods. This qualifies
+the remaining installer edge: no recovered indirect or data-driven dispatch
+places CustomTextBoxFactor in the loaded TextBox slot or supplies its two
+constructor values. Loaded IDs, load success and execution remain guards.
+
+AT-GH-148/149 cover 36 matched exact-entry metadata lifecycle functions;
+the listing reports COMPLETE. AT-GH-150/151 cover eight and six recorded
+reference targets. AT-ID-033 authenticates the separate project; AT-ID-035
+pins the loader literal and thunk. Script bytes match both observed milestone
+revisions. The producing revision was reconstructed from output timestamps
+and the host reflog; it was not captured at invocation.
