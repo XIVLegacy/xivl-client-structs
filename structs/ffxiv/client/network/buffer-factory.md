@@ -92,7 +92,7 @@ established, so that spacing is not used to promote a complete factory sizeof.
 | Relative cell | Width | Up store | Down store | Supported role |
 |---|---|---|---|---|
 | `+0x00` | 4 | `0x00DAFDE1`, then `0x00DB1AB3` | `0x00DAFE81`, then `0x00DB1AC8` | Base then LF vptr |
-| `+0x04` | 4 | `0x00DAFDE7` | `0x00DAFE87` | Cleared dword; ID semantics unproved |
+| `+0x04` | 4 | `0x00DAFDE7` | `0x00DAFE87` | Cleared dword; [Up allocation sequence](net-buffer-up.md) independently observed |
 | `+0x0C` | 4 | `0x00DAFDEF` | `0x00DAFE8F` | First tree sentinel pointer |
 | `+0x10` | 4 | `0x00DAFE07` | `0x00DAFEA7` | Sentinel-adjacent cleared dword |
 | `+0x18` | 4 | `0x00DAFE18` | `0x00DAFEB8` | Second tree sentinel pointer |
@@ -167,12 +167,11 @@ target supplies no independent source names. Slot indices are not transferable.
 
 Confidence is high in the retail identities, six storage cells, two sentinel
 collections and zero-adjustment RTTI relationship. Complete sizeof, original
-names, ID/count updates, free/active meanings and complete allocation/release
-correspondence remain unresolved. No new function identity, packet meaning,
+names, complete ID semantics, count updates, free/active meanings and complete
+allocation/release correspondence remain unresolved. No new function identity, packet meaning,
 opcode or runtime claim is promoted.
 
-The best next struct target is the Up NetBufferTmpl candidate behind the object
-pointer at tree node `+0x10`, read by retail `0x00DB00EA..0x00DB00F7`.
-Its ARR declaration can guide
-retail allocation, constructor, destructor and buffer/data-pointer access
-checks, independently of factory virtual-slot names.
+The [Up NetBufferTmpl layout](net-buffer-up.md) records the named allocation,
+constructor, destructor and buffer/data-pointer accesses. Its observed factory
+sequence is independently supported by retail bytes; complete pool and
+identifier semantics remain unresolved.
