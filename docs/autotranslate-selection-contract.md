@@ -15,6 +15,40 @@ non-executable ranges are 0x01324000..0x0137C93F and
 0xFFDFF000..0xFFDFFFFF. Addresses below are absolute Ghidra virtual
 addresses.
 
+## Enter-to-Lua contract
+
+AT-ENTER-032 consolidates the conditional static path for the pinned textual
+LogWidget resources. The owner is the key-selected FormElement E, its loaded
+XamlControlContainer X, and the named complete RaptureTextBox P. Successful
+name registration and lookup connect P to that container. The matching
+namespace/type-8 dispatch uses the installed actor holder H at E+0x80.
+
+| Stage | Recovered contract | Selection limit |
+| --- | --- | --- |
+| Owner/control | E -> loaded X -> named P -> actor holder H | Load, name/cache selection, namespace and actor readiness remain guards. |
+| Enter source | The declared Return action reads P's Text2 through the reconstruction/cache getter. | The current document, source, retained records and cache flags select the value. |
+| Native event | Formatting and type-8 parsing supply routed event+0x28, then native event+0x104. | Formatting is bounded and parsing removes the final byte without validating it. |
+| Lua argument | The UTF-8 string operator pushes the NUL-terminated prefix of that parsed string as A4_2. | Callback resolution and event admission must succeed. |
+
+For an intact formatted value with its expected final delimiter, this path
+preserves the Text2 string through to A4_2 up to NUL termination. It does not
+recover a particular execution's control state or actual submitted bytes.
+The later convertPronouns operation changes the MyPlayer._chat input and is
+downstream of this Enter-to-A4_2 contract.
+
+AT-ENTER-033 pins the source default and getter return. The base constructor
+sets P+0x1758 to null, and its generic initializer receives a zero default
+string, so that call leaves the pointer null. The getter can reconstruct a
+working string, but cache refresh requires its flag and changed-value
+guards; it returns P+0x1980 or fallback even when refresh is skipped. Other
+pointer-mediated source assignments are not universally recovered, and
+candidate scans do not prove their absence.
+
+The compiled resource alternative has a separate static gap: installation of
+CustomTextBoxFactor and ownership of its two constructor inputs remain
+unresolved. That gap does not invalidate the conditional textual path, and
+the pinned resource bytes alone do not select a historical loaded instance.
+
 ## Recovered chat boundary
 
 FUN_006E91F0 dispatches a submitted string object by channel. Its group
