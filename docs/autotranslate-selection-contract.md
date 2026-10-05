@@ -338,6 +338,20 @@ the current registry-hit and lifetime guards. A Name containing _ChatInput
 selects the RaptureTextBox constructor FUN_0066C1A0. Its temporary markup
 object inherits X and passes the new control to FUN_00947040.
 
+AT-ENTER-027 recovers the textual constructor inputs. MainModule M's
+constructor passes M+0x10 and byte offset M+0x17CE0 as explicit arguments 2
+and 7 to FUN_0054E190 on successful allocation of RaptureSqwtInterface I.
+That constructor supplies hidden ECX=U=I+0x2E0 to FUN_005463E0, with those
+two values as its explicit inputs. They become U+0x10 and U+0x14. The
+extension registers U for CustomControl, TextBox and KeyConfigControl.
+With the retained TextBox association, the textual slot-+0x4 handler
+FUN_00549330 passes M+0x10 and M+0x17CE0 as explicit inputs 1 and 2 to
+FUN_0066C1A0, with the newly allocated control in ECX. AT-ID-039 pins the
+raw RTTI names and handler slot; the listing joins the tables to their
+constructor stores. These inputs retain allocation, registry and lifetime
+guards. This does
+not recover the separate compiled factor's installer or input owners.
+
 Before registration, FUN_00947040 obtains the DOM Name value and calls
 FUN_00912D50 with complete control P and arguments value,0,1. Its wrapper uses
 P+0x8 as the property receiver. On the permitted direct-value branch,
@@ -399,6 +413,19 @@ return u16[M+2*ordinal] and u16[M+0x94+2*ordinal], respectively. These builtin
 ordinals do not establish numeric loaded IDs. The authenticated initializer
 calls FUN_00981660, which fills all 74 element and 33 auxiliary entries with
 0xFFFF; unmatched names retain that sentinel along this initialization path.
+
+AT-ENTER-026 identifies the sentinel initializer's startup caller. The PE
+entry at 0x009D4BAA reaches FUN_009D49CA, which calls FUN_009D8F9A before
+the application function. After its C-initializer pass returns zero, the
+latter walks nonnull u32 function pointers from 0x00F3E66C to exclusive
+0x00F53CE4. Slot 0x00F511DC selects 0x00F25F50, whose body supplies
+M=0x0135E790 to FUN_00981660. The earlier slot 0x00F50A94 selects the
+resource-suffix initializer at 0x00F20520. This orders the two writes on
+successful traversal with retained table entries; it does not establish
+later metadata replacement, suffix selection or property-cache timing.
+Neither startup table directly lists the custom factor constructor or
+compiled table helpers. Other initializer calls and dispatch paths remain
+qualified, and the custom-factor installer remains unresolved.
 
 The compiled creation function caches FUN_00981F30(1), the mapped Name ID.
 With B=[S+0x8] and the current section index at u16[S+0x410], FUN_00981160
@@ -858,3 +885,15 @@ reference targets. AT-ID-033 authenticates the separate project; AT-ID-035
 pins the loader literal and thunk. Script bytes match both observed milestone
 revisions. The producing revision was reconstructed from output timestamps
 and the host reflog; it was not captured at invocation.
+
+AT-GH-152/153 cover six matched exact-entry startup, mapping and suffix
+functions; the listing reports COMPLETE. AT-ID-036 authenticates the project.
+AT-ID-038 pins both startup table intervals, their selected slots and the
+bounded initializer bodies. These table identities establish direct member
+selection, not the effects of every indirect initializer.
+
+AT-GH-156/157 cover 15 matched exact-entry extension, textual and compiled
+consumer functions; AT-GH-158 is a verified complete 16-target reference
+export. AT-ID-037 authenticates that separate project before its exports.
+AT-ID-039 pins the raw constructor type identities and registration keys.
+AT-ENTER-027 keeps textual inputs separate from compiled factor ownership.
