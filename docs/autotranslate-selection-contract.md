@@ -352,6 +352,15 @@ constructor stores. These inputs retain allocation, registry and lifetime
 guards. This does
 not recover the separate compiled factor's installer or input owners.
 
+AT-ENTER-029 identifies the second input as RaptureTextService
+T=M+0x17CE0. Its constructor stores C=M+0x10 at T+0x8 and installs the
+raw-RTTI-identified primary and secondary tables at T and T+0x4.
+FUN_0066C1A0 retains C at control+0x1990 and T at control+0x1998.
+It also stores embedded addresses C+0x664 and C+0x554 at control+0x1994
+and +0x199C. The inspected control branches use T's slots +0x10/+0x30
+under retained-table and branch guards. These observations preserve the
+separate compiled factor owners and Enter/string identity boundaries.
+
 Before registration, FUN_00947040 obtains the DOM Name value and calls
 FUN_00912D50 with complete control P and arguments value,0,1. Its wrapper uses
 P+0x8 as the property receiver. On the permitted direct-value branch,
@@ -897,3 +906,8 @@ consumer functions; AT-GH-158 is a verified complete 16-target reference
 export. AT-ID-037 authenticates that separate project before its exports.
 AT-ID-039 pins the raw constructor type identities and registration keys.
 AT-ENTER-027 keeps textual inputs separate from compiled factor ownership.
+
+AT-GH-162/163 and AT-GH-164/165 cover matched exact-entry owner, TextBox
+and service-consumer functions; both listings report COMPLETE. AT-ID-041
+authenticates the project before these exports. AT-ID-042 pins the raw
+RaptureTextService RTTI name, subobject offsets and selected service slots.
