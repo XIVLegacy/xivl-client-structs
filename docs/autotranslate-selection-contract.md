@@ -59,8 +59,11 @@ FormElement key, callback writer and
 value-1 LogWidget initialization. AT-ENTER-017/018 recover the first-request
 loaded-record publication, namespace installation and conditional dispatch
 selection. AT-ENTER-019 joins the textual root/TextBox builder, special Name
-application and same-container name map under their guards. Resource branch,
-property acceptance, name/cache selection and installed actor remain qualified. The
+application and same-container name map under their guards. AT-ENTER-020
+qualifies the pinned payload format; AT-ENTER-021 joins the conditional compiled
+factor to the same container's name map. Resource selection, loaded compiled
+type/factor registration, property acceptance, name/cache selection and installed
+actor remain qualified. The
 submitted chat source -> FUN_006E91F0 and channel-wrapper joins remain unproved.
 The exact auto-translate UI origin and family/table identity of the selected
 Completion record are also unresolved.
@@ -347,9 +350,53 @@ name-map node+0x60 and X in control+0x298. Empty names receive a generated
 name; collisions add (n). Thus successful, unchanged and collision-free
 TextBox_ChatInput naming supplies the lookup and inverse-container path in
 AT-ENTER-018. The Window factory separately stores its root at X+0x2C; the
-X+0x30 fallback is distinct. The alternative compiled-resource builder through
-FUN_009C9250 -> FUN_009808C0 and the Name binding/deferred branches remain
-static targets. This pass does not establish which resource branch runs.
+X+0x30 fallback is distinct. AT-ENTER-020 qualifies the pinned payloads against
+the format test, and AT-ENTER-021 follows conditional compiled construction.
+Name binding/deferred branches and actual resource selection remain guards.
+
+AT-ENTER-020 joins filename selection, decoded-buffer publication and the
+format test. The request helper inserts FUN_0090F950's selected string before
+the final .form or .tpl extension, preserving that extension. It probes the
+candidate, then falls back to the unrewritten normalized filename when the
+first probe fails. It copies
+the accepted name to R+0xEC. Configured path prefixes and the selected suffix
+remain guards; request acceptance alone does not identify the original file.
+
+The queued-reader body uses complete R and a local buffer owner. It reads the
+selected file, decodes an SQEX body through FUN_0090FD10 and stores the returned
+pointer and decoded length at R+0x140/+0x144. A skipped mode or null buffer
+does not enter either builder. FUN_00981050 compares the leading word with
+0x70DD. Equality selects the compiled reader and FUN_009C9250 -> FUN_009808C0;
+inequality passes that same buffer and X=[R+0xE4] to AT-ENTER-019's textual path.
+
+The four pinned LogWidget source and exact decoded payloads were rechecked.
+The form/SD-form leading word is 0x573C and the template/SD-template word is
+0x523C. Those decoded payloads therefore select the textual branch when
+supplied unchanged. The filename candidate, mode, actual read/decode and
+successful construction remain conditional. This is a static comparison of
+identified bytes with the loader test.
+
+AT-ENTER-021 follows conditional compiled construction. The parser S retains
+the same X at S+0xC. FUN_009808C0 loads the indexed factor F as ECX and passes
+S explicitly to its virtual predicate and creation slots. The authenticated
+CustomTextBoxFactor table 0x00FA2864 has FUN_0054D180 at slot +0xC. Its loaded
+element-type index and installation in the factor table remain unjoined;
+the auxiliary child-type comparison below is a distinct lookup.
+
+That creation function retains F separately from S, compares a dynamically
+mapped child type and tests its name for the pinned _ChatInput substring.
+On a match, FUN_005556C0 allocates 0x1AC8 bytes and calls FUN_0066C1A0 with
+F+0x4/F+0x8, constructing the same RaptureTextBox family. The actual factor
+values and nonmatching/default branch remain qualified.
+
+FUN_00557600 receives S and the created child P. It uses X=[S+0xC], retains
+the first nonnull child at X+0x30 while empty, and attaches children through
+the prior parent's +0x194 receiver at slot +0x4. This candidate is distinct
+from the textual Window root at X+0x2C. It applies the extracted or generated
+name through FUN_00912D50 with ECX=P, then calls FUN_0096E580 with ECX=X and
+explicit name,P. The shared registrar joins the same name map and P+0x298
+container backpointer used by AT-ENTER-018/019. Name acceptance, collisions,
+cache/fallback choice and readiness instance/order remain guards.
 
 Fresh AT-ENTER-012 corroboration recovers the readiness writer at 0x00767028
 in FUN_00766F00. The owner-state and resolved-handle/type gates precede the
@@ -706,3 +753,19 @@ AT-GH-119/120 add six exact-entry Name-property/substring targets each and
 AT-ID-021 authenticates the separate Name callback jump fragment.
 Failed and containing-entry exploratory requests remain private, outside these
 promoted recipes.
+
+AT-GH-121 through AT-GH-132 and identity AT-ID-024 authenticate the resource
+selection and buffer path. Each exporter covers 26 exact-entry targets;
+all six listings report COMPLETE. AT-GH-133 verifies the suffix-object
+reference candidates. AT-ID-025 rechecks the four AT-ID-013 source/decoded
+identities and leading-word comparison. AT-ID-026 pins loader literals and
+the bounded suffix-object initializer. No excluded global bytes are used as
+runtime string values. All 2671 normalized Lua bodies matched their immutable
+and current pins.
+
+AT-GH-134/135 and fresh worker-project identity AT-ID-027 cover 19 compiled
+builder entries each; the listing reports COMPLETE. AT-ID-028 authenticates
+the backed CustomTextBoxFactor table and _ChatInput literal. Together the
+new pairs cover 45 decompilation and 45 listing entries, plus AT-GH-133's
+one reference target. PE evidence identifies backed cells; populated global
+state remains conditional.
