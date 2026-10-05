@@ -192,7 +192,6 @@ listed roles. Original member names, compound declarations, alignment, complete
 identifier/pool semantics, packet meanings, opcodes, runtime behavior and
 complete cross-build methods remain unresolved. No BCS-Y identity is promoted.
 
-The strongest next struct target is the Down specialization, independently
-named by retail vtable `0x01128EB4`, with constructor candidate `0x00DAEA10`
-and ARR type DIE `0x72C954E`. Its allocation and consumer accesses must be
-checked separately from this Up layout.
+The [Down specialization](net-buffer-down.md) has independent retail allocation,
+constructor and consumer support. Its larger backing capacity does not follow
+from this Up layout.

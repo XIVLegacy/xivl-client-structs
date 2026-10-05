@@ -92,7 +92,7 @@ established, so that spacing is not used to promote a complete factory sizeof.
 | Relative cell | Width | Up store | Down store | Supported role |
 |---|---|---|---|---|
 | `+0x00` | 4 | `0x00DAFDE1`, then `0x00DB1AB3` | `0x00DAFE81`, then `0x00DB1AC8` | Base then LF vptr |
-| `+0x04` | 4 | `0x00DAFDE7` | `0x00DAFE87` | Cleared dword; [Up allocation sequence](net-buffer-up.md) independently observed |
+| `+0x04` | 4 | `0x00DAFDE7` | `0x00DAFE87` | Cleared dword; [Up](net-buffer-up.md) and [Down](net-buffer-down.md) allocation sequences independently observed |
 | `+0x0C` | 4 | `0x00DAFDEF` | `0x00DAFE8F` | First tree sentinel pointer |
 | `+0x10` | 4 | `0x00DAFE07` | `0x00DAFEA7` | Sentinel-adjacent cleared dword |
 | `+0x18` | 4 | `0x00DAFE18` | `0x00DAFEB8` | Second tree sentinel pointer |
@@ -171,7 +171,7 @@ names, complete ID semantics, count updates, free/active meanings and complete
 allocation/release correspondence remain unresolved. No new function identity, packet meaning,
 opcode or runtime claim is promoted.
 
-The [Up NetBufferTmpl layout](net-buffer-up.md) records the named allocation,
-constructor, destructor and buffer/data-pointer accesses. Its observed factory
-sequence is independently supported by retail bytes; complete pool and
+The [Up](net-buffer-up.md) and [Down](net-buffer-down.md) NetBufferTmpl layouts
+record named allocation, constructor, destructor and buffer/data-pointer accesses.
+Their observed factory sequences are independently supported by retail bytes; complete pool and
 identifier semantics remain unresolved.

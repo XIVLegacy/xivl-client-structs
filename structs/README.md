@@ -6,3 +6,4 @@ Struct notes are grouped by subsystem. Keep the durable machine inventory in `ma
 - [ZoneClient RaptureChannelManager layout](ffxiv/client/network/zone-channel-manager.md)
 - [ZoneProto buffer-factory partial layouts](ffxiv/client/network/buffer-factory.md)
 - [ZoneProtoUp NetBufferTmpl layout](ffxiv/client/network/net-buffer-up.md)
+- [ZoneProtoDown NetBufferTmpl layout](ffxiv/client/network/net-buffer-down.md)
