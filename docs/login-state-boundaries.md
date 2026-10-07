@@ -28,26 +28,108 @@ The reproducible static recipe is:
 
 2. Inspect the resulting instructions with portable `llvm-objdump` 22.1.4,
    using the same image and the stated absolute address ranges.
-3. Record a fact only when the instruction and the matching DumpVAs entry
-   agree. The producing tool baseline was
-   `51be90574ef0e76da4fa432b8e095c5fe9fc574e` with Ghidra 12.1.3.
+3. For Ghidra-backed facts, record a fact only when the instruction and the
+   matching DumpVAs entry agree. The producing tool baseline was
+   `51be90574ef0e76da4fa432b8e095c5fe9fc574e` with Ghidra 12.1.3. The
+   follow-up scripts were read at checkout
+   `xivl-client-structs@08de0f7428a133a689627ac0cbf60d97daed2a71`:
+   `run-headless.ps1` and `FindReferences.java` at
+   `a41f9d1be89c2752ef147c37f864e4f183717f8a`, `DumpVAs.java` and
+   `FindFieldRefs.java` at `5213a74289d964c60aea1856b3a7082059f99a7b`,
+   `DumpFunctionListing.java` at
+   `6629ecba86714f783a510200c798ddeee29b4f96`, and
+   `VerifyProgramFileBytes.java` at
+   `dc4fdd98950337347be5f90885b8406161c19a0e`. The portable LLVM tool
+   reports version 22.1.4. The fresh PE check again reported size `15996808`
+   and SHA-256
+   `9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9`.
 
-The fresh DumpVAs target sets were
-`0x006B0220,0x004DFDF0,0x00DA9880,0x00DA9EC0,0x00DAA070,0x00DAA740,0x00DAA950,0x00DAA9F0,0x00DA76B0,0x00DA5030,0x00DA5110,0x00DA64B0,0x00DAD7B0`,
-`0x004DFB20,0x004DFBA0,0x004DFCD0,0x004DFF10,0x004E0690,0x006AF200,0x006AD1D0,0x006A9280,0x006A4DB0,0x006A9600,0x006B3D40,0x0088C810,0x0088B070,0x008838A0`,
-and
-`0x00DA60C0,0x00DA4770,0x00DA4AE0,0x00DA5A00,0x00DA4660,0x00DA4390,0x00DA4370,0x00DA2BE0,0x00DA4840,0x00DA5110,0x00DA5030`.
-The instruction ranges included `0x006B0200-0x006B2600` and
-`0x00DA9880-0x00DAAA00`, plus direct caller ranges for the listed
-`FUN_006B3D40` consumers.
+The current follow-up request lists are reproducible from these tracked
+scripts: `ghidra/DumpFunctionListing.java`, `ghidra/DumpVAs.java`,
+`ghidra/FindReferences.java`, `ghidra/FindFieldRefs.java`,
+`ghidra/VerifyProgramFileBytes.java`, and
+`tools/ghidra/run-headless.ps1`.
 
-Three fresh DumpVAs batches covered 13, 14, and 11 requested entries. Each
-batch had exactly one `Name` section and one decompilation section per entry,
-with zero `ERROR` or `DECOMP FAILED` entries. The checks are static only; no
-runtime or connected-retail result is implied.
+- `DumpFunctionListing.java` exact starts:
 
-Evidence strength is explicit: direct facts have instruction locators and a
-matching DumpVAs entry; projection facts describe mechanical parser behavior;
+  ```text
+  0x006B0220,0x00DAA740,0x00DA9880,0x00DA9EC0,0x00DAA070,0x00DAA950,
+  0x00DAA9F0,0x00DA76B0,0x00DA5030,0x00DA5110,0x00DA64B0,0x00DAD7B0,
+  0x004E0690,0x006B3D40,0x0088C810,0x0088B070,0x008838A0,0x00DA60C0,
+  0x00DA4770,0x00DA4AE0,0x00DA5A00,0x00DA4660,0x00DA4390,0x00DA4370,
+  0x00DA2BE0,0x00DA4840,0x00DA5C50,0x00DA5D60,0x00DA7190,0x00DA70A0,
+  0x00DA79D0,0x00DAAC30,0x00DA8680,0x00891A00,0x00DA7510,0x00DA7220
+  ```
+
+- `DumpVAs.java` batches:
+
+  ```text
+  0x006B0220,0x00DA5C50,0x00DA5D60,0x00DA7190,0x00DA70A0,0x00DA76B0,
+  0x00DA79D0,0x00DAAC30,0x00DA64B0,0x00DA5110,0x00DAA950,0x00DAA740,
+  0x00DA8680
+
+  0x00DBFD10,0x00DADCC0,0x00DE7B10,0x00DE9550,0x00DE9610
+
+  0x00DA60C0,0x00DA5030,0x00DA4AE0,0x00DA5A00,0x00DA4660,0x00DA4390,
+  0x00DA4370,0x00DA2BE0,0x00DA4840,0x00DA7510,0x00DA7220
+
+  0x004DF0A0,0x00DAA9D0,0x004DFB20,0x004DFBA0,0x004DFCD0,0x004DFF10,
+  0x004E0690,0x004E0890,0x004E09F0
+
+  0x00DA9880,0x00DA9EC0,0x00DA4F80,0x00DA4660,0x00DA5190,0x00DA5300,
+  0x00DA54D0,0x00DA55C0,0x00DA58F0,0x00DA5FD0,0x00DA60C0
+  ```
+
+- `FindReferences.java` batches:
+
+  ```text
+  0x006B0220,0x00DA5C50,0x00DA5D60,0x00DA7190,0x00DA70A0,0x00DA76B0,
+  0x00DA79D0,0x00DAAC30,0x00DA64B0,0x00DA5110,0x00DAA950,0x00DAA740
+
+  0x01128318,0x00DA64B0,0x00DA5110,0x00DAA950,0x00DAA9D0
+
+  0x0088C810,0x0088B070,0x006B0220,0x006B5260,0x00DA76B0,
+  0x00DA79D0,0x00DAAC30
+  ```
+
+- `FindFieldRefs.java` offset queries:
+
+  ```text
+  roster/world: 0x1d0,0x1d4,0x1d8,0x200,0x220,0x224,0x278,0x27a,0x27c
+  operation:    0x8,0x14,0x18,0x34,0x8c,0x1a0,0x1a8
+  ```
+
+- `VerifyProgramFileBytes.java` uses the executable identity stated above and
+  verifies original, modified, and mapped file-backed ranges.
+
+The fresh follow-up Ghidra exports completed with these checks: the function
+listing covered 36 exact function starts (`requested=36 completed=36`);
+DumpVAs reported `sections=13 failures=0`, `sections=5 failures=0`,
+`sections=11 failures=0`, `sections=9 failures=0`, and
+`sections=11 failures=0`; FindReferences reported
+`COMPLETE: FindReferences targets=12 references=18`,
+`COMPLETE: FindReferences targets=5 references=6`, and
+`COMPLETE: FindReferences targets=7 references=15`; FindFieldRefs scanned 3,174,303 instructions
+for both offset sets and reported 1,652 hits in 733 functions for the
+selected roster/world offsets and 73,849 hits in 22,384 functions for the
+operation offsets. VerifyProgramFileBytes completed with
+`COMPLETE: program-file-bytes-v1`. Each DumpVAs batch had one `Name` and one
+decompilation section per entry, with zero `ERROR` or `DECOMP FAILED` entries.
+These checks are static only; no runtime or connected-retail result is
+implied.
+
+The continuation also used fresh read-only `llvm-objdump` 22.1.4 exports and
+direct-call scans on the same image. The operation-step, roster-consumer,
+vector-helper, response, and bootup locators below are independently checked
+against the stated file identity. These LLVM exports extend the Ghidra-backed
+observations but do not assign names to unresolved indirect calls. The
+GameLogin constructor join through `FUN_00DAD770` is an LLVM-only continuation
+with field-reference corroboration; its instruction join is promoted below
+without assigning a semantic name to that helper.
+
+Evidence strength is explicit: direct Ghidra facts have instruction locators
+and a matching DumpVAs entry, while the explicitly marked DAD770 continuation
+is LLVM-only; projection facts describe mechanical parser behavior;
 RTTI and event names are locator hints only; unresolved claims name the direct
 caller or reader set that was inspected.
 
@@ -67,15 +149,41 @@ out computed, indirect, dynamic, or script-side relationships.
 | Title and start | `TitlePhase` RTTI/vftables `0x0105339C` and `0x010533AC`; `TitlePhase` and `InstallTitleMenu` event types | The title classes and routed event types exist in this image | RTTI and event names expose no title-visible flag, transition counter, or start operation. A title event is not a ready predicate. |
 | Bootup owner | `BootupManager` vtable `0x00FD25E0`, slot 2 -> `0x006B0220` | Slot 2 is a native driver with a raw selector at `B+0x44` (`param_1[0x11]`) and counters at `B+0x1B78` and `B+0x1B7C` (`param_1[0x6DE]` and `[0x6DF]`) | These are switch and substate fields, not public UI labels. At `0x006B0D55`, one selector-10 path tests nested bytes at `+0x68/+0x69` and dispatches `0x004DFDF0`; that helper emits local operation state 3 through `0x00DA60C0` only after `0x00DA4660` accepts nested state 3, 4, or 5. |
 | Service request | `ServiceLoginOperation::vtable[0]`, `0x00DAA070` | Allocates c2s opcode `0x0003`, size `0x20`, copies the request fields, writes expected s2c `0x000D` on the successful path, and returns success | The exact ABI is `ECX=O`, original stack arg 1 `P` is read at `0x00DAA0A7`, and original stack arg 2 `E` is the expected-opcode pointer. The success path stores `*E=0x000D` at `0x00DAA12E-0x00DAA136` and sets `AL=1` at `0x00DAA149`. Failure `AL=0` is set at `0x00DAA16D` without this function initializing `*E`; the two exits use `RET 8` at `0x00DAA15D` and `0x00DAA181`. This is a send boundary, not proof that a roster is loaded. |
-| Roster response | `ServiceLoginOperation::vtable[1]`, `0x00DAA9F0` | s2c `0x000D` reaches the roster parser with `packet+0x10` | At `0x00DAAA79`, the receiver loads `C=[O+0x08]` into `ECX` and calls `0x00DAAA7D`. On a false parser result, `0x00DAAA86-0x00DAAA8D` passes `ECX=C` and original stack arg 1 `[O+0x34]` to `0x00DA5030`; the receiver returns `AL=0` and `RET 4`. The callback is a failure boundary, not a populated-roster proof. |
+| Roster response | `ServiceLoginOperation::vtable[1]`, `FUN_00DAA9F0`; ordinary parser callsite `0x00DAAA7D` | s2c `0x000D` reaches the `FUN_00DA76B0` roster parser with `packet+0x10` | At `0x00DAAA79`, the receiver loads `C=[O+0x08]` into `ECX` and calls `FUN_00DA76B0` at callsite `0x00DAAA7D`. On a false parser result, `0x00DAAA86-0x00DAAA8D` passes `ECX=C` and original stack arg 1 `[O+0x34]` to `0x00DA5030`; the receiver returns `AL=0` and `RET 4`. The callback is a failure boundary, not a populated-roster proof. |
 | Roster projection | `0x00DA76B0`, with context `C=[O+0x08]` | The parser owns its vector at `C+0x1D0`, with begin/end at `C+0x1D4` and `C+0x1D8`; it reads the body count and inserts records in arrival order | `C` is the parser context, not `O`. The route proves projection mechanics and vector order only; it does not prove a full identity, selected record, or generation. |
 | Lobby operation request | `0x00DA9880` | The nested state at `C+0x0C`, `state+4`, selects c2s `0x01F5`, `0x0005`, `0x0006`, or `0x01F6`; expected opcodes are `0x01F5` or `0x000C`, and the request sets nested `+0x8C=4` | This is a native request state machine with no statically resolved title-button caller. Its state values are operation data, not UI labels. |
 | Lobby admission response | `0x00DA9EC0` | For s2c `0x000C`, `FUN_00DA4B80(packet+0x10)` returns the parser result. For s2c `0x01F5`, a nonzero ticket at `packet+0x14` and nonempty frontend at `packet+0x1C` reach `FUN_00DA4F80(0)` after the `OnSuccessfulLobbyLogin` log | The ticket/frontend check is an auth or lobby admission edge. It returns `AL=0` after the callback and does not establish world readiness. Other opcodes write `O+0x10=4` and return false. |
-| Character selection request | `GameLoginOperation::vtable[0]`, `0x00DAA740` | Allocates c2s `0x0004`, size `0x28`, copies `O+0x0C`, and reads the selected-record candidate described below; it writes expected s2c `0x000F` only on the successful path | The exact ABI is `ECX=O`, original stack arg 1 `P` is read at `0x00DAA777`, and original stack arg 2 `E` is the expected-opcode pointer. The success path stores `*E=0x000F` at `0x00DAA806-0x00DAA80E` and sets `AL=1` at `0x00DAA821`. Failure `AL=0` is set at `0x00DAA845` without this function initializing `*E`; the two exits use `RET 8` at `0x00DAA835` and `0x00DAA859`. The call does not prove that a UI selection owner supplied the record. |
-| Character selection response | `GameLoginOperation::vtable[1]`, `0x00DAA950` | s2c `0x000F` reaches `0x00DA64B0(packet+0x10)`; a nonzero parser result returns true | On false, `0x00DAA9B3-0x00DAA9BA` passes `ECX=C=[O+0x08]` and original stack arg 1 `[O+0x34]` to `0x00DA5110`, then returns `AL=0`. A nonzero parser result is a lobby response result, not a world-ready identity result. |
+| Character selection request | `GameLoginOperation::vtable[0]`, `0x00DAA740` | Allocates c2s `0x0004`, size `0x28`, copies `O+0x0C`, and reads the selected-record candidate described below; it writes expected s2c `0x000F` only on the successful path | The exact ABI is `ECX=O`, original stack arg 1 `P` is read at `0x00DAA777`, and original stack arg 2 `E` is the expected-opcode pointer. The success path stores `*E=0x000F` at `0x00DAA806-0x00DAA80E` and sets `AL=1` at `0x00DAA821`. Failure `AL=0` is set at `0x00DAA845` without this function initializing `*E`; the two exits use `RET 8` at `0x00DAA835` and `0x00DAA859`. The fresh constructor join proves `O+0x08=C` for this GameLogin operation; the normal UI/input admission source remains unresolved. |
+| Character selection response | `GameLoginOperation::vtable[1]`, `0x00DAA950` | s2c `0x000F` adds `packet+0x10` at `0x00DAA96C` and reaches `0x00DA64B0`; a nonzero parser result returns true | On false, `0x00DAA9B3-0x00DAA9BA` passes `ECX=C=[O+0x08]` and original stack arg 1 `[O+0x34]` to `0x00DA5110`, then returns `AL=0`. The response body is `packet+0x10`; a nonzero parser result is a lobby response result, not a world-ready identity result. |
 | Separate CharaMake path | `CharaMakeOperation::vtable[0]`, `0x00DAA190`; sequence-gated response `0x00DAD7B0` | A separate step emits c2s `0x000F` and expects s2c `0x0010`; the ack compares response context `+0x10` with operation `+0x0C` before dispatching the operation callback | The reused wire opcode does not prove an ordinary roster select or confirm. The ack's operation state write and callback are a separate path. |
-| Roster vector consumers | `FUN_006B3D40` and its analyzed-database direct-caller set `0x00889250`, `0x0088C4C0`, `0x0088BD50`, `0x00884CB0`, `0x006AD530`, `0x006B0220`, `0x0088B880`, plus `0x00DA79D0` | These callers index the `0x2E0` vector and read or copy entry fields such as `+0x04`, `+0x08`, `+0x10`, and `+0x40` | Within this analyzed direct-edge set, no direct call to `0x00DAA740` and no direct store to the selected-record cascade was traced. Virtual or dynamic dispatch edges remain possible, so the selected-record writer and UI admission caller remain unresolved. |
+| Roster vector consumers | `FUN_006B3D40` and its analyzed-database direct-caller set `0x00889250`, `0x0088C4C0`, `0x0088BD50`, `0x00884CB0`, `0x006AD530`, `0x006B0220`, `0x0088B880`; ordinary response `FUN_00DAA9F0` calls `FUN_00DA76B0` at `0x00DAAA7D`, while `FUN_00DAAC30` calls `FUN_00DA79D0` on character-modify branches | The database reader set indexes the `0x2E0` vector and reads or copies entry fields such as `+0x04`, `+0x08`, `+0x10`, and `+0x40`; the fresh direct-call scan found only the ordinary parser callsite `0x00DAAA7D` and character-modify branches at `0x00DAAD8B`, `0x00DAAE16`, `0x00DAAEA1`, `0x00DAAF2C`, and `0x00DAAFB7` | The character-modify handlers do not establish an ordinary `0x000D` full-identity reader. No direct call to `0x00DAA740` was traced. Virtual or dynamic UI admission edges remain possible, so the normal selection source and admission caller remain unresolved. |
 | Loading form | `NowLoading` RTTI and tracked Lua metadata names | The native RTTI type and script metadata expose form or API identifiers only; no direct ready reader is qualified in this slice | Showing or dismissing the form is not a native loading or ready predicate. |
+
+Before the selector switch, a non-null queue node at `B+0x50` supplies the
+raw selector to `B+0x44`, a peer value to `B+0x4C`, two dwords to
+`B+0x1B78` and `B+0x1B7C`, and five qwords to `B+0x1B80` through `B+0x1BA0`
+at `0x006B02AC-0x006B0328`; the node is released at
+`0x006B0336-0x006B0352`. On the selector-1 jump-table path, the creation
+branch at `0x006B07B0-0x006B0876` allocates `0x3C0`, `0x3D0`, and `0x860`
+byte objects, invokes the `AccountSelectionPhase` and
+`CharacterSelectionPhase` constructors (`0x0088C810` at
+`0x006B082A`, `0x0088B070` at `0x006B0866`), and increments `B+0x1B78` at
+`0x006B0876`. This closes queue consumption and one phase-creation edge only;
+it does not map the selector to title, start, waiting, confirmation, or error
+semantics, nor does it identify an invalidation callback.
+
+The same fresh driver export shows the selector switch at
+`0x006B0683-0x006B0692` dispatching values `1..0x3A`; the selector-1 branch
+first initializes child objects and invokes their vtable `+0x24` methods at
+`0x006B06B5-0x006B072C`, then creates the phase objects above when its counter
+is zero. Several later selector branches explicitly reset `B+0x44`,
+`B+0x1B78`, and `B+0x1B7C` before invoking a stored callback: the reset and
+indirect-call edges are at `0x006B0B57-0x006B0B6A`,
+`0x006B0C26-0x006B0C3E`, `0x006B0E16-0x006B0E37`, and
+`0x006B0F42-0x006B0F61`. These are instruction-backed phase-reset and
+callback boundaries, but their callback targets are computed from queue data;
+the export does not assign them to a named phase, error, or cancellation
+owner.
 
 The expected-opcode outputs are both 32-bit dword stores on the success path:
 the decoded `MOV dword ptr [EDX],0xD` at `0x00DAA136` writes `*E=0x0000000D`,
@@ -145,6 +253,32 @@ field and a world-name logging argument in that response path; it does not
 retroactively assign those meanings to the opaque `0x000D` projection or prove
 that either field is a complete roster identity.
 
+Fresh LLVM direct-call scanning found one direct caller of `FUN_00DA76B0`,
+`0x00DAAA7D`, and five direct callers of `FUN_00DA79D0`, at
+`0x00DAAD8B`, `0x00DAAE16`, `0x00DAAEA1`, `0x00DAAF2C`, and
+`0x00DAAFB7`. The latter five are branches of `FUN_00DAAC30` for
+character-modify response commands, not readers of the ordinary s2c `0x000D`
+roster. `FUN_00DA79D0` walks `C+0x1D4..C+0x1D8` with `0x2E0` stride and, on
+a matching response key, copies response `body+0x20` to slot `+0x10` and
+`body+0x19` to slot `+0x09` at `0x00DA7FE2-0x00DA8074`; these fields are
+qualified only in that character-modify path. For the character-modify `0x10`
+case, `FUN_00DAAC30` passes `C+0x1D0` and `C+0x200` through callback vtable
+slot `+0x48` at `0x00DAACD5-0x00DAACFF`. The ordinary `0x000D` path has no
+fresh direct full-identity reader in this slice.
+
+The vector mutation owner is also bounded. When `body+0x08` has no masked
+bits, `FUN_00DA76B0` passes the existing `C+0x1D0` range to
+`FUN_00891A00` at `0x00DA771D-0x00DA7728`; that helper erases and destroys
+each entry through `FUN_006B4B60`, then updates the vector end at
+`0x00891A6B`. It does not free the vector backing or update the begin pointer;
+the stores at `0x00891A74-0x00891A77` return iterator output. The body-count
+loop begins at `0x00DA7731-0x00DA7740`.
+`FUN_00DA7220` also frees and zeroes that vector during context destruction at
+`0x00DA736F-0x00DA73B0`, while `FUN_00DA7510` initializes
+`C+0x1D4`/`C+0x1D8` to zero at `0x00DA7604-0x00DA7610`. These are
+lifecycle and clear boundaries; they do not prove a generation or owner
+thread.
+
 Consequences for an autologin observer are:
 
 - A copied vector is only a candidate snapshot. Static inspection does not
@@ -181,21 +315,39 @@ payload byte  = *(u8 *)(R + 0x08)
 
 The reads occur at `0x00DAA7A2-0x00DAA7A5` and
 `0x00DAA7C0-0x00DAA7C6`. They prove an indirect selected-record input to the
-packet builder. They do not prove whether `R+0x0C` is an ID, an index, or
-another protocol key, and the static slice does not identify the writer of
-`*(C+0x14)` or the UI caller that admits this operation.
+packet builder. `R+0x0C` remains an untyped protocol value, and the normal UI
+admission source is unresolved. Fresh LLVM tracing resolves the constructed
+GameLogin owner flow: `FUN_004E0890` loads its receiver from `[ESI+0x240]` at
+`0x004E0964-0x004E096A` and calls `FUN_00DA7190` at `0x004E0976`; that
+function calls `FUN_00DA5D60` with the same receiver. `FUN_00DA5D60` builds
+the Init/Lobby/Service/GameLogin step sequence and passes its `this` value as
+the explicit owner to the first step's slot-22 call at
+`0x00DA5F95-0x00DA5FA0`; the GameLogin step's slot-22 wrapper at
+`0x00DA70A0` forwards that explicit owner to `FUN_00DA5C50` at
+`0x00DA70B2-0x00DA70C7`. `FUN_00DA5C50` gates nested state, increments
+`this+0x18`, releases the old `this+0x14` object through its vtable slot 0
+with argument 1, clears the field at `0x00DA5CB7-0x00DA5CC3`, and replaces it
+from an incoming object's first dword at `0x00DA5CC8-0x00DA5CCE`. Its
+constructor continuation pushes that same ESI receiver as the first stack
+argument to `FUN_00DAD770` at
+`0x00DA5CF8-0x00DA5CFB`; the constructor stores it at the new operation's
+`+0x08` at `0x00DAD787`, and `0x00DA5D00` installs vtable `0x01127FEC`, whose
+slot 0 is `FUN_00DAA740`. Therefore this constructed GameLogin operation
+proves `C=[O+0x08]`, and `0x00DA5CCE` is the direct C+0x14 replacement
+writer. The join does not identify the normal UI/input source, validation,
+owner thread or generation, or cancellation.
 
 The smallest typed native candidate is therefore an observation boundary:
 
 | Candidate | Owner and validation | Result | Lifetime and staleness limit |
 | --- | --- | --- | --- |
 | Service send | `O` is the operation; `P` and writable `uint32_t *E` are caller arguments. The owner thread and generation are unresolved. | `AL=1` writes `*E=0x000D`; `AL=0` leaves `*E` unwritten by this function; both exits use `RET 8`; response parser or `0x00DA5030` supplies the next observation | Do not retain `P`, vector pointers, or callback pointers across a generation change. |
-| Game send | `O` is the operation; `P` and writable `uint32_t *E` are caller arguments. `R` must be resolved on the same owner path before the call; no UI admission or cancellation owner is proven. | `AL=1` writes `*E=0x000F`; `AL=0` leaves `*E` unwritten by this function; both exits use `RET 8`; response parser or `0x00DA5110` supplies the next observation | The selected-record pointer and parser output can be replaced or invalidated asynchronously; copy only after a qualified owner boundary and reacquire after invalidation. |
+| Game send | The constructed operation has `O+0x08=C`; `R=*(C+0x14)` is loaded by the builder; `P` and writable `uint32_t *E` are caller arguments. The normal UI/input source and validation are unresolved. | `AL=1` writes `*E=0x000F`; `AL=0` leaves `*E` unwritten by this function; both exits use `RET 8`; response parser or `0x00DA5110` supplies the next observation | The selected-record pointer and parser output can be replaced or invalidated asynchronously; copy only after a qualified owner boundary and reacquire after invalidation. |
 | Nested operation gate | `FUN_00DA4660` accepts only nested `C+0x8C` values 3, 4, or 5; `FUN_004DFDF0` builds local state 3 before `FUN_00DA60C0`. | A native callback admission result, not a UI phase result | The helper has a timeout and callback queues; it does not establish a roster generation or world identity. |
 
 No typed native continue or start operation is proven between the title/event
-owners and these request boundaries. Owner thread, generation, cancellation,
-selected-record writer, and UI admission remain blockers. Raw slot pointers,
+owners and these request boundaries. Normal UI/input admission, validation,
+owner thread, generation, and cancellation remain blockers. Raw slot pointers,
 embedded strings, and iterator positions cannot cross an asynchronous boundary
 on the evidence here.
 
@@ -205,7 +357,11 @@ on the evidence here.
 the native pad route, routed keyboard-focus token, ancestor-key lookup, and
 modal/focus registration mechanics. These are borrowed same-thread pointers:
 the route can stop on an event and focus objects can be replaced. The bounded
-evidence does not identify a login-phase recipient or cancel callback.
+evidence does not identify a login-phase recipient or cancel callback. The
+qualified generic route ends at the event dispatch call through
+`[P+4]->vtable+0x34` (`0x00548160`); the pad route enters at `0x004D6570` and
+keyboard dispatch at `0x00552DF0`. None of these edges names a login-phase
+receiver, cancel mutation, modal owner, or receiver lifetime.
 Keyboard focus, pad routing, a modal token, and an update serial are therefore
 manual intervention or invalidation observations, not proof that a login
 operation is active.
@@ -223,6 +379,33 @@ world-ready chain must resolve all of these on the same session generation:
 3. a ready state owned by that generation; and
 4. a failure or disconnect reader that invalidates all three observations.
 
+The inspected `FUN_00DA64B0` path only copies response fragments into
+`C=[O+0x08]`. The caller sets `body=packet+0x10` at `0x00DAA96C`; the
+parser stores `[body+0x56]` at `C+0x278`, clears `C+0x27A`, stores
+`[body+0x08]` at `C+0x27C` (`0x00DA657B-0x00DA659B`), copies 0x40 bytes
+from `body+0x14`, copies 0x20 bytes from `body+0x78`, and then
+calls `0x00446F50` at `0x00DA65E2`. On the false-result path,
+`FUN_00DA5110` receives `ECX=C`, checks `C+0x08`, and invokes the
+caller-supplied callback pointer `[O+0x34]` through vtable slots `+0x30`
+with `C+0x224` and `+0x2C(0)` at `0x00DA5146-0x00DA515F`. The successful
+`FUN_00DA4F80` continuation checks `C+0x08`, sets nested `+0x8C=5`, and
+invokes callback slots `+0x10` and `+0x14` with `C+0x1C0`; this is an
+admission callback state, not a world-ready identity. The false callback
+does not consume the three fields written above. Neither path statically
+compares a selected identity with a world identity or invalidates a ready
+result on disconnect, so the four-reader ceiling remains.
+
+A fresh FindFieldRefs scan found the three C-offset writes above only in
+`FUN_00DA64B0` among the `0x00DA` LobbyClient method region, and no direct
+read of those offsets in that region. The same numeric displacements occur in
+unrelated functions elsewhere, but the inspected references do not carry a
+receiver chain back to C. The fresh reference export recorded the
+LobbyClientMixin vtable initializer `0x01128318` only at the constructor
+`0x00DA7510` and destructor `0x00DA7220`; it recorded no additional
+pointer-level reference that closes a world identity reader. This bounds the
+response-copy edge while leaving the world identity reader and disconnect
+invalidator unresolved.
+
 Until those readers are traced, dismissing a prompt, observing an arbitrary
 actor, or seeing the loading form hidden is not success.
 
@@ -230,25 +413,38 @@ actor, or seeing the loading form hidden is not success.
 
 The remaining static questions are concrete:
 
-- Which `BootupManager` callback edge maps the raw selector and counters to
-  `TitlePhase`, `CharacterSelectionPhase`, `AccountSelectionPhase`, `Waiting`,
-  and `BootupDialog`?
-- Which writer supplies `*(C+0x14)` for
-  `R=*(*(O+0x08)+0x14)`, and what thread, generation, and cancellation event
-  own it?
-- Which reader turns the copied `0x000D` slots into a full name, world, stable
-  ID, and restriction state, and what proves exact-name uniqueness?
-- Which world-entry reader supplies a selected-identity match and ready state,
-  and which disconnect or error reader invalidates that match?
+1. **Bootup transition:** Which callback or virtual edge maps the raw selector
+   and counters to `TitlePhase`, `CharacterSelectionPhase`,
+   `AccountSelectionPhase`, `Waiting`, and `BootupDialog`, and which entry,
+   exit, or invalidation event owns each state?
+2. **Selection admission:** The GameLogin construction proves `O+0x08=C` and
+   `0x00DA5CCE` writes `C+0x14` from the incoming object's first dword. Which
+   normal UI/input path supplies that object, what validation admits the
+   operation, and what thread, generation, and cancellation event own it?
+   `R+0x0C` remains an untyped protocol value.
+3. **Roster identity:** The fresh direct-call slice closes `FUN_00DA79D0` as
+   a character-modify response reader. `FUN_00DA76B0` is the ordinary `0x000D`
+   parser, with `FUN_00DAA9F0` as its direct caller at `0x00DAAA7D`; the
+   full-identity reader remains unresolved. Which remaining virtual or
+   indirect reader turns the copied `0x000D` slots into a full name, world,
+   stable ID, and restriction state, and what proves exact-name uniqueness,
+   coherent ownership, and generation?
+4. **World readiness:** Which world-entry reader supplies a selected-identity
+   match and ready state, and which disconnect or error reader invalidates that
+   match?
+5. **Manual cancellation:** Which login-phase receiver consumes the routed
+   keyboard/controller event, and which cancel or focus/modal mutation changes
+   the pending selection or confirmation, including its receiver thread and
+   lifetime?
 
 ## Adoption map
 
 | Public source | Supported observation or boundary | Blocker |
 | --- | --- | --- |
 | [`character-list-record.md`](../structs/ffxiv/client/network/character-list-record.md) and [`lobby_character_list_projection.json`](../manifests/lobby_character_list_projection.json) | After a qualified s2c `0x000D` parser return, copy only the documented vector count, arrival order, and explicitly named keys | Full identity, restrictions, loading-versus-empty, owner thread, and generation are unresolved |
-| This page's native-owner and request-fragment sections | Observe c2s `0x0003`/s2c `0x000D`, lobby admission fragments, and c2s `0x0004`/s2c `0x000F` results with the stated ABI and failure callbacks | No typed title admission, selected-record writer, cancellation owner, or world-ready match is closed |
-| [`native-input-ui-boundaries.md`](native-input-ui-boundaries.md) | Observe routed input and borrowed focus tokens as same-thread intervention or invalidation clues | Login-phase recipient and modal ownership are unresolved |
-| This page's world-ready section | Require a fresh selected-identity plus matching world-ready observation before reporting success | No native world-ready identity chain is closed |
+| This page's native-owner and request-fragment sections | Observe c2s `0x0003`/s2c `0x000D`, lobby admission fragments, and c2s `0x0004`/s2c `0x000F` results with the stated ABI and failure callbacks; selector-1 phase creation and the constructed GameLogin `O+0x08=C`, `C+0x14` replacement writer are qualified | No typed title admission, normal UI/input admission source, validation, cancellation owner, or world-ready match is closed |
+| [`native-input-ui-boundaries.md`](native-input-ui-boundaries.md) | Observe the routed keyboard/pad dispatch edge and borrowed focus tokens as same-thread intervention or invalidation clues | Login-phase recipient, cancel mutation, and modal ownership are unresolved |
+| This page's world-ready section | Require a fresh selected-identity plus matching world-ready observation before reporting success; the response copy and callback ceiling is qualified | No native world-ready identity chain is closed |
 
 The launcher username remains an external account label until a native
 account-binding reader is resolved.
