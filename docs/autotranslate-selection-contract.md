@@ -1,6 +1,11 @@
 # FFXIV 1.23b auto-translate selection contract
 
-The retained static evidence covers UI selection and chat submission.
+The retained static evidence recovers selected Completion records, native
+category/key production and conditional chat submission paths. An admitted
+fixed control reaches the message field unchanged when the copied prefix
+includes it completely. Generic Lua argument packing, earlier pronoun
+replacement, a selected external CSV table/key and receive lookup remain
+qualified.
 [manifests/autotranslate_wire_format_study.json](../manifests/autotranslate_wire_format_study.json)
 contains the structured record.
 
@@ -51,37 +56,57 @@ the pinned resource bytes alone do not select a historical loaded instance.
 
 ## Recovered chat boundary
 
-FUN_006E91F0 dispatches a submitted string object by channel. Its group
-branch obtains a 32-bit-sized value from FUN_006C0590 for the selected Group
-entry and passes it through FUN_0075C1A0 after FUN_006C9690 accepts it. The
-static evidence does not identify that value as a fixedPhrase, item, or place
-token. This is a chat dispatch boundary, not a recovered auto-translate UI
-selection producer.
+AT-LUA-005 establishes that chatDirect passes `convertPronouns(input)` as
+the first explicit MyPlayer._chat argument. AT-CHAT-001 resolves the native
+submission source. Registration FUN_00743D80 binds `_chat` to thunk
+0x006DE7D0, whose MyPlayer slot 67 selects FUN_006E91F0. The native method
+extracts ExecuteParameters elements 0 and 1, then dispatches by mode. Tag 3
+returns the stored string value; alternate value conversions remain separate.
+These Lua and native observations do not prove every generic argument-packing
+path or actual execution.
 
-The three channel wrappers FUN_0075BEF0, FUN_0075BFD0, and
-FUN_0075C0B0 use markers 1, 2, and 0x19 on their owner path. Their
-alternate path obtains this+0x7F8 through FUN_004D75A0 and passes it to
-FUN_00C99E40. The retained function listing shows that
-FUN_00C99E40 preserves ECX as parser context, obtains the source pointer from
-its first stack argument through FUN_00445210, restores ECX for
-FUN_00C99B80, and that parser reads context offsets +0x8, +0xC, and
-+0x2C. The +0x7F8 value is therefore an unclassified parser/control
-context pointer; it is not proven to be an edit buffer.
+The extracted element-0 text is the third explicit stack argument to the
+channel wrappers. Say, shout and emote use FUN_0075BEF0, FUN_0075BFD0 and
+FUN_0075C0B0 with owner-path markers 1,2,0x19. Their owner path reaches
+FUN_004D8160. Tell reaches FUN_004D83E0 through FUN_0075C190, and selected
+group reaches FUN_004D82E0 through FUN_0075C1A0. Each owner calls
+FUN_00C99E40 with its TextCleaner at +0x7F8, that input string, a local
+output string and flags 0,0,1. Parser success supplies the local output to the
+packet builder. The conditional FUN_004CE760 call uses separate metadata and
+local strings; its inspected body does not establish a packet-string rewrite.
 
-For Map chat, FUN_004D8160 validates the caller-supplied string/control
-object and calls FUN_004E0320. The builder zero-fills a local 0x200-byte
-area, copies the source string length derived through FUN_004451F0, then
-copies a fixed 0x200-byte destination field into the Map record. It writes
-c2s opcode 0x0003 with record size 0x230 and sends through
-FUN_00DAE010. The source object is not proven to be a 0x200-byte buffer.
+AT-CHAT-002 joins the fixed control to this parser. FUN_004DBF40 constructs
+the cleaner through FUN_00C99F40 with table 0x01269998. Authenticated bytes
+`2E 02` map selector 0x2E to handler index 2, thunk 0x00C9A130. Its
+vtable+0xA8 jump resolves through the RTTI-authenticated TextCleaner table
+0x01108C74, slot 42, to FUN_00C99AF0.
 
-For World chat, FUN_004D82E0 reaches FUN_004DF6D0, which derives the source
-string length, copies into a local source area, and copies a fixed destination
-message field while writing c2s opcode 0x00C9 with record size 0x218.
-FUN_004D83E0 reaches FUN_004DF810, which derives and copies source text into
-local source areas before FUN_004E3750 copies a fixed source area into the
-destination message field for c2s opcode 0x00C8 with record size 0x230.
-Neither source object is proven to be a 0x200-byte buffer.
+That handler checks two numeric encodings and accepts only when their combined
+width equals the payload length. Short prefixes 01..D7 consume one byte;
+extended F0..FE use FUN_00CB2020. Zero, D8..EF and FF are rejected. On a
+nonzero result and a following 03, FUN_00C99B80 copies the original source
+from opening 02 through closing 03, byte for byte, into the output string.
+Plain segments have separate validation and transformations. This preserves
+admitted fixed controls without proving whole-message identity.
+
+The output string reaches FUN_004E0320 for Map opcode 0x0003, FUN_004DF810
+for World tell opcode 0x00C8, or FUN_004DF6D0 for selected-group opcode
+0x00C9. [The chat wire contract](../manifests/chat_wire_contract.json) owns
+World destination field layouts. Map uses record size 0x230 and a fixed
+0x200-byte message field. These destination sizes do not establish the source
+object's size. FUN_00447BC0 selects a counted prefix under a 0x200-byte cap,
+backing over trailing UTF-8 continuation bytes and checking the final character
+width. A complete admitted fixed control included in this copied prefix reaches
+the message field unchanged.
+AT-CHAT-003 records earlier pronoun replacement. Its marker-aware branch
+initially searches for 02 twice, then uses 02/03 for later intervals. Needle
+and marker positions determine each splice, so it does not establish universal
+fixed-control protection. Truncated controls, NUL termination and historical
+runtime state remain qualifications.
+
+The selected-group value from FUN_006C0590 is separate metadata. It is not
+identified as a fixedPhrase, item or place token. External family/table meaning
+and matching receive/render lookup remain unresolved.
 
 The native Completion reader, formatter, event consumers, document insertion,
 and document-to-getter reconstruction are recovered below. AT-ENTER-008 pins
@@ -99,9 +124,10 @@ factor to the same container's name map. AT-ENTER-022 separates element and
 Name-property mapping. Resource selection, actual metadata IDs/cache order,
 factor registration, property acceptance, name/cache selection and installed
 actor remain qualified. The
-submitted chat source -> FUN_006E91F0 and channel-wrapper joins remain unproved.
-The exact auto-translate UI origin and family/table identity of the selected
-Completion record are also unresolved.
+native submission and channel-wrapper source joins are in AT-CHAT-001/002.
+Generic Lua argument packing, earlier conversion and actual submitted bytes
+remain qualified. External family/table identity of the selected Completion
+record remains unresolved.
 
 Complete ownership, release, invalidation, and serialization of retained
 UI/editor state remain unresolved.
@@ -698,14 +724,15 @@ observed UI selection, table join, or retail message:
 | `<fixed(1,256)>` | `02 2E 04 02 F1 01 03` |
 
 The argument values do not identify a table or row. Negative numeric conversion,
-macro expression branches, malformed/truncated controls, exact selected UI
-vector origin, and chat wire serialization remain unresolved. This internal
-contract does not justify a wire decoder.
+macro expression branches and malformed/truncated controls remain qualified.
+AT-COMP-010 joins the selected vector, and AT-CHAT-002 joins admitted fixed
+controls to the native message source. External table meaning and complete
+receive/render behavior remain unresolved, so a full wire decoder is not justified.
 
 FUN_00C9D550 reaches candidate preparation at FUN_00C9D0D0, which packs
-`(index << 7) | 0x7E` into a Completion record. The retained exports do not
-join that prepared vector to the handler's selected vector or identify the
-index as a fixedPhrase, item, place, or wire key.
+`(index << 7) | 0x7E` into a Completion record. AT-COMP-010 joins that
+prepared vector to the handler's selected vector. Its special -2 low marker
+does not identify the index as a fixedPhrase, item, place or wire key.
 
 AT-COMP-002 resolves FUN_0066AB10's call at 0x0066ABA8 to CompletionModule
 slot 5. Its instruction listing preserves the two local pointers, incoming
@@ -741,8 +768,8 @@ through FUN_0066DAE0, alongside insertion position and length. Thus the
 formatted control and editor text have separate storage. FUN_0066AB10 clears
 the +0x60 temporary after the event call at 0x0066ACDE. AT-COMP-008 recovers
 retrieval of those stored controls through document-to-getter reconstruction.
-The retained edge does not join the getter to FUN_006E91F0 or Map/World packet
-source objects.
+The conditional Enter path is AT-ENTER-032. AT-CHAT-001/002 recover the
+later native parser/builder sources under separate conversion and state guards.
 
 AT-COMP-008 resolves FUN_0066B0E0, called by FUN_0066C410 with the
 CompletionDocument at TextBox+0x1A70 as ECX. It copies source text when the
@@ -762,7 +789,8 @@ authenticated as PressEnter. These routes do not identify every indirect
 caller or join the reconstructed text to packet submission. AT-ENTER-009
 recovers the indirect Text2 read for the declared Enter action. Loaded-child,
 namespace and actor selection, remaining cache/source-state writers, selected
-record family/key and Map/World source-object joins remain open static work.
+external record family/key and generic Lua argument packing remain qualified.
+AT-CHAT-001/002 recover the native Map/World sources and admitted controls.
 
 AT-COMP-003 authenticates CompletionDocument's 23-slot vtable at 0x00FC1744
 and its FUN_0066BA70 factory. The RaptureTextBox constructor wraps that
@@ -790,26 +818,77 @@ follows:
 | Locale | No locale dispatch or locale-specific token field is proven. | Unresolved |
 
 This grammar is an independent control-bearing text observation. The static
-exports do not prove that 0x02, 0x03, selector values, or extended lengths
-are auto-translate wire fields.
+generic parser alone does not assign external table meaning to its controls.
+AT-CHAT-002 joins admitted selector-0x2E controls to the copied message prefix.
+
+## Selected candidate production
+
+AT-COMP-010 joins the prepared records to RaptureTextBox selection. Here P is
+the complete CompletionModule at container+0x664 and B is the complete
+RaptureTextBox. FUN_00C9D0D0 appends `(index << 7) | 0x7E` to P+0x38 and
+inserts an associated tuple into P+0x58. Its low marker sign-extends to -2,
+so this special entry returns the upper value rather than a fixed expression.
+
+The ordinary producer FUN_00C9C550 maps P+0x4C's signed byte through
+FUN_00C9DAE0 to a category object. Direct FUN_00CB3C60 reads category+0x88.
+The producer packs `(upper argument << 7) | (category byte & 0x7F)` into a
+tree entry. Its virtual call at +0x10 only gates insertion. AT-ID-050
+authenticates the CategoryData and CategoryDataCache RTTI tables at
+0x0110C7F8 and 0x0110C818, with slot 4 pointing to FUN_00CB4060 and
+FUN_00CB4500. Those bodies use the same upper argument as their row/cache
+key. This is an internal native key argument; its external table meaning
+requires a separate population join.
+
+FUN_00C9D1C0 returns P+0x38's element-zero pointer for an empty filter. For
+a nonempty filter it copies matching P+0x58 node+0x14 packed dwords into
+P+0x74, then returns that vector's element-zero pointer. FUN_0066A730
+writes the selected pointer through B+0x1A60. FUN_0066AB10 passes it and the
+selected index to FUN_00C9BC40. The byte map at P+0x4C is distinct from this
+dword vector.
+
+AT-COMP-011 identifies the provider in this constructed path as ExcelModule.
+The application constructor forwards it through MainModule and the element
+container to CompletionModule P+0xC. AT-ID-054 authenticates its table at
+0x01108C00. Its guarded slot-1 lookup returns a populated sheet from map
+node+0x60. The inspected population path constructs an ExcelSheet through
+FUN_00CB04B0, whose table 0x0110C6D4 is authenticated by AT-ID-055.
+
+The xtx/_fixedPhrase path reaches this lookup. D550 initializes its upper
+argument through ExcelSheet slot +0x20, FUN_00CAF310, reading byte zero at
+sheet+0xC. Its row call at +0x30, FUN_00CAF2A0, forwards the iteration index
+and upper-argument output address to sheet+0x40 backend slot +0x1C. On the
+ready path, FUN_00CB0140 constructs CacheAll<ExcelEntry*> through
+FUN_00CB16D0; AT-ID-056 authenticates its table at 0x0110C670. Slot +0x1C,
+FUN_00CB1AF0, writes FUN_00CB1870(index) through that output address. The
+mapper returns the original index for an empty range vector, otherwise the
+containing range's base plus the remaining index. Thus an admitted row replaces
+the initial byte with the mapped native key used by C9C550. The row supplies
+field 0 minus one for the separate category byte.
+
+This recovers native key production. Resource descriptors in excluded unbacked
+globals do not authenticate loaded attribute values. A selected backing-file
+row, external CSV table/key and locale remain qualified.
 
 ## Selection-family boundary
 
 The fixedPhrase table path
 FUN_004DAA10 -> FUN_004DA680 -> FUN_00447260("xtx/_fixedPhrase") ->
 FUN_00C9D550 reaches Completion candidate preparation at FUN_00C9D0D0. That
-candidate vector is not joined to the selected RaptureTextBox vector, Map or World
-senders, or generic renderer FUN_007906C0 in the retained target set. The
-receive-side lookup from a token to a fixedPhrase row, and the choice between
-rendering and forwarding, remain unresolved.
+candidate vector and ordinary tree entries join the selected RaptureTextBox
+vector through AT-COMP-010. External family/table-key identity and the
+receive-side lookup through generic renderer FUN_007906C0 remain unresolved.
+The choice between rendering and forwarding is not established by the selected
+record join.
 
 The producer classifications are therefore:
 
-- fixedPhrase: unresolved lookup and serialization producer;
+- fixedPhrase: native candidate and conditional send paths recovered by
+  AT-COMP-010/011 and AT-CHAT-001/002; selected external table/key unresolved;
 - item selection: unresolved lookup and serialization producer;
 - place selection: unresolved lookup and serialization producer;
 - unsupported families: no family is classified unsupported by this pass;
-- row key versus field 0/category: no wire field join is proven.
+- row key versus field 0/category: the native upper key argument and category
+  byte are separated by AT-COMP-010; external table identity remains qualified.
 
 The fixedPhrase CSV row key, field 0 values, display categories, and table
 resource identity remain table evidence only. No decoder should be implemented
@@ -826,8 +905,8 @@ every requested section with no exporter error. The exact callback-string
 export reports COMPLETE with four queries, zero defined string matches, and
 zero references. The authenticated Lua source hashes and line spans, the
 RaptureTextBox method-pointer mapping, and the native dispatcher candidate are
-retained in the manifest; the document getter is recovered without a
-packet-source join.
+retained in the manifest. AT-COMP-010 joins selected-record production and
+AT-CHAT-001/002 recover conditional native packet-source joins.
 
 The Completion recipes AT-GH-014 through AT-GH-024 retain exporter revisions,
 script hashes, sanitized reproduction invocations, and output hashes. The

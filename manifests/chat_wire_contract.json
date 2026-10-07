@@ -51,7 +51,7 @@
           "name": "target_name",
           "type": "char[32]",
           "producer": "client",
-          "bounds": "At most 31 content bytes plus NUL."
+          "bounds": "At most 32 copied content bytes; a NUL is not guaranteed when the field is full."
         },
         {
           "offset": "0x028",
@@ -59,7 +59,7 @@
           "name": "message",
           "type": "char[512]",
           "producer": "client",
-          "bounds": "At most 511 content bytes plus NUL."
+          "bounds": "At most 512 copied content bytes; a NUL is not guaranteed when the field is full."
         }
       ],
       "path": [
@@ -159,7 +159,7 @@
           "name": "message",
           "type": "char[512]",
           "producer": "client",
-          "bounds": "At most 511 content bytes plus NUL."
+          "bounds": "At most 512 copied content bytes; a NUL is not guaranteed when the field is full."
         },
         {
           "offset": "0x20C",
@@ -253,9 +253,26 @@
   "stringContract": {
     "copyFunction": "FUN_00447BC0",
     "copyFunctionVa": "0x00447BC0",
-    "behavior": "The bounded copy reserves one byte for NUL and backs over UTF-8 continuation bytes so truncation does not split a multibyte sequence.",
+    "behavior": "FUN_00447BC0 caps content at min(requested count, source count minus one), where the source count includes its NUL. It backs over trailing UTF-8 continuation bytes and uses FUN_00445850 to include a final character only when its width ends at the cap. The temporary string is NUL-terminated, but the fixed packet field can contain the full requested content count without a NUL.",
     "limit": "This is bounded-copy behavior, not strict Unicode validation.",
-    "locator": "xivl-decomp:asm/ffxivgame/00047bc0_FUN_00447bc0.s#0x00447BC4-0x00447C4E"
+    "evidenceReference": "autotranslate_wire_format_study.json:AT-CHAT-002",
+    "sourceExports": [
+      {
+        "path": "tools/ghidra/logs/autotranslate-family-chat-e67c219a-excel-copy-listing.txt",
+        "bytes": 5149,
+        "sha256": "2511CD772A78408E622001A0C01FDB9C561853E381E236E093A3788B4285302A"
+      },
+      {
+        "path": "tools/ghidra/logs/autotranslate-family-chat-e67c219a-excel-population-prefix-listing.txt",
+        "bytes": 12594,
+        "sha256": "5E32CDE29A3F85D90549A89FA61A4E3CAB25F0CF4B0BFEF8F80114BDD0E73951"
+      },
+      {
+        "path": "tools/ghidra/logs/autotranslate-family-chat-e67c219a-packet-copy-provider-listing.txt",
+        "bytes": 12607,
+        "sha256": "8C1AB352E63AABBEA63587BB7131E7F3B79616931709891CF1E54B3B544BC9F3"
+      }
+    ]
   },
   "validation": {
     "emptyTellTarget": "Rejected before send when FUN_00445E50 returns zero.",
