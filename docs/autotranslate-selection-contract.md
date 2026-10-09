@@ -1240,14 +1240,43 @@ The authenticated initializer at F2C990 constructs DAT_013773F0 from the
 literal `index` at 0x0110C524 through 00447260. This identifies the child-index
 branch without treating excluded global memory as an observed value. The pinned
 placeName definition lists first indexes ja=0, en=1, de=4, fr=6 and chs=8.
-When matching index children populate the sheet and no later SHEET/DEF override
-is admitted, those indexes supply the selected fields. CB04B0 calls CAFA80 after
-its child loop, so an admitted override can replace the index default.
-The definition has no `SHEET` parameter marker; its English `NOUN` parameter's
-`DEF;3` alone does not establish that override. The remaining static edge is
-CAFA80's sheet slot +0x24 parameter-map query and returned SHEET record vector.
-Without that join, the first-index association remains conditional on no
-override. Actual delivery, locale and later state are separate limits.
+CB04B0 calls CAFA80 after its child loop, allowing an admitted override to
+replace the index default. AT-COMP-021 resolves that query for the pinned
+definition's parameter bytes. For a successfully constructed sheet with
+matching index children and parameters, the installed table and initial fallback
+state retained, those first indexes remain selected on constructor return.
+Actual delivery, selected locale and subsequent mutation remain conditions.
+
+The installed ExcelSheet table 0x0110C6D4 has CAF7B0 at slot +0x24, cell
+0x0110C6F8. The constructor initializes an empty parameter map at sheet+0x20.
+CAFA80 splits its parameter string on `[]`, then each group on `|`, and inserts
+only groups yielding two strings. The first string becomes the node+0xC key;
+the second becomes the node+0x60 value. The insertion path
+913B20 -> 913600 -> 913240 -> DA8390 copies these two 0x54-byte objects.
+
+CAF7B0 consumes one key argument and returns the matching value string object
+or empty object 0x01266B10. Both exits use RET 4. At CAFD6D, CAFA80 has already
+pushed the output vector and semicolon delimiter below the `SHEET` key. The
+query consumes only the key; CAFD6F pushes its returned source object, and
+0044F770 separately splits that string into the vector. The query's return
+is therefore a string object, with three cdecl arguments belonging to the
+following splitter despite its incomplete decompiler signature.
+
+CB0B90 -> 9130A0 compares node keys through 446EF0 -> 445B70. The comparator
+uses the smaller stored byte count and signed byte differences, with no case
+folding on this path. It distinguishes `NOUN` from `SHEET` at their first byte;
+this does not establish general full-key equality. The English parameter
+`[NOUN|SGL;2/PLR;2/VOW;=0/CNT;=0/DEF;3]` inserts one `NOUN` pair. Its `DEF;3`
+is value content, and the other locale parameter attributes are absent. With
+these inputs alone in the new map, `SHEET` lookup misses.
+
+The fallback object's initial buffer is a NUL byte, its stored byte count is 1
+and its cached character count is 0. For that empty source, 446B10 returns -1
+before 0044F770 can append any records. CAFA80 clears its temporary vector before
+the query, so the empty-result path fails the nonempty SHEET guard and never
+reaches the override store at CAFE14. The English noun parameter therefore
+does not select field 3 on this constructor-local path. This is a bounded
+parameter/field association, without a historical instance or rendered output.
 
 TextModule construction also establishes a finite callback association.
 CB33A0 creates 0x37 callback slots with zero fill through
@@ -1536,3 +1565,12 @@ thunk, callback argument/return, recursive string restore, index initializer and
 call-order spans, plus the pinned definition's ordered index children. These
 support AT-COMP-020's conditional field and callback association. Completed
 producer, selection, formatter, category-admission and chat traces remain inputs.
+
+AT-GH-311..322 pin six listing/decompilation pairs with 19 exact-entry targets
+per modality and COMPLETE listings. AT-ID-073 authenticates each read-only
+batch; AT-ID-074 independently verifies the query cell, complete bounded raw
+instruction spans, delimiter/key literals, empty fallback object and pinned
+definition. AT-COMP-021 uses the retained constructor and CAFA80 callers to
+resolve the parameter query and guarded final first-index fields. Previous
+records retain their evidence scope; actual delivery and subsequent state remain
+qualified.
