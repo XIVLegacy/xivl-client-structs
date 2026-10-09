@@ -865,9 +865,45 @@ containing range's base plus the remaining index. Thus an admitted row replaces
 the initial byte with the mapped native key used by C9C550. The row supplies
 field 0 minus one for the separate category byte.
 
-This recovers native key production. Resource descriptors in excluded unbacked
-globals do not authenticate loaded attribute values. A selected backing-file
-row, external CSV table/key and locale remain qualified.
+This recovers native key production. AT-COMP-012 owns the cache construction
+and population joins below. A selected backing-file row, external CSV table/key
+and locale remain qualified.
+
+## Native cache loading
+
+AT-COMP-012 joins ExcelSubSheet construction to conditional row completion and
+CacheAll installation. The constructor FUN_00CC3330 obtains the native range
+values at subSheet+0x14/+0x1C from descriptor calls. Those values supply the
+AT-COMP-011 range pairs. They are distinct from the payload words later copied
+by FUN_00CC3590 into the sheet and subSheet vectors. Neither source is joined
+to a named fixedPhrase enable resource or an enabled-row ordinal.
+
+The stored provider at subSheet+4 supplies resource requests. The authenticated
+ExcelSubSheet slot +0x4 dispatches successful completions through
+FUN_00CC39F0. Its bulk handler FUN_00CC30C0 constructs rows from a positive
+fixed stride or retained offset spans, skipping equal adjacent offsets. It
+submits each constructed row under subSheet+0x14 plus the block slot index.
+The indexed handler FUN_00CC3240 constructs a missing row from one payload.
+Both use backend slot +0xC, authenticated as FUN_00CB1930, to install the row
+pointer in CacheAll storage. FUN_00C9A6A0 consumes fields according to the
+parent sheet's type bytes and sets the row readiness byte. These are sheet-row
+decoding observations, not a chat control decoder.
+
+The independent backing study is
+`xivl-client-data:manifests/fixed_phrase_backing_rows.json` at revision
+`5748ee862ae7610e513afb9a2587fd8f7c7a634f`. AT-COMP-012 pins its digest and
+locators. Its sparse row keys, enabled ordinals and merged CSV iteration
+indices remain separate from this native block slot index.
+
+The first missing static join is from the constructor descriptor values and
+the selected provider results to the named definition/data/offset/enable
+resources. In particular, excluded globals 0x013778A0, 0x013778F8,
+0x01377950 and 0x013779A8 do not authenticate their loaded names or values;
+the provider calls at subSheet+4 slots +0x4/+0x8 do not bind their returned
+payloads to those resources. This prevents assigning CSV row identity to the
+populated native cache. The existing locale gates also do not identify an
+actual loaded locale or selected instance. Item/place producers and matching
+receive/render lookup remain separate missing joins.
 
 ## Selection-family boundary
 
@@ -1059,3 +1095,11 @@ worker project; AT-ID-044 authenticates the primary project. AT-ID-046 pins
 the bounded untyped bodies, descriptor slots, property array and TextExtract
 literal. The exports establish positive static joins under the recorded
 branch, receiver and retention guards.
+
+AT-GH-231 through AT-GH-249 and fresh identity AT-ID-057 support AT-COMP-012.
+The exports cover 32 exact-entry decompilation targets and 32 listing targets;
+each listing reports COMPLETE. The reference export verifies three recorded
+reference targets. AT-ID-058 authenticates the selected ExcelSubSheet,
+CacheData and CacheAll cells and their raw RTTI identities. The record claims
+the row writer's call and store, without promoting the decompiler's full
+FUN_00CB17C0 inverse-map or bounds behavior from its shorter retained listing.
