@@ -1199,8 +1199,9 @@ stack base+0x64 after accounting for the preceding key push, so the constructed
 output reaches ordinary Completion admission. The nonzero alternative uses
 the same constructed base+0xB8 output for CA00C0 and C9C670, without testing
 CA00C0's return. CA00C0 selects a typed source/conversion path or the
-CB8AF0 backend. The indirect backend/output methods and localized result
-remain qualified; that alternative is separate from row 2104's mode zero.
+CB8AF0 backend. AT-COMP-022 below resolves its concrete provider and output
+dispatch. The localized result remains qualified; that alternative is separate
+from row 2104's mode zero.
 
 C9C670 applies readiness, nonempty-text, leading-period and literal guards,
 then calls the resolved category's +0x10 admission method. CategoryDataCache
@@ -1219,8 +1220,8 @@ selection, formatter and conditional chat joins.
 
 AT-COMP-020 below owns the selected-field writers and finite mode-zero
 callback association. Delivered payloads, retained state and actual
-locale/selection remain conditional. CB8AF0's selected backend/output
-implementations remain a separate static boundary. This path does not establish
+locale/selection remain conditional. AT-COMP-022 owns CB8AF0's concrete methods
+and guarded English destination write. This path does not establish
 a receive/render resolver, unrestricted Lua/pronoun preservation or a unique
 zone from a place key.
 
@@ -1306,6 +1307,57 @@ every expression, select a branch for an observed locale or prove arbitrary
 malformed-input safety. The completed mode-zero handoff requires a positive
 parser result before ordinary Completion admission; it does not test generated
 output length.
+
+## Alternative noun backend
+
+AT-COMP-022 resolves CB8AF0's provider and concrete output dispatch. CA0390
+constructs Localize at T+0x34 through CB8DE0 with its supplied Excel provider.
+The member stores that provider at +4, initializes its attributive-sheet cache
+at +8 to null and creates an empty map at +0xC. On a cache miss, CB8AF0 requires
+a source sheet and CB89A0's successful `xtx/attributive` lookup. ExcelModule
+slot +0x18 resolves to C98150, which returns receiver+0x14; the caller reads
+the type word there. The actual word is not observed.
+
+The authenticated type switch and installed output cells are:
+
+| Type word | Constructor / class | Table | Output slot +4 |
+| --- | --- | --- | --- |
+| 1 | CC5A50 / NounEn | 0x0110DD2C | CC5860 |
+| 2 | CC5460 / NounDe | 0x0110DD14 | CC5130 |
+| 3 | CC4D00 / NounFr | 0x0110DCEC | CC4AA0 |
+| 4 or 5 | CC47B0 / NounCh | 0x0110DCD4 | CC4630 |
+| Other unsigned values | CC4380 / NounJa | 0x0110DCBC | CC41F0 |
+
+The constructors retain the target and attributive sheets at noun+4/+8. They
+query the target's `NOUN` parameter and split its records on `/`. CC6930 uses
+the finite labels SET, SGL, SGG, PLR, PLG, GEN, VOW, CNT and DEF with `;`
+components. Literal initializer inputs do not prove the runtime label objects
+or a complete token grammar. Allocation, valid configuration selectors and
+retained sheet/provider state remain conditions.
+
+Both cached and freshly constructed objects receive a source object first and
+a destination string second. English output CC5860 looks up source+0x58 in
+the target sheet and source+0x60 in the attributive sheet. ExcelSheet slot
++0x18 resolves to CAF760; its ready branch calls backend slot +0x18 and admits
+only nonnull, ready row data. The known CacheAll target is CB1AD0, which calls
+the qualified CB17C0 inverse, loads the row-array pointer at backend+8 and adds
+the returned index times 8.
+This does not extend the completed inverse/bounds evidence or the pending branch.
+
+For admitted rows and valid configuration, the English method writes its second
+argument through 00447450. Its nonzero DEF branch copies the configured target
+field; its zero branch copies an attributive field and calls the 004488F0 thunk
+for the target field. CC6910 interprets negative selectors as `-1-selector`;
+nonnegative selectors read a signed byte at C9A480's returned field-slot address.
+CC5860 also calls 00447ED0 with a count-derived temporary and needle object
+0x01377E00, then returns a guarded success byte in AL. The needle initializer
+and matching attributive payload/configuration are still missing, so this
+recovers destination ownership without reproducing complete localized output.
+Excluded global bytes are not treated as runtime string values.
+
+This alternative does not change English descriptor row 2104's mode-zero
+path. Actual loaded type/locale, selection, final output and receive/render
+lookup remain qualified; no semantic zone/item resolver follows.
 
 ## Selection-family boundary
 
@@ -1574,3 +1626,10 @@ definition. AT-COMP-021 uses the retained constructor and CAFA80 callers to
 resolve the parameter query and guarded final first-index fields. Previous
 records retain their evidence scope; actual delivery and subsequent state remain
 qualified.
+
+AT-GH-323..330 pin four listing/decompilation pairs with 19 exact-entry targets
+per modality and COMPLETE listings. AT-ID-075 authenticates each read-only
+batch. AT-ID-076 independently authenticates selected instruction operands,
+function intervals, retained caller spans, dispatch/virtual cells, raw RTTI and
+finite parameter literals. AT-COMP-022 resolves the alternative noun methods
+under its recorded allocation, loaded-sheet and valid-selector guards.
