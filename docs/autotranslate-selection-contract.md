@@ -895,10 +895,10 @@ The independent backing study is
 locators. Its sparse row keys, enabled ordinals and merged CSV iteration
 indices remain separate from this native block slot index.
 
-AT-COMP-013 identifies the static descriptor names and the concrete request
-owner below. Its `missingEvidence` owns the remaining association between
-selected metadata/request inputs and named backing resources. That gap
-prevents assigning external CSV row identity to the populated native cache.
+AT-COMP-013 identifies the static descriptor names and concrete request
+owner below. AT-COMP-014 joins conditional named metadata/request keys and
+pathname producers; its `missingEvidence` owns the remaining source, payload
+and row-identity boundaries.
 
 ## Native descriptor and resource ownership
 
@@ -937,13 +937,51 @@ pathname method also uses that prefix and supplies numeric key 0xFFFFFFFF on
 a miss. Static key preservation does not establish the selected flag, prefix,
 table, actual file-open result or payload identity.
 
-Selected sheet/child metadata and loaded pathname inputs still need an
-association with the authenticated fixedPhrase definition/data/offset/enable
-resources.
-Static name construction and provider type do not establish that association
-or an actual historical locale/instance. Native-key-to-CSV equality,
-item/place producers, generic Lua packing, earlier pronoun inputs and
-receive/render lookup retain their separate qualifications.
+## Native metadata and pathname inputs
+
+AT-COMP-014 joins the infofile request to the source callback. C98580 queries
+the infofile descriptor and requests either a numeric ID or pathname through
+ResourceModule. Both branches supply ExcelModule+4 as the ResourceEvent
+receiver. On success, C98A90 obtains the source buffer and length, transforms
+and parses XML, queries sheet descendants and passes them to C98580. Actual
+request completion and source bytes remain conditions.
+
+AT-ID-062 independently verifies the fixedPhrase metadata against the pinned
+backing report. Master 0x01030000 names xtx/_fixedPhrase with infofile
+0x0B4508E6. The definition declares client/all sheets for five locales, four
+types u32/str/str/str and one block per locale with begin 100 and count 2926.
+Its English block carries data 0x0B4508EA, enable 0x0B4508EB and offset
+0x0B4508EC. The other locale tuples remain in AT-ID-062.
+
+If C98580 receives that authenticated master DOM and its infofile value,
+the numeric branch requests definition 0x0B4508E6. If the authenticated
+definition supplies the English data child and the client/lang gates admit
+it, CC3330 stores 0x0B4508EA at subSheet+0xC; CC3730 passes it unchanged to
+the numeric resource method. These are conditional resource associations.
+The definition ID, data ID and mapped Completion row key are distinct.
+
+The initial request members expose caller inputs. ExcelModule slot 2,
+FUN_00C98110, requests its first explicit argument as a pathname; slot 3,
+FUN_00C980D0, requests it as a numeric key. Slot 5, FUN_00C983E0, updates
+language from its pointer argument and can request stored module+0xC or
+delegate to FUN_00C98010's pathname setup. The missing source edge is the
+upstream caller or stored-key writer that associates those request inputs
+and successful callback bytes with authenticated master 0x01030000.
+
+Pathname state also has identified producers. FUN_004B2D30 copies its supplied
+prefix into 0x0132CB98. B2DF0 supplies it from configuration/owner inputs;
+one configuration branch writes mode 1. Its alternate branch calls
+FUN_0044B690 with a derived filename and writes mode 0 after successful table
+loading. That loader opens the supplied file and populates table 0x0132CB8C.
+AT-ID-062 separately pins the raw initial mode byte and the formatted DAT
+literal. The actual configuration, retained prefix/mode, table contents and
+delivered resource payloads remain unobserved.
+
+AT-COMP-014's `missingEvidence` owns the remaining source/payload, sparse
+ordering and selection boundaries. Enable ordinals, native block slots and
+merged CSV iteration remain separate; native-key-to-CSV equality is unproved.
+Item/place producers, generic Lua packing, earlier pronoun inputs and
+receive/render lookup retain their existing qualifications.
 
 ## Selection-family boundary
 
@@ -1150,3 +1188,10 @@ pathname derivation. AT-ID-060 independently pins the raw initializer/literal
 inputs, length sentinel, ResourceModule RTTI and
 selected request cells. These static joins preserve the selected-input and
 runtime limits in the record.
+
+AT-GH-260 through AT-GH-272 and fresh identity AT-ID-061 support AT-COMP-014.
+The paired exports cover 19 exact-entry targets per modality; each listing
+reports COMPLETE. The reference export verifies seven recorded address targets.
+AT-ID-062 independently authenticates the raw mode/format, ExcelModule table
+cells and selected master/locale metadata. Recorded-reference coverage and
+table membership do not classify uninspected methods as absent producers.
