@@ -964,9 +964,9 @@ The initial request members expose caller inputs. ExcelModule slot 2,
 FUN_00C98110, requests its first explicit argument as a pathname; slot 3,
 FUN_00C980D0, requests it as a numeric key. Slot 5, FUN_00C983E0, updates
 language from its pointer argument and can request stored module+0xC or
-delegate to FUN_00C98010's pathname setup. The missing source edge is the
-upstream caller or stored-key writer that associates those request inputs
-and successful callback bytes with authenticated master 0x01030000.
+delegate to FUN_00C98010's pathname setup. AT-COMP-015 identifies the
+guarded application-owner master input and its stored numeric key below;
+other caller inputs and actual delivered source bytes remain qualified.
 
 Pathname state also has identified producers. FUN_004B2D30 copies its supplied
 prefix into 0x0132CB98. B2DF0 supplies it from configuration/owner inputs;
@@ -977,11 +977,45 @@ AT-ID-062 separately pins the raw initial mode byte and the formatted DAT
 literal. The actual configuration, retained prefix/mode, table contents and
 delivered resource payloads remain unobserved.
 
-AT-COMP-014's `missingEvidence` owns the remaining source/payload, sparse
-ordering and selection boundaries. Enable ordinals, native block slots and
+AT-COMP-015's `missingEvidence` owns the remaining payload, sparse ordering
+and selection boundaries. Enable ordinals, native block slots and
 merged CSV iteration remain separate; native-key-to-CSV equality is unproved.
 Item/place producers, generic Lua packing, earlier pronoun inputs and
 receive/render lookup retain their existing qualifications.
+
+## Native master-source input
+
+AT-COMP-015 identifies the guarded application-owner input to the initial
+master request. In B2DF0, FUN_00443E40(2,8,0) supplies a configuration value;
+the unsigned condition `(value - 4) > 2` selects resource key 0x01030000.
+The other branch supplies 0x27950000, whose resource identity is not assigned
+here. The exact predicate is recovered; its executed configuration is unobserved.
+
+The retained stack trace joins the selected key to C97FC0's first explicit
+argument. Its two occurrences of ESP+0x30 refer to the same logical local
+because both occur with two arguments on the stack. The caller supplies
+hidden ECX from owner+0x58 and explicit arguments `(key, 0, pointer to
+owner+0x38, 0)`. Its separate owner+0x5C store precedes loading the key.
+AT-ID-064 independently authenticates the guard, literal stores and call span.
+
+C97FC0 stores the key at ExcelModule+0xC, mode 0 at +0x38, state 0 at +0x3C
+and the dereferenced owner language at +0x14. It submits that same key through
+ResourceModule numeric slot +0x4, with the adjusted event receiver module+4.
+AT-COMP-013 identifies the concrete numeric method as C99130. The stored key
+also supplies C983E0's conditional language-refresh request.
+
+Under this owner branch, the initial request therefore names master
+0x01030000. If formatted-DAT mode is admitted, its key bytes derive
+data/01/03/00/00.DAT combined with the supplied prefix. AT-ID-064 verifies the
+preserved installed master against the pinned backing report. If that source
+reaches the successful C98A90 callback, AT-COMP-014's metadata path requests
+fixedPhrase definition 0x0B4508E6 and admitted locale resources.
+
+Actual path selection, delivered payloads and historical instance/locale remain
+qualified. The next static association is authenticated enable/offset ordering
+through native range vectors and CacheAll key/storage mapping to external CSV
+row identity. AT-COMP-015's `missingEvidence` owns those distinctions; semantic
+control resolution remains blocked.
 
 ## Selection-family boundary
 
@@ -1195,3 +1229,10 @@ reports COMPLETE. The reference export verifies seven recorded address targets.
 AT-ID-062 independently authenticates the raw mode/format, ExcelModule table
 cells and selected master/locale metadata. Recorded-reference coverage and
 table membership do not classify uninspected methods as absent producers.
+
+AT-GH-273/274 and fresh identity AT-ID-063 authenticate the exact C97FC0 entry
+and paired complete listing. The retained AT-GH-136/137 owner exports supply
+its guarded caller input and stack relationship. AT-ID-064 independently pins
+the raw configuration guard, both immediate stores, final call span and the
+preserved master file's size/hash. This recovers a conditional source request;
+actual callback payload and selected locale remain qualified.
