@@ -1057,10 +1057,78 @@ is separate from each anchor's sparse enable-range base. Under this cache
 path, the admitted D550 iteration index is the storage/block slot.
 
 An arbitrary selected control still needs an external family association.
-Actual delivered payloads, retained cache state, selected locale and item/place
-producers remain qualified. Generic Lua packing, earlier pronoun inputs and
+Actual delivered payloads, retained cache state and selected locale remain
+qualified. AT-COMP-017 recovers the conditional place producer below; item
+production remains separate. Generic Lua packing, earlier pronoun inputs and
 receive/render lookup retain their separate limits. No complete semantic
 control resolver follows from this block association.
+
+## Place descriptor and target-key production
+
+AT-COMP-017 follows the data-driven place descriptor into ordinary Completion
+records. In the authenticated English fixedPhrase backing report, row 2104
+field 1 names `xtx/placeName` with ranges and suffix `#200`. When that row is
+supplied, D550 reads field 1 through C9A480 and parses it through C9CA50.
+The nonzero-suffix branch constructs CategoryDataCache through CB4420, which
+stores the suffix at category+0x8C. This conditional source association does
+not establish the delivered placeName payload or historical locale.
+
+The descriptor candidate and target key have distinct roles:
+
+| Value | Production | Consumer |
+| --- | --- | --- |
+| Descriptor category index | D550 subtracts one from field 0 and passes it to C9D0D0. | The special candidate `((field0-1)<<7)|0x7E` makes C9BC40 return its upper category index without constructing a fixed expression. |
+| Target native key | Ready CacheAll CB1990 supplies the ordinal, or `pair.base + withinPairSlot` for a ranged backend. | C9DC80 forwards it as C9C670's third explicit argument for ordinary record production. |
+
+C9DB10 counts the 0x58-byte descriptor vector, rather than external place rows.
+For complete CompletionModule P, C9CFA0 installs primary table 0x01108E40 at
+P, secondary table 0x01108E2C at P+4 and third table 0x01108E20 at P+8. The
+ExcelModule pointer is at P+0xC. C9C190 is primary slot 1; C9C0A0 is secondary
+slot 1, whose adjusted this+8 reaches that same provider pointer.
+
+On P+0x14 readiness, C9C190 walks category objects and bounds each +0x89
+descriptor index against the vector at P+0xDC. C9DB30 selects the descriptor
+at `[P+0xE0] + index*0x58`. ExcelModule slot 1, C981D0, conditionally returns
+the populated ExcelSheet from its map node+0x60. Sheet slot +0x1C, CAF300,
+reads sheet+0xB; slot +0x34, CAF2F0, dispatches through sheet+0x40 backend
+slot +0x20. C9C190 supplies a temporary CompletionCacheFunc and the descriptor
+context to that iteration.
+
+For the recovered ready CacheAll backend, slot +0x20 selects CB1990. With
+range pairs, its row pointer comes from
+`storageBase + 8*(priorCounts + withinPairSlot) + 4`. It supplies the separate
+native key `pair.base + withinPairSlot` and forwards the descriptor context.
+With no pairs, it uses each ordinal and corresponding storage pointer.
+
+CompletionCacheFunc slot +4 selects C9DC80. A nonnull row pointer, the
+sheet-selected field and its guarded TextModule branch supply text to primary
+slot +8, C9C670. The callback's first explicit native-key argument becomes
+C9C670's third explicit argument. The listing at C9C764 reads `[ESP+0x34]`
+with ESP at entry-0x28, so this is entry+0xC. C9C768 shifts that key by seven
+and combines it with category+0x88 masked to seven bits before C9E650 inserts
+the packed ordinary record into P+0x58. The raw stack relationship governs
+this key assignment where the decompiler's parameter label differs.
+
+C9C670 also requires readiness, admitted text and category admission. It
+resolves the category through the bounded byte-map accessor 006CE260 and
+C9DAE0, then calls category slot +0x10. CategoryData and CategoryDataCache
+select CB4060 and CB4500 respectively. CB4500's guarded cache record at +0x54
+is separate from the ordinary P+0x58 tree record.
+
+An admitted ordinary record follows the existing AT-COMP-010 selected-vector
+join and C9BC40 formatter branch. AT-COMP-007 owns internal fixed-control
+construction; AT-CHAT-001/002 own conditional chat-source preservation. The
+descriptor category candidate alone does not establish a serialized place
+control. TextModule output, category admission, actual selection and earlier
+pronoun processing remain guards.
+
+The missing external join is the named placeName source and locale to the
+delivered sheet payload, child/backend state and selected target row. Without
+it, the native key cannot be assigned a particular external placeName CSV row.
+Matching receive/render lookup remains unresolved. A place-name association
+also does not choose a unique zone: the retained static crosswalk associates
+placeName key 1051 with zone keys 133 and 230. It does not justify using a native
+place key as a GM zone ID.
 
 ## Selection-family boundary
 
@@ -1068,7 +1136,9 @@ The fixedPhrase table path
 FUN_004DAA10 -> FUN_004DA680 -> FUN_00447260("xtx/_fixedPhrase") ->
 FUN_00C9D550 reaches Completion candidate preparation at FUN_00C9D0D0. That
 candidate vector and ordinary tree entries join the selected RaptureTextBox
-vector through AT-COMP-010. External family/table-key identity and the
+vector through AT-COMP-010. AT-COMP-016 supplies conditional fixedPhrase
+row-key equality, and AT-COMP-017 supplies conditional place record production.
+An arbitrary control's external family/table-key identity and the
 receive-side lookup through generic renderer FUN_007906C0 remain unresolved.
 The choice between rendering and forwarding is not established by the selected
 record join.
@@ -1076,16 +1146,19 @@ record join.
 The producer classifications are therefore:
 
 - fixedPhrase: native candidate and conditional send paths recovered by
-  AT-COMP-010/011 and AT-CHAT-001/002; selected external table/key unresolved;
+  AT-COMP-010/011 and AT-CHAT-001/002, with conditional CSV row-key equality
+  under AT-COMP-016's authenticated payload and range conditions;
 - item selection: unresolved lookup and serialization producer;
-- place selection: unresolved lookup and serialization producer;
+- place selection: conditional descriptor, native-key and ordinary-record
+  production recovered by AT-COMP-017; external payload/CSV identity unresolved;
 - unsupported families: no family is classified unsupported by this pass;
 - row key versus field 0/category: the native upper key argument and category
-  byte are separated by AT-COMP-010; external table identity remains qualified.
+  byte are separated by AT-COMP-010/017; the descriptor candidate's field0-1
+  category index is distinct from the target key.
 
-The fixedPhrase CSV row key, field 0 values, display categories, and table
-resource identity remain table evidence only. No decoder should be implemented
-from those values.
+Conditional fixedPhrase CSV row-key equality does not assign arbitrary controls
+a table family. Field 0/category values and resource identity cannot establish
+a complete decoder or semantic resolver.
 
 ## Evidence boundary
 
@@ -1281,3 +1354,11 @@ its guarded caller input and stack relationship. AT-ID-064 independently pins
 the raw configuration guard, both immediate stores, final call span and the
 preserved master file's size/hash. This recovers a conditional source request;
 actual callback payload and selected locale remain qualified.
+
+AT-GH-275 through AT-GH-286 and fresh identity AT-ID-067 support AT-COMP-017.
+The paired exports cover 18 exact-entry targets per modality; each listing
+reports COMPLETE. AT-ID-068 independently authenticates the raw descriptor
+field reads, cache construction, suffix store, ordinary upper-key stack span
+and selected Complete Object Locator offsets/virtual cells. The existing
+selected-record, formatter and chat traces remain inputs. The named placeName
+payload, actual TextModule output and external CSV identity remain qualified.
