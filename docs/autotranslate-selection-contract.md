@@ -1379,6 +1379,37 @@ with actual payload delivery, backend state and selected row/configuration
 qualified. In particular, a named source key does not establish that the
 corresponding noun row lookup was admitted.
 
+## Alternative noun admission boundary
+
+AT-COMP-024 joins the nonzero alternative branch to the provider retained by
+the same TextModule. CA0390 stores its supplied Excel provider at T+0x30 and
+constructs the Localize object at T+0x34 with that provider. CA00C0 reads a
+type word from T+0x30, constructs metadata `[0,nativeKey,1,5,0]`, and calls
+CB8AF0 with T+0x34. CB8AF0 first performs a cache comparison; a cached-object
+path can return through its existing output without reading the current type.
+The cache comparison is followed by JZ at 0x00CB8B4E; only the
+fresh-construction path continues there, while the other path calls the cached
+object's output through 0x00CB8B7B without reading the current type. The fresh
+path, after the source
+and readiness checks, reads the type again. If that later read remains 2,
+allocation selects NounDe through CC5460 and its output slot selects CC5130.
+Same-provider retention alone does not prove that the type word stayed
+unchanged between the two reads.
+
+The pinned placeName definition identifies resource 0x0B45087C and gives the
+German locale an empty `param` value. On the fresh NounDe path, the constructor's
+NOUN query therefore receives the authenticated empty fallback object; its
+split produces no configuration records and returns with the noun configuration
+unpopulated, leaving its noun+0x10 configuration pointer null. Under this
+source, a fresh type-2 NounDe object is conditional,
+and no German placeName noun configuration is populated. This does not prove
+that CC5130 safely refuses the row lookup. Its listing first checks the source
+offsets +0x58 and +0x60 for nonnull rows, then at 0x00CC51BD reads
+`[EDX+ECX*4+0x8]`, where EDX is the object +0x10 configuration base and ECX is
+derived from source +0x54; no configuration-null or count branch is shown
+before that read. Actual provider type, cache path, loaded state, mutation,
+output and receive/render lookup are unresolved.
+
 ## Selection-family boundary
 
 The fixedPhrase table path
@@ -1652,7 +1683,7 @@ per modality and COMPLETE listings. AT-ID-075 authenticates each read-only
 batch. AT-ID-076 independently authenticates selected instruction operands,
 function intervals, retained caller spans, dispatch/virtual cells, raw RTTI and
 finite parameter literals. AT-COMP-022 resolves the alternative noun methods
-under its recorded allocation, loaded-sheet and valid-selector guards.
+under its recorded allocation, loaded-sheet and valid-selector preconditions.
 
 AT-GH-331/332 retain verified complete recorded-reference exports for the
 needle object, initializer, literal and destructor addresses. AT-ID-077
