@@ -895,15 +895,55 @@ The independent backing study is
 locators. Its sparse row keys, enabled ordinals and merged CSV iteration
 indices remain separate from this native block slot index.
 
-The first missing static join is from the constructor descriptor values and
-the selected provider results to the named definition/data/offset/enable
-resources. In particular, excluded globals 0x013778A0, 0x013778F8,
-0x01377950 and 0x013779A8 do not authenticate their loaded names or values;
-the provider calls at subSheet+4 slots +0x4/+0x8 do not bind their returned
-payloads to those resources. This prevents assigning CSV row identity to the
-populated native cache. The existing locale gates also do not identify an
-actual loaded locale or selected instance. Item/place producers and matching
-receive/render lookup remain separate missing joins.
+AT-COMP-013 identifies the static descriptor names and the concrete request
+owner below. Its `missingEvidence` owns the remaining association between
+selected metadata/request inputs and named backing resources. That gap
+prevents assigning external CSV row identity to the populated native cache.
+
+## Native descriptor and resource ownership
+
+AT-COMP-013 recovers the constructor inputs for begin, count, offset and
+enable at globals 0x013778A0, 0x013778F8, 0x01377950 and 0x013779A8.
+AT-ID-060 authenticates each initializer body, complete literal, constructor
+call and destructor registration. The file-backed length cell at 0x00F67298
+initially contains 0xFFFFFFFF; FUN_00447260 uses strlen for that sentinel.
+The bodies therefore establish static name construction, while actual
+initializer execution, later retention and attribute values remain qualified.
+
+The same evidence separates mode and lang in FUN_00C98580. Its module+0x38
+checks compare the mode query result with server/client. The later lang query
+passes through FUN_00D34D20 and compares against module+0x14. Those are
+separate admission conditions; mode is not a locale identifier.
+
+The application owner constructs ResourceModule through FUN_00C99090 at
+owner+0x50 and supplies it to ExcelModule+0x8 through FUN_00C98C30.
+FUN_00C98580 passes it to FUN_00CB04B0 as explicit argument 1, which forwards
+it to FUN_00CC3330 as explicit argument 1. CC3330 stores it at subSheet+4.
+The child DOM metadata is explicit argument 2 in both constructors and
+supplies descriptor queries. These ordinals exclude hidden ECX and distinguish
+the two objects.
+
+AT-ID-060 authenticates ResourceModule table 0x01108C3C and its request cells:
++0x4 selects FUN_00C99130 for numeric IDs; +0x8 selects FUN_00C992D0 for
+pathnames. CC3330's converted child value remains the numeric request/cache
+key through lookup, registration and request storage at +0x58. Lookup also
+requires its range/readiness guards. That key is separate from the mapped
+Completion row key.
+
+The numeric branch derives a pathname through FUN_0044B3A0. Its flag-zero
+branch uses loaded table inputs; its other branch formats a data path from
+the key's four bytes. Both combine with prefix object 0x0132CB98. The explicit
+pathname method also uses that prefix and supplies numeric key 0xFFFFFFFF on
+a miss. Static key preservation does not establish the selected flag, prefix,
+table, actual file-open result or payload identity.
+
+Selected sheet/child metadata and loaded pathname inputs still need an
+association with the authenticated fixedPhrase definition/data/offset/enable
+resources.
+Static name construction and provider type do not establish that association
+or an actual historical locale/instance. Native-key-to-CSV equality,
+item/place producers, generic Lua packing, earlier pronoun inputs and
+receive/render lookup retain their separate qualifications.
 
 ## Selection-family boundary
 
@@ -1103,3 +1143,10 @@ reference targets. AT-ID-058 authenticates the selected ExcelSubSheet,
 CacheData and CacheAll cells and their raw RTTI identities. The record claims
 the row writer's call and store, without promoting the decompiler's full
 FUN_00CB17C0 inverse-map or bounds behavior from its shorter retained listing.
+
+AT-GH-250 through AT-GH-259 and fresh identity AT-ID-059 support AT-COMP-013's
+string constructor, concrete request methods, numeric key cache and conditional
+pathname derivation. AT-ID-060 independently pins the raw initializer/literal
+inputs, length sentinel, ResourceModule RTTI and
+selected request cells. These static joins preserve the selected-input and
+runtime limits in the record.
