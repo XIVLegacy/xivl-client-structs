@@ -1122,13 +1122,48 @@ descriptor category candidate alone does not establish a serialized place
 control. TextModule output, category admission, actual selection and earlier
 pronoun processing remain guards.
 
-The missing external join is the named placeName source and locale to the
-delivered sheet payload, child/backend state and selected target row. Without
-it, the native key cannot be assigned a particular external placeName CSV row.
-Matching receive/render lookup remains unresolved. A place-name association
-also does not choose a unique zone: the retained static crosswalk associates
-placeName key 1051 with zone keys 133 and 230. It does not justify using a native
-place key as a GM zone ID.
+AT-COMP-018 authenticates the named placeName payload and conditional CSV-key
+association below. Actual delivery, child/backend state, selected locale and
+target row remain qualified. Matching receive/render lookup remains unresolved.
+A place-name association also does not choose a unique zone: the static
+crosswalk associates placeName key 1051 with zone keys 133 and 230. It does
+not justify using a native place key as a GM zone ID.
+
+## Place backing and conditional CSV keys
+
+AT-COMP-018 pins `xivl-client-data:manifests/place_name_backing_rows.json` at
+revision `90d814d0642a12fa32fbaf5f78474bfe767bb00b`. The report authenticates
+game master `0x01030000` to the named placeName definition `0x0B45087C`, then
+each locale's data, enable and offset resources to `xtx_placeName.csv` rows.
+Each definition has one block beginning at 0, with 8002 declared slots and
+8002 offsets. The 30 sparse enable ranges name its nonempty spans; they are
+separate from the child begin/count that supplies a CacheAll pair.
+
+All declared fields match the corresponding authenticated CSV cells. The
+ja/en/de/fr payloads each contain 923 rows; chs contains 883, with 40 empty
+CSV-only cells in column 8. Their union equals the 923 merged CSV keys.
+Rich controls are compared as opaque framing bytes, without evaluating their
+expressions or establishing TextModule output.
+
+For a successfully constructed row from these authenticated payloads, one
+ready CacheAll pair `(0,8002)` and `blockSlot < 8002`, the AT-COMP-016 row
+writer supplies key `blockSlot` and stores it at storage index `blockSlot`.
+The AT-COMP-017 iterator supplies that same key and corresponding row pointer
+to C9DC80. The report identifies the nonempty span by external CSV row key
+`blockSlot`. This is conditional target-key equality. The mapper's inclusive
+upper comparison and exhausted-range return do not establish a general safe
+inverse or bounds contract.
+
+Key 1051 is block slot 1051 and CSV iteration 101. Its enabled ordinal is 101
+in the four main locales or 99 in chs; its enable-range base is 1051, while
+the block begin is 0. None of those ordinal/range coordinates replaces the
+native target key or the separate descriptor category marker.
+
+This association does not identify an actual selected control. Historical
+payload delivery, retained cache state and selected locale remain qualified.
+TextModule source/output and category admission must still produce the retained
+ordinary record. Generic Lua packing, earlier pronoun processing, item
+production and receive/render lookup retain their separate limits.
 
 ## Selection-family boundary
 
@@ -1137,7 +1172,8 @@ FUN_004DAA10 -> FUN_004DA680 -> FUN_00447260("xtx/_fixedPhrase") ->
 FUN_00C9D550 reaches Completion candidate preparation at FUN_00C9D0D0. That
 candidate vector and ordinary tree entries join the selected RaptureTextBox
 vector through AT-COMP-010. AT-COMP-016 supplies conditional fixedPhrase
-row-key equality, and AT-COMP-017 supplies conditional place record production.
+row-key equality. AT-COMP-017 supplies conditional place record production,
+and AT-COMP-018 supplies conditional placeName CSV-key equality.
 An arbitrary control's external family/table-key identity and the
 receive-side lookup through generic renderer FUN_007906C0 remain unresolved.
 The choice between rendering and forwarding is not established by the selected
@@ -1150,15 +1186,17 @@ The producer classifications are therefore:
   under AT-COMP-016's authenticated payload and range conditions;
 - item selection: unresolved lookup and serialization producer;
 - place selection: conditional descriptor, native-key and ordinary-record
-  production recovered by AT-COMP-017; external payload/CSV identity unresolved;
+  production recovered by AT-COMP-017, with named backing/CSV identity and
+  conditional target-key equality in AT-COMP-018; actual selection remains
+  qualified;
 - unsupported families: no family is classified unsupported by this pass;
 - row key versus field 0/category: the native upper key argument and category
   byte are separated by AT-COMP-010/017; the descriptor candidate's field0-1
   category index is distinct from the target key.
 
-Conditional fixedPhrase CSV row-key equality does not assign arbitrary controls
-a table family. Field 0/category values and resource identity cannot establish
-a complete decoder or semantic resolver.
+Conditional fixedPhrase/placeName CSV row-key equality does not assign
+arbitrary controls a table family. Field 0/category values and resource identity
+cannot establish a complete decoder or semantic resolver.
 
 ## Evidence boundary
 
@@ -1360,5 +1398,12 @@ The paired exports cover 18 exact-entry targets per modality; each listing
 reports COMPLETE. AT-ID-068 independently authenticates the raw descriptor
 field reads, cache construction, suffix store, ordinary upper-key stack span
 and selected Complete Object Locator offsets/virtual cells. The existing
-selected-record, formatter and chat traces remain inputs. The named placeName
-payload, actual TextModule output and external CSV identity remain qualified.
+selected-record, formatter and chat traces remain inputs. AT-COMP-018 owns the
+named backing/CSV association. Actual payload delivery, TextModule output and
+selected external family remain qualified.
+
+AT-COMP-018 uses the committed placeName backing report and the completed
+AT-COMP-016/017 native joins as inputs. Its source pin identifies the report's
+revision, byte count and SHA256. The association is conditional on matching
+payload and backend inputs. Actual delivery, TextModule output/admission,
+selected locale and receive/render lookup remain qualified.
