@@ -1119,8 +1119,9 @@ An admitted ordinary record follows the existing AT-COMP-010 selected-vector
 join and C9BC40 formatter branch. AT-COMP-007 owns internal fixed-control
 construction; AT-CHAT-001/002 own conditional chat-source preservation. The
 descriptor category candidate alone does not establish a serialized place
-control. TextModule output, category admission, actual selection and earlier
-pronoun processing remain guards.
+control. AT-COMP-019 recovers the TextModule output handoff and category
+admission guards below. Actual output bytes, selection and earlier pronoun
+processing remain qualified.
 
 AT-COMP-018 authenticates the named placeName payload and conditional CSV-key
 association below. Actual delivery, child/backend state, selected locale and
@@ -1161,9 +1162,66 @@ native target key or the separate descriptor category marker.
 
 This association does not identify an actual selected control. Historical
 payload delivery, retained cache state and selected locale remain qualified.
-TextModule source/output and category admission must still produce the retained
-ordinary record. Generic Lua packing, earlier pronoun processing, item
-production and receive/render lookup retain their separate limits.
+AT-COMP-019 joins TextModule output ownership and guarded category admission
+to ordinary record production. Selected field, retained state and actual output
+bytes remain conditional. Generic Lua packing, earlier pronoun processing,
+item production and receive/render lookup retain their separate limits.
+
+## Place text output and admission
+
+AT-COMP-019 resolves the descriptor mode writer. C9CA50 initializes its output
+byte to zero and sets it to one only after a parsed record matches the
+authenticated `noun` literal at 0x01108D98. The English fixedPhrase row 2104
+numeric-range placeName descriptor has no noun marker and selects mode zero.
+D550 copies that byte to +0x54 of its 0x58-byte descriptor, which C9ECD0
+appends. C9C190 supplies the byte as CompletionCacheFunc+0xE. It is separate
+from the category marker, suffix capacity and native target key.
+
+For complete TextModule T, table 0x01108F70 selects C0EA60 at +4, CA1D60 at
++8, CA0930 at +0xC, CA00C0 at +0x18 and CA1D40 at +0x24. In mode zero,
+C9DC80 constructs its output at the fixed stack base+0x64 and pushes that
+address before C0EA60. The getter returns T+0x18 with no argument cleanup,
+leaving the output address as CA1D60's third explicit argument. That method
+passes the source character pointer, buffer and same output through CA1D40
+to CB2760. CA1D40 adjusts this to T+4, so the parser's callback vector at
+subobject+8/+0xC corresponds to complete T+0xC/+0x10.
+
+CB2760 sends ordinary segments to the caller output through 00447CF0. At
+opening byte 02 it looks up the selector callback under its bounds guards.
+A null callback uses CB2D50 to obtain the length and copies the original
+control sequence. A nonnull callback receives the buffer/output arguments;
+a zero callback result fails. This recovers the output handoff, without
+establishing every control's semantics or universal byte preservation.
+
+C9DC80 requires a nonnull row and reads the sheet-selected field. Mode zero
+calls C9C670 only on a positive parser result. Its pointer at C9DDBB is
+stack base+0x64 after accounting for the preceding key push, so the constructed
+output reaches ordinary Completion admission. The nonzero alternative uses
+the same constructed base+0xB8 output for CA00C0 and C9C670, without testing
+CA00C0's return. CA00C0 selects a typed source/conversion path or the
+CB8AF0 backend. The indirect backend/output methods and localized result
+remain qualified; that alternative is separate from row 2104's mode zero.
+
+C9C670 applies readiness, nonempty-text, leading-period and literal guards,
+then calls the resolved category's +0x10 admission method. CategoryDataCache
+selects CB4500. CB3D50 accepts an empty range vector or any inclusive unsigned
+lower <= nativeKey <= upper pair. CB4500 also applies its last-byte string
+guard. A matching nonnegative-key cache row is found by `(row+0x54)>>7`;
+that branch calls CB4B80, marks +0x90 and returns zero, so it does not admit
+a new ordinary record. Negative keys use a separate text comparison.
+
+The new-slot path checks current count against suffix capacity, slot availability
+and pin/eviction state. An obtained nonzero slot receives the output string,
+packed key/category at row+0x54 and list publication. Only a nonzero category
+result reaches C9C670's ordinary-tree insertion. The category cache row and
+ordinary tree record remain distinct. Their admitted records use the completed
+selection, formatter and conditional chat joins.
+
+The selected sheet field, populated callback table, cache state, delivered
+payload and actual locale/selection remain conditional. Rich-control callbacks
+and CB8AF0's selected backend/output implementations are the remaining static
+output boundaries. This path does not establish a receive/render resolver,
+unrestricted Lua/pronoun preservation or a unique zone from a place key.
 
 ## Selection-family boundary
 
@@ -1399,11 +1457,19 @@ reports COMPLETE. AT-ID-068 independently authenticates the raw descriptor
 field reads, cache construction, suffix store, ordinary upper-key stack span
 and selected Complete Object Locator offsets/virtual cells. The existing
 selected-record, formatter and chat traces remain inputs. AT-COMP-018 owns the
-named backing/CSV association. Actual payload delivery, TextModule output and
-selected external family remain qualified.
+named backing/CSV association. Actual payload delivery, selected field/output
+bytes and selected external family remain qualified. AT-COMP-019 owns the
+output handoff and category-admission guards.
 
 AT-COMP-018 uses the committed placeName backing report and the completed
 AT-COMP-016/017 native joins as inputs. Its source pin identifies the report's
 revision, byte count and SHA256. The association is conditional on matching
-payload and backend inputs. Actual delivery, TextModule output/admission,
-selected locale and receive/render lookup remain qualified.
+payload and backend inputs. Actual delivery, selected field/state and output
+bytes, selected locale and receive/render lookup remain qualified.
+
+AT-GH-287..294 cover 11 exact-entry targets per modality with COMPLETE
+listings. AT-ID-069 authenticates both read-only export batches; AT-ID-070
+independently pins the TextModule/category cells, descriptor writer, callback
+stack spans and noun literal. AT-COMP-019 uses the completed descriptor,
+ordinary-record and chat traces as inputs. These joins establish guarded output
+ownership and admission, without observing a historical selection.
