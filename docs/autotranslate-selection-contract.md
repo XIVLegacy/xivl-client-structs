@@ -1350,14 +1350,34 @@ field; its zero branch copies an attributive field and calls the 004488F0 thunk
 for the target field. CC6910 interprets negative selectors as `-1-selector`;
 nonnegative selectors read a signed byte at C9A480's returned field-slot address.
 CC5860 also calls 00447ED0 with a count-derived temporary and needle object
-0x01377E00, then returns a guarded success byte in AL. The needle initializer
-and matching attributive payload/configuration are still missing, so this
-recovers destination ownership without reproducing complete localized output.
+0x01377E00, then returns a guarded success byte in AL. AT-COMP-023 below owns
+the needle initializer and named attributive payload identity. Selected
+configuration/row inputs and retained state still qualify complete output.
 Excluded global bytes are not treated as runtime string values.
 
 This alternative does not change English descriptor row 2104's mode-zero
 path. Actual loaded type/locale, selection, final output and receive/render
 lookup remain qualified; no semantic zone/item resolver follows.
+
+AT-COMP-023 authenticates the needle's bounded initializer at F2CE40..F2CE60.
+It supplies the literal `[n]` at 0x0110DD44 and the file-backed length sentinel
+0xFFFFFFFF at 0x00F67298 to the completed 00447260 constructor, with
+ECX=0x01377E00. Under successful construction and retained state, the object
+therefore contains `[n]`. The initializer also registers F3BCF0, which supplies
+that object to 00446F50. Cell 0x00F53240 contains the initializer address.
+These instructions and literal inputs establish the conditional initial string;
+they do not observe initializer execution or later global contents.
+
+The named backing identity is owned by
+`xivl-client-data:manifests/attributive_backing_rows.json`. Game master resource
+0x01030000 names `xtx/attributive` definition 0x0B4500CA. Its present locale
+rows and declared fields match the authenticated merged CSV. The ja/en/de/fr
+blocks contain keys 1..35; chs supplies only key 2, with its other mapped CSV
+cells empty. These source rows are not observed Completion indices or selected
+control identities. CB89A0's completed named request remains the native input,
+with actual payload delivery, backend state and selected row/configuration
+qualified. In particular, a named source key does not establish that the
+corresponding noun row lookup was admitted.
 
 ## Selection-family boundary
 
@@ -1633,3 +1653,12 @@ batch. AT-ID-076 independently authenticates selected instruction operands,
 function intervals, retained caller spans, dispatch/virtual cells, raw RTTI and
 finite parameter literals. AT-COMP-022 resolves the alternative noun methods
 under its recorded allocation, loaded-sheet and valid-selector guards.
+
+AT-GH-331/332 retain verified complete recorded-reference exports for the
+needle object, initializer, literal and destructor addresses. AT-ID-077
+authenticates both read-only batches. AT-ID-078 independently pins complete
+bounded initializer/destructor and retained string-constructor instructions,
+the literal, length sentinel and selected initializer pointer cell.
+AT-COMP-023 pins the separate attributive backing report by size and SHA256.
+Recorded references and a pointer cell do not prove startup execution or
+exclude computed/indirect mutations.
