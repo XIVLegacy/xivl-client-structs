@@ -866,8 +866,9 @@ the initial byte with the mapped native key used by C9C550. The row supplies
 field 0 minus one for the separate category byte.
 
 This recovers native key production. AT-COMP-012 owns the cache construction
-and population joins below. A selected backing-file row, external CSV table/key
-and locale remain qualified.
+and population joins below. AT-COMP-016 establishes conditional fixedPhrase
+native-key/CSV-row-key equality under named-source and cache-state conditions.
+An actual selected backing-file row, external family and locale remain qualified.
 
 ## Native cache loading
 
@@ -875,8 +876,8 @@ AT-COMP-012 joins ExcelSubSheet construction to conditional row completion and
 CacheAll installation. The constructor FUN_00CC3330 obtains the native range
 values at subSheet+0x14/+0x1C from descriptor calls. Those values supply the
 AT-COMP-011 range pairs. They are distinct from the payload words later copied
-by FUN_00CC3590 into the sheet and subSheet vectors. Neither source is joined
-to a named fixedPhrase enable resource or an enabled-row ordinal.
+by FUN_00CC3590 into the sheet and subSheet vectors. AT-COMP-016 identifies
+which source reaches CacheAll and keeps the enabled ordinal separate.
 
 The stored provider at subSheet+4 supplies resource requests. The authenticated
 ExcelSubSheet slot +0x4 dispatches successful completions through
@@ -977,9 +978,9 @@ AT-ID-062 separately pins the raw initial mode byte and the formatted DAT
 literal. The actual configuration, retained prefix/mode, table contents and
 delivered resource payloads remain unobserved.
 
-AT-COMP-015's `missingEvidence` owns the remaining payload, sparse ordering
-and selection boundaries. Enable ordinals, native block slots and
-merged CSV iteration remain separate; native-key-to-CSV equality is unproved.
+AT-COMP-016 owns the conditional fixedPhrase block-key association and remaining
+payload and selection boundaries. Enable ordinals, native block slots and
+merged CSV iteration remain separate.
 Item/place producers, generic Lua packing, earlier pronoun inputs and
 receive/render lookup retain their existing qualifications.
 
@@ -1012,10 +1013,54 @@ reaches the successful C98A90 callback, AT-COMP-014's metadata path requests
 fixedPhrase definition 0x0B4508E6 and admitted locale resources.
 
 Actual path selection, delivered payloads and historical instance/locale remain
-qualified. The next static association is authenticated enable/offset ordering
-through native range vectors and CacheAll key/storage mapping to external CSV
-row identity. AT-COMP-015's `missingEvidence` owns those distinctions; semantic
-control resolution remains blocked.
+qualified. AT-COMP-016 joins the child-block range source and conditional
+fixedPhrase row-key identity below. Its `missingEvidence` owns the remaining
+selection-family and payload boundaries.
+
+## Native block slots and conditional CSV keys
+
+AT-COMP-016 identifies CacheAll's range source. On a CB0140 transition to
+sheet+0x3C cache state zero, sheet+8 becomes backend kind zero. CB0140 walks
+the child pointers at sheet+0x30/+0x34 and reads each child's begin/count at
++0x14/+0x1C through CC26E0/CC26F0. CB16D0 copies these pairs through CB1530
+into the backend vector at +0x14/+0x18. The separate enable words copied into
+sheet+0x44 and subSheet+0x40 do not supply these pairs. This cache state is
+distinct from ExcelModule's client/server mode.
+
+The offset and enable descriptors select completion discriminators -1 and -2,
+respectively. This establishes request/handler identity, without asserting
+asynchronous completion order. Offset completion CC3850 can update the child
+count from the payload size divided by four. The definition declares 2926
+slots beginning at 100, while the chs offset file has 2036 entries. A retained
+backend's count depends on child state at its construction.
+
+Bulk row completion CC30C0 submits native key `begin + blockSlot`, skipping
+equal adjacent offsets on the offset path. CB1930 maps that key through
+CB17C0 and stores the row pointer at `storageBase + storageIndex * 8 + 4`.
+AT-ID-066 supplements the shorter retained listing with an independent raw
+PE read through CB17C0's return. A matching pair yields prior counts plus
+key minus base. Its upper comparison admits `key == base + count`, and
+exhaustion returns the accumulated counts. These branches do not establish
+a safe general inverse or bounds contract.
+
+For a successfully constructed row from the authenticated fixedPhrase locale
+payloads, with one CacheAll pair `(100,N)` and `blockSlot < N`, the writer
+maps key `100 + blockSlot` to storage index `blockSlot`. The admitted iteration
+mapper CB1870 returns that same key. The backing report identifies the
+corresponding nonempty offset span as CSV row key `100 + blockSlot`. This is
+conditional row-key equality, without an observed historical selection.
+
+Row 974 has block slot 874 and enabled ordinal 278 in ja/en/de/fr or 247 in
+chs. Row 1255 has block slot 1155. Row 3025 has block slot 2925, enabled
+ordinal 755 and merged CSV iteration index 757 in ja/en/de/fr. The block begin
+is separate from each anchor's sparse enable-range base. Under this cache
+path, the admitted D550 iteration index is the storage/block slot.
+
+An arbitrary selected control still needs an external family association.
+Actual delivered payloads, retained cache state, selected locale and item/place
+producers remain qualified. Generic Lua packing, earlier pronoun inputs and
+receive/render lookup retain their separate limits. No complete semantic
+control resolver follows from this block association.
 
 ## Selection-family boundary
 

@@ -9795,6 +9795,92 @@
         "sha256": "259FAD6B74AA478A88F43FF246553F60D0A8DECFA986F7A222DDAACF4A66BED5",
         "locator": "sourceMaster"
       }
+    },
+    "rowOrderPassVerification": {
+      "recordId": "AT-ID-065",
+      "script": "ghidra/VerifyProgramFileBytes.java",
+      "scriptRevision": "0ade1afcc45abc2cda8751476b61a96bfd9eb1c0",
+      "scriptSha256": "0277D0F837006579432673172D827A9340B74A55B15FB1C15137CEBF320E64BB",
+      "producingRepositoryRevision": "0ade1afcc45abc2cda8751476b61a96bfd9eb1c0",
+      "invocation": "tools\\ghidra\\run-headless.ps1 -Script VerifyProgramFileBytes.java -ReadOnly -ScriptPath @('ghidra') -ScriptEnv @{ XIVL_PROGRAM_FILE_BYTES_INPUT = '<private-authenticated-executable>'; XIVL_PROGRAM_FILE_BYTES_SHA256 = '9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9'; XIVL_PROGRAM_FILE_BYTES_SIZE = '15996808'; XIVL_PROGRAM_FILE_BYTES_IMAGE_BASE = '0x00400000'; XIVL_PROGRAM_FILE_BYTES_OUT = '<fresh-identity-report>' }",
+      "output": "<private-identity-report>",
+      "outputSize": 3777,
+      "outputSha256": "B50518341463B2DA0D7B5F16A18AD149D28AF33F08127570F7E8DF5B81B77722",
+      "completion": "line 31: COMPLETE: program-file-bytes-v1; verified range coverage is complete for loaded initialized file-backed ranges",
+      "verifiedRangeCount": 7,
+      "verifiedByteCount": 15990784,
+      "excludedInitializedNonExecutableRanges": [
+        "0x01324000..0x0137C93F (362816 bytes)",
+        "0xFFDFF000..0xFFDFFFFF (4096 bytes)"
+      ],
+      "coverage": "File-backed loaded ranges agree with the pinned executable; excluded initialized globals and runtime heap/instances are not authenticated.",
+      "headlessSaved": false
+    },
+    "rowOrderRawVerification": {
+      "recordId": "AT-ID-066",
+      "method": "Independent PE section-to-file-offset read of the pinned executable, decoding the 173-byte raw-backed span at 0x00CB17C0 in x86 32-bit mode with Capstone 5.0.7. Decode coverage is contiguous through RET 4 at 0x00CB186A. This supplements the shorter defined-function listing; it does not modify analysis or authenticate runtime state.",
+      "programSize": 15996808,
+      "programSha256": "9341F2B4567440B310A4D494F5CC5599CA334BA51C8042247317FF466492F2E9",
+      "imageBase": "0x00400000",
+      "mapperSpan": {
+        "address": "0x00CB17C0",
+        "fileOffset": 9115584,
+        "size": 173,
+        "sha256": "6BA75EE80BAF3BB9207C1FB0D584F204E6B1742C9CD7658403746AF2C726338C",
+        "disassembler": "Capstone 5.0.7 x86 32-bit",
+        "instructionCount": 68,
+        "decodedByteCount": 173
+      },
+      "observations": [
+        "0x00CB1830 loads count from pair+4; 0x00CB1833 adds base; 0x00CB1835 compares the key with that sum; unsigned JBE at 0x00CB1837 admits equality. Earlier unsigned JA at 0x00CB181A skips a pair whose base exceeds the key.",
+        "0x00CB1843 adds a passed count to the accumulator. A matching pair subtracts base at 0x00CB185F and adds that difference at 0x00CB1861. Exhaustion at 0x00CB1808 reaches the return at 0x00CB1863 without a sentinel assignment, so it returns the accumulated counts.",
+        "These are the raw mapper branches, not a safe general inverse or bounds contract. The fixedPhrase block-key association below uses only slots within one admitted child range."
+      ],
+      "backingRowsReference": {
+        "source": "xivl-client-data:manifests/fixed_phrase_backing_rows.json",
+        "revision": "5748ee862ae7610e513afb9a2587fd8f7c7a634f",
+        "sha256": "259FAD6B74AA478A88F43FF246553F60D0A8DECFA986F7A222DDAACF4A66BED5",
+        "locator": "locales[].sources and locales[].anchors"
+      },
+      "conditionalBlockSlotAnchors": [
+        {
+          "locale": "en",
+          "csvRecordId": "fixedPhrase:974",
+          "rowKey": 974,
+          "blockSlot": 874,
+          "enabledOrdinal": 278,
+          "csvIterationIndex": 278,
+          "field0": 9
+        },
+        {
+          "locale": "en",
+          "csvRecordId": "fixedPhrase:1255",
+          "rowKey": 1255,
+          "blockSlot": 1155,
+          "enabledOrdinal": 436,
+          "csvIterationIndex": 436,
+          "field0": 10
+        },
+        {
+          "locale": "en",
+          "csvRecordId": "fixedPhrase:3025",
+          "rowKey": 3025,
+          "blockSlot": 2925,
+          "enabledOrdinal": 755,
+          "csvIterationIndex": 757,
+          "field0": 50
+        },
+        {
+          "locale": "chs",
+          "csvRecordId": "fixedPhrase:974",
+          "rowKey": 974,
+          "blockSlot": 874,
+          "enabledOrdinal": 247,
+          "csvIterationIndex": 278,
+          "field0": 9
+        }
+      ],
+      "limit": "Raw mapper and authenticated backing-report identities only. Resource delivery, successful row construction, historical cache state and selected locale remain conditions."
     }
   },
   "producerBoundary": [
@@ -11971,22 +12057,71 @@
         ],
         "missingEvidence": [
           {
-            "edge": "Selected prefix/mode or loaded filename table and successful resource requests -> authenticated delivered master/definition/data/offset/enable payloads",
-            "locator": "AT-COMP-013/014 pathname producers and ResourceModule request completion; guarded C97FC0/C98A90 source association",
-            "prevents": "Claiming an actual historical request path, completed named payload or populated selected fixedPhrase cache from the static owner input alone."
+            "edge": "Guarded master request -> delivered named payloads and actual selected cache/control",
+            "locator": "AT-COMP-016; child-range source and conditional fixedPhrase row-key equality are recovered there",
+            "prevents": "Claiming a historical request completion, selected locale or external CSV identity for arbitrary controls."
           },
           {
-            "edge": "Authenticated enable/offset ordering and native CacheAll key/storage mapping -> external CSV row key",
-            "locator": "AT-COMP-011 mapper, AT-COMP-012 row installation and pinned backing-row locales/anchors",
-            "prevents": "Equating enabled ordinals, block slots and CSV iteration or implementing a semantic fixedPhrase control resolver."
-          },
-          {
-            "edge": "Loaded module/descriptor state and selected vector -> historical locale/control",
-            "locator": "C98580 mode/lang conditions and AT-COMP-010 selected-record production",
-            "prevents": "Claiming initializer execution, request completion or historical phrase/category/locale selection."
+            "edge": "Unresolved selection families, Lua argument packing and receive/render lookup",
+            "locator": "AT-COMP-016 missingEvidence and existing family/chat qualifications",
+            "prevents": "Implementing a complete semantic control resolver or universal control preservation."
           }
         ],
-        "limit": "The guarded application-owner master input and numeric request are recovered. Other configuration branches and callers are outside this positive association. Actual selected payloads, sparse row/CSV identity and historical instance/locale remain qualified. Item/place producers, generic Lua packing, earlier pronoun inputs and receive/render lookup are unchanged; no complete token decoder or universal control preservation follows."
+        "limit": "The guarded application-owner master input and numeric request are recovered. AT-COMP-016 owns the child-range source and conditional fixedPhrase native-key/CSV row-key equality. Actual selected payloads, historical instance/locale and arbitrary control family remain qualified. Item/place producers, generic Lua packing, earlier pronoun inputs and receive/render lookup retain their separate limits."
+      },
+      "excelRowOrderTrace": {
+        "recordId": "AT-COMP-016",
+        "confidence": "confirmed-static-bounded",
+        "scope": "Child-block range source, separate enable storage, raw CacheAll key-to-slot mapping and conditional fixedPhrase CSV row-key equality; historical source delivery and selection remain qualified.",
+        "sources": [
+          "AT-COMP-011/012/013/014/015; retained constructors, resource callback, named metadata and selected-record inputs",
+          "AT-ID-066; raw CB17C0 span and backing-report block-slot anchors"
+        ],
+        "evidenceRecipes": [
+          "AT-GH-223",
+          "AT-GH-224",
+          "AT-GH-225",
+          "AT-GH-226",
+          "AT-GH-229",
+          "AT-GH-230",
+          "AT-GH-231",
+          "AT-GH-232",
+          "AT-GH-242",
+          "AT-GH-243",
+          "AT-GH-246",
+          "AT-GH-247"
+        ],
+        "identityReferences": [
+          "AT-ID-056",
+          "AT-ID-058",
+          "AT-ID-060",
+          "AT-ID-062",
+          "AT-ID-064",
+          "AT-ID-065",
+          "AT-ID-066"
+        ],
+        "facts": [
+          "On a FUN_00CB0140 transition to sheet+0x3C cache state zero, sheet+8 is forced to backend kind zero. CB0140 walks child pointers in sheet+0x30/+0x34, reading each child begin through FUN_00CC26E0 (child+0x14) and count through FUN_00CC26F0 (child+0x1C). It builds one (begin,count) pair per child and supplies the pair array/count to FUN_00CB16D0. This cache state is separate from ExcelModule client/server mode.",
+          "CB16D0 passes each pair to FUN_00CB1530 with hidden ECX=backend+0x10. CB1530 appends the eight-byte pair to that vector, whose begin/end pointers are backend+0x14/+0x18. CB16D0 also sums pair counts and supplies storage capacity through FUN_00CB0AC0; CB0140 installs the backend at sheet+0x40. Thus the ready backend range vector comes from child-block begin/count values, not enable payload pairs.",
+          "CC3330 queries the offset and enable descriptors identified in AT-COMP-013. Offset requests use discriminator -1 and success handler CC3850; enable requests use -2 and CC3590. CC3590 copies payload u32 words in order into sheet+0x44 and subSheet+0x40, distinct from the child vector and backend pair vector. These are request/handler associations, not an assertion of asynchronous completion order. Under AT-COMP-014 named-source and locale admission, the definition associates the English enable/offset IDs 0x0B4508EB/0x0B4508EC with these inputs.",
+          "CC3850 can update subSheet+0x1C from the offset payload byte count divided by four, and subSheet+0x18 to begin plus that count. The authenticated fixedPhrase definitions declare begin 100/count 2926, while the chs offset file has 2036 entries. The pair count at a particular cache construction therefore requires its child state; this record does not assign 2926 to every retained runtime backend.",
+          "CC30C0 submits a constructed row under native key subSheet+0x14 + blockSlot. Its offset path skips equal adjacent offsets. CB1930 maps that key through CB17C0 and stores the row pointer at storageBase + storageIndex*8 + 4. AT-ID-066 supplements the shorter CB17C0 listing: empty pair vectors return the key, matching pairs return prior counts plus key minus base, with an inclusive key<=base+count test; exhaustion returns accumulated counts. No general safe inverse or out-of-range behavior is inferred.",
+          "For a successfully decoded row from the authenticated fixedPhrase locale payloads, admitted to a CacheAll backend with one child pair (100,N) and blockSlot<N, the writer maps native key 100+blockSlot to storageIndex=blockSlot. The AT-COMP-011 iteration mapper CB1870 returns 100+blockSlot for that storage index. The backing report identifies the same nonempty offset span as CSV rowKey=100+blockSlot. This closes conditional fixedPhrase native-key/CSV-row-key equality, without assigning a historical selected control or general table family.",
+          "The block begin is distinct from an anchor's sparse enable-range base. Row 974 uses blockSlot 874, while its enabled ordinal is 278 in ja/en/de/fr and 247 in chs. Row 1255 uses blockSlot 1155. Row 3025 uses blockSlot 2925, enabled ordinal 755 and merged CSV iteration index 757 in ja/en/de/fr. D550's admitted row index under this one-block cache path is the storage/block slot, not the enabled ordinal or merged CSV iteration."
+        ],
+        "missingEvidence": [
+          {
+            "edge": "Guarded named resource requests -> actual successful delivered payloads, retained child/backend state and selected fixedPhrase record",
+            "locator": "AT-COMP-014/015 source conditions, CC3850 count update, CB0140 transition and AT-COMP-010 selected vector",
+            "prevents": "Promoting conditional row-key equality to an observed historical phrase/category/locale or assigning an arbitrary selected control an external CSV row."
+          },
+          {
+            "edge": "Item/place descriptor families -> their selected record producers and matching receive/render lookup",
+            "locator": "AT-COMP-010/011 selection-family boundary and generic renderer FUN_007906C0",
+            "prevents": "Extending the fixedPhrase block association to item/place controls or a complete semantic control resolver."
+          }
+        ],
+        "limit": "The ready backend child-range source and conditional fixedPhrase row-key equality are recovered. Copied enable ranges remain separate from CacheAll pairs. Actual delivered payloads, selected cache/locale and external family identity for arbitrary controls remain qualified. Generic Lua packing, earlier pronoun inputs and receive/render lookup retain their limits; no complete token decoder or universal control preservation follows."
       }
     },
     "downstreamLeads": {
