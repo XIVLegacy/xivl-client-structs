@@ -1217,11 +1217,66 @@ result reaches C9C670's ordinary-tree insertion. The category cache row and
 ordinary tree record remain distinct. Their admitted records use the completed
 selection, formatter and conditional chat joins.
 
-The selected sheet field, populated callback table, cache state, delivered
-payload and actual locale/selection remain conditional. Rich-control callbacks
-and CB8AF0's selected backend/output implementations are the remaining static
-output boundaries. This path does not establish a receive/render resolver,
-unrestricted Lua/pronoun preservation or a unique zone from a place key.
+AT-COMP-020 below owns the selected-field writers and finite mode-zero
+callback association. Delivered payloads, retained state and actual
+locale/selection remain conditional. CB8AF0's selected backend/output
+implementations remain a separate static boundary. This path does not establish
+a receive/render resolver, unrestricted Lua/pronoun preservation or a unique
+zone from a place key.
+
+## Place field selection and mode-zero callbacks
+
+AT-COMP-020 recovers the ExcelSheet selected-field writers. CB04B0 initializes
+sheet+0xB to 0xFF. CAFA80 compares the first parsed SHEET record with the
+authenticated `DEF` literal at 0x0110C558. Under its record-count guards,
+an equal comparison admits decimal conversion of the second 0x54-byte record
+and stores the low byte at sheet+0xB. The conversion argument 10 is the radix.
+CB04B0's alternate child-index path fills that byte only while it remains 0xFF.
+CAF300 reads it, and C9A480 maps the selected index through the row descriptor's
+byte map at +0x14 to the corresponding four-byte row slot. A writer alone does
+not establish the selected locale's numeric field or an observed instance.
+
+The authenticated initializer at F2C990 constructs DAT_013773F0 from the
+literal `index` at 0x0110C524 through 00447260. This identifies the child-index
+branch without treating excluded global memory as an observed value. The pinned
+placeName definition lists first indexes ja=0, en=1, de=4, fr=6 and chs=8.
+When matching index children populate the sheet and no later SHEET/DEF override
+is admitted, those indexes supply the selected fields. CB04B0 calls CAFA80 after
+its child loop, so an admitted override can replace the index default.
+The definition has no `SHEET` parameter marker; its English `NOUN` parameter's
+`DEF;3` alone does not establish that override. The remaining static edge is
+CAFA80's sheet slot +0x24 parameter-map query and returned SHEET record vector.
+Without that join, the first-index association remains conditional on no
+override. Actual delivery, locale and later state are separate limits.
+
+TextModule construction also establishes a finite callback association.
+CB33A0 creates 0x37 callback slots with zero fill through
+C9A390 -> C9A140 -> A54320 -> A542F0. CA0390 installs selector 0x09 at
+`[T+0xC]+0x24` and has no stores for selectors 0x10, 0x16 or 0x1F.
+Those three slots therefore remain null in the constructor-populated vector.
+Absent subsequent mutation or replacement, CB2760 copies their original valid
+control sequences into its output. This is a conditional parser-output claim;
+it does not establish universal preservation through earlier pronoun processing
+or a received-message renderer.
+
+Selector 0x09 takes a different path. Its installed target, B24230, loads the
+vtable from ECX and jumps through slot +0xC. CB2760 supplies ECX=T+4;
+the installed table 0x01108ECC has C9F140 at cell 0x01108ED8. C9F140 parses an
+initial expression value through CB2D50. A zero consumed length fails. It
+subtracts one from the decoded value, advances across that many expression
+components using CB3290, then submits the resulting component to CB2AE0.
+A nonzero final-helper result returns the outer control payload length;
+otherwise it returns zero. The return is separate from the buffer and output
+arguments. CB2760 rejects a zero callback result.
+
+For CB2AE0's final 0xFF string component, the helper parses its length,
+temporarily replaces the byte after the string with NUL, calls CB2760 on that
+string with the same buffer/output, and restores the byte on both return
+branches. This recovers recursive output and return guards. It does not decode
+every expression, select a branch for an observed locale or prove arbitrary
+malformed-input safety. The completed mode-zero handoff requires a positive
+parser result before ordinary Completion admission; it does not test generated
+output length.
 
 ## Selection-family boundary
 
@@ -1473,3 +1528,11 @@ independently pins the TextModule/category cells, descriptor writer, callback
 stack spans and noun literal. AT-COMP-019 uses the completed descriptor,
 ordinary-record and chat traces as inputs. These joins establish guarded output
 ownership and admission, without observing a historical selection.
+
+AT-GH-295..310 pin the finite field-conversion, string-construction,
+callback-vector and selector-09 helper exports. AT-ID-071 authenticates their
+read-only batches. AT-ID-072 independently verifies the raw writer, constructor,
+thunk, callback argument/return, recursive string restore, index initializer and
+call-order spans, plus the pinned definition's ordered index children. These
+support AT-COMP-020's conditional field and callback association. Completed
+producer, selection, formatter, category-admission and chat traces remain inputs.
