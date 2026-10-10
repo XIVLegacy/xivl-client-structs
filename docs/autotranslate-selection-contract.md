@@ -1424,6 +1424,71 @@ derived from source +0x54; no configuration-null or count branch is shown
 before that read. Actual provider type, cache path, loaded state, mutation,
 output and receive/render lookup are unresolved.
 
+## Conditional English noun identity
+
+For a fresh type-1 dispatch, AT-COMP-022's CC5A50 constructor and CC5860
+output admit a bounded singular identity case. The explicit source words at
+offsets +0x54..+0x64 are `[0,nativeKey,1,5,0]`: configuration index, target
+named-row key, count, attributive named-row key and retained word. CA00C0's
+type-2 literal preset establishes the word layout, not an English caller.
+Its non-type-2 branch uses TextModule slots +4/+0xC and does not call CB8AF0.
+
+The separate CA13A0 wrapper supplies type preset 1 at 0x00CA13AF to CA1020.
+CA1020 compares the retained provider's current type to that preset at
+0x00CA11BF and reaches CB8AF0 at 0x00CA1272 on equality. A fresh NounEn
+construction also requires type 1 at CB8AF0's later reread at 0x00CB8BB5.
+CA1020 passes parsed source objects, so this join does not establish the
+five words above for an English selector-0x2E control. The diagnostic context
+supplies them explicitly.
+
+Under successfully initialized label objects and parsing of the authenticated
+English displayName parameter `[NOUN|SGL;1/PLR;2/VOW;3/CNT;4/DEF;5]`, record
+zero contains selectors `[1,2,3,4,5]`. CC6930's two-component entries select
+record zero. CC5A50 maps SGL, PLR, VOW, CNT and DEF to record offsets
++0, +4, +8, +0xC and +0x10. CC5860 uses source+0x54 to select that record,
+reads VOW and DEF from the target row, and its nonzero DEF branch copies the
+configured SGL field into the destination. The bounded case uses VOW=0,
+CNT=0, DEF=1 and count 1. The separate zero-DEF branch is excluded.
+
+Both target source+0x58 and attributive source+0x60 must yield nonnull, ready
+rows through the retained sheet lookup before output. The attributive row
+remains required even though the nonzero DEF branch does not copy its fields.
+CC5860 then prepares the count-derived temporary and calls 00447ED0 with
+AT-COMP-023's conditionally initialized `[n]` needle. When the copied SGL has
+no occurrence of that needle, replacement leaves the complete output string
+unchanged. The final success byte is set after the replacement sequence and
+returned at 0x00CC5A21; the replacement helper's return is not a separate
+success gate. Count display spelling is unnecessary for this no-match case.
+
+The source identity is displayName definition 0x0B450000, 16987 bytes,
+SHA256 `7C9B77F9E5989C1C85BBD8152162160CC423F1A6CA17B730F51B5DDC5E4FF866`.
+Its English columns 1..5 are `str,str,s8,s8,s8`, with `cache=100,type=map`.
+This is distinct from CacheAll. Matching static backing keys to the admitted
+named rows is an explicit condition, not a use of the AT-COMP-016 inverse or
+an observed runtime cache hit. Source key 1000001 has the bounded flags and a
+token-free SGL without the needle. The target and attributive key-5 payload
+identities, typed row checks and source-cell comparison are retained by
+`xivl-tools:docs/formats/fixed-control.md`, Conditional English noun identity,
+and `apps/cli/src/english_noun_inputs.json`.
+
+No configuration-null or count guard is shown before CC5860's indexed
+configuration reads. This case requires valid configuration and allocations;
+safe rejection of other configurations belongs to a diagnostic implementation.
+Automatic English caller metadata, actual provider state and row admission,
+later mutations and receive/render behavior remain unresolved.
+
+The authenticated executable has the identity recorded in AT-COMP-022.
+Independent raw checks pin CC5A50's 758-byte interval with SHA256
+`BEDCDBC4BE0095035348551C1E8003AF0AFEABFF7820F6EEBF291B15B765D437`,
+CC5860's 481-byte interval with SHA256
+`4AF628CD96A0110DA5562EE9B31ED9ABB423EF71072F2DFA1F57CB3CE9758501`,
+and 00447ED0's 83-byte interval with SHA256
+`0F492D47957226A6CBBB68917B82C4578A2C7F96BDC42AD8373F1003180B78FD`.
+CA13A0's 35-byte wrapper is pinned by SHA256
+`14A8E76BF3732945BA9615B42132633307251C5191E5362643D48DA4528D66F3`.
+The selected CA1020 comparison and CB8AF0 call operands were checked against
+the same executable. These are static instructions and source identities.
+
 ## Selection-family boundary
 
 The fixedPhrase table path
