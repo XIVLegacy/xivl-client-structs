@@ -1893,6 +1893,15 @@ slot 1; under those map and readiness conditions it identifies the same
 named target row. The 418 enabled source rows are not evidence of runtime
 map population or readiness. Attributive row admission remains separate.
 
+The map writer and key lookup impose no restriction to that block. With the
+same authenticated English definition and constructor context, the relation
+applies to each enabled backing slot in its other blocks: bulk admission uses
+that block's begin plus slot, while indexed admission retains the requested
+key. Each result still requires a matching local kind-1 map, a nonnull row and
+the ready byte. The source blocks, offset extents and default-field checks are
+owned by `xivl-tools:docs/formats/fixed-control.md`, Automatic English
+displayName query, and `apps/cli/src/english_display_inputs.json`.
+
 Against the same authenticated executable, bounded raw checks pinned the
 constructor CB1BF0 (132 bytes, SHA256
 `F24925ED55C0DCA3D26E0EDB9FC8F5D860CBB9A4990BE70C05955604E5A772B2`),
