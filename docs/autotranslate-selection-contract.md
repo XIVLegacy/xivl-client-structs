@@ -1939,9 +1939,10 @@ and `apps/cli/src/localized_display_inputs.json`.
 
 This association identifies backing cells. It does not apply English's
 stable type-1 mode-zero dispatch to another locale. The descriptors retain
-their noun flags. German output remains provider-dependent; Japanese and
-French displayName have the separate declared contexts below. No complete noun
-result, actual provider state, map readiness or rendering is established.
+their noun flags. German noun output has the conditional singular case below.
+Japanese and French displayName have separate declared contexts below.
+This backing-cell association does not establish complete noun evaluation,
+actual provider state, map readiness or rendering.
 
 ### Japanese displayName fixed-control query
 
@@ -2024,9 +2025,9 @@ The search/replacement inputs include objects 0x01377A58, 0x01377AB0 and
 call operands identify objects, not their initialized or retained strings.
 The German needle initializer inputs section below owns their conditional
 initial strings.
-A complete bounded noun result requires retained needles, selected
-prefix/suffix/replacement fields and all output/return branches.
-Source rows and the five-word preset do not establish that result or rendering.
+Conditional German singular identity below establishes one result using
+retained needles, admitted rows and selected fields. Source availability and
+the preset alone do not establish complete noun output or rendering.
 
 Direct PE-section reads against the authenticated executable pinned CA00C0's
 256-byte span with SHA256
@@ -2074,6 +2075,62 @@ The 12-byte pointer-cell span at 0x00F53234 has SHA256
 `FF20D989C5458A97C9CDD2438194090C7301A9798F7A9CAD294992D1054F40ED`.
 These finite spans do not claim the extent of a larger literal or pointer table.
 German displayName noun boundary owns their use in the output sequence.
+
+### Conditional German singular identity
+
+For the fresh type-2 NounDe path and source words `[0,nativeKey,1,5,0]`,
+record zero selects SGL column 6, SGG 7, GEN 11 and DEF 12 from displayName.
+The target row, attributive row 5, row `26 + SGG` and common rows 24, 25 and
+26 must all be admitted. Valid configuration, successful string operations,
+an initially empty destination and retained initializer strings remain
+explicit conditions.
+
+In CC5130, count 1 selects SGL at CC51F5..CC5207. The further row request
+at CC5226 uses `26 + SGG`; the grammatical column is `11 + GEN` because the
+retained word is zero. Nonzero DEF takes CC5247's branch to CC526F and skips
+the prefix copy. CC5280 appends SGL through 004488F0 -> 00447C80.
+When SGL contains no `[p]`, search 00446F70 -> 004465A0 returns -1 and
+CC5299 selects CC52C8..CC52E9, which appends that further row's grammatical
+field. An empty field therefore preserves SGL in this case.
+
+With common rows 24, 25 and 26 present, CC5351..CC5365 selects row 24's
+same grammatical field for `[pa]`. Attributive key 5 takes CC536F's branch
+to CC5376 and selects row 26's field for `[a]`; row 25 remains a required
+common row but its field is not selected by this preset. Both replacements
+leave the destination unchanged when their needles are absent. CC5396 then
+sets the success byte to one. Count replacement at CC53D8 likewise leaves
+the string unchanged when `[n]` is absent. After row releases, CC5433 reads
+that success byte into AL and CC5450 returns with RET 8.
+
+The complete 004465A0 span compares needle bytes at successive UTF-8 character
+starts and returns -1 at 004466CF..004466D9 after exhaustion. With a nonempty
+retained needle, 00447ED0's initial no-match branch at 00447EE6 goes directly
+to its return without erase or insertion. This establishes literal identity
+for valid UTF-8 SGL without `[a]`, `[p]`, `[pa]` or `[n]`, an empty grammatical
+suffix and nonzero DEF. Embedded controls and other noun branches require
+separate evaluation evidence.
+
+C9FEF0 calls empty string constructor 00445CF0 at C9FFA5 and passes that
+temporary to the noun slot at C9FFCF. The constructor initializes a one-byte
+NUL buffer and zero character count. C9FFD1..C9FFF4 converts the noun's AL
+result to a success test. Thus this caller supplies the empty destination
+condition under successful construction; it does not establish actual
+historical delivery or runtime state.
+
+Direct PE-section reads and complete x86-32 decoding pinned these additional
+spans against the authenticated executable above. CC5130's complete identity
+is retained in German displayName noun boundary.
+
+| Span | Bytes | SHA256 |
+| --- | --- | --- |
+| 00446F70 search thunk | 5 | `E6B89215B30889F1A0448EC1FE435D144C671603D9817E4065E02EB50C780270` |
+| 004465A0 search | 316 | `BF7C27E01F08C061801DCCFD0F1D779E3E66F74F1913C5D256CB921E31512422` |
+| 00445E50 character count | 132 | `738FE12F3033809CB1549B8E8C92D662FE77C41D439C0B7F11687E2F5561FE7F` |
+| 00447ED0 replacement | 83 | `0F492D47957226A6CBBB68917B82C4578A2C7F96BDC42AD8373F1003180B78FD` |
+| 00445CF0 empty constructor | 39 | `6770B9B40DEB76749660F546E101599C7DBBF052D3277783B0A5948D9071F57A` |
+| 00447C80 append | 101 | `DC1E897D7D93494DFA986F6E5CEC655523725363268D60B3B38D5C4CA1F70C4D` |
+| 004488F0 append thunk | 5 | `8C4F59065B985C64844B59F08AE6D798AE3C2B71C10031839AB4FD163D2DCDDF` |
+| C9FEF0 fixed caller | 452 | `14A7A10BF558F342444DEFDE278041C0722165041235608D59C9CAE48D0A0855` |
 
 ### Literal sheet references
 
