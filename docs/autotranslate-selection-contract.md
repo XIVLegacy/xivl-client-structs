@@ -1616,9 +1616,58 @@ local formatting/callback preparation only. The second callback's input
 owner/table join, delimiter and template values, external family or row
 lookup, and final render-versus-forward behavior remain unresolved.
 
+AT-RECV-006 bounds the static owner/writer frontier behind the reader-side
+`+0xB0` interface and the caller-side `+0x1B08` field. AT-GH-365 is a
+candidate-only `FindFieldRefs` scan: its header states that `READ/WRITE` is
+operand position only and gives no terminal completion marker, so the report
+is not an exhaustive writer or common-owner proof. AT-GH-366/367 pin the exact
+`FUN_00592300` constructor target reached from `FUN_00595A20` at `0x00595A9A`;
+it writes `[ESI+0xB0] = EBX` at `0x005923AC`. This inspected constructor
+writes zero to the reader-side field.
+
+AT-GH-368/369 pin `FUN_00595A20` writing `[ESI+0x1B08] = EDX` at
+`0x00595E65`. The preceding load from `[ESP+0xEC]` is the first explicit
+stack argument, `param_2` after the implicit `this`; the exact caller list
+names `FUN_00546EF0 @ 0x00546EF0` and `FUN_00555730 @ 0x00555730`.
+AT-GH-370/371 export their bounded argument bodies and the concrete
+publication path. `FUN_00546EF0` passes `[param_1+0x10]`, which AT-ENTER-027
+constrains to `C=M+0x10` through retained LogControlExtension L and table
+`0x00FA2A40`. `FUN_00555730` passes its `param_2`; that upstream producer
+remains unresolved.
+
+`FUN_005954D0` checks `control+0x1B0C`, calls `FUN_004D7590` with
+`[control+0x1B08]`, and, on a nonzero result, stores it in `control+0x1B0C`
+and dispatches the retained document `+0x28` virtual slot +4. Independent PE
+cell mapping (AT-ID-102) pins `0x00FA9508 -> FUN_00593950`; that setter's
+`ECX=complete-document+0x28` and `[ECX+0x88]` write publish the value at
+complete-document `+0xB0`. AT-ENTER-027's retained LogControlExtension L
+path establishes `L+0x10 = C = M+0x10` through FUN_00546E00 at
+`0x00546E37..0x00546E41` and table `0x00FA2A40`, so FUN_00546EF0's
+`[param_1+0x10]` is conditionally the completed World C input while that
+registration and retention hold. FUN_00555730's param_2 remains unresolved.
+Therefore the conditional static alias from World `C+0x660` to reader `+0xB0`
+is established when the applicable input and guards pass.
+
+This also conditionally supplies the owner identity used by AT-RECV-005's
+second callback through control `+0x1B08`. That isolated trace did not
+establish the owner join; actual table retention, live-instance selection
+and the alternate constructor input remain qualified.
+
+Independent review report SHA256
+`3E4A25E1C2C5F9DFD2E4491C5A98A4435B63747B9F951C23744A1F401A0304E5` maps
+vtable `0x00FA9504` to static type `LogDocument` and
+`0x00FA935C`/`0x00FA9234`/`0x00FA921C` to static type `LogControl` through
+pinned COL/type-descriptor locators. These are static identities only, not live
+instance proof. The completed World branch independently installs its history
+object through `FUN_004DC5D0`/`FUN_004DEE90` at receiver `C+0x660`.
+The FUN_00555730 upstream constructor-callsite input, retained-table/runtime
+state and live owner selection remain unresolved; table retention/population and
+runtime render/forward state remain separately qualified.
+
 See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`
 and its `AT-RECV-002` storage trace, `AT-RECV-003` callback trace and
-`AT-RECV-004` caller trace and `AT-RECV-005` history-consumer trace.
+`AT-RECV-004` caller trace, `AT-RECV-005` history-consumer trace and
+`AT-RECV-006` owner/writer trace.
 
 ## Evidence boundary
 
