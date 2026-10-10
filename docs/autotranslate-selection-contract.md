@@ -1693,6 +1693,45 @@ CSV identified by `xivl-client-data:manifests/manifest.json` at revision
 source lookup, without a command selection producer, historical loaded state,
 general expressions, output wrappers or rendering.
 
+### Conditional status-name source keys
+
+Initial category 23 selects descriptor `xtx/status#50` at source key 2107,
+ordinal 23 and descriptor index 8 in ja/en/de/fr. It has no noun flag.
+The established C9C0A0/C9FEF0 mode-zero path therefore sends the second
+decoded number unchanged to CA0930's row query with default selector 0xFF.
+
+The authenticated master names status definition 0x0B450073. Each supported
+locale declares `cache=-1,type=none` and three blocks `(0,1)`,
+`(220000,12016)` and `(251000,2004)`. This policy does not prove a ready
+CacheAll backend. The diagnostic's source association assumes a completed
+transition to local cache state zero, matching CacheAll block pairs and ready
+rows. It does not claim those conditions followed from the shipped policy.
+
+AT-COMP-016's CB0140 transition sets backend kind zero when the new cache
+state is zero; its existing-state guard can skip reconstruction, and its
+capacity branch can select a map instead. A bounded raw check of CB0140's
+606 bytes at 0x00CB0140, SHA256
+`4469A234440DA590E6C1A624A1CB5F6A383E88FB1B32EC687C6B0309BA0B443E`,
+verified those guards, the child begin/count reads and the CB16D0 constructor
+call. Under the stated matching ready CacheAll conditions, the existing
+strict-interior mapping identifies `begin + slot` with the nonempty backing
+span's source key. Enabled ordinals do not supply this join.
+
+The explicit SHEET DEF parameters select ja1/en3/de8/fr15. English's first
+index is 2; the admitted override selects 3 under AT-COMP-020/021's successful
+constructor and retained-state conditions. NOUN parameters remain separate.
+Each selected column is a string, forwarded through CA0930's existing
+TextModule path. No noun evaluation is needed for this fixed-control descriptor.
+
+`xivl-tools:docs/formats/fixed-control.md`, Initial registry inputs, owns the
+definition identity, four locale layouts and 36 block resource pins. Its
+Conditional status-name lookup section owns executable coverage. The backing
+cells were checked against the authenticated `xtx_status.csv` table entry in
+`xivl-client-data:manifests/manifest.json` at revision
+`06f6687b4e0adc24e7f38f3105ae9fc237de3eda`. This is a conditional source
+lookup; selected cache policy/state, selection production, output admission
+and rendering remain unobserved.
+
 ### Conditional default fields
 
 The completed AT-COMP-020/021 constructor rules apply to the authenticated
