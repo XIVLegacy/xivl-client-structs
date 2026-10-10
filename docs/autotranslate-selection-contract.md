@@ -1443,6 +1443,69 @@ Conditional fixedPhrase/placeName CSV row-key equality does not assign
 arbitrary controls a table family. Field 0/category values and resource identity
 cannot establish a complete decoder or semantic resolver.
 
+## Received World chat handoff
+
+AT-RECV-001 recovers a bounded post-receive handoff for the authenticated World
+chat paths. `FUN_004D8D10` builds the received sender/name and message strings
+for the tell, selected-group and CB branches, then calls `FUN_004D8560` with
+the branch selector. The selected-group branch first calls
+`FUN_005754E0` on its packet context and drops a zero result. This dispatcher
+is already owned by `chat_wire_contract.json`; this record follows its display
+boundary only.
+
+`FUN_004D8560` has distinct argument roles in its listing: EBX loaded from
+`[ESP+0x1C]` is the message passed to the owner `+0x7F8` text-cleaner gate;
+EDI loaded from `[ESP+0x14]` is the sender/name passed to
+`FUN_00445C70` and the owner `+0x950` gate; EAX loaded from `[ESP+0x10]` is
+the selector. When owner `+0x660` is nonnull, the call passes selector,
+sender/name and message as arguments to `FUN_004CE760`. `FUN_004CE760`
+formats the selector as `%04X`, concatenates the received fields, and passes
+the local string only to vtable slot 7 on the callback object held at the
+outer owner's `+0x660` through `FUN_00C9A8E0`. Its inspected body has no
+direct call to generic parser `FUN_007906C0` or direct external table lookup.
+
+The exact `FUN_004DC5D0` installer fills the remaining static gap around
+owner `+0x660`: if the field is null it allocates `0x74` bytes and calls
+`FUN_004DEE90`, whose listing writes vtable pointer `0x00F91434` to the new
+object; if the field is already populated it calls the existing object's
+slots `+0x8` and then `+0x4` when still nonnull. The installed vtable base is
+therefore static, and authenticated cell `0x00F91450` resolves slot 7 to
+`FUN_00C9AD40`. This resolution applies to the fresh-null constructor branch;
+a cached object or later replacement may use another vtable.
+
+`FUN_00C9AD40` calls `FUN_00C9BAE0` with its two input values, captures the
+numeric pre-increment value from object `+0x10`, increments that counter,
+advances `+0x14` when the captured value is at least `0x4B0`, and calls
+`FUN_00C9AAE0` plus `FUN_00C9B0D0` when object `+0x30` is nonnull and the
+unsigned dword-count condition `((object+0x34 - object+0x30) >> 2) > 0x3B`
+holds, then returns the captured value. The helper's input storage,
+semantic meaning of the returned count and counter/range state are the next
+unresolved association.
+
+For successful tell and CB branches, a nonzero `DAT_0132F818` then calls
+`FUN_004D6B40`. Its listing loads the inline object's first dword at outer
+owner `+0x664` as a vtable pointer, reads slot `+0x8`, and calls that slot with
+ECX set to `&owner+0x664`; it does not load a separate object pointer from
+the field. The existing constructor evidence calls `FUN_00C9CFA0` with that
+same inline address, and the raw CompletionModule identity includes table cell
+`0x01108E48 = 0x00C9C670`. This qualifies the inline CompletionModule table
+and callback shape, but not the slot-2 effect, runtime state, external row key,
+or rendered text. The owner `+0x660` slot-7 target is resolved to
+`FUN_00C9AD40`; its direct `FUN_00C9BAE0` helper and counter/range state are
+the first unresolved static association.
+
+Generic parser `FUN_007906C0` remains an inspected 800-byte byte-stream parser
+with renderer-interface dispatch and seven exported direct callers. The seven
+callers are recorded as a caller set; their bodies are not used for a
+universal negative. Its inspected body has no direct fixedPhrase lookup. The
+inspected parser and World handoff bodies have no direct call joining them;
+computed, indirect and dynamic routes remain unjoined. Without the
+`FUN_00C9BAE0` helper's input storage, semantic meaning of the returned
+pre-increment count and counter/range state, the received text cannot be
+mapped to an external family/table key, a selected row, or a proven
+render-versus-forward action.
+See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`.
+
 ## Evidence boundary
 
 The manifest retains read-only Ghidra invocations, target lists, output
