@@ -1578,6 +1578,31 @@ retained child/cache state, locale, TextModule output/admission, noun evaluation
 and rendering retain their existing limits. Completed selection and
 receive/history traces remain inputs.
 
+### Conditional default fields
+
+The completed AT-COMP-020/021 constructor rules apply to the authenticated
+itemName index and parameter metadata as a separate conditional application.
+`xivl-client-data:manifests/item_name_backing_rows.json`, definitionLocales,
+at revision `06f6687b4e0adc24e7f38f3105ae9fc237de3eda`, supplies first indexes
+ja4, en5, de11 and fr19. Each locale also has an explicit `SHEET|DEF` parameter
+with that same index. The separate `NOUN` group does not supply the SHEET
+selection. With matching constructor inputs, successful parsing and retained
+sheet state, either the first-index initialization or admitted DEF override
+therefore selects that index. Each selected index maps to a string field.
+
+For placeName, AT-COMP-021's existing constructor-local result remains ja0,
+en1, de4 and fr6. English `NOUN` value content `DEF;3` does not select field 3.
+Both families have mode-zero descriptors under the conditional initial registry.
+Reading the admitted row's selected string field gives a conditional default
+text source. A token-free field preserves its decoded literal text, including
+literal brackets and backslashes, without interpreting an expression.
+
+This field association does not establish all CA0930 query/conversion paths,
+fallback or empty-result behavior, Completion admission, client output wrappers
+or rendering. Fields with controls still require their evaluation context;
+noun dispatch still requires provider and configuration state. A diagnostic
+that returns a token-free default field is bounded to that conditional source.
+
 ## Received World chat handoff
 
 AT-RECV-001 recovers a bounded post-receive handoff for the authenticated World
