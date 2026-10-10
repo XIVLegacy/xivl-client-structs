@@ -1282,12 +1282,26 @@ parameter/field association, without a historical instance or rendered output.
 TextModule construction also establishes a finite callback association.
 CB33A0 creates 0x37 callback slots with zero fill through
 C9A390 -> C9A140 -> A54320 -> A542F0. CA0390 installs selector 0x09 at
-`[T+0xC]+0x24` and has no stores for selectors 0x10, 0x16 or 0x1F.
-Those three slots therefore remain null in the constructor-populated vector.
+`[T+0xC]+0x24` and has no stores for selectors 0x10, 0x16, 0x1A, 0x1D or 0x1F.
+Those five slots therefore remain null in the constructor-populated vector.
 Absent subsequent mutation or replacement, CB2760 copies their original valid
 control sequences into its output. This is a conditional parser-output claim;
 it does not establish universal preservation through earlier pronoun processing
 or a received-message renderer.
+
+The complete raw CA0390 span, 0x00CA0390..0x00CA0897, matched the retained
+constructor listing's 30 callback stores; its 1288 bytes had SHA256
+`765FC7AC409646D82979EA5C2DEABABA0EC282F0409CE6BABF50450BC5ADD347`.
+The final call at 0x00CA087C passes separate destination T+0xB4 and selector
+0x1D to CB25A0. Its raw 48-byte span, 0x00CB25A0..0x00CB25CF, had SHA256
+`C78C3182F737C3186C36E9781A7E6A0BC16C8381BA51F8B3E08611265A968FB2`.
+It supplies bytes 02, the selector, 01 and 03 to 447950 using that destination;
+this call is not a callback-vector store. Bounded PE32/Capstone inspection
+used the authenticated executable above and agreed with the retained listing.
+Consequently the observed empty `02 1D 01 03` and one-byte-payload
+`02 1A 02 01 03` / `02 1A 02 02 03` forms use CB2760's same null-slot
+copy path under unchanged callback state. This identifies parser output,
+without assigning space or italic rendering semantics.
 
 Selector 0x09 takes a different path. Its installed target, B24230, loads the
 vtable from ECX and jumps through slot +0xC. CB2760 supplies ECX=T+4;
