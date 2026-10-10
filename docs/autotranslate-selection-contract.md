@@ -1557,9 +1557,68 @@ external family/table key, selected row, decoded token, or render-versus-forward
 result. The parser's renderer-interface targets and computed, indirect and
 dynamic routes remain unjoined, and the World AT-RECV-001/002/003 handoff to
 `FUN_007906C0` remains unjoined.
+
+AT-RECV-005 follows one concrete RaptureLogModule history-consumer path through
+the fresh-null vtable branch. Its consumer object is not statically joined to
+the same live World receiver instance installed through `+0x660`; the evidence
+establishes only the shared method/storage shape. The authenticated vtable cells at
+`0x00F91448`, `0x00F91454` and `0x00F91458` resolve slots 5, 8 and 9 to
+`FUN_00C9A8D0`, `FUN_00C9A910` and `FUN_00C9A9F0`. Slot 5 returns the
+`+0x10` count capped at `0x4B0`. Slot 9 first uses vtable `+0x0C` to replace
+a negative index, then compares the index against the raw uncapped `+0x10`
+dword; it uses the vtable `+0x0C` result in unsigned page arithmetic and
+returns a data pointer in `EAX` while writing a byte count through its out
+parameter. In the active-page branch, `FUN_00C9AEE0` supplies the byte length
+from offset differences and `FUN_00C9AF60` returns the data pointer; the
+selected 60-entry page branch calls `FUN_00CB38C0`/`FUN_00CB38F0` without
+assigning their individual pointer/count roles here. Slot 5's capped getter
+is separate and is not used by this body.
+The cell map applies to the fresh-null constructor branch; cached objects and
+later vtable replacements remain qualified.
+
+`FUN_004C3F10` is the sole recorded direct caller of `FUN_00C9A9F0`. Its
+listing saves the incoming `ECX` owner in `EBX` and passes `EBX` as the
+history-consumer `ECX`; the helper returns the source pointer in `EAX` and
+writes the byte count through its out parameter. The caller then passes that
+pointer/count pair to `FUN_00404120` with a local string destination in `ECX`.
+The bounded copy places the retrieved bytes in a local NUL-terminated string
+object. It searches from offset 5 with `FUN_006BE5E0`, using the local string
+length as the haystack end; the `0x004C4018..0x004C4021` loop NUL-scans the
+`DAT_0132F330` string returned by `FUN_00445210` to derive the needle length.
+When the delimiter is found, the prefix is `[5, match)` and the suffix is
+`[match+1, end)`, skipping one byte regardless of the delimiter object's
+stored length, passing each span through `FUN_00447260`. It then calls the
+receiver at `param +0x5C` through vtable slot `+0x8` with the suffix,
+`param +0x60` and the caller argument. Completed AT-RECV-001 owner/installer
+evidence, AT-COMP-005, AT-COMP-019 and AT-ENTER-030 constrain this receiver
+to the conditional TextModule `T=C+0x554` on the fresh installed branch.
+Retained vtable `0x01108F70` slot `+0x8` resolves through cell `0x01108F78`
+to `FUN_00CA1D60 -> FUN_00CA1D40 -> FUN_00CB2760`; the latter's ordinary
+segment handoff and guarded selector-callback behavior are static, while the
+actual widget/consumer `+0xB0` and World `+0x660` instance join, table
+retention/population, external row and final render remain unresolved.
+`FUN_00591F80` iterates through the consumer's `+0xB0` interface,
+calls `FUN_004C3F10` with the current index+1, uses the 16-bit value at
+`[ESP+0x14]` only as a membership filter against the configured vector from
+`[[caller+0x70]+0x1A5C]` through end `[[caller+0x70]+0x1A60]` (the owner
+pointer is loaded from caller `+0x70`), and conditionally passes the
+current-index address to
+the vector helper at caller `+0x3C`; `FUN_00592940` compares the consumer-side
+slot `+0x0C` result, calls the same consumer, loads `[caller+0x70]`, then
+`[[caller+0x70]+0x1B08]` as ECX for `FUN_004D74E0`, whose known return is
+that input plus `0x554`, before invoking the returned subobject's vtable slot
+`+0x8`. If that input owner is joined to `C` and retained table `0x01108F70`,
+this is the same conditional `FUN_00CA1D60 -> FUN_00CA1D40 -> FUN_00CB2760`
+route; that owner/table join is not established here. It selects one of the
+`+0x19A0/+0x19A8` templates and performs bounded `{TEXT}`/`{NAME}` replacement
+before its local output callbacks. These bodies establish byte retrieval and
+local formatting/callback preparation only. The second callback's input
+owner/table join, delimiter and template values, external family or row
+lookup, and final render-versus-forward behavior remain unresolved.
+
 See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`
 and its `AT-RECV-002` storage trace, `AT-RECV-003` callback trace and
-`AT-RECV-004` caller trace.
+`AT-RECV-004` caller trace and `AT-RECV-005` history-consumer trace.
 
 ## Evidence boundary
 
@@ -1594,6 +1653,18 @@ setup/parser/helper dispositions for the other six callers; it does not
 promote a received auto-translate association or control grammar, an external family/table/row lookup or
 a decoder. The World AT-RECV-001/002/003 handoff to `FUN_007906C0` remains
 unjoined.
+
+AT-RECV-005 adds three fresh authenticated export batches covering the
+RaptureLogModule slots, the direct history consumer and its two concrete
+callers. The exports establish bounded page/range selection, the
+`FUN_00404120` byte copy, local delimiter handling, template selection and
+callback preparation. Completed TextModule evidence resolves the conditional
+`param +0x5C` slot `+0x8` chain through `FUN_00CA1D60 -> FUN_00CA1D40 ->
+FUN_00CB2760`. The actual widget/consumer `+0xB0` and AT-RECV-001/002 World
+receiver `+0x660` instance join, table retention/population, external family/
+table row, final renderer and forwarding decision remain unresolved. The
+adjacent cell report authenticates the slot-5, slot-8 and slot-9 values for
+the fresh-null vtable branch.
 
 The Completion recipes AT-GH-014 through AT-GH-024 retain exporter revisions,
 script hashes, sanitized reproduction invocations, and output hashes. The
