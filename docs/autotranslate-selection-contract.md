@@ -1545,18 +1545,21 @@ text remain qualified. The owner `+0x660` slot-7 target is resolved to
 `FUN_00C9AD40`; its direct `FUN_00C9BAE0` helper and counter/range state are
 now resolved as bounded storage and retention helpers.
 
-Generic parser `FUN_007906C0` remains an inspected 800-byte byte-stream parser
-with renderer-interface dispatch and seven exported direct callers. The seven
-callers are recorded as a caller set; their bodies are not used for a
-universal negative. Its inspected body has no direct fixedPhrase lookup. The
-inspected parser and World handoff bodies have no direct call joining them;
-computed, indirect and dynamic routes remain unjoined. The received text
-still cannot be mapped to an external family/table key, a selected row, or a
-proven render-versus-forward action. The static slot-2 admission and ordinary
-tree insertion shape is known, while cached runtime category/table state and
-the final effect remain unresolved.
+AT-RECV-004 follows all seven direct callers of generic parser
+`FUN_007906C0`. `FUN_0089FBF0` establishes a concrete SendLog
+received-byte-span/parser edge: it prepares a received byte span and calls the
+parser. `FUN_0089EB40` and `FUN_0089E320` are bounded buffer/parser helpers.
+`FUN_00790AA0`, `FUN_00790B20` and `FUN_00790A30` are setup/parser/cleanup
+wrappers. `FUN_00790BA0` is a stateful range wrapper with three named
+post-parser branches. These caller bodies establish no received auto-translate
+association or control grammar,
+external family/table key, selected row, decoded token, or render-versus-forward
+result. The parser's renderer-interface targets and computed, indirect and
+dynamic routes remain unjoined, and the World AT-RECV-001/002/003 handoff to
+`FUN_007906C0` remains unjoined.
 See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`
-and its `AT-RECV-002` storage trace and `AT-RECV-003` callback trace.
+and its `AT-RECV-002` storage trace, `AT-RECV-003` callback trace and
+`AT-RECV-004` caller trace.
 
 ## Evidence boundary
 
@@ -1582,6 +1585,15 @@ trace records exact sender/name source selection, two-call state guards,
 preprocessing inputs and slot-2 arguments, plus the existing conditional
 C9C670 ordinary-tree effect, without claiming runtime table population,
 rendering or forwarding.
+
+AT-RECV-004 adds authenticated exact-entry decompilation and listing exports
+for all seven direct `FUN_007906C0` callers. AT-ID-093 authenticates the
+project immediately before both exports. The caller trace confirms the
+concrete SendLog received-byte-span/parser edge and records bounded
+setup/parser/helper dispositions for the other six callers; it does not
+promote a received auto-translate association or control grammar, an external family/table/row lookup or
+a decoder. The World AT-RECV-001/002/003 handoff to `FUN_007906C0` remains
+unjoined.
 
 The Completion recipes AT-GH-014 through AT-GH-024 retain exporter revisions,
 script hashes, sanitized reproduction invocations, and output hashes. The
