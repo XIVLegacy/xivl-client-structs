@@ -1732,6 +1732,43 @@ cells were checked against the authenticated `xtx_status.csv` table entry in
 lookup; selected cache policy/state, selection production, output admission
 and rendering remain unobserved.
 
+### Conditional quest and leve source keys
+
+Initial category 36 selects `xtx/guildleve` from metadata source key 2120,
+category ordinal 35 and descriptor index 20. Categories 37/38 select
+`xtx/quest` from source keys 2121/2122, ordinals 36/37 and descriptor indexes
+21/22. All three descriptors have no noun flag in ja/en/de/fr. The established
+mode-zero C9C0A0/C9FEF0 path sends the second decoded number unchanged to
+CA0930's row query with default selector 0xFF. Descriptor candidate ranges
+do not filter this supplied query key.
+
+The authenticated master names quest definition 0x0B450459 and guildleve
+definition 0x0B450013. Each supported locale declares `cache=-1,type=none`.
+Quest has four blocks `(0,1)`, `(110000,1861)`, `(120000,1028)` and
+`(180000,41)`; guildleve has two blocks `(0,13056)` and `(20000,3025)`.
+All offset counts match the declared counts. Applying the completed
+CacheAll relation assumes local cache state zero, matching block pairs and
+ready rows, as in Conditional status-name source keys above. The shipped
+none policy does not establish those conditions. Strictly inside a matching
+pair, `begin + slot` identifies its nonempty backing span's source key;
+enabled ordinals remain separate.
+
+Neither definition supplies a parameter override. Under AT-COMP-020/021's
+successful constructor and retained-state conditions, the first indexes
+therefore select quest defaults ja1/en2/de3/fr4 and guildleve defaults
+ja9/en10/de11/fr12. Each is a string field, forwarded by CA0930 through the
+existing TextModule path. Other source fields do not supply the selected name.
+
+`xivl-tools:docs/formats/fixed-control.md`, Initial registry inputs, owns the
+configuration identities, four locale layouts per family and 72 block pins.
+Its Conditional quest and leve lookup section owns executable coverage.
+The backing fields were checked against the authenticated `xtx_quest.csv`
+and `xtx_guildleve.csv` table entries in
+`xivl-client-data:manifests/manifest.json` at revision
+`06f6687b4e0adc24e7f38f3105ae9fc237de3eda`. This conditional name lookup
+does not establish historical selection, cache state, journal evaluation,
+client output admission or rendering.
+
 ### Conditional default fields
 
 The completed AT-COMP-020/021 constructor rules apply to the authenticated
