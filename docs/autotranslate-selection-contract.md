@@ -1443,6 +1443,107 @@ Conditional fixedPhrase/placeName CSV row-key equality does not assign
 arbitrary controls a table family. Field 0/category values and resource identity
 cannot establish a complete decoder or semantic resolver.
 
+## Fixed-control registry lookup
+
+The TextModule selector-0x2E handler supplies a conditional native lookup
+algorithm. It uses the installed Completion registry to select a descriptor;
+the two literal numbers alone do not identify a table or locale.
+
+Let T be the complete TextModule and P the complete CompletionModule from the
+existing constructor joins. CA0390 installs handler thunk 0x00CA15E0 in its
+MacroDecoder handler vector at selector index 0x2E. The thunk dispatches through
+the secondary object's vtable+0x84. Authenticated secondary table 0x01108ECC,
+with RTTI subobject offset 4, has cell 0x01108F50 = FUN_00C9FEF0. Thus this
+handler's receiver is T+4, distinct from AT-CHAT-002's TextCleaner copy handler.
+
+The successful D550 installation branch at 0x00C9D915..0x00C9D923 calls T's
+slot+0x20 with P+4. Cell 0x01108F90 selects FUN_00C9EFB0, whose complete
+13-byte body stores its explicit pointer at T+0x108. CA0390 initially zeroes
+that member. This proves the conditional FixedSheetInterface binding, without
+asserting an arbitrary historical instance or unchanged retained state.
+
+FUN_00C9FEF0 checks its adjusted receiver+0x104, which is T+0x108. With a
+nonnull interface, it calls FUN_00CB2D50 twice to obtain the two arguments and
+invokes the interface's slot+4 with the first value and a mode-byte output.
+For the installed P+4 table 0x01108E2C, RTTI offset 4 and cell 0x01108E30
+select FUN_00C9C0A0. Its existing body now has an identified fixed-control caller.
+This does not extend the literal-numeric diagnostic to every expression accepted
+by CB2D50.
+
+C9C0A0 interprets the first value as a signed index into P+0x4C's byte map.
+It requires a nonnegative index below the map length, reads the mapped signed
+category-vector index, bounds that index and requires a nonnull category object.
+CB3C70 reads the object's signed +0x89 descriptor index, which must be
+nonnegative and below C9DB10's descriptor count. C9DB30 then returns the
+0x58-byte descriptor at `[P+0xE0] + descriptorIndex*0x58`. These are the existing
+AT-COMP-017 category and descriptor structures, rather than an external CSV
+row-id lookup. The callback sets mode one only when the Excel provider's
+returned type value is 2 and descriptor+0x54 is nonzero; otherwise it sets zero.
+
+With a returned descriptor and mode zero, C9FEF0 passes the descriptor string
+and second decoded value to T's slot+0x0C, cell 0x01108F7C = CA0930. Mode one
+instead reaches slot+0x18, cell 0x01108F88 = CA00C0. AT-COMP-019..024 own those
+guarded TextModule query and noun paths. The handler also obtains the interface's
+slot+8/+0x0C values through C9BC20/C9BC30 around successful output; their complete
+P+4 coordinates return P+0xEC and P+0x140. This proves the dispatch association,
+without establishing a displayed phrase, fallback or render result.
+
+Direct PE-section reads authenticated the executable against the size, SHA-256
+and image base above. Capstone 5.0.7 x86-32 decoding checked all bytes of the
+bounded spans C9FEF0..CA00B4, C9C0A0..C9C181, C9EFB0..C9EFBD and
+C9D915..C9D923, alongside the thunk bytes, dispatch cells and secondary RTTI
+offsets. The retained CA0390 and D550 listings supplied the constructor and
+installation inputs; the complete receive/history and selection records remain
+unchanged inputs to this finding.
+
+An automatic external table lookup still needs the matching category map,
+category objects, descriptor strings/modes and Excel provider/locale context.
+No authenticated snapshot of that installed state is supplied by an arbitrary
+control or the merged phrase CSV. The recovered algorithm therefore does not
+justify a context-free family switch on either number. Reconstructing a declared
+initial registry from authenticated metadata is a separate conditional case;
+it requires the full-load assumptions below rather than a historical snapshot.
+
+### Conditional initial registry
+
+For a fresh CompletionModule, D550 clears the descriptor vector at P+0xDC,
+copies its root sheet argument into descriptor zero and sets that record's
+mode byte to zero at C9D610..C9D63D. The admitted root argument is
+`xtx/_fixedPhrase` from AT-COMP-015. With the authenticated locale backing rows
+supplied in ascending native-key order, its nonempty field-1 branches construct
+categories in traversal order. An `@` header uses descriptor index zero;
+an ordinary descriptor uses the current C9DB10 count, then appends its record.
+A leading `#` constructs a category with descriptor index -1, so C9C0A0 cannot
+return a descriptor for that initial object. Empty field 1 produces ordinary
+entries rather than another category object.
+
+C9D0D0's bounded body C9D0D0..C9D1BA writes the category-code map only inside
+the vector-growth branch C9D0F7..C9D11F. It fills new bytes with -1 and writes
+the current category ordinal at the supplied code. It then increments P+0x15
+and appends the category object regardless of growth. Consequently an earlier
+hole is not repaired, and an existing entry is not replaced by another call
+below the current map length. Category codes, object ordinals and descriptor
+indices must remain distinct.
+
+The pinned ja/en/de/fr rows in
+`xivl-client-data:manifests/fixed_phrase_backing_rows.json`, revision
+`750eb59885752e1a4f6e69c00e87697fce6a2580`, supply the same initial metadata
+for these branches. Reconstructing a complete successful traversal yields 41
+category objects and 24 descriptors, including descriptor zero. Category 20
+uses object ordinal 20, descriptor index 5 and source metadata key 2104, whose
+descriptor names `xtx/placeName` in mode zero. Code 31 and codes 41..48 remain
+unmapped. Code 49 maps to object ordinal 40, whose descriptor index is -1.
+These are derived initial-state coordinates, not observed historical state.
+
+This reconstruction assumes fresh vectors/counter, successful allocation,
+ready named backing resources, successful descriptor parsing and target
+preparation, and an uninterrupted full traversal. The zero-suffix target
+preparation branch can abort D550; this model assumes it succeeds. Later
+dynamic population, provider changes and locale reinitialization are outside
+the case. The noun flag remains distinct from C9C0A0's provider-dependent
+dispatch mode. A source-cell lookup under this model does not reproduce
+TextModule expression evaluation, fallback, wrappers or rendering.
+
 ## Received World chat handoff
 
 AT-RECV-001 recovers a bounded post-receive handoff for the authenticated World
