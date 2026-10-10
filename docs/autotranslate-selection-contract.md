@@ -2022,8 +2022,10 @@ replacements. Thus nonzero DEF alone does not establish singular identity.
 The search/replacement inputs include objects 0x01377A58, 0x01377AB0 and
 0x01377A00, followed by AT-COMP-023's count needle 0x01377E00. The file-backed
 call operands identify objects, not their initialized or retained strings.
-A complete bounded noun result requires those German needle values, the
-selected prefix/suffix/replacement fields and all output/return branches.
+The German needle initializer inputs section below owns their conditional
+initial strings.
+A complete bounded noun result requires retained needles, selected
+prefix/suffix/replacement fields and all output/return branches.
 Source rows and the five-word preset do not establish that result or rendering.
 
 Direct PE-section reads against the authenticated executable pinned CA00C0's
@@ -2036,6 +2038,42 @@ and CC5130's 803-byte span with SHA256
 Complete x86-32 decoding checked the preset stores, grammatical row/column
 arithmetic, extra row requests, needle operands and installed dispatch cells.
 These checks retain the explicit configuration and ready-row conditions.
+
+### German needle initializer inputs
+
+Direct PE-section inspection of the authenticated executable identifies these
+three constructor/destructor pairs and file-backed initializer pointer cells:
+
+| Object | Initializer | Literal address and text | Destructor | Pointer cell |
+| --- | --- | --- | --- | --- |
+| 0x01377A00 | 0x00F2CDB0 | 0x0110DCF4, `[a]` | 0x00F3BCC0 | 0x00F53234 |
+| 0x01377A58 | 0x00F2CDE0 | 0x0110DCF8, `[p]` | 0x00F3BCD0 | 0x00F53238 |
+| 0x01377AB0 | 0x00F2CE10 | 0x0110DCFC, `[pa]` | 0x00F3BCE0 | 0x00F5323C |
+
+Each 33-byte initializer reads the file-backed 0xFFFFFFFF length sentinel at
+0x00F67298, pushes the literal address, sets ECX to the corresponding object
+and calls completed string constructor 00447260. It then pushes the destructor
+address and calls 009D25C2 before returning. Each 10-byte destructor sets ECX
+to that same object and jumps to completed destructor 00446F50. Under
+successful construction and retained state, these objects therefore initially
+contain `[a]`, `[p]` and `[pa]` respectively. This identifies initializer
+inputs and pointer cells without proving historical startup execution, a full
+startup-array traversal or later object contents.
+
+Complete x86-32 decoding checked all nine instructions in each initializer
+and both destructor instructions. The initializer spans at F2CDB0, F2CDE0
+and F2CE10 have SHA256, respectively:
+
+- `76A4511DBFA290276BA8DEB9FB63B71CA497F0EADDF5487B54ADBD6F38C8C22F`
+- `4FBDC76012FAE8632C5DB1127DD84B61EB6CD5D35DD02D891EE415AE4EFEF34C`
+- `6AC01A0DEE0BE1DDDBA9E7CB6236EC47F9F1FDF07969CF55EAFD38616D7A3AF0`
+
+The contiguous 13-byte NUL-terminated literal span at 0x0110DCF4 has SHA256
+`57E5DAA26A056E64084CA2BF3D9BCF66A3D93368610588FA60DFE9A7A9040E90`.
+The 12-byte pointer-cell span at 0x00F53234 has SHA256
+`FF20D989C5458A97C9CDD2438194090C7301A9798F7A9CAD294992D1054F40ED`.
+These finite spans do not claim the extent of a larger literal or pointer table.
+German displayName noun boundary owns their use in the output sequence.
 
 ### Literal sheet references
 
