@@ -1518,9 +1518,30 @@ owner `+0x664` as a vtable pointer, reads slot `+0x8`, and calls that slot with
 ECX set to `&owner+0x664`; it does not load a separate object pointer from
 the field. The existing constructor evidence calls `FUN_00C9CFA0` with that
 same inline address, and the raw CompletionModule identity includes table cell
-`0x01108E48 = 0x00C9C670`. This qualifies the inline CompletionModule table
-and callback shape, but not the slot-2 effect, runtime state, external row key,
-or rendered text. The owner `+0x660` slot-7 target is resolved to
+`0x01108E48 = 0x00C9C670`. AT-RECV-003 resolves the callback's static inputs
+and the known conditional ordinary-tree effect. The `FUN_004D8D10` listing
+pushes its local `+0x10` message and then its local `+0x64` sender/name to
+`FUN_004D8560`; after its success and nonzero `DAT_0132F818` guards it pushes
+that same `+0x64` sender/name to `FUN_004D6B40`. The message is not the
+callback source. The owner state read through `owner+0x174F8` virtual slot
+`+0x18` is made twice: the first result selects state 4, otherwise a second
+call selects state 5. States 4 and 5 call `FUN_00445470(0x20)`, which returns
+the first-space byte offset or `-1`, then `FUN_00447A40` copies sender/name
+source offset 0 with that count to a stack-local destination. Its `-1` fallback
+uses stored length minus one before `FUN_00447260`; the delimiter is excluded
+and a no-space source supplies its stored bytes. Other states call
+`FUN_00445220` on sender/name with `(1,1,0,0,0)`, starting at offset 0 and
+scanning its full stored length, retaining only the bounded normalization and
+returning the same object. Both paths call inline `+0x664` vtable slot 2 with
+`ECX = &owner+0x664` and explicit arguments
+`(sign-extended DAT_0132F818, prepared sender/name object, -1)`. Existing
+`FUN_00C9C670` evidence qualifies readiness, nonempty/leading-period/literal
+guards, category-map/category-slot admission and ordinary-tree insertion with
+known key `0xFFFFFF80 | (category byte & 0x7F)` from third argument `-1`.
+`DAT_0132F818` is the bounded category-map selector, not the packed low
+category. This mechanical admission/tree effect is not render or forward
+proof. Cached-vtable/runtime category state, external row key and rendered
+text remain qualified. The owner `+0x660` slot-7 target is resolved to
 `FUN_00C9AD40`; its direct `FUN_00C9BAE0` helper and counter/range state are
 now resolved as bounded storage and retention helpers.
 
@@ -1531,10 +1552,11 @@ universal negative. Its inspected body has no direct fixedPhrase lookup. The
 inspected parser and World handoff bodies have no direct call joining them;
 computed, indirect and dynamic routes remain unjoined. The received text
 still cannot be mapped to an external family/table key, a selected row, or a
-proven render-versus-forward action. The later owner `+0x664` inline
-CompletionModule slot-2 effect remains unresolved.
+proven render-versus-forward action. The static slot-2 admission and ordinary
+tree insertion shape is known, while cached runtime category/table state and
+the final effect remain unresolved.
 See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`
-and its `AT-RECV-002` storage trace.
+and its `AT-RECV-002` storage trace and `AT-RECV-003` callback trace.
 
 ## Evidence boundary
 
@@ -1549,6 +1571,17 @@ zero references. The authenticated Lua source hashes and line spans, the
 RaptureTextBox method-pointer mapping, and the native dispatcher candidate are
 retained in the manifest. AT-COMP-010 joins selected-record production and
 AT-CHAT-001/002 recover conditional native packet-source joins.
+
+AT-RECV-003 adds authenticated exact-entry `FUN_00447A40`, `FUN_00445220`,
+`FUN_00445470` and `FUN_00447260` decompilation/listing exports. Fresh
+authentication AT-ID-090 covers the same executable and seven loaded
+initialized file-backed ranges for the initial pair, and fresh AT-ID-092
+repeats that authentication before the adaptive pair; all four exports ran read-only with
+`headlessSaved=false` and complete requested-target coverage. The callback
+trace records exact sender/name source selection, two-call state guards,
+preprocessing inputs and slot-2 arguments, plus the existing conditional
+C9C670 ordinary-tree effect, without claiming runtime table population,
+rendering or forwarding.
 
 The Completion recipes AT-GH-014 through AT-GH-024 retain exporter revisions,
 script hashes, sanitized reproduction invocations, and output hashes. The
