@@ -4,7 +4,7 @@ The retained static evidence recovers selected Completion records, native
 category/key production and conditional chat submission paths. An admitted
 fixed control reaches the message field unchanged when the copied prefix
 includes it completely. Generic Lua argument packing, earlier pronoun
-replacement, a selected external CSV table/key and receive lookup remain
+replacement, a selected external CSV table/key and receive row lookup remain
 qualified.
 [manifests/autotranslate_wire_format_study.json](../manifests/autotranslate_wire_format_study.json)
 contains the structured record.
@@ -1479,8 +1479,38 @@ advances `+0x14` when the captured value is at least `0x4B0`, and calls
 `FUN_00C9AAE0` plus `FUN_00C9B0D0` when object `+0x30` is nonnull and the
 unsigned dword-count condition `((object+0x34 - object+0x30) >> 2) > 0x3B`
 holds, then returns the captured value. The helper's input storage,
-semantic meaning of the returned count and counter/range state are the next
-unresolved association.
+semantic meaning of the returned count and counter/range state are resolved
+within this bounded history path by AT-RECV-002. `FUN_00C9A8E0`
+supplies the temporary UTF-8 data pointer through `FUN_00445210` and a count
+from `FUN_004451F0`, whose body returns `[string+0x8] - 1`, so the count
+excludes the source terminator. `FUN_00C9BAE0` appends exactly that byte count
+to the `object+0x2c` aggregate byte range at relative `+0x14/+0x18`. It
+requests `oldByteLength + count` through `FUN_00406280`, then checks that the
+begin pointer is nonnull and `newEnd - begin > oldByteLength` before
+`memcpy`-copying exactly the supplied count at the old end, without an
+inspected NUL append. It computes `iVar1` as the cumulative byte end
+(`oldByteLength + count`) and
+passes `&iVar1` to `FUN_00813050`, whose vector receives byte-end offsets; this
+is the same offset vector whose dword range is at relative `+0x4/+0x8`.
+The slot-7 `object+0x2c` value is passed by address as this aggregate; the
+later owner `+0x664` CompletionModule value is an inline object whose first
+dword is a vtable pointer, not a pointer field.
+
+When that byte-end offset vector contains at least 60 dwords, `FUN_00C9AAE0`
+packages the two history values, offset dwords and raw bytes into a
+`Component::Log::LogPage` object. The LogPage object's first dword is its
+vtable; the payload begins with the two interval values, then the offset
+dwords and raw bytes. It inserts the page into its four-pointer-per-block ring
+and advances its separate history sequence. `FUN_00C9B0D0` passes the complete
+offset-vector begin/end range to `FUN_0071CC50`, then computes
+`_Src` as the current byte end, yielding zero remaining byte length, and sets
+the byte end to the byte begin. The inspected path therefore clears the
+aggregate ranges; it does not establish a nonzero remaining byte range. The `+0x10` value
+is the returned history count/index and `+0x14` increments on every callback
+whose old `+0x10` is at least `0x4B0`; no reset is shown, so it is a
+mechanical history advance counter. `+0x30/+0x34` are the
+byte-end offset-vector range; none is proven an external family, table key,
+CSV row key, decoded token, rendered phrase or forwarding decision.
 
 For successful tell and CB branches, a nonzero `DAT_0132F818` then calls
 `FUN_004D6B40`. Its listing loads the inline object's first dword at outer
@@ -1492,19 +1522,19 @@ same inline address, and the raw CompletionModule identity includes table cell
 and callback shape, but not the slot-2 effect, runtime state, external row key,
 or rendered text. The owner `+0x660` slot-7 target is resolved to
 `FUN_00C9AD40`; its direct `FUN_00C9BAE0` helper and counter/range state are
-the first unresolved static association.
+now resolved as bounded storage and retention helpers.
 
 Generic parser `FUN_007906C0` remains an inspected 800-byte byte-stream parser
 with renderer-interface dispatch and seven exported direct callers. The seven
 callers are recorded as a caller set; their bodies are not used for a
 universal negative. Its inspected body has no direct fixedPhrase lookup. The
 inspected parser and World handoff bodies have no direct call joining them;
-computed, indirect and dynamic routes remain unjoined. Without the
-`FUN_00C9BAE0` helper's input storage, semantic meaning of the returned
-pre-increment count and counter/range state, the received text cannot be
-mapped to an external family/table key, a selected row, or a proven
-render-versus-forward action.
-See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`.
+computed, indirect and dynamic routes remain unjoined. The received text
+still cannot be mapped to an external family/table key, a selected row, or a
+proven render-versus-forward action. The later owner `+0x664` inline
+CompletionModule slot-2 effect remains unresolved.
+See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`
+and its `AT-RECV-002` storage trace.
 
 ## Evidence boundary
 
