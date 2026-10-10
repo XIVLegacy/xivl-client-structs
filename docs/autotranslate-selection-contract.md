@@ -1995,6 +1995,48 @@ conditional ready-map admission; the tool's French default query owns source
 coverage. Actual provider state, cache readiness, wrapper output and rendering
 remain unobserved.
 
+### German displayName noun boundary
+
+With a retained type-2 provider and the displayName descriptor's noun flag,
+C9C0A0 selects mode one. C9FEF0 calls CA00C0, whose type-2 branch constructs
+source words `[0,nativeKey,1,5,0]` and invokes CB8AF0. Under its fresh-object
+path and unchanged type, CC5460 constructs NounDe and output slot +4 selects
+CC5130. Cached objects and later type changes retain their existing limits.
+
+The authenticated German displayName parameter is
+`[NOUN|SGL;6/PLR;8/SGG;7/CNT;10/DEF;12/GEN;11/PLG;9]`. Unlike German placeName's
+empty parameter in AT-COMP-024, this supplies record-zero selectors under
+successful parsing and allocation. CC5460 uses seven-word records of size
+0x1C: SGL, PLR, GEN, SGG, PLG, CNT and DEF. This is a noun configuration,
+not a SHEET override or a default-query association.
+
+CC5130 first requires admitted target and attributive source rows. Count 1
+selects SGL and reads SGG; it requests a further attributive row at `26 + SGG`.
+The retained word contributes `4 * word + 11` to the grammatical column,
+which is then offset by GEN. With that further row admitted, DEF controls
+prefix copying; the SGL append and suffix search/replacement remain separate.
+The method also requests
+attributive rows 24, 25 and 26 and, when all are admitted, applies additional
+replacements. Thus nonzero DEF alone does not establish singular identity.
+
+The search/replacement inputs include objects 0x01377A58, 0x01377AB0 and
+0x01377A00, followed by AT-COMP-023's count needle 0x01377E00. The file-backed
+call operands identify objects, not their initialized or retained strings.
+A complete bounded noun result requires those German needle values, the
+selected prefix/suffix/replacement fields and all output/return branches.
+Source rows and the five-word preset do not establish that result or rendering.
+
+Direct PE-section reads against the authenticated executable pinned CA00C0's
+256-byte span with SHA256
+`1A285A9C53964A29F1D88F9CBE5E6668CE71450A8A6375E6C209021AE3F467DF`,
+CC5460's 896-byte span with SHA256
+`E1772C6C1A96857E77BE632CE541F0D5A1C720E5B23200AD92B43FDF311DA95C`,
+and CC5130's 803-byte span with SHA256
+`D93EDE337EA0407FF6917D973C1FF57317985CFDF45FD9CD3544550D936B8839`.
+Complete x86-32 decoding checked the preset stores, grammatical row/column
+arithmetic, extra row requests, needle operands and installed dispatch cells.
+These checks retain the explicit configuration and ready-row conditions.
+
 ### Literal sheet references
 
 For the authenticated executable identified above, CA0390's retained listing
