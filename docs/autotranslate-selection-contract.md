@@ -1659,6 +1659,40 @@ retained child/cache state, locale, TextModule output/admission, noun evaluation
 and rendering retain their existing limits. Completed selection and
 receive/history traces remain inputs.
 
+### Conditional command-name source keys
+
+The initial registry's codes 24..30 and 32..35 select `xtx/command`
+descriptors without noun flags in each supported ja/en/de/fr locale. Under
+the same full-load conditions, C9C0A0 returns mode zero and C9FEF0 passes
+the second decoded number unchanged to CA0930's row query. Descriptor
+candidate ranges do not filter this supplied query key.
+
+The authenticated game master 0x01030000 names command definition
+0x0B450017, 12993 bytes, SHA256
+`99762442C38144D8AE82C83B24265C4B1AFE3050AAB769DC7AE2CADDEB12B3E5`.
+Each supported locale declares `cache=0,type=all` and 23 disjoint blocks.
+All offset counts equal their declared block counts. Applying AT-COMP-016's
+completed mapping to matching ready CacheAll pairs identifies the native
+key `begin + slot` strictly inside each block with its nonempty backing
+span and authenticated CSV row. This conditional association does not use
+an enabled ordinal or extend the inverse's upper/exhausted cases.
+
+The definition's first indexes and explicit SHEET DEF parameters both select
+ja1, en2, de8 and fr16. Under AT-COMP-020/021's successful constructor and
+retained-state conditions, selector 0xFF therefore queries that default
+string field. CA0930 forwards it to the existing TextModule evaluator.
+Direct selector-0x2E command lookup and literal selector-0x28 command
+references share the named row query, default and recursive string path.
+
+`xivl-tools:docs/formats/fixed-control.md`, Initial registry inputs, owns
+the master/definition identities, promoted locale layouts and 276 block
+resource pins. Its Conditional command-name lookup section owns executable
+diagnostic coverage. Those inputs were compared to the authenticated command
+CSV identified by `xivl-client-data:manifests/manifest.json` at revision
+`06f6687b4e0adc24e7f38f3105ae9fc237de3eda`. This establishes a conditional
+source lookup, without a command selection producer, historical loaded state,
+general expressions, output wrappers or rendering.
+
 ### Conditional default fields
 
 The completed AT-COMP-020/021 constructor rules apply to the authenticated
