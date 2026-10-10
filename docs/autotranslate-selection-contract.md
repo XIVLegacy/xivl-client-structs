@@ -1925,6 +1925,23 @@ The row decoder C9A6A0's 321-byte span has SHA256
 These checks establish a conditional static key association and admission
 rule, without claiming an observed cache hit or historical provider state.
 
+### Localized displayName source keys
+
+The same authenticated displayName definition declares `cache=100,type=map`
+for ja/de/fr. English displayName map admission's writer, lookup and
+`subSheet.begin + slot` relation also applies conditionally to these selected
+kind-1 sheets. The local path, matching map backend, exact-key admission,
+nonnull row and ready byte remain prerequisites. Enabled ordinal is not a
+substitute for the supplied native key. The locale-specific source layouts,
+block identities and offset extents are owned by
+`xivl-tools:docs/formats/fixed-control.md`, Localized displayName source lookup,
+and `apps/cli/src/localized_display_inputs.json`.
+
+This association identifies backing cells. It does not apply English's
+stable type-1 mode-zero dispatch to another locale. The ja/de/fr descriptors
+retain their noun flags and provider-dependent output boundary; no complete
+noun result, actual provider state, map readiness or rendering is established.
+
 ### Literal sheet references
 
 For the authenticated executable identified above, CA0390's retained listing
