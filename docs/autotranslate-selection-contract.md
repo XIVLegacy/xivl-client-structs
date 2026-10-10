@@ -1833,6 +1833,26 @@ or rendering. Fields with controls still require their evaluation context;
 noun dispatch still requires provider and configuration state. A diagnostic
 that returns a token-free default field is bounded to that conditional source.
 
+### Ordinary fixedPhrase default query
+
+Descriptor zero names `xtx/_fixedPhrase` and has mode byte zero under the
+conditional initial registry. C9C0A0 therefore selects the ordinary query;
+C9FEF0 supplies the unchanged native key and selector 0xFF to CA0930.
+The authenticated definition 0x0B4508E6 declares SHEET DEF overrides ja2,
+en4, de6 and fr8, selecting the first locale text field rather than metadata
+columns 0/1. Its sourceDefinition identity and locale backing tuples are
+owned by `xivl-client-data:manifests/fixed_phrase_backing_rows.json` at revision
+`06f6687b4e0adc24e7f38f3105ae9fc237de3eda`.
+
+Under AT-COMP-020/021's matching constructor and retained-state conditions,
+the admitted SHEET DEF override sets sheet+0xB to that index. CA0930's
+selector-0xFF and string branches forward the admitted row's selected field
+through C9A480 to TextModule slot +8. The selected field can contain literal
+text or controls requiring the separately proved evaluator. The second locale
+text field remains a distinct source cell. AT-COMP-016's backing-key and
+ready-row conditions, initial registry state, output wrappers and rendering
+remain qualified; this does not infer a context-free phrase from either number.
+
 ### English displayName fixed-control query
 
 The recovered C9C0A0 predicate sets mode one only when the provider type is 2
