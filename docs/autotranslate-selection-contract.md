@@ -1723,7 +1723,61 @@ See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`
 and its `AT-RECV-002` storage trace, `AT-RECV-003` callback trace and
 `AT-RECV-004` caller trace, `AT-RECV-005` history-consumer trace and
 `AT-RECV-006` owner/writer trace and `AT-RECV-007` alternate-constructor
-trace.
+trace. AT-RECV-008 identifies `FUN_0054E150` as
+`Application::Main::SqwtInterface::CustomLogControlFactor::vfunc3` through
+method cell `0x00FA2A5C` in table `0x00FA2A50`. Direct PE identity pins
+vtable[-1] COL `0x01145D30`, subobject offset `0x0`, TypeDescriptor
+`0x0126E2E0` and raw name
+`.?AVCustomLogControlFactor@SqwtInterface@Main@Application@@`.
+The separate `LogControlExtension` table `0x00FA2A40` remains the
+AT-ENTER-027 World C path.
+
+The exact `FUN_0054BFA0` decompilation/listing resolves a
+`RaptureSqwtInterface` teardown/base-cleanup path. It writes complete table
+`0x00FA2D8C` at `[ESI]` (`0x0054BFCD`) and adjusted
+`RaptureSqwtInterface` table `0x00FA2D6C` at `[ESI+0x4]`
+(`0x0054BFD3`), installs `CustomControlExtension` at `+0x2E0`
+(`0x00FA2808`, `0x0054C0C8`) and `LogControlExtension` at `+0x2CC`
+(`0x00FA2A40`, `0x0054C0E8`), then writes `0x00F90F0C` to `[ESI+0x4]`
+at `0x0054C127` after member cleanup. It does not install the
+`CustomLogControlFactor` table `0x00FA2A50`. The factor's exact `+0x4`
+initializer, outer creator/lifetime path and active field value at
+`FUN_0054E150` remain qualified.
+
+At `FUN_0054E150`, ESI is the factor receiver and EDI is the separate
+explicit input. The receiver `+0x4` value is pushed first at `0x0054E15C`
+and becomes `FUN_00555730`'s second explicit argument. Combined with
+AT-RECV-007, this gives receiver `+0x4` -> `FUN_00555730` second argument
+-> allocated control `+0x1B08` when the `0x1F10` allocator returns nonnull.
+`FUN_00557600` receives the factor as this with the separate input and
+allocated result as explicit arguments.
+
+The later call at `0x0054E17A` unconditionally invokes `FUN_00558F60` with
+the address of the explicit input's vector descriptor: `LEA ECX,[EDI+0x30]`
+at `0x0054E173`. It supplies a pointer to the local allocated or null result
+at `0x0054E172`. The available-capacity branch copies that result and
+advances the vector current pointer. The full or null-begin branch calls
+`FUN_00558720`, whose internals remain qualified.
+
+AT-ID-106, AT-GH-376 and AT-GH-377 pin the teardown-store evidence.
+The structured record retains executed checkout-CRLF and Git-LF script
+hashes and producing revision `e852799a379b09c807a47e52bedeb8e7f2d1f357`.
+Its authenticated outputs are:
+
+- `tools/ghidra/logs/autotranslate-alternate-receiver-20261009-01-auth-009.txt`
+  (3,777 bytes, SHA256
+  `B50518341463B2DA0D7B5F16A18AD149D28AF33F08127570F7E8DF5B81B77722`).
+- `tools/ghidra/logs/autotranslate-alternate-receiver-20261009-01-constructor-decomp-010.txt`
+  (3,016 bytes, SHA256
+  `C0DF6EA484A8F69E8D16CD76687C5877D3C4809BF6E3AF0E87BF18E2C60B4E35`).
+- `tools/ghidra/logs/autotranslate-alternate-receiver-20261009-01-constructor-listing-011.txt`
+  (3,894 bytes, SHA256
+  `B91476CFC40E16006029C6DB0EFB6C14AAC4A4891F5877FF530128E6905C0653`).
+
+Receiver identity and the conditional field-input edge do not establish the
+factor's `+0x4` initializer or equality to World C. Live retention, active
+selection, cached table/template state, external family/locale/row identity
+and render-versus-forward behavior remain qualified.
 
 ## Evidence boundary
 
