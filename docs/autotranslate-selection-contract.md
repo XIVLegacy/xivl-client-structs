@@ -1603,6 +1603,47 @@ or rendering. Fields with controls still require their evaluation context;
 noun dispatch still requires provider and configuration state. A diagnostic
 that returns a token-free default field is bounded to that conditional source.
 
+### Literal sheet references
+
+For the authenticated executable identified above, CA0390's retained listing
+at CA0698..CA06A5 installs thunk CA1590 in selector-0x28's vector cell +0xA0.
+The thunk dispatches secondary table slot +0x6C; cell 0x01108F38 contains
+CA0E20. A bounded PE32 raw-byte inspection with Capstone 5.0.7 verifies that
+join and the handler at CA0E20..CA101D. The
+509-byte handler has SHA-256
+`4B5357E5DD5A1DE5D6E5317C590FC8516D95C81858E9747204235D30C11BC581`.
+
+CA0E95 parses the first component through CB2AE0 into a temporary string.
+CA0EB1 and CA0ECE parse the next two components through CB2D50 into separate
+integers. Each requires nonzero consumed bytes. The stack at CA0F25..CA0F4C
+passes that string, the first integer as row key, the second as column
+selector, a remaining-argument context and a destination string to primary
+slot +0xC. Installed primary table 0x01108F70 has CA0930 at cell 0x01108F7C.
+With exactly those three components, CB3480's zero-length remainder fails
+its entry loop condition at CB34FB..CB3506 and adds no arguments.
+
+The retained CA0930 listing at CA0961..CA0991 requests the named sheet through
+the retained provider's slot +4 and the row key through sheet slot +0x18,
+requiring both results. CA099B..CA09CE uses a nonnegative column directly,
+except 0xFF, which requests the sheet's selected default. Negative selectors
+take a separate index mapping path. For a string type, the jump table's tenth
+entry selects CA09EC: row slot +8 and C9A480 obtain the selected field,
+then primary slot +8 evaluates it. Cell 0x01108F78 contains CA1D60, whose
+primary +0x24 cell 0x01108F94 dispatches CA1D40, which adjusts the receiver to
+T+4 for CB2760. Thus nested string
+controls use the same evaluator. CA0F4E..CA0F5F requires query result 1 and
+appends the temporary result to the outer destination; failure is separate.
+
+This establishes the conditional literal-string/integer/integer association
+for a ready admitted row and retained tables/provider. A diagnostic may
+restrict it to exact three-component expressions, supported nonnegative string
+columns or the promoted default, and independently authenticated named backing
+blocks. Parameters, additional arguments, negative selectors, numeric field
+conversions and other callbacks require their own evidence. Recursion budgets
+are diagnostic limits, not recovered native behavior. Actual delivery, retained
+or mutated state, Completion admission, output wrappers and rendering remain
+outside this static association.
+
 ## Received World chat handoff
 
 AT-RECV-001 recovers a bounded post-receive handoff for the authenticated World
