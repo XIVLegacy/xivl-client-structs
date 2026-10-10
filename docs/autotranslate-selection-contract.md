@@ -1463,9 +1463,10 @@ success gate. Count display spelling is unnecessary for this no-match case.
 The source identity is displayName definition 0x0B450000, 16987 bytes,
 SHA256 `7C9B77F9E5989C1C85BBD8152162160CC423F1A6CA17B730F51B5DDC5E4FF866`.
 Its English columns 1..5 are `str,str,s8,s8,s8`, with `cache=100,type=map`.
-This is distinct from CacheAll. Matching static backing keys to the admitted
-named rows is an explicit condition, not a use of the AT-COMP-016 inverse or
-an observed runtime cache hit. Source key 1000001 has the bounded flags and a
+This is distinct from CacheAll. The conditional target map-key relation is
+owned by English displayName map admission below; attributive named-row
+admission remains an explicit condition. No runtime cache hit was observed.
+Source key 1000001 has the bounded flags and a
 token-free SGL without the needle. The target and attributive key-5 payload
 identities, typed row checks and source-cell comparison are retained by
 `xivl-tools:docs/formats/fixed-control.md`, Conditional English noun identity,
@@ -1474,8 +1475,9 @@ and `apps/cli/src/english_noun_inputs.json`.
 No configuration-null or count guard is shown before CC5860's indexed
 configuration reads. This case requires valid configuration and allocations;
 safe rejection of other configurations belongs to a diagnostic implementation.
-Automatic English caller metadata, actual provider state and row admission,
-later mutations and receive/render behavior remain unresolved.
+The automatic English fixed-control path below uses a sheet query rather
+than this metadata. Actual provider state and row admission, later mutations
+and receive/render behavior remain unresolved.
 
 The authenticated executable has the identity recorded in AT-COMP-022.
 Independent raw checks pin CC5A50's 758-byte interval with SHA256
@@ -1681,6 +1683,89 @@ fallback or empty-result behavior, Completion admission, client output wrappers
 or rendering. Fields with controls still require their evaluation context;
 noun dispatch still requires provider and configuration state. A diagnostic
 that returns a token-free default field is bounded to that conditional source.
+
+### English displayName fixed-control query
+
+The recovered C9C0A0 predicate sets mode one only when the provider type is 2
+and descriptor+0x54 is nonzero. At 0x00C9C137 it compares the type with 2;
+0x00C9C13A branches to the zero-mode store at 0x00C9C163 on inequality.
+Consequently a stable type-1 English provider sets mode zero even when the
+selected displayName descriptor has a noun flag. C9FEF0's zero-mode branch
+at 0x00C9FFD9 passes selector 0xFF to primary slot +0xC, CA0930. This path
+does not construct or pass NounEn's five metadata words. The descriptor flag
+alone does not select English noun dispatch.
+
+The authenticated displayName definition from Conditional English noun
+identity has ordered English indexes `[1,2,3,4,5]` and only a NOUN parameter
+group. Applying AT-COMP-020/021's constructor rules initializes the first
+index, 1, and finds no SHEET override. With matching constructor inputs and
+retained state, CAF300 therefore returns default field 1. CA0930 checks for
+selector 0xFF at 0x00CA09BA and calls sheet slot +0x1C at 0x00CA09CA.
+After its named row lookup and field-type query, the string-field branch
+reads that field through C9A480 and forwards it to TextModule slot +8.
+For a token-free source this gives the conditional default text, without
+applying NounEn's flags, attributive lookup or count replacement.
+
+Independent bounded raw checks against the authenticated executable pinned
+C9C0A0's 226-byte span with SHA256
+`286BBDB332E7C3F175050DB5BEB9102A0098AC4493B3D1B8A79430A78D9DC646`,
+C9FEF0's 453-byte span with SHA256
+`66431F769584C961F27F4FAAA6DE35791168C2FCD1740FC5834DF060B7879D35`,
+and CA0930's 1222-byte span with SHA256
+`92960E665215C3D80D8F43C5B9A7BD343CBA0A9FB54F9F47F717517670AFB999`.
+The installed query/conversion cells, CAF300 default-byte read, first-index
+store and pinned definition indexes/parameter were checked separately.
+These are conditional source and dispatch associations. Provider state,
+cache readiness, wrapper output and receive/render behavior are not observed.
+
+### English displayName map admission
+
+The target definition's `type=map` is applied conditionally to a selected
+native kind-1 sheet. CB1BF0 installs CacheMap vtable 0x0110C698; its writer
+slot +0xC is CB1C90 and key lookup slot +0x18 is CA2B90. The distinct
++0x1C method CA2AE0 enumerates by ordinal and does not supply this key join.
+CB1C90 searches and inserts using its supplied native key, storing the row
+pointer in CacheData +0xC. CA2B90 searches with that same key and returns
+the matching CacheData. This relation does not use the CacheAll inverse.
+
+The bulk loader CC30C0 supplies `subSheet.begin + slot` to that writer:
+0x00CC316B adds the begin value to the slot and 0x00CC316D pushes the key
+before the backend +0xC call. The indexed loader CC3240 first looks up its
+requested key through +0x18 and supplies that key to +0xC on a cache miss.
+Thus a populated map associates each backing slot with its native key,
+independently of enabled-row ordinal.
+
+CAF760 requires the local sheet path, `sheet+0x3C == 0`, and requests the
+exact native key through backend +0x18. It requires a nonnull CacheData and
+row, then C9A5F0 requires `row+4 == 1`. C9A6A0 sets that ready byte at
+0x00C9A7D8 after decoding the row. An installed map entry alone is insufficient.
+For the authenticated target block `(1000000,601)`, source key 1000001 is
+slot 1; under those map and readiness conditions it identifies the same
+named target row. The 418 enabled source rows are not evidence of runtime
+map population or readiness. Attributive row admission remains separate.
+
+Against the same authenticated executable, bounded raw checks pinned the
+constructor CB1BF0 (132 bytes, SHA256
+`F24925ED55C0DCA3D26E0EDB9FC8F5D860CBB9A4990BE70C05955604E5A772B2`),
+writer CB1C90 (186 bytes, SHA256
+`AB3E8622929537431C75FF80D0F97482D9FB36644D3BF55BF331D35C76A3B7D8`)
+and key lookup CA2B90 (100 bytes, SHA256
+`3E1F34250A14D4CEF5DED82488B2C66CB6AE5914DC9C95A54300AFA842F5877C`).
+The selected vtable cells were pinned in a 32-byte prefix with SHA256
+`3EBF0E097793EFCD7C999092B405871D7B6E28028D841F7DB23D129E849F0BB4`;
+this interval does not claim the full table extent. The distinct ordinal
+method was checked separately.
+The bulk/indexed loader spans are 377/189 bytes with SHA256
+`7366F61B8371FEEBA9B1C1325933FD519426CE8BEEAF656BB9880FFFF67B2720`
+and `729891C9C98ABC042B242ED70618F4E52B58D71FFA629AA5B8B2A5692C799FC5`.
+CAF760's 78-byte span has SHA256
+`1F8CEE0B93F3F6CE0A1AD2A47ECA83F7A50291311FAE1E0952DA2965D2A470FF`;
+C9A5F0's 10-byte span has SHA256
+`929920E84AE4E4EBE4928F32DD118957D6D337944E8AA2DF22C856084663F5EE`.
+The row decoder C9A6A0's 321-byte span has SHA256
+`CB68125528E6EA56A6C8F2C627C3A9F7CA36A7BD92AB3593149E139454A0F595`.
+These checks establish a conditional static key association and admission
+rule, without claiming an observed cache hit or historical provider state.
 
 ### Literal sheet references
 
