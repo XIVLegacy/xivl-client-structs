@@ -1939,8 +1939,8 @@ and `apps/cli/src/localized_display_inputs.json`.
 
 This association identifies backing cells. It does not apply English's
 stable type-1 mode-zero dispatch to another locale. The descriptors retain
-their noun flags. German/French output remains provider-dependent; Japanese
-displayName has the separate declared context below. No complete noun
+their noun flags. German output remains provider-dependent; Japanese and
+French displayName have the separate declared contexts below. No complete noun
 result, actual provider state, map readiness or rendering is established.
 
 ### Japanese displayName fixed-control query
@@ -1967,6 +1967,33 @@ Japanese definition index and parameter. Localized displayName source keys
 owns conditional ready-map admission; the tool's Japanese default query
 owns source coverage. Actual provider state, cache readiness, wrapper
 output and rendering remain unobserved.
+
+### French displayName fixed-control query
+
+For a declared stable type-3 provider, C9C0A0 takes the zero-mode branch:
+type 2 and a nonzero noun flag are both required for mode one. This context
+is explicit for French displayName; the locale and control bytes do not
+establish the actual runtime provider type. C9FEF0 passes the descriptor
+name and unchanged second number with selector 0xFF to CA0930 without
+constructing noun words.
+
+The authenticated displayName definition has French indexes
+`[13,14,15,16,17,18]`, types `str,str,s8,s8,s8,s8`, and parameter
+`[NOUN|SGL;13/PLR;14/VOW;15/CNT;=1/DEF;18/GEN;17]` without a SHEET override.
+Under AT-COMP-020/021's matching constructor and retained-state conditions,
+CAF300 returns first-index default 13; the NOUN DEF field 18 does not change
+that query default. CA0930's default-selector and string-field branches
+forward field 13 through C9A480 to TextModule slot +8. Token-free input gives
+conditional default text without noun transformations or count replacement.
+Other controls retain their separate evaluator requirements.
+
+Bounded raw checks replayed the C9C0A0, C9FEF0 and CA0930 spans and installed
+query/conversion cells pinned in English displayName fixed-control query.
+They also checked the CAF300 default-byte read, first-index store and French
+definition indexes and parameter. Localized displayName source keys owns
+conditional ready-map admission; the tool's French default query owns source
+coverage. Actual provider state, cache readiness, wrapper output and rendering
+remain unobserved.
 
 ### Literal sheet references
 
