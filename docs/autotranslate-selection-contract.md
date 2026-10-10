@@ -1769,6 +1769,45 @@ and `xtx_guildleve.csv` table entries in
 does not establish historical selection, cache state, journal evaluation,
 client output admission or rendering.
 
+### Conditional reference-name source keys
+
+The initial registry selects these reference sheets in ja/en/de/fr:
+
+| Sheet | Category code | Metadata source key | Category ordinal | Descriptor index | Block begin/count | Default columns ja/en/de/fr |
+|---|---|---|---|---|---|---|
+| `xtx/text_guardian` | 16 | 2100 | 16 | 1 | 1/12 | 0/1/2/3 |
+| `xtx/text_equipPtName` | 17 | 2101 | 17 | 2 | 1/48 | 0/1/6/13 |
+| `xtx/text_skillName` | 18 | 2102 | 18 | 3 | 1/82 | 0/1/3/4 |
+| `xtx/text_jobName` | 19, 40 | 2103, 3000 | 19, 39 | 4, 23 | 1/58 | 0/1/6/12 |
+
+All five descriptors lack noun flags. Under the established initial full-load
+conditions, C9C0A0/C9FEF0 selects mode zero and forwards the second decoded
+number unchanged to CA0930's row query with default selector 0xFF. Descriptor
+candidate ranges do not filter that supplied key.
+
+Each authenticated definition declares `cache=0,type=all`, one block per
+supported locale and an offset count equal to the declared count. Applying
+AT-COMP-016's completed mapping to matching ready CacheAll pairs identifies
+`begin + slot` strictly inside the block with the nonempty backing span's
+source key. Enabled ordinals do not supply this join.
+
+The first indexes select the default columns above under AT-COMP-020/021's
+successful constructor and retained-state conditions. Equipment has only
+NOUN parameters; the other definitions have no parameter group. No SHEET DEF
+override changes those first indexes. French equipment's first column 13
+therefore supplies this query, while NOUN SGL column 14 remains a separate
+field. Each selected default is a string forwarded to the TextModule path.
+This association does not apply noun transformations to the source name.
+
+`xivl-tools:docs/formats/fixed-control.md`, Initial registry inputs, owns the
+master/definition identities, locale layouts and 48 block pins in
+`reference_name_inputs.json`. Its Conditional reference-name lookup section
+owns executable coverage. Backing cells were checked against the four named
+`xtx_text_*.csv` table entries in
+`xivl-client-data:manifests/manifest.json` at revision
+`06f6687b4e0adc24e7f38f3105ae9fc237de3eda`. Selection production, native
+provider/cache state, output admission and rendering remain unobserved.
+
 ### Conditional default fields
 
 The completed AT-COMP-020/021 constructor rules apply to the authenticated
