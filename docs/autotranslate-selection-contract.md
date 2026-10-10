@@ -1632,8 +1632,9 @@ names `FUN_00546EF0 @ 0x00546EF0` and `FUN_00555730 @ 0x00555730`.
 AT-GH-370/371 export their bounded argument bodies and the concrete
 publication path. `FUN_00546EF0` passes `[param_1+0x10]`, which AT-ENTER-027
 constrains to `C=M+0x10` through retained LogControlExtension L and table
-`0x00FA2A40`. `FUN_00555730` passes its `param_2`; that upstream producer
-remains unresolved.
+`0x00FA2A40`. `FUN_00555730` passes its `param_2`; AT-RECV-007 below
+identifies that source as the FUN_0054E150 receiver `+0x4`, while receiver
+identity, its initializer and actual retention remain qualified.
 
 `FUN_005954D0` checks `control+0x1B0C`, calls `FUN_004D7590` with
 `[control+0x1B08]`, and, on a nonzero result, stores it in `control+0x1B0C`
@@ -1644,14 +1645,18 @@ complete-document `+0xB0`. AT-ENTER-027's retained LogControlExtension L
 path establishes `L+0x10 = C = M+0x10` through FUN_00546E00 at
 `0x00546E37..0x00546E41` and table `0x00FA2A40`, so FUN_00546EF0's
 `[param_1+0x10]` is conditionally the completed World C input while that
-registration and retention hold. FUN_00555730's param_2 remains unresolved.
+registration and retention hold. AT-RECV-007 below identifies
+FUN_00555730's `param_2` source as the FUN_0054E150 receiver `+0x4`; receiver
+identity, its initializer and actual retention remain qualified.
 Therefore the conditional static alias from World `C+0x660` to reader `+0xB0`
 is established when the applicable input and guards pass.
 
 This also conditionally supplies the owner identity used by AT-RECV-005's
 second callback through control `+0x1B08`. That isolated trace did not
-establish the owner join; actual table retention, live-instance selection
-and the alternate constructor input remain qualified.
+establish the owner join; actual table retention and live-instance selection
+remain qualified. AT-RECV-007 below identifies the alternate source as
+receiver `+0x4`, while receiver identity, its initializer and actual retention
+remain qualified.
 
 Independent review report SHA256
 `3E4A25E1C2C5F9DFD2E4491C5A98A4435B63747B9F951C23744A1F401A0304E5` maps
@@ -1660,14 +1665,65 @@ vtable `0x00FA9504` to static type `LogDocument` and
 pinned COL/type-descriptor locators. These are static identities only, not live
 instance proof. The completed World branch independently installs its history
 object through `FUN_004DC5D0`/`FUN_004DEE90` at receiver `C+0x660`.
-The FUN_00555730 upstream constructor-callsite input, retained-table/runtime
-state and live owner selection remain unresolved; table retention/population and
-runtime render/forward state remain separately qualified.
+AT-RECV-007 resolves the FUN_00555730 static constructor-callsite input to the
+FUN_0054E150 receiver `+0x4`; retained-table/runtime state and live owner
+selection remain unresolved, as do table retention/population and runtime
+render/forward state.
+
+AT-RECV-007 resolves the alternate constructor's static input source. The
+completed AT-GH-136/137 `FUN_0054E150` sections show `ESI=ECX`, load
+the receiver's second dword field `[ESI+0x4]` at `0x0054E159`, push it at
+`0x0054E15C`, push the separate explicit argument at `0x0054E15D`, and call
+`FUN_00555730` at `0x0054E15E`.
+The receiver `+0x4` push is first in chronology and the explicit argument push
+follows; right-to-left stack order and the callee-cleaned two-argument
+`RET 0x8` therefore make the receiver `+0x4` value the second explicit
+argument to `FUN_00555730`, while the separate
+`FUN_0054E150` explicit argument is the first. AT-GH-370/371 then show
+`FUN_00555730` calling the `0x1F10` allocator, testing
+the result, loading its second explicit argument at `0x0055576E`, and passing
+it to `FUN_00595A20` at `0x00555775`. With successful allocation,
+`FUN_00595A20` therefore writes the alternate receiver `+0x4` value to the
+new control's `+0x1B08` at `0x00595E65`.
+
+This source is separate from the completed World path: AT-ENTER-027
+conditionally supplies `C=M+0x10` through `FUN_00546EF0` and retained
+LogControlExtension L. The alternate receiver producer and its `+0x4` writer
+remain unresolved. Separately, the completed AT-ENTER-021 `FUN_00557600`
+attachment shape is conditional on its S/X/name and live state;
+`FUN_00558F60` post-construction effects, live owner selection, and equality to
+C remain unresolved. Cached table/vtable/template state, table population,
+external family/locale/row identity, and final rendering or forwarding remain
+outside this static edge.
+
+The registrar decompilation and listing pins remain the existing
+AT-GH-136/137 outputs (SHA256
+`0A9C1FA48C20F18FC1E41A04B565E82D481F898BC4FA421617F6EC72D947B2ED` and
+`A2B2397D8C328D857B88EB07376220929DC49CC092321EC2772D6C9CDFE07F16`), and
+the owner follow-up pins remain AT-GH-370/371 (SHA256
+`FFBBFA00E570228B07911DA81E1C4F289DD26B6F0E9249DF82F6F202F4A80603` and
+`CB12D388CE48B98BF833CF9A2CCC2F973AE2ABF1449B0CD7C055FFF152309315`).
+The completed AT-GH-134/135 `FUN_00557600` outputs remain the existing
+AT-ENTER-021 evidence (SHA256
+`216DA7382E3DA0D254798464B296F1AC47A617D92DB86EF25B0098F84FE0C509` and
+`69687ADE729BF8911E8CA4C45660121FBC7C75EC2A91A2BC0D544A73F266118B`).
+
+The completed AT-GH-148/149 metadata lifecycle pair also includes
+`FUN_0054E150`, but its decompilation Callers section is empty. AT-GH-145/150/151
+identify existing registration, table and `FUN_00557600` callsite references,
+not the receiver constructor or its `+0x4` initializer. The retained completed
+exact-entry output set has no `FUN_00558F60` body export. The remaining static
+evidence is the receiver producer or caller path, the `+0x4` writer, and that
+body's post-construction effects. Those static gaps do not establish actual
+live retention or equality to World C; cached table/vtable/template state,
+table population, external family/locale/row identity, and final rendering or
+forwarding remain separate state ceilings.
 
 See `manifests/autotranslate_wire_format_study.json` record `AT-RECV-001`
 and its `AT-RECV-002` storage trace, `AT-RECV-003` callback trace and
 `AT-RECV-004` caller trace, `AT-RECV-005` history-consumer trace and
-`AT-RECV-006` owner/writer trace.
+`AT-RECV-006` owner/writer trace and `AT-RECV-007` alternate-constructor
+trace.
 
 ## Evidence boundary
 
