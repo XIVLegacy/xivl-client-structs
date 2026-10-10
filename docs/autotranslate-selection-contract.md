@@ -2025,7 +2025,7 @@ The search/replacement inputs include objects 0x01377A58, 0x01377AB0 and
 call operands identify objects, not their initialized or retained strings.
 The German needle initializer inputs section below owns their conditional
 initial strings.
-Conditional German singular identity below establishes one result using
+Conditional German singular output below establishes results using
 retained needles, admitted rows and selected fields. Source availability and
 the preset alone do not establish complete noun output or rendering.
 
@@ -2076,7 +2076,7 @@ The 12-byte pointer-cell span at 0x00F53234 has SHA256
 These finite spans do not claim the extent of a larger literal or pointer table.
 German displayName noun boundary owns their use in the output sequence.
 
-### Conditional German singular identity
+### Conditional German singular output
 
 For the fresh type-2 NounDe path and source words `[0,nativeKey,1,5,0]`,
 record zero selects SGL column 6, SGG 7, GEN 11 and DEF 12 from displayName.
@@ -2123,6 +2123,27 @@ zero DEF, or SGL for nonzero DEF, provided the composed string contains no
 needles formed across the prefix/SGL boundary. Embedded controls and other
 noun branches require separate evaluation evidence.
 
+The same admitted preset also selects replacement text for occurrences:
+CC52A5..CC52C1 uses row `26 + SGG` at `11 + GEN` for `[p]` instead of
+appending that field. CC5351..CC5365 uses row 24's same field for `[pa]`,
+then CC5376..CC5391 uses row 26's same field for `[a]`. The sequence is
+`[p]`, `[pa]`, `[a]`, followed by the separate count replacement. Row 25
+remains required even though this preset does not select its field.
+
+00447ED0 searches from character zero, removes the matched needle's character
+count through 004460A0, inserts the replacement through 00447DE0 at the same
+position, then searches again from zero until no match remains. 004460A0
+walks UTF-8 character widths to the start and end, moves the remaining bytes
+including NUL, updates the extent and invalidates the cached count.
+00447DE0 saves the tail through 00447A80, removes that tail, then appends
+replacement and saved tail. 00447A80 selects the substring by walking UTF-8
+character widths. Under valid literal UTF-8 inputs and successful operations,
+this implements repeated literal replacement, including matches formed by
+an earlier removal. A single pass over the original matches is insufficient.
+With no `[` in a used replacement field, each iteration removes one such
+character and the loop is finite. The `[n]` count spelling and embedded
+control evaluation remain outside this result.
+
 C9FEF0 calls empty string constructor 00445CF0 at C9FFA5 and passes that
 temporary to the noun slot at C9FFCF. The constructor initializes a one-byte
 NUL buffer and zero character count. C9FFD1..C9FFF4 converts the noun's AL
@@ -2140,6 +2161,9 @@ is retained in German displayName noun boundary.
 | 004465A0 search | 316 | `BF7C27E01F08C061801DCCFD0F1D779E3E66F74F1913C5D256CB921E31512422` |
 | 00445E50 character count | 132 | `738FE12F3033809CB1549B8E8C92D662FE77C41D439C0B7F11687E2F5561FE7F` |
 | 00447ED0 replacement | 83 | `0F492D47957226A6CBBB68917B82C4578A2C7F96BDC42AD8373F1003180B78FD` |
+| 004460A0 character erase | 289 | `9E4046A8F1A2A0FCF5D1E0F5702FB4154C2DDE41CA09B53DCC32514AE4148D29` |
+| 00447DE0 character insert | 187 | `291F987D110F4E4828AC72E6C38088FF8591173256A807E99D4D88FC96A02290` |
+| 00447A80 substring | 314 | `5BB26D42BC52ACFAF4B621D8BAEA87622BD74AA34E6B311608D1558BBD0C5977` |
 | 00445CF0 empty constructor | 39 | `6770B9B40DEB76749660F546E101599C7DBBF052D3277783B0A5948D9071F57A` |
 | 00447450 string assignment | 60 | `2A068BCD7DC67B51D9D4106F2D60EB10639313049B22F5563B678024358D28D5` |
 | 00447C80 append | 101 | `DC1E897D7D93494DFA986F6E5CEC655523725363268D60B3B38D5C4CA1F70C4D` |
