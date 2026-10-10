@@ -1544,6 +1544,40 @@ the case. The noun flag remains distinct from C9C0A0's provider-dependent
 dispatch mode. A source-cell lookup under this model does not reproduce
 TextModule expression evaluation, fallback, wrappers or rendering.
 
+### Conditional item-name source keys
+
+The conditional initial registry also maps code 22 to category ordinal 22,
+descriptor 7 and fixedPhrase metadata key 2106. Its four main locale strings
+name `xtx/itemName` without a noun flag. The selector-0x2E handler consequently
+supplies the second number to the existing mode-zero query path under the
+initial-load conditions above. Candidate ranges in that descriptor do not
+replace the query key or prove admission of arbitrary supplied controls.
+
+`xivl-client-data:manifests/item_name_backing_rows.json`, definitionLocales and
+locales/blocks/sources, authenticates the named itemName definition and all its
+backing blocks to keyed CSV cells. Its 386556 bytes have SHA-256
+`D13CD40E4BBF4AC7BADECB262A185E3432F85AE787C48B978AC8854D897B5835`.
+Each supported ja/en/de/fr definition has 50
+disjoint blocks whose offset entry counts equal the declared counts.
+
+Applying the completed AT-COMP-016 mapping to matching ready CacheAll pairs,
+a key strictly inside a block `(begin,count)` has block slot `key - begin`
+and storage index `priorCounts + key - begin`. Bulk completion CC30C0,
+CB1930/CB17C0 storage and the admitted CB1870/CB1990 mapping therefore retain
+the same native key `begin + slot`. The authenticated report identifies its
+nonempty span as that CSV key. This application does not claim the mapper's
+inclusive upper comparison or exhausted path is a safe general inverse.
+
+For example, itemName key 1000002 is slot 2 of block `(1000000,204)`, with
+prior declared counts 2 and conditional storage index 4. Its enabled ordinal
+is 3, a separate coordinate. Key 10009506 is slot 9506 of block
+`(10000000,13018)`; equal English text at key 12000016 in another block cannot
+substitute for either key. These are conditional source-cell associations,
+without a newly recovered item selection/production path. Historical delivery,
+retained child/cache state, locale, TextModule output/admission, noun evaluation
+and rendering retain their existing limits. Completed selection and
+receive/history traces remain inputs.
+
 ## Received World chat handoff
 
 AT-RECV-001 recovers a bounded post-receive handoff for the authenticated World
