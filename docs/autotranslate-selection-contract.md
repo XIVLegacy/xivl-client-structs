@@ -2144,6 +2144,19 @@ With no `[` in a used replacement field, each iteration removes one such
 character and the loop is finite. The `[n]` count spelling and embedded
 control evaluation remain outside this result.
 
+The source prefix and SGL may also contain the direct-length ASCII envelopes
+admitted by AT-COMP-020's finite copied-control contract: empty-payload selectors
+0x10, 0x16, 0x1D and 0x1F, or selector 0x1A with one payload byte 1 or 2.
+These envelopes contain no NUL or `[`. 00447450 copies the prefix buffer by
+extent, and 00447C80 appends the SGL buffer at the destination's former NUL,
+copying the source extent including its NUL. 00445E50 treats each envelope
+byte below 0x80 as one character. The search/remove/insert helpers above
+therefore preserve these envelopes while replacing literal noun markers:
+no marker can occur inside an envelope or cross its bytes. The output is a
+conditional NounDe control stream. It does not evaluate those controls,
+assign display characters or establish subsequent wrappers or rendering.
+Used replacement fields remain literal in this bounded case.
+
 C9FEF0 calls empty string constructor 00445CF0 at C9FFA5 and passes that
 temporary to the noun slot at C9FFCF. The constructor initializes a one-byte
 NUL buffer and zero character count. C9FFD1..C9FFF4 converts the noun's AL
