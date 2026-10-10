@@ -1938,9 +1938,35 @@ block identities and offset extents are owned by
 and `apps/cli/src/localized_display_inputs.json`.
 
 This association identifies backing cells. It does not apply English's
-stable type-1 mode-zero dispatch to another locale. The ja/de/fr descriptors
-retain their noun flags and provider-dependent output boundary; no complete
-noun result, actual provider state, map readiness or rendering is established.
+stable type-1 mode-zero dispatch to another locale. The descriptors retain
+their noun flags. German/French output remains provider-dependent; Japanese
+displayName has the separate declared context below. No complete noun
+result, actual provider state, map readiness or rendering is established.
+
+### Japanese displayName fixed-control query
+
+For a declared stable type-0 provider, C9C0A0's predicate takes the same
+zero-mode branch as the English query above: type 2 and a nonzero noun
+flag are both required for mode one. This is a conditional context for
+Japanese displayName, not evidence that the Japanese locale or control
+bytes select runtime type 0. C9FEF0 passes the descriptor name and unchanged
+second number with selector 0xFF to CA0930 without constructing noun words.
+
+The authenticated displayName definition has Japanese indexes `[0]`, type
+`str`, and parameter `[NOUN|SGL;0]` without a SHEET override. Under
+AT-COMP-020/021's matching constructor and retained-state conditions,
+CAF300 therefore returns default field 0. CA0930's default-selector and
+string-field branches then forward that field through C9A480 to TextModule
+slot +8. Token-free input gives conditional default text without noun
+replacement. Other controls retain their separate evaluator requirements.
+
+Bounded raw checks replayed the C9C0A0, C9FEF0 and CA0930 spans and installed
+query/conversion cells pinned in English displayName fixed-control query.
+They also checked the CAF300 default-byte read, first-index store and
+Japanese definition index and parameter. Localized displayName source keys
+owns conditional ready-map admission; the tool's Japanese default query
+owns source coverage. Actual provider state, cache readiness, wrapper
+output and rendering remain unobserved.
 
 ### Literal sheet references
 
