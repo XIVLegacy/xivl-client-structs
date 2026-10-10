@@ -2088,10 +2088,21 @@ explicit conditions.
 In CC5130, count 1 selects SGL at CC51F5..CC5207. The further row request
 at CC5226 uses `26 + SGG`; the grammatical column is `11 + GEN` because the
 retained word is zero. Nonzero DEF takes CC5247's branch to CC526F and skips
-the prefix copy. CC5280 appends SGL through 004488F0 -> 00447C80.
-When SGL contains no `[p]`, search 00446F70 -> 004465A0 returns -1 and
+the prefix copy. Zero DEF falls through CC5249..CC526A: it sign-extends GEN,
+adds the grammatical base, selects attributive row 5's field through row
+slot +8 and C9A480, then copies that string through 00447450 to the destination.
+CC5280 appends SGL through 004488F0 -> 00447C80. When the resulting
+prefix plus SGL contains no `[p]`, search 00446F70 -> 004465A0 returns -1 and
 CC5299 selects CC52C8..CC52E9, which appends that further row's grammatical
-field. An empty field therefore preserves SGL in this case.
+field. An empty field therefore preserves the prefix plus SGL in this case.
+
+The complete 60-byte assignment helper 00447450 compares source and
+destination identity, requests the source's +8 extent through 00447010,
+calls byte-copy helper 009D4600 with destination, source and that extent,
+then copies the cached character-count flag and value at +0x10/+0xC.
+For a distinct valid source and successful capacity/copy operations, this
+replaces the destination with the selected prefix string. Nonzero DEF does
+not read that field. An empty prefix preserves SGL after the subsequent append.
 
 With common rows 24, 25 and 26 present, CC5351..CC5365 selects row 24's
 same grammatical field for `[pa]`. Attributive key 5 takes CC536F's branch
@@ -2105,10 +2116,12 @@ that success byte into AL and CC5450 returns with RET 8.
 The complete 004465A0 span compares needle bytes at successive UTF-8 character
 starts and returns -1 at 004466CF..004466D9 after exhaustion. With a nonempty
 retained needle, 00447ED0's initial no-match branch at 00447EE6 goes directly
-to its return without erase or insertion. This establishes literal identity
-for valid UTF-8 SGL without `[a]`, `[p]`, `[pa]` or `[n]`, an empty grammatical
-suffix and nonzero DEF. Embedded controls and other noun branches require
-separate evaluation evidence.
+to its return without erase or insertion. With literal UTF-8 inputs and an
+empty grammatical suffix, the result is the selected prefix plus SGL for
+zero DEF, or SGL for nonzero DEF, provided the composed string contains no
+`[a]`, `[p]`, `[pa]` or `[n]`. Checking the composed string also excludes
+needles formed across the prefix/SGL boundary. Embedded controls and other
+noun branches require separate evaluation evidence.
 
 C9FEF0 calls empty string constructor 00445CF0 at C9FFA5 and passes that
 temporary to the noun slot at C9FFCF. The constructor initializes a one-byte
@@ -2128,6 +2141,7 @@ is retained in German displayName noun boundary.
 | 00445E50 character count | 132 | `738FE12F3033809CB1549B8E8C92D662FE77C41D439C0B7F11687E2F5561FE7F` |
 | 00447ED0 replacement | 83 | `0F492D47957226A6CBBB68917B82C4578A2C7F96BDC42AD8373F1003180B78FD` |
 | 00445CF0 empty constructor | 39 | `6770B9B40DEB76749660F546E101599C7DBBF052D3277783B0A5948D9071F57A` |
+| 00447450 string assignment | 60 | `2A068BCD7DC67B51D9D4106F2D60EB10639313049B22F5563B678024358D28D5` |
 | 00447C80 append | 101 | `DC1E897D7D93494DFA986F6E5CEC655523725363268D60B3B38D5C4CA1F70C4D` |
 | 004488F0 append thunk | 5 | `8C4F59065B985C64844B59F08AE6D798AE3C2B71C10031839AB4FD163D2DCDDF` |
 | C9FEF0 fixed caller | 452 | `14A7A10BF558F342444DEFDE278041C0722165041235608D59C9CAE48D0A0855` |
