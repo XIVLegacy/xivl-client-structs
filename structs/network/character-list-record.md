@@ -3,7 +3,7 @@
 Lobby s2c `0x000D` enters `FUN_00DAA9F0` (`BCS-Y-0017`) and reaches
 `FUN_00DA76B0` (`BCS-Y-0019`) with the packet body.
 The canonical field, branch, and evidence table is
-[`manifests/lobby_character_list_projection.json`](../../../../manifests/lobby_character_list_projection.json).
+[`manifests/lobby_character_list_projection.json`](../../manifests/lobby_character_list_projection.json).
 
 The parser's indexed unit is a `0x1D0` window. For a new low-six-bit slot key,
 it copies `window+0x10` for `0x1D0` bytes into a temporary `0x2E0`

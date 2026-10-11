@@ -223,7 +223,7 @@ state, or disconnect/error owner.
 ## Roster ownership, count, and identity limits
 
 The mechanical projection is documented in
-[`character-list-record.md`](../structs/ffxiv/client/network/character-list-record.md)
+[`character-list-record.md`](../structs/network/character-list-record.md)
 and
 [`lobby_character_list_projection.json`](../manifests/lobby_character_list_projection.json).
 The parser reads the count byte at `body+0x09` and inserts new records in
@@ -441,7 +441,7 @@ The remaining static questions are concrete:
 
 | Public source | Supported observation or boundary | Blocker |
 | --- | --- | --- |
-| [`character-list-record.md`](../structs/ffxiv/client/network/character-list-record.md) and [`lobby_character_list_projection.json`](../manifests/lobby_character_list_projection.json) | After a qualified s2c `0x000D` parser return, copy only the documented vector count, arrival order, and explicitly named keys | Full identity, restrictions, loading-versus-empty, owner thread, and generation are unresolved |
+| [`character-list-record.md`](../structs/network/character-list-record.md) and [`lobby_character_list_projection.json`](../manifests/lobby_character_list_projection.json) | After a qualified s2c `0x000D` parser return, copy only the documented vector count, arrival order, and explicitly named keys | Full identity, restrictions, loading-versus-empty, owner thread, and generation are unresolved |
 | This page's native-owner and request-fragment sections | Observe c2s `0x0003`/s2c `0x000D`, lobby admission fragments, and c2s `0x0004`/s2c `0x000F` results with the stated ABI and failure callbacks; selector-1 phase creation and the constructed GameLogin `O+0x08=C`, `C+0x14` replacement writer are qualified | No typed title admission, normal UI/input admission source, validation, cancellation owner, or world-ready match is closed |
 | [`native-input-ui-boundaries.md`](native-input-ui-boundaries.md) | Observe the routed keyboard/pad dispatch edge and borrowed focus tokens as same-thread intervention or invalidation clues | Login-phase recipient, cancel mutation, and modal ownership are unresolved |
 | This page's world-ready section | Require a fresh selected-identity plus matching world-ready observation before reporting success; the response copy and callback ceiling is qualified | No native world-ready identity chain is closed |

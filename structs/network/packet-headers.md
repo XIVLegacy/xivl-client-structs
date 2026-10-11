@@ -1,7 +1,7 @@
 # Packet Headers
 
 Wire framing structs for the three concurrent IPC channels. The
-machine-readable layout lives in `..\..\..\..\manifests\structs.json`
+machine-readable layout lives in `..\..\manifests\structs.json`
 (`BCS-S-0001` BasePacketHeader, `BCS-S-0002` SubPacketHeader,
 `BCS-S-0003` GameMessageHeader, `BCS-S-0004` RetainerListRecord).
 
@@ -45,6 +45,6 @@ the transport layer below this framing.
 
 ## Cross-References
 
-- `..\..\..\..\manifests\symbols.json` for the BuildHeader function
+- `..\..\manifests\symbols.json` for the BuildHeader function
   RVAs (BCS-Y-0004 lobby/zone variant, BCS-Y-0005 chat variant) and
   the lobby down dispatch tables (BCS-Y-0001 .. BCS-Y-0003).

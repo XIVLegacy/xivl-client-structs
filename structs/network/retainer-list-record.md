@@ -3,7 +3,7 @@
 48-byte record carried by the RetainerList lobby packet (opcode `0x17`,
 deserializer `FUN_00DA4D80` per MDI-004 / MDI-017 promotion ledger
 distillation). The machine-readable layout lives in
-`..\..\..\..\manifests\structs.json` (`BCS-S-0004`).
+`..\..\manifests\structs.json` (`BCS-S-0004`).
 
 ## Layout
 
@@ -27,4 +27,4 @@ distillation). The machine-readable layout lives in
 
 ## Cross-References
 
-- `..\..\..\..\manifests\symbols.json` `BCS-Y-0022` (`FUN_00DA4D80`).
+- `..\..\manifests\symbols.json` `BCS-Y-0022` (`FUN_00DA4D80`).

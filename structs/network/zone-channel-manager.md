@@ -35,7 +35,7 @@ Decompilation signatures were checked against instruction bytes and register
 flow. No client executable was run.
 
 For reproduction, configure the explicit project/runtime environment described
-in [Ghidra](../../../../ghidra/README.md), authenticate the identified binary,
+in [Ghidra](../../ghidra/README.md), authenticate the identified binary,
 and run the following from the repository root with a new ignored output
 directory assigned to `$EvidenceOutput`:
 
@@ -104,7 +104,7 @@ This corroborates owner identity, without claiming a complete lifetime model.
 
 ## Supported retail storage
 
-The machine layout is in [the struct catalog](../../../../manifests/structs.json).
+The machine layout is in [the struct catalog](../../manifests/structs.json).
 Neutral field names retain the distinction between verified retail storage and
 ARR source declarations. Pointer targets below describe observed objects;
 the catalog uses void pointers where original retail field declarations are absent.

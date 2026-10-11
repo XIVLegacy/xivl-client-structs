@@ -49,7 +49,7 @@ passes its GameMessageHeader pointer unchanged at opcode-5 target
 opcode at pointer `+2`. Record the actual pointer, entry ESP, ECX, return
 address and original argument slots at a hook. Generated SetMapBody offsets
 must not be rebased into application offsets. Header ownership is in
-[Packet Headers](../structs/ffxiv/client/network/packet-headers.md),
+[Packet Headers](../structs/network/packet-headers.md),
 BCS-S-0002/0003; instruction locators are `0x0059CED3`, `0x0059CEF9`,
 `0x0059CEFD`, `0x0059CF0E` and the receiver call in `0x004DC690`.
 

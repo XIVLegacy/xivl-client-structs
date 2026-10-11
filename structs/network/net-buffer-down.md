@@ -6,7 +6,7 @@ has an allocation-backed extent of `0x28`. Ten observed four-byte storage
 cells cover that allocation. ARR declares the same object size and member
 offsets, but uses a different backing capacity and allocation/release dispatch.
 The promoted retail layout is `BCS-S-0502` in
-[the catalog](../../../../manifests/structs.json). It records observed storage
+[the catalog](../../manifests/structs.json). It records observed storage
 and roles, not recovered original C++ member declarations or names.
 
 ## Inputs and method
@@ -27,7 +27,7 @@ translated retail VAs to pinned file bytes. Four-byte object-pointer widths
 are supported by declarations and accesses, not inferred from ELF64.
 
 Retail used Ghidra 12.1.3/JDK 21 and the committed read-only scripts below.
-Configure the explicit environment in [Ghidra](../../../../ghidra/README.md),
+Configure the explicit environment in [Ghidra](../../ghidra/README.md),
 authenticate the named binary with `ghidra/VerifyProgramFileBytes.java`, and
 require `COMPLETE: program-file-bytes-v1`, matching retained original/modified
 FileBytes and all loaded initialized file-backed ranges. Unbacked excluded

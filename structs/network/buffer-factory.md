@@ -11,7 +11,7 @@ Original member names and complete function equivalence are not promoted.
 `ZoneProtoUp` and `ZoneProtoDown` below mean the types in
 `Application::Network::ZoneProtoChannel`. The supported retail partial layouts
 are `BCS-S-0499 / BCS-S-0500` in
-[the catalog](../../../../manifests/structs.json). Their observed cells are also
+[the catalog](../../manifests/structs.json). Their observed cells are also
 recorded inside `BCS-S-0498` at manager-relative offsets in
 [RaptureChannelManager](zone-channel-manager.md).
 
@@ -33,7 +33,7 @@ VAs to pinned file bytes. ELF64 does not establish object pointer widths.
 
 Retail Ghidra 12.1.3/JDK 21 exports used the committed read-only scripts below.
 First authenticate the named binary with `ghidra/VerifyProgramFileBytes.java`
-under the explicit environment described in [Ghidra](../../../../ghidra/README.md).
+under the explicit environment described in [Ghidra](../../ghidra/README.md).
 Require `COMPLETE: program-file-bytes-v1`, matching input, retained
 original/modified FileBytes and loaded initialized file-backed ranges.
 Unbacked excluded ranges do not support these claims. Assign a new ignored
