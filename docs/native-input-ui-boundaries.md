@@ -1661,6 +1661,164 @@ at or before pad consumption, with receiver identity and lifetime, on
 command-free pad updates. Window focus, non-null S, M+8, preprocessor return,
 and command admission cannot substitute for that classification.
 
+## UI command delivery to a widget Lua handler
+
+A routed UI command can reach a widget's Lua `_onUICommandEvent` handler
+through one inline call chain when its guards pass. At the inspected
+instructions the Lua thread comes from the widget's retained native control.
+The ActionMenu shortcut command's native producer is not identified.
+
+These observations used direct instruction inspection of the executable
+above with LLVM objdump 22.1.4, capstone 5.0.7 and pefile 2024.8.26. Each
+cited call site, table cell and literal was checked against the hash-checked
+file. They are static conditional observations, not a runtime result.
+
+### Execute and routing
+
+`FUN_00927FA0`, RoutedCommand primary slot +8, routes PreviewExecuted
+(`0x00928059`) and, unless that event is handled, Executed (`0x00928124`)
+through `FUN_0091F590`. A nonzero target routes through `FUN_0091E1C0` at
+`0x0091F5A4`; a zero target uses keyboard-focus recipient `0x01357020`,
+when nonzero, through `FUN_0091EE90` at `0x0091F5BC`. `FUN_00929100`
+copies the parameter's type to event+0x24 (`0x00929170`) and its string to
+event+0x28.
+
+Executed descriptor `0x01358738` has routing byte 0 and type 0x2A
+(`0x00F21CB0-0x00F21CC6`, stored by `FUN_0097F6C0`).
+`FUN_0091D210` (`0x0091E32C`) sends routing byte 0 through its backward
+loop, calling recipient slot +0x34 at `0x0091D2A2-0x0091D2A6`. For the base
+InputElement table `0x01069A6C`, delivery continues through slot +0x104
+(`0x0091D6BE`), handler-collection slot +4 (`0x0091D912`) and handler
+slot +8 (`0x00571605`), with collection table `0x00FA6788` and callback
+table `0x00FA106C`. `FUN_0088AB00` then tail-jumps at `0x0088AB0B` to
+callback+0x28 with ECX = callback+0x20 + callback+0x2C.
+
+`FUN_0053AF60` installs that callback at FormElement E+0xA0 with code
+`FUN_00536280`, receiver E and adjustment zero (`0x0053AFAE-0x0053AFE0`).
+On the `_widget` registration branch, `FUN_0053AB80` reads root X+0x2C
+(`0x0053ABA4`) and registers E+0xA0 on root+0xB4 through slot +0x24 with
+wildcard descriptor `0x01336A84` (`0x0053ABC5-0x0053ABD0`). Every resolved
+edge is an inline call or tail jump. Overrides of the routed root's
+virtual slots are not excluded.
+
+### Condition dispatch
+
+`FUN_00536280` returns without Lua dispatch in these cases:
+
+- `FUN_00919D30` returns AL=1 (`0x005362D1-0x005362D8`), or event+4 or
+  event+8 is null (`0x005362DE-0x005362F2`).
+- A type-0x2A event's command has nonzero id J+0x78 and is consumed in
+  `0x005362F8-0x005363FF`: a repeat of commands `FUN_00694FB0(1..6)` within
+  one counter period is marked handled (`0x00536345-0x005363CB`), or the
+  hook at non-null [E+0x27C], with byte +8 set, slot +0xA8 marks it handled.
+- Root X+0x2C or relation count E+0x100 is zero (`0x00536513`,
+  `0x00536535`), or the condition lookup misses (`0x005365DC`).
+- One of six listed static RoutedCommands, such as `0x0133B798`
+  (`UILuaCommands.Operate`, id 1), repeats within one counter period tracked
+  by E+0x1EC (`0x0053661F-0x00536659`).
+- The parameter type at event+0x24 exceeds 8 or selects cases 4-7
+  (`0x00536663-0x0053666F`).
+
+The source name is replaced with `_widget` (`0x01336A30`) when it equals
+the root name (`0x005365A8-0x005365BA`). A separate comparison of the
+selected namespace with E+0x164 sets a flag (`0x005365E2-0x005365F7`).
+Parameter type 8 selects case `0x0053671F` through table `0x005367A0`, which
+loads H=[E+0x80]. With the flag set, it calls `FUN_00574BE0` at
+`0x00536736`; without it, `FUN_00574BF0` at `0x0053674A` selects actor slot
++0x30 instead. `FUN_00574BE0` loads A=[H] and jumps to A's slot +0x34
+(`0x00574BE0-0x00574BE7`); neither pointer level is null-checked there.
+LuaActorImpl table `0x00FDFB2C` selects `FUN_0075D5D0`, which passes A+4 and
+control C=[A+8] through `FUN_008A4050` (`0x0075D5F8`) and `FUN_006F5A90`
+(`0x008A4068`).
+
+`FUN_006F5A90` loads event holder Q=[C+0x60] at `0x006F5B15` and calls
+`FUN_006F5640` at `0x006F5B2C`. That function follows A+4 through +0x220,
++4 and +0xC to a control record R. Delivery is skipped for a null R, a
+lookup miss, R+0x128 differing from global `0x0130C778`, or the
+`FUN_00763030` and R+0x161 combination (`0x006F5647-0x006F5697`). A mode
+byte equal to `[0x0134C3FE]` selects `FUN_00896AF0` at `0x006F56B5`;
+another mode selects `FUN_00896D00`.
+
+### Lua invocation
+
+`FUN_00896AF0` invokes the handler immediately only when holder Q+4 is
+empty (`0x00896B2A`). With an active event, a priority at or below the
+active or pending event returns AL=0 (`0x00896B40`). A higher priority is
+cloned into Q+8 and returns AL=1 without invocation; it can be replayed
+later at `0x00896F35`.
+
+The immediate branch derives J=[Q+0x18] in `FUN_00CC7AD0` (`0x00CC7ADF`)
+and takes the thread manager from J+0x1C0 (`0x00CC7AE1`). It resolves the
+Lua object through `FUN_00CD7A30`: null C gives zero, C equal to the first
+dword of [J+0x1BC] selects that special record, and otherwise [C+4]. It
+selects a Lua thread T through `FUN_00CF1060` (`0x00CC7AF9`), whose
+internals, including conditional state creation, were not fully examined.
+It then requests literal `_onUICommandEvent` at `0x01056B88` through
+`FUN_00CD0940` (`0x00896CA0`).
+
+`FUN_00CCF9B0` skips resolution and invocation when [J+0x1CC]+8 is set or
+object byte +0x7F is zero (`0x00CCF9B6-0x00CCF9CB`). `FUN_00CCEE30` skips
+when T already reports status 1 (`0x00CCEE91-0x00CCEE98`). It claims
+manager+0x38 through `FUN_00CF08F0` (`0x00CCEFC8`), which fails only when
+that slot and the object are both nonzero (`0x00CF08F0-0x00CF0908`), and
+releases it at `0x00CCF22A-0x00CCF236` only after a successful claim.
+
+The call form is selected separately. `0x00CCF008-0x00CCF035` passes whether
+T's 0x3C-byte entry vector at T+0xDC..T+0xE0 is nonempty. Nonempty selects
+the protected call `FUN_00CF4010` (`0x00CD0087-0x00CD009C`); empty selects
+`FUN_00CF4230` (`0x00CD00AB`). Unless the called value is C function
+`0x00D07F90` (`0x00CF4283-0x00CF4295`), that wrapper enters `0x00DCFD30`,
+which has the shape of a coroutine resume of the selected thread. A yielded status
+retains the argument operators instead of completing the handler.
+
+### Interval and limits
+
+The handler can run within the Execute call when all of these hold:
+
+- Executed reaches a root carrying this callback, and no early exit above
+  applies.
+- A matching parameter-type-8 condition takes the namespace-equal branch,
+  and the admission guards pass.
+- The event holder is empty, resolution succeeds, and the handler does not
+  yield.
+
+On the protected-call branch the handler then returns before the Execute
+call returns. Completion on the resume branch is unproved, as is pending-event
+replay.
+
+Unproved:
+
+- whether J equals the actor's A+4 interface, or is the current client VM;
+- the OS thread that calls Execute;
+- actor lifetime across replacement, since the H reader has no generation
+  check;
+- which consuming root receives a given Executed event.
+
+`UILuaCommands.ShortCutAction` has no ASCII or UTF-16LE literal in the
+executable. The decoded Lua corpus pinned by
+`xivl-client-scripts:manifests/private_lua_corpus.json` (archive SHA-256
+`0e8f902f7a2f592fc1220d41b89a3f35ec395cfb261806d4bd590a530099ae31`), with
+per-file hashes in `xivl-client-scripts:manifests/scripts.json`, uses the
+exact name in three files:
+
+- `widget/actionmenuwidget.lua:170` and `widget/desktopwidget_connector.lua:546`
+  register it as a command condition.
+- `widget/actionmenuwidget.lua:498` and
+  `widget/desktopwidget_connector.lua:3214,3773,3775` compare it.
+- `widget/widgetbaseclass_common.lua:138` adds it to the ConsumedCommand
+  list that `initConsumedCommmand` writes for every non-Desktop window;
+  line 160 skips a duplicate.
+
+All 1,115 SQWT resources under `client/sqwt`, comprising 620 `.form`, 482
+`.tpl`, 12 `.sml` and 1 `.xml`, were extracted and checked with `xivl
+extract-resource` and `xivl verify-extraction`. Both commands ran from a
+local release build of `xivl-tools` at
+`a2380d526dec7f7cd5fe6040008cebf5b2cbc8ec`. The name appears only in the
+`ConsumedCommand` attributes of `Window_Desktop`, `Window_ActionMenuWidget`
+and `Window_LogWidget`, in both standard and SD forms, never in a gesture,
+trigger or command binding. The source of that RoutedCommand, its gesture
+and its parameter remain unidentified.
+
 ## Visibility property path
 
 The script identities and three-state wrapper behavior are promoted in
