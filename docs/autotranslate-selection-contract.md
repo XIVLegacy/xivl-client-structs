@@ -2513,9 +2513,9 @@ The completed AT-GH-148/149 metadata lifecycle pair also includes
 `FUN_0054E150`, but its decompilation Callers section is empty. AT-GH-145/150/151
 identify existing registration, table and `FUN_00557600` callsite references,
 not the receiver constructor or its `+0x4` initializer. The retained completed
-exact-entry output set has no `FUN_00558F60` body export. The remaining static
-evidence is the receiver producer or caller path, the `+0x4` writer, and that
-body's post-construction effects. Those static gaps do not establish actual
+exact-entry output set has no `FUN_00558F60` body export. AT-RECV-009 below
+identifies the constructor and its `+0x4` writer; no direct static reference
+reaches that constructor. These static edges do not establish actual
 live retention or equality to World C; cached table/vtable/template state,
 table population, external family/locale/row identity, and final rendering or
 forwarding remain separate state ceilings.
@@ -2541,9 +2541,7 @@ The exact `FUN_0054BFA0` decompilation/listing resolves a
 (`0x00FA2808`, `0x0054C0C8`) and `LogControlExtension` at `+0x2CC`
 (`0x00FA2A40`, `0x0054C0E8`), then writes `0x00F90F0C` to `[ESI+0x4]`
 at `0x0054C127` after member cleanup. It does not install the
-`CustomLogControlFactor` table `0x00FA2A50`. The factor's exact `+0x4`
-initializer, outer creator/lifetime path and active field value at
-`FUN_0054E150` remain qualified.
+`CustomLogControlFactor` table `0x00FA2A50`.
 
 At `FUN_0054E150`, ESI is the factor receiver and EDI is the separate
 explicit input. The receiver `+0x4` value is pushed first at `0x0054E15C`
@@ -2575,10 +2573,45 @@ Its authenticated outputs are:
   (3,894 bytes, SHA256
   `B91476CFC40E16006029C6DB0EFB6C14AAC4A4891F5877FF530128E6905C0653`).
 
-Receiver identity and the conditional field-input edge do not establish the
-factor's `+0x4` initializer or equality to World C. Live retention, active
+Receiver identity and the conditional field-input edge do not establish
+equality to World C. Live retention, active
 selection, cached table/template state, external family/locale/row identity
 and render-versus-forward behavior remain qualified.
+
+AT-RECV-009 identifies `FUN_0054A000` as the `CustomLogControlFactor`
+constructor and the `+0x4` writer among the code that installs its table. It installs
+`Sqwt::Markup::ConfigurationFactor` table `0x00FA26B4` at `0x0054A027`,
+`Sqwt::Markup::ControlCreateBase` table `0x00FA27E0` at `0x0054A035` and the
+factor table `0x00FA2A50` at `0x0054A047`. With `EAX` holding the incoming
+`ECX`, it loads `[ESP+0x18]` at `0x0054A043`, which after its five prologue
+pushes is its single explicit stack argument, stores that value at
+`[EAX+0x4]` at `0x0054A04D` and returns with `RET 0x4` at `0x0054A067`.
+Direct PE reads pin the base tables' locators: COL `0x011455A0` and
+TypeDescriptor `0x0126DC94` name `.?AVConfigurationFactor@Markup@Sqwt@@`;
+COL `0x0114570C` and TypeDescriptor `0x0126DD68` name
+`.?AVControlCreateBase@Markup@Sqwt@@`.
+
+The dword `0x00FA2A50` occurs exactly three times in the file's sections, each
+as an installer immediate: `0x0054A047`, `0x00547035` in `FUN_00547010` and
+`0x00555E28` in slot-0 method `FUN_00555E00`. The latter two install the
+factor table, then `ControlCreateBase` and finally `ConfigurationFactor`, and
+neither writes `+0x4`. `FUN_0054A000` is therefore the only one of the three
+immediate installers that leaves the factor table installed. No search covered
+other code that might store through a factor pointer.
+
+No Ghidra-recorded reference, rel32 `CALL` or `JMP` operand, or absolute
+dword in the file targets `FUN_0054A000` or `FUN_00547010`. The creator and
+the constructor argument are not recoverable from direct static references;
+computed and runtime targets are outside that scan. Whether an instance is
+constructed, the active `+0x4` value at `FUN_0054E150`, live retention and
+equality to World C remain unresolved.
+
+AT-ID-107 authenticates the same program identity. AT-GH-378 through
+AT-GH-381 are the committed reference, `DumpVAs.java` and
+`DumpFunctionListing.java` exports for these targets; Capstone 5.0.7 decoded
+the cited instructions from the pinned file bytes. The structured
+`AT-RECV-009` manifest entry retains their output names, sizes and SHA256
+values.
 
 ## Evidence boundary
 

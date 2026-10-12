@@ -190,6 +190,5 @@ roles. Original member names, compound declarations, alignment, complete
 identifier/pool semantics, packet meanings, opcodes, runtime behavior and
 complete cross-build methods remain unresolved. No BCS-Y identity is promoted.
 
-The strongest next struct target is the receive-result record passed to
-`0x00DAF5B0`, with caller `0x00DAFA30`. Its buffer publication at `+0` and
-record accesses provide direct retail anchors for a separate layout pass.
+The [receive-result record](receive-result-record.md) owns the layout of
+the record that `0x00DAF5B0` fills and its caller `0x00DAFA30` supplies.

@@ -7,6 +7,7 @@ Struct notes are grouped by subsystem. Keep the durable machine inventory in `ma
 - [ZoneProto buffer-factory partial layouts](network/buffer-factory.md)
 - [ZoneProtoUp NetBufferTmpl layout](network/net-buffer-up.md)
 - [ZoneProtoDown NetBufferTmpl layout](network/net-buffer-down.md)
+- [Down receive-result record](network/receive-result-record.md)
 
 ## Subsystem scope
 
