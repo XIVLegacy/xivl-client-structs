@@ -1666,7 +1666,8 @@ and command admission cannot substitute for that classification.
 A routed UI command can reach a widget's Lua `_onUICommandEvent` handler
 through one inline call chain when its guards pass. At the inspected
 instructions the Lua thread comes from the widget's retained native control.
-The ActionMenu shortcut command's native producer is not identified.
+The next section describes a binding executor and a script path that can
+execute the ActionMenu shortcut command.
 
 These observations used direct instruction inspection of the executable
 above with LLVM objdump 22.1.4, capstone 5.0.7 and pefile 2024.8.26. Each
@@ -1816,8 +1817,137 @@ local release build of `xivl-tools` at
 `a2380d526dec7f7cd5fe6040008cebf5b2cbc8ec`. The name appears only in the
 `ConsumedCommand` attributes of `Window_Desktop`, `Window_ActionMenuWidget`
 and `Window_LogWidget`, in both standard and SD forms, never in a gesture,
-trigger or command binding. The source of that RoutedCommand, its gesture
-and its parameter remain unidentified.
+trigger or command binding. The next section describes a binding executor
+and a script path that can produce this command; which binding carries it,
+and its gesture, remain unidentified.
+
+## Shortcut command execution and named-window re-execution
+
+A generic input-binding executor can execute a RoutedCommand with the
+binding's parameter and target. The Desktop connector script can forward a
+ShortCutAction command and integer to a named window through a native
+storyboard-command processor, which executes the registered command again at
+that window.
+
+These observations used direct instruction inspection of the executable
+above with LLVM objdump 22.1.4, capstone 5.0.7 and pefile 2024.8.26, and the
+Lua corpus pinned above. They are static conditional observations, not a
+runtime result. Nothing here ties a particular binding to ShortCutAction.
+
+### Binding executor
+
+`FUN_00921110` walks a vector of entry pointers. For entry B it can require
+bit 0 of B+0x9C (`0x00921198-0x009211AD`) and a true result from slot +0x5C
+of a nonzero [B+0x94] (`0x009211B3-0x009211CB`). It then calls [B+0x98] slot
++0x14 with [B+0x94], B+0x1C, the caller's input argument and bit 0 of B+0x9C
+(`0x009211D1-0x009211FA`), and [B+0x18] slot +4 with B+0x1C and [B+0x94]
+(`0x00921200-0x00921214`). When both return true, it calls [[B+0x18]]+8 with
+V=B+0x1C, T=[B+0x94] and E=0 (`0x00921216-0x00921233`); that is
+`FUN_00927FA0` when [B+0x18] is a RoutedCommand. These uses suggest B+0x18 is
+the command, B+0x1C the parameter, B+0x94 the target and B+0x98 the gesture;
+the gesture role is inferred from the call shape. A zero [B+0x94] executes with
+no target. The gesture's matching rules and the vector's owner were not
+examined.
+
+### Type-1 parameter
+
+`FUN_004DDCF0` builds a type-1 parameter. It stores type 1 at V+0
+(`0x004DDD1B`), initializes an empty native string at V+4 (`0x004DDD21`),
+zeroes V+0x5C through V+0x74 (`0x004DDD26-0x004DDD3E`) and stores its signed
+32-bit argument at V+0x58 (`0x004DDD45`). `FUN_00929100` copies 28 bytes from
+V+0x58 to event+0x7C (`0x0092917C-0x00929187`) and V+0x74 to event+0x98
+(`0x00929189-0x00929190`). In `FUN_00536280`, table cell `0x005367A4` selects
+case `0x005366AA` for type 1, which reads the integer from event+0x7C
+(`0x005366AF`).
+
+### Handler arguments
+
+The type-1 case passes the integer to `FUN_00574BC0` or `FUN_00574BD0`
+(`0x005366C1`, `0x005366D3`). Those select LuaActorImpl table `0x00FDFB2C`
+slots +0x28 and +0x2C, `0x0075D590` and `0x0075D550`. The first reaches
+`FUN_006F5990` through `FUN_008A3FA0`; `FUN_006F5990` builds the argument
+object (`0x006F5A04`) and enters the same `FUN_006F5640` delivery as type 8
+(`0x006F5A2F`). `FUN_00535B70` returns the matched condition entry's command
+string at `0x00535C60`, and the argument object stores the integer at
+object+0x104 (`0x00713525`).
+
+The object's serializer, table `0x00FD5310` slot +8 `FUN_00749270`, emits:
+
+1. object+4, the context name, as nil when empty and otherwise as a string
+   (`0x00749278-0x00749292`);
+2. object+0x58, the source name with the `_widget` substitution above
+   (`0x00749297`);
+3. object+0xAC, the matched command string (`0x007492A2`);
+4. object+0x104, the integer (`0x007492B0`).
+
+`0x00CD0052-0x00CD0059` adds one for self to the emitted count. At both call
+sites ECX holds that count and EDI the wrapper: `push ecx` passes the count
+and `mov ecx, edi` moves the wrapper into ECX for the protected call
+(`0x00CD0099-0x00CD009C`) and the resume-shaped call (`0x00CD00A8-0x00CD00AB`).
+The integer is loaded with `fild dword` (`0x00CF99FA`) and stored as a Lua
+number with tag 3 (`0x00DCE17B-0x00DCE17D`). The Lua frame is therefore
+function, self, A1 context or nil, A2 source name, A3 command string and A4
+number. `widget/widgetbaseclass.lua:251-257` forwards those as A1-A5 to
+`processUICommandEvent`.
+
+### Storyboard-command re-execution
+
+`FUN_005355C0` builds a stack `Application::Main::Element::SendStoryboardCommandProcessor`
+(table `0x00FA0BEC`). Constructor `FUN_0053BE90` stores the owning element at
++4, a numeric lookup context at +8, an element-name string pointer at +0xC and
+a command-name string pointer at +0x10 (`0x0053BEC5-0x0053BEE4`).
+`0x0053560A-0x0053561A` supplies them, and `0x00535627-0x00535635` passes the
+processor synchronously to the dispatch object's slot +4. An empty context name
+selects [owner+0x98] as the lookup context (`0x005355FA`).
+
+Processor slots +4 to +0x10 (`0x00543700`, `0x00543780`, `0x00543810`,
+`0x005438A0`) build parameters of types 0, 1, 2 and 8 (`0x0052D35E`,
+`0x005437B5` calling `FUN_004DDCF0`, `0x0052D3CB`, `0x0053C9F0`). For one
+integer, `0x006EC1BB` builds a dispatch object with `FUN_00717050`, whose table
+`0x00FD572C` slot +4 is `0x007170B0`; that method tail-jumps to processor slot
++8 (`0x007170B8-0x007170C2`).
+
+All four slots call `FUN_00538AF0` (`0x0054374D`, `0x005437D5`,
+`0x0054386D`, `0x005438F5`). It looks up the registered command whose name at
++0x24 matches through `FUN_00928280`, which reads the registry at
+`[0x01358728]` (`0x009282DD-0x009282E7`), and executes nothing when the lookup
+fails (`0x00538B2D-0x00538B2F`). When the element name is nonempty it finds the
+element through `FUN_00537950` (`0x00538B02-0x00538B04`) and casts it from
+`Sqwt::DependencyObject` to `Sqwt::FrameworkElement` through `0x009DA6CC`
+(`0x00538B09-0x00538B16`). For a found element it calls command slot +8 with
+T=element+0xB4 and E=0 (`0x00538B35-0x00538B4A`); otherwise with T=0
+(`0x00538B50-0x00538B60`). When the element is a `Sqwt::Window`, element+0xB4
+is its InputElement subobject: complete-object locator `0x01179078` for table
+`0x01069F94` has offset 0xB4 and type `Sqwt::Window`, and that class's
+hierarchy places InputElement at displacement 0xB4.
+
+### Script path
+
+`widget/desktopwidget_connector.lua:3199-4175` is the Desktop connector's
+`processUICommandEvent`. It returns unless the work mode exceeds 1 (line
+3203), returns for ShortCutAction when no widget has keyboard focus (lines
+3207-3215) and requires A2 `_widget` (lines 3220-3222). At lines 3773-3798 it
+handles ShortCutAction with a non-nil A4 by calling `sendCommand(A3, A4)` on
+static widget 7. `widget/widgetbaseclass_common.lua:1255-1283` forwards that
+to `_sendStoryboardCommand(self, nil, targetName, command, param1, param2)`,
+with the widget's `widgetName` as the target name, initialized as
+`"Window_" .. formName` (lines 60-63).
+
+The native wrapper `0x006EBF30` reads two string cells (`0x006EBF9E`,
+`0x006EBFD6`), types the next cell (`0x006EBFFF`) and takes the one-integer
+path at `0x006EC1BB`, then calls `FUN_006EBE80` (`0x006EC1EA`). That helper
+tests the first cell's intermediate tag (`0x006EBEB4`). Tag 6 calls
+`FUN_0075BAD0` (`0x006EBED0`), which reaches `FUN_005355C0` through
+`FUN_00535670` (`0x0075BAEF`, `0x00535684`) with the empty context string;
+other tags reach it through `FUN_0075BB00` (`0x006EBF1B`, `0x0075BB24`). That
+tag 6 is the script's leading nil is inferred from the argument shape.
+
+Unproved:
+
+- the registration binding `_sendStoryboardCommand_cpp` to `0x006EBF30`;
+- that static widget 7 is `Window_ActionMenuWidget`;
+- which binding, gesture and key produce ShortCutAction and each integer;
+- which handler in this sequence sends any resulting server request.
 
 ## Visibility property path
 
