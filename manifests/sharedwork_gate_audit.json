@@ -14,7 +14,7 @@
     "**Part (b) REFUTED**: s2c state-push receivers do NOT gate apply on Group::SharedWork registration. The SharedWork member lookup (FUN_006C97A0, via primitives FUN_006C8AC0 / FUN_006C8C20) is reachable only from the 6 SharedWork slot-22 property-copy methods. A missing/incomplete SharedWork record does NOT cause the client to silently drop general s2c state pushes.",
     "**SharedWork gating is confined to the Group property-sync path**: only the Group property opcodes (0x017A SynchGroupWorkValues via FUN_006C96B0; 0x0187 SetOccupancyGroup via BCS-Y-0885; 0x018B SetGroupLayoutId) consume the SharedWork member lookup. These inherently target group members. The open-question's framing ('WorkSync 0x0187') conflated 0x017A SynchGroupWorkValues and 0x0187 SetOccupancyGroup - both are SharedWork property ops, neither a general per-actor state push.",
     "**General receivers apply on their own buffer + the actor object handed to them**: UserDataReceiver (0x0133) parses its buffer and fires a Lua callback; SetTalkEventCondition (0x012E) RTTI-casts the provided actor. The gates that DO exist are per-receiver (RTTI type-cast of the target; the documented actor[+0x5C] readiness gate in KickClientOrderEventReceiver slot 2) - actor-object-level, NOT SharedWork-level.",
-    "**Blocker implication**: the blocker is NOT explained by 'state pushes dropped for unregistered actors'. If SharedWork population matters to the blocker, it is via the Lua callback cascade (spawn-ADD -> _onInit; engine state-diff -> slot 42 -> _onPostWarp -> Lua _fadeOut), not via dropped state. This re-focuses the blocker on bahamut's spawn-burst dual-subdecoder completion (part a) and the Lua callback path."
+    "**Blocker implication**: the blocker is NOT explained by 'state pushes dropped for unregistered actors'. If SharedWork population matters to the blocker, it is via the Lua callback cascade (spawn-ADD -> _onInit; engine state-diff -> slot 42 -> _onPostWarp -> Lua _fadeOut), not via dropped state. This re-focuses the blocker on the server's spawn-burst dual-subdecoder completion (part a) and the Lua callback path."
   ],
   "new_bcsy_entries_summary": {
     "sharedwork_lookup_cluster": 5,
@@ -29,7 +29,7 @@
   },
   "verdict": {
     "open_question": "Spawn-burst completion as a state-push gate?",
-    "part_a": "OPEN - bahamut-side structural check (spawn-burst dual-subdecoder completion) per docs/client-architecture.md, 'Zone-in actor bind and Lua-class-readiness pipeline'.",
+    "part_a": "OPEN - server-side structural check (spawn-burst dual-subdecoder completion) per docs/client-architecture.md, 'Zone-in actor bind and Lua-class-readiness pipeline'.",
     "part_b": "RESOLVED NEGATIVE - s2c state-push receivers do not gate on SharedWork registration.",
     "confidence": "high (inverted audit covers all 38 receivers via the single lookup funnel; residual caveat = a receiver could in principle walk the SharedWork member array inline without the primitive, but none of the decompiled receivers do)."
   },

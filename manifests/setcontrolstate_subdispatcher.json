@@ -2,13 +2,13 @@
   "version": 1,
   "gameVersion": "1.23b",
   "status": "manifest_complete",
-  "scope": "Drill the FUN_00578C90 sub-dispatcher (BCS-Y-0584 S2cDispatcher_HighSwitch_Case193_SubDispatcher) - 842 bytes inside FUN_004DC690 case 0x193. Bahamut_opcodes maps 0x193 = MapServerOpcode::SetControlState. Enumerate the inner cases keyed off param_2 and catalog each per-case handler.",
+  "scope": "Drill the FUN_00578C90 sub-dispatcher (BCS-Y-0584 S2cDispatcher_HighSwitch_Case193_SubDispatcher) - 842 bytes inside FUN_004DC690 case 0x193. The server opcode enum maps 0x193 = MapServerOpcode::SetControlState. Enumerate the inner cases keyed off param_2 and catalog each per-case handler.",
   "method": {
     "step1": "Decomp FUN_00578C90 via DumpFunctionDecomp.java. 842 bytes confirmed; dispatches on param_2 sub-opcode value.",
     "step2": "Enumerate the inner cases: param_2 < 0x10 fall through to FUN_0075F3E0 (default-range handler for sub-opcodes 0..0xF). param_2 == 0x10..0x16 each get a dedicated handler. Most are simple (single helper call); case 0x13 is rich (config string read/write with FUN_00448730 string-builder chain)."
   },
   "key_findings": [
-    "FUN_00578C90 is the SetControlState sub-dispatcher per bahamut_opcodes 0x193 mapping. Routes based on param_2 sub-opcode value to per-case handlers. Sole upstream caller: FUN_004DC690 (the s2c high-switch dispatcher) case 0x193.",
+    "FUN_00578C90 is the SetControlState sub-dispatcher per the server opcode-enum 0x193 mapping. Routes based on param_2 sub-opcode value to per-case handlers. Sole upstream caller: FUN_004DC690 (the s2c high-switch dispatcher) case 0x193.",
     "Sub-case enumeration: <0x10 -> default-range handler FUN_0075F3E0; 0x10 -> FUN_0075D210; 0x11 -> FUN_0075D230; 0x12 -> FUN_0075D250; 0x13 -> config-string read-or-write (rich path, see below); 0x14 -> FUN_0075B300 (one-time-init gate at *(char*)(param_1 + 0x3a)); 0x15 -> FUN_00576020; 0x16 -> FUN_0075D270.",
     "Case 0x13 (config string read/write): branches on param_3 == -1 (READ) vs not (WRITE). Read path builds a display string via FUN_00448730 with literal &DAT_00fa6d5c/&DAT_00fa6d64 + FUN_00445cf0 + FUN_00454ed0 + FUN_0044ab90 chain, then dispatches to FUN_0075BC90. Write path stores param_3 to *(int*)(*(int*)(param_1 + 4) + 0xec) + 0x38) (config slot offset), then builds different display string with literal 'k0W0~0W0_0' (likely shift-JIS encoded text) + &DAT_00fa6d8c + FUN_00584130 (param wrapper) + same display chain + FUN_0075BC90.",
     "The FUN_0075D210 / 0x230 / 0x250 / 0x270 cluster (cases 0x10/0x11/0x12/0x16) is a 4-handler family with adjacent .text addresses - likely a related group of simple state-update handlers that each take a single iVar1 arg (computed as param_3 == -1 ? 0 : param_4 + param_3). Per-case body shape: 1 helper call each. Could be flag setters, counter updates, or display refreshers. Bulk decomp would confirm.",

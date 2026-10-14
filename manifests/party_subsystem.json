@@ -14,7 +14,7 @@
     "ghidra_rtti_output": "%BCS_GHIDRA_PROJECTS%/party_rtti.txt",
     "ghidra_scripts": [
       "DumpFunctionDecomp.java",
-      "FindSymbolByName.java (BAHAMUT_SYMBOL_QUERY=Party)"
+      "FindSymbolByName.java (XIVL_SYMBOL_QUERY=Party)"
     ],
     "handler_addresses_decompiled": [
       "0x005763B0",
@@ -44,9 +44,7 @@
       "xivl-opcodes/opcodes.json 0x0187 SetOccupancyGroup",
       "xivl-opcodes/opcodes.json 0x018B SetGroupLayoutID",
       "xivl-opcodes/opcodes.json 0x018D PartyMapMarkerUpdate",
-      "xivl-opcodes:data/bahamut_opcodes.json",
-      "xivl-opcodes:data/external_opcodes.json",
-      "xivl-opcodes:data/bahamut_gaps.json"
+      "xivl-opcodes:data/external_opcodes.json"
     ],
     "manifest_links": [
       "manifests/operation_opcode_map_outbound.json",
@@ -62,7 +60,7 @@
     "dual_path_model": "FFXIV 1.x routes 'party/group' state-change packets through two dispatchers and three layers. (1) Dispatcher layer: FUN_004DC690 mid-table covers opcodes 0x17A and 0x17C..0x18D; FUN_004D8860 covers 0x0133 GenericData (s2c LuaParam variadic). (2) Compact handler layer (this manifest's primary catalog): each FUN_004DC690 case body is an 8- to 16-byte trampoline at 0x005762x0..0x005763Ax that tail-calls into the Group system at 0x006Cxxxx, except for the special 0x18D PartyMapMarker case which is inlined and the 0x17C GroupHeader case which adds an SEH-protected wrapper around FUN_006CC620. (3) Group system layer: 0x006Cxxxx callees populate the Group::PacketProcessor / SharedWork pipelines documented in docs/group_system_decomp.md. The PacketProcessor uses two parallel subdecoders (sub1 at +0x40, sub2 at +0x94) and fires a combined callback when both complete; SharedWork has 3 parallel 16-byte-stride member arrays (MemberInfo, Property, WorkSync) read via slots 19/20/21 and written via slots 16/17/18.",
     "wire_runtime_stride_note": "Wire format uses 0x30-byte (48) per-member slots that include 32-byte ASCII name + flags + ids; engine post-parse runtime storage uses 16-byte stride. These are intentional - the wire carries human-readable names for the UI; the runtime keeps id-keyed lookup tables. Group decomp confirms no conflict between the two strides.",
     "chat_path": "World Chat opcode 0x00C9 is the selected-group chat path and is structurally separate from the Group::PacketProcessor pipeline. C2s emission is BCS-Y-0309 through Chat forwarder BCS-Y-0306. S2c dispatch is BCS-Y-2324 at FUN_004D8D10 case VA 0x004D8E7B. FUN_006CBDD0 constructs the same +0x70 token vector for ordinary EntryBuilder and linkshell-specific EntryLinkShellBuilder implementations. Party use is capture-proven; player-linkshell use remains an unresolved static candidate because no edge joins the chat ExecuteParameters to a linkshell-backed Group or active-linkshell state. No new retail capture is possible.",
-    "c2s_party_command_path": "The actor-facing party commands (PartyInvite, PartyLeave, PartyModify/Kick/ChangeLeader, PartyResign, PartyBreakup) are not direct client-side opcode emitters. They are issued as Lua console commands (Data/scripts/commands/Party*Command.lua) that go through the GenericDataPacket opcode 0x0133 LuaParam pipeline server-side, then mapped on the map server to internal 0x10XX Map<->World bus opcodes. These are NOT actual ZoneProtoChannel wire opcodes; the 1.23b client never sends or receives them directly. Confirmed by xivl-opcodes:data/bahamut_gaps.json.",
+    "c2s_party_command_path": "The actor-facing party commands (PartyInvite, PartyLeave, PartyModify/Kick/ChangeLeader, PartyResign, PartyBreakup) are not direct client-side opcode emitters. They are issued as Lua console commands (Data/scripts/commands/Party*Command.lua) that go through the GenericDataPacket opcode 0x0133 LuaParam pipeline server-side, then mapped on the map server to internal 0x10XX Map<->World bus opcodes. These are NOT actual ZoneProtoChannel wire opcodes; the 1.23b client never sends or receives them directly.",
     "0x0133_directionality": "0x0133 carries TWO distinct semantics by direction. C2s (MapServerbound, named GroupCreated, BCS-Y-bound to OP_RX_GROUP_CREATED) - client tells server 'I created group X via /_init'. S2c (UserData via FUN_004D8860 case 0x133) - server pushes a LuaParam-encoded variadic RPC to a Lua handler keyed by class-name (e.g. 'attention' -> attentionMessage Lua callback). The s2c 0x0133 is fundamentally different from the s2c 0x017A SynchGroupWorkValues path despite both touching 'group' state."
   },
   "opcode_table": [
@@ -649,7 +647,7 @@
       "catalog_status": "uncataloged",
       "existing_bcs_y_id": null,
       "proposed_bcs_y_id": "BCS-Y-0714-DRAFT",
-      "notes": "Establishes the claim/ownership link between a monster group and a player group (party/alliance). Drives hateType workvalue routing - monsters become 'claimed by' the player group, affecting name plate colours. Retail empirical count: 44x in combat/quest captures (bahamut external_opcodes.json)."
+      "notes": "Establishes the claim/ownership link between a monster group and a player group (party/alliance). Drives hateType workvalue routing - monsters become 'claimed by' the player group, affecting name plate colours. Retail empirical count: 44x in combat/quest captures."
     },
     {
       "opcodeHex": "0x0188",
@@ -772,7 +770,7 @@
       "catalog_status": "uncataloged",
       "existing_bcs_y_id": null,
       "proposed_bcs_y_id": "BCS-Y-0718-DRAFT",
-      "notes": "Updates per-member layout/zone tracking - lets the party UI know which zone/instance each member is in even when they are out of rendering range. Retail empirical count: 287x across combat captures (bahamut external_opcodes.json - 'the most-emitted of the newly-ported set' after PartyMapMarkerUpdate).",
+      "notes": "Updates per-member layout/zone tracking - lets the party UI know which zone/instance each member is in even when they are out of rendering range. Retail empirical count: 287x across combat captures.",
       "needsReverify": true,
       "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
     },
@@ -876,7 +874,7 @@
       "existing_bcs_y_id": null,
       "proposed_bcs_y_id": "BCS-Y-0719-DRAFT (handler FUN_00575550) + BCS-Y-0720-DRAFT (case body in FUN_004DC690)",
       "classification": "direct_non_receiver_handler (confirmed_negative priority 4)",
-      "notes": "Retail empirical count: 592x across 38 captures (bahamut external_opcodes.json - 'the most-emitted of the newly-ported set'). The case body is the ONLY 0x17A..0x18D handler with an inline non-trampoline shape; all others are compact 8-byte trampolines into the Group system. This is because PartyMapMarker updates a UI/rendering path gated by the nonzero zone-owned field at +0x4d8 rather than the Group::SharedWork pipeline; the field's pointer/widget interpretation is not supported by the fresh retail writer reconciliation."
+      "notes": "Retail empirical count: 592x across 38 captures. The case body is the ONLY 0x17A..0x18D handler with an inline non-trampoline shape; all others are compact 8-byte trampolines into the Group system. This is because PartyMapMarker updates a UI/rendering path gated by the nonzero zone-owned field at +0x4d8 rather than the Group::SharedWork pipeline; the field's pointer/widget interpretation is not supported by the fresh retail writer reconciliation."
     },
     {
       "opcodeHex": "0x0143",
@@ -897,7 +895,7 @@
     }
   ],
   "rtti_findings": {
-    "ghidra_query": "BAHAMUT_SYMBOL_QUERY=Party",
+    "ghidra_query": "XIVL_SYMBOL_QUERY=Party",
     "total_matches": 53,
     "rtti_classes": [
       {
@@ -1009,7 +1007,7 @@
     "0x18D PartyMapMarkerUpdate is the ARCHITECTURAL ODD ONE OUT in this cluster: it does NOT touch the Group::PacketProcessor / SharedWork pipeline. Its inline handler at FUN_00575550 gates on `*(int*)(zone+0x4d8) != 0` (a nonzero zone-owned gate whose lifecycle and semantic name remain unresolved), reads the marker count from a non-standard offset (packet+0x18 instead of part of the payload header), and forwards through FUN_006C1570 / FUN_00573F10 to a UI/rendering update path. receiver_discovery.json correctly classifies this as direct_non_receiver_handler, distinct from the other group_sharedwork_non_receiver classifications.",
     "0x0133 has DUAL semantics by direction. C2s = GroupCreated (client tells server it acknowledged a group). S2c = GenericDataPacket / UserData (server pushes Lua-VM variadic RPC). The c2s side is the ONLY c2s opcode in this cluster that the client emits (PartyInvite/PartyLeave/PartyModify are Lua-console-driven, going through the GenericData LuaParam path on the c2s side as well). 0x017A SynchGroupWorkValues is the s2c response payload associated with the 0x0133 c2s GroupCreated confirm.",
     "0x00C9 selected-group chat goes through the World Chat channel, not the Zone channel. C2s emitter BCS-Y-0309 and s2c dispatcher BCS-Y-2324 are cataloged. Application +0x08 is a selected Group entry token, not a proven party, linkshell, actor, or sender identifier. FUN_006CBDD0 constructs the same +0x70 token vector for ordinary EntryBuilder and linkshell-specific EntryLinkShellBuilder implementations, proving mechanism compatibility. Party use is capture-proven. Player-linkshell use remains an unresolved static candidate because no edge joins the chat ExecuteParameters to a linkshell-backed Group or active-linkshell state.",
-    "No client-side equivalent of PartyInvite/PartyLeave/PartyModify exists as a direct wire opcode. The Lua commands Data/scripts/commands/Party*Command.lua (PartyInviteCommand, PartyKickCommand, PartyLeaderCommand, PartyResignCommand, PartyDisbandCommand, PartyBreakupCommand, PartyTargetCommand, addtoparty.lua) all go through the Lua-VM bindings (Application::Lua::Script::Client::Control::GroupBase 15 client-side methods) and are relayed by the server. The internal Map<->World bus values are NOT actual ZoneProtoChannel wire opcodes (confirmed by bahamut_gaps.json).",
+    "No client-side equivalent of PartyInvite/PartyLeave/PartyModify exists as a direct wire opcode. The Lua commands Data/scripts/commands/Party*Command.lua (PartyInviteCommand, PartyKickCommand, PartyLeaderCommand, PartyResignCommand, PartyDisbandCommand, PartyBreakupCommand, PartyTargetCommand, addtoparty.lua) all go through the Lua-VM bindings (Application::Lua::Script::Client::Control::GroupBase 15 client-side methods) and are relayed by the server. The internal Map<->World bus values are NOT actual ZoneProtoChannel wire opcodes.",
     "The survey identified 20 function candidates and four Group::* RTTI class candidates. Canonical promotion status and identifiers are determined by symbols.json.",
     "Group::PacketProcessor dual-subdecoder architecture (finding) explains why GroupHeader (0x17C) + GroupMembersBegin (0x17D) + GroupMembersX08-X64 (0x17F-0x182) + GroupMembersEnd (0x17E) are emitted as a TRIO/QUARTET in a single sequenceId burst. The PacketProcessor's sub*_complete flags + +0xEA both_callback_pending guards mean the combined callback only fires when BOTH subdecoders complete.",
     "group_system_decomp.md 'open question' about runtime registration of ZoneProtoDownCallbackInterface is RESOLVED in network_dispatch_dual_paths.md: there IS no runtime registration. The dispatcher uses DummyCallback whose per-opcode slots are 3-byte `ret 0xc` stubs. Group-family opcodes (0x017A / 0x0133 IN / 0x017C-F / 0x0183) are consumed by Group::PacketProcessor's queue-walk + dual subdecoder, NOT by per-opcode vtable callbacks. This is why FUN_004DC690 dispatches them DIRECTLY (bypassing the ZoneProtoChannel dispatch table) - the FUN_005763xx trampolines are the client's actual handlers."
