@@ -1841,7 +1841,7 @@ bit 0 of B+0x9C (`0x00921198-0x009211AD`) and a true result from slot +0x5C
 of a nonzero [B+0x94] (`0x009211B3-0x009211CB`). It then calls [B+0x98] slot
 +0x14 with [B+0x94], B+0x1C, the caller's input argument and bit 0 of B+0x9C
 (`0x009211D1-0x009211FA`), and [B+0x18] slot +4 with B+0x1C and [B+0x94]
-(`0x00921200-0x00921214`). When both return true, it calls [[B+0x18]]+8 with
+(`0x00921200-0x00921214`). When both return true, it calls [B+0x18] slot +8 with
 V=B+0x1C, T=[B+0x94] and E=0 (`0x00921216-0x00921233`); that is
 `FUN_00927FA0` when [B+0x18] is a RoutedCommand. These uses suggest B+0x18 is
 the command, B+0x1C the parameter, B+0x94 the target and B+0x98 the gesture;
