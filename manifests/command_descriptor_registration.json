@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 1,
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "2012.09.19.0001",
+    "bytes": 15996808,
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "imageBase": "0x00400000",
+    "architecture": "PE32 i386"
+  },
+  "scope": "Retained s2c 0x0132 named definitions, their conditional native record producer and descriptor constructor. Wire receipt does not establish the later selected runtime descriptor.",
+  "method": "Retained Ghidra instruction rows were authenticated against the identified PE through raw-backed section mappings. Contiguous authenticated extents and SHA-256 values are listed below. PE section metadata establishes zero-filled virtual storage separately from raw file bytes. Addresses are VAs; subtract imageBase for RVAs. No runtime client state was observed.",
+  "sourceRefs": [
+    "xivl-captures:studies/command-registration/README.md",
+    "xivl-captures:studies/command-registration/derived/occurrences.csv",
+    "xivl-captures:studies/command-registration/derived/accounting.json",
+    "xivl-decomp:docs/input/chara-selection-producers.md#pending-native-command-record-input",
+    "manifests/player_command_wire_contract.json"
+  ],
+  "sourceRevisions": {
+    "xivlDecomp": "b4a122254be1fa00ac570db33facd438cdea29b0"
+  },
+  "incoming": {
+    "direction": "s2c",
+    "opcode": "0x0132",
+    "subeventBytes": 72,
+    "gameMessageBytes": 56,
+    "applicationBytes": 40,
+    "offsetBasis": "application payload after the 16-byte game-message prefix",
+    "fields": [
+      {
+        "offset": 0,
+        "size": 1,
+        "type": "u8",
+        "name": "priorityInput",
+        "evidence": "manifests/command_descriptor_registration.json#incoming"
+      },
+      {
+        "offset": 1,
+        "size": 1,
+        "type": "u8",
+        "name": "selector",
+        "evidence": "manifests/command_descriptor_registration.json#incoming"
+      },
+      {
+        "offset": 2,
+        "size": 32,
+        "type": "char[32]",
+        "name": "name",
+        "evidence": "manifests/command_descriptor_registration.json#incoming"
+      },
+      {
+        "offset": 34,
+        "size": 6,
+        "type": "bytes",
+        "name": "unresolvedTail",
+        "evidence": "xivl-captures:studies/command-registration/derived/occurrences.csv; zero in all retained records, semantic role unproved"
+      }
+    ],
+    "dispatch": "0x004DC690 -> CharaElement slot 9 0x0058CCA0 -> 0x004D8860 case 0x0132 -> 0x00574FC0 -> implementation slot 49.",
+    "implementationCondition": "NullActorImpl table 0x00FE02AC slot 49 = 0x0076CA90. LuaActorImpl table 0x00FDFB2C slot 49 = 0x00759DE0, RET 4, which does not construct this record. Receipt alone does not select the implementation table.",
+    "anchors": [
+      {
+        "va": "0x0076CACA",
+        "fact": "Name from payload+2 passed to 0x00447260."
+      },
+      {
+        "va": "0x0076CAD9",
+        "fact": "Reads selector byte payload+1; calls byte-copy helper 0x0078DDE0 at 0x0076CAE3."
+      },
+      {
+        "va": "0x0076CAE8",
+        "fact": "Reads priority byte payload+0; calls 0x0075AEE0 at 0x0076CAF5."
+      },
+      {
+        "va": "0x0075AEEC",
+        "fact": "Zero input priority is replaced with byte[0x01355296]. Nonzero input is retained; result written at 0x0075AEF2."
+      },
+      {
+        "va": "0x0076CB01",
+        "fact": "0x0076A3F0 reuses or creates pending owner at implementation+0x48."
+      },
+      {
+        "va": "0x0076CB08",
+        "fact": "Passes name, normalized priority and selector to pending-record producer 0x00767B40."
+      }
+    ]
+  },
+  "pendingRecords": {
+    "ownerVectorOffset": "0x14",
+    "beginOffset": "0x18",
+    "endOffset": "0x1c",
+    "stride": "0x58",
+    "fields": {
+      "name": "0x00",
+      "normalizedPriority": "0x54",
+      "selector": "0x55"
+    },
+    "anchors": [
+      {
+        "va": "0x00767BB4",
+        "fact": "Calls record constructor 0x007760F0."
+      },
+      {
+        "va": "0x0077611D",
+        "fact": "Copies name through 0x00447200."
+      },
+      {
+        "va": "0x00776134",
+        "fact": "Writes priority byte to record+0x54."
+      },
+      {
+        "va": "0x00776139",
+        "fact": "Writes selector byte to record+0x55."
+      },
+      {
+        "va": "0x00767BC8",
+        "fact": "Calls 0x007836D0 on owner+0x14. Its available-capacity arm constructs at vector end and advances by 0x58; growth-path ordering is not claimed."
+      },
+      {
+        "va": "0x006F345F",
+        "fact": "Calls 0x00762CA0 with initializer receiver and pending owner. Only the callsite is used here; the retained 0x006F3420 listing has a gap and no continuous whole-function extent is claimed."
+      },
+      {
+        "va": "0x00762CFB",
+        "fact": "Calls 0x006F1C20 with record, record+0x54 and record+0x55; walk advances by 0x58."
+      }
+    ],
+    "handoff": "The conditional pending-owner transfer and cleanup are retained in xivl-decomp:docs/input/chara-selection-producers.md#pending-native-command-record-input. They do not prove that the implementation receiving a particular message is the one handed off, or that the initialized player is the later execution receiver."
+  },
+  "construction": {
+    "factory": "0x006F1C20",
+    "comparison": {
+      "va": "0x006F1C55",
+      "rule": "Supplied selector byte equals byte[0x0134C3FE]."
+    },
+    "equal": {
+      "class": "CommandBlock",
+      "call": "0x006F1C80",
+      "constructor": "0x00892080",
+      "vtable": "0x01056CC4",
+      "priorityWrite": "0x008920C6 -> descriptor+0x5c",
+      "callback": "_onCommandEvent"
+    },
+    "unequal": {
+      "class": "CommandNonBlock",
+      "call": "0x006F1CA5",
+      "constructor": "0x008921A0",
+      "vtable": "0x01056CF8",
+      "priority": "Only name is passed to this constructor. It does not receive or store the supplied priority.",
+      "callback": "_onCommandRequest"
+    },
+    "installation": "0x006F1CD2 calls 0x00725ED0 on player+0xfc to append the constructed descriptor.",
+    "otherProducer": "Compiled receiver body 0x0089D4F0 casts the supplied ActorBase to MyPlayer (RTTI 0x012C19A4) and calls 0x006F1C20 at 0x0089D51C with name at this+4, priority at this+0x58 and selector at this+0x59. The retained direct-reference analysis establishes no wire-instantiation route for this receiver class; see symbols.json BCS-Y-0945/0946/1111. The pending-record path is a separate producer.",
+    "lookup": "0x0071CA50 scans player+0xfc in order, compares descriptor+4 name through 0x00445D20 at 0x0071CA88 and returns the first equal entry at 0x0071CAAA. It does not test the selected descriptor vtable."
+  },
+  "globals": {
+    "section": {
+      "name": ".data",
+      "va": "0x01265000",
+      "rawFileOffset": "0x00E65000",
+      "rawBytes": 782336,
+      "virtualBytes": 1145152,
+      "zeroFillStartVa": "0x01324000",
+      "virtualEndVaExclusive": "0x0137C940"
+    },
+    "selector": "0x0134C3FE",
+    "eventType": "0x0134C3FF",
+    "defaultPriority": "0x01355296",
+    "initialization": "All three addresses lie in virtual zero-fill after the raw-backed .data extent. PE loading supplies initial zero bytes. These are not bytes read from the file and do not establish their values at registration or execution time.",
+    "targetedReferenceScan": {
+      "method": "Searched the exact PE for each explicit four-byte absolute address encoding and inspected the returned instruction sites. This does not enumerate computed or indirect aliases.",
+      "selectorInstructionSites": [
+        "0x006EB7F4",
+        "0x006EBA04",
+        "0x006F13B5",
+        "0x006F1C55",
+        "0x006F2342",
+        "0x006F29E5",
+        "0x006F2AC5",
+        "0x006F2D2D",
+        "0x006F2EB5",
+        "0x006F569D"
+      ],
+      "defaultPriorityInstructionSites": [
+        "0x0075AEEC",
+        "0x008993C4"
+      ],
+      "result": "Inspected sites read or compare the bytes. No direct writer was identified in this scan; absence of indirect mutation is not proved."
+    }
+  },
+  "observedDefinitions": [
+    {
+      "name": "commandForced",
+      "priorityInput": 11,
+      "selector": 0,
+      "classIfSelectorGlobalZero": "CommandBlock"
+    },
+    {
+      "name": "commandDefault",
+      "priorityInput": 10,
+      "selector": 0,
+      "classIfSelectorGlobalZero": "CommandBlock"
+    },
+    {
+      "name": "commandWeak",
+      "priorityInput": 6,
+      "selector": 0,
+      "classIfSelectorGlobalZero": "CommandBlock"
+    },
+    {
+      "name": "commandContent",
+      "priorityInput": 4,
+      "selector": 0,
+      "classIfSelectorGlobalZero": "CommandBlock"
+    },
+    {
+      "name": "commandJudgeMode",
+      "priorityInput": 6,
+      "selector": 0,
+      "classIfSelectorGlobalZero": "CommandBlock"
+    },
+    {
+      "name": "commandRequest",
+      "priorityInput": 0,
+      "selector": 1,
+      "classIfSelectorGlobalZero": "CommandNonBlock"
+    },
+    {
+      "name": "widgetCreate",
+      "priorityInput": 0,
+      "selector": 1,
+      "classIfSelectorGlobalZero": "CommandNonBlock"
+    },
+    {
+      "name": "macroRequest",
+      "priorityInput": 0,
+      "selector": 1,
+      "classIfSelectorGlobalZero": "CommandNonBlock"
+    }
+  ],
+  "interpretation": [
+    "The capture study owns counts, source identities and exact connection/frame/packet locators. It observes the eight definitions in repeated batches associated with the same client player reference, not descriptor memory.",
+    "With selector global zero, commandForced constructs CommandBlock with priority 11 and commandRequest constructs CommandNonBlock. The same conditional rules cover the other observed names. No unconditional selected-instance callback claim follows.",
+    "The commandRequest wire priority input 0 is not command-sheet priority -1. The latter selects a Lua name, whereas the former passes through default-priority normalization before a constructor that does not use it on the nonblock arm.",
+    "The Lua commandRequest eligibility bypass and the shared direct 0x012d fallback remain as recorded in player_command_wire_contract.json. Incoming 0x0132 definitions are distinct from outbound command invocation operands."
+  ],
+  "boundary": {
+    "firstUnresolvedNativeInput": "The selected runtime descriptor returned by 0x0071CA50 from the later player+0xfc vector: actual receiving implementation and handoff identity, runtime selector/default bytes, completed initialization, insertion order, lifetime and installed vtable are not observed.",
+    "firstUnresolvedServerBoundary": "Server consumption of the opcode 0x012d record queued through 0x00DB06A0: no server decoder, admission, mutation, settlement, cancellation, timing or response contract is established.",
+    "ceiling": "Retained wire definitions and conditional client construction are proved. Callback execution, eligibility success, transport delivery and server acceptance or policy are not."
+  },
+  "authenticatedInstructionExtents": [
+    {
+      "entry": "0x00762CA0",
+      "bytes": 118,
+      "sha256": "c9d57567caead24762345cfa3db69bc8e248367e8da1127def5ac5e1ec6811a5",
+      "instructionCount": 45
+    },
+    {
+      "entry": "0x006F1C20",
+      "bytes": 211,
+      "sha256": "95a01c6863f4a1580d7b6a20cbf4d48215fec2aa7dad618027c5ef9707a1ed8b",
+      "instructionCount": 66
+    },
+    {
+      "entry": "0x0076CA90",
+      "bytes": 163,
+      "sha256": "a40bf7b6e2e0d8664e4ccee225c6333648ec1ac145b037f85d1746b7ce5298b1",
+      "instructionCount": 53
+    },
+    {
+      "entry": "0x00767B40",
+      "bytes": 189,
+      "sha256": "88276e62142b4fb29a0df1d53d6cf8561babc133845b6024aef89aeb7278d5cb",
+      "instructionCount": 57
+    },
+    {
+      "entry": "0x007760F0",
+      "bytes": 105,
+      "sha256": "a9d09f14184b03ed019e944c177ec00ba3fd8d20527ff8bd3031eaa3de631f68",
+      "instructionCount": 31
+    },
+    {
+      "entry": "0x0078DDE0",
+      "bytes": 11,
+      "sha256": "a8e256de15ec566f393441010f85f0b02ed8a6a61d4d70912bec518c99ee4e27",
+      "instructionCount": 4
+    },
+    {
+      "entry": "0x0075AEE0",
+      "bytes": 21,
+      "sha256": "88b5ae23e718ad0477c9ec43e3182c908e8b7e9bcb9fbbdc054e43f7d4392ac8",
+      "instructionCount": 7
+    },
+    {
+      "entry": "0x00892080",
+      "bytes": 102,
+      "sha256": "499ba26c80abac810204497e05cf354184c487b5d1c3a585c66db863a6a5365d",
+      "instructionCount": 29
+    },
+    {
+      "entry": "0x008921A0",
+      "bytes": 93,
+      "sha256": "c87433cef34cb74d48574a9c7cef27e1218d55fab82c50775db27f41b3e85b58",
+      "instructionCount": 26
+    },
+    {
+      "entry": "0x0071CA50",
+      "bytes": 108,
+      "sha256": "a4cfeef054d32f8e1ead525280aedd51af8357dd30dbf0f97ad111ff63b901ee",
+      "instructionCount": 45
+    },
+    {
+      "entry": "0x0089D4F0",
+      "bytes": 53,
+      "sha256": "c09fbbde5ed38d824cf939eb79f21a0ccdc24558c2e1d556759b742899df5623",
+      "instructionCount": 20
+    },
+    {
+      "entry": "0x00725ED0",
+      "bytes": 125,
+      "sha256": "b1aa55db58c018fd9e67d7d83194cf62f78f01b9277dc50df843f732ef342cb9",
+      "instructionCount": 37
+    },
+    {
+      "entry": "0x007836D0",
+      "bytes": 160,
+      "sha256": "8fddf6c85724a1e17fec9d00fc642dc441885575a379720d5fb57a9b0e6e453f",
+      "instructionCount": 66
+    },
+    {
+      "entry": "0x00899120",
+      "bytes": 6,
+      "sha256": "cd4319e1e524ce87e47677f34a544a4d461d7f5f96c55ae82a7cea7e3bc6f964",
+      "instructionCount": 2
+    },
+    {
+      "entry": "0x00704AA0",
+      "bytes": 187,
+      "sha256": "3cb30c70cbbc426d3cb56666646506ecc008bd5e5a3c6d0f06b45af60463e8a5",
+      "instructionCount": 72
+    },
+    {
+      "entry": "0x0070A010",
+      "bytes": 829,
+      "sha256": "0e19b2df88a1ad229ceb2be6c08ea4dfc9cbbd06b668225c2287757626a1fd3e",
+      "instructionCount": 255
+    }
+  ]
+}

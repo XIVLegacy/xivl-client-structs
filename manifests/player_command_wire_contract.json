@@ -8,13 +8,14 @@
     "imageBase": "0x00400000",
     "architecture": "PE32 i386"
   },
-  "scope": "Native PlayerBase command eligibility, execution dispatch, direct server fallback and typed Lua argument serialization. This contract is conditional on the selected descriptor and fallback executing; it does not establish a runtime descriptor record, a captured Bazaar request, or server behavior.",
+  "scope": "Native PlayerBase command eligibility, execution dispatch, direct server fallback and typed Lua argument serialization. Conditional on the selected descriptor and fallback executing. Named incoming definitions are recorded separately; no captured Bazaar request or server behavior is established.",
   "method": "Retained Ghidra instruction listings were compared byte-for-byte with the identified PE using its section table. RTTI, vtable entries, literals and initial data were read from that PE. Addresses below are virtual addresses; subtract imageBase for RVAs.",
   "sourceRefs": [
     "manifests/control_class_napi_field_access_recursive.json",
     "manifests/combat_command_emission.json",
     "xivl-client-scripts:manifests/scripts.json",
-    "xivl-client-scripts:manifests/retail_lua_coverage.json"
+    "xivl-client-scripts:manifests/retail_lua_coverage.json",
+    "manifests/command_descriptor_registration.json"
   ],
   "nativeBindings": {
     "vtable": "0x00FD785C",
@@ -138,8 +139,8 @@
         ]
       }
     ],
-    "eventType": "Both descriptor vtables have slot 5 = 0x00899120, returning reference 0x0134C3FF, whose PE initial byte is 0.",
-    "unresolvedRegistration": "0x00762CA0 iterates 0x58-byte records with name +0, priority +0x54 and block selector +0x55, calling 0x006F1C20 at 0x00762CFB. At 0x006F1C55 that constructor compares the selector with 0x0134C3FE: equal constructs CommandBlock at 0x006F1C80, otherwise CommandNonBlock at 0x006F1CA5. The actual runtime registration record for commandRequest or commandForced is not established here. A Lua name alone does not choose the native callback class."
+    "eventType": "Both descriptor vtables have slot 5 = 0x00899120, returning reference 0x0134C3FF. It lies in PE virtual zero-fill, initially zero on loading; no live value is established. See command_descriptor_registration.json#globals.",
+    "registration": "manifests/command_descriptor_registration.json: retained s2c 0x0132 definitions establish name/priority/selector inputs and conditional constructors. Runtime first-match descriptor selection remains unobserved."
   },
   "directFallback": {
     "function": "0x006E2FB0",
@@ -241,7 +242,7 @@
         "offset": "0x10",
         "bytes": 1,
         "encoding": "u8",
-        "source": "descriptor slot 5 type reference; initial 0 for both command descriptor families",
+        "source": "descriptor slot 5 type reference; PE virtual zero-fill initially supplies 0 for both families, without an observed runtime value",
         "anchors": [
           "0x006E30CA",
           "0x0077677F"
@@ -363,7 +364,7 @@
   },
   "boundary": {
     "queue": "0x004D6D30 requires this+0x174ec; 0x004E0240 requires this+0x234 and nested +0x70. 0x00DAE010 requires state +0x8c == 3 for opcode 0x012d at 0x00DAE04F/52; states 1/2 admit only opcode 2. State 3 allocates through 0x00DAF850 at 0x00DAE091 and queues through 0x00DB06A0 at 0x00DAE0C9.",
-    "firstUnresolvedNativeInput": "Runtime 0x58-byte command descriptor registration record consumed by 0x00762CA0: actual commandRequest/commandForced name, priority +0x54 and block-selector +0x55 binding.",
+    "firstUnresolvedNativeInput": "The selected runtime descriptor returned by 0x0071CA50 from the later player+0xfc vector: actual receiving implementation and handoff identity, runtime selector/default bytes, completed initialization, insertion order, lifetime and installed vtable are not observed.",
     "firstUnresolvedServerBoundary": "Server consumption of the opcode 0x012d record queued through 0x00DB06A0: no server decoder, admission, mutation, settlement, cancellation, timing or response contract is established.",
     "observation": "This is a conditional native construction contract. It does not establish that a particular request passed the gates, reached a socket, or was accepted."
   }

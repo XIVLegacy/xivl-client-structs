@@ -10,9 +10,10 @@ Its instructions were authenticated against the identified retail PE.
 
 `_executeCommand` resolves a named descriptor and command control object,
 checks bindings, and dispatches the selected descriptor. Native `CommandBlock`
-fires `_onCommandEvent`; `CommandNonBlock` fires `_onCommandRequest`. Their
-actual runtime registration records remain unobserved. A Lua name alone does
-not prove which descriptor class was registered.
+fires `_onCommandEvent`; `CommandNonBlock` fires `_onCommandRequest`. The
+[registration contract](command-descriptor-registration.md) joins retained
+`0x0132` definitions to their conditional constructors. The actual descriptor
+selected by a later execution lookup remains unobserved.
 
 Both Lua callbacks can reach the direct native fallback. That route consumes
 the name and command object as envelope inputs and serializes the remaining
@@ -26,7 +27,7 @@ fallback and the native gates pass.
 | `+0x04` | Command control binding reference, u32 little-endian |
 | `+0x08` | Self actor object `+0x14`, u32 little-endian |
 | `+0x0c` | CRC32 of the complete 128-byte tail, u32 little-endian |
-| `+0x10` | Descriptor event-type byte; PE initial value 0 |
+| `+0x10` | Descriptor event-type byte; PE virtual zero-fill initially supplies 0 |
 | `+0x11` | 32-byte inline descriptor name |
 | `+0x31` | 128-byte typed argument stream |
 | `+0xb1` | Seven-byte remainder with no established meaning |
@@ -59,10 +60,11 @@ addresses.
 
 ## Boundaries
 
-The first unresolved native input is the runtime `0x58`-byte command descriptor
-registration record consumed by `0x00762CA0`, including priority `+0x54` and
-block selector `+0x55`. Conditional fallback construction can be described
-without choosing that record.
+The first unresolved native input is the descriptor selected by the later
+`0x0071CA50` name lookup from player `+0xfc`. The
+[registration contract](command-descriptor-registration.md) establishes named
+wire definitions and conditional constructors, while retaining the receiving
+implementation, runtime globals, handoff, insertion history and lifetime limits.
 
 The native send path gates and queues the record through `0x00DB06A0`.
 Server consumption of that queued `0x012d` record is the unresolved server

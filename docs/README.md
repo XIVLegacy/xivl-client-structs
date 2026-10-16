@@ -38,6 +38,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   selection operations, and identity and readiness limits.
 - [Retail repair contract](repair-contract.md) - client, wire, metadata, and
   capture boundaries for NPC repair and CraftCommand 22013 self-repair.
+- [Command descriptor registration](command-descriptor-registration.md) -
+  observed definitions, native constructors and runtime selection boundary.
 - [Player command wire contract](player-command-wire-contract.md) - native
   dispatch, direct fallback fields and typed argument serialization.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver

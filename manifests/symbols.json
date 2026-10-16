@@ -11441,9 +11441,10 @@
       "address": "0x0089D4F0",
       "confidence": "confirmed",
       "sourceRefs": [
-        "tools/ghidra/logs/d4ab_decomp.txt"
+        "tools/ghidra/logs/d4ab_decomp.txt",
+        "manifests/command_descriptor_registration.json"
       ],
-      "notes": "SetCommandEventConditionReceiver slot 1. | Self-sourced Ghidra decomp: 53 B Receive body - FUN_009da6cc (RTDynamicCast) guard ActorBase->MyPlayer then dispatch to FUN_006f1c20(this+4, this+0x58, this+0x59). | [hygiene setcommandeventconditionreceiver-wire-opcode-investigation-definitively-dead dead-code finding] FindAllReferences on this VA returns exactly 1 reference: a DATA ref at 0x01057380 (= [[SetCommandEventConditionReceiver_vftable]] BCS-Y-0945 slot 1 entry, offset +0x4). NO function in the binary directly calls FUN_0089D4F0; it is reached only via vftable-indirect dispatch, which never triggers because the parent class is never instantiated (see BCS-Y-0945 note). The handler logic at FUN_006F1C20 IS still reachable through a separate code path - via FUN_00762CA0 (a 118-byte batch iterator that walks an array of 0x58-byte command-event-condition entries calling FUN_006F1C20(entry, entry+0x54, entry+0x55) on each) called from FUN_006F3420 (a 554-byte state-copy/clone method at vftable_C[30] = 0x00fd785c+0x78). This alt path is internal/Lua-driven plumbing, not network-driven; the SetCommandEventCondition functionality exists in the binary but is unwired from any wire opcode.",
+      "notes": "SetCommandEventConditionReceiver slot 1, 53 bytes. FUN_009DA6CC casts the supplied ActorBase to MyPlayer (RTTI 0x012C19A4), then calls FUN_006F1C20 at 0x0089D51C with this+4, this+0x58 and this+0x59. The retained direct-reference investigation found only vtable slot 1 at 0x01057380 referencing this function and no constructor callers; this receiver class has no established wire-instantiation route (BCS-Y-0945). Separately, s2c 0x0132 reaches NullActorImpl slot 49 (BCS-Y-1118), producing pending 0x58-byte records. Conditional initialization FUN_006F3420 -> FUN_00762CA0 passes those records to the shared FUN_006F1C20 factory. The class-specific wire gap does not exclude that network-produced data path. See manifests/command_descriptor_registration.json for exact byte roles, constructors and the unobserved later selected descriptor.",
       "id": "BCS-Y-0946"
     },
     {
@@ -13361,9 +13362,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "tools/ghidra/logs/c42_ctor_decomp.txt",
-        "ledger:catalog-promotion-of-nullactorimpl-set-eventcondition"
+        "ledger:catalog-promotion-of-nullactorimpl-set-eventcondition",
+        "manifests/command_descriptor_registration.json"
       ],
-      "notes": "SetCommandEventConditionReceiver constructor. DEAD CODE in 1.23b (the setcommandeventconditionreceiver-wire-opcode-investigation-definitively-dead pass finding): FindAllReferences on this VA returns 0 callers binary-wide; the only references to the class vftable (0x0105737C) are this ctor itself + dtor FUN_0089D490. The Set*EventCondition factory cluster in NullActorImpl::vftable slots 50-55 (BCS-Y-0162) does NOT include a SetCommand factory - slots 50-55 construct Set{Talk,Notice,Emote,PushCircle,PushFan,PushTriggerBox} ctors only. The receiver class survives in binary as dead code; its runtime handler FUN_006F1C20 remains reachable via FUN_00762CA0 (batch iterator over 0x58-byte arrays) called from FUN_006F3420 (vftable_C slot 30 state-copy method), which is internal/Lua-driven plumbing rather than network-driven dispatch. [hygiene catalog-promotion-of-nullactorimpl-set-eventcondition - catalog promotion of the evidence]"
+      "notes": "SetCommandEventConditionReceiver constructor. The retained direct-reference investigation found no callers and only constructor/destructor references to vtable 0x0105737C. NullActorImpl slots 50-55 construct other Set* receiver classes, and no wire-instantiation route for this class is established (BCS-Y-0945). The shared FUN_006F1C20 factory is separately called by FUN_00762CA0 during FUN_006F3420 initialization. Those pending records have an incoming s2c 0x0132 producer at NullActorImpl slot 49 (BCS-Y-1118). See manifests/command_descriptor_registration.json; the receiver-class binding gap does not make the shared command definitions independent of network input."
     },
     {
       "id": "BCS-Y-1112",
@@ -13448,9 +13450,10 @@
         "tools/ghidra/logs/c44_d8860_decomp.txt",
         "tools/ghidra/logs/c44_unknown_bridges.txt",
         "ledger:s2c-0x0132-wire-opcode-binding-to",
-        "tools/ghidra/logs/c59_vehiclegrade_fastpath_decomp.txt"
+        "tools/ghidra/logs/c59_vehiclegrade_fastpath_decomp.txt",
+        "manifests/command_descriptor_registration.json"
       ],
-      "notes": "NullActorImpl::vftable[49] (BCS-Y-0162 offset 0xC4) = in-place receiver initializer for s2c opcode 0x0132 (_0x132Packet / MapServerOpcode::Opaque0x132 per the xivl-opcodes clientbound entry). Dispatch chain: FUN_004DC690 -> CharaElement::vftable[9]=FUN_0058CCA0 (BCS-Y-0540) -> FUN_004D8860 (BCS-Y-0280) case 0x132 -> FUN_00574FC0 bridge (BCS-Y-0594, renamed during the s2c-0x0132-wire-opcode-binding pass to drop prior LuaActorImpl mislabel) -> NullActorImpl::vftable[49] = THIS function. Body 163B. Shape NOTE: differs from the slot 50-55 SetTalk/Notice/etc. factories - this is an IN-PLACE INITIALIZER (no FUN_009D1B35 heap alloc), takes param_1 as a pre-existing stack record at param_1+2 and runs CommandInterface ctor (FUN_00447260) + FUN_0078DDE0 + FUN_0075AEE0 + FUN_0076A3F0 + FUN_00767B40 (register). The lack of alloc + presence of FUN_00767B40 register call places this in a Pattern E variant (pre-allocated record + register-only). Direction asymmetry: 0x0132 c2s = ItemWorkUpdatePacket (builder FUN_0075EAC0, 24B payload, BCS-Y-0383 anchor); 0x0132 s2c = this dispatch path (72B payload, 96 pcaps, receiver class TBD - decompAnchor was previously OP_0X132_PACKET unbound). [hygiene s2c-0x0132-wire-opcode-binding-to - deferred wire-opcode binding for slot 49 completed] | [vehiclegrade-fast-path-target-shared-receiver] One of 18 callers of [[ReceiverStateCache_LazyGet_FUN_0076A3F0]] (BCS-Y-1337) - the shared Receiver state-cache lazy-init helper. Confirms NullActorImpl slot 49's in-place factory shares the same actor-state-cache layer used by the Receiver hybrid factories."
+      "notes": "NullActorImpl::vftable[49] at offset 0xC4 (BCS-Y-0162), 163-byte pending-command record producer for s2c 0x0132. Dispatch: FUN_004DC690 -> CharaElement slot 9 FUN_0058CCA0 (BCS-Y-0540) -> FUN_004D8860 case 0x0132 (BCS-Y-0280) -> bridge FUN_00574FC0 (BCS-Y-0594). Reads the incoming application name at +2, priority input byte at +0 and selector byte at +1. FUN_0075AEE0 normalizes zero priority through a global default; FUN_0078DDE0 copies the selector. FUN_0076A3F0 obtains the pending owner and FUN_00767B40 appends its command definition. No SetCommandEventConditionReceiver allocation occurs on this path. Framing is 72-byte subevent, 56-byte game message and 40-byte application. The current corpus census and locators are owned by xivl-captures:studies/command-registration/README.md. Opposite-direction c2s 0x0132 is the distinct ItemWorkUpdatePacket builder FUN_0075EAC0 (BCS-Y-0383). FUN_0076A3F0 is the shared state-cache lazy helper (BCS-Y-1337). See manifests/command_descriptor_registration.json for conditional owner handoff and descriptor construction; receipt alone does not prove execution or selected-instance identity."
     },
     {
       "name": "LuaDebugLog_vftable_secondary",
