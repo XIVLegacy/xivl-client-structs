@@ -133,8 +133,8 @@
     }
   ],
   "opcodeMapping": {
-    "summary": "All retainer-marketplace c2s opcodes are already cataloged in existing manifests. Bazaar has no dedicated c2s opcode in 1.23b (handled via Lua event commands on generic event opcodes). 'Market' is a single PrivateAreaMaster zone name (PrivateAreaMasterMarket) plus MarketEntrance NPCs - no Market* opcode exists in 1.23b.",
-    "note": "Opcode 0x01DD c2s side is cataloged via BCS-Y-0325 (FUN_004C7300, RetainerSearchHistory request, 0x118 bytes). The matching s2c receiver class is NOT in client_receivers.json - probably routed via the queue-walk path (parallel to the linkshell-chat finding in docs/packet-dispatch-map.md).",
+    "summary": "The bounded native ItemSearch routes and Lua Bazaar command routes are distinct. The generic Bazaar fallback is documented in manifests/player_command_wire_contract.json; search field and framing evidence is documented in manifests/search_recruitment_wire_contract.json. This inventory does not establish an exhaustive retail server opcode set.",
+    "note": "Serverbound 0x01DD is the PcSearch tagged-filter request at FUN_004C7300, with 280-byte IPC and 264-byte application extent. Separate clientbound 0x01DA..0x01DD application dispatch targets are authenticated in manifests/search_recruitment_wire_contract.json; their commerce field semantics remain unresolved.",
     "retainerItemSearchMarketplaceCluster": [
       {
         "opcode": "0x01D7",
@@ -228,11 +228,11 @@
       "marketItem (x2) @ 0x00f979fc, 0x00f97a0c"
     ],
     "uiControlXrefs": "All Button_Bazaar* controls referenced exclusively by FUN_00f0b7a0 (static data-section initializer that builds a control-name table - NOT a runtime click handler). s_bazaarStatusVisibility referenced by FUN_005024a0 (a widget visibility helper). s_marketItem referenced by FUN_0051b8f0 (a stride helper, generic).",
-    "conclusion": "Bazaar does NOT have dedicated c2s opcodes in the 1.23b client static disassembly. The flow uses 3 layers: (1) Bazaar UI widget (BazaarEditWidget at 0x00f9da74) instantiates buttons + status text from static data; (2) Click events are dispatched into Lua via the event system using generic StartEvent/EventOpcode receivers (cluster 0x012E..0x01F5); (3) Server-side Lua handlers (BazaarTradeCommand.lua, BazaarCheckCommand.lua, BazaarDealCommand.lua, BazaarUndealCommand.lua) process the trades and emit standard inventory/gil/state-change s2c opcodes back. This is consistent with the dispatch-dichotomy documented in docs/network_dispatch_dual_paths.md - bazaar trade is queue-walk / event-driven, not per-opcode dispatch."
+    "conclusion": "The authenticated client Lua builders select Bazaar system commands, whose native direct fallbacks conditionally construct serverbound 0x012D. The runtime command descriptor is the first unresolved native input; consumption of the queued record is the server boundary. No retail server handlers, settlement policy or reply sequence are recovered. See manifests/player_command_wire_contract.json and xivl-client-scripts:docs/bazaar-retainer-client-contracts.md."
   },
   "marketFindings": {
     "rttiHits": "Only 3 string-literal hits, none are class names: s_marketItem (x2) and s_PrivateAreaMasterMarket. PrivateAreaMaster is the FFXIV 1.x designation for instanced sub-zones like the Retainer Marketplace area in Limsa Lominsa, Gridania, Ul'dah; not a packet opcode.",
-    "conclusion": "No Market* opcode exists in 1.23b. The 1.x marketplace is a Retainer-Item-Search system, fully covered by opcodes 0x01D7..0x01DF (the RetainerItemSearchMarketplace cluster above).",
+    "conclusion": "The ItemSearch widget classes establish specific marketplace request callers. Serverbound 0x01DC and 0x01DD belong to PcSearch instead; numeric adjacency does not establish one marketplace subsystem. Exact scoped routes are in manifests/search_recruitment_wire_contract.json.",
     "needsReverify": true,
     "reverifyMethod": "live-validation against the retail 1.23b client in a live session"
   },
@@ -272,8 +272,8 @@
   "openQuestions": [
     {
       "id": "q1",
-      "question": "Where do the s2c RetainerSearch* packets land in the client? client_receivers.json has no Retainer*Receiver / ItemSearch*Receiver. The cluster is likely queue-walk consumed (like linkshell chat in Q9) rather than slot-dispatched. Resolving requires either tracing how ItemSearchListWidget's tick handler at FUN_00525E50 reads incoming search results (look for the buffer feed path), or a live capture live capture of an active marketplace browse session.",
-      "deferral": "live capture deferred per these conventions; queue-walk path tracing is a follow-on phase."
+      "question": "What commerce field semantics follow the authenticated clientbound 0x01DA..0x01DD application dispatch targets? Their bindings are established in manifests/search_recruitment_wire_contract.json; packet class names, payload fields and widget-opening effects remain unresolved.",
+      "deferral": "The boundary is the target consumers' field interpretation, not the existence of application dispatch."
     },
     {
       "id": "q2",
@@ -282,7 +282,7 @@
     },
     {
       "id": "q3",
-      "question": "Confirm 0x1E (=30) is the cluster category id passed by FUN_008746E0/00874570/00874750 to the Tier-D emitters. Both pass 0x1E as the 2nd or 3rd arg to FUN_004C7300/04C73D0. Is this a category 'Search/Retainer' constant, or an action enum? Cross-referencing with how FUN_004C7150's FUN_004C45B0 gate uses its param_2 would resolve this. Likely a 'send-source category' for the Tier-C gating thunks (BCS-Y-0323) - the value gets passed through to the wire header but I haven't validated this with a packet trace."
+      "question": "What is the native admission meaning of value 30 passed by FUN_008746E0? The authenticated builder places it outside the copied 0x01DD wire query; it must not be labeled a serialized search field. See manifests/search_recruitment_wire_contract.json."
     }
   ],
   "currentSearchContract": "manifests/search_recruitment_wire_contract.json"
