@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "2012.09.19.0001",
+    "bytes": 15996808,
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "imageBase": "0x00400000",
+    "architecture": "PE32 i386"
+  },
+  "scope": "Clientbound 0x019f native cached values and the achievement-rate Lua presentation route. No retained capture observes this opcode.",
+  "sourceRefs": [
+    "manifests/receiver_vtable1_verification.json",
+    "xivl-opcodes:data/achievement_lifecycle.json"
+  ],
+  "method": "Each instruction in the retained Ghidra functions was checked against the original PE section bytes. Lua archive members and original LPBs were authenticated against scripts.json and retail_lua_coverage.json; selected ambiguous operations were checked in original Lua 5.1 bytecode.",
+  "wireFields": [
+    {
+      "offset": "0x00",
+      "bytes": 4,
+      "type": "u32le",
+      "name": "achievementId"
+    },
+    {
+      "offset": "0x04",
+      "bytes": 4,
+      "type": "u32le",
+      "name": "progressCount"
+    },
+    {
+      "offset": "0x08",
+      "bytes": 4,
+      "type": "u32le",
+      "name": "cachedUnknownValue",
+      "meaning": "Stored with progressCount; no bit-field semantics established."
+    },
+    {
+      "offset": "0x0c",
+      "bytes": 4,
+      "type": "unresolved",
+      "name": "unconsumedClosingDword",
+      "meaning": "Not copied by the inspected LuaActorImpl slot77 route."
+    }
+  ],
+  "nativeRoute": [
+    {
+      "function": "0x00575200",
+      "fact": "Trampoline dispatches LuaActorImpl slot77."
+    },
+    {
+      "function": "0x0075A630",
+      "fact": "At 0x0075A65A/0x0075A65D/0x0075A660 reads only application+8,+4,+0, then constructs 0x0089C700. No +0x0c read."
+    },
+    {
+      "function": "0x0089C7C0",
+      "fact": "Casts to PlayerBase and forwards the three copied dwords to 0x00704690 at 0x0089C7F1."
+    },
+    {
+      "function": "0x00704690",
+      "fact": "Uses achievementId to find/create a cache entry under player+0x114, map+0x9c via0x00725C80 at0x007046E9. Writes progressCount at entry+0 (0x007046EE) and the third wire dword at entry+4 (0x007046F1)."
+    },
+    {
+      "function": "0x00704690",
+      "fact": "Looks up maximum M through0x006E7370 at0x007046F4. Appends achievementId at0x00704775, chooses progressCount or M using signed comparison at0x0070477A..0x00704789, appends it at0x0070478E, and appends M at0x0070479C. Calls _onReceiveAchievementRate through0x00CC7A90 at0x007047D0."
+    }
+  ],
+  "callbackArguments": "(achievementId, min_by_signed_comparison(progressCount, M), M). The third callback argument is the lookup maximum, not application+8.",
+  "cacheGetter": "_getAchievementRate at0x00705EB0 uses0x006E3B20 for a cached progressCount, clamps it against the lookup maximum, or issues c2s0x0135 when needed. The inspected cached getter returns entry+0 only at0x006E3B78. The update has a persistent client cache write before Lua notification.",
+  "luaRoute": [
+    {
+      "script": "chara/player/playerbaseclass.lua",
+      "method": "_onReceiveAchievementRate",
+      "lines": "2974-2986",
+      "fact": "Forwards the three native callback arguments to DesktopWidget.processReceiveAchievementRate."
+    },
+    {
+      "script": "widget/desktopwidget_connector.lua",
+      "method": "processReceiveAchievementRate",
+      "lines": "24982-25004",
+      "fact": "Updates an existing AchievementListWidget; does not interpret flag bits."
+    },
+    {
+      "script": "widget/achievementlistwidget.lua",
+      "method": "updateRate",
+      "lines": "1273-1321",
+      "fact": "Matches achievementId and calls setRate; passes the same numerator/denominator to an open detail widget."
+    },
+    {
+      "script": "widget/achievementlistwidget.lua",
+      "method": "setRate",
+      "lines": "1242-1269",
+      "prototype": "0.17",
+      "instructionOffsets": [
+        "0x294A",
+        "0x294E",
+        "0x2952",
+        "0x296A",
+        "0x298E"
+      ],
+      "fact": "Computes floor(numerator*100/denominator), sets value, and formats progress text12014 with numerator,denominator,percentage."
+    },
+    {
+      "script": "widget/achievementdetailwidget.lua",
+      "method": "setAchievementDetail",
+      "lines": "152-181",
+      "fact": "Stores numerator and denominator. Its separate _isDoneAchievementRateList query is not a bit test on application+8."
+    }
+  ],
+  "presentationBoundary": "Completion queries use separate _isDoneAchievement/_isDoneAchievementRateList client state. No completed, new or in-progress bit meaning for application+8 is established by the inspected receiver/getter/UI route. The closing +0x0c dword feeds no value in this route; its server purpose remains unknown.",
+  "luaIdentities": [
+    {
+      "member": "widget/achievementdetailwidget.lua",
+      "sourceSha256": "0F7F98E91A41F2B1A392564F703C27BAFFF51D9A11583681A780A56C0F7831CA",
+      "lpbSha256": "87F9ED77E9F685D67AFED749F8BDC5E246D5EA323F81C4C453FA28695CA574E8",
+      "payloadSha256": "F850CE051364E22ECDF6C8A449F1144CC7324FAF15F9D149B39EFB55AB3A5089"
+    },
+    {
+      "member": "widget/achievementlistwidget.lua",
+      "sourceSha256": "C00AAD67A6FBE58B16B905DCCDDA82A35EA44F9A7084B6F6BBC7E4C4BA33FD4A",
+      "lpbSha256": "608A650B0AA239E89E77620F3FD0205CA35CBE219C7ADEE69DF9EB6A95B746C1",
+      "payloadSha256": "BA877F47C2C6273C1EADC5F0D45B6C163BE0725189833FF8E8657D598834A112"
+    },
+    {
+      "member": "chara/player/playerbaseclass.lua",
+      "sourceSha256": "6226B3FA15DFDBAD279B7DBA453F8A3B76FCB8B68BAD6E14F5403D52987F76E4",
+      "lpbSha256": "32182274F3886D0CDF6329F8A82E6592790C9B3038E00BEBE5B2B38702BBD53E",
+      "payloadSha256": "1530DC2B53353888CCC6B47F78920EBD2C2D876335B9968196312153B0DB464A"
+    },
+    {
+      "member": "widget/desktopwidget_connector.lua",
+      "sourceSha256": "9C33F21C1F70A0056147E716D53300634EFABE5B744EF6E8690114DB21613A01",
+      "lpbSha256": "0F8CA1585BB97C40D36CBF120DD3F6FA6351927C4530E3FAD76A71582AF95425",
+      "payloadSha256": "685A0A6DDA2D4AE6FE06A9C684E57EFD7E819938E145CB1A4A65DF56555BD621"
+    }
+  ],
+  "instructionAuthentication": [
+    {
+      "va": "0x00704690",
+      "verifiedInstructionBytes": 390,
+      "instructionSha256": "c0bacc8bbc3cd47fc4b49c10d0276cea7c5d2f13324e106c4d4234283ebdca59"
+    },
+    {
+      "va": "0x0089C7C0",
+      "verifiedInstructionBytes": 58,
+      "instructionSha256": "7a6c84ab3d6e4a382d24d4fad838d5eedd822f182f62a27aeb6f228b9bb624cc"
+    },
+    {
+      "va": "0x0075A630",
+      "verifiedInstructionBytes": 123,
+      "instructionSha256": "584c3896837a1277c1692d5b866aad817c9e1e4dd07d1d8a92ff0bad32dde86d"
+    },
+    {
+      "va": "0x00575200",
+      "verifiedInstructionBytes": 12,
+      "instructionSha256": "b68ed272adc0c4d19f15edc7eeb50fdee6b9926b69fc8fe84ee0896d4e44cfad"
+    },
+    {
+      "va": "0x006E7370",
+      "verifiedInstructionBytes": 96,
+      "instructionSha256": "2d1e9a298a49a1de1fd7fd1e2e716ebfd8d419e234a15f48382070b7208bd439"
+    },
+    {
+      "va": "0x00705EB0",
+      "verifiedInstructionBytes": 579,
+      "instructionSha256": "d5ac8f40ec7b4ebc2895ba6c4987df1a0b37b1142361dcc27eb0bdf3a213b117"
+    },
+    {
+      "va": "0x006E3B20",
+      "verifiedInstructionBytes": 100,
+      "instructionSha256": "a8ee3ce73c73d95c6ee7b11608c8c235c4e2e3cb5a5727e60cf0bd868d309acc"
+    },
+    {
+      "va": "0x00706160",
+      "verifiedInstructionBytes": 248,
+      "instructionSha256": "fbf241426e1ace35b2604dfe4ed7316fe29b5c606be12b056ef7018520063c5a"
+    }
+  ]
+}

@@ -38,6 +38,16 @@ catalog. Machine-readable inventories and regeneration rules live under
   selection operations, and identity and readiness limits.
 - [Retail repair contract](repair-contract.md) - client, wire, metadata, and
   capture boundaries for NPC repair and CraftCommand 22013 self-repair.
+- [Player command wire contract](player-command-wire-contract.md) - native
+  dispatch, direct fallback fields and typed argument serialization.
+- [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
+  fields, cached rows and consuming score getters.
+- [Appearance record payload](appearance-record-wire-contract.md) -
+  `0x00d7` record width, count and actor-table writes.
+- [Achievement rate consumer](achievement-rate-consumer.md) - native cache
+  writes, Lua numerator/denominator and unresolved wire fields.
+- [Search and recruitment wire contract](search-recruitment-wire-contract.md) -
+  native requests, application consumers and widget projections.
 - [Additive custom-zone selection](map-layout-selector.md) - SetMap framing,
   allocation constraints and the independent-scene acceptance boundary.
 

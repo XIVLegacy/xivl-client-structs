@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "2012.09.19.0001",
+    "bytes": 15996808,
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "imageBase": "0x00400000",
+    "architecture": "PE32 i386"
+  },
+  "scope": "Native PlayerBase command eligibility, execution dispatch, direct server fallback and typed Lua argument serialization. This contract is conditional on the selected descriptor and fallback executing; it does not establish a runtime descriptor record, a captured Bazaar request, or server behavior.",
+  "method": "Retained Ghidra instruction listings were compared byte-for-byte with the identified PE using its section table. RTTI, vtable entries, literals and initial data were read from that PE. Addresses below are virtual addresses; subtract imageBase for RVAs.",
+  "sourceRefs": [
+    "manifests/control_class_napi_field_access_recursive.json",
+    "manifests/combat_command_emission.json",
+    "xivl-client-scripts:manifests/scripts.json",
+    "xivl-client-scripts:manifests/retail_lua_coverage.json"
+  ],
+  "nativeBindings": {
+    "vtable": "0x00FD785C",
+    "methods": [
+      {
+        "name": "_executeCommand",
+        "slot": 42,
+        "entryVa": "0x00FD7904",
+        "function": "0x0070A010",
+        "registration": "0x0073F080",
+        "signature": "0x0073D1E0",
+        "thunk": "0x006DE650"
+      },
+      {
+        "name": "_callServerOnCommand",
+        "slot": 45,
+        "entryVa": "0x00FD7910",
+        "function": "0x006E8B30",
+        "fallbackCall": "0x006E8BF9"
+      },
+      {
+        "name": "_doServerOnCommand",
+        "slot": 46,
+        "entryVa": "0x00FD7914",
+        "function": "0x006E8C90",
+        "fallbackCall": "0x006E8D59"
+      },
+      {
+        "name": "_canExecuteCommand",
+        "slot": 47,
+        "entryVa": "0x00FD7918",
+        "function": "0x00704AA0"
+      }
+    ]
+  },
+  "eligibility": {
+    "function": "0x00704AA0",
+    "facts": [
+      "Tests player control +0x5c, extracts argument 0 name with 0x0071CE70 and looks up the descriptor in player +0xfc with 0x0071CA50.",
+      "If descriptor virtual +0x1c is true, reads priority through virtual +0x20 and calls 0x00893320; otherwise returns true. No comparison with Bazaar IDs or interpretation of Bazaar tail operands occurs here.",
+      "Lua PlayerBaseClass.canCommand skips this native call when the selected command name is commandRequest. Thus the three Bazaar IDs do not execute this native eligibility function on that Lua route."
+    ]
+  },
+  "execution": {
+    "function": "0x0070A010",
+    "anchors": [
+      {
+        "va": "0x0070A0C8",
+        "fact": "Extracts argument 0 name through 0x0071CE70."
+      },
+      {
+        "va": "0x0070A0D4",
+        "fact": "Looks up descriptor through 0x0071CA50."
+      },
+      {
+        "va": "0x0070A10C",
+        "fact": "Extracts argument 1 ActorBase through 0x0071BB80."
+      },
+      {
+        "va": "0x0070A11C",
+        "fact": "Resolves its binding reference through 0x00CC73B0."
+      },
+      {
+        "va": "0x0070A137",
+        "fact": "Tests bound reference identity."
+      },
+      {
+        "va": "0x0070A171",
+        "fact": "Copies argument list from index 1 through 0x00753B90; also checks object references."
+      },
+      {
+        "va": "0x0070A2C1",
+        "fact": "Dispatches through 0x00898480 after active-binding and self-state gates."
+      }
+    ],
+    "descriptors": [
+      {
+        "class": "CommandBlock",
+        "typeDescriptor": "0x012D75FC",
+        "vtable": "0x01056CC4",
+        "slot7": "0x00B73290 returns 1",
+        "callback": "_onCommandEvent",
+        "callbackFunction": "0x008920F0",
+        "literal": "0x01056AF4",
+        "literalPush": "0x00892138",
+        "route": [
+          "0x00898480",
+          "0x00897310",
+          "0x008962C0",
+          "0x00897910",
+          "0x008920F0"
+        ],
+        "callAnchors": [
+          "0x008984A7",
+          "0x008973D4",
+          "0x008963CF",
+          "0x008979EB"
+        ]
+      },
+      {
+        "class": "CommandNonBlock",
+        "typeDescriptor": "0x012D7640",
+        "vtable": "0x01056CF8",
+        "slot7": "0x005C5C80 returns 0",
+        "callback": "_onCommandRequest",
+        "callbackFunction": "0x00892200",
+        "literal": "0x01056B18",
+        "literalPush": "0x0089224F",
+        "route": [
+          "0x00898480",
+          "0x00896510",
+          "0x008963F0",
+          "0x00897910",
+          "0x00892200"
+        ],
+        "callAnchors": [
+          "0x008984B1",
+          "0x008965E7",
+          "0x008964E9",
+          "0x008979EB"
+        ]
+      }
+    ],
+    "eventType": "Both descriptor vtables have slot 5 = 0x00899120, returning reference 0x0134C3FF, whose PE initial byte is 0.",
+    "unresolvedRegistration": "0x00762CA0 iterates 0x58-byte records with name +0, priority +0x54 and block selector +0x55, calling 0x006F1C20 at 0x00762CFB. At 0x006F1C55 that constructor compares the selector with 0x0134C3FE: equal constructs CommandBlock at 0x006F1C80, otherwise CommandNonBlock at 0x006F1CA5. The actual runtime registration record for commandRequest or commandForced is not established here. A Lua name alone does not choose the native callback class."
+  },
+  "directFallback": {
+    "function": "0x006E2FB0",
+    "anchors": [
+      {
+        "va": "0x006E303F",
+        "fact": "Constructs writer 0x0078F790 over a zeroed 128-byte buffer."
+      },
+      {
+        "va": "0x006E3051",
+        "fact": "Supplies argument start index 2: name and command object are envelope inputs."
+      },
+      {
+        "va": "0x006E3059",
+        "fact": "Serializes through 0x00790ED0."
+      },
+      {
+        "va": "0x006E3062",
+        "fact": "Finalizes through 0x00790400."
+      },
+      {
+        "va": "0x006E30D3",
+        "fact": "Calls 0x0075E1C0."
+      },
+      {
+        "va": "0x0075E1FB",
+        "fact": "Calls 0x0089E0D0."
+      },
+      {
+        "va": "0x0089E1CD",
+        "fact": "Calls packet builder 0x00776760."
+      },
+      {
+        "va": "0x0075E20D",
+        "fact": "Sends through gated path 0x004D6D30."
+      }
+    ],
+    "routeBoundary": "0x0075E230 and 0x0075E3A0 are separate event-wrapper routes. Their Event::Base +0x08 mapping must not be substituted for the direct fallback fields below."
+  },
+  "wire": {
+    "direction": "serverbound",
+    "opcode": "0x012d",
+    "builder": "0x00776760",
+    "recordBytes": 200,
+    "totalSubpacketBytes": 216,
+    "applicationBytes": 184,
+    "offsetBasis": "application payload after the 16-byte game-message prefix",
+    "fields": [
+      {
+        "offset": "0x00",
+        "bytes": 4,
+        "encoding": "u32le",
+        "source": "self actor object +0x10",
+        "anchors": [
+          "0x0057AB87",
+          "0x0077676A"
+        ]
+      },
+      {
+        "offset": "0x04",
+        "bytes": 4,
+        "encoding": "u32le",
+        "source": "command control binding reference resolved by 0x00CC73B0; copied into local event record +0 by 0x0089EC30",
+        "anchors": [
+          "0x0089EC61",
+          "0x0089EC63",
+          "0x0089E16A",
+          "0x0089E184",
+          "0x00776778"
+        ]
+      },
+      {
+        "offset": "0x08",
+        "bytes": 4,
+        "encoding": "u32le",
+        "source": "self actor object +0x14, copied to protocol-context +8 by 0x0075D460",
+        "anchors": [
+          "0x0075D46B",
+          "0x0075D471",
+          "0x0075E1F0",
+          "0x0075E1F3",
+          "0x0089E17F",
+          "0x0089E183",
+          "0x00776771"
+        ]
+      },
+      {
+        "offset": "0x0c",
+        "bytes": 4,
+        "encoding": "u32le",
+        "source": "CRC32 over exact 128-byte typed tail, through 0x00D3AB60 and 0x00D3AAE0",
+        "anchors": [
+          "0x0089E122",
+          "0x0089E133",
+          "0x00776793"
+        ]
+      },
+      {
+        "offset": "0x10",
+        "bytes": 1,
+        "encoding": "u8",
+        "source": "descriptor slot 5 type reference; initial 0 for both command descriptor families",
+        "anchors": [
+          "0x006E30CA",
+          "0x0077677F"
+        ]
+      },
+      {
+        "offset": "0x11",
+        "bytes": 32,
+        "encoding": "inline bytes",
+        "source": "descriptor +4 name, converted through 0x00445210 at 0x0089E171"
+      },
+      {
+        "offset": "0x31",
+        "bytes": 128,
+        "encoding": "typed stream",
+        "source": "remaining argument list in original order",
+        "anchors": [
+          "0x007767CB"
+        ]
+      },
+      {
+        "offset": "0xb1",
+        "bytes": 7,
+        "encoding": "unresolved remainder",
+        "source": "No write or semantic meaning established by this builder."
+      }
+    ],
+    "opcodeWrite": "0x00776786",
+    "sizeWrite": "0x0077678C",
+    "commandIdentity": "No separate scalar command-sheet ID is inserted. Command object binding reference supplies an envelope identity. Sheet ID, binding reference and self actor fields are distinct domains."
+  },
+  "luaBridge": {
+    "signature": "0x0073D1E0 loads registry element 9 for argument index 2 at 0x0073D2DF; 0x00CC9D60 installs inner vtable 0x0110E0A0 at 0x00CCA090, whose +4 entry is 0x00CF8980.",
+    "varargs": "0x00CF8980 loops through the actual Lua stack arguments, preserving explicit trailing nil positions. It does not supply missing arguments.",
+    "numbers": "Numeric TValue tag 3 is tested by 0x00CF3840 at 0x00CF89A9. Predicate 0x00CF3670 at 0x00CF89B5 compares the original Lua double with a signed64 truncation round trip (0x00CF369A, 0x00CF36A4, 0x00CF36B1, 0x00CF36B5). Ordered equality selects element 0 / 0x00CFAC40, producing internal tag 0 through 0x00583D90. Otherwise element 1 / 0x00CFADF0 produces float32 tag 1 through 0x0073E010. No separate signed32 range check is established. Ordinary signed32 integral operands use tag 0.",
+    "nil": "Element 6 selected at 0x00CF8AB5 uses inner vtable 0x0110E028 +4 = 0x00CFB9C0; holder 0x00583F70 writes internal tag 6 at 0x00583FD9."
+  },
+  "serializer": {
+    "walker": "0x00790ED0 iterates ordered 16-byte entries from supplied index 2 to end and calls 0x007933A0 at 0x00790F3C. Entry data pointer is +8 and signed internal tag +0x0c. No command-dependent trimming, padding or length prefix.",
+    "endian": "Native envelope scalar fields are little-endian. Typed numeric/reference values take the big-endian branch when 0x0134B368 <= 0. The PE initial value is zero; a targeted scan of its original .text references found 37 reads and 37 writes, all writes setting -1. No live mutation was tested.",
+    "values": [
+      {
+        "internalTag": 0,
+        "wireTag": "00",
+        "encoding": "four-byte integer bits, big-endian",
+        "writer": "0x007923C0 -> 0x007915E0"
+      },
+      {
+        "internalTag": 1,
+        "wireTag": "01",
+        "encoding": "float32 bits, big-endian",
+        "writer": "0x00792410 -> 0x00791640"
+      },
+      {
+        "internalTag": 2,
+        "wireTag": "03 / 04",
+        "encoding": "true / false, one byte",
+        "writer": "0x00792B70 -> 0x007900B0"
+      },
+      {
+        "internalTag": 3,
+        "wireTag": "02",
+        "encoding": "NUL-terminated string bytes",
+        "writer": "0x007924C0 -> 0x007916A0"
+      },
+      {
+        "internalTag": 4,
+        "wireTag": "06 / 07 / 08",
+        "encoding": "control or item reference",
+        "writer": "0x00792060 -> 0x0075AFA0"
+      },
+      {
+        "internalTag": 5,
+        "wireTag": null,
+        "encoding": "omitted; no bytes",
+        "writer": "0x00792BCE"
+      },
+      {
+        "internalTag": 6,
+        "wireTag": "05",
+        "encoding": "explicit nil; one byte",
+        "writer": "0x00792470"
+      }
+    ],
+    "unknownTags": "Omitted at 0x00792BCE.",
+    "control": "0x0075AFA0 resolves a control reference with 0x00CC73B0 and tests registry classification with 0x00CC70B0. Non-item branch emits 06 + binding-reference u32be via 0x007901F0 -> 0x00791800.",
+    "item": {
+      "classification": "Registry branch casts LuaControl (RTTI 0x01270B4C) to ItemBase (0x012C0864) at 0x0075AFFE, then calls 0x006F5260 at 0x0075B00E.",
+      "tuple": "0x006F5260 resolves ItemBase +0x64 through 0x00CC73B0 at 0x006F52BE, reading binding entry +0x70. It copies package from item +0x68, slot from +0x6c, and metadata from resolved item record +0x10/+0x14.",
+      "notation": "R = resolved binding-reference dword, S = slot low word, P = package low byte; raw actor-ID equivalence is not established.",
+      "single": "07 R:u32be S:u16be P:u8",
+      "counted": "08 R:u32be S1:u16be P1:u8 N:u8 (S2:u16be P2:u8 ... SN:u16be PN:u8) L:u8; L = 3*N+7",
+      "anchors": [
+        "0x006F52D9",
+        "0x006F52DD",
+        "0x006F52E1",
+        "0x006F52E5",
+        "0x006F52E9",
+        "0x00791870",
+        "0x00791A30",
+        "0x00791AA0"
+      ],
+      "coalescing": "0x00790BA0 examines the last encoded value via 0x007906C0. It extends only a preceding 07/08 with equal R (0x00790C45..0x00790C6D). Emitted scalar, nil or different reference prevents grouping; omitted entries do not. Order is preserved without sorting, deduplication or quantity aggregation."
+    },
+    "finalizer": {
+      "function": "0x00790400",
+      "metadata": "0x00790BA0 sets writer +0x20 and collects metadata into two u64 slots using zero as an empty sentinel; if both slots are already nonzero it clears the flag. This is not a strict item count.",
+      "emission": "If writer +0x22 is zero and +0x20 nonzero (0x00790406..0x00790410), 0x00791910 emits 09 M1:u64be M2:u64be, followed by 0F. Semantic identities of the two metadata values remain unresolved.",
+      "distinction": "09 is serializer-generated metadata, not a ninth Lua argument or a quantity."
+    },
+    "terminator": "0x0078F790 zero-fills the buffer at 0x0078F7C8 and writes initial 0F at 0x0078F7D2. Each encoded value replaces the previous terminator and appends a new 0F. Untouched zero padding is not nil.",
+    "examples": {
+      "integerZero": "00 00 00 00 00",
+      "nil": "05",
+      "integer1000001": "00 00 0f 42 41",
+      "emptyStream": "0f followed by 127 zero bytes"
+    },
+    "currency": "There is no currency-specific serializer branch: integral currency catalog IDs and amounts use the ordinary numeric encoding when supplied as Lua numbers."
+  },
+  "boundary": {
+    "queue": "0x004D6D30 requires this+0x174ec; 0x004E0240 requires this+0x234 and nested +0x70. 0x00DAE010 requires state +0x8c == 3 for opcode 0x012d at 0x00DAE04F/52; states 1/2 admit only opcode 2. State 3 allocates through 0x00DAF850 at 0x00DAE091 and queues through 0x00DB06A0 at 0x00DAE0C9.",
+    "firstUnresolvedNativeInput": "Runtime 0x58-byte command descriptor registration record consumed by 0x00762CA0: actual commandRequest/commandForced name, priority +0x54 and block-selector +0x55 binding.",
+    "firstUnresolvedServerBoundary": "Server consumption of the opcode 0x012d record queued through 0x00DB06A0: no server decoder, admission, mutation, settlement, cancellation, timing or response contract is established.",
+    "observation": "This is a conditional native construction contract. It does not establish that a particular request passed the gates, reached a socket, or was accepted."
+  }
+}

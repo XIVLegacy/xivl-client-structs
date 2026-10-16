@@ -1,4 +1,4 @@
-"""Mutation tests for the direct PlayerBase EventStart field and SID-domain contract."""
+"""Mutation tests for the PlayerBase event-wrapper field and SID-domain contract."""
 
 from __future__ import annotations
 
@@ -43,7 +43,8 @@ def validate_contract(combat: dict, guildleve: dict, structs: dict) -> list[str]
     for offset, expected in expected_names.items():
         if fields.get(offset, {}).get("name") != expected:
             errors.append(f"combat {offset} name")
-        if struct_fields.get(offset, {}).get("name") != expected:
+        struct_expected = "routeDependentIdentity08" if offset == "0x08" else expected
+        if struct_fields.get(offset, {}).get("name") != struct_expected:
             errors.append(f"BCS-S-0034 {offset} name")
 
     offset8 = provenance.get("offset0x08", {})

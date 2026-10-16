@@ -10,7 +10,7 @@
   },
   "subsystem_inventory": {
     "PcSearch": {
-      "description": "Player character search UI - find other players by name/class/region/grand-company/status",
+      "description": "Player character search profile and filters; the native field contract establishes status, class, Region, GrandCompany, location and level controls, without a name-prefix filter.",
       "rttiClasses": [
         {
           "name": "Application::Misc::RaptureSupportModule::PcSearchCallback",
@@ -50,10 +50,10 @@
         "s_Label_Location:Button_SearchSett"
       ],
       "c2sOpcodes": [
-        "0x01DD",
-        "0x01DF"
+        "0x01DC",
+        "0x01DD"
       ],
-      "c2sNotes": "0x01DD has c2s emitter at BCS-Y-0325 FUN_004C7300 (size 0x118 = 280 bytes). 0x01DF has c2s emitter at FUN_0051A970 (size 0x128 = 296 bytes - distinct from PcMatching cluster). Both go through FUN_004E0240 Zone Tier-C forwarder. The 0x01DD pcap-witnessed shape (friendlist_search.pcapng, 264 bytes payload, `00000000 03000000 02013200`) matches a search-query record."
+      "c2sNotes": "FUN_00693290 -> FUN_00874570 -> FUN_004C7490 emits the 568-byte IPC profile update 0x01DC. FUN_00693650 -> FUN_008746E0 -> FUN_004C7300 emits the 280-byte IPC tagged-filter request 0x01DD. See manifests/search_recruitment_wire_contract.json for application offsets, lengths and exact PE/Lua identities."
     },
     "ItemSearch": {
       "description": "1.x retainer / pre-marketboard NPC-vendor item search - browse items listed for sale by other players' retainers",
@@ -116,10 +116,10 @@
         "0x01D9",
         "0x01DA",
         "0x01DB",
-        "0x01DC",
-        "0x01DE"
+        "0x01DE",
+        "0x01DF"
       ],
-      "c2sNotes": "0x01D9/0x01DA/0x01DE attributed in cluster-doc to specific widgets. 0x01D7 emits via FUN_00519440 (cluster-doc + the search subsystem pass decomp confirmation). 0x01D8 emits via FUN_0051AAC0 (new finding from the search subsystem pass - cluster-doc said FUN_00525E50 also emits this; both may be valid). 0x01DB/0x01DC have c2s emitters at BCS-Y-0327 (FUN_004C73D0) / BCS-Y-0326 (FUN_004C7490).",
+      "c2sNotes": "ItemSearchDirectPurchaseWidget emits 0x01DE through FUN_0085E1B0; ItemSearchListWidget emits 0x01DF through FUN_0051A970. Their application extents are 64 and 280 bytes. The separate PcSearch profile operation owns 0x01DC. Other ItemSearch entries retain their existing scoped evidence. See manifests/search_recruitment_wire_contract.json.",
       "structEvidence": "itemsearch_vtable_slots.txt confirms vftables at 0x00F9E71C / 0x00FA030C / 0x01049EDC contain the slot-5/slot-11 c2s emitters; the cataloged BCS-Y entries reside in cluster-0x01c3-0x01df-subsystems.md Subsystem 6 (Retainer/ItemSearch)."
     },
     "Retainer": {
@@ -174,7 +174,7 @@
         "0x01C7",
         "0x01C8"
       ],
-      "c2sNotes": "All 6 c2s opcodes already cataloged in cluster-doc Subsystem 1 (PcMatching/Recruitment) with caller bindings to FUN_004BBEA0 (0x01C3 StartRecruiting), FUN_004C8390 (0x01C4 view + 0x01C5 edit + 0x01C8 cancel), FUN_004BF4F0 (0x01C6 detail-view), FUN_004BD170 (0x01C7 SetAttr/Update). BCS-Y-0318 FUN_004B7A20 emits 0x01C3; BCS-Y-0319 FUN_004B7C10 emits 0x01C7."
+      "c2sNotes": "The 0x01C6 native acceptance builder copies a selected cached-row key. The 0x01C7 route reads PcMatchingFindWidget controls and emits a search request; application extents are 24 and 56 bytes. The clientbound 0x01C6 answer and 0x01C7 list have separate consumers in FUN_004CE190. See manifests/search_recruitment_wire_contract.json; other recruitment operations retain their earlier scoped evidence."
     },
     "Social": {
       "description": "Friendlist / blacklist management - FriendSearch is implemented as part of PcSearch above (search the world for a player by name, then issue Add via this channel)",
@@ -250,7 +250,7 @@
         "Application::Network::LobbyClient::CharaMakeParamTmpl<UpdateRetainerSlotParam_,1>",
         "Application::Main::Element::ElementFactory::SearchInfoInterface"
       ],
-      "note": "Eleven RTTI-resolved classes from the search subsystem are absent from the BCS-Y catalog. The six PcSearch classes are candidates for the 0x01DD/0x01DF clientbound emitters at vtable slots. The three Retainer classes and one LobbyClient template may connect to Lobby opcodes for retainer-slot management, but neither attribution is confirmed."
+      "note": "PcSearch widget and contractor dispatch joins are authenticated in manifests/search_recruitment_wire_contract.json. Lobby retainer classes remain a separate subsystem."
     }
   ],
   "ghidra_evidence_files": [
@@ -266,6 +266,7 @@
     "%BCS_GHIDRA_PROJECTS%/e_decomp.txt"
   ],
   "related_artifacts": [
+    "manifests/search_recruitment_wire_contract.json",
     "docs/cluster-0x01c3-0x01df-subsystems.md (cluster_refinements_unobserved.json + cluster_refinements_unresolved.json roll-up)",
     "manifests/operation_opcode_map_outbound.json serverboundGap entries for 0x01C3..0x01E1",
     "manifests/symbols.json BCS-Y-0318/0319/0320/0322/0325/0326/0327 (11f/11g cluster emitters)",

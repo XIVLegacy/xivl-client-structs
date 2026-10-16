@@ -5,7 +5,7 @@
     "version": "2012.09.19.0001",
     "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
   },
-  "scope": "Client-side generic PlayerBase command-event emission through the Map EventStart envelope, with combat use established by capture co-occurrence. This does not prove that every skill, weaponskill, ability, or item follows the route, and records client pre-checks and routing only rather than server validation behavior.",
+  "scope": "Client-side PlayerBase event-wrapper emission through FUN_0075E230/FUN_0075E3A0 into the Map EventStart envelope, with combat use established by capture co-occurrence. The distinct direct server fallback through FUN_006E2FB0/FUN_0075E1C0/FUN_0089E0D0 is defined in manifests/player_command_wire_contract.json. This does not prove that every skill, weaponskill, ability, or item follows either route, and records client pre-checks and routing only rather than server validation behavior.",
   "verdict": {
     "opcodeHex": "0x012d",
     "name": "EventStartPacket",
@@ -13,7 +13,7 @@
     "builder": "FUN_00776760",
     "builderVa": "0x00776760",
     "confidence": "decomp_routed",
-    "summary": "The preserved PlayerBase command path reaches the generic 0x012d EventStart builder. Combat captures contain this fixed-size envelope, but the envelope is also used by noncombat events. Application +0x08 is the command control object's runtime SID-domain binding token from entry +0x70; registry validity is conditional, and the token is not a stable enum, flags field, command-class discriminator, sheet row, or command-specific scalar. Application +0x0c is the CRC32 of the exact 128-byte Lua argument tail."
+    "summary": "The preserved PlayerBase event-wrapper path reaches the generic 0x012d EventStart builder. Combat captures contain this fixed-size envelope, but the envelope is also used by noncombat events. In these wrappers, application +0x08 is the command control object's runtime SID-domain binding token from entry +0x70; registry validity is conditional, and the token is not a stable enum, flags field, command-class discriminator, sheet row, or command-specific scalar. The direct fallback instead places the command reference at +0x04 and self actor +0x14 at +0x08. Application +0x0c is the CRC32 of the exact 128-byte Lua argument tail."
   },
   "commandPath": [
     {
@@ -105,7 +105,7 @@
       {
         "offset": "0x08",
         "width": 4,
-        "source": "builder param_4 from Event::Base+0x08; the direct PlayerBase path resolves the command ActorBase control through FUN_00CD7A30 and reads the binding entry at +0x70 through FUN_00CC7030",
+        "source": "event-wrapper builder param_4 from Event::Base+0x08; the PlayerBase event construction path resolves the command ActorBase control through FUN_00CD7A30 and reads the binding entry at +0x70 through FUN_00CC7030. Direct fallback has a different +0x08 source; see manifests/player_command_wire_contract.json",
         "name": "commandControlBindingSid"
       },
       {
@@ -141,8 +141,8 @@
     ]
   },
   "applicationFieldProvenance": {
-    "status": "resolved_direct_playerbase_path",
-    "scope": "The direct PlayerBase gameCommand/commandRequest route into EventStart. This classification identifies native sources; it does not assign command-sheet, subcommand, guildleve-mutation, or server-response semantics.",
+    "status": "resolved_playerbase_event_wrapper_path",
+    "scope": "The PlayerBase event-wrapper routes through FUN_0075E230/FUN_0075E3A0 into EventStart. This classification identifies native sources; it does not assign command-sheet, subcommand, guildleve-mutation, or server-response semantics. It does not describe the distinct FUN_006E2FB0 direct fallback; see manifests/player_command_wire_contract.json.",
     "builderMapping": {
       "function": "FUN_00776760",
       "facts": [

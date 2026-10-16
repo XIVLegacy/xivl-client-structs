@@ -2039,7 +2039,8 @@
       "sourceRefs": [
         "manifests/combat_action_c2s_findings.json",
         "BCS-S-0013",
-        "BCS-Y-0426"
+        "BCS-Y-0426",
+        "manifests/player_command_wire_contract.json"
       ],
       "fields": [
         {
@@ -2053,15 +2054,15 @@
           "offset": "0x04",
           "size": "0x04",
           "type": "u32",
-          "name": "ownerActorId_or_targetActorId",
-          "evidence": "FUN_00776760 writes param_3 at record+0x1C; pcap-derived BCS-S-0013 labels this targetActorId for combat samples."
+          "name": "routeDependentIdentity04",
+          "evidence": "FUN_00776760 writes param_3 at record+0x1C. Captured combat samples label this targetActorId. The direct PlayerBase server fallback through FUN_006E2FB0/FUN_0075E1C0/FUN_0089E0D0 instead passes the command control binding reference at this offset; see manifests/player_command_wire_contract.json."
         },
         {
           "offset": "0x08",
           "size": "0x04",
           "type": "u32",
-          "name": "commandControlBindingSid",
-          "evidence": "FUN_00776760 writes param_4 at record+0x20. On the direct PlayerBase path, FUN_0070A010 extracts the command ActorBase object, FUN_00CC73B0 resolves its Lua control binding through FUN_00CD7A30, and BCS-Y-2163 reads binding-entry +0x70; FUN_00895860 stores that token at Event::Base+0x08 and FUN_0075E230/FUN_0075E3A0 forward it. BCS-Y-2162 unconditionally writes the +0x70 SID-domain token before conditional registry validation. Its six callers supply allocated, copied, default, or caller-owned tokens, so the field is not a stable enum, flags field, command-class discriminator, sheet row, or runtime Lua argument."
+          "name": "routeDependentIdentity08",
+          "evidence": "FUN_00776760 writes param_4 at record+0x20. Event wrappers FUN_0075E230/FUN_0075E3A0 forward Event::Base+0x08, the command control SID-domain token resolved through FUN_00CC73B0 and binding-entry+0x70. The distinct direct server fallback through FUN_006E2FB0/FUN_0075E1C0/FUN_0089E0D0 supplies self actor object+0x14 through protocol-context+8. See manifests/combat_command_emission.json for the wrapper SID domain and manifests/player_command_wire_contract.json for the direct path."
         },
         {
           "offset": "0x0c",
@@ -2099,7 +2100,7 @@
           "evidence": "FUN_00776760's explicit copies reach application offset 0xB0."
         }
       ],
-      "notes": "Decomp-backed refinement of the pcap-only BCS-S-0013 MapActionUse alias. The client builder proves 0x012D is an EventStart frame with a 200-byte body size in the outbound record. The wire/application size basis is the same convention used by the existing c2s layouts: total subpacket 0xD8, 0x10 game-message prefix, 0xB8 application payload. The direct PlayerBase trace resolves +0x08 as the runtime Lua control/class SID-domain binding token stored at entry +0x70, whose registry validity is conditional and +0x0C as CRC32 of the exact 0x80-byte Lua parameter tail. These sources do not assign command-row, subcommand, guildleve-mutation, or server-response semantics.",
+      "notes": "The client builder proves 0x012D is an EventStart envelope with a 200-byte bodySize in the outbound record: total subpacket 0xD8, game-message prefix0x10 and application0xB8. Identity sources at +0x04/+0x08 depend on the caller route; they must not be assigned one universal semantic name. Event-wrapper and direct server-fallback provenance are separated in the cited manifests. Application+0x0c is the CRC32 of the exact0x80-byte tail on those verified paths. These sources do not assign command-row, subcommand, server mutation or response semantics.",
       "id": "BCS-S-0034"
     },
     {
