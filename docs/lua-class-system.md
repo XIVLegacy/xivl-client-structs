@@ -13,7 +13,8 @@ BaseClass) statically.
 Script code declares new subclasses dynamically via `_defineClass(C, P)` /
 `_defineBaseClass(C, P)`, which call the same C++ registration helpers. Methods
 and callbacks attach via `_onLoop.MethodName = function()...end`, which fires a
-Lua N-API that pushes a 2-upvalue cclosure into the class's global table.
+Lua N-API that can install a 2-upvalue cclosure or resolve an `_inl`
+descriptor to an existing function alias.
 
 At instantiation, each class instance carries 3
 `MetamethodArray2D::Impl*` pointers at struct offsets `+0x60` (save), `+0x64`
@@ -63,15 +64,16 @@ Script load: ./Lua chunk runs
          -> FUN_00d07bb0 dynamic-method register
             - FUN_00cd77d0 (BCS-Y-0514) resolves engine context from Lua state
             - FUN_00cd77d0(state, 1) returns class registration record
-            - FUN_00d07890 tests if name already registered
-              - handles "self"-prefix (instance method via FUN_00cd7a50)
-              - handles "_inl"-suffix (inlined dispatch via PTR_DAT_01266b10)
-            - allocates 8-byte upvalue: [class_ctx_ptr, method_slot]
-            - pushes 2-upvalue cclosure (FUN_00d07f20 or FUN_00d07f90 selected
-              by FUN_00cf49a0 condition) into global table
+            - FUN_00d07890 attempts descriptor resolution for an _inl name
+              - calls descriptor with zero arguments and two requested results
+              - uses returned target/key strings to find an existing function
+              - successful alias installation skips new closure allocation
+            - otherwise allocates 8-byte userdata: [class_ctx_ptr, method_slot]
+            - pushes 2-upvalue cclosure (userdata and original function;
+              FUN_00d07f20 or FUN_00d07f90 selected by FUN_00cf49a0)
                                   |
                                   v
-[methods now bound to class as cclosures]
+[function values now bound to the class]
                                   |
                                   v
 Instantiation: Lua code creates an instance of the class
@@ -324,8 +326,11 @@ bindings live in gamedata sheet string columns, not the binary.
   `+0x54..+0x5c` row fields in BCS-S-0046 remain unconfirmed.
 - `FUN_00D20540` and `FUN_00D207A0` share `FUN_00d272d0` and
   `FUN_00d16080`, but their exact relationship remains inferred.
-- `FUN_00d07890` binds `_inl` names through `FUN_00d077b0` and
-  `PTR_DAT_01266b10`. The resulting dispatch behavior is unresolved.
+- The conditional `_inl` alias and ordinary VM invocation boundaries are
+  recorded in `xivl-decomp:docs/script/lua-call-function-bridge.md`.
+  `0x01266B10` is an empty native string object used during name editing.
+  The actual function value aliased by a historical class table, and its
+  eventual callback argument construction, remain unresolved.
 - `FUN_00d2e760` also calls `FUN_00d272d0`, but its role is unknown.
 
 ## References
