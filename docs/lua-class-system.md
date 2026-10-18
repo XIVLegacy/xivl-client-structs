@@ -329,8 +329,11 @@ bindings live in gamedata sheet string columns, not the binary.
 - The conditional `_inl` alias and ordinary VM invocation boundaries are
   recorded in `xivl-decomp:docs/script/lua-call-function-bridge.md`.
   `0x01266B10` is an empty native string object used during name editing.
-  The actual function value aliased by a historical class table, and its
-  eventual callback argument construction, remain unresolved.
+  That page also identifies the embedded ActorBaseClass Lua delegate and
+  native assignment interception. Its Lua body indexes the receiver by the
+  supplied name, then calls the value with the receiver and all trailing
+  arguments. Historical callable replacements and the actual callback
+  receiver, selector and values remain separate invocation evidence.
 - `FUN_00d2e760` also calls `FUN_00d272d0`, but its role is unknown.
 
 ## References
