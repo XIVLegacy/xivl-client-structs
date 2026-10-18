@@ -26,7 +26,7 @@
   "case_table": [
     {
       "opcode": "0x3",
-      "case_body_summary": "Constructs two std::string objects (sizes 32 and 512) from packet body at +0x10 and +0x34, then calls FUN_004d8560 with a 2-byte selector at packet+0x30, the local_978 (32-byte) string and the local_920 (512-byte) string. Both std::strings are destructed via FUN_00446f50 in reverse order. FUN_004d8560 itself: returns char; calls FUN_004b4ed0(1), FUN_00c99e80(param_4, 1, ret, 1), and on success FUN_00445c70 -> FUN_004c3dd0 -> FUN_004ce760(param_2, param_3, param_4) gated by zone+0x660. Pattern shape: 'execute named command with arg string'.",
+      "case_body_summary": "Constructs two std::string objects (sizes 32 and 512) from packet body at +0x10 and +0x34, then calls FUN_004d8560 with a 2-byte selector at packet+0x30, the local_978 (32-byte) string and the local_920 (512-byte) string. Both std::strings are destructed via FUN_00446f50 in reverse order. FUN_004d8560 itself: returns char; calls FUN_004b4ed0(1), FUN_00c99e80(param_4, 1, ret, 1), and on success FUN_00445c70 -> FUN_004c3dd0 -> FUN_004ce760(param_2, param_3, param_4) gated by zone+0x660. The case is the Map chat line receiver recorded in manifests/s2c_0003_map_send_message.json.",
       "pattern": "C",
       "primary_handler": "0x004d8560",
       "other_called_functions": [
@@ -35,7 +35,7 @@
       ],
       "catalog_status": "uncataloged",
       "proposed_bcs_y_id": "BCS-Y-0535",
-      "notes": "Two strings: 32-byte (likely command name) + 512-byte (likely arg/parameter blob), keyed by a u16 selector at packet+0x30. The FUN_004ce760 inner call uses param_2=incoming sender, param_3=cmd name std::string, param_4=arg std::string. Could be the 'admin/debug command' or 'chat command parser' s2c entry point.",
+      "notes": "Two strings: a 32-byte sender name and a 512-byte message, with a u16 display type at packet+0x30. FUN_004ce760 logs the line into the client log module. The earlier named-command reading is superseded by manifests/s2c_0003_map_send_message.json.",
       "existing_bcs_y_id": null
     },
     {
@@ -207,10 +207,10 @@
   "proposed_bcs_y_entries": [
     {
       "id": "BCS-Y-0535",
-      "name": "S2cDispatcher_StringCommand_Case3_FUN_004DC690",
+      "name": "S2cDispatcher_ChatLine_Case3_FUN_004DC690",
       "kind": "function_case",
       "address": "0x004DC690",
-      "summary": "Case 3 in FUN_004DC690 low-switch. Two-string command dispatch: builds std::string(32) from packet+0x10, std::string(512) from packet+0x34, reads u16 selector at packet+0x30, calls FUN_004d8560 to look up and invoke command (which goes through FUN_004ce760 gated by zone+0x660 - likely the named-command receiver registry)."
+      "summary": "Case 3 in FUN_004DC690 low-switch. Builds a 32-byte sender string from packet+0x10 and a 512-byte text string from packet+0x34, reads a u16 display type at packet+0x30, and calls FUN_004d8560, which admits the line and logs it through FUN_004ce760 when zone+0x660 is set. See manifests/s2c_0003_map_send_message.json."
     },
     {
       "id": "BCS-Y-0536",
@@ -288,7 +288,7 @@
     "Case grouping identified: cases 8/9/A/B form a sized-array family that all append (u32 value, u8 flag) pairs to the shared queue at zone+0x950 via FUN_0081f090. Cases 8/9/A/B counts are 1..255 / 16 / 32 / 64. Case 6 is the corresponding 'flush' opcode that drains zone+0x950 via FUN_0081eb90 - so opcodes 6 + 8 + 9 + A + B form a producer/consumer set against the same in-memory queue.",
     "Case 0xE and case 0x11 are sibling shutdown opcodes - identical bodies except for the state code passed to FUN_00565aa0 (0xB vs 0xC). Both delegate the heavy work to FUN_004daf00, which is the canonical zone-leave/actor-teardown helper. Case 4 is structurally a third sibling but with a re-entrancy toggle and slightly different teardown filters.",
     "FUN_004daf00 (case 0xE primary) and the case 4 body inline very similar actor-list-walk-and-destruct loops, both with the same 3-value preserve filter at entry+3 ({-0x3FFFFFDC, -0x3FFFFFF9, -0x3FFFFFFB}). The two filter sentinels are u32-encoded class IDs in the 0xC0000000 family (see BCS-Y-0533 ZoneActorClassId_Validate) - they are the IDs of three actor classes that survive zone teardown (likely the local player, the camera, and one other persistent actor).",
-    "Case 3 is the 'execute named command' s2c entry point: 32-byte cmd name string + 512-byte arg string + u16 selector. Routes through FUN_004d8560 -> FUN_004ce760 gated by zone+0x660. The inner pipeline is the same shape as a Lua command bridge - this opcode is plausibly the 'server-pushed lua script execute' or 'admin command' path. Pattern matches the existing ExecuteDebugCommand receiver cluster in the symbols.json notes.",
+    "Case 3 is the Map chat line receiver: 32-byte sender string, 512-byte text string, and a u16 display type, routed through FUN_004d8560 to FUN_004ce760 when zone+0x660 is set. The earlier named-command reading is superseded by manifests/s2c_0003_map_send_message.json.",
     "Case 0xC drives a global audio cue state machine (FUN_004bbb30) protected by an atomic busy flag (DAT_0132f3d0 set via InterlockedExchangeAdd). The 'param_1 + 0x7fe0000' base-offset pattern indicates an mmap'd audio bank addressed by ID. 11 action codes route to fade / start / stop / state-set variants. Likely the s2c BGM trigger.",
     "Of 10 cases, 0 cataloged, 10 uncataloged. 1 Pattern A (5/D/10 shared body), 9 Pattern C. No Pattern D sub-dispatchers found in this slice (sub-dispatchers were the pattern-d-subdispatcher pass finding).",
     "Eleven function candidates are absent from symbols.json: ten dispatcher case bodies (one shared by opcodes 5, D, and 10) and the FUN_0081F090 pair-append helper. Proposed IDs beginning at BCS-Y-0535 are noncanonical.",
@@ -299,7 +299,6 @@
     "Cases 8/9/A/B emit (u32 value, u8 flag) pairs to zone+0x950. What does case 6 ultimately DO with those pairs? FUN_00440940 (the visitor inside FUN_0081eb90) is uncataloged. The semantic interpretation of the u32 value and u8 flag depends on FUN_00440940. Worth a follow-up decomp.",
     "The case 4 'preserve filter' values {-0x3FFFFFDC, -0x3FFFFFF9, -0x3FFFFFFB} are class IDs (= 0xC0000024 / 0xC0000007 / 0xC0000005 in u32). Per BCS-Y-0533, these are 'engine-managed' actor classes. Mapping these three IDs to actor class names (via the registry at FUN_00d35af0) would name the persistent zone actors.",
     "Case 0xC's FUN_004bbb30 uses param_1+0x7fe0000 as an mmap base. Need to confirm param_1 (u16 audio_id from packet+0x10) is bounded and what bank lives at base 0x7fe0000 relative to the audio context. This is musical/sfx state and worth its own phase.",
-    "Case 3's std::string sizes (32 + 512) and FUN_004ce760 inner call look identical to a Lua command bridge invocation. Worth correlating with the Lua engine attribution phases (32/41) to see if FUN_004ce760 is in the Lua bind cluster.",
     "Case 4 sets a zone+0x54b flag; case 0xE/0x11 do NOT toggle this flag - they always run the full cleanup. Why does case 4 have a re-entry guard but cases 0xE/0x11 do not? Suggests case 4 is the 'pause' opcode and 0xE/0x11 are the irreversible logout/zone-change opcodes.",
     "FUN_004d9980's 0xC0000000 sentinel: BCS-Y-0533 confirms this is the 'invalid class id that intentionally fails validation' value. So `FUN_004d9980(0xC0000000)` is the canonical 'clear active target' call. Worth promoting FUN_004d9980 itself to BCS-Y in a follow-up since it's used by cases 4, 0xE, 0x11 and likely many other clear-target sites."
   ]

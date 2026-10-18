@@ -1,0 +1,211 @@
+{
+  "version": "1.0",
+  "gameVersion": "1.23b",
+  "status": "confirmed",
+  "scope": "Client receiver for the retail s2c Map opcode 0x0003 chat line: dispatch route, application field offsets, string copy and terminator handling, length rules, admission checks, display-type routing into the client log module, and the login capture boundary.",
+  "identity": {
+    "opcode": "0x0003",
+    "direction": "s2c",
+    "lane": "Map",
+    "catalogName": "SendMessagePacket",
+    "wireContract": "xivl-opcodes:data/s2c_0003_wire_layout.json",
+    "nameBoundary": "The client handles this opcode inline in the central dispatcher and carries no RTTI class or source name for it. The catalog name is the established row name and not a client symbol.",
+    "correction": "manifests/low_switch_remaining_cases.json read this case as a named-command entry point. The receiver trace below shows that the case feeds the chat log sink. That reading is superseded."
+  },
+  "binary": {
+    "name": "ffxivgame.exe",
+    "version": "1.23b",
+    "size": 15996808,
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9",
+    "imageBase": "0x00400000"
+  },
+  "evidenceClasses": {
+    "clientStatic": "Direct client evidence from the identified executable. Addresses below are virtual addresses in that image.",
+    "packetCapture": "Wire observation from the pinned capture corpus."
+  },
+  "coordinateSystem": {
+    "applicationOffsetFromSubpacket": "0x20",
+    "description": "The dispatcher receives the 16-byte game-message header, which starts 0x10 bytes into the subpacket. The case adds 0x10 to that pointer. Every application offset below is relative to the result."
+  },
+  "dispatch": {
+    "dispatcher": "FUN_004DC690",
+    "bcsId": "BCS-Y-0279",
+    "rangeCheck": "The dispatcher skips the jump table when the opcode minus 2 exceeds 0xE3.",
+    "byteTable": {"address": "0x004DD414", "indexForOpcode0x0003": 1},
+    "dwordTable": {"address": "0x004DD3D0", "indexForOpcode0x0003": 1, "target": "0x004DC750"},
+    "jumpInstruction": "0x004DC749",
+    "gates": [
+      "The dispatcher returns without dispatching when the byte at dispatcher+0x54B is nonzero and the opcode is not 0x0004.",
+      "The dispatcher returns without dispatching when FUN_00575740 on dispatcher+0x510 returns nonzero and the opcode is not 0x0004."
+    ],
+    "caseSteps": [
+      {"address": "0x004DC75D", "step": "FUN_00447260 builds the sender string from application+0x00 with length 0x20."},
+      {"address": "0x004DC77D", "step": "FUN_00447260 builds the text string from application+0x24 with length 0x200."},
+      {"address": "0x004DC78A", "step": "A zero-extended word load reads application+0x20."},
+      {"address": "0x004DC7A1", "step": "FUN_004D8560 receives the display type, the sender string, and the text string."},
+      {"address": "0x004DC7B5", "step": "FUN_00446F50 destroys the text string here and the sender string at 0x004DC7CC. The case then ends."}
+    ],
+    "confidence": "confirmed",
+    "evidenceClass": "clientStatic"
+  },
+  "application": {
+    "applicationSize": "0x228",
+    "consumedExtent": "0x224",
+    "extentCheck": "The case carries no packet-extent argument and performs no length check before reading through application+0x223.",
+    "fields": [
+      {
+        "offset": "0x000",
+        "size": "0x020",
+        "name": "senderName",
+        "type": "char[32]",
+        "confidence": "confirmed",
+        "evidenceClass": "clientStatic",
+        "locator": "0x004DC75D",
+        "note": "Copied for exactly 0x20 bytes. No NUL is required inside the field."
+      },
+      {
+        "offset": "0x020",
+        "size": "0x002",
+        "name": "displayType",
+        "type": "u16",
+        "confidence": "confirmed",
+        "evidenceClass": "clientStatic",
+        "locator": "0x004DC78A",
+        "note": "Only the low word is read. The capture holds 0x001D here."
+      },
+      {
+        "offset": "0x022",
+        "size": "0x002",
+        "name": "unread22",
+        "type": "opaque[2]",
+        "confidence": "confirmed",
+        "evidenceClass": "clientStatic",
+        "note": "Not read by the case or by FUN_004D8560."
+      },
+      {
+        "offset": "0x024",
+        "size": "0x200",
+        "name": "text",
+        "type": "char[512]",
+        "confidence": "confirmed",
+        "evidenceClass": "clientStatic",
+        "locator": "0x004DC77D",
+        "note": "Copied for exactly 0x200 bytes. No NUL is required inside the field."
+      },
+      {
+        "offset": "0x224",
+        "size": "0x004",
+        "name": "unreadTail",
+        "type": "opaque[4]",
+        "confidence": "confirmed",
+        "evidenceClass": "clientStatic",
+        "note": "Beyond the last byte the case reads. The login capture carries it as zero."
+      }
+    ]
+  },
+  "stringRules": {
+    "copy": {
+      "function": "FUN_00447260",
+      "bcsId": "BCS-Y-0311",
+      "behavior": "With an explicit length the function copies that many bytes without scanning for a NUL, sets the string size to the length plus one, and writes a NUL after the copied bytes. A full field is therefore bounded by the destination NUL. The -1 length that scans for a NUL is used by the World tell receiver and not by this case."
+    },
+    "sender": {
+      "utf8Check": "FUN_00445C70 validates the sender as UTF-8 up to the first NUL. A malformed sequence rejects the line.",
+      "embeddedNul": "The check and the name-list comparison stop at the first NUL. The string still holds all 0x20 copied bytes."
+    },
+    "text": {
+      "controlPass": "FUN_00C99E80 runs FUN_00C99B80 over the text as a NUL-terminated string, so the first NUL ends the processed text. A failed pass rejects the line. A successful pass replaces the text string with the processed copy.",
+      "controlEncoding": "The control-sequence rules are those recorded for World chat in manifests/chat_wire_contract.json under validation.controlEncoding."
+    },
+    "lineAssembly": {
+      "function": "FUN_004CE760",
+      "behavior": "The stored line is the uppercase four-digit hex of the display type, a colon, the sender, a colon, and the text. The joins use the size fields of the strings, so NUL padding after a short sender is carried into the stored line.",
+      "formatString": "0x00F8D638",
+      "colonString": "0x00F8D634",
+      "colonGlobal": "0x0132F330"
+    },
+    "confidence": "confirmed",
+    "evidenceClass": "clientStatic"
+  },
+  "admission": {
+    "function": "FUN_004D8560",
+    "argumentOrder": "displayType, sender string, text string",
+    "steps": [
+      {"address": "0x004D8580", "step": "FUN_00C99E80 on the text with the dispatcher+0x7F8 object. A zero result rejects the line."},
+      {"address": "0x004D858F", "step": "FUN_00445C70 on the sender. A zero result rejects the line."},
+      {"address": "0x004D859F", "step": "FUN_004C3DD0 with the dispatcher+0x950 object. A nonzero result rejects the line."},
+      {"address": "0x004D85A8", "step": "When dispatcher+0x660 is nonzero, FUN_004CE760 logs the line. The function returns 1 whether or not the log module exists."}
+    ],
+    "rejection": "A rejected line is dropped without a log entry and without a reply.",
+    "nameList": {
+      "function": "FUN_004C3B30",
+      "listOffset": "0xC4C",
+      "match": "A nonempty sender equal to any list entry, compared bytewise up to the NUL, rejects the line.",
+      "producer": "FUN_004CDCF0 fills the list from the s2c 0x01CB payload through FUN_004CE190. Entries are 0x20-byte names read as NUL-terminated strings."
+    },
+    "confidence": "confirmed",
+    "evidenceClass": "clientStatic"
+  },
+  "displayTypeRouting": {
+    "logModule": {
+      "rttiClass": "Application::Misc::RaptureLogModule",
+      "vftable": "0x00F91434",
+      "slot": "dispatcher+0x660",
+      "createdBy": "FUN_004DC5D0, reached from the 0x0002 case of the same dispatcher",
+      "constructor": "FUN_004DEE90",
+      "objectSize": "0x74"
+    },
+    "append": {
+      "caller": "0x004CE889",
+      "behavior": "FUN_00C9A8E0 calls vtable slot 7, FUN_00C9AD40, which appends the stored line and returns its running index. The log keeps 0x4B0 lines."
+    },
+    "categoryQueues": {
+      "vector": "module+0x4C with begin at +0x50 and end at +0x54, stride 0x14",
+      "grow": "0x004CE8BC calls FUN_004D56F0 when the vector holds fewer than displayType+1 queues. That call is the only caller of the growth routine.",
+      "push": "0x004CE902 appends the line index to the queue for displayType with FUN_004571F0.",
+      "prune": "The loop from 0x004CE907 pops queued indexes older than the oldest retained line, which FUN_00C9A8C0 returns.",
+      "shape": "Each queue is deque-shaped with four 32-bit entries per block."
+    },
+    "typeBounds": "No whitelist, clamp, or zero substitution applies to displayType on this route. World 0x00CB substitutes 3 for a zero type. This opcode does not.",
+    "knownClientValues": [
+      {"value": 1, "source": "FUN_004D6E50 logs a client-generated line with the literal sender system.", "scope": "client-local, not this opcode"},
+      {"value": 3, "source": "FUN_004D8D10 passes 3 for received World tell 0x00C8.", "scope": "World lane, not this opcode"}
+    ],
+    "confidence": "confirmed",
+    "evidenceClass": "clientStatic"
+  },
+  "capture": {
+    "evidenceClass": "packetCapture",
+    "confidence": "confirmed-pcap-derived",
+    "source": "xivl-captures:derived/payload_samples.json",
+    "locator": "samples.s2c.0x0003",
+    "lane": "xivl-captures:derived/lane_observations.json#lanes/main/s2c/0x0003",
+    "file": "login.pcapng",
+    "fileSha256": "28e06b54fe559870031f077f8549b9244caafa7e5177dbca08a7feae6c2b1b62",
+    "occurrences": 9,
+    "retainedSamples": 4,
+    "identicalSamples": true,
+    "subpacketSize": 584,
+    "applicationSize": "0x228",
+    "nonzeroApplicationBytes": [
+      {"offset": "0x020", "value": "0x1D"}
+    ],
+    "agreement": "The retained size equals the application size the receiver reads within. The value at application+0x20 sits where the receiver loads its word.",
+    "boundary": "Sender and text are empty in every retained sample and bytes 0x22 through 0x227 are zero. The capture fixes the size and the display type value only. The sender and text offsets rest on the receiver."
+  },
+  "method": {
+    "pe": "Verify the executable size and SHA-256 above. For every cited virtual address in .text and .rdata the raw file offset equals the address minus 0x00400000. Read the byte at 0x004DD415 and expect 1. Read the little-endian dword at 0x004DD3D4 and expect 0x004DC750. Decode each cited CALL as the address after the instruction plus the signed displacement and compare it with the named function. The globals at 0x0132F330 lie outside the file image and are written by the initializer at 0x00F076E0.",
+    "operandOrder": "The case pushes the text string, then the sender string, then the display type, so the callee receives the display type first, the sender second, and the text third. The pushes sit at 0x004DC795 through 0x004DC79E."
+  },
+  "open": [
+    "The category named by display type 0x1D and the readers of the per-category queues are not traced.",
+    "How the stored-line reader treats NUL padding after a short sender is not traced.",
+    "Whether an upstream framing guard rejects a subpacket shorter than 0x224 application bytes is not traced."
+  ],
+  "sourceRefs": [
+    "xivl-opcodes:data/s2c_0003_wire_layout.json",
+    "xivl-captures:derived/payload_samples.json",
+    "manifests/chat_wire_contract.json",
+    "manifests/low_switch_remaining_cases.json"
+  ]
+}
