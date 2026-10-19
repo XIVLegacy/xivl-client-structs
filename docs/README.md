@@ -42,6 +42,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   observed definitions, native constructors and runtime selection boundary.
 - [Player command wire contract](player-command-wire-contract.md) - native
   dispatch, direct fallback fields and typed argument serialization.
+- [Linkshell rank and group work](linkshell-rank-work-contract.md) - member
+  rank consumers, native marker classes and continuation limits.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
   fields, cached rows and consuming score getters.
 - [Appearance record payload](appearance-record-wire-contract.md) -
