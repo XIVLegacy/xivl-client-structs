@@ -46,6 +46,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   rank consumers, native continuation keys and completion callbacks.
 - [Bazaar command and item-package contract](bazaar-native-wire-contract.md) -
   ordered request operands, native package numbering and seller publication limits.
+- [Chocobo naming native checks](chocobo-naming-native-contract.md) -
+  UTF-8 sequence counting and the first-character property used by the widget.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
   fields, cached rows and consuming score getters.
 - [Appearance record payload](appearance-record-wire-contract.md) -
