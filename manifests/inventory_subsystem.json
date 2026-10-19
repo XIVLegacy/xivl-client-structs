@@ -502,7 +502,7 @@
           "empty payload (8 bytes reserved); handler signature takes no packet pointer from the dispatcher"
         ],
         "pcap_samples": 60,
-        "note": "The 0x016e dispatcher call takes &param_2 only, without the application-payload pointer. FUN_0076BB00 queues UpdateEndCommand through FUN_0075F7C0 and transfers the queued operations. FUN_0076BA10 retrieves or creates publication state; FUN_00CC9330 releases a lock. Actual end-command execution reaches FUN_00703700 and conditionally publishes or defers. See docs/bazaar-native-wire-contract.md for authenticated Ghidra locators and reproduction."
+        "note": "The 0x016e dispatcher call takes &param_2 only, without the application-payload pointer. FUN_0076BB00 queues UpdateEndCommand through FUN_0075F7C0 and transfers the queued operations. FUN_0076BA10 retrieves or creates publication state; FUN_00CC9330 is a no-op wrapper teardown, with a RET at its entry. Actual end-command execution reaches FUN_00703700 and conditionally publishes or defers. See docs/bazaar-native-wire-contract.md for authenticated Ghidra locators and reproduction."
       }
     ]
   },
@@ -536,7 +536,7 @@
     "handler_helpers": {
       "FUN_0076B760": "InventoryItemRecord deserializer (0x70-byte record from payload)",
       "FUN_0076BAD0": "InventoryBeginChange callee - retrieves command state through FUN_0076B950 and queues UpdateStartCommand through FUN_0075F720; see docs/bazaar-native-wire-contract.md.",
-      "FUN_0076BB00": "InventoryEndChange callee - queues UpdateEndCommand through FUN_0075F7C0 and transfers operations through FUN_00768B10 / FUN_007840D0. FUN_0076BA10 is publication-state lookup/create; FUN_00CC9330 is lock release. Execution/publication is canonical in docs/bazaar-native-wire-contract.md.",
+      "FUN_0076BB00": "InventoryEndChange callee - queues UpdateEndCommand through FUN_0075F7C0 and transfers operations through FUN_00768B10 / FUN_007840D0. FUN_0076BA10 is publication-state lookup/create; FUN_00CC9330 is a no-op wrapper teardown, not an item unlock. Execution/publication is canonical in docs/bazaar-native-wire-contract.md.",
       "FUN_0076BC20": "InventorySetBegin callee - reads actor u32, capacity u16 and package u8, then queues ItemPackageUpdateStartCommand through FUN_0075F860; see docs/bazaar-native-wire-contract.md.",
       "FUN_00771540": "InventoryListX01/X32 record-array deserializer (shared)",
       "FUN_007713E0": "InventoryListX08 record-array deserializer",
@@ -592,7 +592,7 @@
         "%BCS_GHIDRA_PROJECTS%\\batch2_callees_decomp.txt:212-309",
         "docs/bazaar-native-wire-contract.md"
       ],
-      "notes": "InventoryEndChange callee invoked by FUN_00576430 (0x016e handler). It queues UpdateEndCommand and transfers operations to publication state; FUN_0076BA10 retrieves or creates that state and FUN_00CC9330 releases a lock. The queued command executes through FUN_0089B5F0 -> FUN_00703700, where publication is conditional on deferred item materialization. The identifier is retained; authenticated execution semantics and reproduction are in docs/bazaar-native-wire-contract.md."
+      "notes": "InventoryEndChange callee invoked by FUN_00576430 (0x016e handler). It queues UpdateEndCommand and transfers operations to publication state; FUN_0076BA10 retrieves or creates that state and FUN_00CC9330 is a no-op wrapper teardown. The queued command executes through FUN_0089B5F0 -> FUN_00703700, where publication is conditional on deferred item materialization. The identifier is retained; authenticated execution semantics and reproduction are in docs/bazaar-native-wire-contract.md."
     },
     {
       "proposedId": "BCS-Y-0538",

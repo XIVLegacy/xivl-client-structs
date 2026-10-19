@@ -45,7 +45,8 @@ catalog. Machine-readable inventories and regeneration rules live under
 - [Linkshell rank and group work](linkshell-rank-work-contract.md) - member
   rank consumers, native continuation keys and completion callbacks.
 - [Bazaar command and item-package contract](bazaar-native-wire-contract.md) -
-  ordered request operands, native package numbering and seller publication limits.
+  request fields, settlement dependencies and
+  [sign appearance](bazaar-appearance-contract.md).
 - [Chocobo naming native checks](chocobo-naming-native-contract.md) -
   UTF-8 sequence counting and the first-character property used by the widget.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
