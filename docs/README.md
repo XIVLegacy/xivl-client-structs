@@ -44,6 +44,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   dispatch, direct fallback fields and typed argument serialization.
 - [Linkshell rank and group work](linkshell-rank-work-contract.md) - member
   rank consumers, native continuation keys and completion callbacks.
+- [Bazaar command and item-package contract](bazaar-native-wire-contract.md) -
+  ordered request operands, native package numbering and seller publication limits.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
   fields, cached rows and consuming score getters.
 - [Appearance record payload](appearance-record-wire-contract.md) -

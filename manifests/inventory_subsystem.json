@@ -32,7 +32,7 @@
       {
         "opcodeHex": "0x0146",
         "packetSize": 40,
-        "payloadShape": "u32 sourceActorId, u16 size, u16 code",
+        "payloadShape": "u32 sourceActorId, u16 size, u8 code, u8 unread by FUN_0076BC20",
         "purpose": "Begin packing inventory items for a container (itemPackage)."
       },
       {
@@ -135,13 +135,13 @@
         "opcodeHex": "0x016d",
         "packetSize": 40,
         "payloadShape": "u8 changeCode",
-        "purpose": "Begin atomic batch of inventory mutations."
+        "purpose": "Queue the start of an item update batch; execution retains the mode byte and clears package selection."
       },
       {
         "opcodeHex": "0x016e",
         "packetSize": 40,
         "payloadShape": "8-byte empty payload",
-        "purpose": "End atomic batch of inventory mutations."
+        "purpose": "Queue the end of an item update batch; execution publishes staged changes or queues a deferred continuation."
       }
     ],
     "supporting_record_classes": {
@@ -219,7 +219,7 @@
         "fields": [
           "u32 sourceActorId @ +0",
           "u16 size @ +4",
-          "u16 code @ +6 (low byte consumed)"
+          "u8 code @ +6; FUN_0076BC20 does not read wire +7 (see docs/bazaar-native-wire-contract.md)"
         ],
         "pcap_samples": 78
       },
@@ -502,7 +502,7 @@
           "empty payload (8 bytes reserved); handler signature takes no packet pointer from the dispatcher"
         ],
         "pcap_samples": 60,
-        "note": "Notable that 0x016e's dispatcher call takes &param_2 ONLY, not (&param_2, iVar8 + 0x10) like the other cases. The handler FUN_00576430 reads from the dispatcher-local data only and triggers the commit logic in FUN_0076BB00, which calls FUN_007840d0 / FUN_00cc9330 / FUN_00768b10 (inventory commit + ItemPackage cleanup helpers)."
+        "note": "The 0x016e dispatcher call takes &param_2 only, without the application-payload pointer. FUN_0076BB00 queues UpdateEndCommand through FUN_0075F7C0 and transfers the queued operations. FUN_0076BA10 retrieves or creates publication state; FUN_00CC9330 releases a lock. Actual end-command execution reaches FUN_00703700 and conditionally publishes or defers. See docs/bazaar-native-wire-contract.md for authenticated Ghidra locators and reproduction."
       }
     ]
   },
@@ -535,9 +535,9 @@
     "ingress": "Wire packet stream -> FUN_004DC690 (BCS-Y-0279) opcode switch -> per-opcode handler FUN_005764xx..FUN_00576Bxx (lives in the inventory-handler block at 0x005763xx..0x00576Cxx)",
     "handler_helpers": {
       "FUN_0076B760": "InventoryItemRecord deserializer (0x70-byte record from payload)",
-      "FUN_0076BAD0": "InventoryBeginChange callee - calls FUN_0076B950 (begin-change state init) and FUN_0075F720 (notify ItemPackage of pending mutation)",
-      "FUN_0076BB00": "InventoryEndChange callee - calls FUN_0076BA10 (commit), FUN_007840D0 (post-commit fanout), FUN_00CC9330 (event firer), FUN_00768B10 (ItemPackage cleanup); also touches FUN_007649A0 (per-package finalizer) and FUN_0057AB60 (id translation)",
-      "FUN_0076BC20": "InventorySetBegin callee - sets up container size + code for the upcoming InventoryList payload",
+      "FUN_0076BAD0": "InventoryBeginChange callee - retrieves command state through FUN_0076B950 and queues UpdateStartCommand through FUN_0075F720; see docs/bazaar-native-wire-contract.md.",
+      "FUN_0076BB00": "InventoryEndChange callee - queues UpdateEndCommand through FUN_0075F7C0 and transfers operations through FUN_00768B10 / FUN_007840D0. FUN_0076BA10 is publication-state lookup/create; FUN_00CC9330 is lock release. Execution/publication is canonical in docs/bazaar-native-wire-contract.md.",
+      "FUN_0076BC20": "InventorySetBegin callee - reads actor u32, capacity u16 and package u8, then queues ItemPackageUpdateStartCommand through FUN_0075F860; see docs/bazaar-native-wire-contract.md.",
       "FUN_00771540": "InventoryListX01/X32 record-array deserializer (shared)",
       "FUN_007713E0": "InventoryListX08 record-array deserializer",
       "FUN_00768CF0": "LinkedItemListX01 callee",
@@ -546,9 +546,9 @@
     },
     "egress": "Inventory item updates land in the PlayerBase/MyPlayer storage vector at this+0x144 (BCS-Y-0414). The vector holds 4 ItemPackage buckets with capacities 0x23 / 0x41 / 0x1a / 0x04 (35 / 65 / 26 / 4 slots). Per-bucket records are 0x10 bytes and are appended via FUN_007228E0 / sorted via FUN_00720BB0 / capacity-reserved via FUN_007222D0. The EntrustItemReceiver worker FUN_006EFBD0 demonstrates the same bucket layout for the cross-receiver write path.",
     "lua_surface": "Lua-bound readers on Application::Lua::Script::Client::Control::ItemBase: _getItem, _getEquippingItem, _getItemPackageCapacity, _getItemPackageFreeSpace, _hasItemPackage, _isLockingItem, _isItemDealing, _getTradingItem. ItemManager vtable (VA 0x00FD7618) slot 1 = FUN_007036E0 fires _onUpdateItemPackage and _onUpdateTradingItem firers. ItemBase._updateWork = c2s opcode 0x0132 (BCS-Y-0383 / 0x132 was tentatively named ItemWorkUpdatePacket).",
-    "commit_pattern": "Inventory mutations arrive in atomic batches gated by InventoryBeginChange (0x016d) -> InventoryListX01/08/16/32/64 (0x0148..0x014c) AND/OR InventoryRemoveX01/08/16/32/64 (0x0152..0x0156) AND/OR LinkedItemListX01..X64 (0x014d..0x0151) AND/OR InventorySetBegin (0x0146) -> InventoryEndChange (0x016e). 0x0147 InventorySetEnd appears to logically pair with 0x0146 InventorySetBegin (similar 8-byte empty payload, same 24-byte body length) but the client silently discards it.",
+    "commit_pattern": "Receive handlers append Start, PackageStart, item/link/clear and End operations to an ordered command list. FUN_0089BBA0 executes from its front through virtual +0x24. PackageStart selects the destination; End reaches FUN_00703700, which publishes through FUN_006F7880 / FUN_007034E0 when manager+0x61 is clear, or queues a continuation otherwise. Linked updates apply only to selected package 0xFD/0xFE, not Bazaar code 7. This is an execution dependency, not an observed route-specific packet sequence; see docs/bazaar-native-wire-contract.md.",
     "c2s_counterpart": {
-      "0x0131": "UpdateItemPackagePacket (c2s) - client requests item-package state (retainer item listings, bazaar). Sent via FUN_0075EA50 builder; bound to CharaBase._updateItemPackage Lua N-API per BCS-Y-0382/0388. Payload is u32 actorID + u32 packageId; client emits u8 packageId only (FUN_0075EA50).",
+      "0x0131": "UpdateItemPackagePacket (c2s) - client requests item-package state (retainer item listings, bazaar). Bound to CharaBase._updateItemPackage per BCS-Y-0382/0388. FUN_006E5AD0 converts the Lua package through FUN_0078BC90 (subtract one), then FUN_0075EA50 writes actor u32 at application+0 and package u8 at +4 in an eight-byte application extent; no semantic write is established for the other three bytes. Lua Bazaar package 8 therefore requests native/wire code 7. See docs/bazaar-native-wire-contract.md for authenticated Ghidra reproduction and receive/publication boundaries.",
       "0x0132": "ItemWorkUpdatePacket (c2s, tentative) - bound to ItemBase._updateWork (BCS-Y-0383). Builder FUN_0075EAC0.",
       "note": "There is NO 0x012E c2s inventory packet despite older pcap-mining heuristics suggesting so. The 0x012E c2s opcode is EventUpdatePacket (event family). The earlier memory note 'c2s vocab maps to inv=0x012E' was a size-based heuristic from the pcap-opcode-evidence pass that has since been refined - the inventory-shaped 120-byte c2s payload on 0x012E is actually event-framed inventory operations (EventUpdate wraps a Lua-param stream that includes inventory verbs); the underlying transport is still the EventStart/EventUpdate generic frame per docs/client-architecture.md, '1.x combat is asymmetric'."
     }
@@ -589,9 +589,10 @@
       "confidence": "confirmed",
       "sourceRefs": [
         "manifests/inventory_subsystem.json",
-        "%BCS_GHIDRA_PROJECTS%\\batch2_callees_decomp.txt:212-309"
+        "%BCS_GHIDRA_PROJECTS%\\batch2_callees_decomp.txt:212-309",
+        "docs/bazaar-native-wire-contract.md"
       ],
-      "notes": "InventoryEndChange callee invoked by FUN_00576430 (0x016e handler). Coordinates the atomic-batch commit of the preceding InventoryList/InventoryRemove/LinkedItemList mutations: invokes FUN_0076BA10 (commit), FUN_007840D0 (post-commit fanout), FUN_00CC9330 (event firer - twice, with an FUN_007649A0 / FUN_0057AB60 detour for per-package finalize), and FUN_00768B10 (ItemPackage cleanup). Paired with InventoryBeginChange callee FUN_0076BAD0 (which calls FUN_0076B950 + FUN_0075F720 to enter the change state). This pair brackets all multi-record inventory mutations between 0x016d and 0x016e."
+      "notes": "InventoryEndChange callee invoked by FUN_00576430 (0x016e handler). It queues UpdateEndCommand and transfers operations to publication state; FUN_0076BA10 retrieves or creates that state and FUN_00CC9330 releases a lock. The queued command executes through FUN_0089B5F0 -> FUN_00703700, where publication is conditional on deferred item materialization. The identifier is retained; authenticated execution semantics and reproduction are in docs/bazaar-native-wire-contract.md."
     },
     {
       "proposedId": "BCS-Y-0538",
@@ -614,7 +615,7 @@
     "Inventory dispatch is NOT a Receiver-class pattern. None of the 17 inventory opcodes appear in receiver_opcode_map_inbound.json, consistent with the architectural finding that 'remaining s2c opcodes do not use the Receiver-class pattern'.",
     "Inventory data flow goes through the PlayerBase/MyPlayer storage vector at this+0x144 (4 buckets x 0x10-byte records, capacities 0x23/0x41/0x1a/0x04) per BCS-Y-0414 InventoryStorageItemHandleLane2. The Lua surface is Application::Lua::Script::Client::Control::ItemBase (20 reader N-APIs) and Application::Lua::Script::Client::Control::ItemManager (vtable VA 0x00FD7618 slot 1 fires _onUpdateItemPackage / _onUpdateTradingItem).",
     "c2s inventory traffic uses opcode 0x0131 UpdateItemPackagePacket (NOT 0x012E as an outdated memory note claimed; 0x012E is the event-family EventUpdatePacket). The earlier 'inv=0x012E' heuristic from the pcap-opcode-evidence pass was based on a 120-byte payload size that turned out to be event-framed inventory operations carried over the generic EventStart/EventUpdate frame per docs/client-architecture.md, '1.x combat is asymmetric'.",
-    "InventoryBeginChange (0x016d) + InventoryEndChange (0x016e) bracket atomic-batch mutations. The Begin callee (FUN_0076BAD0) sets the change state; the End callee (FUN_0076BB00) invokes the commit + fanout + ItemPackage cleanup chain. InventorySetBegin (0x0146) + InventorySetEnd (0x0147) appear to be the per-container analog of the same bracketing, but only the Begin side is consumed - again pointing to 0x0147 as a vestigial / NOP-on-client opcode."
+    "InventoryBeginChange (0x016d), InventorySetBegin (0x0146) and InventoryEndChange (0x016e) enqueue Start, PackageStart and End commands. FUN_0089BBA0 preserves queued order; package selection and deferred End publication are established in docs/bazaar-native-wire-contract.md. These shared receive paths do not establish a Bazaar command's retail reply order."
   ],
   "evidence_appendix": {
     "ghidra_dumps": [
