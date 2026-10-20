@@ -8,14 +8,22 @@
     "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
   },
   "coordinateSystem": {
-    "subpacketApplicationOffset": "0x18",
-    "description": "Application offsets are relative to the byte after the 16-byte actor wrapper and the 8-byte game-message header."
+    "subpacketApplicationOffset": "0x20",
+    "subpacketLegacyBodyOffset": "0x18",
+    "gameMessageHeaderSize": "0x10",
+    "fieldOffsetBasis": "legacy normalized body",
+    "description": "fields[].offset retains the capture matrix base at subpacket +0x18, including the final eight bytes of the 16-byte game-message header. Application fields additionally carry applicationOffset relative to subpacket +0x20; header fields have no applicationOffset. Legacy and actual body extents are labeled separately."
   },
   "framing": {
     "connectionLane": "World Chat",
     "outerFrame": "Ordinary outer frame containing an actor-wrapped game-message subpacket.",
     "gameMessageTag": "0x0014",
-    "distinction": "Raw World Chat framing does not translate tell or selected-group chat into Map opcode 0x0003."
+    "distinction": "Raw World Chat framing does not translate tell or selected-group chat into Map opcode 0x0003.",
+    "sourceRefs": [
+      "xivl-decomp:docs/net/chat-outbound-header.md;revision=62a7838e4ceb7b94250924848e1722bbbc05cd7b",
+      "xivl-decomp:docs/net/stream-pump-and-state.md#additional-state-and-object-paths;revision=163d0b1117ff1322018fe3ea0cde025f689a4764",
+      "xivl-decomp:docs/net/payload-c8-cb-consumer.md#direct-branches-at-0x004d8d10;revision=163d0b1117ff1322018fe3ea0cde025f689a4764"
+    ]
   },
   "captureAuthority": {
     "repositoryRevision": "6c667d039020b4ae34dd8ed15f558ce5cf2830b3",
@@ -37,13 +45,14 @@
       "confidence": "confirmed-static",
       "builderRecordSize": "0x230",
       "derivedSubpacketSize": "0x240",
-      "applicationBodySize": "0x228",
+      "applicationBodySize": "0x220",
       "fields": [
         {
           "offset": "0x000",
           "size": "0x008",
-          "name": "opaque_000",
-          "type": "opaque[8]"
+          "name": "game_header_tail",
+          "type": "opaque[8]",
+          "layer": "game-message-header"
         },
         {
           "offset": "0x008",
@@ -51,7 +60,9 @@
           "name": "target_name",
           "type": "char[32]",
           "producer": "client",
-          "bounds": "At most 32 copied content bytes; a NUL is not guaranteed when the field is full."
+          "bounds": "At most 32 copied content bytes; a NUL is not guaranteed when the field is full.",
+          "layer": "application",
+          "applicationOffset": "0x000"
         },
         {
           "offset": "0x028",
@@ -59,7 +70,9 @@
           "name": "message",
           "type": "char[512]",
           "producer": "client",
-          "bounds": "At most 512 copied content bytes; a NUL is not guaranteed when the field is full."
+          "bounds": "At most 512 copied content bytes; a NUL is not guaranteed when the field is full.",
+          "layer": "application",
+          "applicationOffset": "0x020"
         }
       ],
       "path": [
@@ -74,35 +87,41 @@
         "xivl-decomp:asm/ffxivgame/000df810_FUN_004df810.s#0x004DF865-0x004DF942",
         "xivl-decomp:asm/ffxivgame/000e3750_FUN_004e3750.s#0x004E3750-0x004E379C",
         "string VA 0x00FD4C04"
-      ]
+      ],
+      "legacyNormalizedBodySize": "0x228"
     },
     {
       "opcodeHex": "0x00C8",
       "channel": "tell",
       "direction": "s2c",
       "confidence": "structural",
-      "applicationBodySize": "unresolved; parser consumes through 0x227",
+      "applicationBodySize": "unresolved; tell strings use unbounded -1 copy mode",
       "fields": [
         {
           "offset": "0x000",
           "size": "0x008",
-          "name": "opaque_000",
-          "type": "opaque[8]"
+          "name": "game_header_tail",
+          "type": "opaque[8]",
+          "layer": "game-message-header"
         },
         {
           "offset": "0x008",
-          "size": "0x020",
           "name": "display_name",
-          "type": "char[32]",
+          "type": "NUL-terminated string",
           "producer": "server packet",
-          "semanticBoundary": "Client code proves only that these bytes become the displayed name, not authoritative sender identity."
+          "semanticBoundary": "Client code proves only that these bytes become the displayed name, not authoritative sender identity.",
+          "layer": "application",
+          "applicationOffset": "0x000",
+          "bounds": "The -1 assignment mode scans until NUL without a packet-length bound; fixed field read widths and complete packet extent are unproved."
         },
         {
           "offset": "0x028",
-          "size": "0x200",
           "name": "message",
-          "type": "char[512]",
-          "producer": "server packet"
+          "type": "NUL-terminated string",
+          "producer": "server packet",
+          "layer": "application",
+          "applicationOffset": "0x020",
+          "bounds": "The -1 assignment mode scans until NUL without a packet-length bound; fixed field read widths and complete packet extent are unproved."
         }
       ],
       "dispatch": {
@@ -120,7 +139,8 @@
       "locators": [
         "xivl-decomp:asm/ffxivgame/000d8d10_FUN_004d8d10.s#0x004D8D51-0x004D8DF2",
         "xivl-decomp:asm/ffxivgame/000e2670_FUN_004e2670.s#0x004E26ED-0x004E26F4"
-      ]
+      ],
+      "legacyNormalizedBodySize": "unresolved; string starts +0x008 and +0x028 do not bound reads"
     },
     {
       "opcodeHex": "0x00C9",
@@ -129,21 +149,23 @@
       "confidence": "confirmed-capture-and-static",
       "builderRecordSize": "0x218",
       "subpacketSize": "0x228",
-      "applicationBodySize": "0x210",
+      "applicationBodySize": "0x208",
       "fields": [
         {
           "offset": "0x000",
           "size": "0x004",
-          "name": "selector",
+          "name": "header_value_008",
           "type": "u32",
-          "knownValue": 10
+          "knownValue": 10,
+          "layer": "game-message-header"
         },
         {
           "offset": "0x004",
           "size": "0x004",
-          "name": "reserved_004",
+          "name": "header_reserved_00c",
           "type": "u32",
-          "knownValue": 0
+          "knownValue": 0,
+          "layer": "game-message-header"
         },
         {
           "offset": "0x008",
@@ -151,7 +173,9 @@
           "name": "selected_group_entry_token",
           "type": "u32",
           "producer": "client selected-group path",
-          "semanticBoundary": "FUN_006C0590 selects this full u32 from a Group-owned entry table. It is not proven to be an actor, party, linkshell, or sender identifier."
+          "semanticBoundary": "FUN_006C0590 selects this full u32 from a Group-owned entry table. It is not proven to be an actor, party, linkshell, or sender identifier.",
+          "layer": "application",
+          "applicationOffset": "0x000"
         },
         {
           "offset": "0x00C",
@@ -159,13 +183,17 @@
           "name": "message",
           "type": "char[512]",
           "producer": "client",
-          "bounds": "At most 512 copied content bytes; a NUL is not guaranteed when the field is full."
+          "bounds": "At most 512 copied content bytes; a NUL is not guaranteed when the field is full.",
+          "layer": "application",
+          "applicationOffset": "0x004"
         },
         {
           "offset": "0x20C",
           "size": "0x004",
           "name": "tail_opaque",
-          "type": "opaque[4]"
+          "type": "opaque[4]",
+          "layer": "application",
+          "applicationOffset": "0x204"
         }
       ],
       "path": [
@@ -179,7 +207,8 @@
         "xivl-decomp:asm/ffxivgame/000d82e0_FUN_004d82e0.s#0x004D8311-0x004D8389",
         "xivl-decomp:asm/ffxivgame/000df6d0_FUN_004df6d0.s#0x004DF722-0x004DF7B8",
         "xivl-captures:studies/world-party-chat-00c9-contract/derived/field-matrix.csv#c2s-application"
-      ]
+      ],
+      "legacyNormalizedBodySize": "0x210"
     },
     {
       "opcodeHex": "0x00C9",
@@ -187,21 +216,23 @@
       "direction": "s2c",
       "confidence": "confirmed-capture-and-static",
       "subpacketSize": "0x248",
-      "applicationBodySize": "0x230",
+      "applicationBodySize": "0x228",
       "fields": [
         {
           "offset": "0x000",
           "size": "0x004",
-          "name": "selector",
+          "name": "header_value_008",
           "type": "u32",
-          "knownValue": 10
+          "knownValue": 10,
+          "layer": "game-message-header"
         },
         {
           "offset": "0x004",
           "size": "0x004",
-          "name": "reserved_004",
+          "name": "header_reserved_00c",
           "type": "u32",
-          "knownValue": 0
+          "knownValue": 0,
+          "layer": "game-message-header"
         },
         {
           "offset": "0x008",
@@ -210,7 +241,9 @@
           "type": "u32",
           "producer": "server packet",
           "consumer": "FUN_005754E0 -> FUN_006C7B80",
-          "semanticBoundary": "FUN_006C13D0 matches the full token against a Group-record u32 vector at +0x74. A miss returns zero and drops the message. A match index selects a u16 presentation value from a secondary node range at +0x28. The token allocation domain and presentation enum remain unresolved."
+          "semanticBoundary": "FUN_006C13D0 matches the full token against a Group-record u32 vector at +0x74. A miss returns zero and drops the message. A match index selects a u16 presentation value from a secondary node range at +0x28. The token allocation domain and presentation enum remain unresolved.",
+          "layer": "application",
+          "applicationOffset": "0x000"
         },
         {
           "offset": "0x00C",
@@ -218,21 +251,27 @@
           "name": "sender_name",
           "type": "char[32]",
           "producer": "server packet",
-          "semanticBoundary": "Displayed sender name only; no second sender identity field is proven."
+          "semanticBoundary": "Displayed sender name only; no second sender identity field is proven.",
+          "layer": "application",
+          "applicationOffset": "0x004"
         },
         {
           "offset": "0x02C",
           "size": "0x200",
           "name": "message",
           "type": "char[512]",
-          "producer": "server packet"
+          "producer": "server packet",
+          "layer": "application",
+          "applicationOffset": "0x024"
         },
         {
           "offset": "0x22C",
           "size": "0x004",
           "name": "tail_zero",
           "type": "u32",
-          "knownValue": 0
+          "knownValue": 0,
+          "layer": "application",
+          "applicationOffset": "0x224"
         }
       ],
       "dispatch": {
@@ -247,7 +286,8 @@
         "xivl-decomp:asm/ffxivgame/001754e0_FUN_005754e0.s#0x005754E0-0x005754FC",
         "xivl-decomp:asm/ffxivgame/002c7b80_FUN_006c7b80.s",
         "xivl-captures:studies/world-party-chat-00c9-contract/derived/occurrences.csv#occurrences-10-34,37"
-      ]
+      ],
+      "legacyNormalizedBodySize": "0x230"
     }
   ],
   "stringContract": {
@@ -285,7 +325,7 @@
   },
   "selectedGroupTokenBoundary": {
     "status": "resolved-role-unresolved-domain",
-    "finding": "The 0x00C9 +0x08 u32 is a selected Group entry token. FUN_006C0590 reads it from a Group-owned table, FUN_006C13D0 matches it in a Group-record vector at +0x74, and the match index selects a u16 presentation value from a secondary node range at +0x28. FUN_006CBDD0 copy-constructs the +0x70 token vector for both ordinary EntryBuilder and linkshell-specific EntryLinkShellBuilder implementations.",
+    "finding": "The 0x00C9 legacy +0x08 (application +0x00) u32 is a selected Group entry token. FUN_006C0590 reads it from a Group-owned table, FUN_006C13D0 matches it in a Group-record vector at +0x74, and the match index selects a u16 presentation value from a secondary node range at +0x28. FUN_006CBDD0 copy-constructs the +0x70 token vector for both ordinary EntryBuilder and linkshell-specific EntryLinkShellBuilder implementations.",
     "notProven": [
       "actor identifier",
       "party identifier",
@@ -305,17 +345,18 @@
     ]
   },
   "linkshellBoundary": {
-    "status": "static-candidate-unresolved",
-    "finding": "The 0x00C9 send route is the literal group command route and obtains a selected Group entry token and presentation value through the Group subsystem. The ordinary EntryBuilder and linkshell-specific EntryLinkShellBuilder both construct the same +0x70 token-vector mechanism through FUN_006CBDD0. This proves mechanism compatibility, but no static edge joins the chat ExecuteParameters to a linkshell-backed Group or active-linkshell state, so player-linkshell reuse remains an unresolved candidate rather than a proven client route.",
+    "status": "static-producer-bound",
+    "finding": "DesktopWidget chatDirect mode 5 supplies MyPlayer:getCommunityGroupCurrent(20002) and one-based index 1 to MyPlayer:_chat. CharaBaseClass:getCommunityGroupCurrent reaches the native current-Group lookup through MyPlayer slot 38 and FUN_006C20C0. FUN_006E91F0 retrieves those ExecuteParameters selectors, decrements the index and supplies the selected Group to FUN_006C0590 before the same 0x00C9 emitter. This binds the active player-linkshell producer without proving a retained retail linkshell specimen, token allocation domain or server delivery policy.",
     "locators": [
       "FUN_006C0590 selected-group entry lookup",
       "FUN_006C9690 selected-group presentation-type lookup",
       "FUN_006CBFB0 EntryLinkShellBuilder construction",
       "FUN_006CC390 named-group builder path",
       "string VA 0x00FD4C0C",
-      "FUN_006E91F0 group branch at VA 0x006E9395"
+      "FUN_006E91F0 group branch at VA 0x006E9395",
+      "xivl-decomp:docs/net/wire-protocol.md#world-chat-selected-group-route;revision=553b27eff1e9c661c731b982691ead59b556a8e9"
     ],
-    "proofBoundary": "No new retail capture can be produced. Promotion would require discovery of an archived retail linkshell specimen or a static producer edge that ties the group ExecuteParameters to active-linkshell state. Testing against a reconstructed server can prove interoperability only."
+    "proofBoundary": "The promoted static producer chain establishes this client route. No retained retail linkshell specimen or retail server recipient, echo, offline, cross-zone or membership policy is established; reconstructed-server interoperability does not supply those facts."
   },
   "serverPolicyUnknowns": [
     "recipient selection",
