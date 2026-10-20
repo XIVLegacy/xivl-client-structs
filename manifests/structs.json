@@ -1578,25 +1578,27 @@
         "manifests/c2s_proposed_field_layouts.json (0x00cd)",
         "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
         "xivl-opcodes:opcodes.json",
-        "xivl-opcodes:data/decomp_opcodes.json"
+        "xivl-opcodes:data/decomp_opcodes.json",
+        "manifests/c2s_payload_decoding.json#payloadStructs.c2s_0x00cd",
+        "manifests/structs.json#BCS-S-0325"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
+          "size": "0x04",
+          "name": "actor_id",
           "type": "uint32_t",
-          "name": "targetActorHandle",
-          "evidence": "offsets 0..3: 30 unique u32 values across 118 samples; high-byte (offset 3) shows lower entropy than low bytes - consistent with 1.x actor-handle high-byte clustering (0x029b... known sample-player + a few NPC/peer ranges)"
+          "notes": "Target actor identifier written by both retained builder variants."
         },
         {
           "offset": "0x04",
-          "size": "0x4",
+          "size": "0x04",
+          "name": "attack_target",
           "type": "uint32_t",
-          "name": "targetSelectorOrKind",
-          "evidence": "offsets 4..7: 16 unique u32 values across 118 samples; cardinality matches an enum/kind field (target-type selector: actor / location / NPC sub-target etc.)"
+          "notes": "Second target-control dword written by both retained builder variants."
         }
       ],
-      "notes": "Set-target c2s; 8-byte body with target actor handle and selector. Field offsets derive from per-byte entropy analysis across 118 pcap samples (the c2s-payload-schemas pass - extension of the opcode-payload-schemas pass to opcodes with 24..118 sample counts). The 8-byte body shape with {u32, u32} fields matches the 0x18 SubPacket-size emission pattern from the Tier-D outbound scan (0x18 = 0x10 SubHdr + 0x08 GameMsgHdr-then-body is not the full frame: 0x18 = 0x10 SubHdr + 0x08 body but that excludes GameMsgHdr - actual emission shape is SubPacket(0x10) + GameMsg(0x10) + body(0x08) = 0x28 total = 40 bytes. The pcap-opcode-evidence pass subpacketSize=40 matches.)"
+      "notes": "Map serverbound 0x00cd has two target-control dwords written by both retained builder variants. The second word has no established target-kind enum domain. Application offsets exclude the 16-byte game-message prefix and the separate 16-byte actor wrapper: 8 + 16 + 16 = 40 bytes per subpacket. The builder body-size value 0x18 is a different extent, not the complete subpacket size. Original selected-sample byte statistics remain in manifests/c2s_payload_schemas.json."
     },
     {
       "id": "BCS-S-0027",
@@ -1609,25 +1611,26 @@
         "manifests/c2s_proposed_field_layouts.json (0x00cc)",
         "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
         "xivl-opcodes:opcodes.json",
-        "xivl-opcodes:data/decomp_opcodes.json"
+        "xivl-opcodes:data/decomp_opcodes.json",
+        "manifests/c2s_payload_decoding.json#payloadStructs.c2s_0x00cc"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
+          "size": "0x04",
           "type": "uint32_t",
-          "name": "targetActorHandle",
-          "evidence": "offsets 0..3: 27 unique u32 values across 66 samples; same high-byte clustering as 0x00CD"
+          "name": "actorId",
+          "notes": "Object-ID word; 0xC0000000 is the documented clear/no-target sentinel."
         },
         {
           "offset": "0x04",
-          "size": "0x4",
-          "type": "uint32_t",
-          "name": "lockKindOrTargetType",
-          "evidence": "offsets 4..7: 10 unique u32 values across 66 samples - sister of 0x00CD's selector field"
+          "size": "0x04",
+          "type": "unknown[0x04]",
+          "name": "unknownTail",
+          "notes": "Extent is established, but the retained pass did not authenticate an explicit writer, initialization coverage or semantic domain."
         }
       ],
-      "notes": "Lock-target c2s; 8-byte body mirrors the set-target shape. Field offsets derive from per-byte entropy analysis across 66 pcap samples (the c2s-payload-schemas pass - extension of the opcode-payload-schemas pass to opcodes with 24..118 sample counts). The 8-byte body shape with {u32, u32} fields matches the 0x18 SubPacket-size emission pattern from the Tier-D outbound scan (0x18 = 0x10 SubHdr + 0x08 GameMsgHdr-then-body is not the full frame: 0x18 = 0x10 SubHdr + 0x08 body but that excludes GameMsgHdr - actual emission shape is SubPacket(0x10) + GameMsg(0x10) + body(0x08) = 0x28 total = 40 bytes. The pcap-opcode-evidence pass subpacketSize=40 matches.)"
+      "notes": "Map serverbound 0x00cc has an actor-ID word and four unresolved application bytes. The promoted pass did not find an explicit trailing-word write in FUN_00561BB0. That limited observation does not establish universal noninitialization or a lock-kind enum. Application offsets exclude the 16-byte game-message prefix and the separate 16-byte actor wrapper: 8 + 16 + 16 = 40 bytes per subpacket. The builder body-size value 0x18 is a different extent, not the complete subpacket size. Original selected-sample byte statistics remain in manifests/c2s_payload_schemas.json."
     },
     {
       "id": "BCS-S-0028",
@@ -1640,25 +1643,26 @@
         "manifests/c2s_proposed_field_layouts.json (0x0007)",
         "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
         "xivl-opcodes:opcodes.json",
-        "xivl-opcodes:data/decomp_opcodes.json"
+        "xivl-opcodes:data/decomp_opcodes.json",
+        "xivl-opcodes:data/decomp_opcodes.json (Map/serverbound 0x0007)"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
+          "size": "0x04",
           "type": "uint32_t",
-          "name": "clientTimestampUnix",
-          "evidence": "offsets 0..3: 11 unique u32 values; offset 3 (MSB) is invariant 0x50 - matches Unix timestamps in the Dec 2012 capture range 0x50C66937..0x50C7XXXX. Decomp evidence (decomp_opcodes.json 0x0007): emitter writes `local_898 = timestamp` via __time64."
+          "name": "timestamp",
+          "notes": "Published builders write a __time64-derived timestamp word. This four-byte field does not establish higher precision."
         },
         {
           "offset": "0x04",
-          "size": "0x4",
+          "size": "0x04",
           "type": "uint32_t",
-          "name": "paramOrSeed",
-          "evidence": "offsets 4..7: 16 unique values; per decomp evidence the dual-site emitter writes `local_894 = param / 0xFFFFFFFF`. FUN_00586F40 uses a real param value; FUN_00586FB0 fallback path uses 0xFFFFFFFF."
+          "name": "callerWord",
+          "notes": "Published dual-site emission uses the caller value or 0xFFFFFFFF. No seed interpretation or complete value domain is established."
         }
       ],
-      "notes": "Map channel keepalive ping; 8-byte body with a Unix timestamp and param/0xFFFFFFFF. Field offsets derive from per-byte entropy analysis across 24 pcap samples (the c2s-payload-schemas pass - extension of the opcode-payload-schemas pass to opcodes with 24..118 sample counts). The 8-byte body shape with {u32, u32} fields matches the 0x18 SubPacket-size emission pattern from the Tier-D outbound scan (0x18 = 0x10 SubHdr + 0x08 GameMsgHdr-then-body is not the full frame: 0x18 = 0x10 SubHdr + 0x08 body but that excludes GameMsgHdr - actual emission shape is SubPacket(0x10) + GameMsg(0x10) + body(0x08) = 0x28 total = 40 bytes. The pcap-opcode-evidence pass subpacketSize=40 matches.)"
+      "notes": "Map serverbound 0x0007 carries a __time64-derived timestamp word and a caller word or 0xFFFFFFFF. FUN_00586F40 is gated on DAT_01338D28 == 0; FUN_00586FB0 supplies the fallback path. Keepalive and zone-completion behavior remain interpretations, not established consequences of these fields. Application offsets exclude the 16-byte game-message prefix and the separate 16-byte actor wrapper: 8 + 16 + 16 = 40 bytes per subpacket. The builder body-size value 0x18 is a different extent, not the complete subpacket size. Original selected-sample byte statistics remain in manifests/c2s_payload_schemas.json."
     },
     {
       "name": "LuaClassRegistryRecord",
