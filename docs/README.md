@@ -47,6 +47,8 @@ catalog. Machine-readable inventories and regeneration rules live under
 - [Bazaar command and item-package contract](bazaar-native-wire-contract.md) -
   request fields, settlement dependencies and
   [sign appearance](bazaar-appearance-contract.md).
+- [Widget and class native call contracts](widget-native-call-contract.md) -
+  declared Lua argument and return types, owning classes and native targets.
 - [Chocobo naming native checks](chocobo-naming-native-contract.md) -
   UTF-8 sequence counting and the first-character property used by the widget.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
