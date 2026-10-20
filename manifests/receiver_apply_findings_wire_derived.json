@@ -8,7 +8,7 @@
     "%BCS_GHIDRA_PROJECTS%\\eec00_decomp.txt"
   ],
   "scope": "the 7 receivers from the inbound payload schemas pass with wire-derived BCS-S-0019..0025 struct entries",
-  "summary": "Paired each receiver struct from the inbound payload schemas pass with its Receive() apply method (slot 1 for 6 of 7 receivers; slot 2 for the 5-slot ChangeActorSubStatStatus). Decomped both the Receive and its direct helper. The 7 receivers split into 3 patterns: (1) Direct CharaBase sub-struct writers (0x013D writes CharaBase+0x60[0/0x58/0x59]; 0x0144 writes CharaBase+0xDC+0x18; 0x0145 writes CharaBase+0xDC+0x10 and bit-fires _onChangeNetStat*). (2) Indirect via vtable / lookup (0x0136 SetEventStatus does a vtable[9] call on a looked-up state object; 0x0137 SyncMemory updates a separate sync-cache via FUN_00775A30; 0x0179 ChangeActorSubStatStatus is gated through a 5-slot pattern and routes via FUN_00707D60 at depth 4). (3) Direct field write to known offset (0x017B writes target+0x5d already recorded in data_dependency_catalog from BCS-Y-0278). The header-only-delta hypothesis from the inbound payload schemas pass is CONFIRMED for 0x0179 (wire body all-zero; meaningful state comes from header src + opcode) while 0x017B consumes an application byte: its 30 selected zero-valued samples do not establish a header-only update or required-zero field.",
+  "summary": "Paired each receiver struct from the inbound payload schemas pass with its Receive() apply method (slot 1 for 6 of 7 receivers; slot 2 for the 5-slot ChangeActorSubStatStatus). Decomped both the Receive and its direct helper. The 7 receivers split into 3 patterns: (1) Direct CharaBase sub-struct writers (0x013D writes CharaBase+0x60[0/0x58/0x59]; 0x0144 writes CharaBase+0xDC+0x18; 0x0145 writes CharaBase+0xDC+0x10 and bit-fires _onChangeNetStat*). (2) Indirect via vtable / lookup (0x0136 SetEventStatus does a vtable[9] call on a looked-up state object; 0x0137 SyncMemory updates a separate sync-cache via FUN_00775A30; 0x0179 ChangeActorSubStatStatus is gated through a 5-slot pattern and routes via FUN_00707D60 at depth 4). (3) Direct field write to known offset (0x017B writes target+0x5d already recorded in data_dependency_catalog from BCS-Y-0278). The 0x0179 application is twenty u16 values; its internal receiver byte at +0x14 is not a wire offset, and zero observations do not establish padding or a header-only update. Separately, 0x017B consumes an application byte: its 30 selected zero-valued samples do not establish a header-only update or required-zero field.",
   "newActorWrites": [
     {
       "opcode": "0x013d",
@@ -253,7 +253,7 @@
       "rttiCastVa": "Receive (slot 2): LuaControl -> StatusBase; slot 3 dispatcher (FUN_008A3630): LuaControl -> CharaBase",
       "applyHelperVa": "0x008A3630 (slot 3) -> 0x007084B0 -> FUN_006EEC00 + FUN_00707D60",
       "applyHelperBytes": 133,
-      "applyHelperBehavior": "Slot 2 (Receive) only does gating and caches a StatusBase pointer at receiver+0x10 via RTTI cast on the secondary actor. Slot 3 (dispatcher FUN_008A3630) reads receiver+0x14 (sub_stat_enum byte) and receiver+0x10 (cached_primary) and calls FUN_007084B0(target, this+0x14-byte, this+0x10-ptr, 1). FUN_007084B0 is a 36-byte thunk that calls FUN_006EEC00 (lazy +0xDC sub-struct accessor) then FUN_00707D60 (588B worker). FUN_00707D60 reads the dynamic SubStat array at sub_struct+0x04 (array_base ptr) / +0x08 (array_end ptr), indexes via sub_stat_enum*4, and if the indexed slot's u32 != new value, writes the new value into that slot AND fires _onChangeSubStatStatus via FUN_00447260 + FUN_00CC7A90. A follow-up decomp to the receiver apply findings pass closes the depth-4 chain.",
+      "applyHelperBehavior": "The following offsets describe a constructed System receiver, not wire-application fields. Slot 2 (Receive) only does gating and caches a StatusBase pointer at receiver+0x10 via RTTI cast on the secondary actor. Slot 3 (dispatcher FUN_008A3630) reads receiver+0x14 (sub_stat_enum byte) and receiver+0x10 (cached_primary) and calls FUN_007084B0(target, this+0x14-byte, this+0x10-ptr, 1). FUN_007084B0 is a 36-byte thunk that calls FUN_006EEC00 (lazy +0xDC sub-struct accessor) then FUN_00707D60 (588B worker). FUN_00707D60 reads the dynamic SubStat array at sub_struct+0x04 (array_base ptr) / +0x08 (array_end ptr), indexes via sub_stat_enum*4, and if the indexed slot's u32 != new value, writes the new value into that slot AND fires _onChangeSubStatStatus via FUN_00447260 + FUN_00CC7A90. A follow-up decomp to the receiver apply findings pass closes the depth-4 chain.",
       "actorWrites": [
         {
           "actorClass": "CharaBase",
@@ -275,8 +275,9 @@
           "bridgeStatus": "NEW direct binding candidate: 0x0179 -> _onChangeSubStatStatus. Previously the bridge had no opcode binding for _onChangeSubStatStatus despite the name appearing in lua_api_index (LuaCallbackNameHarvest notes)."
         }
       ],
-      "headerOnlyDeltaHypothesis": "CONFIRMED - wire body is all-zero across 30 samples; receiver+0x10 cached_primary is populated by RTTI lookup on secondary-actor at receiver+0x0C (set up by the receiver ctor, NOT from wire bytes); receiver+0x14 sub_stat_enum byte = 0 (from wire offset 0x14 which IS zero)",
-      "wireDeltaConfirmed": true
+      "headerOnlyDeltaHypothesis": "The twenty-u16 application and its ordered native staging loop refute a header-only interpretation. The 30 selected zero samples are not the separate 55-record pinned product, which includes one nonzero status identifier. Receiver+0x14 is an internal slot byte, not an application offset. xivl-decomp:docs/net/status-snapshot-input.md",
+      "wireDeltaConfirmed": true,
+      "clientContract": "xivl-decomp:docs/net/status-snapshot-input.md"
     },
     "0x017b": {
       "receiverName": "ChangeShadowActorFlagReceiver",
@@ -304,9 +305,7 @@
       "clientContract": "xivl-decomp:docs/net/shadow-flag-state.md"
     }
   },
-  "headerOnlyDeltaConfirmedFor": [
-    "0x0179"
-  ],
+  "headerOnlyDeltaConfirmedFor": [],
   "openQuestions": [],
   "closedQuestions": [
     "FUN_006EEC00's ECX-passed 'this' callsite verification - CLOSED. Manual assembly read via Ghidra DumpFunctionListing.java confirms ECX = CharaBase ptr (from RTTI cast in Receive methods) is preserved through both helper functions (FUN_006EECB0 saves via MOV ESI,ECX; FUN_006FA980 saves via MOV EDI,ECX) and used as 'this' by FUN_006EEC00 (which executes MOV EDI,ECX then MOV EAX,[EDI+0xdc] to access the sub-struct). 0x0144 and 0x0145 field-write claims promoted from medium to high confidence.",

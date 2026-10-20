@@ -1601,18 +1601,21 @@
         "manifests/inbound_payload_schemas.json (0x0179)",
         "manifests/inbound_proposed_field_layouts.json (0x0179)",
         "manifests/receiver_opcode_map_inbound.json",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/s2c_payload_decoding_lua_bound.json",
+        "manifests/fun_0058cca0_walk.json",
+        "xivl-decomp:docs/net/status-snapshot-input.md"
       ],
       "fields": [
         {
           "offset": "0x00",
           "size": "0x28",
-          "type": "uint8_t[40]",
-          "name": "reservedPad",
-          "evidence": "all 40 bytes invariant zero across all 30 samples; receiver's meaningful state is in the GameMessage header, not the body"
+          "type": "uint16_t[20]",
+          "name": "statusIds",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0179 and the original case at 0x0058D488 establish twenty ordered u16 application values; xivl-decomp:docs/net/status-snapshot-input.md"
         }
       ],
-      "notes": "ChangeActorSubStatStatusReceiver wire payload; entirely zero 40-byte body. Actor delta via header. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeActorSubStatStatusReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+      "notes": "Forty-byte application after the 16-byte game-message header, consumed as twenty u16 values at offsets 2*i for i=0..19. The native case submits every value and index to one local staging record before forwarding. The old 30-sample selection is zero; the separate 55-record pinned sample product includes 0x5ADF at slot 0 in one record. These are distinct denominators. Internal System-receiver offset +0x14 is a constructed slot byte, not a wire-payload field. Identifier meanings, status causality, server policy and visible outcomes are not established by the input loop. xivl-decomp:docs/net/status-snapshot-input.md"
     },
     {
       "id": "BCS-S-0024",
