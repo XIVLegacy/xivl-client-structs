@@ -1624,18 +1624,28 @@
         "manifests/inbound_payload_schemas.json (0x017b)",
         "manifests/inbound_proposed_field_layouts.json (0x017b)",
         "manifests/receiver_opcode_map_inbound.json",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/s2c_payload_decoding_mapped.json",
+        "xivl-decomp:docs/net/shadow-flag-state.md",
+        "manifests/pattern_d_subdispatcher.json"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x8",
-          "type": "uint8_t[8]",
-          "name": "reservedPad",
-          "evidence": "all 8 bytes invariant zero across all 30 samples; receiver's meaningful state is in the GameMessage header, not the body"
+          "size": "0x1",
+          "type": "uint8_t",
+          "name": "shadowActorFlag",
+          "evidence": "manifests/pattern_d_subdispatcher.json case 0x17B and BCS-Y-0606 bind game-message+0x10/application+0 to the u8 forwarded through slot 89; BCS-Y-0944/1814 supply the conditional receiver store. xivl-decomp:docs/net/shadow-flag-state.md"
+        },
+        {
+          "offset": "0x01",
+          "size": "0x7",
+          "type": "uint8_t[7]",
+          "name": "unknown_01",
+          "evidence": "Zero in 30 selected samples; the remaining seven bytes have no established meaning or required value in the published receive contract."
         }
       ],
-      "notes": "ChangeShadowActorFlagReceiver wire payload; entirely zero 8-byte body. Actor delta via header. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeShadowActorFlagReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+      "notes": "Eight-byte application payload after the 16-byte game-message header. Byte 0 is consumed as a full u8 and stored at target+0x5D; changed values invoke target virtual slot 31. The 30 selected samples are zero, which does not prove unused padding, boolean-only input or a header-only update. The remaining seven bytes, dynamic callback target and visible effect remain unresolved. xivl-decomp:docs/net/shadow-flag-state.md"
     },
     {
       "id": "BCS-S-0025",

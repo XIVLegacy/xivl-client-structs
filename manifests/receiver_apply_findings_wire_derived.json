@@ -8,7 +8,7 @@
     "%BCS_GHIDRA_PROJECTS%\\eec00_decomp.txt"
   ],
   "scope": "the 7 receivers from the inbound payload schemas pass with wire-derived BCS-S-0019..0025 struct entries",
-  "summary": "Paired each receiver struct from the inbound payload schemas pass with its Receive() apply method (slot 1 for 6 of 7 receivers; slot 2 for the 5-slot ChangeActorSubStatStatus). Decomped both the Receive and its direct helper. The 7 receivers split into 3 patterns: (1) Direct CharaBase sub-struct writers (0x013D writes CharaBase+0x60[0/0x58/0x59]; 0x0144 writes CharaBase+0xDC+0x18; 0x0145 writes CharaBase+0xDC+0x10 and bit-fires _onChangeNetStat*). (2) Indirect via vtable / lookup (0x0136 SetEventStatus does a vtable[9] call on a looked-up state object; 0x0137 SyncMemory updates a separate sync-cache via FUN_00775A30; 0x0179 ChangeActorSubStatStatus is gated through a 5-slot pattern and routes via FUN_00707D60 at depth 4). (3) Direct field write to known offset (0x017B writes target+0x5d already recorded in data_dependency_catalog from BCS-Y-0278). The header-only-delta hypothesis from the inbound payload schemas pass is CONFIRMED for 0x0179 (wire body all-zero; meaningful state comes from header src + opcode) and 0x017B (wire byte always 0; the write is effectively a 'clear flag' triggered by header).",
+  "summary": "Paired each receiver struct from the inbound payload schemas pass with its Receive() apply method (slot 1 for 6 of 7 receivers; slot 2 for the 5-slot ChangeActorSubStatStatus). Decomped both the Receive and its direct helper. The 7 receivers split into 3 patterns: (1) Direct CharaBase sub-struct writers (0x013D writes CharaBase+0x60[0/0x58/0x59]; 0x0144 writes CharaBase+0xDC+0x18; 0x0145 writes CharaBase+0xDC+0x10 and bit-fires _onChangeNetStat*). (2) Indirect via vtable / lookup (0x0136 SetEventStatus does a vtable[9] call on a looked-up state object; 0x0137 SyncMemory updates a separate sync-cache via FUN_00775A30; 0x0179 ChangeActorSubStatStatus is gated through a 5-slot pattern and routes via FUN_00707D60 at depth 4). (3) Direct field write to known offset (0x017B writes target+0x5d already recorded in data_dependency_catalog from BCS-Y-0278). The header-only-delta hypothesis from the inbound payload schemas pass is CONFIRMED for 0x0179 (wire body all-zero; meaningful state comes from header src + opcode) while 0x017B consumes an application byte: its 30 selected zero-valued samples do not establish a header-only update or required-zero field.",
   "newActorWrites": [
     {
       "opcode": "0x013d",
@@ -286,7 +286,7 @@
       "targetActorClass": "(no RTTI cast - just dereferences vtable)",
       "applyHelperVa": "0x006DBE50",
       "applyHelperBytes": 39,
-      "applyHelperBehavior": "Reads current flag at target+0x5d, writes new value (always 0 in corpus since the wire body is all-zero), then if the value changed calls vtable[31] (offset +0x7c) on the target object to fire the on-change side-effect. No Lua callback fires directly here.",
+      "applyHelperBehavior": "Reads current flag at target+0x5D, stores the supplied full u8, and invokes target vtable slot 31 at +0x7C only when the value changes. The 30 selected samples supply zero; this observation is not a boolean-only or required-zero constraint. No Lua callback fires directly in this forwarding contract.",
       "actorWrites": [
         {
           "actorClass": "CharaBase",
@@ -299,13 +299,13 @@
         }
       ],
       "luaCallbacksFired": [],
-      "headerOnlyDeltaHypothesis": "CONFIRMED - wire body is all-zero across 30 samples; the byte WRITTEN to target+0x5d is always 0 (effectively a 'clear shadow flag' operation triggered by the opcode itself + actor ID from header)",
-      "wireDeltaConfirmed": true
+      "headerOnlyDeltaHypothesis": "The published application-byte forwarding contract refutes a header-only interpretation. Zero is the observed value in the 30 selected samples, not an opcode-only clear operation.",
+      "wireDeltaConfirmed": true,
+      "clientContract": "xivl-decomp:docs/net/shadow-flag-state.md"
     }
   },
   "headerOnlyDeltaConfirmedFor": [
-    "0x0179",
-    "0x017b"
+    "0x0179"
   ],
   "openQuestions": [],
   "closedQuestions": [

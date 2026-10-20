@@ -212,7 +212,7 @@
       "receiverName": "ChangeShadowActorFlagReceiver",
       "innerLen": 8,
       "sampleCount": 30,
-      "blurb": "Shadow actor flag change. 8-byte body is ENTIRELY invariant zero across all 30 samples - same header-only delta pattern as 0x0179.",
+      "blurb": "The 30 selected eight-byte applications are zero, but the published native contract consumes byte 0 as a u8 shadow flag. Constant samples do not establish unused padding or a required-zero field.",
       "scenarios": {
         "party_battle_leve": 24,
         "gridania_to_coerthas": 5,
@@ -222,12 +222,20 @@
       "proposedFieldLayout": [
         {
           "off": 0,
-          "size": 8,
-          "type": "uint8_t[8]",
-          "role": "reservedPad",
-          "value": "all 8 bytes invariant zero across all 30 samples; receiver's meaningful state is in the GameMessage header, not the body"
+          "size": 1,
+          "type": "uint8_t",
+          "role": "shadowActorFlag",
+          "value": "Zero in the 30 selected samples; published receive contract forwards application byte 0 to target+0x5D, storing the full byte and calling slot 31 only on change."
+        },
+        {
+          "off": 1,
+          "size": 7,
+          "type": "uint8_t[7]",
+          "role": "unresolvedTail",
+          "value": "Zero in the 30 selected samples; no meaning or required value established by the published field-forwarding contract."
         }
-      ]
+      ],
+      "clientContract": "xivl-decomp:docs/net/shadow-flag-state.md"
     },
     {
       "opcodeHex": "0x013d",
