@@ -1418,46 +1418,29 @@
         "manifests/inbound_payload_schemas.json (0x0137)",
         "manifests/inbound_proposed_field_layouts.json (0x0137)",
         "manifests/receiver_opcode_map_inbound.json",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/structs.json#BCS-S-0331",
+        "manifests/s2c_payload_decoding_mapped.json#batches.2.payloadStructs.s2c_0x0137"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x2",
-          "type": "uint16_t",
-          "name": "syncBlockTag",
-          "evidence": "offsets 0..1: medium+low entropy (21 / 3 unique values across 79 samples); likely a block-id + sub-id tag pair"
+          "size": "0x01",
+          "name": "running_byte_total",
+          "type": "uint8_t",
+          "notes": "Number of valid bytes in the following property stream.",
+          "evidence": "manifests/s2c_payload_decoding_mapped.json#batches.2.payloadStructs.s2c_0x0137"
         },
         {
-          "offset": "0x02",
-          "size": "0x4",
-          "type": "uint32_t",
-          "name": "syncSequenceOrActorRef",
-          "evidence": "offsets 2..5: medium entropy (12-13 unique values), 4 of which dominate the corpus (~42% each); pair of u16 IDs or one u32 actor handle"
-        },
-        {
-          "offset": "0x06",
-          "size": "0x2",
-          "type": "uint16_t",
-          "name": "syncSelectorHigh",
-          "evidence": "offset 6: high entropy (48 unique values); the highest-variance byte in the body - candidate for an actor or session ID component"
-        },
-        {
-          "offset": "0x08",
-          "size": "0x56",
-          "type": "uint8_t[86]",
-          "name": "syncStateBlock",
-          "evidence": "offsets 8..93: medium-to-low entropy data block; layout is opaque without receiver-decomp byte-by-byte cross-correlation"
-        },
-        {
-          "offset": "0x5e",
-          "size": "0x2a",
-          "type": "uint8_t[42]",
-          "name": "reservedPad",
-          "evidence": "offsets 94..135: invariant zero across all 79 samples; reserved padding"
+          "offset": "0x01",
+          "size": "0x87",
+          "name": "property_stream",
+          "type": "uint8_t[135]",
+          "notes": "Fixed-capacity variable property stream containing tags, property identifiers, values, and target markers.",
+          "evidence": "manifests/s2c_payload_decoding_mapped.json#batches.2.payloadStructs.s2c_0x0137"
         }
       ],
-      "notes": "SyncMemoryReceiver wire payload; 94-byte sync state block + 42-byte zero pad. Field offsets and types derived from per-byte entropy analysis across 79 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = SyncMemoryReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+      "notes": "The 136-byte application contains a running valid-byte count followed by a 135-byte property-stream capacity. A zero suffix in the selected samples does not establish a fixed padding boundary. No fixed property-record schema or count validation is implied. Offsets exclude the 16-byte game-message prefix. Selected-sample statistics remain in manifests/inbound_payload_schemas.json#schemas.0x0137; they do not establish semantic roles or required zeros."
     },
     {
       "id": "BCS-S-0020",
@@ -1469,53 +1452,37 @@
         "manifests/inbound_payload_schemas.json (0x0136)",
         "manifests/inbound_proposed_field_layouts.json (0x0136)",
         "manifests/receiver_opcode_map_inbound.json",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/structs.json#BCS-S-0273",
+        "manifests/s2c_payload_decoding_mapped.json#batches.0.payloadStructs.s2c_0x0136"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x1",
-          "type": "uint8_t",
-          "name": "eventStatusKind",
-          "evidence": "offset 0: low entropy (few discrete status kind values)"
-        },
-        {
-          "offset": "0x01",
-          "size": "0x3",
-          "type": "uint8_t[3]",
-          "name": "pad1",
-          "evidence": "offsets 1..3: invariant zero across all 43 samples"
+          "size": "0x04",
+          "name": "enabled",
+          "type": "uint32_t",
+          "notes": "Four-byte enabled state; retained evidence rules out a byte-sized representation.",
+          "evidence": "manifests/s2c_payload_decoding_mapped.json#batches.0.payloadStructs.s2c_0x0136"
         },
         {
           "offset": "0x04",
-          "size": "0xf",
-          "type": "uint8_t[15]",
-          "name": "eventMetadataBlock",
-          "evidence": "offsets 4..18: low entropy data block carrying per-event metadata (event ID, scene ID, conditions)"
-        },
-        {
-          "offset": "0x13",
-          "size": "0x12",
-          "type": "uint8_t[18]",
-          "name": "pad2",
-          "evidence": "offsets 19..36: invariant zero across all 43 samples"
-        },
-        {
-          "offset": "0x25",
-          "size": "0x1",
+          "size": "0x01",
+          "name": "condition_type",
           "type": "uint8_t",
-          "name": "trailingSelector",
-          "evidence": "offset 37: high entropy (48 unique values) - candidate for a trailing selector / index"
+          "notes": "Condition selector with retained values 1 talk, 2 push, 3 emote, and 5 notice.",
+          "evidence": "manifests/s2c_payload_decoding_mapped.json#batches.0.payloadStructs.s2c_0x0136"
         },
         {
-          "offset": "0x26",
-          "size": "0x2",
-          "type": "uint8_t[2]",
-          "name": "trailingMetadata",
-          "evidence": "offsets 38..39: medium entropy; paired with offset 37"
+          "offset": "0x05",
+          "size": "0x23",
+          "name": "condition_name",
+          "type": "char[35]",
+          "notes": "Condition-name storage occupying the exact physical payload remainder.",
+          "evidence": "manifests/s2c_payload_decoding_mapped.json#batches.0.payloadStructs.s2c_0x0136"
         }
       ],
-      "notes": "SetEventStatusReceiver wire payload; status kind + event metadata block with two zero-padding gaps. Field offsets and types derived from per-byte entropy analysis across 43 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = SetEventStatusReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+      "notes": "The 40-byte application contains a u32 enabled word, a byte condition selector, and 35 bytes of condition-name storage. Selected zero bytes within those fields do not establish padding or a byte-sized enabled representation. This geometry does not establish a broader selector domain or string-validation policy. Offsets exclude the 16-byte game-message prefix. Selected-sample statistics remain in manifests/inbound_payload_schemas.json#schemas.0x0136; they do not establish semantic roles or required zeros."
     },
     {
       "id": "BCS-S-0021",
@@ -1527,39 +1494,70 @@
         "manifests/inbound_payload_schemas.json (0x0144)",
         "manifests/inbound_proposed_field_layouts.json (0x0144)",
         "manifests/receiver_opcode_map_inbound.json",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/structs.json#BCS-S-0282",
+        "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144",
+        "xivl-opcodes:data/client_opcode_semantics.json#s2c-0144"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x1",
+          "size": "0x01",
+          "name": "breakage",
           "type": "uint8_t",
-          "name": "pad1",
-          "evidence": "offset 0: invariant zero across all 36 samples"
+          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
           "offset": "0x01",
-          "size": "0x3",
-          "type": "uint8_t[3]",
-          "name": "modeBlock",
-          "evidence": "offsets 1..3: low entropy mode bytes (sub-stat mode set)"
+          "size": "0x01",
+          "name": "chant_id",
+          "type": "uint8_t",
+          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
+        },
+        {
+          "offset": "0x02",
+          "size": "0x01",
+          "name": "guard",
+          "type": "uint8_t",
+          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
+        },
+        {
+          "offset": "0x03",
+          "size": "0x01",
+          "name": "waste",
+          "type": "uint8_t",
+          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
           "offset": "0x04",
-          "size": "0x2",
-          "type": "uint8_t[2]",
-          "name": "pad2",
-          "evidence": "offsets 4..5: invariant zero across all 36 samples"
+          "size": "0x01",
+          "name": "mode",
+          "type": "uint8_t",
+          "notes": "Sub-stat mode or border value written into the actor sub-state record by the receiver path.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
+        },
+        {
+          "offset": "0x05",
+          "size": "0x01",
+          "name": "unknown_05",
+          "type": "unknown[0x01]",
+          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
           "offset": "0x06",
-          "size": "0x2",
-          "type": "uint8_t[2]",
-          "name": "borderBlock",
-          "evidence": "offsets 6..7: low entropy border values"
+          "size": "0x02",
+          "name": "motion_pack",
+          "type": "uint16_t",
+          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         }
       ],
-      "notes": "ChangeActorSubStatModeBorderReceiver wire payload; compact 8-byte mode + border with two pad bytes. Field offsets and types derived from per-byte entropy analysis across 36 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeActorSubStatModeBorderReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+      "notes": "The eight-byte application retains seven contiguous structural members. The published receiver consumes only the mode byte at offset 4 on this route. Its zero-valued samples do not make it padding. Other retained labels, including chant_id at offset 1, do not establish enum values, effects, or a write to status-word bits 8..15. Offsets exclude the 16-byte game-message prefix. Selected-sample statistics remain in manifests/inbound_payload_schemas.json#schemas.0x0144; they do not establish semantic roles or required zeros."
     },
     {
       "id": "BCS-S-0022",
@@ -1571,25 +1569,29 @@
         "manifests/inbound_payload_schemas.json (0x0145)",
         "manifests/inbound_proposed_field_layouts.json (0x0145)",
         "manifests/receiver_opcode_map_inbound.json",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/structs.json#BCS-S-0283",
+        "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0145"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x1",
-          "type": "uint8_t",
-          "name": "extraStatKind",
-          "evidence": "offset 0: low entropy (small set of stat-kind values)"
+          "size": "0x04",
+          "name": "icon_code",
+          "type": "uint32_t",
+          "notes": "Leading packed u32 consumed by the receiver and stored through its apply helper. Individual bit meanings are outside this geometry reconciliation.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0145"
         },
         {
-          "offset": "0x01",
-          "size": "0x7",
-          "type": "uint8_t[7]",
-          "name": "reservedPad",
-          "evidence": "offsets 1..7: invariant zero across all 30 samples"
+          "offset": "0x04",
+          "size": "0x04",
+          "name": "unknown_04",
+          "type": "unknown[0x04]",
+          "notes": "Closing payload span not interpreted by the documented receiver path.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0145"
         }
       ],
-      "notes": "ChangeActorExtraStatReceiver wire payload; 1-byte stat-kind + 7-byte zero pad. Actor delta via header. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = ChangeActorExtraStatReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+      "notes": "The eight-byte application contains a consumed u32 scalar at offset 0 and an uninterpreted four-byte tail at offset 4. Zero high bytes in selected samples do not reduce the scalar to a one-byte kind. This field reconciliation does not establish individual bit names or a required tail value. Offsets exclude the 16-byte game-message prefix. Selected-sample statistics remain in manifests/inbound_payload_schemas.json#schemas.0x0145; they do not establish semantic roles or required zeros."
     },
     {
       "id": "BCS-S-0023",
@@ -1660,25 +1662,46 @@
         "manifests/inbound_payload_schemas.json (0x013d)",
         "manifests/inbound_proposed_field_layouts.json (0x013d)",
         "manifests/receiver_opcode_map_inbound.json",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/structs.json#BCS-S-0288",
+        "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x013d",
+        "manifests/bundled_small_client_receivers.json#receivers.s2c_0x013d"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x3",
-          "type": "uint8_t[3]",
-          "name": "displayNameSelector",
-          "evidence": "offsets 0..2: medium entropy (likely a 2-3 byte name-table index / kind)"
+          "size": "0x04",
+          "name": "display_name_id",
+          "type": "uint32_t",
+          "notes": "Display-name identifier; the receiver normalizes zero to the no-id sentinel before storage.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x013d"
         },
         {
-          "offset": "0x03",
-          "size": "0x25",
-          "type": "uint8_t[37]",
-          "name": "reservedPad",
-          "evidence": "offsets 3..39: invariant zero across all 30 samples"
+          "offset": "0x04",
+          "size": "0x20",
+          "name": "custom_name",
+          "type": "char[32]",
+          "notes": "Fixed custom-name area copied in full before the receiver constructs its string state.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x013d"
+        },
+        {
+          "offset": "0x24",
+          "size": "0x01",
+          "name": "display_name_kind",
+          "type": "uint8_t",
+          "notes": "Raw low byte at application +0x24 is stored unchanged; the narrow sex-versus-display-name-kind interpretation remains unresolved.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x013d"
+        },
+        {
+          "offset": "0x25",
+          "size": "0x03",
+          "name": "unknown_25",
+          "type": "unknown[0x03]",
+          "notes": "Closing payload span not interpreted by the documented receiver path.",
+          "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x013d"
         }
       ],
-      "notes": "SetDisplayNameReceiver wire payload; 3-byte name-table selector + 37-byte zero pad. Field offsets and types derived from per-byte entropy analysis across 30 pcap samples in the 54-scenario corpus (the inbound-payload-schemas pass mirror of the opcode-payload-schemas pass on the s2c side). Receiver class = SetDisplayNameReceiver per receiver_opcode_map_inbound.json. Per the standard 1.x receiver convention, the actor that the delta applies to is carried via the GameMessage header src/tgt fields, NOT inside this body. Role labels for varying fields are inference grounded in entropy buckets (invariant -> constant/pad; low -> mode/kind; medium -> small ID; high -> selector/actor handle)."
+      "notes": "The 40-byte application contains a u32 display-name ID, a fixed 32-byte custom-name area, a consumed raw byte at offset 36, and three uninterpreted trailing bytes. The raw byte is stored unchanged; its narrow sex-versus-name-kind meaning remains unresolved. Zero selected name bytes do not establish an absent buffer or padding. Offsets exclude the 16-byte game-message prefix. Selected-sample statistics remain in manifests/inbound_payload_schemas.json#schemas.0x013d; they do not establish semantic roles or required zeros."
     },
     {
       "id": "BCS-S-0026",

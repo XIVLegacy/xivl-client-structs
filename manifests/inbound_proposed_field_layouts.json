@@ -3,14 +3,14 @@
   "gameVersion": "1.23b",
   "pass": "layouts",
   "source": "manifests/inbound_payload_schemas.json + manifests/receiver_opcode_map_inbound.json",
-  "method": "Hand-curated semantic field layouts grounded in (a) per-byte entropy buckets from inbound_payload_schemas.json, (b) receiver class names from receiver_opcode_map_inbound.json, (c) the standard 1.x receiver convention (actor delta arrives via GameMessage header src/tgt fields, body holds receiver-specific data and zero padding). Field sizes sum exactly to the innerLen of each opcode.",
+  "method": "Application offsets exclude the 16-byte game-message prefix. Each entry links its promoted clientContract for field geometry; structural names retain that contract's semantic limits. Selected-sample counts, scenarios and byte statistics remain observations in inbound_payload_schemas.json, not proof of padding, required zeros or field meaning. Field sizes sum exactly to each innerLen.",
   "opcodeLayouts": [
     {
       "opcodeHex": "0x0137",
       "receiverName": "SyncMemoryReceiver",
       "innerLen": 136,
       "sampleCount": 79,
-      "blurb": "Bulk actor state sync. 94 bytes of varying state followed by 42 bytes of zero padding.",
+      "blurb": "The 136-byte application contains a running valid-byte count followed by a 135-byte property-stream capacity. A zero suffix in the selected samples does not establish a fixed padding boundary. No fixed property-record schema or count validation is implied.",
       "scenarios": {
         "party_battle_leve": 72,
         "gridania_to_coerthas": 5,
@@ -21,47 +21,27 @@
       "proposedFieldLayout": [
         {
           "off": 0,
-          "size": 2,
-          "type": "uint16_t",
-          "role": "syncBlockTag",
-          "value": "offsets 0..1: medium+low entropy (21 / 3 unique values across 79 samples); likely a block-id + sub-id tag pair"
+          "size": 1,
+          "type": "uint8_t",
+          "role": "running_byte_total",
+          "value": "Number of valid bytes in the following property stream."
         },
         {
-          "off": 2,
-          "size": 4,
-          "type": "uint32_t",
-          "role": "syncSequenceOrActorRef",
-          "value": "offsets 2..5: medium entropy (12-13 unique values), 4 of which dominate the corpus (~42% each); pair of u16 IDs or one u32 actor handle"
-        },
-        {
-          "off": 6,
-          "size": 2,
-          "type": "uint16_t",
-          "role": "syncSelectorHigh",
-          "value": "offset 6: high entropy (48 unique values); the highest-variance byte in the body - candidate for an actor or session ID component"
-        },
-        {
-          "off": 8,
-          "size": 86,
-          "type": "uint8_t[86]",
-          "role": "syncStateBlock",
-          "value": "offsets 8..93: medium-to-low entropy data block; layout is opaque without receiver-decomp byte-by-byte cross-correlation"
-        },
-        {
-          "off": 94,
-          "size": 42,
-          "type": "uint8_t[42]",
-          "role": "reservedPad",
-          "value": "offsets 94..135: invariant zero across all 79 samples; reserved padding"
+          "off": 1,
+          "size": 135,
+          "type": "uint8_t[135]",
+          "role": "property_stream",
+          "value": "Fixed-capacity variable property stream containing tags, property identifiers, values, and target markers."
         }
-      ]
+      ],
+      "clientContract": "manifests/s2c_payload_decoding_mapped.json#batches.2.payloadStructs.s2c_0x0137"
     },
     {
       "opcodeHex": "0x0136",
       "receiverName": "SetEventStatusReceiver",
       "innerLen": 40,
       "sampleCount": 43,
-      "blurb": "Sets event status on an actor. 1 status byte + 3 pad + ~15 bytes of event metadata + 18 pad + 3 bytes of trailing varying data.",
+      "blurb": "The 40-byte application contains a u32 enabled word, a byte condition selector, and 35 bytes of condition-name storage. Selected zero bytes within those fields do not establish padding or a byte-sized enabled representation. This geometry does not establish a broader selector domain or string-validation policy.",
       "scenarios": {
         "party_battle_leve": 35,
         "gridania_to_coerthas": 5,
@@ -71,54 +51,34 @@
       "proposedFieldLayout": [
         {
           "off": 0,
-          "size": 1,
-          "type": "uint8_t",
-          "role": "eventStatusKind",
-          "value": "offset 0: low entropy (few discrete status kind values)"
-        },
-        {
-          "off": 1,
-          "size": 3,
-          "type": "uint8_t[3]",
-          "role": "pad1",
-          "value": "offsets 1..3: invariant zero across all 43 samples"
+          "size": 4,
+          "type": "uint32_t",
+          "role": "enabled",
+          "value": "Four-byte enabled state; retained evidence rules out a byte-sized representation."
         },
         {
           "off": 4,
-          "size": 15,
-          "type": "uint8_t[15]",
-          "role": "eventMetadataBlock",
-          "value": "offsets 4..18: low entropy data block carrying per-event metadata (event ID, scene ID, conditions)"
-        },
-        {
-          "off": 19,
-          "size": 18,
-          "type": "uint8_t[18]",
-          "role": "pad2",
-          "value": "offsets 19..36: invariant zero across all 43 samples"
-        },
-        {
-          "off": 37,
           "size": 1,
           "type": "uint8_t",
-          "role": "trailingSelector",
-          "value": "offset 37: high entropy (48 unique values) - candidate for a trailing selector / index"
+          "role": "condition_type",
+          "value": "Condition selector with retained values 1 talk, 2 push, 3 emote, and 5 notice."
         },
         {
-          "off": 38,
-          "size": 2,
-          "type": "uint8_t[2]",
-          "role": "trailingMetadata",
-          "value": "offsets 38..39: medium entropy; paired with offset 37"
+          "off": 5,
+          "size": 35,
+          "type": "char[35]",
+          "role": "condition_name",
+          "value": "Condition-name storage occupying the exact physical payload remainder."
         }
-      ]
+      ],
+      "clientContract": "manifests/s2c_payload_decoding_mapped.json#batches.0.payloadStructs.s2c_0x0136"
     },
     {
       "opcodeHex": "0x0144",
       "receiverName": "ChangeActorSubStatModeBorderReceiver",
       "innerLen": 8,
       "sampleCount": 36,
-      "blurb": "Sub-stat mode + border change. 8-byte compact body: 1 pad + 3 mode bytes + 2 pad + 2 border bytes.",
+      "blurb": "The eight-byte application retains seven contiguous structural members. The published receiver consumes only the mode byte at offset 4 on this route. Its zero-valued samples do not make it padding. Other retained labels, including chant_id at offset 1, do not establish enum values, effects, or a write to status-word bits 8..15.",
       "scenarios": {
         "party_battle_leve": 30,
         "gridania_to_coerthas": 5,
@@ -130,38 +90,60 @@
           "off": 0,
           "size": 1,
           "type": "uint8_t",
-          "role": "pad1",
-          "value": "offset 0: invariant zero across all 36 samples"
+          "role": "breakage",
+          "value": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here."
         },
         {
           "off": 1,
-          "size": 3,
-          "type": "uint8_t[3]",
-          "role": "modeBlock",
-          "value": "offsets 1..3: low entropy mode bytes (sub-stat mode set)"
+          "size": 1,
+          "type": "uint8_t",
+          "role": "chant_id",
+          "value": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here."
+        },
+        {
+          "off": 2,
+          "size": 1,
+          "type": "uint8_t",
+          "role": "guard",
+          "value": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here."
+        },
+        {
+          "off": 3,
+          "size": 1,
+          "type": "uint8_t",
+          "role": "waste",
+          "value": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here."
         },
         {
           "off": 4,
-          "size": 2,
-          "type": "uint8_t[2]",
-          "role": "pad2",
-          "value": "offsets 4..5: invariant zero across all 36 samples"
+          "size": 1,
+          "type": "uint8_t",
+          "role": "mode",
+          "value": "Sub-stat mode or border value written into the actor sub-state record by the receiver path."
+        },
+        {
+          "off": 5,
+          "size": 1,
+          "type": "unknown[0x01]",
+          "role": "unknown_05",
+          "value": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here."
         },
         {
           "off": 6,
           "size": 2,
-          "type": "uint8_t[2]",
-          "role": "borderBlock",
-          "value": "offsets 6..7: low entropy border values"
+          "type": "uint16_t",
+          "role": "motion_pack",
+          "value": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here."
         }
-      ]
+      ],
+      "clientContract": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
     },
     {
       "opcodeHex": "0x0145",
       "receiverName": "ChangeActorExtraStatReceiver",
       "innerLen": 8,
       "sampleCount": 30,
-      "blurb": "Extra-stat delta. 8-byte body: 1 stat-type byte + 7 zero pad. Actor ID arrives via GameMessage header src field.",
+      "blurb": "The eight-byte application contains a consumed u32 scalar at offset 0 and an uninterpreted four-byte tail at offset 4. Zero high bytes in selected samples do not reduce the scalar to a one-byte kind. This field reconciliation does not establish individual bit names or a required tail value.",
       "scenarios": {
         "party_battle_leve": 24,
         "gridania_to_coerthas": 5,
@@ -171,19 +153,20 @@
       "proposedFieldLayout": [
         {
           "off": 0,
-          "size": 1,
-          "type": "uint8_t",
-          "role": "extraStatKind",
-          "value": "offset 0: low entropy (small set of stat-kind values)"
+          "size": 4,
+          "type": "uint32_t",
+          "role": "icon_code",
+          "value": "Leading packed u32 consumed by the receiver and stored through its apply helper. Individual bit meanings are outside this geometry reconciliation."
         },
         {
-          "off": 1,
-          "size": 7,
-          "type": "uint8_t[7]",
-          "role": "reservedPad",
-          "value": "offsets 1..7: invariant zero across all 30 samples"
+          "off": 4,
+          "size": 4,
+          "type": "unknown[0x04]",
+          "role": "unknown_04",
+          "value": "Closing payload span not interpreted by the documented receiver path."
         }
-      ]
+      ],
+      "clientContract": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0145"
     },
     {
       "opcodeHex": "0x0179",
@@ -243,7 +226,7 @@
       "receiverName": "SetDisplayNameReceiver",
       "innerLen": 40,
       "sampleCount": 30,
-      "blurb": "Set display name. 3 bytes of varying header + 37 bytes of zero padding. The actual name is likely resolved server-side by ID and the body just carries a name-table index or kind selector.",
+      "blurb": "The 40-byte application contains a u32 display-name ID, a fixed 32-byte custom-name area, a consumed raw byte at offset 36, and three uninterpreted trailing bytes. The raw byte is stored unchanged; its narrow sex-versus-name-kind meaning remains unresolved. Zero selected name bytes do not establish an absent buffer or padding.",
       "scenarios": {
         "party_battle_leve": 24,
         "gridania_to_coerthas": 5,
@@ -253,19 +236,34 @@
       "proposedFieldLayout": [
         {
           "off": 0,
-          "size": 3,
-          "type": "uint8_t[3]",
-          "role": "displayNameSelector",
-          "value": "offsets 0..2: medium entropy (likely a 2-3 byte name-table index / kind)"
+          "size": 4,
+          "type": "uint32_t",
+          "role": "display_name_id",
+          "value": "Display-name identifier; the receiver normalizes zero to the no-id sentinel before storage."
         },
         {
-          "off": 3,
-          "size": 37,
-          "type": "uint8_t[37]",
-          "role": "reservedPad",
-          "value": "offsets 3..39: invariant zero across all 30 samples"
+          "off": 4,
+          "size": 32,
+          "type": "char[32]",
+          "role": "custom_name",
+          "value": "Fixed custom-name area copied in full before the receiver constructs its string state."
+        },
+        {
+          "off": 36,
+          "size": 1,
+          "type": "uint8_t",
+          "role": "display_name_kind",
+          "value": "Raw low byte at application +0x24 is stored unchanged; the narrow sex-versus-display-name-kind interpretation remains unresolved."
+        },
+        {
+          "off": 37,
+          "size": 3,
+          "type": "unknown[0x03]",
+          "role": "unknown_25",
+          "value": "Closing payload span not interpreted by the documented receiver path."
         }
-      ]
+      ],
+      "clientContract": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x013d"
     }
   ]
 }
