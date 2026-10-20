@@ -49,6 +49,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   [sign appearance](bazaar-appearance-contract.md).
 - [Widget and class native call contracts](widget-native-call-contract.md) -
   declared Lua argument and return types, owning classes and native targets.
+- [Boot native call contracts](boot-native-call-contract.md) - measured
+  `_onInit` call order and the contracts of the first natives it reaches.
 - [Chocobo naming native checks](chocobo-naming-native-contract.md) -
   UTF-8 sequence counting and the first-character property used by the widget.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
