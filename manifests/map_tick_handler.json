@@ -121,7 +121,7 @@
     },
     {
       "va": "0x004E30A0",
-      "purpose": "Map channel state-machine pump (sole caller of FUN_004E20A0). 837-byte body switching on *(this+0x250): case 0 = pre-connect, case 1 = connecting (FUN_004E2D00), cases 2/3 advance to 4, case 4 = running (calls FUN_004E20A0 with collect-bandwidth flag) and emits c2s opcode 0 size 0 via thunk_FUN_004E0240 if a 70-second time gate passes, case 5 = shutdown drain (also calls FUN_004E20A0). Also calls FUN_004E2850 / FUN_00D36D40 / FUN_004E2670 per frame for auxiliary work.",
+      "purpose": "Map channel state-machine pump, 837-byte body. The published state cases invoke FUN_004E20A0 in case 4 and case 5 and perform their separate lifecycle work. The selected case-4 call at 0x004E3348 forwards a record built with value 2 and size 0x28, not opcode 0. Its actual arguments, local return-dependent state transition and remaining boundaries are in xivl-decomp:docs/net/zone-value-two-record.md#selected-caller-arguments-and-result. The prelude timing comparisons do not establish an emission cadence.",
       "catalog_status": "uncataloged",
       "proposed_bcs_y_id": "BCS-Y-NEW-1",
       "existing_bcs_y_id": null
@@ -309,7 +309,7 @@
       "address": "0x004E30A0",
       "kind": "function",
       "confidence": "confirmed",
-      "summary": "Map channel state-machine pump - sole caller of FUN_004E20A0 (BCS-Y-0314). 837-byte body switching on *(this+0x250): case 0 = pre-connect, case 1 = connecting, cases 2/3 advance to 4, case 4 = running (invokes FUN_004E20A0 with the 70-second time-gate-derived bandwidth flag), case 5 = shutdown. Also emits a thunk_FUN_004E0240(uVar5, 0, 0) periodically (case 4 inner) where uVar5 is a 0-opcode 0-size record built via FUN_004E3910(0, FUN_00445210(0,0)) - likely a no-op keepalive or a special-purpose tick packet. Per-frame auxiliary callees: FUN_004E2850 (auxiliary FrontendAuth emitter), FUN_00D36D40 (engine helper, unknown), FUN_004E2670 (engine helper, unknown). Sole caller: FUN_004B3C50.",
+      "summary": "Map channel state-machine pump at 0x004E30A0, now cataloged as BCS-Y-0536 and BCS-Y-0696. The selected case-4 forwarder call at 0x004E3348 carries Map serverbound 0x0002 from FUN_004E3910. BCS-Y-0696 and xivl-decomp:docs/net/zone-value-two-record.md#selected-caller-arguments-and-result own the checked caller arguments and limits. This call is not an opcode-0 emission and its 70-second cadence is not established.",
       "sourceRefs": [
         "%BCS_GHIDRA_PROJECTS%/fun_004e20a0_decomp.txt",
         "manifests/map_tick_handler.json"
@@ -461,8 +461,8 @@
     },
     {
       "id": "Q5",
-      "question": "What is FUN_004E30A0's case-4 thunk_FUN_004E0240(uVar5, 0, 0) emission?",
-      "context": "FUN_004E30A0 case 4 (running state) calls thunk_FUN_004E0240(uVar5, 0, 0) where uVar5 = FUN_004E3910(0, FUN_00445210(0, 0)). The 0 opcode argument is suspicious - is this an actual c2s opcode 0 emission (which would be unusual), or is it the THUNK's first argument that's a record pointer with opcode embedded? The gate condition (FUN_004E11F0() returns nonzero AND zone+0x234 nonzero AND the 70-second timer expired) suggests it's a periodic non-trivial emit. Defer to verify the c2s opcode bound here."
+      "question": "What populates the selected 0x0002 source string and initializes its final application u32?",
+      "context": "The numeric route is bound by xivl-decomp:docs/net/zone-outbound-header.md. The caller at 0x004E3340 supplies first application u32 zero and sixteen bytes from the data pointer of owner+0x254; a nonzero forwarding return writes owner+0x250=5. xivl-decomp:docs/net/zone-value-two-record.md#selected-caller-arguments-and-result owns the complete checked caller and guards. The source-string population and contents, final application u32 initialization, narrower operation, cadence, delivery and server response remain open. Apparent accessor(0,0) arguments and the prelude 0x46 comparison do not establish those claims."
     },
     {
       "id": "Q6",
