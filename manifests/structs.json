@@ -1259,18 +1259,26 @@
         "manifests/opcode_proposed_field_layouts.json (0x0001)",
         "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
         "xivl-decomp:config/ffxivgame.symbol_evidence.json#ZoneClient_mainLoopTick",
-        "manifests/c2s_emit_sites.json (opcode 0x0001, call 0x004E24E7)"
+        "manifests/c2s_emit_sites.json (opcode 0x0001, call 0x004E24E7)",
+        "xivl-decomp:docs/net/periodic-map-0001.md"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x18",
-          "type": "uint8_t[24]",
-          "name": "opaqueApplication",
-          "notes": "Only the physical application extent is established; scalar boundaries and initialization coverage remain unresolved."
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "clientClockMilliseconds",
+          "notes": "Selected FUN_004E20A0 producer writes the four-byte timeGetTime return at 0x004E24B6. The __time64 send gate is separate; no Unix epoch or higher precision is established."
+        },
+        {
+          "offset": "0x04",
+          "size": "0x14",
+          "type": "uint8_t[20]",
+          "name": "zeroInitialized",
+          "notes": "All 20 bytes are explicitly zeroed on the selected producer path. This is not a server padding requirement or a proof about other producers."
         }
       ],
-      "notes": "The application has a fixed 24-byte extent, but its field layout remains unresolved. Published evidence establishes periodic Map opcode-1 construction and a partial zero-initialization observation at the selected producer, without a complete application write map. Selected varying and zero bytes do not establish a sequence field, required padding, an empty payload or pong causality. Offsets exclude the 16-byte game-message prefix and separate 16-byte actor wrapper. Raw selected-sample statistics remain in manifests/opcode_payload_schemas.json#schemas.0x0001."
+      "notes": "The selected FUN_004E20A0 construction sent at 0x004E24E7 supplies a timeGetTime-derived u32 and 20 explicitly zeroed bytes. The complete 24-byte application excludes the 16-byte game-message prefix and separate 16-byte actor wrapper, giving a 56-byte subpacket. The __time64-based trigger is separate from the wire clock word. Ping/pong identity, response causality, server policy and guaranteed delivery remain unresolved. Original selected-sample byte statistics remain in manifests/opcode_payload_schemas.json."
     },
     {
       "id": "BCS-S-0019",
