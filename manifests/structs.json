@@ -965,179 +965,70 @@
       "sourceRefs": [
         "manifests/opcode_payload_schemas.json (0x012d)",
         "manifests/opcode_proposed_field_layouts.json (0x012d)",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/player_command_wire_contract.json",
+        "manifests/structs.json#BCS-S-0034"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
+          "size": "0x04",
           "type": "u32",
-          "name": "selfActorId",
-          "evidence": "0x029b2941 (invariant in corpus = sample player actor)"
+          "name": "triggerActorId_or_selfActorId",
+          "evidence": "FUN_00776760 writes param_2 at record+0x18; pcap-derived BCS-S-0013 labels the same offset selfActorId."
         },
         {
           "offset": "0x04",
-          "size": "0x4",
+          "size": "0x04",
           "type": "u32",
-          "name": "targetActorId",
-          "evidence": "high cardinality >41"
+          "name": "routeDependentIdentity04",
+          "evidence": "FUN_00776760 writes param_3 at record+0x1C. Captured combat samples label this targetActorId. The direct PlayerBase server fallback through FUN_006E2FB0/FUN_0075E1C0/FUN_0089E0D0 instead passes the command control binding reference at this offset; see manifests/player_command_wire_contract.json."
         },
         {
           "offset": "0x08",
-          "size": "0x4",
+          "size": "0x04",
           "type": "u32",
-          "name": "actionOrAbilityId",
-          "evidence": "medium cardinality 11 - matches a small action catalog"
+          "name": "routeDependentIdentity08",
+          "evidence": "FUN_00776760 writes param_4 at record+0x20. Event wrappers FUN_0075E230/FUN_0075E3A0 forward Event::Base+0x08, the command control SID-domain token resolved through FUN_00CC73B0 and binding-entry+0x70. The distinct direct server fallback through FUN_006E2FB0/FUN_0075E1C0/FUN_0089E0D0 supplies self actor object+0x14 through protocol-context+8. See manifests/combat_command_emission.json for the wrapper SID domain and manifests/player_command_wire_contract.json for the direct path."
         },
         {
           "offset": "0x0c",
-          "size": "0x4",
+          "size": "0x04",
           "type": "u32",
-          "name": "secondaryTargetOrSalt",
-          "evidence": "high cardinality >40"
+          "name": "secondaryArgument_or_luaTailCrc32",
+          "evidence": "FUN_00776760 writes param_5 at record+0x24. FUN_0075E230/FUN_0075E3A0 pass the exact 0x80-byte event tail to FUN_00D3AB60, whose FUN_00D3A380 core computes CRC32; FUN_00D3AAE0 returns the stored result for builder param_5."
         },
         {
           "offset": "0x10",
-          "size": "0x4",
-          "type": "u32",
-          "name": "actionClassEnum",
-          "evidence": "medium cardinality 8"
+          "size": "0x01",
+          "type": "u8",
+          "name": "eventType",
+          "evidence": "FUN_00776760 writes param_6 at record+0x28; byte."
         },
         {
-          "offset": "0x14",
-          "size": "0x4",
-          "type": "u32",
-          "name": "actionSubtypeEnum",
-          "evidence": "medium cardinality 8"
+          "offset": "0x11",
+          "size": "0x20",
+          "type": "bytes/cstring-prefix",
+          "name": "eventNamePrefix_or_inlineData",
+          "evidence": "FUN_00776760 copies four qwords from param_7 into record+0x29..+0x48, producing a null-terminated eventName before the Lua params."
         },
         {
-          "offset": "0x18",
-          "size": "0x4",
-          "type": "u32",
-          "name": "stateOrFlags1",
-          "evidence": "medium cardinality 14"
+          "offset": "0x31",
+          "size": "0x80",
+          "type": "bytes",
+          "name": "luaParamBlob_or_eventTail",
+          "evidence": "FUN_00776760 copies 0x20 dwords (0x80 bytes) from param_8 into record+0x49..+0xC8."
         },
         {
-          "offset": "0x1c",
-          "size": "0x4",
-          "type": "u32",
-          "name": "casterStateId",
-          "evidence": "high cardinality >23"
-        },
-        {
-          "offset": "0x20",
-          "size": "0x4",
-          "type": "u32",
-          "name": "casterStateExtra",
-          "evidence": "high cardinality >25"
-        },
-        {
-          "offset": "0x24",
-          "size": "0x4",
-          "type": "f32?",
-          "name": "positionX_or_dir",
-          "evidence": "high cardinality - likely float"
-        },
-        {
-          "offset": "0x28",
-          "size": "0x4",
-          "type": "f32?",
-          "name": "positionY_or_dir",
-          "evidence": "high cardinality - likely float"
-        },
-        {
-          "offset": "0x2c",
-          "size": "0x4",
-          "type": "f32?",
-          "name": "positionZ_or_dir",
-          "evidence": "high cardinality - likely float"
-        },
-        {
-          "offset": "0x30",
-          "size": "0x4",
-          "type": "u32",
-          "name": "rotation_or_index",
-          "evidence": "high cardinality >32"
-        },
-        {
-          "offset": "0x34",
-          "size": "0x4",
-          "type": "u32",
-          "name": "tickOrSequence",
-          "evidence": "high cardinality >21"
-        },
-        {
-          "offset": "0x38",
-          "size": "0x4",
-          "type": "u32",
-          "name": "modifierFlags1",
-          "evidence": "medium cardinality 12"
-        },
-        {
-          "offset": "0x3c",
-          "size": "0x4",
-          "type": "u32",
-          "name": "modifierFlags2",
-          "evidence": "medium cardinality 12"
-        },
-        {
-          "offset": "0x40",
-          "size": "0x4",
-          "type": "u32",
-          "name": "comboChainState",
-          "evidence": "high cardinality >21"
-        },
-        {
-          "offset": "0x44",
-          "size": "0x4",
-          "type": "u32",
-          "name": "extraSlot1",
-          "evidence": "medium cardinality 7"
-        },
-        {
-          "offset": "0x48",
-          "size": "0x4",
-          "type": "u32",
-          "name": "extraSlot2",
-          "evidence": "medium cardinality 8"
-        },
-        {
-          "offset": "0x4c",
-          "size": "0x4",
-          "type": "u32",
-          "name": "extraSlot3",
-          "evidence": "medium cardinality 7"
-        },
-        {
-          "offset": "0x50",
-          "size": "0x4",
-          "type": "u32",
-          "name": "extraSlot4",
-          "evidence": "medium cardinality 8"
-        },
-        {
-          "offset": "0x54",
-          "size": "0x5c",
-          "type": "padding_or_reserved",
-          "name": "reserved",
-          "evidence": "92 bytes of zeros - likely expansion / future-action-payload reserved"
-        },
-        {
-          "offset": "0xb0",
-          "size": "0x4",
-          "type": "u32",
-          "name": "footer1",
-          "evidence": "medium cardinality 13"
-        },
-        {
-          "offset": "0xb4",
-          "size": "0x4",
-          "type": "u32",
-          "name": "footer2",
-          "evidence": "medium cardinality 7"
+          "offset": "0xb1",
+          "size": "0x07",
+          "type": "bytes",
+          "name": "unresolvedTail",
+          "evidence": "FUN_00776760's explicit copies reach application offset 0xB0.",
+          "notes": "Seven copied bytes after the 128-byte serialized area; no required-zero or alignment semantics are established."
         }
       ],
-      "notes": "Action/skill use request; 184-byte body with action ID, target, position, and modifiers. Field offsets and types derive from per-byte entropy analysis across 126 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+      "notes": "The 184-byte application is a generic EventStart envelope: four route-qualified u32 fields, one event-type byte, 32 inline bytes, a 128-byte serialized event tail, and seven unresolved copied bytes. Direct fallback and event wrappers have different identity sources. No universal action ID, position tuple or fixed scalar schema inside the typed tail is established. Offsets exclude the 16-byte game-message prefix and separate 16-byte actor wrapper. Raw selected-sample statistics remain in manifests/opcode_payload_schemas.json#schemas.0x012d."
     },
     {
       "id": "BCS-S-0014",
@@ -1224,46 +1115,34 @@
       "sourceRefs": [
         "manifests/opcode_payload_schemas.json (0x012f)",
         "manifests/opcode_proposed_field_layouts.json (0x012f)",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "xivl-opcodes:data/client_opcode_semantics.json#c2s-012f",
+        "manifests/c2s_remaining_emitters.json (FUN_0075E770)"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
-          "type": "u32",
-          "name": "selfActorId",
-          "evidence": "0x029b2941 invariant"
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "callerValue",
+          "notes": "Caller-supplied word; no universal actor-ID meaning is established."
         },
         {
           "offset": "0x04",
-          "size": "0xe",
-          "type": "cstring",
-          "name": "propertyPath",
-          "evidence": "\"charaWork/exp\" + 0x00 terminator (invariant across all 44 samples)"
-        },
-        {
-          "offset": "0x12",
-          "size": "0x10",
-          "type": "padding",
-          "name": "reserved",
-          "evidence": "16 bytes zeros (string buffer slack to 32 bytes total path field)"
-        },
-        {
-          "offset": "0x22",
-          "size": "0x2",
-          "type": "?",
-          "name": "valueOrType",
-          "evidence": "varying lower-cardinality field"
+          "size": "0x20",
+          "type": "uint8_t[32]",
+          "name": "stagedData",
+          "notes": "Zero-initialized staging capacity populated by a runtime-length generic copy, not a fixed property-path grammar."
         },
         {
           "offset": "0x24",
-          "size": "0x4",
-          "type": "u32",
-          "name": "newValueOrIndex",
-          "evidence": "medium cardinality 8 - likely the new XP/stat int value"
+          "size": "0x04",
+          "type": "unknown[0x04]",
+          "name": "unwrittenTail",
+          "notes": "Not written by the builder, copied by the forwarder and nonconstant in the retained wire product."
         }
       ],
-      "notes": "Character XP-property set; 40-byte body carries ASCII \"charaWork/exp\" path + value. Field offsets and types derive from per-byte entropy analysis across 44 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+      "notes": "The 40-byte application contains a caller-supplied u32, 32 staged bytes populated by a runtime-length generic range copy, and four unwritten copied stack bytes. It is a client work-state update route, without a universal property path, XP value or server mutation contract. The retained tail is nonconstant. Offsets exclude the 16-byte game-message prefix and separate 16-byte actor wrapper. Raw selected-sample statistics remain in manifests/opcode_payload_schemas.json#schemas.0x012f."
     },
     {
       "id": "BCS-S-0016",
@@ -1274,39 +1153,34 @@
       "sourceRefs": [
         "manifests/opcode_payload_schemas.json (0x0133)",
         "manifests/opcode_proposed_field_layouts.json (0x0133)",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/op0133_groupcreated_emitter.json",
+        "docs/client-architecture.md#zone-actor-binding-and-lua-class-readiness"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
-          "type": "u32",
-          "name": "sequenceOrTimestamp",
-          "evidence": "high cardinality >65 - varies per emission"
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "suppliedValue0",
+          "notes": "First caller word; actor, sequence and timestamp semantics are unresolved."
         },
         {
           "offset": "0x04",
-          "size": "0x4",
-          "type": "u32",
-          "name": "transitionMode",
-          "evidence": "medium cardinality 8"
+          "size": "0x04",
+          "type": "uint32_t",
+          "name": "suppliedValue1",
+          "notes": "Second caller word; no transition-mode enum is established."
         },
         {
           "offset": "0x08",
-          "size": "0x6",
-          "type": "cstring",
-          "name": "propertyPath",
-          "evidence": "\"/_init\" (6 chars, invariant in all 270 samples)"
-        },
-        {
-          "offset": "0x0e",
-          "size": "0x1a",
-          "type": "padding",
-          "name": "reserved",
-          "evidence": "26 bytes zeros (string buffer slack, no terminator visible in invariant span)"
+          "size": "0x20",
+          "type": "uint8_t[32]",
+          "name": "stagedData",
+          "notes": "Copied fixed-capacity bytes; no universal string, property path or required-zero suffix is established."
         }
       ],
-      "notes": "Zone/property init request; 40-byte body carries ASCII \"/_init\" path + sequence. Field offsets and types derive from per-byte entropy analysis across 270 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+      "notes": "The Map producer copies two supplied u32 values and 32 staged bytes into the 40-byte application. A bounded Group ADD route reaches this builder; field meanings and server response causality remain unresolved. The numeric c2s sample cohort is not reclassified as wholly Map-lane-proved. Offsets exclude the 16-byte game-message prefix and separate 16-byte actor wrapper. Raw selected-sample statistics remain in manifests/opcode_payload_schemas.json#schemas.0x0133."
     },
     {
       "id": "BCS-S-0017",
@@ -1317,67 +1191,62 @@
       "sourceRefs": [
         "manifests/opcode_payload_schemas.json (0x00ca)",
         "manifests/opcode_proposed_field_layouts.json (0x00ca)",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "manifests/c2s_payload_decoding.json#payloadStructs.c2s_0x00ca",
+        "manifests/structs.json#BCS-S-0324"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
-          "type": "u32",
-          "name": "actorIdOrHandle",
-          "evidence": "high cardinality - the moving actor"
-        },
-        {
-          "offset": "0x04",
-          "size": "0x4",
-          "type": "u32",
-          "name": "stateOrFlag",
-          "evidence": "invariant 0 + 0x50 marker at 0x03"
+          "size": "0x08",
+          "name": "timestamp",
+          "type": "uint64_t",
+          "notes": "Eight-byte container; the documented low-dword __time64 write does not establish higher precision or additional unit semantics."
         },
         {
           "offset": "0x08",
-          "size": "0x4",
-          "type": "f32?",
-          "name": "positionX",
-          "evidence": "high cardinality - float"
+          "size": "0x04",
+          "name": "x",
+          "type": "float",
+          "notes": "Player X coordinate written by the position builder."
         },
         {
-          "offset": "0x0c",
-          "size": "0x4",
-          "type": "f32?",
-          "name": "positionY",
-          "evidence": "high cardinality - float"
+          "offset": "0x0C",
+          "size": "0x04",
+          "name": "y",
+          "type": "float",
+          "notes": "Player Y coordinate written by the position builder."
         },
         {
           "offset": "0x10",
-          "size": "0x4",
-          "type": "f32?",
-          "name": "positionZ",
-          "evidence": "high cardinality - float"
+          "size": "0x04",
+          "name": "z",
+          "type": "float",
+          "notes": "Player Z coordinate written by the position builder."
         },
         {
           "offset": "0x14",
-          "size": "0x4",
-          "type": "u32",
-          "name": "rotationOrTick",
-          "evidence": "varies"
+          "size": "0x04",
+          "name": "rotation",
+          "type": "float",
+          "notes": "Player rotation written by the position builder."
         },
         {
           "offset": "0x18",
-          "size": "0x4",
-          "type": "u32",
-          "name": "movementFlags",
-          "evidence": "medium cardinality"
+          "size": "0x02",
+          "name": "movement_state",
+          "type": "uint16_t",
+          "notes": "Movement-state value copied into the final payload word."
         },
         {
-          "offset": "0x1c",
-          "size": "0x4",
-          "type": "u32",
-          "name": "extraStateOrIndex",
-          "evidence": "varies"
+          "offset": "0x1A",
+          "size": "0x06",
+          "name": "unknown_1A",
+          "type": "unknown[0x06]",
+          "notes": "Remaining bytes carried by the final eight-byte copy without established member boundaries."
         }
       ],
-      "notes": "Periodic player position broadcast; 16867 samples across all 54 scenarios. Field offsets and types derive from per-byte entropy analysis across 16867 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+      "notes": "The 32-byte application contains an eight-byte time container, four floats for position and rotation, a u16 movement-state member, and six uninterpreted bytes. The documented low-dword __time64 write does not establish additional time precision. Movement enums, units and packet cadence policy remain outside this geometry. Offsets exclude the 16-byte game-message prefix and separate 16-byte actor wrapper. Raw selected-sample statistics remain in manifests/opcode_payload_schemas.json#schemas.0x00ca."
     },
     {
       "id": "BCS-S-0018",
@@ -1388,25 +1257,20 @@
       "sourceRefs": [
         "manifests/opcode_payload_schemas.json (0x0001)",
         "manifests/opcode_proposed_field_layouts.json (0x0001)",
-        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng"
+        "xivl-captures:sources/pcap-1.23b/objects/*.pcapng",
+        "xivl-decomp:config/ffxivgame.symbol_evidence.json#ZoneClient_mainLoopTick",
+        "manifests/c2s_emit_sites.json (opcode 0x0001, call 0x004E24E7)"
       ],
       "fields": [
         {
           "offset": "0x00",
-          "size": "0x4",
-          "type": "u32",
-          "name": "tickCounterOrSeq",
-          "evidence": "high cardinality - per-tick incrementing or randomised"
-        },
-        {
-          "offset": "0x04",
-          "size": "0x14",
-          "type": "padding",
-          "name": "reserved",
-          "evidence": "20 bytes zeros (heartbeat carries no real payload)"
+          "size": "0x18",
+          "type": "uint8_t[24]",
+          "name": "opaqueApplication",
+          "notes": "Only the physical application extent is established; scalar boundaries and initialization coverage remain unresolved."
         }
       ],
-      "notes": "Empty 20-byte zero tail + 4-byte sequence/timestamp; emitted by client tick. Field offsets and types derive from per-byte entropy analysis across 3371 pcap samples in the 54-scenario corpus (the opcode-payload-schemas pass). The selfActorId field at offset 0 is invariant 0x029b2941 across the corpus and matches the known sample-player actor ID. Role labels for varying fields are best-effort inferences grounded in entropy buckets (invariant -> constant; low -> mode/flag; medium -> small ID; high -> actor handle, position, or sequence). ASCII strings where present are wire-confirmed property paths."
+      "notes": "The application has a fixed 24-byte extent, but its field layout remains unresolved. Published evidence establishes periodic Map opcode-1 construction and a partial zero-initialization observation at the selected producer, without a complete application write map. Selected varying and zero bytes do not establish a sequence field, required padding, an empty payload or pong causality. Offsets exclude the 16-byte game-message prefix and separate 16-byte actor wrapper. Raw selected-sample statistics remain in manifests/opcode_payload_schemas.json#schemas.0x0001."
     },
     {
       "id": "BCS-S-0019",
