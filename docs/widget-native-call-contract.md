@@ -131,6 +131,26 @@ its slot `0x007493A0` pushes the control as the call result. The
 `_createActor` existing-control branch returns at once when that control is
 already initialized.
 
+### Widget creation payload
+
+The manifest's `framework.widgetCreationOnInit` records the conditional
+WidgetBase new-control path. The creation callback copies its internal
+argument-cell suffix beginning at index 3, converts it in order and passes
+the converted container through the WidgetBase creation slot into the named
+`_onInit` path. Its observed invocation counter is C + 1, where C
+accumulates callback EAX results. This is not a Lua arity contract.
+
+The successful-lookup layout is a supported inference: the lookup-derived
+receiver is Lua argument 1, followed by emitted payload values. That
+reconstruction uses thin-helper and negative-index-resolver pseudocode as
+well as the observed replace-and-pop instructions. The manifest retains
+the exact locators and the limited original-PE instruction comparison.
+
+Actual Variable cardinality, per-operator output counts, runtime Nil
+emission, host/global binding, class defaults and live scheduling remain
+unresolved. The general marshalling assertions above are neither
+revalidated nor revoked by this finite path.
+
 ### Loop interval
 
 `_setLoopInterval` stops at its first Nil argument. A Nil first argument
