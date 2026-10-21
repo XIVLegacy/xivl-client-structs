@@ -403,7 +403,7 @@
           "0x00D08000 -> 0x00D04DA0 -> 0x00D19B70 -> 0x00D19A20"
         ],
         "inferenceBoundary": "The full chain uses thin-helper pseudocode in addition to the observed registration calls.",
-        "finiteGap": "No inspected artifact establishes how a receiverless script/global call supplies or transforms native-frame position 1. The context-preparation call 0x00D04FE0 was not investigated.",
+        "finiteGap": "No inspected artifact establishes how a receiverless script/global call supplies or transforms native-frame position 1. Bounded context-preparation parent and initializer instructions are inspected, while transitive helper effects remain unknown. See framework.globalNativeRegistrationEvidence.",
         "unresolved": [
           "Host/global names",
           "Physical receiver identity",
@@ -421,6 +421,122 @@
         "Pseudocode-only helper correspondence",
         "Live retail invocation or session behavior"
       ]
+    },
+    "globalNativeRegistrationEvidence": {
+      "confidence": "probable",
+      "evidenceTier": "STATIC",
+      "scope": "Static callback registration and inline stack-cell operations. Source-level Global argument mapping remains unresolved.",
+      "sourceRefs": [
+        "docs/widget-native-call-contract.md#native-callback-registration"
+      ],
+      "method": "Ghidra decompilation and instruction listings of the identified executable. Exact retained instruction encodings were compared with original PE bytes through its section table.",
+      "observations": [
+        {
+          "id": "registrationCallbackOperands",
+          "locators": [
+            "0x00D0786A..0x00D07873",
+            "0x00CF32E0..0x00CF32F5"
+          ],
+          "callback": "0x00D08000",
+          "integerOperand": 1,
+          "forwardTarget": "0x00DCE2C0",
+          "boundary": "Observed call operands and dereferenced wrapper state. No source-call receiver mapping."
+        },
+        {
+          "id": "constructionRecordAndCellWrites",
+          "locators": [
+            "0x00DCE2EF..0x00DCE307",
+            "0x00DCE318..0x00DCE356"
+          ],
+          "recordCallbackOffset": "0x10",
+          "countShift": 4,
+          "copyStride": "0x10",
+          "copiedDwordOffsets": [
+            "0",
+            "4",
+            "8"
+          ],
+          "resultRawTag": 6,
+          "boundary": "Inline count-dependent copies and pointer/tag stores. No allocator identity, whole-function net top delta or nil semantics."
+        },
+        {
+          "id": "registrationIndexedStoreOperands",
+          "locators": [
+            "0x00D07878..0x00D0787B",
+            "0x00CF3400..0x00CF3410",
+            "0x00DCE680..0x00DCE6E6"
+          ],
+          "forwardTarget": "0x00DCE680",
+          "resolverCall": "0x00DCD900",
+          "resolverInputRegisters": {
+            "ECX": "first explicit input (state)",
+            "EAX": "second explicit input"
+          },
+          "slotCall": "0x00DD4900",
+          "slotCallOperands": [
+            "state",
+            "DWORD at resolver-returned pointer",
+            "Q-0x20, where Q is the pointer loaded from [state+8] before the slot-helper call"
+          ],
+          "valueSourceDwordOffsetsFromQ": [
+            "-0x10",
+            "-0x0C",
+            "-8"
+          ],
+          "finalInlineState8Adjustment": "-0x20 from then-current value",
+          "boundary": "The decompiler omits the second input. Slot-helper effects and a whole-function net delta remain unknown."
+        },
+        {
+          "id": "destinationSelectionBranch",
+          "locators": [
+            "0x00CD7A99..0x00CD7AF3"
+          ],
+          "testCall": "0x00CF3740(-1)",
+          "branchTest": "AL",
+          "fallbackRawLoadAddress": "0x0130D4F8",
+          "fallbackObjectField": "0x1BC",
+          "returnCleanup": "0x8",
+          "boundary": "Observed fallback operands only. No host/global/class identity."
+        },
+        {
+          "id": "capturedValueForwardingBoundary",
+          "locators": [
+            "0x00D07862..0x00D07865",
+            "0x00CF32C0..0x00CF32D0"
+          ],
+          "forwardTarget": "0x00DCE380",
+          "boundary": "Value representation and source receiver identity remain unknown."
+        }
+      ],
+      "supportedInferences": [
+        {
+          "id": "countOneConstruction",
+          "confidence": "inferred",
+          "statement": "On normal helper return with conventional preserved registers, registration count 1 selects three DWORDs from one prior 0x10-stride stack position into returned record offsets 0x18/0x1C/0x20, stores callback D08000 at record+0x10, and writes the raw-tag-6 record cell. The inline state+8 value returns to its value immediately before count subtraction.",
+          "boundary": "Relative to post-helper state only. No source argument consumption or physical receiver claim."
+        },
+        {
+          "id": "candidateNativeClosureInstallation",
+          "confidence": "inferred",
+          "statement": "The callback field, counted prior-cell copy and raw-tagged result support native closure construction followed by a candidate indexed table-entry installation.",
+          "dependencies": [
+            "0x00DD6040 returned-record semantics",
+            "0x00DCD900 destination semantics",
+            "0x00DD4900 slot semantics",
+            "0x00DCE380 emitted cell representation"
+          ],
+          "boundary": "Registration is not invocation. This does not establish a callable/metamethod, source syntax or receiver insertion."
+        }
+      ],
+      "contextPreparationBoundary": "D04FE0 parent and initializer instructions are inspected. Transitive helper/diagnostic effects and overall Lua-frame changes remain unknown.",
+      "unresolved": [
+        "The source-call evaluation/invocation relationship into 0x00D08000 and how native-frame position 1 is supplied, omitted or transformed.",
+        "Physical receiver, destination/key identities, host/global/class names and default values.",
+        "The raw cell representation emitted by 0x00DCE380 and transitive context/initializer helper effects.",
+        "Allocator, resolver, slot-helper, GC/error effects, per-operator return emission and numeric conversion fidelity.",
+        "Whole loaded-image/project FileBytes correspondence and live retail behavior."
+      ],
+      "identityLimits": "Exact retained instruction encodings in the registration, forwarding, construction, indexed-store, destination, context parent and initializer paths were compared with the identified original PE. Entire loaded-image/FileBytes correspondence and pseudocode-only paths were not compared. Static observations establish no live behavior."
     }
   },
   "rows": [
