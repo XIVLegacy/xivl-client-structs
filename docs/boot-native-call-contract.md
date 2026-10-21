@@ -107,7 +107,8 @@ contract.
 
 ## Contracts
 
-Argument positions exclude the receiver. A return list states capacity. A
+Argument indices count internal `ExecuteParameters` cells. Receiverless
+Global mapping remains unresolved. A return list states capacity. A
 handler may push fewer values.
 
 | Native | Owning class | Arguments | Returns | Callback | Forwards to |
@@ -198,9 +199,11 @@ WidgetBase cast reader `0x0071C190` and returns false for a null widget.
 - `WorldMaster._onInit` passes one argument to `_callSuperClassFunc`.
   `DesktopWidget._onInit` passes the method name followed by all five results
   of a Lua method, a six-argument call. The declared
-  `_callSuperClassFunction` list holds two entries, and the `GetArguments_`
-  check raises when Lua arguments remain. This extends the conflict in the
-  [widget contract limits](widget-native-call-contract.md#limits).
+  `_callSuperClassFunction` list holds Utf8String and Variable. The
+  [Variable argument reader](widget-native-call-contract.md#variable-argument-reader)
+  can consume a successful recognized suffix, so list length alone does not
+  imply a `GetArguments_` error. Source-level binding and runtime success
+  remain unresolved.
 - The step that maps a `_cpp` name onto the registered functor was not
   traced. The only `_cpp` literal is at `0x00FDF2CC`, referenced from
   `0x007634B0`.

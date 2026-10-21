@@ -9,7 +9,7 @@
     "architecture": "PE32 i386"
   },
   "method": "Ghidra decompilation and instruction listings of the identified executable. Name literals, StackOperator vftables, constants and the GetArguments_ literal were compared with the PE bytes through its section table. Addresses are virtual addresses.",
-  "scope": "Static Lua call contracts for selected Control-class natives: declared argument and return StackOperator lists, owning native class, callback and forwarding target. Positions count post-receiver Lua arguments. Client-side contracts do not establish server behavior.",
+  "scope": "Static Lua call contracts for selected Control-class natives: declared argument and return StackOperator lists, owning native class, callback and forwarding target. Argument indices count internal ExecuteParameters cells. Source-level receiverless Global mapping remains unresolved. Client-side contracts do not establish server behavior.",
   "evidenceTier": "STATIC",
   "sourceRefs": [
     "docs/widget-native-call-contract.md",
@@ -43,9 +43,9 @@
     "argumentMarshalling": {
       "routine": "0x00D19A20",
       "firstLuaIndex": 2,
-      "perArgument": "0x00CFAA10 calls the declared StackOperator's slot 1, which consumes one Lua stack slot. The int, float, bool, Utf8String and Variable readers convert Lua nil to tag 6.",
-      "missingArguments": "Declared positions beyond the Lua stack top are filled with tag 6 by 0x00CFAA10 through 0x00583F70 without a stack read.",
-      "extraArguments": "When Lua arguments remain after the declared list, 0x00D19A20 pushes Component::Lua::GameEngine::Functor::GetArguments_ (0x0110F5B4) with line 0x9A and raises through 0x00CF38A0, which ends in 0x00DCEBC0.",
+      "perArgument": "0x00CFAA10 dispatches a present position through the declared StackOperator's slot +4. The selected int, float, bool, Utf8String and LuaControl* readers advance the shared cursor once on normal return. Variable scans a recognized suffix as recorded by framework.variableArgumentReader. Other operators are not revalidated by that record.",
+      "missingArguments": "When the declared cursor exceeds the Lua top, 0x00CFAA10 constructs one tag-6 placeholder through 0x00583F70 and 0x00584EE0 without reading a present Lua value, then advances the formal cursor once.",
+      "extraArguments": "0x00D19A20 compares the resulting shared cursor with its saved bound after all declared readers. Cursor greater than the bound bypasses the diagnostic. Otherwise it reaches 0x00CF3360 and 0x00CF38A0 with the GetArguments_ diagnostic. Declared list length alone does not determine this outcome for Variable.",
       "typedReaders": "0x005819A0 int tag 0, 0x0071BAC0 float tag 1, 0x0071BA00 bool tag 2, 0x0071CE70 string tag 3, 0x0071BEB0 LuaControl* tag 4. A mismatched tag reaches 0x00CCA730."
     },
     "returnPushers": {
@@ -162,15 +162,265 @@
       ],
       "identityLimits": "Selected instructions in 0x006E3920, 0x00794170, 0x00CCFF60, 0x00CCCD80, 0x00CD7B00, 0x00DCDBF0, 0x00CCFFE0, 0x00CCFA70, 0x00748EC0 and 0x00748920 were compared with the identified original PE. Earlier creation-callback, suffix-copy, conversion-loop and 0x0078BBB0 instruction selections were not part of that comparison. Entire loaded-image/FileBytes correspondence and pseudocode-only paths remain unverified.",
       "unresolved": [
-        "Actual Variable reader cardinality and accepted or consumed Lua suffix count.",
-        "Extra-argument behavior for this native.",
         "Per-operator output counts and any exact source-cell-to-Lua-position formula.",
         "Runtime Nil output.",
         "Host/global binding, physical receiver identity beyond the lookup-derived receiver, and class defaults.",
         "Existing-control initialization, method absence, error paths and runtime scheduling.",
         "Whole-image identity and live retail invocation/session behavior."
       ],
-      "generalMarshallingBoundary": "This finite creation-path observation neither revalidates nor revokes framework.argumentMarshalling."
+      "generalMarshallingBoundary": "framework.variableArgumentReader records the conditional present suffix cardinality and final leftover check. Source-level Global mapping, return emission and other uninspected operators remain outside that record."
+    },
+    "variableArgumentReader": {
+      "confidence": "probable",
+      "evidenceTier": "STATIC",
+      "scope": "GetArguments_ and the concrete Variable reader, with conditional _createActor native-frame positions. Receiverless script/global positions remain unresolved.",
+      "sourceRefs": [
+        "docs/widget-native-call-contract.md#variable-argument-reader"
+      ],
+      "identityLimits": "Exact selected instructions and read-slot DWORDs were compared with the identified original PE. Entire loaded-image/FileBytes identity, pseudocode-only paths and live behavior remain unverified.",
+      "observations": [
+        {
+          "id": "marshaller_cursor_and_postcondition",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00D19AC2",
+            "0x00D19AF2-0x00D19B00",
+            "0x00D19B0D-0x00D19B15",
+            "0x00D19B43-0x00D19B4A"
+          ],
+          "observation": "The shared cursor begins at 2. Declared readers receive its address. The final cursor must exceed the saved bound to bypass the GetArguments_ diagnostic calls."
+        },
+        {
+          "id": "ordinary_positive_index",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00DCD900-0x00DCD918",
+            "0x00DCD97D",
+            "0x00DCDAF4-0x00DCDAFD"
+          ],
+          "observation": "Positive index i maps to [state+0x0C] + (i-1)*0x10 when below [state+8], otherwise sentinel 0x01133268. The bound leaf computes ([state+8]-[state+0x0C]) >> 4. Forwarding through the bound wrapper retains its pseudocode dependency."
+        },
+        {
+          "id": "Variable_scan",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00CF8992-0x00CF899A",
+            "0x00CF8ABE-0x00CF8ADF",
+            "0x00CF8AE1-0x00CF8AE8"
+          ],
+          "observation": "The concrete reader initializes a local scan from the shared cursor, delegates reads through selected operators, increments the local scan and repeats through the saved bound. It does not itself increment the shared cursor."
+        },
+        {
+          "id": "raw_tag_selection",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00CF3852",
+            "0x00CF3832",
+            "0x00CF370D-0x00CF3717",
+            "0x00CF3752",
+            "0x00CF3770-0x00CF3774",
+            "0x00CF8AB3"
+          ],
+          "observation": "The predicate tree recognizes raw tags 3, 4, 1, 5 and 0. Failure of the final predicate ends the scan before the current value is delegated."
+        },
+        {
+          "id": "selected_reader_cursor_delta",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00CFAD13",
+            "0x00CFAEBE",
+            "0x00CFB30E",
+            "0x00CFB154",
+            "0x00CFB4CB",
+            "0x00CFBA63"
+          ],
+          "observation": "Each of the six selected concrete readers increments its shared cursor by one on normal return."
+        },
+        {
+          "id": "omitted_position_fallback",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00CFAA47-0x00CFAA49",
+            "0x00CFAA6B",
+            "0x00CFAA7D",
+            "0x00CFAA8F",
+            "0x00583FD9"
+          ],
+          "observation": "When no current position exists, the dispatcher constructs tag 6, calls the append helper once and advances the formal cursor once, without invoking the actual reader."
+        },
+        {
+          "id": "present_selected_Nil",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00CFBA00",
+            "0x00CFBA16",
+            "0x00CFBA63",
+            "0x00583FD6-0x00583FD9"
+          ],
+          "observation": "The concrete selected Nil reader constructs a tag-6 cell, calls the append helper once and increments the shared cursor. Present raw tag 0 is not a scan terminator."
+        },
+        {
+          "id": "registration_calls",
+          "confidence": "confirmed",
+          "locators": [
+            "0x00CE17EB-0x00CE17EF",
+            "0x00CD7670-0x00CD7688"
+          ],
+          "observation": "Registration calls 0x00CD7670, which forwards four arguments to 0x00D07820. These calls do not establish a receiverless script/global stack transformation."
+        }
+      ],
+      "selectedReaders": [
+        {
+          "catalogLabel": "int",
+          "vtable": "0x0110DF38",
+          "readSlot": "0x0110DF3C",
+          "readTarget": "0x00CFAC40",
+          "cursorIncrement": "0x00CFAD13",
+          "appendCallSites": [
+            "0x00CFACAB",
+            "0x00CFACFD"
+          ]
+        },
+        {
+          "catalogLabel": "float",
+          "vtable": "0x0110DF60",
+          "readSlot": "0x0110DF64",
+          "readTarget": "0x00CFADF0",
+          "cursorIncrement": "0x00CFAEBE",
+          "appendCallSites": [
+            "0x00CFAE5B",
+            "0x00CFAEA8"
+          ]
+        },
+        {
+          "catalogLabel": "bool",
+          "vtable": "0x0110DF88",
+          "readSlot": "0x0110DF8C",
+          "readTarget": "0x00CFB240",
+          "cursorIncrement": "0x00CFB30E",
+          "appendCallSites": [
+            "0x00CFB2AB",
+            "0x00CFB2F8"
+          ]
+        },
+        {
+          "catalogLabel": "Utf8String",
+          "vtable": "0x0110DFB0",
+          "readSlot": "0x0110DFB4",
+          "readTarget": "0x00CFAFA0",
+          "cursorIncrement": "0x00CFB154",
+          "appendCallSites": [
+            "0x00CFB021",
+            "0x00CFB12B"
+          ]
+        },
+        {
+          "catalogLabel": "LuaControl*",
+          "vtable": "0x0110DFD8",
+          "readSlot": "0x0110DFDC",
+          "readTarget": "0x00CFB3F0",
+          "cursorIncrement": "0x00CFB4CB",
+          "appendCallSites": [
+            "0x00CFB467",
+            "0x00CFB4B9"
+          ]
+        },
+        {
+          "catalogLabel": "Nil",
+          "vtable": "0x0110E028",
+          "readSlot": "0x0110E02C",
+          "readTarget": "0x00CFB9C0",
+          "cursorIncrement": "0x00CFBA63",
+          "appendCallSites": [
+            "0x00CFBA16"
+          ]
+        }
+      ],
+      "registryIdentityBoundary": "Reader labels and positional registry identities use the existing published builtin order and matching named constructor blocks. EH-state numbers are not ordinal proof.",
+      "successfulReaderContract": {
+        "confidence": "inferred",
+        "derivation": "Observed scan/delegation and all selected normal-return cursor increments.",
+        "conditions": [
+          "The supplied native frame is valid.",
+          "Existing published registry identities identify the selected readers.",
+          "The bound forwarding helper has the behavior shown by the bounded thin-helper pseudocode.",
+          "All selected readers and supporting allocation/conversion/control helpers return normally."
+        ],
+        "presentSuffix": "For entry cursor p <= saved top T, a fully recognized successful suffix consumes T-p+1 present positions and returns cursor T+1. There is no fixed one-value limit in this reader.",
+        "recognizedRawTags": [
+          0,
+          1,
+          3,
+          4,
+          5
+        ],
+        "numericBranch": "Raw tag 3 uses 0x00CF3670 to choose the catalog int or float reader. Numeric conversion range and exceptional values remain unresolved.",
+        "controlBranch": "Raw tag 5 selects the catalog LuaControl* reader, conditional on successful record resolution. This does not establish acceptance of arbitrary tables.",
+        "unsupportedSuffix": "The first unsupported tag remains unconsumed. With Variable last in the declared list, the final GetArguments_ bound comparison reaches its diagnostic path.",
+        "omittedSuffix": "The dispatcher fallback consumes no present Lua value, constructs one tag-6 placeholder through one append-helper call and advances the formal cursor once.",
+        "internalAppendBoundary": "Each successful selected path calls 0x00584EE0 once. Interpreting that call as one appended internal cell relies on the existing container append contract. Return emission to Lua is outside scope."
+      },
+      "createActorNativeFrameMapping": {
+        "confidence": "inferred",
+        "condition": "The published declared prefix is Utf8String, Utf8String, bool and these prefix readers complete successfully.",
+        "positions": [
+          {
+            "nativeFrameIndex": 1,
+            "internalIndex": null,
+            "meaning": "Excluded by the initial cursor. Receiver/context and source-level mapping remain unresolved."
+          },
+          {
+            "nativeFrameIndex": 2,
+            "internalIndex": 0,
+            "declaredReader": "Utf8String"
+          },
+          {
+            "nativeFrameIndex": 3,
+            "internalIndex": 1,
+            "declaredReader": "Utf8String"
+          },
+          {
+            "nativeFrameIndex": 4,
+            "internalIndex": 2,
+            "declaredReader": "bool"
+          },
+          {
+            "nativeFrameIndex": "5 through T when present",
+            "internalIndex": "3 onward",
+            "declaredReader": "Variable recognized suffix"
+          }
+        ],
+        "presentCount": "If T >= 5 and suffix readers return normally, T-4 present suffix values are consumed.",
+        "omission": "If T < 5, dispatcher fallback supplies the Variable placeholder without reading a present position.",
+        "boundary": "This is marshalling-only native-frame mapping, not source-level Global call arity or callback/actor success."
+      },
+      "globalBinding": {
+        "confidence": "unverified",
+        "supportedRegistrationInference": [
+          "0x00757350 -> 0x00726EB0 -> 0x007257A0",
+          "0x00CCCAD0 -> 0x00CE1750 -> 0x00CD7670 -> 0x00D07820",
+          "0x00D07820 supplies 0x00D08000 and one capture to 0x00CF32E0",
+          "0x00D08000 -> 0x00D04DA0 -> 0x00D19B70 -> 0x00D19A20"
+        ],
+        "inferenceBoundary": "The full chain uses thin-helper pseudocode in addition to the observed registration calls.",
+        "finiteGap": "No inspected artifact establishes how a receiverless script/global call supplies or transforms native-frame position 1. The context-preparation call 0x00D04FE0 was not investigated.",
+        "unresolved": [
+          "Host/global names",
+          "Physical receiver identity",
+          "Class defaults",
+          "Script/global binding or compiler stack transform"
+        ]
+      },
+      "unresolved": [
+        "Numeric range, rounding and conversion fidelity",
+        "Control-record validity for arbitrary tag-5 tables",
+        "Allocation, diagnostic/error and non-returning helper outcomes",
+        "Per-operator return emission and output counts",
+        "Receiverless script/global position mapping",
+        "Entire loaded-image/FileBytes correspondence",
+        "Pseudocode-only helper correspondence",
+        "Live retail invocation or session behavior"
+      ]
     }
   },
   "rows": [
