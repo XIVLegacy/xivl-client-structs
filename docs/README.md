@@ -64,7 +64,7 @@ catalog. Machine-readable inventories and regeneration rules live under
 - [Appearance record payload](appearance-record-wire-contract.md) -
   `0x00d7` record width, count and actor-table writes.
 - [Achievement rate consumer](achievement-rate-consumer.md) - native cache
-  writes, Lua numerator/denominator and unresolved wire fields.
+  writes, Lua numerator/denominator, list-step bits and response boundary.
 - [Search and recruitment wire contract](search-recruitment-wire-contract.md) -
   native requests, application consumers and widget projections.
 - [Additive custom-zone selection](map-layout-selector.md) - SetMap framing,

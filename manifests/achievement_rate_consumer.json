@@ -8,12 +8,12 @@
     "imageBase": "0x00400000",
     "architecture": "PE32 i386"
   },
-  "scope": "Clientbound 0x019f native cached values and the achievement-rate Lua presentation route. No retained capture observes this opcode.",
+  "scope": "Clientbound 0x019f cached count/list-step mask, the achievement-rate and list-step Lua presentation consumers, and their static request-completion boundary. No retained capture observes this opcode.",
   "sourceRefs": [
     "manifests/receiver_vtable1_verification.json",
     "xivl-opcodes:data/achievement_lifecycle.json"
   ],
-  "method": "Each instruction in the retained Ghidra functions was checked against the original PE section bytes. Lua archive members and original LPBs were authenticated against scripts.json and retail_lua_coverage.json; selected ambiguous operations were checked in original Lua 5.1 bytecode.",
+  "method": "Each instruction in the retained Ghidra functions was checked against the original PE section bytes. Downstream predicate/binding checks used pefile2024.8.26 and Capstone5.0.7 against authenticated original raw-backed ranges. Lua archive members and original LPBs were authenticated against scripts.json and retail_lua_coverage.json; selected operations were checked in original Lua5.1 bytecode with pinned unluac_2025_12_23.jar. docs/achievement-rate-consumer.md owns the extended consumer and response interpretation.",
   "wireFields": [
     {
       "offset": "0x00",
@@ -31,8 +31,8 @@
       "offset": "0x08",
       "bytes": 4,
       "type": "u32le",
-      "name": "cachedUnknownValue",
-      "meaning": "Stored with progressCount; no bit-field semantics established."
+      "name": "cachedListStepMask",
+      "meaning": "_isDoneAchievementRateList tests bit step-1 when its separate overall-completion shortcut does not apply; not a generic overall/new/in-progress status field."
     },
     {
       "offset": "0x0c",
@@ -103,10 +103,34 @@
       "script": "widget/achievementdetailwidget.lua",
       "method": "setAchievementDetail",
       "lines": "152-181",
-      "fact": "Stores numerator and denominator. Its separate _isDoneAchievementRateList query is not a bit test on application+8."
+      "fact": "Stores numerator and denominator. Its separate _isDoneAchievementRateList query reaches cached application+8 step-bit tests unless the overall-completion shortcut applies; see downstreamConsumers."
     }
   ],
-  "presentationBoundary": "Completion queries use separate _isDoneAchievement/_isDoneAchievementRateList client state. No completed, new or in-progress bit meaning for application+8 is established by the inspected receiver/getter/UI route. The closing +0x0c dword feeds no value in this route; its server purpose remains unknown.",
+  "presentationBoundary": "Overall _isDoneAchievement tests a separate bitmap. _isDoneAchievementRateList can use application+8 as list-step bits, with an overall-bitmap shortcut except IDs0x3F2/0x3F3/0x3F4. The detail widget uses those results for step icons and a fallback numerator/denominator. The closing+0x0c dword feeds no value in this route; its server purpose remains unknown.",
+  "downstreamConsumers": [
+    {
+      "function": "0x0072A730",
+      "fact": "Binds string0x00FD6328 _isDoneAchievementRateList to thunk0x0071E640 (virtual+0x1D0/slot116); original MyPlayer table cell0x00FD7A2C contains0x00706260."
+    },
+    {
+      "function": "0x00706260",
+      "fact": "Subtracts1 from step at0x007062DE. Overall bitmap at player+0x114 returns true unless unset or achievementId is0x3F2/0x3F3/0x3F4; otherwise calls0x006E3B90 at0x00706346."
+    },
+    {
+      "function": "0x006E3B90",
+      "fact": "Finds key in map+0x9C; absent returns false. At0x006E3BEB reads node+0x14 (entry+4, third wire dword), then tests1<<(step-1) through0x006E3BFE. Native x86 shift masks the count, without proving a supported out-of-range Lua input."
+    },
+    {
+      "function": "0x00705A70",
+      "fact": "_isDoneAchievement: registration0x007298C0 chooses thunk0x0071E550 virtual+0x194/slot101; table cell0x00FD79F0 points here. Tests only the overall bitmap0x00705AAA..0x00705AE5, not map+0x9C."
+    },
+    {
+      "script": "widget/achievementdetailwidget.lua",
+      "prototype": "root/proto4",
+      "fact": "CALLPC124 queries _isDoneAchievementRateList(id,step); true shows StepClear and increments count, false hides it. PCs157-188 replace displayed numerator/denominator with clearedStepCount/listCount when initial percentage<=0 and clearedStepCount>0."
+    }
+  ],
+  "responseBoundary": "For _getAchievementRate's uncached count branch, a correctly routed0x019F key/count/mask update with nonnegative count supplies the persistent cache entry and normal Lua notification. Getter0x00706059..0x0070607F accepts nonnegative cached count, clamps it, and does not re-request; negative count re-enters request path. No completion marker/request serial/closing-dword test on this path. Overall earned state and historical reply policy remain separate; no capture transaction is retained.",
   "luaIdentities": [
     {
       "member": "widget/achievementdetailwidget.lua",
@@ -134,6 +158,41 @@
     }
   ],
   "instructionAuthentication": [
+    {
+      "va": "0x006E3B90",
+      "verifiedInstructionBytes": 118,
+      "instructionSha256": "183a6e4407da3b68a87fef406d846b85ed95b36dbbe0ccef8cdcae6b90dacfac"
+    },
+    {
+      "va": "0x00706260",
+      "verifiedInstructionBytes": 265,
+      "instructionSha256": "6a2483cc2e581be1c79d432950bd2b85a2b0fe68fa719f726c9d604b75c2a158"
+    },
+    {
+      "va": "0x00705A70",
+      "verifiedInstructionBytes": 137,
+      "instructionSha256": "a8554172d7a1d77923fee2b028225d2bcc5d7a646b7180ee754312634baab7a7"
+    },
+    {
+      "va": "0x0072A730",
+      "verifiedInstructionBytes": 330,
+      "instructionSha256": "ab1aee1017a9f657c7ad86f9ddfc84d9433da41d165a3815fc5ca63314bbf15f"
+    },
+    {
+      "va": "0x007298C0",
+      "verifiedInstructionBytes": 330,
+      "instructionSha256": "4ea02cd0f9749370f4e8470657b43cba7116f7476e066c19c87ea207a6d349e3"
+    },
+    {
+      "va": "0x0071E640",
+      "verifiedInstructionBytes": 10,
+      "instructionSha256": "a2039d13323a7b40ea18f3d7d8fdb72dd603c55add0910c53ab481c8ffbf2c5c"
+    },
+    {
+      "va": "0x0071E550",
+      "verifiedInstructionBytes": 10,
+      "instructionSha256": "bf2045ffda94d9d313f85557dccb5a46cbdd88ad5087e4cc4dcdb3bf35fe89fb"
+    },
     {
       "va": "0x00704690",
       "verifiedInstructionBytes": 390,
