@@ -53,6 +53,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   `_onInit` call order and the contracts of the first natives it reaches.
 - [Desktop native call contracts](desktop-native-call-contract.md) - user
   config keys, list text, UI command conditions and `LuaControl*` returns.
+- [WorldMaster server-time native contract](world-master-native-call-contract.md) -
+  receiver validation, empty argument list and signed cached-clock return.
 - [Chocobo naming native checks](chocobo-naming-native-contract.md) -
   UTF-8 sequence counting and the first-character property used by the widget.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
