@@ -107,8 +107,8 @@ indices 0, 1 and 2. A present Variable suffix begins at native-frame position
 5 and internal index 3. It consumes T-4 values if every suffix reader
 completes. If T < 5, the dispatcher supplies the omitted placeholder without
 reading a present value. This is a native-frame marshalling inference.
-Receiverless script/global mapping remains unresolved, including the stack
-effect of context preparation at `FUN_00D04FE0`.
+Receiverless script/global mapping remains unresolved. The bounded context
+preparation observations below leave transitive helper effects unknown.
 
 Selected instructions and read-slot DWORDs were compared with the identified
 original PE. That comparison does not establish entire loaded-image/FileBytes
@@ -118,6 +118,45 @@ Handlers then read values by position. `FUN_005819A0` requires tag 0,
 `FUN_0071BAC0` tag 1, `FUN_0071BA00` tag 2, `FUN_0071CE70` tag 3 and
 `FUN_0071BEB0` tag 4. A mismatched tag reaches `FUN_00CCA730`. Handlers that
 accept nil test tag 6 before reading.
+
+## Native callback registration
+
+`framework.globalNativeRegistrationEvidence` records the static registration
+path. `FUN_00D07820` supplies callback address `0x00D08000` and integer 1
+through `FUN_00CF32E0` to `FUN_00DCE2C0`. The latter stores the callback at
+returned record `+0x10`. Its inline count loop copies three DWORDs per
+`0x10`-byte stride, then writes a record pointer and raw tag 6 to the stack
+cell and advances `[state+8]` by `0x10`.
+
+For count 1, on normal helper return with conventional preserved registers,
+let Q be `[state+8]` immediately before the count subtraction and R the
+returned record. The inline copies read DWORDs at Q-0x10, Q-0x0C and Q-8
+into R+0x18, R+0x1C and R+0x20, then replace the cell at Q-0x10 with R
+and raw tag 6. The inline
+state field returns to Q. This is relative to post-helper state and does not
+establish whole-function top effects or source-argument consumption.
+
+`FUN_00CF3400` forwards state and an explicit operand to `FUN_00DCE680`.
+The latter places the second input in EAX and state in ECX for
+`FUN_00DCD900`. It obtains a slot through `FUN_00DD4900`, copies three
+DWORDs from its saved top-minus-0x10 value into that slot, and finally
+subtracts `0x20` from the then-current `[state+8]`. Uninspected helper effects
+prevent a whole-function net-delta claim. The callback and cell operations
+support a native-closure construction and candidate indexed table-entry
+installation interpretation. Those labels remain inference.
+
+`FUN_00CD7A50` has a conditional destination-selection fallback. The loaded
+value at `0x0130D4F8`, destination keys and receiver class remain unidentified.
+`FUN_00D04FE0` parent and initializer instructions show conditional context
+selection before invocation. Their transitive effects and overall Lua-frame
+changes remain unknown. Registration does not establish invocation, callable
+or metamethod dispatch, source syntax or receiver insertion. Raw tag 6 does
+not establish internal StackOperator nil semantics. The Variable native-frame
+contract above remains unchanged.
+
+Selected instruction encodings were compared with the identified original PE.
+That does not establish entire loaded-image/FileBytes correspondence,
+pseudocode-only helper correspondence or live behavior.
 
 ## Contracts
 
