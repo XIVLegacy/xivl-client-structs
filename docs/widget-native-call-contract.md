@@ -60,17 +60,59 @@ numbering. A `Which<...>` entry is a `WhichStackOperator` built by
 ## Argument marshalling
 
 `FUN_00D19A20`, whose diagnostic is
-`Component::Lua::GameEngine::Functor::GetArguments_`, walks the declared
-argument list from Lua stack index 2. Index 1 holds the receiver. For each
-entry `FUN_00CFAA10` calls the StackOperator's slot 1, which consumes one
-stack slot. The int, float, bool, Utf8String and Variable readers convert Lua
-nil to tag 6.
+`Component::Lua::GameEngine::Functor::GetArguments_`, initializes a shared
+cursor at native-frame index 2. For a present position `FUN_00CFAA10`
+calls the declared StackOperator's slot `+4`. The selected int, float,
+bool, Utf8String and LuaControl* readers advance that cursor once on normal
+return. Variable can consume a recognized suffix, as described below.
+Other operators are not revalidated by this finite record.
 
-A declared position beyond the stack top is filled with tag 6 without a stack
-read. Calls may therefore omit trailing arguments. When Lua arguments remain
-after the declared list, `FUN_00D19A20` pushes the `GetArguments_` literal at
-`0x0110F5B4` with line `0x9A` and raises through `FUN_00CF38A0`. A call with
-more arguments than the declared list is a Lua error, not a silent discard.
+When the declared cursor exceeds the Lua top, the dispatcher constructs
+one tag-6 placeholder through `FUN_00583F70` and `FUN_00584EE0`, then
+advances the formal cursor once. It reads zero present Lua values.
+After all declared readers, `FUN_00D19A20` compares the resulting cursor
+with its saved bound. Cursor greater than the bound bypasses the diagnostic.
+Otherwise the path reaches `FUN_00CF3360` and `FUN_00CF38A0` with the
+`GetArguments_` diagnostic. Declared list length alone does not determine
+that outcome when Variable is present.
+
+### Variable argument reader
+
+The manifest's `framework.variableArgumentReader` records the bounded
+instruction observations, selected reader slots and conditional derivations.
+The named Variable constructor installs vtable `0x0110E0A0`. Its slot `+4`
+resolves to `FUN_00CF8980` in the original PE. Reader labels retain the
+published builtin registry identities and named constructor evidence.
+EH-state numbers do not establish registry ordinals.
+
+Variable keeps a local scan index and delegates recognized positions to
+selected readers. Raw tags 3, 4, 1, 5 and 0 select numeric, string, bool,
+control and Nil paths. Numeric selection uses `FUN_00CF3670` to choose int
+or float. Every selected reader advances the shared cursor once on normal
+return. A present Nil is not a terminator. An unsupported raw tag returns
+before consuming that position.
+
+For a valid native frame and present suffix with entry cursor p <= saved
+top T, successful recognized readers through T consume T-p+1 present values and leave the
+cursor at T+1. This inference depends on the published registry identities,
+the bounded top-wrapper pseudocode and normal helper completion. Numeric
+conversion fidelity, arbitrary control-table acceptance and error paths
+remain unresolved. One append-helper call per successful selected path
+uses the existing internal-cell append contract. It does not establish
+return emission to Lua.
+
+With the published `_createActor` prefix Utf8String, Utf8String, bool and
+successful prefix reads, native-frame positions 2, 3 and 4 map to internal
+indices 0, 1 and 2. A present Variable suffix begins at native-frame position
+5 and internal index 3. It consumes T-4 values if every suffix reader
+completes. If T < 5, the dispatcher supplies the omitted placeholder without
+reading a present value. This is a native-frame marshalling inference.
+Receiverless script/global mapping remains unresolved, including the stack
+effect of context preparation at `FUN_00D04FE0`.
+
+Selected instructions and read-slot DWORDs were compared with the identified
+original PE. That comparison does not establish entire loaded-image/FileBytes
+identity, pseudocode-only helper correspondence or live behavior.
 
 Handlers then read values by position. `FUN_005819A0` requires tag 0,
 `FUN_0071BAC0` tag 1, `FUN_0071BA00` tag 2, `FUN_0071CE70` tag 3 and
@@ -79,7 +121,8 @@ accept nil test tag 6 before reading.
 
 ## Contracts
 
-Argument positions exclude the receiver. A return list states capacity. A
+Argument indices count internal `ExecuteParameters` cells. Receiverless
+Global mapping remains unresolved. A return list states capacity. A
 handler may push fewer values.
 
 | Native | Owning class | Arguments | Returns | Callback | Forwards to |
@@ -146,10 +189,9 @@ reconstruction uses thin-helper and negative-index-resolver pseudocode as
 well as the observed replace-and-pop instructions. The manifest retains
 the exact locators and the limited original-PE instruction comparison.
 
-Actual Variable cardinality, per-operator output counts, runtime Nil
-emission, host/global binding, class defaults and live scheduling remain
-unresolved. The general marshalling assertions above are neither
-revalidated nor revoked by this finite path.
+The Variable argument record supplies conditional input cardinality.
+Per-operator output counts, runtime Nil emission, host/global binding,
+class defaults and live scheduling remain unresolved.
 
 ### Loop interval
 
@@ -172,8 +214,9 @@ tested by `FUN_00CC7210`.
 `_callSuperClassFunction` declares one `Variable` after the method name. The
 [door initialization record](door-initialization-native-contract.md) reads
 `FUN_0078D520` as preserving two trailing values for a three-argument call.
-The `GetArguments_` check above raises on that call shape. The two
-observations are unreconciled.
+Variable can consume a successful recognized suffix, so the declared
+list length alone does not imply a `GetArguments_` error. This does not
+establish the callback's source-level binding or runtime success.
 
 `_isInstanceOf` and `_createActor` belong to `Global` and are called from
 Lua without a receiver. Their positions are `ExecuteParameters` positions.
