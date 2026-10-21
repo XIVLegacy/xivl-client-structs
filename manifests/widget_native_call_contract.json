@@ -55,6 +55,122 @@
       "Utf8String": "0x007487C0",
       "LuaControl*": "0x00748B30",
       "Nil": "0x00748920"
+    },
+    "widgetCreationOnInit": {
+      "confidence": "probable",
+      "evidenceTier": "STATIC",
+      "scope": "New-control creation with a WidgetBase receiver and successful named method lookup.",
+      "observations": [
+        {
+          "id": "source_suffix",
+          "locators": [
+            "0x007099AC",
+            "0x007099B3",
+            "0x00753BDD-0x00753C1D"
+          ],
+          "observation": "The creation callback passes index 3 to 0x00753B90. That helper copies 16-byte internal argument cells from source_begin + index * 0x10 through source_end, in order."
+        },
+        {
+          "id": "conversion_order",
+          "locators": [
+            "0x00791121",
+            "0x00791137",
+            "0x00791171",
+            "0x00791234"
+          ],
+          "observation": "0x00791110 traverses the copied cells in increasing address order and dispatches on the tag at +0x0C."
+        },
+        {
+          "id": "widget_creation_slot",
+          "locators": [
+            "0x00FD5AE0"
+          ],
+          "catalogAnchor": "manifests/boot_native_call_contract.json framework.controlVftables.WidgetBase",
+          "observation": "WidgetBase vtable 0x00FD5A74 plus slot 0x6C is 0x00FD5AE0. The original-PE DWORD there, file offset 12409568, is 0x006E3920."
+        },
+        {
+          "id": "payload_forwarding",
+          "locators": [
+            "0x00709A63-0x00709A78",
+            "0x006E3993-0x006E39AA",
+            "0x006E39F1",
+            "0x0078BC2B",
+            "0x0078BC3E-0x0078BC50"
+          ],
+          "observation": "The converted container is stack argument 4 of a five-argument creation virtual call. The WidgetBase wrapper forwards it as 0x0078BBB0 argument 5 and supplies zero as argument 6. The latter function forwards argument 5 as 0x00CD0910 argument 3 with the control and the _onInit name at 0x00FE04F0."
+        },
+        {
+          "id": "nil_construction_edge",
+          "locators": [
+            "0x007941B0-0x007941C1",
+            "0x00748EEA-0x00748F12",
+            "0x00748966",
+            "0x0074897B"
+          ],
+          "catalogAnchor": "framework.typeRegistry.builtinOrder and framework.returnPushers.Nil",
+          "observation": "Tag 6 reaches 0x00748EC0, which selects builtin entry 6, calls 0x0078DD00 and calls the catalog-named Nil pusher 0x00748920. That pusher calls 0x00583F70 before 0x00584EE0. This does not establish runtime Nil emission."
+        },
+        {
+          "id": "invocation_count",
+          "locators": [
+            "0x00CCFAB2-0x00CCFAC9",
+            "0x00CCFF7C-0x00CCFF81",
+            "0x00CD0039-0x00CD0059",
+            "0x00CD0099-0x00CD00AB"
+          ],
+          "observation": "The invocation visits operator entries in increasing index order and passes the same zero-initialized local address to each callback. Callback 0x00CCFF60 adds the EAX result of 0x00CF9630 to context +0x14. The count begins at zero, then C + 1 is passed to 0x00CF4010 or 0x00CF4230."
+        }
+      ],
+      "supportedInferences": [
+        {
+          "id": "named_dispatch_path",
+          "locators": [
+            "0x00CD0910",
+            "0x00CCF9B0",
+            "0x00CCCD80",
+            "0x00CCEE30",
+            "0x00CCFFE0"
+          ],
+          "confidence": "inferred",
+          "inference": "Bounded forwarding-helper pseudocode connects the converted container to the named _onInit invocation during this conditional new-control path. No live scheduling behavior follows."
+        },
+        {
+          "id": "receiver_before_emitted_payload",
+          "locators": [
+            "0x00CD7BA6-0x00CD7BAA",
+            "0x00CCCE65-0x00CCCE7B",
+            "0x00CCCF6B-0x00CCCF6D",
+            "0x00DCDC52-0x00DCDC6C",
+            "0x00DCDC9F"
+          ],
+          "confidence": "inferred",
+          "inference": "Successful lookup leaves callable then lookup-derived receiver before emitted payload values. The receiver is Lua argument 1 and emitted values begin at argument 2. This relies on thin-helper and ordinary negative-index-resolver pseudocode as well as observed replace-and-pop instructions.",
+          "dependencies": [
+            "0x00CF33A0",
+            "0x00CF3380",
+            "0x00CF3460",
+            "0x00CF34F0",
+            "0x00DCE150",
+            "0x00DCDCB0",
+            "0x00DCE460",
+            "0x00DCDBF0",
+            "0x00CD7A50",
+            "0x00DCD900",
+            "0x00CF9630"
+          ]
+        }
+      ],
+      "identityLimits": "Selected instructions in 0x006E3920, 0x00794170, 0x00CCFF60, 0x00CCCD80, 0x00CD7B00, 0x00DCDBF0, 0x00CCFFE0, 0x00CCFA70, 0x00748EC0 and 0x00748920 were compared with the identified original PE. Earlier creation-callback, suffix-copy, conversion-loop and 0x0078BBB0 instruction selections were not part of that comparison. Entire loaded-image/FileBytes correspondence and pseudocode-only paths remain unverified.",
+      "unresolved": [
+        "Actual Variable reader cardinality and accepted or consumed Lua suffix count.",
+        "Extra-argument behavior for this native.",
+        "Per-operator output counts and any exact source-cell-to-Lua-position formula.",
+        "Runtime Nil output.",
+        "Host/global binding, physical receiver identity beyond the lookup-derived receiver, and class defaults.",
+        "Existing-control initialization, method absence, error paths and runtime scheduling.",
+        "Whole-image identity and live retail invocation/session behavior."
+      ],
+      "generalMarshallingBoundary": "This finite creation-path observation neither revalidates nor revokes framework.argumentMarshalling."
     }
   },
   "rows": [
