@@ -30,7 +30,12 @@ the shipped client scripts, whose script identities are indexed by
 `xivl-client-scripts:lua/registry.json`. Call sites are taken in instruction
 order. Each Lua-defined method is expanded at its first call through the class
 method tables of the shipped scripts. Every branch is included, and a leading
-unconditional jump over compiled-out code is skipped. Only names listed by
+unconditional jump over compiled-out code is skipped. Receivers loaded from
+the `desktopWidget` and `worldMaster` globals resolve through `DesktopWidget`
+and `WorldMaster`, and every other receiver resolves through the walking
+class. The method tables include definitions whose key is held in a
+register, which covers the `DesktopWidget` methods defined in
+`widget/desktopwidget_connector`. Only names listed by
 `xivl-client-scripts:lua/napi_index.json` are kept, each at its first
 occurrence. The order is static call-site order, not a runtime trace.
 
@@ -47,32 +52,48 @@ occurrence. The order is static call-site order, not a runtime trace.
 6. `_setProperty`
 7. `_getProperty`
 8. `_sendStoryboardCommand`
-9. `_initTargetCursors`
-10. `_setTargetCursorImage`
-11. `_setTargetableDistance`
-12. `_setTargetCharacter`
-13. `_setCurrentTargetCursor`
-14. `_setAllTargetCursorMask`
-15. `_getMyPlayer`
-16. `_isAlive`
-17. `_getTargetCharacter`
-18. `_getCurrentTargetCursor`
-19. `_getLockonTarget`
-20. `_setLockonTarget`
-21. `_getKeyboardFocusedWidget`
-22. `_setKeyboardFocusedWidget`
-23. `_setUICommandCondition`
-24. `_lockPlayerControl`
-25. `_countChildWidgets`
-26. `_getChildWidget`
-27. `_setParentWidget`
-28. `_createActor`
-29. `_setLoopInterval`
+9. `_getUserConfig`
+10. `_table`
+11. `_setUserConfig`
+12. `_saveUserConfig`
+13. `_initTargetCursors`
+14. `_setTargetCursorImage`
+15. `_setTargetableDistance`
+16. `_setTargetCharacter`
+17. `_setCurrentTargetCursor`
+18. `_setAllTargetCursorMask`
+19. `_createActor`
+20. `_getMyPlayer`
+21. `_isAlive`
+22. `_getTargetCharacter`
+23. `_getCurrentTargetCursor`
+24. `_getLockonTarget`
+25. `_setLockonTarget`
+26. `_getKeyboardFocusedWidget`
+27. `_setKeyboardFocusedWidget`
+28. `_haveEnmityCharacters`
+29. `_countMember`
+30. `_isMember`
+31. `_getPos`
+32. `_isTalkable`
+33. `_getLocalizedDisplayNameForChat`
+34. `_getUTF8StringByteLength`
+35. `_delete`
+36. `_setUICommandCondition`
+37. `_countChildWidgets`
+38. `_getChildWidget`
+39. `_lockPlayerControl`
+40. `_setParentWidget`
+41. `_getParentWidget`
+42. `_setLoopInterval`
 
-`_string` is a value namespace and `_isAlive` is an IndividualRef metatable
-field. Neither is a functor native. The first three rows also record call-site
-argument counts measured from the same bytecode. Each count fits the declared
-argument list.
+`_string` and `_table` are value namespaces and `_isAlive` is an
+IndividualRef metatable field. None of them is a functor native. The
+[desktop contracts](desktop-native-call-contract.md) record
+`_getUserConfig`, `_setUserConfig`, `_saveUserConfig` and
+`_setUICommandCondition`. The first three rows also record call-site argument
+counts measured from the same bytecode. Each count fits the declared argument
+list.
 
 ## Script binding
 
@@ -157,10 +178,14 @@ WidgetBase cast reader `0x0071C190` and returns false for a null widget.
 
 ## Open
 
-- `_setUICommandCondition`, `_lockPlayerControl`, `_countChildWidgets`,
-  `_getChildWidget` and `_setParentWidget` are next in call order. The
-  manifest `deferred` rows record their registrars and declared lists. Their
-  handlers and forwarding targets are not recorded.
+- The manifest `deferred` rows record the registrars and declared lists of
+  `_setUICommandCondition`, `_lockPlayerControl`, `_countChildWidgets`,
+  `_getChildWidget` and `_setParentWidget`. Their handlers and forwarding
+  targets are not recorded here. The desktop contracts record
+  `_setUICommandCondition` in full. `_haveEnmityCharacters`, `_countMember`,
+  `_isMember`, `_getPos`, `_isTalkable`, `_getLocalizedDisplayNameForChat`,
+  `_getUTF8StringByteLength`, `_delete` and `_getParentWidget` have no call
+  contract row.
 - `_loadTextDataPermanently` is registered on `ActorBase`, and
   `WorldMaster._onInit` calls it on its own receiver. The binding that
   resolves it for `WorldMaster` was not traced.
