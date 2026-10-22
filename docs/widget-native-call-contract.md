@@ -180,7 +180,10 @@ handler may push fewer values.
 | `_callSuperClassFunction` | `ActorBase` | `Utf8String`, `Variable` | `Variable` | `0x006DBC40` | `0x0078D520` |
 | `_getKeyboardFocusedWidget` | `DesktopWidget` | none | `LuaControl*` or nil | `0x006FDBF0` | `0x0075BA10` |
 
-The manifest rows carry each registrar, name reference and list builder.
+The manifest rows carry each registrar, name reference and list builder. The
+[SpreadSheet contracts](spreadsheet-native-contract.md) record the other
+natives of the `SpreadSheet` class, which share the `_setFilename` handle
+at `+0xB4`.
 
 ### Property access
 
