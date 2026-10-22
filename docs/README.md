@@ -59,6 +59,9 @@ catalog. Machine-readable inventories and regeneration rules live under
   widget accessors, keyboard focus, tutorial test and desktop message pools.
 - [SpreadSheet native contracts](spreadsheet-native-contract.md) - row cache
   reads, key ranges, yielding load requests, row release and asynchronous loads.
+- [Chara scheduler, wait, item and log native contracts](scheduler-item-native-contract.md) -
+  scheduler queue entry, resume checkers and thread yield, item package
+  lookup and log output.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, bounded argument records and supported output representations.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -
