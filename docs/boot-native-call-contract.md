@@ -111,8 +111,10 @@ contract.
 
 Argument indices count internal `ExecuteParameters` cells. The
 [binding map contracts](binding-map-native-contract.md#receiverless-names)
-record the descriptors of the receiverless names. Their call convention remains
-unresolved. A return list states capacity. A handler may push fewer values.
+record the descriptors of the receiverless names. Their
+[call convention](global-native-contract.md#receiverless-call-convention) puts
+the `global` object at position 1. A return list states capacity. A handler may
+push fewer values.
 
 | Native | Owning class | Arguments | Returns | Callback | Forwards to |
 | --- | --- | --- | --- | --- | --- |

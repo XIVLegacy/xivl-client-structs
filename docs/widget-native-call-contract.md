@@ -107,8 +107,10 @@ indices 0, 1 and 2. A present Variable suffix begins at native-frame position
 5 and internal index 3. It consumes T-4 values if every suffix reader
 completes. If T < 5, the dispatcher supplies the omitted placeholder without
 reading a present value. This is a native-frame marshalling inference.
-Receiverless script/global mapping remains unresolved. The bounded context
-preparation observations below leave transitive helper effects unknown.
+A receiverless script call supplies the `global` object at native-frame
+position 1, as the [Global call convention](global-native-contract.md#receiverless-call-convention)
+records. The bounded context preparation observations below leave transitive
+helper effects unknown.
 
 Selected instructions and read-slot DWORDs were compared with the identified
 original PE. That comparison does not establish entire loaded-image/FileBytes
@@ -162,8 +164,10 @@ pseudocode-only helper correspondence or live behavior.
 
 Argument indices count internal `ExecuteParameters` cells. The
 [binding map contracts](binding-map-native-contract.md#receiverless-names)
-record the descriptors of the receiverless names. Their call convention remains
-unresolved. A return list states capacity. A handler may push fewer values.
+record the descriptors of the receiverless names. Their
+[call convention](global-native-contract.md#receiverless-call-convention) puts
+the `global` object at position 1. A return list states capacity. A handler may
+push fewer values.
 
 | Native | Owning class | Arguments | Returns | Callback | Forwards to |
 | --- | --- | --- | --- | --- | --- |

@@ -233,12 +233,13 @@ the name. The `_getStaticActor` row of the
 state dwords and the node byte, and the classes behind the engine name tables,
 were not traced.
 
-`Global` is `INFERRED` to be the class of the receiverless names. Its
-switchboard registers `_defineClass` and `_defineBaseClass` at orders 1 and 2
-and `_isExistActor` at order 7. The boot contracts record the `global_u`
-descriptor with the selector `global` for `_getStaticActor`. The `global_u`
-script declares a descriptor with that selector for each of the 15 natives
-below, `_isExistActor` included. The
+`Global` is the class of the receiverless names, as the
+[Global call convention](global-native-contract.md#receiverless-call-convention)
+records. Its switchboard registers `_defineClass` and `_defineBaseClass` at
+orders 1 and 2 and `_isExistActor` at order 7. The boot contracts record the
+`global_u` descriptor with the selector `global` for `_getStaticActor`. The
+`global_u` script declares a descriptor with that selector for each of the 15
+natives below, `_isExistActor` included. The
 [binding map contracts](binding-map-native-contract.md#receiverless-names) record
 the descriptors and the key suffix.
 
@@ -263,7 +264,10 @@ the descriptors and the key suffix.
 The names are the literals that each registrar installs. The
 [boot contracts](boot-native-call-contract.md) and the
 [widget contracts](widget-native-call-contract.md) record `_createActor`,
-`_getStaticActor` and `_isInstanceOf`. The other rows have no contract yet.
+`_getStaticActor` and `_isInstanceOf`. The
+[Global native contracts](global-native-contract.md#registration-and-dispatch)
+cover orders 4, 5 and 9 to 15. `_defineClass` and `_defineBaseClass` have no
+contract yet.
 
 ## Area natives
 
@@ -381,7 +385,7 @@ data and the group manager, which this record does not supply.
   `0x00771C20`, the slot table capacity at the chara record base and the
   meaning of the second int of `_setNameplate`.
 - The engine name tables behind `0x00CD8870`, the state dwords and the node
-  byte read by `_isExistActor`, and how a Lua script reaches a `Global` native.
+  byte read by `_isExistActor`.
 - The writers and readers of the area fields at `+0x64` and `+0xBB`.
 - The classes of the world objects at `+0xDC`, `+0xE0`, `+0xE4`, `+0x118` and
   `+0x12C` of `Y`, the group handle class and the role of the `.data` argument `0x012BFB65`.

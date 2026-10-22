@@ -138,13 +138,15 @@ natives, 8 are the aliases above, 3 are the library namespaces, 1 is `_isAlive`,
 registered natives without a descriptor, 5 are descriptor suffix identifiers and
 2 are `_callFunction` and `_progFunc` (`MEASURED`).
 
-One question stays open. The trampoline `0x00D04DA0` behind every installed
-closure tests that Lua stack index 1 is a table (`0x00CF3740` compares the type
-code with 5). Otherwise it reports through `0x00CCFB20` and `0x00CD4FA0` and
-returns no value. A call such as `_getStaticActor(24301)` has a number at index
-1. How a receiverless call satisfies that test or avoids it was not settled, so
-the position 1 gap in the [widget contracts](widget-native-call-contract.md)
-remains.
+The trampoline `0x00D04DA0` behind every installed closure tests that Lua stack
+index 1 is a table (`0x00CF3740` compares the type code with 5). Otherwise it
+reports through `0x00CCFB20` and `0x00CD4FA0` and returns no value. A call such
+as `_getStaticActor(24301)` has a number at index 1 in the script, yet the
+closure that the script reaches is not the native. The root table `__newindex`
+installs a forwarder per descriptor that calls the native with the `global`
+object as the first argument, so index 1 holds that table. The
+[Global call convention](global-native-contract.md#receiverless-call-convention)
+records the forwarder, the trampoline and the native frame.
 
 ### Library namespaces
 
@@ -449,16 +451,11 @@ an argument list, a return list and a callback contract: `_isAlive`, `_getPos`,
 `_string` and `_table` are not functor natives, so a client implements them as
 script and bootstrap behavior. A client that implements the rows still needs the
 writers of the character, group, item and event work fields, the sheet behind the
-name indexes, the consumer of the control scene packet and the receiverless call
-convention of the `Global` natives, which this record does not supply.
+name indexes and the consumer of the control scene packet, which this record
+does not supply.
 
 ## Open
 
-- How a receiverless call to a `Global` native satisfies the table test of the
-  trampoline `0x00D04DA0`, and the nine `Global` natives that wait on it:
-  `_canCreateActorByName`, `_getActorByName`, `_getQuestActorForCutSceneReplay`,
-  `_isExistStaticActor`, `_prepareAllCommandStaticActor`, `_getUTF8StringLength`,
-  `_getUTF8StringByteLength`, `_normalizeDisplayName` and `_replaceMacroCodeString`.
 - The callbacks behind the aliases `_setPos`, `_setDir`, `_turnDir`,
   `_getAllExtendedTemporaryGroup` and `_setPosDirInn`.
 - The run-time result of the chara queries for an identity that is not in the
@@ -501,7 +498,9 @@ descriptor suffix identifiers. An alias takes the class of its descriptor.
 
 The manifest rows under `nextTranche` carry the same order.
 The [work binder contracts](work-binder-native-contract.md) cover ranks 1, 2, 3, 4,
-9, 10, 12, 15, 16 and 19 and carry the refreshed order.
+9, 10, 12, 15, 16 and 19. The [Global native contracts](global-native-contract.md)
+cover the nine `Global` natives below the twentieth row and carry the refreshed
+order.
 
 ## Reproduction
 

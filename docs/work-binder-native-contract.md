@@ -737,9 +737,10 @@ descriptor suffix identifiers. An alias takes the class of its descriptor.
 | 19 | `_getClassName` | `Debug` | 3 | 11 | Order 3 of the Debug switchboard, next to _getInstanceName. |
 | 20 | `_waitForTargetTutorial` | `DesktopWidget` | 3 | 9 | Order 35 of the DesktopWidget switchboard, a candidate yield native. |
 
-The manifest rows under `nextTranche` carry the same order. The nine `Global`
-natives that wait on the receiverless call convention rank below the twentieth
-row, as in the binding map contracts.
+The manifest rows under `nextTranche` carry the same order. The
+[Global native contracts](global-native-contract.md) cover ranks 1, 2 and 3 and the
+nine `Global` natives that ranked below the twentieth row, and carry the refreshed
+order.
 
 ## Reproduction
 
