@@ -166,7 +166,9 @@ The cursor natives take a one-based cursor number and pass it minus 1.
 `_getCurrentTargetCursor` returns its index plus 1. `_initTargetCursors`
 stores the count at DesktopWidget `+0x68` and `_setTargetableDistance` stores
 the distance at `+0x74`. `_setTargetCharacter` reads its control through the
-CharaBase cast reader `0x0071BC90` and clears the cursor on Nil.
+CharaBase cast reader `0x0071BC90` and clears the cursor on Nil. The
+[target cursor state](target-cursor-native-contract.md) records what the
+workers do to the cursor vector, the current cursor and the cursor objects.
 
 ### Lock-on and focus
 
@@ -194,8 +196,8 @@ WidgetBase cast reader `0x0071C190` and returns false for a null widget.
   `WidgetBaseClass._onInit`. The scripts do not declare that parent. The
   expansion is inferred from the `DesktopWidget` test inside
   `WidgetBaseClass._onInit`.
-- The semantics of the identity behind `0x0075C690`, the cursor table behind
-  `0x0075F0E0` and the sheet object from `0x0075F5A0` were not traced.
+- The semantics of the identity behind `0x0075C690` and the sheet object from
+  `0x0075F5A0` were not traced.
 - `WorldMaster._onInit` passes one argument to `_callSuperClassFunc`.
   `DesktopWidget._onInit` passes the method name followed by all five results
   of a Lua method, a six-argument call. The declared
