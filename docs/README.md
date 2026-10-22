@@ -55,6 +55,8 @@ catalog. Machine-readable inventories and regeneration rules live under
   config keys, list text, UI command conditions and `LuaControl*` returns.
 - [Target cursor native state](target-cursor-native-contract.md) - cursor
   creation, selection, range check, empty identity and image side effects.
+- [Talk widget native contracts](talk-native-contract.md) - parent and child
+  widget accessors, keyboard focus, tutorial test and desktop message pools.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, bounded argument records and supported output representations.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -

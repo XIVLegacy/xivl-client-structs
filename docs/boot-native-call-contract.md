@@ -188,7 +188,9 @@ WidgetBase cast reader `0x0071C190` and returns false for a null widget.
   `_setUICommandCondition` in full. `_haveEnmityCharacters`, `_countMember`,
   `_isMember`, `_getPos`, `_isTalkable`, `_getLocalizedDisplayNameForChat`,
   `_getUTF8StringByteLength`, `_delete` and `_getParentWidget` have no call
-  contract row.
+  contract row here. The [talk widget contracts](talk-native-contract.md)
+  record the handlers of `_countChildWidgets` and `_getChildWidget` and the
+  full contract of `_getParentWidget`.
 - `_loadTextDataPermanently` is registered on `ActorBase`, and
   `WorldMaster._onInit` calls it on its own receiver. The binding that
   resolves it for `WorldMaster` was not traced.
