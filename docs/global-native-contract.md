@@ -443,6 +443,8 @@ descriptor suffix identifiers and the Lua level `_callFunction`.
 | 22 | `_waitForTurning` | `CharaBaseClass` | 3 | 6 | Order 63 of the `CharaBase` switchboard, a candidate yield native. |
 
 The manifest rows under `nextTranche` carry the same order.
+The [chara and desktop contracts](chara-desktop-native-contract.md) cover ranks 2, 3,
+10 and 19 and carry the refreshed order.
 
 ## Reproduction
 

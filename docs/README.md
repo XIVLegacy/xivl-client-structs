@@ -86,6 +86,10 @@ canonical records, generated views and frozen investigations.
   `global` object at position 1, actor name and static actor natives, UTF-8
   string and macro natives, and the chara scheduler, look-at and aim camera
   tutorial natives.
+- [Item package, main stat mode, target cursor control, inn, display name, NPC filter and command dispatch native contracts](chara-desktop-native-contract.md) -
+  the `_hasItemPackage` lookup, the `_isActorMainStatMode` group table, the
+  `RaptureUserControl` target cursor counter, `_isInn`, the localized display
+  name natives, the `NpcBase` filter vectors and the `PlayerBase` command thunks.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
