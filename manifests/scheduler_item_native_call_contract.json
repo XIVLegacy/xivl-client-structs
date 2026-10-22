@@ -162,7 +162,8 @@
         "+0x0660": "Log sink pointer tested by 0x004D6D90.",
         "+0x174F8": "Sheet manager, returned by 0x004D74C0."
       },
-      "tier": "STATIC for the offsets and the chain, INFERRED for the roles. The class of V was not identified."
+      "class": "The constructor 0x004DBF40 of Application::Main::RaptureElementContainer (vftable 0x00F912E4) initializes the registry at +0x4AC, the log sink pointer at +0x660 and the sheet manager pointer at +0x174F8 with the same offsets, and MainModule (vftable 0x00F9142C) calls it once at 0x004DC414 on its subobject at +0x10. V is INFERRED to be that container.",
+      "tier": "STATIC for the offsets and the chain, INFERRED for the roles and for the class of V."
     },
     "identityLookup": {
       "routines": {
@@ -350,7 +351,7 @@
           "index": 0,
           "stackOperator": "float",
           "handlerRead": "0x0071BAC0 tag 1",
-          "note": "Wait time in seconds. The body multiplies it by 1000.0 and truncates it to a signed 64 bit millisecond duration."
+          "note": "Wait time in seconds. The body multiplies it by 1000.0, truncates it with the 32 bit cvttsd2si and sign extends the dword into the two duration dwords, so the duration is a signed 32 bit millisecond count."
         }
       ],
       "returns": [],
@@ -375,10 +376,19 @@
         },
         {
           "tier": "STATIC",
-          "claim": "The duration is the float converted to a double, multiplied by the double 1000.0 at 0x00F91C48, truncated by cvttsd2si and sign extended to 64 bits. A negative argument gives a negative 64 bit value.",
+          "claim": "The duration is the float converted to a double by cvtss2sd, multiplied by the double 1000.0 at 0x00F91C48 and truncated by the 32 bit form cvttsd2si eax,xmm0. The cdq that follows sign extends EAX into EDX, and EDX and EAX are pushed as the high and low duration dwords. The duration is therefore a signed 32 bit millisecond count held in two dwords, and a negative argument gives a negative value.",
           "locators": [
-            "0x0078BF4C..0x0078BF61",
+            "0x0078BF4C..0x0078BF5F",
+            "0x0078BF5A",
+            "0x0078BF5E",
             "0x00F91C48"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "A NaN, a product at or above 2147483648.0 (an argument of about 2147483.648 seconds or 24.855 days) and a product at or below -2147483649.0 make cvttsd2si return the integer indefinite value 0x80000000. The duration is then low dword 0x80000000 and high dword 0xFFFFFFFF, a negative value. The stored duration never leaves the signed 32 bit range.",
+          "locators": [
+            "0x0078BF5A..0x0078BF5F"
           ]
         },
         {
@@ -422,9 +432,9 @@
         },
         {
           "tier": "INFERRED",
-          "claim": "The cell values read as done for 0x01377ECC (0) and still waiting for 0x0130CECC (1), because the update loop leaves the thread parked on 0x0130CECC and resumes it on every other result. A negative argument has a high dword of 0xFFFFFFFF, which the unsigned high compare treats as greater than a normal elapsed value, so the poll keeps reporting waiting. A zero argument is done at the first poll, which runs after the native has returned.",
+          "claim": "The cell values read as done for 0x01377ECC (0) and still waiting for 0x0130CECC (1), because the update loop leaves the thread parked on 0x0130CECC and resumes it on every other result. A negative argument, including every NaN or out of range argument above, has a high dword of 0xFFFFFFFF. The elapsed high dword is the borrow of the 32 bit tick subtraction, because the stored high dword at +0x1C is 0, so it is 0 until timeGetTime wraps below the stored start. The unsigned high compare therefore treats the duration as greater than a normal elapsed value and the poll keeps reporting waiting. After a tick wrap the elapsed high dword is 0xFFFFFFFF and the low dword compare decides. A zero argument is done at the first poll, which runs after the native has returned.",
           "locators": [
-            "0x0078D951..0x0078D97B",
+            "0x0078D943..0x0078D97B",
             "0x00CF1CE0..0x00CF1D1B"
           ]
         },
@@ -847,15 +857,26 @@
           ]
         },
         {
-          "tier": "INFERRED",
-          "claim": "The dword at +0x24 is the catalog identifier of the item, from the native name. The four ItemBase fields are the reference that 0x006E2770 stores when it builds the control, so the call re-reads the package on every call.",
+          "tier": "STATIC",
+          "claim": "The records that a received item update creates are Item-derived objects. 0x006F4490 allocates 0xD0 bytes per decoded record and constructs them through 0x006EF520, which forwards six arguments to the Item base constructor 0x006DF580 and then stores the vftable 0x00FD5C68, RTTI ItemBuilder. 0x006DF580 stores the dword that its fifth argument points at in the record +0x24. 0x006F4490 passes the address of a local that holds the dword at decoded record +0x10, and 0x0076B760 fills decoded record +0x10 from the dword at wire record +0x0C.",
           "locators": [
-            "0x006E2912..0x006E291B"
+            "0x006F4552..0x006F4589",
+            "0x006EF520..0x006EF58B",
+            "0x006DF5D3..0x006DF5DF",
+            "0x0076B7A8..0x0076B7AB"
+          ]
+        },
+        {
+          "tier": "INFERRED",
+          "claim": "The dword at +0x24 is the catalog identifier of the item, from the native name. The wire source is the dword at item record +0x0C. It is not the eight byte pair at wire +0x00 and +0x04, which lands at item +0x10 and +0x14. The four ItemBase fields are the reference that 0x006E2770 stores when it builds the control, so the call re-reads the package on every call.",
+          "locators": [
+            "0x006E2912..0x006E291B",
+            "0x0076B791..0x0076B7AB"
           ]
         },
         {
           "tier": "unknown",
-          "claim": "Which structure holds the record and what the variant byte at +0x70 selects. The tree at manager +0x14 that 0x006EE480 reads was not identified.",
+          "claim": "How the built item reaches the package slot that 0x006EE3E0 returns, what the variant byte at +0x70 selects and the tree at manager +0x14 that 0x006EE480 reads. The helper 0x00702A20 builds an ItemBuilder through 0x006EF490 for a native that reads three ints, and its field sources were not traced.",
           "locators": [
             "0x006EE480"
           ]
@@ -1822,15 +1843,58 @@
           ]
         },
         {
-          "tier": "INFERRED",
-          "claim": "The sink at world object +0x660 is the client log and chat output path and the kind selects the channel. The roles come from the native name and the call shape.",
+          "tier": "STATIC",
+          "claim": "The sink at V +0x660 is a 0x74 byte Application::Misc::RaptureLogModule (vftable 0x00F91434). 0x004DC62E allocates it, 0x004DEE90 constructs it and 0x004DC66E stores the pointer.",
           "locators": [
-            "0x004CE760"
+            "0x004DC62E..0x004DC66E",
+            "0x004DEE90",
+            "0x00F91434"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "0x004CE760 takes a kind word and two Utf8Strings. It formats the kind with the literal %04X at 0x00F8D638, concatenates the two strings through 0x0044AB90 and passes the character pointer and length to virtual slot 7 of the module, 0x00C9AD40. That routine appends the text to the container at module +0x2C through 0x00C9BAE0, increments the count at +0x10, increments the dword at +0x14 when the previous count is at least 0x4B0, and returns the previous count as an entry id.",
+          "locators": [
+            "0x004CE79B..0x004CE87F",
+            "0x00C9A8E0..0x00C9A905",
+            "0x00C9AD40..0x00C9AD95"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "0x004CE760 then grows the vector of 20 byte entries at module +0x4C to kind + 1 entries through 0x004D56F0, appends the entry id to the queue of the entry for the kind through 0x004571F0, and removes ids from the front of that queue while they are below the dword that 0x00C9A8C0 returns. That dword is the value at +0x14, or -1 when the count at +0x10 is 0.",
+          "locators": [
+            "0x004CE88E..0x004CE97A",
+            "0x00C9A8C0..0x00C9A8CD"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The kinds at the immediate pushes of the callers of 0x004D6D90 and 0x0075D4C0 include 0x20 in 0x004C3BE0, 0x00519440, 0x005614B0 and 0x006EC230, 0x1F in 0x0075BC90, 0x006E7AB0 and 0x0071C5F0, 1 in 0x0075BEF0, 2 in 0x0075BFD0 and 0x19 in 0x0075C0B0. 0x0075BC90 builds the literal <debug>, 0x0071C5F0 the literal <debug>: and 0x005614B0 refers to the literals xtx/_text_ui, ' 2010 ' and ' 2010, 2011 '.",
+          "locators": [
+            "0x004C3D2A",
+            "0x0051952B",
+            "0x00561A5D",
+            "0x0075BCE2",
+            "0x0075BF77",
+            "0x0075C057",
+            "0x0075C137",
+            "0x006E7B55",
+            "0x006EC2B6",
+            "0x0071C6A9"
+          ]
+        },
+        {
+          "tier": "INFERRED",
+          "claim": "The module is the client log store with one queue of entry ids per kind. Kind 0x1F carries debug lines, because three of its callers build the <debug> literals, and kind 0x20 carries general system lines, because 0x005614B0 passes it with the copyright literals. The names of the kinds and the consumers of the queues are not stated by the bytes.",
+          "locators": [
+            "0x004CE88E..0x004CE97A",
+            "0x005614B0"
           ]
         },
         {
           "tier": "unknown",
-          "claim": "The body of 0x004CE760, the meaning of the kinds 0x1F and 0x20, and the consumers of the sink.",
+          "claim": "The consumers of the module queues, the names of the kinds, the body of 0x00C9BAE0 and the retail values of the other kinds.",
           "locators": [
             "0x004CE760"
           ]
@@ -2999,6 +3063,15 @@
           ]
         },
         {
+          "tier": "STATIC",
+          "claim": "0x006F4490 zero extends the byte at decoded record +0x16 and passes it as the fourth argument of 0x006EF520. 0x006DF580 stores that argument in the record +0x20. 0x0076B760 copies the byte at wire record +0x28 to decoded record +0x16. The value is therefore an unsigned byte widened to a dword.",
+          "locators": [
+            "0x006F4569..0x006F4578",
+            "0x006DF5CC..0x006DF5DA",
+            "0x0076B7B6..0x0076B7B9"
+          ]
+        },
+        {
           "tier": "INFERRED",
           "claim": "The dword at +0x20 is the index of the item name in the name sheet, from the native name.",
           "locators": [
@@ -3007,7 +3080,7 @@
         },
         {
           "tier": "unknown",
-          "claim": "Which sheet the index addresses and the Lua side use of it.",
+          "claim": "Which sheet the index addresses, the meaning of the wire byte at record +0x28 and the Lua side use of it.",
           "locators": [
             "0x00701C1A"
           ]
@@ -3248,8 +3321,8 @@
     "note": "These are the rows of the unimplemented ledger that this record gives a registration, argument list, return list, receiver check and callback contract. A client that implements them still needs the scheduler queue consumers, the item package data and the sink behind the log output, which this record does not supply."
   },
   "nextTranche": {
-    "reference": "manifests/nameplate_group_native_call_contract.json nextTranche",
-    "note": "The ranked list of the next natives lives in the nameplate, actor and group contract. It covers _countStack, _getItemPackageFreeSpace, _countMember and _isMember from the earlier ranking and records _isEquipping, _isStackable, _hasItemPackage and _getMaxStack as related rows."
+    "reference": "manifests/fade_actor_group_native_call_contract.json nextTranche",
+    "note": "The ranked list of the next natives lives in the fade, actor and group contract. The nameplate, actor and group contract covers _countStack, _getItemPackageFreeSpace, _countMember and _isMember from the earlier ranking and records _isEquipping, _isStackable, _hasItemPackage and _getMaxStack as related rows."
   },
   "boundaries": [
     "These are static client observations. No live Lua call or retail-client walk was performed.",

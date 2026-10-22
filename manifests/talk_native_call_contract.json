@@ -452,7 +452,7 @@
         }
       ],
       "forwardsTo": "0x0075D120, then 0x0075CE30",
-      "behavior": "Reads the engine handle at ExecuteParameters +0x04, loads the dword at the 0x00CC7510 address and then the dword at +0x04 of that value. It calls 0x0075D120 with the engine handle on the object at +0x110 of that value, then calls 0x0075CE30 on the object at +0x00. The AL of the second call is pushed as the bool. 0x0075CE30 returns false when the dword at +0x508 of its context is nonzero and the byte at +0x505 is nonzero, and true otherwise. 0x0075D120 queries property 0x0007A122 of the object identified by 0xC0000024. A true result queries properties 0x0007A123 and 0x0007A121 and stores a packed dword at context +0x500 when the pair changed from the cache at +0x04 and +0x08. A false result stores 0 there when the cache byte at +0x09 is set. The pushed value does not read +0x500. The callback takes no argument and requests no yield.",
+      "behavior": "Reads the engine handle at ExecuteParameters +0x04, loads the dword at the 0x00CC7510 address and then the dword at +0x04 of that value. It calls 0x0075D120 with the engine handle on the object at +0x110 of that value, then calls 0x0075CE30 on the object at +0x00. The AL of the second call is pushed as the bool. 0x0075CE30 returns false if and only if the dword at +0x508 of its context and the byte at +0x505 are both nonzero, and true whenever +0x508 is 0. 0x0075D120 queries property 0x0007A122 of the object identified by 0xC0000024. A true result queries properties 0x0007A123 and 0x0007A121 and stores a packed dword at context +0x500 when the pair changed from the cache at +0x04 and +0x08. A false result stores 0 there when the cache byte at +0x09 is set. The pushed value does not read +0x500. The callback takes no argument and requests no yield.",
       "yields": false,
       "facts": [
         {
@@ -472,8 +472,28 @@
         },
         {
           "tier": "STATIC",
-          "claim": "The only direct store encodings of the byte at +0x505 sit in a constructor body that also writes +0x4F4 through +0x50C.",
-          "locators": ["0x004DC02B", "0x004DC031"]
+          "claim": "The only displacement encoded store of the byte at +0x505 in .text is 0x004DC02B, in the constructor 0x004DBF40 of Application::Main::RaptureElementContainer (vftable 0x00F912E4). That constructor stores the dwords from its arguments at +0x4F4 and +0x4F8, zero at +0x4FC (byte), +0x500 (dword), +0x504 (byte), +0x505 (byte, 0x004DC02B), +0x508 (dword, 0x004DC031) and +0x50C (dword). The MainModule constructor 0x004DC3A0 (vftable 0x00F9142C) calls it once at 0x004DC414 on its subobject at +0x10.",
+          "locators": ["0x004DBF40..0x004DC03D", "0x004DC01F..0x004DC037", "0x004DC02B", "0x004DC031", "0x004DC3A0..0x004DC414"]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The same constructor initializes the identity registry at +0x4AC through 0x0053B230, the log sink pointer at +0x660 and the sheet manager pointer at +0x174F8, the three fields that the scheduler contract records for the world object V. The routines 0x004D9970 (+0x4AC), 0x004D6D90 (+0x660) and 0x004D7220..0x004D7266 (+0x500..+0x508) lie in the address range 0x004D6D90..0x004D9970 that precedes the constructor.",
+          "locators": ["0x004DBFA5..0x004DBFEF", "0x004DC07A", "0x004DC187", "0x004D9970", "0x004D6D90", "0x004D7220..0x004D7266"]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "0x0075CE30 loads the dword at its receiver as the object and calls 0x004D7260 (+0x508) and 0x004D7250 (+0x505) on it. The callback 0x00707C70 passes the dword at Y as that receiver. Besides 0x0075CE30, only 0x0088C4C0 calls 0x004D7250 and 0x004D7260. The setter 0x004D7230 of +0x500 is called from 0x0055DFC4, 0x0075D1C9 and 0x0075D1DA and jumped to from 0x0075CD82.",
+          "locators": ["0x0075CE30..0x0075CE50", "0x00707C7E..0x00707C94", "0x0088C704", "0x0088C710", "0x004D7230"]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "No displacement encoded instruction in .text other than 0x004DC02B and the reader 0x004D7250 uses +0x505. The stores of +0x508 at 0x00514EDA, 0x00C47904, 0x00C48EA4 and 0x009E8D7A sit in routines that belong to other classes, and 0x009E8D7A lies in the C runtime math code, so no store of +0x505 or +0x508 outside the constructor reaches the container by a displacement encoding.",
+          "locators": ["0x004D7250", "0x004DC02B", "0x00514EDA", "0x00C47904", "0x00C48EA4", "0x009E8D7A"]
+        },
+        {
+          "tier": "INFERRED",
+          "claim": "The receiver V of the two accessors is the RaptureElementContainer, because the constructor initializes the same offsets that the other callbacks read through V. Under that reading both +0x505 and +0x508 are 0 after construction, so 0x0075CE30 returns true and the callback pushes true, unless a store through a computed address exists. The enclosing class assignments of the four other +0x508 stores are read from their neighbouring accesses and were not traced further.",
+          "locators": ["0x004D7250", "0x0075CE45..0x0075CE4D"]
         },
         {
           "tier": "INFERRED",
@@ -482,7 +502,7 @@
         },
         {
           "tier": "unknown",
-          "claim": "The writers of +0x505 and +0x508 after construction, the meaning of properties 0x0007A121 to 0x0007A123 and the object identified by 0xC0000024.",
+          "claim": "Any store of +0x505 or +0x508 through a computed address, the meaning of properties 0x0007A121 to 0x0007A123 and the object identified by 0xC0000024.",
           "locators": ["0x004D7260", "0x0075D146"]
         }
       ],
