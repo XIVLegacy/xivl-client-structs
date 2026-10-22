@@ -1014,11 +1014,11 @@ the request service behind `_updateWork`, which this record does not supply.
   stores of nonzero values into the area slots at `V +0x4E0 +0x8C`, and the
   source of the group registry records at `Y +0xE4`.
 - Whether `_getOccupancyGroup` returns a new control on every call.
-- The `DesktopWidget` pair `_lockTargetCursorControl` (order 17) and
-  `_unlockTargetCursorControl` (order 18) and the `WorldMaster` tutorial natives
-  (ranks 1 to 4 and 7 of the ranked list) were not traced. Their registrars,
-  callbacks and yield behavior are open, and no byte evidence here says that any
-  of them yields.
+- The `WorldMaster` tutorial natives (ranks 1 to 4 and 7 of the ranked list) were
+  not traced. Their registrars, callbacks and yield behavior are open, and no byte
+  evidence here says that any of them yields. The `DesktopWidget` pair
+  `_lockTargetCursorControl` and `_unlockTargetCursorControl` is covered by the
+  [target cursor control record](chara-desktop-native-contract.md#target-cursor-control).
 
 The next natives by value are ranked by the number of distinct scripts that
 contain a call, with the call-site count as the tie break. Natives with a
@@ -1052,7 +1052,8 @@ descriptor suffix identifiers. An alias takes the class of its descriptor.
 The manifest rows under `nextTranche` carry the same order. The
 [Global native contracts](global-native-contract.md) cover ranks 1, 2 and 3 and the
 nine `Global` natives that ranked below the twentieth row, and carry the refreshed
-order.
+order. The [chara and desktop contracts](chara-desktop-native-contract.md) cover
+ranks 5 and 6 and carry the order after them.
 
 ## Reproduction
 

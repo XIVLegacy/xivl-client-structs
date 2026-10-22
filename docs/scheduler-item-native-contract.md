@@ -450,7 +450,9 @@ The ranked list of the next natives lives in the
 The [nameplate, actor and group contracts](nameplate-group-native-contract.md)
 cover `_countStack`, `_getItemPackageFreeSpace`, `_countMember` and
 `_isMember` from the earlier ranking and record `_isEquipping`, `_isStackable`,
-`_hasItemPackage` and `_getMaxStack` as related rows.
+`_hasItemPackage` and `_getMaxStack` as related rows. The
+[chara and desktop contracts](chara-desktop-native-contract.md#item-package-lookup)
+give `_hasItemPackage` its full contract.
 
 ## Reproduction
 

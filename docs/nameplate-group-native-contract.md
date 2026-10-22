@@ -332,7 +332,7 @@ depth and are recorded as related rows in the manifest.
 | `_getMaxStack` | `0x00701870` | Pushes the dword at item record `+0x7C`. |
 | `_isStackable` | `0x007018C0` | Pushes whether the dword at record `+0x7C` is above 1 by an unsigned compare. |
 | `_isEquipping` | `0x00702280` | Looks the package key `0xFE` at `0x00FE050C` up for the slots 0 to `0x22` and pushes whether a nonzero record equals the item record. The slot count is the dword `0x23` at `0x00FE052C`. |
-| `_hasItemPackage` | `0x00708B60` | Reads a 1-based package number through `0x00702880` and pushes whether `0x006E5BA0` finds the package. |
+| `_hasItemPackage` | `0x00708B60` | Reads a 1-based package number through `0x00702880` and pushes whether `0x006E5BA0` finds the package. The [item package record](chara-desktop-native-contract.md#item-package-lookup) gives the full contract. |
 | `_getExtendedTemporaryGroup` | `0x00708410` | Calls the `_getGroup` helper with the flag 1. |
 
 ## Group natives
