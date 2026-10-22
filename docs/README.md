@@ -69,6 +69,10 @@ catalog. Machine-readable inventories and regeneration rules live under
 - [Widget item, fade, actor, group and background scheduler native contracts](fade-actor-group-native-contract.md) -
   widget item strings, screen fade thunks and the `MyPlayer` overrides, actor
   deletion, group member queries and NPC background scheduler starts.
+- [Script binding map and character, group, item, world, math and player control native contracts](binding-map-native-contract.md) -
+  descriptor keys, alias names, receiverless `Global` names, library
+  namespaces, `_isAlive`, chara position and display name, group and item
+  queries, special event work, `Math` random integers and player control.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, bounded argument records and supported output representations.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -

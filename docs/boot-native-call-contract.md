@@ -87,8 +87,10 @@ occurrence. The order is static call-site order, not a runtime trace.
 41. `_getParentWidget`
 42. `_setLoopInterval`
 
-`_string` and `_table` are value namespaces and `_isAlive` is an
-IndividualRef metatable field. None of them is a functor native. The
+`_string` and `_table` are value namespaces and `_isAlive` is a script method
+with an IndividualRef metatable field. The
+[binding map contracts](binding-map-native-contract.md#library-namespaces)
+record both. None of them is a functor native. The
 [desktop contracts](desktop-native-call-contract.md) record
 `_getUserConfig`, `_setUserConfig`, `_saveUserConfig` and
 `_setUICommandCondition`. The first three rows also record call-site argument
@@ -107,9 +109,10 @@ contract.
 
 ## Contracts
 
-Argument indices count internal `ExecuteParameters` cells. Receiverless
-Global mapping remains unresolved. A return list states capacity. A
-handler may push fewer values.
+Argument indices count internal `ExecuteParameters` cells. The
+[binding map contracts](binding-map-native-contract.md#receiverless-names)
+record the descriptors of the receiverless names. Their call convention remains
+unresolved. A return list states capacity. A handler may push fewer values.
 
 | Native | Owning class | Arguments | Returns | Callback | Forwards to |
 | --- | --- | --- | --- | --- | --- |
