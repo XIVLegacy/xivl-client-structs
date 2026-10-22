@@ -25,6 +25,7 @@
     "docs/scheduler-item-native-contract.md",
     "docs/widget-native-call-contract.md",
     "docs/lua-class-system.md",
+    "docs/client-architecture.md",
     "manifests/binding_map_native_call_contract.json",
     "manifests/fade_actor_group_native_call_contract.json",
     "manifests/nameplate_group_native_call_contract.json",
@@ -191,8 +192,8 @@
         "Y +0xE4": "Group registry that 0x006C2090 and 0x006C20E0 search.",
         "Y +0xEC": "Object that receives the _updateWork requests of CharaBase and DirectorBase through 0x00767FC0.",
         "V +0x17758": "RaptureUserControl object embedded in V, vftable 0x00F90F64. Its dword at +0x40 is the counter that the lock-on slots 7 and 8 change.",
-        "V +0x17838": "Object read by 0x004D72F0. Its bytes at +0x45C and +0x45D are the touch attribute bit masks.",
-        "V +0x4E0": "Area object read by 0x004D7390. _getRegion reads its dwords at +0x94 and +0xAC."
+        "V +0x17838": "CharaElement object read by 0x004D72F0. Its bytes at +0x45C, +0x45D and +0x45E are the armed, touched and reported attribute masks.",
+        "V +0x4E0": "Area object read by 0x004D7390. _getRegion reads its dwords at +0x94 and +0xAC, the first dword of the third and the third dword of the first of three 0x10 byte slots from +0x8C."
       },
       "tier": "STATIC for the offsets and calls, INFERRED for the roles."
     }
@@ -233,17 +234,21 @@
     "poolKinds": {
       "save": {
         "tagByte": "0x01377FB9",
-        "note": "Uninitialized data in the file."
+        "note": "Uninitialized data in the file. No instruction stores to it by absolute address, so it reads 0.",
+        "value": 0
       },
       "temp": {
         "tagByte": "0x0130D422",
-        "fileValue": 1
+        "fileValue": 1,
+        "value": 1
       },
       "sync": {
         "tagByte": "0x0130D423",
-        "fileValue": 2
+        "fileValue": 2,
+        "value": 2
       },
-      "tier": "STATIC"
+      "tier": "STATIC",
+      "sentinels": "The dwords at 0x0130D788, 0x0130D78C, 0x0130D798 and 0x0130D79C hold -1. They are the no value sentinels of the index cells and of the bind record word."
     },
     "writeKeys": [
       {
@@ -368,30 +373,43 @@
       },
       {
         "tier": "STATIC",
-        "claim": "The write path 0x00D272D0 starts with 'cmp dword ptr [ebx],0' on the same pointer and returns without a store when the dword is zero. Otherwise it calls 0x00D12210 on that pointer. A zero byte takes the value route, which calls descriptor slot 0x6C and then, when that returned true and the key record kind byte at +0x2C equals the byte at 0x01377FB9, descriptor slot 0x04. A nonzero byte takes the bind route, which calls descriptor slot 0x64 with the pointer, the key record and the sentinel 0x0130D788 and stores no value.",
+        "claim": "The write path 0x00D272D0 starts with 'cmp dword ptr [ebx],0' on the same pointer and returns without a store when the dword is zero. Otherwise it calls 0x00D12210 on that pointer. A zero byte takes the value route. Descriptor slot 0x6C converts the Lua stack top and writes it into the pool of the member for every pool kind. When slot 0x6C answered true and the key record kind byte at +0x2C equals the byte at 0x01377FB9 (save, 0), descriptor slot 0x04 (0x00D27400, a jump to 0x00CE4250) runs as a change notification that dispatches through the engine object at engine +0x218 (vtable +0x08) and then, when the storage dword at +0x14 is set, through 0x00D1A900. A nonzero byte takes the bind route, which calls descriptor slot 0x64 with the key record, the pointer, three index cells and the sentinel 0x0130D788 and stores no value. The key record is the work object +0x04. Its byte +0x2C is the pool kind that 0x00D16CD0 stored for the matched member and its byte +0x14 is a class level index.",
         "locators": [
           "0x00D272FD",
           "0x00D27308",
           "0x00D27337",
-          "0x00D27353..0x00D273A2"
+          "0x00D27353..0x00D273A2",
+          "0x00D16CF0",
+          "0x00D16D20",
+          "0x00D16D30",
+          "0x00D176AE",
+          "0x00CE4250..0x00CE4338",
+          "0x00D27400"
         ]
       },
       {
         "tier": "STATIC",
-        "claim": "Descriptor slot 0x64 is 0x00D27480 for every member type except timer, whose slot 0x64 is 0x00D25C50 ('ret 0x1C'). 0x00D27480 tests whether stack index -1 is a table (0x00CF3740). A table supplies two ints from its elements 1 and 2. Any other value supplies one int and the second int is -1. The routine converts the element index through 0x00D25900, takes the width from slot 0x0C divided by 8 and calls 0x00D12220, which jumps to 0x00CE67F0, with the first int as its first argument.",
+        "claim": "Descriptor slot 0x64 is 0x00D27480 for every member type except timer, whose slot 0x64 is 0x00D25C50 ('ret 0x1C'). 0x00D27480 tests whether stack index -1 is a table (0x00CF3740). A table supplies two ints from its elements 1 and 2. Any other value supplies one int and the second int is -1. The three index cells reduce to one element index: -1 when the first holds the sentinel at 0x0130D78C, the first cell when the third holds the sentinel at 0x0130D79C, and otherwise third + first * second. A _bindWork write passes the sentinel cells, so the element index is -1. 0x00D25900 returns the member start (descriptor +0x08, in bits) plus, when the index is not negative, the index times the member width in bits (0x00D258E0). The routine takes the width from slot 0x0C divided by 8 and calls 0x00D12220, which jumps to 0x00CE67F0, with the first int as its first argument. 0x00D12220 has one caller.",
         "locators": [
           "0x00D27480..0x00D27563",
+          "0x00D274F3..0x00D27519",
           "0x00D25C50",
-          "0x00D12220..0x00D12222"
+          "0x00D12220..0x00D12222",
+          "0x00D25900..0x00D25937",
+          "0x00D258E0",
+          "0x00D27558"
         ]
       },
       {
         "tier": "STATIC",
-        "claim": "0x00CE67F0 looks the first int up in the hash table at 0x01377F20 through 0x00CE6E30, which hashes the key as the key xor 0xDEADBEEF. An existing entry whose dword at +0x10 equals the new element offset ends the call. An id with no entry is stored in that table (0x00CE6A6B..0x00CE6A7B) as a record of two member bytes, the element offset dword, a 16 bit value from the sixth argument (0xFFFF when it equals the sentinel at 0x0130D788), one byte from the second int (0xFF when negative) and the span byte. An id whose entry holds a different element offset leaves that entry untouched: the routine looks up or creates an entry in the table at 0x01377F48 through 0x006D1170, keyed by the receiver dword in ecx, and inserts the record into the hash table that entry holds at +0x0C (0x00CE68CE..0x00CE6A0B).",
+        "claim": "0x00CE67F0 takes seven arguments: the id, a pointer to the kind byte (key record +0x2C), a pointer to the class level byte (key record +0x14), a pointer to the member start in bits, the second int, a pointer to the word source (always the sentinel 0x0130D788 on the bind route) and the span in bytes. It looks the id up in the hash table at 0x01377F20 through 0x00CE6E30, which hashes the key as the key xor 0xDEADBEEF. An existing entry whose dword at +0x10 equals the new start ends the call. An id with no entry is stored in that table (0x00CE6A6B..0x00CE6A7B) as the 12 byte bind record of workBinder.bindRecord. An id whose entry holds a different start leaves that entry untouched: the routine looks up or creates an entry in the table at 0x01377F48 through 0x006D1170, keyed by the receiver dword in ecx, and inserts the record into the hash table that entry holds at +0x0C (0x00CE68CE..0x00CE6A0B). The override is keyed on the start alone.",
         "locators": [
           "0x00CE67F0..0x00CE6AC3",
           "0x00CE6E30..0x00CE6E50",
-          "0x00CE6873..0x00CE687F"
+          "0x00CE6873..0x00CE687F",
+          "0x00CE68AA..0x00CE68B5",
+          "0x00CE6A07..0x00CE6A1B",
+          "0x00CE6A80..0x00CE6A94"
         ]
       },
       {
@@ -458,15 +476,83 @@
         ]
       },
       {
-        "tier": "INFERRED",
-        "claim": "The nesting operand is a capacity in bytes, because the eventSave and eventTemp operands equal the byte rounded sums of their member widths and the smaller operands of a non-player receiver exceed their contents in bytes but not in bits. An array member counts count times the element width in those sums. The layout routine 0x00D1E0F0 adds the width of each member to a running offset in declaration order. Alignment of byte sized members is not settled.",
+        "tier": "STATIC",
+        "claim": "The nesting operand is a capacity in bytes. The width slot 0x0C of the nesting and reserve descriptors (vftable 0x0110F8F4, derived 0x0110F974) is 0x00D25960, the string slot, which returns eight times the dword at descriptor +0x10. The constructors 0x00D23D10 and 0x00D23DA0 store the operand there, so the nested member occupies operand times 8 bits of its list. The eventSave and eventTemp operands equal the byte rounded laid out sizes (24 and 67 bits). An array member counts count times the element width in the laid out sizes, which is INFERRED because the code that applies a numeric third operand was not found.",
         "locators": [
-          "0x00D1E5CB..0x00D1E5D6"
+          "0x0110F8F4",
+          "0x00D25960..0x00D2596F",
+          "0x00D23D58",
+          "0x00D23DEC"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "0x00D1E0F0 lays out one declaration list with a running offset in bits that starts at an origin the caller passes. It builds the descriptor of each entry with the running offset as its start. Every descriptor constructor except boolean rounds that start up to a multiple of 8 bits with 0x00D1F4F0 and stores it at descriptor +0x08. The boolean constructor 0x00D28390 stores it unrounded. After the descriptor exists the routine adds the width of slot 0x0C to the running offset and, when the width is a multiple of 8, first rounds the running offset up to a byte. Booleans therefore pack to one bit each in declaration order and every other member starts on the next byte boundary. The result record holds the total bits at +0x00, the start of an _assignForChild entry at +0x04 and its width at +0x08.",
+        "locators": [
+          "0x00D1E0F0",
+          "0x00D1E59F..0x00D1E5CD",
+          "0x00D1E616..0x00D1E632",
+          "0x00D1F4F0..0x00D1F50E",
+          "0x00D28390..0x00D283A6",
+          "0x00D28BE0..0x00D28C02",
+          "0x00D29080",
+          "0x00D295A0",
+          "0x00D2A3E0",
+          "0x00D23DA0..0x00D23E26"
         ]
       },
       {
         "tier": "INFERRED",
-        "claim": "The first bind of an id is a global default and a bind of the same id to a different element offset is an override held under the receiver key, which the reader 0x00CE5040 prefers (STATIC). That the receiver is the work storage object of one actor, so that layouts with different nesting sizes under the same ids coexist per instance, is INFERRED. The role of the second int, the callers of the engine wrappers and the packets that use bind ids were not traced. The ids declared by the scripts are the bindCalls table.",
+        "claim": "The origin of a nested list is the start of its nesting member, so a nested member's recorded start is absolute inside the list that declares the nesting member. The nested list call passes the nested record +0x40, which the record constructor 0x00D1C100 fills from its third argument pointer, and the reader adds nothing but the record start to the level base, so the start must already include the nesting member's start. The local player and another player lay out the same ids at different starts after the nested members, which the per receiver table 0x01377F48 keeps apart. A top level list starts its origin at 0 and replaces it with eight times the sizes that 0x00D125F0 returns when the work object already has a declaration (0x00D166A9..0x00D166DE, not traced further).",
+        "locators": [
+          "0x00D1CA4A",
+          "0x00D1C100..0x00D1C18B",
+          "0x00D1C151",
+          "0x00D1E4A4..0x00D1E4BD",
+          "0x00CE5290..0x00CE5304",
+          "0x00D166FF"
+        ]
+      },
+      {
+        "tier": "INFERRED",
+        "claim": "The array count rule. A numeric third operand of a boolean or numeric tag does not reach the scalar creators (0x00D25640 and siblings read one argument, the start) and 0x00D1E0F0 adds one width per entry. The rule that an array occupies count times its element width is inferred from the nesting capacities: eventTemp holds integer16 x 4 and three booleans, 67 bits, in an operand of 9 bytes.",
+        "locators": [
+          "0x00D25640",
+          "0x00D1E5CB..0x00D1E5D6"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "The shared record keeps a vector of vectors at +0x2C, one per pool kind. 0x00CE5BF0, called when a list is declared, resizes the vector of the kind to the level plus 2 entries, sets the entry of level plus 1 to the declared byte size plus the sum of all entries of the vector, and passes the size to the pool object through pool slot 1 (0x00CCB3F0). The base of a level is its entry in that vector, and the reader adds the byte part of the bit start to it. The bases of levels 0 to 2 are the plain prefix sums of the sizes. From level 3 each entry adds the earlier entries again, because the loop sums every entry.",
+        "locators": [
+          "0x00CE5BF0..0x00CE5CA6",
+          "0x00CE5C60..0x00CE5C67",
+          "0x00CE4550..0x00CE45BE",
+          "0x00CCB3F0..0x00CCB427"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "The slot 0x6C bodies read the Lua stack top as the C API does. A boolean uses 0x00CF35E0, a wrapper of lua_toboolean (0x00DCDF50). An integer width and a float use 0x00CF35C0, a wrapper of lua_tonumber (0x00DCDED0): a number is used as is, a string goes through the string to number conversion 0x00DDE8B0 and 0x00DDE360, and any other value converts to 0.0. An integer width then truncates toward zero with the CRT routine 0x009D6636 and stores the low bytes of the width. A string member reads the value through 0x00CF3600. A numeric string written to an integer member stores its number and a non numeric string stores 0.",
+        "locators": [
+          "0x00D28810",
+          "0x00D28C10..0x00D28D02",
+          "0x00D290B0",
+          "0x00D295D0",
+          "0x00D29A00",
+          "0x00D29F40",
+          "0x00D2A410",
+          "0x00CF35C0",
+          "0x00CF35E0",
+          "0x00DCDED0..0x00DCDF02",
+          "0x00DCDF50..0x00DCDF76",
+          "0x00DDE8B0..0x00DDE8F3",
+          "0x009D6636..0x009D66AA"
+        ]
+      },
+      {
+        "tier": "INFERRED",
+        "claim": "The first bind of an id is a global default and a bind of the same id to a different start is an override held under the receiver key, which the reader 0x00CE5040 prefers (STATIC). That the receiver is the work storage object of one actor, so that layouts with different nesting sizes under the same ids coexist per instance, is INFERRED. The callers of the engine wrappers and the packets that use bind ids were not traced. The ids declared by the scripts are the bindCalls table.",
         "locators": [
           "0x00D27558",
           "0x01377F20",
@@ -475,13 +561,254 @@
       },
       {
         "tier": "unknown",
-        "claim": "The initial value of a declared member before its first write. The values live in the pool objects behind the read and write accessors, not in the Lua layer, and those objects were not traced. The array index base of the member readers, which pass the index through 0x00D25900 without a visible subtraction. The meaning of _tag entries beyond the names and intervals that the scripts declare.",
+        "claim": "The initial value of a declared member before its first write. The readers return the pool bytes at the member start with no default, so the value is whatever the pool object of the kind holds. The class of the pool objects (vector at container +0x0C indexed by kind; slot 1 resize, slot 2 byte read, slot 3 byte write, slot 4 bit read, slot 5 bit write), their allocation and whether a resize zero fills were not found. The array index base of the member readers, which pass the index through 0x00D25900 without a visible subtraction. The meaning of _tag entries beyond the names and intervals that the scripts declare.",
         "locators": [
-          "0x00CE48C0",
+          "0x00CE4450",
+          "0x00CE4550",
+          "0x00CE45D0",
+          "0x00CCB3F0..0x00CCB5F0",
           "0x00D25900"
         ]
       }
-    ]
+    ],
+    "bindRecord": {
+      "tier": "STATIC",
+      "size": 12,
+      "fields": [
+        {
+          "offset": "+0x00",
+          "size": 1,
+          "name": "poolKind",
+          "source": "key record +0x2C",
+          "values": "0 save, 1 temp, 2 sync"
+        },
+        {
+          "offset": "+0x01",
+          "size": 1,
+          "name": "classLevel",
+          "source": "key record +0x14",
+          "use": "index into the per kind layout vector at shared record +0x2C"
+        },
+        {
+          "offset": "+0x02",
+          "size": 2,
+          "name": "unwritten",
+          "source": "stack contents"
+        },
+        {
+          "offset": "+0x04",
+          "size": 4,
+          "name": "startBits",
+          "source": "descriptor +0x08 plus the element index times the width in bits; -1 element index leaves the start"
+        },
+        {
+          "offset": "+0x08",
+          "size": 2,
+          "name": "word",
+          "source": "0xFFFF when the word source equals the sentinel 0x0130D788, which the bind route always passes"
+        },
+        {
+          "offset": "+0x0A",
+          "size": 1,
+          "name": "secondInt",
+          "source": "the second int, 0xFF when negative"
+        },
+        {
+          "offset": "+0x0B",
+          "size": 1,
+          "name": "spanBytes",
+          "source": "member width in bits divided by 8, 0 for a boolean"
+        }
+      ],
+      "accessor": "0x00CE5290 takes the receiver, the id and two indexes. It starts from the dword at +0x04, adds spanBytes * index1 * 8 when the signed word at +0x08 is not negative and secondInt * index2 * 8 when index2 is above 0, then switches on spanBytes (1 to 4) to read 1, 2, 3 or 4 bytes through 0x00D11C70, 0x00D11CF0 and 0x00D11DB0 with the kind byte, the level byte and the bit position as pointers. A missing record answers -1. The word is -1 for every record, so index1 never applies.",
+      "address": "base(kind, classLevel) + (startBits >> 3), bit startBits & 7, where base is the entry of the level in the per kind vector of the shared record",
+      "locators": [
+        "0x00CE6A07..0x00CE6A1B",
+        "0x00CE6A80..0x00CE6A94",
+        "0x00CE5290..0x00CE539B",
+        "0x00CE5040..0x00CE5133"
+      ]
+    },
+    "derivedBindStarts": {
+      "tier": "INFERRED",
+      "method": "The declared lists of workDeclarations laid out with the STATIC rule of 0x00D1E0F0 (booleans one bit, other members byte aligned, nesting and reserve entries at eight times their operand), arrays counted at count times the element width and nested lists offset by the start of their nesting member (both INFERRED).",
+      "unit": "bits",
+      "localPlayer": [
+        {
+          "id": 1010,
+          "member": "charaWork.parameterSave.hp",
+          "start": 776
+        },
+        {
+          "id": 1011,
+          "member": "charaWork.parameterSave.hpMax",
+          "start": 904
+        },
+        {
+          "id": 1012,
+          "member": "charaWork.parameterSave.state_mainSkillLevel",
+          "start": 1096
+        },
+        {
+          "id": 4001,
+          "member": "charaWork.eventTemp.bazaarRetail",
+          "start": 7008
+        },
+        {
+          "id": 4002,
+          "member": "charaWork.eventTemp.bazaarRepair",
+          "start": 7009
+        },
+        {
+          "id": 3006,
+          "member": "charaWork.property",
+          "start": 0
+        },
+        {
+          "id": 1001,
+          "member": "charaWork.parameterSave.state_mainSkill",
+          "start": 1064
+        },
+        {
+          "id": 1002,
+          "member": "charaWork.parameterSave.constanceCommandSlot_commandId",
+          "start": 2624
+        },
+        {
+          "id": 1003,
+          "member": "charaWork.parameterSave.giftCommandSlot_commandId",
+          "start": 2464
+        },
+        {
+          "id": 1004,
+          "member": "charaWork.parameterSave.abilityCostPoint_used",
+          "start": 2784
+        },
+        {
+          "id": 1005,
+          "member": "charaWork.parameterSave.abilityCostPoint_max",
+          "start": 2792
+        },
+        {
+          "id": 1006,
+          "member": "charaWork.parameterSave.constanceCostPoint_used",
+          "start": 2816
+        },
+        {
+          "id": 1007,
+          "member": "charaWork.parameterSave.constanceCostPoint_max",
+          "start": 2824
+        },
+        {
+          "id": 1008,
+          "member": "charaWork.parameterSave.giftCostPoint_used",
+          "start": 2800
+        },
+        {
+          "id": 1009,
+          "member": "charaWork.parameterSave.giftCostPoint_max",
+          "start": 2808
+        },
+        {
+          "id": 2001,
+          "member": "charaWork.battleSave.skillLevel",
+          "start": 13760
+        },
+        {
+          "id": 3001,
+          "member": "charaWork.commandAcquired",
+          "start": 7016
+        },
+        {
+          "id": 3002,
+          "member": "charaWork.command",
+          "start": 11112
+        },
+        {
+          "id": 3003,
+          "member": "charaWork.commandCategory",
+          "start": 13160
+        },
+        {
+          "id": 3004,
+          "member": "charaWork.commandBorder",
+          "start": 13672
+        },
+        {
+          "id": 100001,
+          "member": "playerWork.variableCommandConfirmRaise",
+          "start": 5264
+        },
+        {
+          "id": 100002,
+          "member": "playerWork.variableCommandConfirmWarp",
+          "start": 4904
+        },
+        {
+          "id": 100003,
+          "member": "playerWork.variableCommandContent",
+          "start": 352
+        },
+        {
+          "id": 100004,
+          "member": "playerWork.variableCommandPlaceDriven",
+          "start": 0
+        },
+        {
+          "id": 100005,
+          "member": "playerWork.variableCommandEmoteSit",
+          "start": 416
+        },
+        {
+          "id": 100007,
+          "member": "playerWork.initialTown",
+          "start": 32
+        }
+      ],
+      "otherPlayer": [
+        {
+          "id": 1010,
+          "member": "charaWork.parameterSave.hp",
+          "start": 776
+        },
+        {
+          "id": 1011,
+          "member": "charaWork.parameterSave.hpMax",
+          "start": 904
+        },
+        {
+          "id": 1012,
+          "member": "charaWork.parameterSave.state_mainSkillLevel",
+          "start": 1096
+        },
+        {
+          "id": 4001,
+          "member": "charaWork.eventTemp.bazaarRetail",
+          "start": 1504
+        },
+        {
+          "id": 4002,
+          "member": "charaWork.eventTemp.bazaarRepair",
+          "start": 1505
+        },
+        {
+          "id": 3006,
+          "member": "charaWork.property",
+          "start": 0
+        },
+        {
+          "id": 2002,
+          "member": "charaWork.battleSave.potencial",
+          "start": 8176
+        }
+      ],
+      "layoutTotals": {
+        "charaWorkSyncBitsLocal": 18800,
+        "charaWorkSyncBitsOther": 8816,
+        "playerWorkSyncBits": 6952,
+        "playerWorkTempBits": 4648
+      }
+    }
   },
   "workDeclarations": {
     "method": "The declaration functions were executed on a minimal Lua 5.1 bytecode interpreter over the .le.lpb files of the installed client, decoded with tools/decode_lpb.py. Work members were replaced by recorders that capture each assignment to _save, _temp, _sync, _tag and _nesting. isMyPlayer, isPlayer and the _bindWork, _setTouchAttribute and nameplate natives were stubbed to record their arguments. No client code ran and no value comes from the executable.",
@@ -1928,7 +2255,7 @@
           "index": 0,
           "stackOperator": "int",
           "handlerRead": "0x005819A0 tag 0",
-          "note": "Attribute number. Only the low byte is kept and the scripts pass 1, 2 and 5."
+          "note": "Attribute number. Only the low byte is kept and the scripts pass 1, 2 and 5. Bit a mod 32 of the byte is used when that count is below 8, otherwise no bit changes."
         },
         {
           "index": 1,
@@ -1938,7 +2265,7 @@
         }
       ],
       "returns": [],
-      "behavior": "Takes an attribute number and a bool and returns nothing. A PlayerBase receiver that is not a MyPlayer does nothing. The MyPlayer routine records the attribute in one of two ordered sets that hang off the object at MyPlayer +0x10C and, the first time an attribute is in neither set, sets the bit of that attribute in the byte at +0x45C of the object at V +0x17838. It requests no yield.",
+      "behavior": "Takes an attribute number and a bool and returns nothing. A PlayerBase receiver that is not a MyPlayer does nothing. The MyPlayer routine records the attribute in one of two ordered sets that hang off the object at MyPlayer +0x10C and, the first time an attribute is in neither set, sets bit (attribute mod 32) of the byte at +0x45C of the object at V +0x17838 when that count is below 8. It inserts the attribute into a set on every call. The flag never clears the bit. It requests no yield.",
       "yields": false,
       "facts": [
         {
@@ -1980,13 +2307,13 @@
         },
         {
           "tier": "STATIC",
-          "claim": "0x00895790 finds the attribute in the set at +0x00 and in the set at +0x0C through 0x0089A1C0. When both searches return the end node it calls 0x0075C950 with the attribute, which calls 0x00589720 on the object at V +0x17838 (0x004D72F0) with the flag 1. 0x00589720 sets bit 'attribute' of the byte at +0x45C, and a flag other than 1 clears it. An attribute of 8 or more changes no bit, because the shift runs in an 8 bit register. The routine then inserts the attribute through 0x0089A780 into the set at +0x00 when the flag byte equals the byte at 0x012D7C43 and into the set at +0x0C otherwise.",
+          "claim": "0x00895790 finds the attribute in the set at +0x00 and in the set at +0x0C through 0x0089A1C0, an ordered set find. When both searches return the end node it calls 0x0075C950 with the attribute, which calls 0x00589720 on the object at V +0x17838 (0x004D72F0) with the flag 1. 0x00589720 computes 'mov dl,1; shl dl,cl' with cl the attribute byte (0x00589728) and ORs dl into the byte at +0x45C. An x86 shift masks its count to 5 bits, so the shifted byte is 0 when the attribute mod 32 is 8 or more and bit (attribute mod 32) otherwise: 0 to 7 set bits 0 to 7, 8 to 31 change nothing, 32 to 39 set bits 0 to 7 again, 40 to 63 change nothing, and so on up to the low byte 255. The clear branch (not dl, and) is reached only with a flag other than 1 and the only caller passes 1, so no path clears the bit. The routine then inserts the attribute through 0x0089A780 into the set at +0x00 when the flag byte equals the byte at 0x012D7C43 and into the set at +0x0C otherwise. The insert runs on every call (0x00895816..0x0089584F).",
           "locators": [
-            "0x008957BC..0x00895811",
-            "0x0089581A..0x0089584C",
+            "0x00895790..0x0089584F",
             "0x0075C950..0x0075C965",
             "0x00589720..0x00589742",
-            "0x004D72F0"
+            "0x00589728",
+            "0x0075C960"
           ]
         },
         {
@@ -1998,16 +2325,24 @@
         },
         {
           "tier": "INFERRED",
-          "claim": "The first sight of an attribute number raises the request bit of the byte at +0x45C. The role comes from the call chain and the native name. The flag decides the set but not the bit.",
+          "claim": "The first sight of an attribute number raises its request bit in the byte at +0x45C. The object at V +0x17838 keeps three touch bytes cleared together by the reset at 0x0058BB87..0x0058BB93: +0x45C armed attributes, +0x45D attributes currently touched and +0x45E attributes whose touch start was reported. 0x005893F0 visits bits 0 to 5 only. For a bit armed in +0x45C it sets the +0x45E bit and calls virtual slot 0x54 (0x00574D50) of the object at this +0x80 when +0x45D has the bit and +0x45E does not, and clears the +0x45E bit and calls slot 0x58 (0x00574D60) when +0x45E has the bit and +0x45D does not. The roles come from this edge code and are INFERRED. The flag decides which set receives the attribute.",
           "locators": [
-            "0x00895811"
+            "0x005893F0..0x0058945F",
+            "0x0058BB87..0x0058BB93",
+            "0x00574D50",
+            "0x00574D60"
           ]
         },
         {
           "tier": "unknown",
-          "claim": "The readers of the two sets, the consumer of the byte at +0x45C and the meaning of attribute numbers 1, 2 and 5.",
+          "claim": "The readers of the two sets, the producer of the byte at +0x45D and the meaning of attribute numbers 1, 2 and 5. The byte +0x45D is stored by the async dispatcher 0x0058E0C0 for opcode 0x60 (0x0058E622, one byte from the payload pointer) and by the reset. The writers 0x00588200, 0x00588300 and 0x00588330 have no caller and no vftable reference. None of the 91 direct callers of the async enqueue 0x007CE7B0 pushes 0x60 as an immediate within ten instructions before the call.",
           "locators": [
-            "0x006E6110"
+            "0x0058E0C0",
+            "0x0058E622",
+            "0x007CE7B0",
+            "0x00588200",
+            "0x00588300",
+            "0x00588330"
           ]
         }
       ],
@@ -2088,14 +2423,14 @@
         },
         {
           "tier": "STATIC",
-          "claim": "The bit position is the attribute number as the count of a byte shift, so numbers 8 and above test no bit.",
+          "claim": "The bit test is 'mov edx,1; shl edx,cl; test byte [+0x45D],dl' (0x0058975B), so the count is masked to 5 bits and the tested mask is 0 when the attribute mod 32 is 8 or more. Attributes 0 to 7 test bits 0 to 7, 32 to 39 test bits 0 to 7 again, and every attribute whose remainder modulo 32 is 8 or more answers false.",
           "locators": [
-            "0x00589752..0x0058975D"
+            "0x00589752..0x00589766"
           ]
         },
         {
           "tier": "unknown",
-          "claim": "The writers of the byte at +0x45D and of the byte at +0xBA, and the meaning of the list at +0x1C.",
+          "claim": "The producer of the byte at +0x45D (the async dispatcher 0x0058E0C0 opcode 0x60 stores it and no direct pusher of 0x60 was found), the writers of the byte at +0xBA and the meaning of the list at +0x1C.",
           "locators": [
             "0x00763050"
           ]
@@ -2504,10 +2839,13 @@
           ]
         },
         {
-          "tier": "unknown",
-          "claim": "The readers of the dword at +0x40. Slot 9 of the object (0x0054B670) returns it and is the candidate reader for the enabled query.",
+          "tier": "STATIC",
+          "claim": "Slot 9 of the object (0x0054B670) returns the dword. Its glue 0x0075B2C0 has one caller, 0x00705170, which is the MyPlayer vftable cell 0x00FD7980 (slot 0x124, next to the lock pair) and pushes a bool that is true when the dword is zero. The name of the native that owns that slot was not read. Slots 7 and 8 return the new value. The initial value comes from the construction of the object embedded at V +0x17758, which was not traced.",
           "locators": [
-            "0x0054B670"
+            "0x0054B670",
+            "0x0075B2C0",
+            "0x00705170",
+            "0x00FD7980"
           ]
         }
       ],
@@ -2644,10 +2982,26 @@
           ]
         },
         {
-          "tier": "unknown",
-          "claim": "The writers of the byte at PlayerBase +0xEC.",
+          "tier": "STATIC",
+          "claim": "The PlayerBase constructor 0x006ED740 (vftable store 0x00FD5E04 at 0x006ED753) zeroes the dword at +0xE8 and the bytes +0xEC to +0xF1. The only other store in PlayerBase code is the override of vftable slot 30 (0x006F0220, cell 0x00FD5E7C), which copies the dword at argument +0x48 to +0xE8, the byte at argument +0xB6 to +0xEC and the byte at argument +0xC6 to +0xF1. A scan of the whole .text for byte stores to [reg+0xEC] finds 14 sites: the constructor (0x006ED75F), the slot 30 override (0x006F0263) and twelve more (0x0058AAB0, 0x0058AEE3, 0x0058B493, 0x0058B996, 0x0058BC3F, 0x006C1356, 0x006C1387, 0x006C569D, 0x008343C3, 0x00ACE998, 0x00AECDFB, 0x00AEE019) in code that no PlayerBase vftable slot starts. The argument is the record that the sub stat status receiver hands to that slot. Which packet field fills the record byte was not traced.",
           "locators": [
-            "0x00706C71"
+            "0x006ED740..0x006ED77D",
+            "0x006F0220..0x006F0269",
+            "0x00FD5E7C",
+            "0x006ED75F",
+            "0x006F0263"
+          ]
+        },
+        {
+          "tier": "INFERRED",
+          "claim": "The twelve other byte stores to [reg+0xEC] in the image belong to classes other than PlayerBase, because no PlayerBase vftable slot starts the code that holds them.",
+          "locators": [
+            "0x0058AAB0",
+            "0x006C1356",
+            "0x006C1387",
+            "0x006C569D",
+            "0x008343C3",
+            "0x00ACE998"
           ]
         }
       ],
@@ -2709,7 +3063,7 @@
           "note": "Signed angle in radians."
         }
       ],
-      "behavior": "Takes three floats. It builds the world position record of the receiver, takes the arctangent of the x difference over the z difference, subtracts the receiver heading and folds the result into the range around zero. It requests no yield.",
+      "behavior": "Takes three floats. It builds the world position record of the receiver, takes atan2 with the x difference as the numerator and the z difference as the denominator, subtracts the receiver heading and folds the result into the range around zero. It requests no yield.",
       "yields": false,
       "facts": [
         {
@@ -2735,10 +3089,23 @@
           ]
         },
         {
-          "tier": "INFERRED",
-          "claim": "0x009DAEBA is the MSVC arctangent of two values with the first difference as the first operand, so the result is the bearing from the receiver to the point, relative to its heading. The routine name was not read from a symbol. The reading follows from the thunk shape and the use of the angle.",
+          "tier": "STATIC",
+          "claim": "0x009DAEBA loads the descriptor 0x012EBB80, whose name field is 'atan2', and jumps to the two operand CRT dispatcher 0x009ECA10. The routine that does the work (0x009EC97C) takes the absolute values of both operands, runs fpatan and corrects the quadrant from the signs. fpatan computes atan(ST1 / ST0). The callback loads the x difference first and the z difference second, so the result is atan2(dx, dz). The entry order of the dispatcher is the MSVC _CIatan2 convention (ST1 first operand) and is INFERRED. The result is the bearing from the receiver to the point, 0 along +z and growing toward +x, relative to the record heading.",
           "locators": [
-            "0x009DAEBA"
+            "0x009DAEBA..0x009DAEBF",
+            "0x012EBB80",
+            "0x009ECA10",
+            "0x009EC97C..0x009EC99B",
+            "0x006F9BC1..0x006F9BE1"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The heading fold computes in doubles a + pi for a at or above 0 and a - pi below 0 (0x00F62F48 holds 3.1415927410125732), divides by 0x00F62FE0 (6.2831854820251465), truncates the quotient toward zero to an int n with cvttsd2si, converts n to a float and back and returns a - n * 2pi rounded to a float. An angle strictly between -pi and pi is unchanged. The endpoints swap: pi returns -pi and -pi returns pi. A nonnegative angle lands in [-pi, pi), a negative one in (-pi, pi], and an unordered compare takes the below zero branch.",
+          "locators": [
+            "0x006F9BF6..0x006F9C57",
+            "0x00F62F48",
+            "0x00F62FE0"
           ]
         }
       ],
@@ -2893,10 +3260,14 @@
           ]
         },
         {
-          "tier": "unknown",
-          "claim": "The writers of the id pair at group data +0x68 and +0x6C and the registry layout behind 0x006C2090.",
+          "tier": "STATIC",
+          "claim": "The id pair is the first two dwords of the group data sub object at +0x68. The group constructors at 0x006DD038 and 0x006DD09E either leave it, because 0x006BFD00 is a bare return, or clear the dwords at +0x68, +0x70 and +0x74 through 0x006BFCD0 and leave the dword at +0x6C. 0x006E2240 copies the pair from the found registry record at 0x006E2915. The source of the registry records behind 0x006C2090 was not traced.",
           "locators": [
-            "0x006C2090"
+            "0x006DD038",
+            "0x006DD09E",
+            "0x006BFCD0",
+            "0x006BFD00",
+            "0x006E2915"
           ]
         }
       ],
@@ -2966,10 +3337,14 @@
           ]
         },
         {
-          "tier": "unknown",
-          "claim": "The writers of the dwords at area +0x94 and +0xAC and the meaning of the object at V +0x4E0.",
+          "tier": "STATIC",
+          "claim": "The area object keeps three slots of 0x10 bytes from +0x8C: dwords at +0x00, +0x04 and +0x08 and a byte at +0x0C. The dword at +0x94 is the third dword of the first slot and +0xAC the first dword of the third slot. The constructor 0x0060DD90 and the reset at 0x0060DBC6..0x0060DBD2 zero them, and a nonzero dword with a zero flag byte at +0xA8 or +0xB8 is released through the engine object at 0x01328048 before the reset. The dwords are zero until the object is filled. The stores of nonzero values were not traced.",
           "locators": [
-            "0x004D7390"
+            "0x0060DD90..0x0060DE08",
+            "0x0060DBA0..0x0060DBD8",
+            "0x0060DBC6",
+            "0x0060DDB5",
+            "0x0060DDE3"
           ]
         }
       ],
@@ -3395,7 +3770,7 @@
     "Script call-site counts are static presence in the shipped scripts. They do not establish which natives a given script reaches at run time.",
     "The Lua bytecode facts come from the installed client scripts. Their sources are not redistributed, and the tracked script metadata holds names and line numbers only. The declared member names, types and counts are recorded here as metadata of those scripts.",
     "The declaration lists come from a stub interpreter over the bytecode. The interpreter implements the instructions that the declaration functions use and replaces the native work members, so it checks the lists the scripts build and not the client behavior around them.",
-    "The work binder facts describe the Lua layer. The pool objects behind the read and write accessors, the initial member values, the array index base of the readers and the callers of the by-id accessors were not traced.",
+    "The work binder facts describe the Lua layer, the layout rule and the bind records. The pool objects behind the read and write accessors, the initial member values, the array count rule, the origin of nested lists, the array index base of the readers and the callers of the by-id accessors were not traced.",
     "The callbacks that dereference a resolved identity or a lookup result without a test were not run with an absent identity, so their run-time effect is unknown.",
     "The invalid-parameter route ends in a process terminate on the evidence of the target cursor contract. The calls that reach it with an out-of-range member position or a missing cell were not run.",
     "These are client marshalling and state contracts. They do not establish work member values, group membership, touch states, region ids or server behavior."
