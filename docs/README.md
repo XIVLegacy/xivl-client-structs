@@ -1,8 +1,9 @@
 # XIVLegacy Client Structs documentation
 
-The public documentation covers the evidence-backed FFXIV 1.23b client-structure
-catalog. Machine-readable inventories and regeneration rules live under
-`manifests/`.
+The public documentation explains the evidence-backed FFXIV 1.23b
+client-structure catalog. Use the
+[catalog guide](../manifests/README.md#find-the-right-record) to choose between
+canonical records, generated views and frozen investigations.
 
 ## Policy
 
@@ -24,10 +25,12 @@ catalog. Machine-readable inventories and regeneration rules live under
   Lua-bridge, LGE/LuaControl class substrate, Sqwt UI).
 - [Client-structure IR](ir-schema.md) - reads the generated client-structure IR
   and the schemas that validate it.
-- [Naming](naming.md) - naming rules for known/unknown structs and
-  fields, the address convention, and the Receiver-vs-Packet naming pairing.
+- [Naming](naming.md) - known and unknown struct/field names,
+  byte signatures, and the virtual-address convention.
 - [Lua Game Engine (LGE) class system](lua-class-system.md) - description of the
   LGE class system (5 Lua metatables, registration pipeline, write chokepoint).
+- [Auto-translate selection](autotranslate-selection-contract.md) -
+  selected client lookup paths and their evidence limits.
 - [Command-slot actor and category context](actor/command-slot-context.md) -
   joins observed property-stream slot values to static command identities.
 - [Native pad routing and UI visibility](native-input-ui-boundaries.md) -

@@ -79,8 +79,8 @@ public class FindFieldRefs extends GhidraScript {
                     if (o instanceof Scalar) disp = ((Scalar) o).getUnsignedValue();
                     else if (o instanceof Register && base == null) base = ((Register) o).getName().toUpperCase();
                 }
-                // A field access needs both a base register and a displacement.
-                // a bare immediate has no register and is not what we are after.
+                // A field access needs a base register and a displacement.
+                // A bare immediate has no base register and must be excluded.
                 if (base == null || disp < 0 || !targets.contains(disp)) continue;
                 if (allowRegs.isEmpty()) {
                     if (base.equals("ESP") || base.equals("EBP")) continue;
