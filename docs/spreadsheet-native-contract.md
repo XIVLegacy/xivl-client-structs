@@ -369,47 +369,9 @@ does not supply.
   column arguments before the native call.
 - The process behavior of the invalid-parameter route for an absent key.
 
-The next natives by value, taken from the corpus call-site counts and the role
-of each native in a playable client, are listed below. Receiverless natives
-(`_defineClass`, `_defineBaseClass`, `_string`, `_math`, `_table`, `_isAlive`,
-`_getPos`, `_getDir`, `_onInit`) wait for the receiverless global mapping.
-
-| Rank | Native | Class | Call sites | Why |
-| ---: | --- | --- | ---: | --- |
-| 1 | `_runCharaScheduler` | `CharaBaseClass` | 5230 | Scheduler entry of the quest and chara scripts. |
-| 2 | `_wait` | `ActorBaseClass` | 1218 | Timed yield in quest scripts. |
-| 3 | `_waitForCharaSchedulerFinished` | `CharaBaseClass` | 159 | Completion wait of rank 1. |
-| 4 | `_getCatalogID` | `ItemBaseClass` | 261 | Item identity for inventory widgets. |
-| 5 | `_getItem` | `CharaBaseClass` | 242 | Package item lookup. |
-| 6 | `_printLog` | `WorldMaster` | 122 | System log line, the chat and log output path. |
-| 7 | `_getEquippingItem` | `CharaBaseClass` | 112 | Equipment lookup. |
-| 8 | `_getItemPackageCapacity` | `CharaBaseClass` | 108 | Package size. |
-| 9 | `_setGroundOn` | `CharaBaseClass` | 105 | Per-actor ground state in the chara scripts. |
-| 10 | `_getNameIndex` | `ItemBaseClass` | 102 | Item name sheet index. |
-| 11 | `_countStack` | `ItemBaseClass` | 95 | Stack count. |
-| 12 | `_waitForFading` | `PlayerBaseClass` | 68 | Screen fade completion wait. |
-| 13 | `_getItemPackageFreeSpace` | `CharaBaseClass` | 60 | Free package slots. |
-| 14 | `_fadeOut` | `PlayerBaseClass` | 45 | Screen fade out. |
-| 15 | `_fadeIn` | `PlayerBaseClass` | 45 | Screen fade in. |
-| 16 | `_runCharaSchedulerTutorial` | `WorldMaster` | 44 | Tutorial scheduler entry. |
-| 17 | `_isEquipping` | `ItemBaseClass` | 44 | Equipped test. |
-| 18 | `_isStackable` | `ItemBaseClass` | 42 | Stackable test. |
-| 19 | `_countMember` | `GroupBaseClass` | 79 | Group size for party and linkshell widgets. |
-| 20 | `_isMember` | `GroupBaseClass` | 47 | Group membership test. |
-| 21 | `_getMember` | `GroupBaseClass` | 39 | Group member lookup. |
-| 22 | `_getCurrentAreaMaster` | `ActorBaseClass` | 43 | Current area object. |
-| 23 | `_lockCameraControl` | `PlayerBaseClass` | 12 | Control lock family with its five siblings. |
-| 24 | `_aimCameraTutorial` | `WorldMaster` | 22 | Tutorial camera family with three siblings. |
-
-The order is an AUTHORED judgement on top of the call-site counts, so a
-lower count can rank above a higher one (rank 23 `_lockCameraControl` has 12
-sites and rank 24 `_aimCameraTutorial` has 22). The manifest rows under
-`nextTranche` carry the same order.
-
-The coherent classes for the following rounds are the `ItemBaseClass` and
-package queries (ranks 4, 5, 7, 8, 10, 11, 13, 17 and 18), the scheduler
-natives (ranks 1 to 3 and 9), the player fade and control lock natives (ranks
-12, 14, 15 and 23) and the `GroupBaseClass` natives (ranks 19 to 21).
+The ranked list of the next natives lives in the
+[scheduler and item contracts](scheduler-item-native-contract.md#open), which
+cover the first ten rows of the earlier ranking.
 
 ## Reproduction
 
