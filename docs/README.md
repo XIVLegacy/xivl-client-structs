@@ -62,6 +62,9 @@ catalog. Machine-readable inventories and regeneration rules live under
 - [Chara scheduler, wait, item and log native contracts](scheduler-item-native-contract.md) -
   scheduler queue entry, resume checkers and thread yield, item package
   lookup and log output.
+- [Nameplate, actor, area, item reference and group native contracts](nameplate-group-native-contract.md) -
+  nameplate listener, actor identity and name tests, area flags, sheet binding
+  of item references and group queries.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, bounded argument records and supported output representations.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -
