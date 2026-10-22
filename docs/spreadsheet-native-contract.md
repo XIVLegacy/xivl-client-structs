@@ -370,8 +370,7 @@ does not supply.
 - The process behavior of the invalid-parameter route for an absent key.
 
 The ranked list of the next natives lives in the
-[scheduler and item contracts](scheduler-item-native-contract.md#open), which
-cover the first ten rows of the earlier ranking.
+[nameplate, actor and group contracts](nameplate-group-native-contract.md#open).
 
 ## Reproduction
 

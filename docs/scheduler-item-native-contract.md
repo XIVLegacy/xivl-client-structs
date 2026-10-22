@@ -381,44 +381,11 @@ behind the log output, which this record does not supply.
 - The process behavior of the invalid-parameter route and of the
   `invalid vector<T> subscript` throw.
 
-The next natives by value, taken from the corpus call-site counts and the role
-of each native in a playable client, are listed below. Receiverless natives
-(`_defineClass`, `_defineBaseClass`, `_string`, `_math`, `_table`, `_isAlive`,
-`_getPos`, `_getDir`, `_onInit`) wait for the receiverless global mapping.
-
-| Rank | Native | Class | Call sites | Why |
-| ---: | --- | --- | ---: | --- |
-| 1 | `_countStack` | `ItemBaseClass` | 95 | Stack count, the same `ItemBase` reference lookup as `_getCatalogID`. |
-| 2 | `_getItemPackageFreeSpace` | `CharaBaseClass` | 60 | Free package slots, a sibling of `_getItemPackageCapacity`. |
-| 3 | `_isEquipping` | `ItemBaseClass` | 44 | Equipped test for inventory widgets. |
-| 4 | `_isStackable` | `ItemBaseClass` | 42 | Stackable test. |
-| 5 | `_waitForFading` | `PlayerBaseClass` | 68 | Screen fade completion wait, a yield native on the resume framework above. |
-| 6 | `_fadeOut` | `PlayerBaseClass` | 45 | Screen fade out. |
-| 7 | `_fadeIn` | `PlayerBaseClass` | 45 | Screen fade in. |
-| 8 | `_runCharaSchedulerTutorial` | `WorldMaster` | 44 | Tutorial scheduler entry. The callback is `0x006E6B10` and reaches `0x0075C420` with a second int. |
-| 9 | `_countMember` | `GroupBaseClass` | 79 | Group size for party and linkshell widgets. |
-| 10 | `_isMember` | `GroupBaseClass` | 47 | Group membership test. |
-| 11 | `_getMember` | `GroupBaseClass` | 39 | Group member lookup. |
-| 12 | `_getCurrentAreaMaster` | `ActorBaseClass` | 43 | Current area object, debugger and chara scripts. |
-| 13 | `_runBgScheduler` | `NpcBaseClass` | 25 | Background scheduler entry of the npc scripts, with `_runBgSchedulerFromMidstream` (18). |
-| 14 | `_hasItemPackage` | `CharaBaseClass` | 19 | Package presence test on the shared package manager, with `_getExtendedTemporaryItem` (10). |
-| 15 | `_getMaxStack` | `ItemBaseClass` | 12 | Maximum stack of an item, with `_getPackage` (16). |
-| 16 | `_unlockPlayerControl` | `PlayerBaseClass` | 14 | Control unlock paired with the covered `_lockPlayerControl`. |
-| 17 | `_lockCameraControl` | `PlayerBaseClass` | 12 | Control lock family with `_unlockCameraControl`, `_lockLockonControl`, `_unlockLockonControl`, `_lockTargetCursorControl` and `_unlockTargetCursorControl`. |
-| 18 | `_aimCameraTutorial` | `WorldMaster` | 22 | Tutorial camera family with `_cancelAimCameraTutorial`, `_lookAtPlayerTutorial` and `_cancelLookAtPlayerTutorial`. |
-| 19 | `_runCharaSchedulerAgainstTarget` | `CharaBaseClass` | 9 | Scheduler variant on the queue path of `_runCharaScheduler`, next to `_runCharaSchedulerFromMidstream` with no call site. |
-| 20 | `_waitForMapLoaded` | `PlayerBaseClass` | 8 | Yield native in the family of `_waitForFading`, `_waitForTargetTutorial` (9) and `_waitForTurning` (6). |
-
-The order is an AUTHORED judgement on top of the call-site counts, so a lower
-count can rank above a higher one. Bound natives with more call sites than the
-last rows are left below rank 20 because they belong to families that this
-list ranks as units after the ones above: `_delete` (28, `ActorBaseClass`),
-`_getKind` (26, `GroupBaseClass`), `_setNameplateIcon` (23) and
-`_setNameplateColor` (22) are nameplate and actor lifetime natives with no
-yield or item role, and `_getGroup` (22) and `_getBelongGrandCompany` (22)
-are plain accessors whose group family is represented by rows 9 to 11. The
-deferral is AUTHORED. The manifest rows under `nextTranche` carry the same
-order.
+The ranked list of the next natives lives in the
+[nameplate, actor and group contracts](nameplate-group-native-contract.md#open),
+which cover `_countStack`, `_getItemPackageFreeSpace`, `_countMember` and
+`_isMember` from the earlier ranking and record `_isEquipping`, `_isStackable`,
+`_hasItemPackage` and `_getMaxStack` as related rows.
 
 ## Reproduction
 
