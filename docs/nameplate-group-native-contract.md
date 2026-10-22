@@ -233,11 +233,14 @@ the name. The `_getStaticActor` row of the
 state dwords and the node byte, and the classes behind the engine name tables,
 were not traced.
 
-`Global` is the class of the receiverless names. Its switchboard registers
-`_defineClass` and `_defineBaseClass` at orders 1 and 2 and `_isExistActor` at
-order 7. The boot contracts record the `global_u` descriptor with the selector
-`global` for `_getStaticActor`. The script index lists no descriptor for
-`_isExistActor`, so how a Lua script reaches it was not traced.
+`Global` is `INFERRED` to be the class of the receiverless names. Its
+switchboard registers `_defineClass` and `_defineBaseClass` at orders 1 and 2
+and `_isExistActor` at order 7. The boot contracts record the `global_u`
+descriptor with the selector `global` for `_getStaticActor`. The `global_u`
+script declares a descriptor with that selector for each of the 15 natives
+below, `_isExistActor` included. The
+[binding map contracts](binding-map-native-contract.md#receiverless-names) record
+the descriptors and the key suffix.
 
 | Order | Native | Registrar |
 | ---: | --- | --- |

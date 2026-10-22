@@ -352,37 +352,12 @@ class, the grand company writers and the background scheduler runner behind
 - The process behavior of the invalid-parameter route for an out-of-range
   member position.
 
-The next natives by value are ranked by the number of distinct scripts that
-contain a call, with the call-site count as the tie break. Natives with a
-contract in any manifest are left out. Natives with no class binding in the
-script index are also left out, which covers the receiverless names of the
-`Global` switchboard. The nameplate colour and icon natives and
-`_fadeInAfterWarp` are carried as related rows of their manifests.
-
-| Rank | Native | Class | Scripts | Call sites | Why |
-| ---: | --- | --- | ---: | ---: | --- |
-| 1 | `_getActorMainStat` | `CharaBaseClass` | 9 | 16 | Order 7 of the `CharaBase` switchboard. |
-| 2 | `_isExistInWorldMember` | `GroupBaseClass` | 9 | 16 | Order 5 of the `GroupBase` switchboard, next to `_isExistInClientMember`. |
-| 3 | `_getMemberDisplayName` | `GroupBaseClass` | 8 | 12 | Order 12 of the `GroupBase` switchboard. |
-| 4 | `_getPackage` | `ItemBaseClass` | 7 | 16 | Order 7 of the `ItemBase` switchboard, a sibling of the item lookup. |
-| 5 | `_randomInteger` | `Math` | 7 | 10 | Order 1 of the `Math` switchboard, slot 2 of vftable `0x00FD559C` at `0x00740EC0`. |
-| 6 | `_getDisplayName` | `CharaBaseClass` | 7 | 9 | Order 26 of `CharaBase` and order 13 of `GroupBase`. |
-| 7 | `_getSpecialEventWork` | `WorldMaster` | 7 | 8 | Order 23 of the `WorldMaster` switchboard. |
-| 8 | `_getKind` | `GroupBaseClass` | 6 | 26 | Order 3 of `GroupBase` and order 6 of `ItemBase`. |
-| 9 | `_unlockPlayerControl` | `PlayerBaseClass` | 6 | 14 | Order 28 of the `PlayerBase` switchboard. |
-| 10 | `_updateWork` | `CharaBaseClass` | 6 | 7 | Order 27 of `CharaBase`, 17 of `ItemBase`, 15 of `GroupBase`, 2 of `DirectorBase`. |
-| 11 | `_getRegion` | `AreaBaseClass` | 6 | 6 | Order 1 of the `AreaBase` switchboard. |
-| 12 | `_runCharaSchedulerTutorial` | `WorldMaster` | 5 | 44 | Order 12 of the `WorldMaster` switchboard. |
-| 13 | `_lookAtPlayerTutorial` | `WorldMaster` | 5 | 23 | Order 14 of the `WorldMaster` switchboard. |
-| 14 | `_aimCameraTutorial` | `WorldMaster` | 5 | 22 | Order 16 of the `WorldMaster` switchboard. |
-| 15 | `_cancelAimCameraTutorial` | `WorldMaster` | 5 | 22 | Order 17 of the `WorldMaster` switchboard. |
-| 16 | `_getMemberLocalizedDisplayName` | `GroupBaseClass` | 5 | 14 | Order 10 of the `GroupBase` switchboard. |
-| 17 | `_lockLockonControl` | `PlayerBaseClass` | 5 | 12 | Order 30 of the `PlayerBase` switchboard. |
-| 18 | `_lockTargetCursorControl` | `DesktopWidget` | 5 | 12 | Order 17 of the `DesktopWidget` switchboard. |
-| 19 | `_unlockLockonControl` | `PlayerBaseClass` | 5 | 12 | Order 31 of the `PlayerBase` switchboard. |
-| 20 | `_unlockTargetCursorControl` | `DesktopWidget` | 5 | 12 | Order 18 of the `DesktopWidget` switchboard. |
-
-The manifest rows under `nextTranche` carry the same order.
+The ranked list of the next natives lives in the
+[binding map contracts](binding-map-native-contract.md#open). They cover the
+script binding map, `_isAlive`, `_getPos`, `_getDir`, `_getActorMainStat`,
+`_isExistInWorldMember`, `_getMemberDisplayName`, `_getPackage`,
+`_randomInteger`, `_getDisplayName`, `_getSpecialEventWork`, `_getKind` and
+`_unlockPlayerControl`. `_fadeInAfterWarp` stays a related row of this record.
 
 ## Reproduction
 
