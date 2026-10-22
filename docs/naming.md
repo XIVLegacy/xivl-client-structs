@@ -15,6 +15,13 @@ When a name is inferred, make that visible:
 
 Prefer hex strings for offsets, sizes, addresses, and signature positions.
 
+## Byte signatures
+
+A byte signature must be source-backed and useful for finding a client
+function, global, vtable, or struct relationship. Use `??` for wildcard bytes.
+Record the associated address as a hex string in `manifests/symbols.json` and
+update the IR contract in the same change.
+
 ## Address convention
 
 In `manifests/symbols.json`, the `address` field is the canonical virtual
