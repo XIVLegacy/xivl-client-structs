@@ -76,6 +76,11 @@ canonical records, generated views and frozen investigations.
   descriptor keys, alias names, receiverless `Global` names, library
   namespaces, `_isAlive`, chara position and display name, group and item
   queries, special event work, `Math` random integers and player control.
+- [Work binder, player work layout and player, group, area, chara and debug native contracts](work-binder-native-contract.md) -
+  the `_bind` flag and bind route of the work userdata, member widths, the
+  declared `charaWork` and `playerWork` of a `MyPlayer` with its bind ids, touch
+  attributes, work refresh requests, lock-on control, region, orientation, turn
+  and instance name.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, bounded argument records and supported output representations.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -

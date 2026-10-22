@@ -500,6 +500,8 @@ descriptor suffix identifiers. An alias takes the class of its descriptor.
 | 20 | `_getAllCharacter` | `Debug` | 4 | 17 | Registered by the `Debug` switchboard. |
 
 The manifest rows under `nextTranche` carry the same order.
+The [work binder contracts](work-binder-native-contract.md) cover ranks 1, 2, 3, 4,
+9, 10, 12, 15, 16 and 19 and carry the refreshed order.
 
 ## Reproduction
 
