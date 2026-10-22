@@ -81,6 +81,11 @@ canonical records, generated views and frozen investigations.
   declared `charaWork` and `playerWork` of a `MyPlayer` with its bind ids, touch
   attributes, work refresh requests, lock-on control, region, orientation, turn
   and instance name.
+- [Receiverless Global call convention and Global and WorldMaster tutorial native contracts](global-native-contract.md) -
+  the root table assignment and forwarder that give a plain global call the
+  `global` object at position 1, actor name and static actor natives, UTF-8
+  string and macro natives, and the chara scheduler, look-at and aim camera
+  tutorial natives.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, bounded argument records and supported output representations.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -
