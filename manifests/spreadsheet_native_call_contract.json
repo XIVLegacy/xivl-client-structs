@@ -87,11 +87,12 @@
     },
     "sheetHandleSlots": {
       "slot 1 (+0x04)": "Polled by the load request. A nonzero result ends the poll with the dword at 0x0130CECC, INFERRED to be the not done result, on the path where the handle was just obtained.",
-      "slot 2 (+0x08)": "Takes a column id and returns the column type 1 to 10.",
+      "slot 2 (+0x08)": "Takes a column id and returns the column type 0 to 11, the byte at position [sheet +0x10] indexed by the position byte at [sheet +0x14] of the id. 0x00CAF330.",
       "slot 0x38": "Returns a pointer to a dword vector of key range pairs, a start key and a key count. _isExistKey, _getAllKey, _loadAllKeyPermanently, 0x006F0D80 and 0x006DFFC0 read it.",
       "slot 0x40": "Takes a column id and returns a byte. The request keeps the ids for which it is nonzero.",
-      "slot 0x44": "Returns the column count.",
-      "tier": "STATIC for the calls, INFERRED for the roles. The class of the handle object was not identified."
+      "slot 0x44": "Returns the column id bound, the byte at sheet +0x09 that the constructor 0x00CB04B0 fills from the column_max attribute. 0x00CAF380.",
+      "class": "The five slots match the bodies of Component::Excel::ExcelSheet (vftable 0x0110C6D4, RTTI .?AVExcelSheet@Excel@Component@@) at slots 1, 2, 14, 16 and 17: 0x00CAF650, 0x00CAF330, 0x00CAF350, 0x00CAF360 and 0x00CAF380. The handle is INFERRED to be that class.",
+      "tier": "STATIC for the calls, INFERRED for the roles and for the handle class."
     },
     "rowCache": {
       "outerMap": "std::map-shaped tree at SpreadSheet +0xC4. Node key dword at +0x0C, nil byte at +0x21, row counter dword at +0x10, cell map object at +0x14.",
@@ -109,15 +110,21 @@
         "3": "row reader 0x0078E2C0, zero-extended byte, int cell",
         "4": "row reader 0x0078E2E0, sign-extended word, int cell",
         "5": "row reader 0x0078E300, zero-extended word, int cell",
-        "6": "row reader 0x0078E320, dword, int cell",
-        "7": "Nil cell",
-        "8": "Nil cell",
+        "6": "row reader 0x0078E320, dword, int cell, schema name s32",
+        "7": "Nil cell, schema name u32",
+        "8": "Nil cell, schema name f16",
         "9": "row reader 0x0078E340, float cell",
         "10": "row reader 0x0078E360, Utf8String cell",
         "other": "Nil cell"
       },
       "dispatch": "The jump table is at 0x00748778 and is indexed by the type minus 1 with an unsigned bound of 9. The cases begin at 0x0074848D.",
-      "tier": "STATIC for the shapes, tags and type conversions. The column type meanings and the initial row counter are not traced."
+      "columnTypeNames": {
+        "lookup": "0x00CAF390 builds twelve static Utf8String objects at 0x01376E98 with stride 0x54 on first use and returns the position of the matching one, or 0. The literals are the empty string, bool, s8, u8, s16, u16, s32, u32, f16, float, str and bin, so the schema names map to the types 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 and 11. The sheet constructor 0x00CB04B0 calls it with the text value at +0x68 of each child of its type node (static object 0x01377398, literal type) and stores the byte at [sheet +0x10] by column position.",
+        "widths": "The dword table at 0x0130BE4C gives 1 for types 1 to 3, 2 for types 4 and 5, 4 for types 6 and 7, 2 for type 8 and 4 for type 9. The constructor adds the width of each type to the row width at sheet +0x18.",
+        "result": "s32 is type 6 and the dword reader. u32 is type 7 and f16 is type 8, and both read Nil through the shared jump table entry 0x007485E3. The reader signedness and width of the types 1 to 5, 9 and 10 agree with bool, s8, u8, s16, u16, float and str.",
+        "tier": "STATIC"
+      },
+      "tier": "STATIC for the shapes, tags, type conversions and type names. The initial row counter is not traced."
     },
     "argumentReaders": {
       "0x005819A0": "Reads cell tag 0, the int, and returns a pointer to the value stored through cell +0x08. A mismatched tag reaches 0x00CCA730 with the registry entry for the expected type.",
@@ -976,7 +983,7 @@
         },
         {
           "tier": "STATIC",
-          "claim": "When the handle cell at SpreadSheet +0xB4 is null the poll asks the manager through its slot 1 with the filename and stores the result. A handle that is still null, or a nonzero result of slot 1 of the new handle, finishes the poll with the dword at 0x0130CECC, INFERRED to be the not done result. A handle that is already set skips that test. The poll then builds the column id list once from slot 0x44, the column count, keeping each zero-based id for which slot 0x40 returns true.",
+          "claim": "When the handle cell at SpreadSheet +0xB4 is null the poll asks the manager through its slot 1 with the filename and stores the result. A handle that is still null, or a nonzero result of slot 1 of the new handle, finishes the poll with the dword at 0x0130CECC, INFERRED to be the not done result. A handle that is already set skips that test. The poll then builds the column id list once from slot 0x44, the column id bound, keeping each zero-based id for which slot 0x40 returns true.",
           "locators": [
             "0x00747FDD..0x0074800F",
             "0x0074801A..0x00748077"
@@ -1672,7 +1679,7 @@
       "nameLiteral": "0x00FD6D90",
       "callback": "0x006EB530",
       "contract": "manifests/widget_native_call_contract.json rows _setFilename (SpreadSheet row)",
-      "note": "Assigns SpreadSheet +0x60 and stores the manager slot 1 result at +0xB4. The ledger row is shared with CutScene and WidgetBase."
+      "note": "Assigns SpreadSheet +0x60 and stores the manager slot 1 result at +0xB4. The ledger row is shared with CutScene and WidgetBase. The manager is INFERRED to be Component::Excel::ExcelModule (vftable 0x01108C00, slot 1 0x00C981D0). Slot 1 looks the string up in the map at module +0x2C through 0x00800EC0 and returns the sheet at entry +0x60 only when the key vector at sheet +0x44 is nonempty. The visitor 0x00C98580 keys the map by the name attribute of each schema node after the mode and lang filters and replaces an earlier node of the same name. The only filename literal that the tracked script metadata records is passiveGL_craft, whose sheet inventory row is xivl-client-data:manifests/sheet_inventory.csv passiveGL_craft with resource id 0x01030068 and source game_schema."
     }
   ],
   "ledgerCandidates": {
@@ -1689,14 +1696,14 @@
     "note": "These are the SpreadSheet rows of the unimplemented ledger that this record gives a registration, argument list, return list, receiver check and callback contract. _loadKeyAsync has no ledger row and no corpus call site. A client that implements the rows still needs the sheet manager, the key range vector, the column types and the cell values from decoded static client data, which this record does not supply."
   },
   "nextTranche": {
-    "reference": "manifests/nameplate_group_native_call_contract.json nextTranche",
-    "note": "The ranked list of the next natives lives in the nameplate, actor and group contract."
+    "reference": "manifests/fade_actor_group_native_call_contract.json nextTranche",
+    "note": "The ranked list of the next natives lives in the fade, actor and group contract."
   },
   "boundaries": [
     "These are static client observations. No live Lua call or retail-client walk was performed.",
     "Each registrar has one rel32 caller in .text, recorded as registrarCaller. The run-time order of registration is the switchboard order in the framework.",
     "Script call-site lines are static presence in the shipped scripts. They do not establish which natives a given script reaches at run time.",
-    "The classes of the sheet manager and the sheet handle objects were not identified, so slot roles are INFERRED from use.",
+    "The sheet handle and manager classes are INFERRED to be ExcelSheet and ExcelModule from matching slot bodies. The documents that the ExcelModule visitor reads and the object at module +0x08 were not traced.",
     "The poll was followed through the key scan, the row cache insert and the finish cells. The row reader bodies, the notifier and the asynchronous queue behind 0x00CC73E0 were not traced.",
     "The invalid-parameter route ends in a process terminate on the evidence of the target cursor contract. Whether the handler cell at 0x01363F1C holds a handler at run time is unknown.",
     "These are client marshalling and state contracts. They do not establish sheet content, the Lua wrapper logic or server behavior."

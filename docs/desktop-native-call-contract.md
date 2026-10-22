@@ -161,7 +161,9 @@ identity.
   `_setListProperty`, `_updateList`, `_addItem` and
   `_setKeyboardFocusedControl` carry registration and declared lists only.
   The [talk widget contracts](talk-native-contract.md) record the handler of
-  `_setKeyboardFocusedControl`.
+  `_setKeyboardFocusedControl`, and the
+  [fade, actor and group contracts](fade-actor-group-native-contract.md#widget-item)
+  record the handler of `_addItem`.
 - Reach positions are static call-site order across every branch, not a
   runtime trace.
 

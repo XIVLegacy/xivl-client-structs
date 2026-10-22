@@ -58,13 +58,17 @@ catalog. Machine-readable inventories and regeneration rules live under
 - [Talk widget native contracts](talk-native-contract.md) - parent and child
   widget accessors, keyboard focus, tutorial test and desktop message pools.
 - [SpreadSheet native contracts](spreadsheet-native-contract.md) - row cache
-  reads, key ranges, yielding load requests, row release and asynchronous loads.
+  reads, column type names, filename lookup, key ranges, yielding load requests,
+  row release and asynchronous loads.
 - [Chara scheduler, wait, item and log native contracts](scheduler-item-native-contract.md) -
   scheduler queue entry, resume checkers and thread yield, item package
-  lookup and log output.
+  lookup, item record builders and the log module.
 - [Nameplate, actor, area, item reference and group native contracts](nameplate-group-native-contract.md) -
   nameplate listener, actor identity and name tests, area flags, sheet binding
   of item references and group queries.
+- [Widget item, fade, actor, group and background scheduler native contracts](fade-actor-group-native-contract.md) -
+  widget item strings, screen fade thunks and the `MyPlayer` overrides, actor
+  deletion, group member queries and NPC background scheduler starts.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, bounded argument records and supported output representations.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -

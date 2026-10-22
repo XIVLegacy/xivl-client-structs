@@ -125,7 +125,10 @@ The callbacks reach one client object through `0x00CC7510` on
 read `X = [R]`, `Y = [X + 0x04]`, `W = [Y]` and `V = [W]`. `V` is the object
 that the sheet manager chain of the SpreadSheet contracts reaches. It holds
 the identity registry at `+0x4AC`, the log sink pointer at `+0x660` and the
-sheet manager at `+0x174F8`. The class of `V` was not identified.
+sheet manager at `+0x174F8`. The constructor `0x004DBF40` of
+`Application::Main::RaptureElementContainer` (vftable `0x00F912E4`) initializes
+the same three fields and `MainModule` (vftable `0x00F9142C`) calls it once at
+`0x004DC414`, so `V` is `INFERRED` to be that container.
 
 The scheduler natives name their receiver by the identity at
 `ExecuteParameters` `+0x0C` and resolve it through `0x004D9970`, which adds
@@ -193,11 +196,16 @@ scene packet and the role of the byte at `+0xE1` were not traced.
 `_wait` (`0x006DBCB0`) is a thin callback. It builds an empty adapter, calls the
 body `0x0078BED0` with `ExecuteParameters` and does not read the receiver. The
 body reads one float through `0x0071BAC0` and converts it with
-`cvtss2sd`, a multiply by the double `1000.0` at `0x00F91C48` and `cvttsd2si`
-to a signed 64 bit millisecond duration. A negative float gives a negative
-duration. It allocates `0x28` bytes through `0x009D1B35` and constructs the
-checker through `0x0078B850`, which stores the duration low and high dwords at
-`+0x08` and `+0x0C`. A failed allocation passes a null checker.
+`cvtss2sd`, a multiply by the double `1000.0` at `0x00F91C48` and the 32 bit
+`cvttsd2si eax, xmm0` at `0x0078BF5A`. The `cdq` at `0x0078BF5E` sign extends
+the result into the high duration dword, so the duration is a signed 32 bit
+millisecond count held in two dwords. A negative float gives a negative
+duration. A NaN, an argument of about 2147483.648 seconds (24.855 days) or
+more, and an argument below about -2147483.649 seconds make the instruction
+return `0x80000000`, so the duration is also negative. It allocates `0x28`
+bytes through `0x009D1B35` and constructs the checker through `0x0078B850`,
+which stores the duration low and high dwords at `+0x08` and `+0x0C`. A failed
+allocation passes a null checker.
 
 The checker vftable is `0x00FE0548` with the RTTI name
 `WaitResumeChecker` in an anonymous namespace and the base vftable `0x00FD4F5C`
@@ -265,9 +273,14 @@ store `0x01377ECC`.
 Two consequences follow for a client that implements the waits. A `_wait` thread
 always parks at least until the next update loop pass, because the first poll
 runs after the native has returned, and a zero duration is done at that poll.
-A negative duration has a high dword of `0xFFFFFFFF`, which the unsigned high
-compare treats as larger than a normal elapsed value, so the poll keeps
-reporting waiting. Both are `INFERRED` from the compares. Whether the per-thread
+A negative duration, including every NaN or out of range argument, has a high
+dword of `0xFFFFFFFF`. The elapsed high dword is the borrow of the 32 bit tick
+subtraction, since the stored high dword at `+0x1C` is 0. It stays 0 until
+`timeGetTime` wraps below the stored start. The unsigned high compare then
+treats a negative duration as larger than the elapsed value, so the poll keeps
+reporting waiting. After a tick wrap the elapsed high dword equals the
+negative duration's and the low dword compare decides. Both are `INFERRED`
+from the compares. Whether the per-thread
 timer scheduler `0x00CEF510` that the client architecture page names also acts
 on a `_wait` thread was not traced.
 
@@ -327,7 +340,8 @@ and the variant byte `+0x70`, call `0x006F51A0` and choose `0x006EE480` for a
 variant byte of 1 or `0x006EE3E0` otherwise. They push the dword at record
 `+0x24` and `+0x20`. Neither tests the lookup result, so a result of 0 reads the
 address `0x00000024` or `0x00000020`. The reading of those dwords as the catalog
-identifier and the name sheet index comes from the native names. What the
+identifier and the name sheet index comes from the native names. The sources of
+the dwords are in [Item record builders](#item-record-builders). What the
 variant byte selects and the origin of the tree at manager `+0x14` were not
 traced.
 
@@ -335,6 +349,35 @@ traced.
 and calls `0x006E5BA0`. A result of 0 pushes the int 0 and otherwise the dword
 at package record `+0x08` is pushed through `0x00584F70`. That the dword is the
 slot capacity comes from the native name.
+
+## Item record builders
+
+The record that `0x006EE3E0` returns is an `Item` derived object, because the
+fields the item natives read lie in the layout that the `Item` base
+constructor `0x006DF580` (vftable `0x00FD5A14`) fills. The item update
+execution `0x006F4490` creates one such object per decoded record. It
+allocates `0xD0` bytes and constructs them through `0x006EF520`, which forwards
+six arguments to `0x006DF580` and then stores the vftable `0x00FD5C68`, RTTI
+`ItemBuilder`. `0x0076B760` decodes the `0x70` byte wire record into a `0x58`
+byte decoded record. All offsets below are record relative.
+
+| Wire record | Decoded record | Item field | Read by |
+| --- | --- | --- | --- |
+| `+0x00`, `+0x04` | `+0x00`, `+0x04` | `+0x10`, `+0x14` | The pair collected by the Bazaar serializer. |
+| `+0x08` | `+0x08` | `+0x18` | `_countStack` through the nameplate contracts. |
+| `+0x1C` | `+0x0C` | `+0x1C` | None of these natives. |
+| `+0x0C` | `+0x10` | `+0x24` | `_getCatalogID`. |
+| `+0x28`, one byte | `+0x16` | `+0x20`, zero extended | `_getNameIndex`. |
+
+`_getCatalogID` therefore returns the dword at wire record `+0x0C` and
+`_getNameIndex` returns the byte at wire record `+0x28`. Neither reads the
+eight byte pair at wire `+0x00` and `+0x04`, which the
+[Bazaar contract](bazaar-native-wire-contract.md#dealing-fields-read-by-lua)
+treats as the item identity pair. That the dword is the catalog identifier and
+the byte the name sheet index remains `INFERRED` from the native names. The
+helper `0x00702A20` builds an `ItemBuilder` through `0x006EF490` for a native
+that reads three ints, and its field sources were not traced. How the built
+item reaches the package slot that `0x006EE3E0` returns was not traced.
 
 ## Log output
 
@@ -350,9 +393,30 @@ is empty. The `Debug` callback (`0x006E7AB0`) passes the kind `0x1F` and a
 when the dword at world object `+0x660` is null. With a zero flag it calls
 `0x004CE760` on that sink with the kind, the prefix and the text. With a nonzero
 flag it formats the prefix through `0x0044AB90` first. Neither native uses the
-formatted branch. That the sink is the client log and chat output and that the
-kind selects a channel is `INFERRED` from the native name. The body of
-`0x004CE760` and the meaning of the kinds were not traced.
+formatted branch.
+
+The sink is a `0x74` byte `Application::Misc::RaptureLogModule` (vftable
+`0x00F91434`), allocated at `0x004DC62E`, constructed by `0x004DEE90` and
+stored at `V +0x660` by `0x004DC66E`. `0x004CE760` formats the kind word with
+the literal `%04X`, concatenates the prefix and the text and passes the
+character pointer and the length to virtual slot 7 of the module, `0x00C9AD40`.
+That routine appends the text to the container at module `+0x2C`, increments
+the count at `+0x10`, increments the dword at `+0x14` when the previous count is at least
+`0x4B0` and returns the previous count as an entry id. `0x004CE760` then grows
+the vector of 20 byte entries at module `+0x4C` to kind plus 1 entries through
+`0x004D56F0`, appends the id to the queue of the entry for the kind through
+`0x004571F0` and removes ids from the front of that queue while they are below
+the dword that `0x00C9A8C0` returns. That dword is the value at `+0x14`, or -1
+when the count at `+0x10` is 0.
+
+Other callers of `0x004D6D90` and `0x0075D4C0` pass the kind 0x20 in
+`0x004C3BE0`, `0x00519440` and `0x005614B0`, 0x1F in `0x0075BC90` and
+`0x0071C5F0`, 1 in `0x0075BEF0`, 2 in `0x0075BFD0` and 0x19 in `0x0075C0B0`.
+`0x0075BC90` builds the literal `<debug>`, `0x0071C5F0` the literal
+`<debug>: ` and `0x005614B0` refers to `xtx/_text_ui`, ` 2010 ` and
+` 2010, 2011 `. That kind 0x1F carries debug lines and kind 0x20 general system
+lines is `INFERRED` from those literals. The names of the kinds and the
+consumers of the per-kind queues were not traced.
 
 ## Ledger rows
 
@@ -372,18 +436,19 @@ behind the log output, which this record does not supply.
 - The Lua yield exit behind the branch at `0x00D19DE4`, the body of `0x00CCE1C0`
   and the relation between the update loop and the timer scheduler `0x00CEF510`.
 - The control creation in `0x006E2770`, the variant byte at `ItemBase` `+0x70`,
-  the tree at manager `+0x14`, the package numbering and the
-  `_getExtendedTemporary*` siblings.
-- The log sink body, the kinds `0x1F` and `0x20`, and the consumer of scene
-  packet type `0x27` and of the byte at chara `+0xE1`.
+  the tree at manager `+0x14`, the package numbering, the install of a built
+  item into its package slot and the `_getExtendedTemporary*` siblings.
+- The consumers of the log module queues and the names of the kinds, and the
+  consumer of scene packet type `0x27` and of the byte at chara `+0xE1`.
 - Whether the Lua wrappers in `chara/charabaseclass_u`, `actorbaseclass_u`,
   `item/itembaseclass_u` and `world/worldmaster_u` adjust the arguments.
 - The process behavior of the invalid-parameter route and of the
   `invalid vector<T> subscript` throw.
 
 The ranked list of the next natives lives in the
-[nameplate, actor and group contracts](nameplate-group-native-contract.md#open),
-which cover `_countStack`, `_getItemPackageFreeSpace`, `_countMember` and
+[fade, actor and group contracts](fade-actor-group-native-contract.md#open).
+The [nameplate, actor and group contracts](nameplate-group-native-contract.md)
+cover `_countStack`, `_getItemPackageFreeSpace`, `_countMember` and
 `_isMember` from the earlier ranking and record `_isEquipping`, `_isStackable`,
 `_hasItemPackage` and `_getMaxStack` as related rows.
 

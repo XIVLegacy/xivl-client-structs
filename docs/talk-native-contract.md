@@ -192,8 +192,8 @@ the `0x00CC7510` address and then the dword at `+0x04` of it. It calls
 then calls `0x0075CE30` on the object at `+0x00` and pushes the `AL` of the
 second call as the bool.
 
-`0x0075CE30` returns false when the dword at context `+0x508` and the byte at
-`+0x505` are both nonzero, and true otherwise. The pushed value does not read
+`0x0075CE30` returns false if and only if the dword at context `+0x508` and the
+byte at `+0x505` are both nonzero. It returns true whenever `+0x508` is 0. The pushed value does not read
 `+0x500`. `0x0075D120` is a refresh that queries property `0x0007A122` of the
 object identified by `0xC0000024`. A true result queries `0x0007A123` and
 `0x0007A121`, builds a dword with bit 0 set, the low 5 bits of the first
@@ -202,11 +202,31 @@ stores it at context `+0x500` when the pair changed from the cache at its
 `+0x04` and `+0x08`. A false result stores 0 when the cache byte at `+0x09`
 is set.
 
-The direct stores of the byte at `+0x505` sit in a constructor body at
-`0x004DC02B`. The writers of `+0x505` and `+0x508` after construction, the
-meaning of the three properties and the object behind `0xC0000024` are
-`unknown`. That the three accessor objects are one state class is `INFERRED`
-from adjacent accessors of one offset family.
+The only displacement encoded store of the byte at `+0x505` is `0x004DC02B`,
+in the constructor `0x004DBF40` of `Application::Main::RaptureElementContainer`
+(vftable `0x00F912E4`). The `MainModule` constructor `0x004DC3A0` calls it once
+at `0x004DC414` on its subobject at `+0x10`. The constructor stores zero at
+`+0x4FC` (byte), `+0x500` (dword), `+0x504` and `+0x505` (bytes) and `+0x508`
+(`0x004DC031`) and `+0x50C` (dwords), and the dwords of its arguments at
+`+0x4F4` and `+0x4F8`.
+
+The same constructor initializes the identity registry at `+0x4AC`, the log
+sink pointer at `+0x660` and the sheet manager pointer at `+0x174F8`, the fields
+that the [scheduler contracts](scheduler-item-native-contract.md#world-object-and-identity-lookup)
+record for the world object `V`. `0x0075CE30` takes the dword at its receiver
+as `V`, and the callback passes the dword at `Y` as that receiver. Besides
+`0x0075CE30`, only `0x0088C4C0` calls the readers `0x004D7250` and
+`0x004D7260`. The setter `0x004D7230` of `+0x500` is called from `0x0055DFC4`
+and `0x0075D1C9` and `0x0075D1DA`, and jumped to from `0x0075CD82`.
+
+No other displacement encoded instruction in `.text` stores `+0x505`. The
+stores of `+0x508` at `0x00514EDA`, `0x00C47904`, `0x00C48EA4` and `0x009E8D7A`
+sit in routines that belong to other classes, and the last one lies in the C
+runtime math code. That the receiver is the container is `INFERRED` from the
+shared offsets. Under that reading both `+0x505` and `+0x508` are 0 after
+construction, so `0x0075CE30` returns true and the native pushes true, unless a
+store through a computed address exists. Such a store, the meaning of the three properties and the
+object behind `0xC0000024` are `unknown`.
 
 ## Message and log pools
 

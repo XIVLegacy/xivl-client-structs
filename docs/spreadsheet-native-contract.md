@@ -127,18 +127,20 @@ The sheet manager is reached by reading the dword at the address `0x00CC7510`
 returns and then the dword at `+0x04` of it, and passing that value to
 `0x0075F5A0`. The routine reads two dwords through its receiver and tail-calls
 `0x004D74C0`, which returns the dword at `+0x174F8`. Manager slot 1 takes the
-filename string and returns the handle. The classes of the manager and the
-handle were not identified.
+filename string and returns the handle. The handle is a
+`Component::Excel::ExcelSheet` (vftable `0x0110C6D4`) and the manager is a
+`Component::Excel::ExcelModule` (vftable `0x01108C00`), see
+[Filename lookup](#filename-lookup).
 
 The callbacks call these handle slots. The roles are `INFERRED` from use.
 
 | Slot | Offset | Use |
 | ---: | --- | --- |
 | 1 | `+0x04` | Busy test in the load poll. |
-| 2 | `+0x08` | Column type from a column id, 1 to 10. |
+| 2 | `+0x08` | Column type from a column id, the number of its schema name. |
 | 14 | `+0x38` | Pointer to a dword vector of key ranges. |
 | 16 | `+0x40` | Byte for a column id. The poll keeps the ids with a nonzero byte. |
-| 17 | `+0x44` | Column count. |
+| 17 | `+0x44` | Column id bound, the `column_max` attribute of the sheet node. |
 
 The slot `+0x38` vector is a list of pairs. A pair is a start key and a key
 count. `_isExistKey` tests `start <= key <= start + count - 1` with signed
@@ -182,17 +184,38 @@ and otherwise asks each alternative whether it matches the cell.
 The poll converts a column of type `t` as follows. The table is the jump table
 at `0x00748778` indexed by `t - 1` with an unsigned bound of 9.
 
-| Column type | Reader | Cell |
-| ---: | --- | --- |
-| 1 | `0x0078E280` | bool |
-| 2 | `0x0078E2A0`, sign-extended byte | int |
-| 3 | `0x0078E2C0`, zero-extended byte | int |
-| 4 | `0x0078E2E0`, sign-extended word | int |
-| 5 | `0x0078E300`, zero-extended word | int |
-| 6 | `0x0078E320`, dword | int |
-| 7, 8, other | none | Nil |
-| 9 | `0x0078E340` | float |
-| 10 | `0x0078E360` | Utf8String |
+| Column type | Schema name | Reader | Cell |
+| ---: | --- | --- | --- |
+| 1 | `bool` | `0x0078E280` | bool |
+| 2 | `s8` | `0x0078E2A0`, sign-extended byte | int |
+| 3 | `u8` | `0x0078E2C0`, zero-extended byte | int |
+| 4 | `s16` | `0x0078E2E0`, sign-extended word | int |
+| 5 | `u16` | `0x0078E300`, zero-extended word | int |
+| 6 | `s32` | `0x0078E320`, dword | int |
+| 7 | `u32` | none | Nil |
+| 8 | `f16` | none | Nil |
+| 9 | `float` | `0x0078E340` | float |
+| 10 | `str` | `0x0078E360` | Utf8String |
+| 0, 11, other | empty name, `bin` | none | Nil |
+
+The schema names and their numbers come from the lookup `0x00CAF390`. It
+builds twelve static `Utf8String` objects at `0x01376E98` with stride `0x54`
+on first use. Their literals are the empty string, `bool`, `s8`, `u8`, `s16`,
+`u16`, `s32`, `u32`, `f16`, `float`, `str` and `bin`, and the position in this
+array is the column type. The lookup compares the schema parameter with each
+object through `0x00445D20` and returns the position, or 0 for no match. The
+sheet constructor `0x00CB04B0` calls it with the text value at `+0x68` of every
+child of the `type` node of the sheet (static object `0x01377398`, literal
+`type`) and stores the result as a byte at `+0x10` of the sheet, indexed by
+column position. Handle slot 2 (`0x00CAF330`) reads that byte through the column
+position map at sheet `+0x14`. The dword table at `0x0130BE4C` gives the stored
+width of each type and the reader adds it to the row width at sheet `+0x18`.
+The widths are 1 for types 1 to 3, 2 for types 4 and 5, 4 for types 6 and 7,
+2 for type 8 and 4 for type 9. Type 8 is therefore the 16 bit `f16` and types
+6 and 7 are the 32 bit `s32` and `u32`. The signedness and width of the readers
+of types 1 to 5, 9 and 10 agree with their schema names. The dword reader is
+type 6, so `s32` is the dword reader and `u32` and `f16` columns read Nil
+through the shared jump table entry. This is `STATIC`.
 
 ## Key ranges
 
@@ -255,7 +278,7 @@ The poll proceeds as follows.
    on the new handle, ends the poll with the dword at `0x0130CECC`, `INFERRED`
    to be the not done result. A handle that was already set skips this test.
 2. The column id list at request `+0x74` is built once. Each id from 0 below
-   the column count is kept when slot `+0x40` returns a nonzero byte.
+   the column id bound is kept when slot `+0x40` returns a nonzero byte.
 3. While the pending set at `+0x84` is empty, the poll scans the key vector.
    Each key `k` with low <= `k` <= high that lies inside a range is inserted
    into the pending set and, when request `+0x6C` is nonzero, into the key set
@@ -338,6 +361,60 @@ the first int to the second inclusive, `0x006DFFC0` tests the key against the
 key vector, and a passing key is requested through `0x006F0D80` and appended
 to the node vector. The node is appended to the list.
 
+## Filename lookup
+
+`_setFilename` passes the filename to slot 1 of the manager. The manager is an
+`ExcelModule`, `INFERRED` from its type and from the five handle slots of this
+record, which match the bodies of `ExcelSheet`.
+
+| Slot | Handle role in this record | `ExcelSheet` routine |
+| ---: | --- | --- |
+| 1 | Busy test | `0x00CAF650`, scans the deque at `+0x2C` |
+| 2 | Column type from a column id | `0x00CAF330` |
+| 14 | Key range vector | `0x00CAF350`, returns `this +0x44` |
+| 16 | Byte for a column id | `0x00CAF360`, tests the position map byte against `0xFF` |
+| 17 | Column id bound | `0x00CAF380`, returns the byte at `+0x09` that the constructor fills from the `column_max` attribute |
+
+`ExcelModule` slot 1 (`0x00C981D0`) looks the filename up in the map at module
+`+0x2C` through `0x00800EC0`, with the string itself as the key. An absent key
+returns 0. A found entry holds the sheet at entry `+0x60`. The routine calls
+handle slot 14 and returns the sheet only when the vector at sheet `+0x44` is
+nonempty, otherwise 0. A sheet whose key ranges have not been read therefore
+gives the null handle.
+
+The map is filled by the node visitor `0x00C98580` of the module. For each node
+it reads these attributes through slot 7 of the node object (`+0x1C`). The names
+come from static `Utf8String` objects whose initializers hold the literals.
+
+| Object | Literal | Use |
+| --- | --- | --- |
+| `0x01376258` | `name` | Map key of the sheet. |
+| `0x01376200` | `param` | Passed on to the sheet constructor. |
+| `0x01376150` | `mode` | With module `+0x38` equal to 0 a node whose mode is `server` (object `0x013760A0`) is skipped. With 1 a node whose mode is `client` (object `0x013760F8`) is skipped. |
+| `0x013761A8` | `lang` | A nonempty value must match the language value at module `+0x14`, otherwise the node is skipped. |
+| `0x013762B0` | `infofile` | A nonempty value takes a separate branch that calls slot 2 of the object at module `+0x08`. |
+
+A node whose `name` is already in the map destroys the old sheet through its
+vftable slot 0 and installs a new `ExcelSheet` from the node through
+`0x00CB04B0`. A new name inserts a new entry. The filename therefore selects a
+sheet by the exact `name` attribute of a schema node, after the `mode` and
+`lang` filters, with no path or extension handling, and a later node of the
+same name replaces an earlier one. That the empty static string at
+`0x0137B248` is the comparand of the emptiness tests is `INFERRED`.
+
+The set of documents the visitor reads and the load that feeds it were not
+traced. The sheet inventory
+`xivl-client-data:manifests/sheet_inventory.csv`
+lists sheet names with a resource id and a source of `game_schema`,
+`extrasheets` or `var_schema`. Its row `passiveGL_craft` gives the resource id
+`0x01030068` with the source `game_schema`. The script metadata
+`xivl-client-scripts:lua/scripts/gamedata/spreadsheet.calls.json` places the
+only `_setFilename` call at line 11 of `gamedata/spreadsheet`. The filename
+arrives from `AreaBaseClass.prepareSpreadSheet` through
+`_createActor(name, "SpreadSheet", name~=nil, sheetName)`, and the one literal
+that `xivl-client-scripts:docs/passivegl-craft-columns.md` records for it is
+`passiveGL_craft`. The other filename strings are not in the tracked metadata.
+
 ## Related natives
 
 `_loadKeyAsync` is registered ninth in the switchboard and has no entry in the
@@ -356,8 +433,8 @@ does not supply.
 
 ## Open
 
-- The classes of the sheet manager and the sheet handle, the row reader
-  bodies and the meaning of column types 7 and 8.
+- The row reader bodies, the documents that the `ExcelModule` visitor reads and
+  the object at module `+0x08`.
 - The initial counter of a cached row, the object at `SpreadSheet` `+0xD8`,
   the notifier at `+0xD0`, and the flag byte at request `+0x90`.
 - Whether the engine runs `LoadDataFunctionEndCallback` slot 1 at the end of
@@ -370,7 +447,7 @@ does not supply.
 - The process behavior of the invalid-parameter route for an absent key.
 
 The ranked list of the next natives lives in the
-[nameplate, actor and group contracts](nameplate-group-native-contract.md#open).
+[fade, actor and group contracts](fade-actor-group-native-contract.md#open).
 
 ## Reproduction
 

@@ -283,7 +283,10 @@ The reference holds an owner at `+0x64`, a package key at `+0x68`, a slot at
 byte 1 selects `0x006EE480` and any other value `0x006EE3E0`. The callback pushes
 the dword at record `+0x18`. It does not test the lookup result, so an absent
 record reads the address `0x00000018`. That the dword is the stack count is
-`INFERRED` from the native name.
+`INFERRED` from the native name. A received item record supplies it from wire
+record `+0x08`, as the
+[item record builders](scheduler-item-native-contract.md#item-record-builders)
+show.
 
 `_bindSpreadSheetData` (`0x006F54A0`) reads a `SpreadSheet` control through
 `0x0071C080`. It compares the dword at `ItemBase` `+0x68` with the dword `0xFF`
@@ -360,7 +363,7 @@ first 11 bytes there are `01 02 03 0C 5D 08 01 00 00 00 00`. Its role
 
 ## Ledger rows
 
-These rows of the unimplemented ledger now have a registration, argument list,
+These rows of the unimplemented ledger have a registration, argument list,
 return list, receiver check and callback contract: `_setNameplate`,
 `_setNameplateVisible`, `_getStaticActorID`, `_isExistActor`, `_setInstanceRaid`,
 `_getZoneName`, `_bindSpreadSheetData`, `_countStack`,
@@ -384,14 +387,10 @@ data and the group manager, which this record does not supply.
 - The process behavior of the invalid-parameter route, the unchecked slot number
   of `_setNameplate` and the lookups that read an address near zero.
 
-The next natives by value are ranked by the number of distinct scripts that
-contain a call, with the call-site count as the tie break. Natives with a
-contract in any manifest are left out, except that a registration-only row of
-the [desktop contracts](desktop-native-call-contract.md) with declared lists and
-no traced callback counts as uncovered, which is the case for `_addItem` at
-rank 1. Natives with no class binding in the script index are also left out.
-That covers `_isExistActor` and the receiverless names of the `Global`
-switchboard above.
+The ranked list of the next natives lives in the
+[fade, actor and group contracts](fade-actor-group-native-contract.md#open).
+They cover `_addItem`, `_getMember`, `_isExistInClientMember`, `_delete` and
+`_getCurrentAreaMaster`.
 
 `_setNameplateColor` and `_setNameplateIcon` are bound to `CharaBaseClass`
 (`chara/charabaseclass_u`) in the index, with 22 and 23 call sites in one script
@@ -402,31 +401,6 @@ ranked list because one distinct script ranks below the twentieth row, and they
 are carried as related rows. The callback of `_setNameplateIcon` is traced in
 the [bazaar appearance contract](bazaar-appearance-contract.md#native-nameplate-consumer).
 The callback of `_setNameplateColor` was not traced.
-
-| Rank | Native | Class | Scripts | Call sites | Why |
-| ---: | --- | --- | ---: | ---: | --- |
-| 1 | `_addItem` | `WidgetBaseClass` | 21 | 22 | Widget item call, used by the most scripts of any uncovered native. Registration only in the desktop contracts. |
-| 2 | `_waitForFading` | `PlayerBaseClass` | 20 | 68 | Screen fade completion wait, a yield native on the resume framework of the scheduler contract. |
-| 3 | `_fadeIn` | `PlayerBaseClass` | 20 | 45 | Screen fade in, paired with `_waitForFading`. |
-| 4 | `_fadeOut` | `PlayerBaseClass` | 18 | 45 | Screen fade out, paired with `_waitForFading`. |
-| 5 | `_delete` | `ActorBaseClass` | 18 | 28 | Actor removal. The registrar sits in the `ActorBase` switchboard next to `_getStaticActorID`. |
-| 6 | `_getMember` | `GroupBaseClass` | 16 | 39 | Group member lookup, first in the `GroupBase` switchboard. |
-| 7 | `_isExistInClientMember` | `GroupBaseClass` | 16 | 32 | Group membership test, fourth in the `GroupBase` switchboard. |
-| 8 | `_getBelongGrandCompany` | `PlayerBaseClass` | 16 | 22 | Grand company of the player, read by populace scripts. |
-| 9 | `_getCurrentAreaMaster` | `ActorBaseClass` | 14 | 43 | Current area object, read by the chara base script. |
-| 10 | `_runBgScheduler` | `NpcBaseClass` | 10 | 25 | Background scheduler entry of the npc scripts. |
-| 11 | `_runBgSchedulerFromMidstream` | `NpcBaseClass` | 9 | 18 | Sibling of `_runBgScheduler`. |
-| 12 | `_fadeInNowLoadingForNoticeEventJustInArea` | `PlayerBaseClass` | 9 | 16 | Fade variant of the `_fadeIn` family. |
-| 13 | `_getActorMainStat` | `CharaBaseClass` | 9 | 16 | Actor main stat read in the chara base script. |
-| 14 | `_isExistInWorldMember` | `GroupBaseClass` | 9 | 16 | Group membership test, fifth in the `GroupBase` switchboard. |
-| 15 | `_fadeInAfterWarp` | `PlayerBaseClass` | 8 | 12 | Fade variant of the `_fadeIn` family. |
-| 16 | `_getMemberDisplayName` | `GroupBaseClass` | 8 | 12 | Group member name, twelfth in the `GroupBase` switchboard. |
-| 17 | `_getPackage` | `ItemBaseClass` | 7 | 16 | Package number of an item reference, a sibling of the item lookup. |
-| 18 | `_randomInteger` | `Math` | 7 | 10 | Random integer of the `Math` class. |
-| 19 | `_getDisplayName` | `CharaBaseClass` | 7 | 9 | Display name read in the chara and group scripts. |
-| 20 | `_getSpecialEventWork` | `WorldMaster` | 7 | 8 | Special event work read through `WorldMaster`. |
-
-The manifest rows under `nextTranche` carry the same order.
 
 ## Reproduction
 
