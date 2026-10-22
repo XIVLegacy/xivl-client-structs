@@ -272,7 +272,8 @@ the float is a heading in radians is `INFERRED` from the constants.
 `_getActorMainStat` (`0x006F9CC0`) takes no argument. `0x0075C1B0` resolves the
 identity and `0x00585400` loads the dword at chara `+0xF0`, which the callback
 pushes as an int. The dword is `INFERRED` to be the main stat mode of the actor
-from the native name and the sibling `_isActorMainStatMode`, which was not traced.
+from the native name and the sibling `_isActorMainStatMode`, whose contract is in the
+[main stat mode record](chara-desktop-native-contract.md#main-stat-mode).
 
 `_getDisplayName` on `CharaBase` (`0x006FA4C0`) reads the record pointer at the
 receiver `+0x60`. The group member natives below copy the same record. Its first
