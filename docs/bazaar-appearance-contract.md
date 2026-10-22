@@ -2,7 +2,7 @@
 
 The remote Bazaar sign is selected from the actor work booleans
 `charaWork.eventTemp.bazaarRetail` and `charaWork.eventTemp.bazaarRepair`.
-The retail sign reaches the NamePlate icon setter with category `2`, sheet `1`
+The retail sign reaches the NamePlate icon setter with category `2`, position `1`
 and icon `220`. The client evidence establishes how a false work value is
 consumed, but it does not identify the server event that writes false after the
 last listing sells.
@@ -67,7 +67,7 @@ separate sign field.
 
 `judgeNameplate` first tests `isRetailDealer()`. A true result calls
 `_setNameplateIcon(2, 1, 220)` (`xivl-client-scripts:lua/scripts/judge/depictionjudge.lua:141-150`).
-When that predicate is false, the player branch selects category `2`, sheet
+When that predicate is false, the player branch selects category `2`, position
 `1`, icon `0`; other non-player branches can select their combat icons
 (`xivl-client-scripts:lua/scripts/judge/depictionjudge.lua:151-191`). Thus icon
 `220` is the retail Bazaar sign choice, while a false retail value reaches the
@@ -122,16 +122,19 @@ arguments. The retained recursive field manifest independently records the
 The NamePlate vtable is `0x00FCF98C`; cell `0x00FCF998` at byte offset `+0x0C`
 contains `0x006A2C50`. Constructor `0x006A3C00` stores `0x00FCF98C` at raw
 instruction `0x006A3C47` with the constructor receiver in ESI. This proves the
-concrete NamePlate target for the actor work path. `0x006A2C50` selects one of
-two icon resource globals from its first argument, calls the resource helpers,
-and forwards all three arguments to `FUN_006A2B30`
-(`manifests/ir_catalog.json:114900-114918`).
+concrete NamePlate target for the actor work path. `0x006A2C50` sets the
+control's width and height to 36.0, or 64.0 for category 4, then forwards all
+three arguments to `FUN_006A2B30`. The constants are floating-point geometry.
+The complete slot, IconDatas argument and original resource evidence is owned
+by `xivl-decomp:docs/actor/player-nameplate-icons.md`, Native control, update
+and clear contract.
 
 `0x006A2B30` clears the indexed icon cache to `-1` when the icon parameter is
-less than one; its positive path resolves the decimal icon resource and stores
-the icon id. NamePlate is an inline subobject at `CharaElement+0xBA0`. The
-per-actor tick `0x0058DF90` invokes slot 13 at `0x006A3560`, which synchronizes
-cached presentation/color state rather than the Bazaar icon
+less than one; its positive path supplies a decimal ID at the selected
+IconDatas list position and stores the icon ID. NamePlate is an inline
+subobject at `CharaElement+0xBA0`. The per-actor tick `0x0058DF90` invokes
+slot 13 at `0x006A3560`, whose call to `0x006A2E90` applies cached icon
+visibility alongside the retained presentation/color work
 (`docs/client-architecture.md:1233-1240`,
 `manifests/player_render_boundary.json#presentationDecompilationInvocation`).
 
