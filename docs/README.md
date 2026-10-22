@@ -87,7 +87,9 @@ canonical records, generated views and frozen investigations.
   string and macro natives, and the chara scheduler, look-at and aim camera
   tutorial natives.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
-  captured dispatch, bounded argument records and supported output representations.
+  captured dispatch, the Lua type handling of each argument position including
+  numeric strings, the installed callback with operations 0, 1 and 3, the
+  language value and the uncaught failure path.
 - [WorldMaster server-time native contract](world-master-native-call-contract.md) -
   receiver validation, empty argument list and signed cached-clock return.
 - [Chocobo naming native checks](chocobo-naming-native-contract.md) -
