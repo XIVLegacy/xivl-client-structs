@@ -40,6 +40,7 @@ Read these pages in order:
 1. [Evidence and claims](evidence-and-claims.md)
 2. [Comments and prose](comments-and-prose.md)
 3. [Retail-input validation](retail-input-validation.md)
+4. [Test authoring](test-authoring.md)
 
 The canonical repository guides are:
 
