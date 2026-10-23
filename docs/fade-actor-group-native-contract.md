@@ -159,9 +159,15 @@ string resolves through `0x005353E0`. The routine then calls `0x00538B70`,
 `0x00537C60` and `0x00535C80` on the widget, runs `0x0053A970` for each entry
 of the set that `0x00535C80` finds, if any, and ends with `0x00539010` on the
 widget.
-That the static string is the empty string, that `+0x98` is the root element
-and that the first string names the target list control are `INFERRED`. The
-widget class and the bodies of the called routines were not traced.
+The empty-string and `+0x98` root-context interpretations remain `INFERRED`.
+The [widget item consumer](widget-item-consumer-contract.md) records the
+bounded resource construction, name/index mapping and indexed property
+resolver, with the explicit Ask wrapper arguments. For the selected resource
+and built-in factories, successful allocation/parsing constructs and publishes
+`TemplateButton_Answer` as a Button, then supplies it as ListBoxItem Content.
+Pre-existing registry entries are retained, and the raw name-scope pointer is
+not a lifetime lease. The widget class, complete bodies of `0x00535C80`,
+`0x00539010` and `0x0053A970`, and executed row materialization remain untraced.
 
 ## Fade natives
 
@@ -330,7 +336,7 @@ return list, receiver check and callback contract: `_addItem`, `_fadeIn`,
 `_delete`, `_getCurrentAreaMaster`, `_getMember`, `_isExistInClientMember`,
 `_getBelongGrandCompany`, `_runBgScheduler` and `_runBgSchedulerFromMidstream`.
 A client that implements them still needs the fade consumer behind scene
-packet type `0x15`, the widget methods behind `0x0053AA10`, the group data
+packet type `0x15`, the remaining [widget consumer limits](widget-item-consumer-contract.md#claim-boundary), the group data
 class, the grand company writers and the background scheduler runner behind
 `0x00794690`, which this record does not supply.
 
@@ -339,8 +345,9 @@ class, the grand company writers and the background scheduler runner behind
 - The consumer of scene packet type `0x15`, the sender of the message `0x19`,
   the class of `F` and the writers of `MyPlayer +0x128`, `+0x12C` and
   `+0x165`.
-- The widget class behind the `V +0x17804` tree and the bodies of `0x00538B70`,
-  `0x00537C60`, `0x00535C80`, `0x00539010` and `0x0053A970`.
+- The widget class behind the `V +0x17804` tree, complete bodies of
+  `0x00535C80`, `0x00539010` and `0x0053A970`, and the remaining
+  [widget consumer limits](widget-item-consumer-contract.md#claim-boundary).
 - The group data class, the entry layouts of tags 1 and 3, and the world
   member variant.
 - The engine calls `0x00CD2660`, `0x00CD7A30` and `0x00CDAEB0` of `_delete`.
