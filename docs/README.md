@@ -69,6 +69,9 @@ canonical records, generated views and frozen investigations.
 - [Nameplate, actor, area, item reference and group native contracts](nameplate-group-native-contract.md) -
   nameplate listener, actor identity and name tests, area flags, sheet binding
   of item references and group queries.
+- [Dynamic widget item consumer](widget-item-consumer-contract.md) - explicit
+  Ask wrapper arguments, resource construction, indexed part lookup and
+  built-in Button publication and ListBoxItem Content composition.
 - [Widget item, fade, actor, group and background scheduler native contracts](fade-actor-group-native-contract.md) -
   widget item strings, screen fade thunks and the `MyPlayer` overrides, actor
   deletion, group member queries and NPC background scheduler starts.
