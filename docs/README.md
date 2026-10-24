@@ -93,6 +93,10 @@ canonical records, generated views and frozen investigations.
   the `_hasItemPackage` lookup, the `_isActorMainStatMode` group table, the
   `RaptureUserControl` target cursor counter, `_isInn`, the localized display
   name natives, the `NpcBase` filter vectors and the `PlayerBase` command thunks.
+- [ItemBase query and extended temporary item native contracts](item-native-contract.md) -
+  the item reference and record lookup, the stack, rare, owner, equipment, trade,
+  lock and dealing queries with the Lua pushes of every branch, the attribute
+  object at item record `+0x8C` and `_getExtendedTemporaryItem`.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
