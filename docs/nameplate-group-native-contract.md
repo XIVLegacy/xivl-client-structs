@@ -403,11 +403,12 @@ They cover `_addItem`, `_getMember`, `_isExistInClientMember`, `_delete` and
 (`chara/charabaseclass_u`) in the index, with 22 and 23 call sites in one script
 each. They are registered at orders 29 and 30 of the `CharaBase` switchboard,
 between `_setNameplate` and `_setNameplateVisible`, with the callbacks
-`0x006E3E00` and `0x006E3F80`, and they are located only. They stay off the
-ranked list because one distinct script ranks below the twentieth row, and they
-are carried as related rows. The callback of `_setNameplateIcon` is traced in
-the [bazaar appearance contract](bazaar-appearance-contract.md#native-nameplate-consumer).
-The callback of `_setNameplateColor` was not traced.
+`0x006E3E00` and `0x006E3F80`. They stay off the ranked list because one
+distinct script ranks below the twentieth row, and they are carried as related
+rows. Both callbacks are contracted in the
+[presentation contracts](presentation-native-contract.md#nameplate-natives) and
+the consumer of `_setNameplateIcon` is traced in the
+[bazaar appearance contract](bazaar-appearance-contract.md#native-nameplate-consumer).
 
 ## Reproduction
 
