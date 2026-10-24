@@ -1209,10 +1209,10 @@
           "index": 0,
           "stackOperator": "Utf8String",
           "pusher": "0x007487C0",
-          "note": "The text with every pattern occurrence replaced."
+          "note": "The text with the pattern occurrences replaced that lie outside the later spans, or all of them for a text without a byte below 0x20. A hit inside the first span is also replaced."
         }
       ],
-      "behavior": "Reads a text, a pattern and a replacement. A tag 6 replacement cell pushes the text unchanged. A replacement without a byte below 0x20 replaces every occurrence of the pattern with 0x0067AC00. A replacement with such a byte replaces the occurrences that lie outside the spans between the bytes 0x02 and 0x03 of the text. It pushes the result and requests no yield.",
+      "behavior": "Reads a text, a pattern and a replacement. A tag 6 replacement cell pushes the text unchanged. A text without a byte below 0x20 has every occurrence of the pattern replaced with 0x0067AC00. A text with such a byte has the occurrences replaced that lie outside the later spans between the bytes 0x02 and 0x03 of the text, and a hit inside the first span is also replaced. It pushes the result and requests no yield.",
       "yields": false,
       "facts": [
         {
@@ -1233,9 +1233,9 @@
         },
         {
           "tier": "STATIC",
-          "claim": "0x00445450 tests the replacement for a byte below 0x20. When it finds none, the callback calls 0x0067AC00 with the local text, the pattern and the replacement. That routine searches the pattern from offset 0 through 0x004465A0, replaces each hit through 0x00447EA0, searches again after the hit and returns the replacement count, which the callback ignores.",
+          "claim": "0x00445450 tests the local copy of cell 0, the text, for a byte below 0x20. The call at 0x006FF72F takes its ecx from esp+0xCC at 0x006FF724, the address that the 0x00447200 call at 0x006FF67C constructs for the copy of cell 0, and the replacement pointer only reaches the stack slot at 0x006FF72B. When it finds none, the callback calls 0x0067AC00 with the local text, the pattern and the replacement. That routine searches the pattern from offset 0 through 0x004465A0, replaces each hit through 0x00447EA0, searches again after the hit and returns the replacement count, which the callback ignores.",
           "locators": [
-            "0x006FF72B..0x006FF736",
+            "0x006FF724..0x006FF736",
             "0x006FFA4A..0x006FFA54",
             "0x0067AC00",
             "0x004465A0",
@@ -1244,7 +1244,7 @@
         },
         {
           "tier": "STATIC",
-          "claim": "A replacement with a control byte takes the loop at 0x006FF73C..0x006FFA3F. It copies the text, the pattern and the replacement into local strings and reads the bytes at 0x012C3116 (0x02) and 0x012C3115 (0x03) from the data section image as the start and end bytes of a macro span. It finds the pattern with 0x006BE5E0 from a cursor. When the hit lies before the next macro start, or no macro follows, it replaces the hit through 0x00596E10 and moves the cursor and the span positions by the length difference. When the hit lies inside a span it moves the cursor behind the span end.",
+          "claim": "A text with a control byte takes the loop at 0x006FF73C..0x006FFA3F. It copies the text, the pattern and the replacement into local strings and reads the bytes at 0x012C3116 (0x02) and 0x012C3115 (0x03) from the data section image as the start and end bytes of a macro span. It finds the pattern with 0x006BE5E0 from a cursor. When the hit lies before the next macro start, or no macro follows, it replaces the hit through 0x00596E10 and moves the cursor and the span positions by the length difference. When the hit lies inside a span it moves the cursor behind the span end.",
           "locators": [
             "0x006FF73C..0x006FFA3F",
             "0x00596E10",
