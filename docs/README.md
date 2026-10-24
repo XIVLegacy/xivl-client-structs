@@ -104,6 +104,11 @@ canonical records, generated views and frozen investigations.
 - [Tutorial, camera and player control native contracts](tutorial-control-native-contract.md) -
   the four `RaptureUserControl` counters and their natives, forced camera mode,
   aim and look-at cancellation, the Chocobo camera and the three tutorial waits.
+- [Group list, virtual item, status bit, spreadsheet container, word table, log and random float native contracts](chara-world-native-contract.md) -
+  the `_getAllGroup` registry walk, `_createVirtualItem` and its resume
+  checker, the net stat and breakage bit readers, `_isAccessibleInServer`,
+  `_getGear`, the NPC spreadsheet container preload and release, the word table
+  calls, `_printDebugLog` and the `_randomFloat` generator.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
