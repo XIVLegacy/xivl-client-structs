@@ -104,6 +104,11 @@ canonical records, generated views and frozen investigations.
 - [Tutorial, camera and player control native contracts](tutorial-control-native-contract.md) -
   the four `RaptureUserControl` counters and their natives, forced camera mode,
   aim and look-at cancellation, the Chocobo camera and the three tutorial waits.
+- [Nameplate, map marker, look-at, turn, visibility, floating offset and scheduler target native contracts](presentation-native-contract.md) -
+  the NamePlate color and icon setters, the map marker thunk and its `NpcBase`
+  override, the look-at record banks at chara `+0x290`, the turn bit and its wait
+  checker, the visible flag, the floating offset and the scheduler request against
+  a target chara.
 - [Group list, virtual item, status bit, spreadsheet container, word table, log and random float native contracts](chara-world-native-contract.md) -
   the `_getAllGroup` registry walk, `_createVirtualItem` and its resume
   checker, the net stat and breakage bit readers, `_isAccessibleInServer`,
