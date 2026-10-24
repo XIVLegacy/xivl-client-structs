@@ -109,6 +109,11 @@ canonical records, generated views and frozen investigations.
   override, the look-at record banks at chara `+0x290`, the turn bit and its wait
   checker, the visible flag, the floating offset and the scheduler request against
   a target chara.
+- [Group list, virtual item, status bit, spreadsheet container, word table, log and random float native contracts](chara-world-native-contract.md) -
+  the `_getAllGroup` registry walk, `_createVirtualItem` and its resume
+  checker, the net stat and breakage bit readers, `_isAccessibleInServer`,
+  `_getGear`, the NPC spreadsheet container preload and release, the word table
+  calls, `_printDebugLog` and the `_randomFloat` generator.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
