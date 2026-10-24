@@ -97,6 +97,13 @@ canonical records, generated views and frozen investigations.
   the item reference and record lookup, the stack, rare, owner, equipment, trade,
   lock and dealing queries with the Lua pushes of every branch, the attribute
   object at item record `+0x8C` and `_getExtendedTemporaryItem`.
+- [Zone-in, fade, weather, music, notice and calendar native contracts](zone-in-native-contract.md) -
+  map load wait, warp fade counters, weather and music requests with their
+  sign extension, event and notice state, inn bed readiness, the Hydaelyn
+  calendar arithmetic and the private area type.
+- [Tutorial, camera and player control native contracts](tutorial-control-native-contract.md) -
+  the four `RaptureUserControl` counters and their natives, forced camera mode,
+  aim and look-at cancellation, the Chocobo camera and the three tutorial waits.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
