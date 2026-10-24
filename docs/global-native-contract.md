@@ -306,14 +306,16 @@ no exception list. That the native title cases a display name and that the
 suffix marks a name to keep as typed are `INFERRED`.
 
 `_replaceMacroCodeString` (`0x006FF600`) reads a text, a pattern and a
-replacement. A tag 6 cell for the replacement pushes the text unchanged. A
-replacement without a byte below `0x20` replaces every occurrence of the pattern
-through `0x0067AC00`. A replacement with such a byte takes the loop at
-`0x006FF73C..0x006FFA3F`, which finds the pattern with `0x006BE5E0`, replaces a hit
-with `0x00596E10` when it lies before the next span and skips a hit that lies in
-a span. A span starts at the byte at `0x012C3116` (`0x02`) and ends at the byte
-at `0x012C3115` (`0x03`). Both initial span positions are the first `0x02` byte,
-so a hit inside the first span is replaced. The loop was not run on text with
+replacement. A tag 6 cell for the replacement pushes the text unchanged. A text
+without a byte below `0x20` has every occurrence of the pattern replaced through
+`0x0067AC00`. The scan `0x00445450` runs on the local copy of the text, which
+the `0x00447200` call at `0x006FF67C` constructs at the address that
+`0x006FF724` passes in ecx. A text with such a byte takes the loop at `0x006FF73C..0x006FFA3F`, which finds the
+pattern with `0x006BE5E0`, replaces a hit with `0x00596E10` when it lies before
+the next span and skips a hit that lies in a span. A span starts at the byte at
+`0x012C3116` (`0x02`) and ends at the byte at `0x012C3115` (`0x03`). Both initial
+span positions are the first `0x02` byte, so a hit inside the first span is
+replaced. The loop was not run on text with
 several spans. That the bytes delimit inline macro codes is `INFERRED`.
 
 ## Tutorial natives
