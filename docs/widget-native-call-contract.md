@@ -263,8 +263,10 @@ tested by `FUN_00CC7210`.
 [door initialization record](door-initialization-native-contract.md) reads
 `FUN_0078D520` as preserving two trailing values for a three-argument call.
 Variable can consume a successful recognized suffix, so the declared
-list length alone does not imply a `GetArguments_` error. This does not
-establish the callback's source-level binding or runtime success.
+list length alone does not imply a `GetArguments_` error. The
+[stub overload record](stub-overload-native-contract.md#_callsuperclassfunction)
+reconciles the two readings. This does not establish the callback's
+source-level binding or runtime success.
 
 `_isInstanceOf` and `_createActor` belong to `Global` and are called from
 Lua without a receiver. Their positions are `ExecuteParameters` positions.

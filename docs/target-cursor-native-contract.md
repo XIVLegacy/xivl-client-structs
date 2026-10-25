@@ -227,7 +227,9 @@ entry through `0x00565D30` with a null object. Its only direct caller is
 - The field at cursor `+0x14` and the roles of the children at `+0x18` and
   `+0x1C`.
 - The Lua natives that call the `DesktopWidget` methods writing `+0x7C`.
-- What the `0x0007A124` query asks of the object at engine `+0x214`.
+- Whether the `0x0007A124` query returns the value of the work member `mainTargetDecidedFlag` (key 500004), which the
+  [stub overload record](stub-overload-native-contract.md#desktopwidget-_settargetcursorimage-cursor-one-branch)
+  identifies.
 
 ## Reproduction
 

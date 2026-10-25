@@ -146,6 +146,11 @@ canonical records, generated views and frozen investigations.
   arguments, the two `_transformIntoChocobo` registrations with the actor
   visitor and resume checker, the `MyPlayer` achievement slots and the empty
   `_loadCutScene`.
+- [Group property, cut scene file name, loop interval, list and super call native contracts](stub-overload-native-contract.md) -
+  the `GroupBase` `_getProperty` selectors and the `_group` sheet record, the `CutScene` `_setFilename` store and its
+  `_play` consumer, the `_setLoopInterval` word store, `_setListProperty` and `_updateList` with the
+  `SqwtXmlDataMaker` row and attribute model, the trailing values of `_callSuperClassFunction` and the work
+  member test of the `_setTargetCursorImage` cursor-one branch.
 - [Debug console, seeded Math, position and sub stat native contracts](debug-console-native-contract.md) -
   the `Debug` class natives that scripts reach through the global `debug` object,
   the seeded `Math` generators, the `_setPos`, `_setDir`, `_setPosDirInn` and
