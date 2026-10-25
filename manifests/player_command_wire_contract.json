@@ -278,7 +278,7 @@
   "luaBridge": {
     "signature": "0x0073D1E0 loads registry element 9 for argument index 2 at 0x0073D2DF; 0x00CC9D60 installs inner vtable 0x0110E0A0 at 0x00CCA090, whose +4 entry is 0x00CF8980.",
     "varargs": "0x00CF8980 loops through the actual Lua stack arguments, preserving explicit trailing nil positions. It does not supply missing arguments.",
-    "numbers": "Numeric TValue tag 3 is tested by 0x00CF3840 at 0x00CF89A9. Predicate 0x00CF3670 at 0x00CF89B5 compares the original Lua double with a signed64 truncation round trip (0x00CF369A, 0x00CF36A4, 0x00CF36B1, 0x00CF36B5). Ordered equality selects element 0 / 0x00CFAC40, producing internal tag 0 through 0x00583D90. Otherwise element 1 / 0x00CFADF0 produces float32 tag 1 through 0x0073E010. No separate signed32 range check is established. Ordinary signed32 integral operands use tag 0.",
+    "numbers": "Numeric TValue tag 3 is tested by 0x00CF3840 at 0x00CF89A9. Predicate 0x00CF3670 at 0x00CF89B5 compares the original Lua double with a signed64 truncation round trip (0x00CF369A, 0x00CF36A4, 0x00CF36B1, 0x00CF36B5). Ordered equality selects element 0 / 0x00CFAC40, producing internal tag 0 through 0x00583D90. Otherwise element 1 / 0x00CFADF0 produces float32 tag 1 through 0x0073E010. No signed32 range test precedes the conversion. 0x00CFAC40 reads the double through 0x00CF35C0 and converts it through 0x009D6600 (0x00CFACC0), which tests the dword at 0x0137B8E8. A nonzero dword takes the 32-bit cvttsd2si at 0x009D6615, so an integral value outside the signed 32-bit range reaches tag 0 as 0x80000000 and the stream carries 00 80 00 00 00. A zero dword branches to the x87 64-bit truncation 0x009D6636 and the low dword is kept. The dword is zero-filled virtual memory written by 0x009F6600 from the CPUID feature test, and the branch a retail host took was not observed. Ordinary signed32 integral operands use tag 0 unchanged. See docs/command-talk-native-contract.md#int-arguments.",
     "nil": "Element 6 selected at 0x00CF8AB5 uses inner vtable 0x0110E028 +4 = 0x00CFB9C0; holder 0x00583F70 writes internal tag 6 at 0x00583FD9."
   },
   "serializer": {
@@ -346,7 +346,17 @@
         "0x00791A30",
         "0x00791AA0"
       ],
-      "coalescing": "0x00790BA0 examines the last encoded value via 0x007906C0. It extends only a preceding 07/08 with equal R (0x00790C45..0x00790C6D). Emitted scalar, nil or different reference prevents grouping; omitted entries do not. Order is preserved without sorting, deduplication or quantity aggregation."
+      "coalescing": "0x00790BA0 examines the last encoded value via 0x007906C0. It extends only a preceding 07/08 with equal R (0x00790C45..0x00790C6D). Emitted scalar, nil or different reference prevents grouping; omitted entries do not. Order is preserved without sorting, deduplication or quantity aggregation.",
+      "countedExample": "Two items of reference R with slot and package pairs (S1, P1) and (S2, P2) encode as 08 R S1 P1 02 S2 P2 0D, all multi-byte values big-endian.",
+      "coalescingMechanics": "0x00790C45 selects 0x00791A30 when the last value is tag 07 with the same reference: it rewrites the tag byte at cursor-8 to 08, writes N=02 at the cursor, then S2:u16be, P2 and the length byte 0x0D. 0x00790C62 selects 0x00791AA0 when the last value is tag 08 with the same reference: it increments N at entry offset 8 (0x00791AC2), overwrites the old length byte at cursor-1 with S:u16be and P, then writes the old length plus 3. No cap on N is tested. N and the length byte are u8 (0x00791AC2 adds to a byte, 0x00791B09 adds 3 to dl), so L = 3*N+7 holds modulo 256 and wraps from N=83.",
+      "coalescingMechanicsAnchors": [
+        "0x00790C45",
+        "0x00790C62",
+        "0x00791A40",
+        "0x00791A44",
+        "0x00791AC2",
+        "0x00791B09"
+      ]
     },
     "finalizer": {
       "function": "0x00790400",

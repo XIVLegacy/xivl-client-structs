@@ -135,7 +135,7 @@
     "cellTags": "The tag byte sits at cell +0x0C. Tag 0 is int, 2 bool, 3 Utf8String, 4 control and 6 Nil.",
     "invalidParameterRoute": "A failed cell vector size test calls 0x009D22B4, the route that the target cursor contract records as ending in TerminateProcess.",
     "eventState": {
-      "sentinel": "The dword at 0x0130C778 holds 0xE0000000 in the image. The command, talk and emote routines compare references with it.",
+      "sentinel": "The dword at 0x0130C778 holds 0xE0000000 in the image. The command, talk and emote routines compare references with it. The reference default constructor 0x00CC9310 stores that dword into its object and the destructor 0x00CC9330 is a bare ret, so a reference local that no 0x00CC73B0 conversion replaces reads as the sentinel. 0x00894200 and 0x00894370 treat a queried reference equal to the sentinel as matching every entry reference.",
       "player": {
         "+0x5C": "Byte. A zero byte makes the can-execute natives and _isCommandPlaying push false.",
         "+0xF8": "Policy manager, the ECX of every dispatcher. Manager +0x08 is the current entry, +0x0C a staged entry, +0x10 and +0x14 a list head, +0x1E a byte read by 0x00893320.",
@@ -305,7 +305,28 @@
       "commandVariantDifference": "The command fallback 0x006E2FB0 serializes its arguments from index 2, takes application +0x00 from object Y +0x10 and application +0x04 from the command binding reference. The NPC routes serialize nothing.",
       "crossCheck": "xivl-captures:studies/c2s-012d-event-start/derived/verdicts.md names application +0x00 the trigger actor and +0x04 the owner actor, and records talkDefault selector 1 in 16 of 17 messages."
     },
-    "yield": "The three _callServerOn natives of NpcBase and _callServerOnCommand end with 0x00893380, 0x00893400 and the yield request 0x00CD2860 on the Lua thread at ExecuteParameters +0x08. The _doServerOn natives and _doServerOnCommand do not. docs/bazaar-native-wire-contract.md records the client side block execution cleanup that the matching s2c EndEvent performs."
+    "yield": "The three _callServerOn natives of NpcBase and _callServerOnCommand end with 0x00893380, 0x00893400 and the yield request 0x00CD2860 on the Lua thread at ExecuteParameters +0x08. The _doServerOn natives and _doServerOnCommand do not. docs/bazaar-native-wire-contract.md records the client side block execution cleanup that the matching s2c EndEvent performs.",
+    "argumentConversion": {
+      "intEntry": "Registry entry 0 installs the inner vftable 0x0110DF38 at 0x00CC9DC9. Its +4 cell 0x0110DF3C holds 0x00CFAC40, the only vftable cell that references that address. For a Lua nil, which 0x00CF3760 tests, 0x00CFAC40 builds a Nil cell (tag 6) through 0x00583F70. Otherwise it reads the number through 0x00CF35C0 (0x00DCDED0, which yields 0.0 for a value that is neither a number nor a numeric string), converts it through 0x009D6600 and builds a tag 0 cell through 0x00583D90 from the 32-bit result. No range test sits between the conversion and the cell.",
+      "conversion": "0x009D6600 tests the dword at 0x0137B8E8. A nonzero dword takes the cvttsd2si with a 32-bit destination at 0x009D6615, which yields 0x80000000 for a value outside the signed 32-bit range. A zero dword branches to 0x009D6636, the x87 64-bit truncation, and 0x00CFAC40 keeps its low dword. The dword lies in zero-filled virtual memory. The only direct writer found in .text is 0x009F6600, which stores the result of the feature test 0x009F659B, and that test reads bit 26 of CPUID leaf 1 EDX at 0x009F65DF and then calls the check 0x009F654B (not traced).",
+      "consequence": "On the cvttsd2si branch an integral Lua number outside the signed 32-bit range, for example 4294967295 or 1099511627776, reaches the cell as 0x80000000. This applies to the declared int arguments of this record and to the integral numbers of a Variable list, whose selector 0x00CF89B5 admits integral values within the signed 64-bit range (manifests/player_command_wire_contract.json luaBridge).",
+      "locators": [
+        "0x00CC9DC9",
+        "0x0110DF3C",
+        "0x00CFAC40",
+        "0x00CFAC72",
+        "0x00CFACBB",
+        "0x00CFACC0",
+        "0x009D6600",
+        "0x009D6607",
+        "0x009D6615",
+        "0x009D6636",
+        "0x0137B8E8",
+        "0x009F6600",
+        "0x009F65DF"
+      ],
+      "tier": "STATIC for the code and the cell. The run-time value of the dword at 0x0137B8E8 was not observed, so the branch a given host takes is unknown."
+    }
   },
   "rows": [
     {
@@ -872,7 +893,7 @@
           "index": 1,
           "stackOperator": "int",
           "handlerRead": "0x00581AE0 at 0x007049FA",
-          "note": "Emote id. 0x00581AE0 tests the index and reads an int. Only the low word is used for the condition match."
+          "note": "Emote id. 0x00581AE0 tests the index and reads an int. The read follows the target byte tests. Only the low word is used for the condition match."
         }
       ],
       "returns": [
@@ -901,6 +922,17 @@
           "locators": [
             "0x007049B7..0x007049CE",
             "0x00704A6F"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The order is the event slot gate, the target read through 0x0071B980, the target byte tests and then the emote id read through 0x00581AE0 at 0x007049FA. A target that fails a byte test pushes false without reading cell 1, so a one-cell vector, which holds the target but no emote id, reaches 0x009D22B4 at the emote id read only for a target that passes both tests. An empty vector reaches it earlier, at the target read.",
+          "locators": [
+            "0x007049B7..0x007049CE",
+            "0x007049E2",
+            "0x007049E9..0x007049F3",
+            "0x007049FA",
+            "0x00704A5B"
           ]
         },
         {
@@ -991,7 +1023,7 @@
           "index": 1,
           "stackOperator": "int",
           "handlerRead": "0x00581AE0 at 0x00704CFE",
-          "note": "Emote id."
+          "note": "Emote id. The read follows the target byte tests, and a one-cell vector reaches 0x009D22B4 through 0x00581AE0 only for a target that passes them."
         }
       ],
       "returns": [
@@ -1016,14 +1048,16 @@
         },
         {
           "tier": "STATIC",
-          "claim": "The routine reads the target through 0x0071A160, the emote id through 0x00581AE0 and scans target +0xF8 through 0x00720810. It pushes the preset byte 0 for a missing condition and 1 for a non-blocking one.",
+          "claim": "The routine reads the target through 0x0071A160, tests the target bytes at +0x5C and +0x5D, reads the emote id through 0x00581AE0 only after those tests and scans target +0xF8 through 0x00720810. A target that fails a byte test pushes false at 0x00704D8D without reading cell 1. It pushes the preset byte 0 for a missing condition and 1 for a non-blocking one.",
           "locators": [
             "0x00704CDE",
+            "0x00704CE5..0x00704CEF",
             "0x00704CFE",
             "0x00704D16",
             "0x00704D1F",
             "0x00704D6D",
-            "0x00704D72"
+            "0x00704D72",
+            "0x00704D8D"
           ]
         },
         {
@@ -1151,11 +1185,18 @@
         },
         {
           "tier": "STATIC",
-          "claim": "0x008950D0 removes the staged entry only when its priority byte does not exceed the argument byte. It then calls 0x00894800 for the current entry at manager +0x08 under the same ceiling and does not call 0x008949A0.",
+          "claim": "0x008950D0 reads the staged entry at manager +0x0C first. It removes that entry only when its name equals the argument, its virtual slot 6 accepts the type byte address and its priority byte, written by slot 8 through 0x00892530, does not exceed the ceiling byte. A staged entry that fails a test stays. The routine then reads the current entry at manager +0x08 and returns without a call when that entry is null or its priority exceeds the ceiling. Otherwise it calls 0x00894800 with the player, the name and the type byte address, and 0x00894800 tests the slot 6 type and the name of the current entry again. The routine never calls 0x008949A0.",
           "locators": [
+            "0x008950DA..0x008950EA",
+            "0x008950F7",
+            "0x00895108..0x0089510E",
+            "0x00895127",
             "0x0089512C..0x00895130",
+            "0x0089515E..0x00895163",
+            "0x00895171",
             "0x00895176..0x0089517A",
-            "0x0089519F"
+            "0x0089519F",
+            "0x00894836..0x0089485F"
           ]
         },
         {
@@ -1282,11 +1323,18 @@
         },
         {
           "tier": "STATIC",
-          "claim": "0x008950D0 removes the staged entry only when its priority byte does not exceed the argument byte. It then calls 0x00894800 for the current entry at manager +0x08 under the same ceiling and does not call 0x008949A0.",
+          "claim": "0x008950D0 reads the staged entry at manager +0x0C first. It removes that entry only when its name equals the argument, its virtual slot 6 accepts the type byte address and its priority byte, written by slot 8 through 0x00892530, does not exceed the ceiling byte. A staged entry that fails a test stays. The routine then reads the current entry at manager +0x08 and returns without a call when that entry is null or its priority exceeds the ceiling. Otherwise it calls 0x00894800 with the player, the name and the type byte address, and 0x00894800 tests the slot 6 type and the name of the current entry again. The routine never calls 0x008949A0.",
           "locators": [
+            "0x008950DA..0x008950EA",
+            "0x008950F7",
+            "0x00895108..0x0089510E",
+            "0x00895127",
             "0x0089512C..0x00895130",
+            "0x0089515E..0x00895163",
+            "0x00895171",
             "0x00895176..0x0089517A",
-            "0x0089519F"
+            "0x0089519F",
+            "0x00894836..0x0089485F"
           ]
         },
         {
@@ -1412,11 +1460,18 @@
         },
         {
           "tier": "STATIC",
-          "claim": "0x008950D0 removes the staged entry only when its priority byte does not exceed the argument byte. It then calls 0x00894800 for the current entry at manager +0x08 under the same ceiling and does not call 0x008949A0.",
+          "claim": "0x008950D0 reads the staged entry at manager +0x0C first. It removes that entry only when its name equals the argument, its virtual slot 6 accepts the type byte address and its priority byte, written by slot 8 through 0x00892530, does not exceed the ceiling byte. A staged entry that fails a test stays. The routine then reads the current entry at manager +0x08 and returns without a call when that entry is null or its priority exceeds the ceiling. Otherwise it calls 0x00894800 with the player, the name and the type byte address, and 0x00894800 tests the slot 6 type and the name of the current entry again. The routine never calls 0x008949A0.",
           "locators": [
+            "0x008950DA..0x008950EA",
+            "0x008950F7",
+            "0x00895108..0x0089510E",
+            "0x00895127",
             "0x0089512C..0x00895130",
+            "0x0089515E..0x00895163",
+            "0x00895171",
             "0x00895176..0x0089517A",
-            "0x0089519F"
+            "0x0089519F",
+            "0x00894836..0x0089485F"
           ]
         },
         {
@@ -1542,11 +1597,18 @@
         },
         {
           "tier": "STATIC",
-          "claim": "0x008950D0 removes the staged entry only when its priority byte does not exceed the argument byte. It then calls 0x00894800 for the current entry at manager +0x08 under the same ceiling and does not call 0x008949A0.",
+          "claim": "0x008950D0 reads the staged entry at manager +0x0C first. It removes that entry only when its name equals the argument, its virtual slot 6 accepts the type byte address and its priority byte, written by slot 8 through 0x00892530, does not exceed the ceiling byte. A staged entry that fails a test stays. The routine then reads the current entry at manager +0x08 and returns without a call when that entry is null or its priority exceeds the ceiling. Otherwise it calls 0x00894800 with the player, the name and the type byte address, and 0x00894800 tests the slot 6 type and the name of the current entry again. The routine never calls 0x008949A0.",
           "locators": [
+            "0x008950DA..0x008950EA",
+            "0x008950F7",
+            "0x00895108..0x0089510E",
+            "0x00895127",
             "0x0089512C..0x00895130",
+            "0x0089515E..0x00895163",
+            "0x00895171",
             "0x00895176..0x0089517A",
-            "0x0089519F"
+            "0x0089519F",
+            "0x00894836..0x0089485F"
           ]
         },
         {
@@ -1672,11 +1734,18 @@
         },
         {
           "tier": "STATIC",
-          "claim": "0x008950D0 removes the staged entry only when its priority byte does not exceed the argument byte. It then calls 0x00894800 for the current entry at manager +0x08 under the same ceiling and does not call 0x008949A0.",
+          "claim": "0x008950D0 reads the staged entry at manager +0x0C first. It removes that entry only when its name equals the argument, its virtual slot 6 accepts the type byte address and its priority byte, written by slot 8 through 0x00892530, does not exceed the ceiling byte. A staged entry that fails a test stays. The routine then reads the current entry at manager +0x08 and returns without a call when that entry is null or its priority exceeds the ceiling. Otherwise it calls 0x00894800 with the player, the name and the type byte address, and 0x00894800 tests the slot 6 type and the name of the current entry again. The routine never calls 0x008949A0.",
           "locators": [
+            "0x008950DA..0x008950EA",
+            "0x008950F7",
+            "0x00895108..0x0089510E",
+            "0x00895127",
             "0x0089512C..0x00895130",
+            "0x0089515E..0x00895163",
+            "0x00895171",
             "0x00895176..0x0089517A",
-            "0x0089519F"
+            "0x0089519F",
+            "0x00894836..0x0089485F"
           ]
         },
         {
@@ -1774,7 +1843,7 @@
         },
         {
           "tier": "STATIC",
-          "claim": "A zero byte at player +0x5C pushes false. The reference local starts as the value that 0x00CC9310 builds, and a Nil cell 1 leaves it unchanged.",
+          "claim": "A zero byte at player +0x5C pushes false. The reference local starts as the sentinel, because 0x00CC9310 stores the dword at 0x0130C778 into it, and a Nil cell 1 leaves it unchanged.",
           "locators": [
             "0x00704E6A..0x00704E6F",
             "0x00704ED8",
@@ -1878,7 +1947,7 @@
           "note": "The count that 0x00894370 returns."
         }
       ],
-      "behavior": "Reads the name and an optional command actor like _isCommandPlaying, calls 0x00894370 on the manager at player +0xF8 and pushes the returned count through the int pusher. It has no test of the byte at player +0x5C. It requests no yield. A PlayerBase receiver that is not a MyPlayer pushes nothing.",
+      "behavior": "Reads the name and an optional command actor like _isCommandPlaying, calls 0x00894370 on the manager at player +0xF8 and pushes the returned count through the int pusher. The count is 1 or 0 when the current entry matches the name and the command type byte (1 for the sentinel or an equal actor reference), and otherwise the number of matching queued entries. It has no test of the byte at player +0x5C. It requests no yield. A PlayerBase receiver that is not a MyPlayer pushes nothing.",
       "yields": false,
       "facts": [
         {
@@ -1893,7 +1962,7 @@
         },
         {
           "tier": "STATIC",
-          "claim": "The reference local is built by 0x00CC9310 and replaced only for a non-Nil cell 1, which is read through 0x0071BB80 and converted through 0x00CC73B0.",
+          "claim": "The reference local starts as the sentinel, because 0x00CC9310 stores the dword at 0x0130C778 into it. A non-Nil cell 1 replaces it, read through 0x0071BB80 and converted through 0x00CC73B0.",
           "locators": [
             "0x00705004",
             "0x00705033",
@@ -1903,17 +1972,21 @@
         },
         {
           "tier": "STATIC",
-          "claim": "The count comes from 0x00894370, which tests the current entry at manager +0x08 for the name and the command type byte 0x0134C3FF like 0x00894200 and then scans the list. The count is pushed with the int pusher.",
+          "claim": "0x00894370 tests the current entry at manager +0x08 first. The entry matches when its virtual slot 6 accepts the address 0x0134C3FF and its name equals the argument. A match returns 1 when the argument reference is the sentinel or equals the reference stored in the entry and 0 otherwise, and the routine returns at once: it does not scan the list and does not read the byte at entry +0x21. Without a match it walks the list at manager +0x10 from its first node and adds 1 for every node whose slot 6 accepts the type byte address and whose name equals the argument, provided the argument reference is the sentinel or equals the reference stored in the node. It returns the sum, 0 for an empty list. The count is pushed with the int pusher.",
           "locators": [
             "0x007050AA",
-            "0x007050C0",
+            "0x0089439F..0x008943D4",
+            "0x008943D6..0x008943E5",
+            "0x008943E7..0x00894408",
+            "0x00894431",
+            "0x0089443A..0x0089445D",
+            "0x0089446D..0x0089449D",
+            "0x008944A1..0x008944E9",
+            "0x008944F8",
+            "0x008944FF",
+            "0x00892570",
             "0x00894370"
           ]
-        },
-        {
-          "tier": "INFERRED",
-          "claim": "The exact counting rule of 0x00894370 for queued entries was not traced beyond its first tests.",
-          "locators": []
         },
         {
           "tier": "MEASURED",
@@ -2132,6 +2205,24 @@
           ]
         },
         {
+          "tier": "STATIC",
+          "claim": "The serializer 0x00790ED0 encodes a control object or an item through 0x0075AFA0. An item value is tag 07 then the binding reference dword, the slot word and the package byte, written by 0x00791870 on the big-endian branch that 0x0134B368 selects (see the endian note of the player command wire contract). When the next item has the same reference, 0x00790BA0 rewrites the preceding value through 0x00791A30 into the counted form: tag 08, reference, S1 word, P1 byte, N byte, then S2 and P2 for N=2, then the length byte, which is 3*N+7. A further item with the same reference passes 0x00791AA0, which increments N at entry offset 8, overwrites the length byte with the next slot word and package byte and writes the length byte plus 3. The count and length bytes are u8 with no cap, so the formula 3*N+7 wraps modulo 256 from N=83. Two items of one reference therefore encode as 08 R S1 P1 02 S2 P2 0D. After the last value 0x00790400 appends tag 09 and two metadata qwords, big-endian, through 0x00791910 when the writer flag at +0x20 is nonzero and the byte at +0x22 is zero, and 0x0F ends the stream. An item that finds both metadata slots already nonzero clears the flag, so a list of three or more items with nonzero metadata ends without a trailer. The metadata values are the first eight bytes of the item record and their server meaning is not established.",
+          "locators": [
+            "0x006E2FB0",
+            "0x00790ED0",
+            "0x0075AFA0",
+            "0x00790BA0",
+            "0x00790BE7..0x00790C11",
+            "0x00790C45..0x00790C78",
+            "0x00791870",
+            "0x00791A30",
+            "0x00791AA0",
+            "0x00790400",
+            "0x00790406..0x00790410",
+            "0x00791910"
+          ]
+        },
+        {
           "tier": "MEASURED",
           "claim": "The shipped scripts contain 1 call site in 1 chunk, chara/player/playerbaseclass. The counts agree with xivl-client-scripts:lua/napi_index.json.",
           "locators": []
@@ -2222,6 +2313,24 @@
             "0x006E8D59",
             "0x006E8D6A",
             "0x006E8D82"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The serializer 0x00790ED0 encodes a control object or an item through 0x0075AFA0. An item value is tag 07 then the binding reference dword, the slot word and the package byte, written by 0x00791870 on the big-endian branch that 0x0134B368 selects (see the endian note of the player command wire contract). When the next item has the same reference, 0x00790BA0 rewrites the preceding value through 0x00791A30 into the counted form: tag 08, reference, S1 word, P1 byte, N byte, then S2 and P2 for N=2, then the length byte, which is 3*N+7. A further item with the same reference passes 0x00791AA0, which increments N at entry offset 8, overwrites the length byte with the next slot word and package byte and writes the length byte plus 3. The count and length bytes are u8 with no cap, so the formula 3*N+7 wraps modulo 256 from N=83. Two items of one reference therefore encode as 08 R S1 P1 02 S2 P2 0D. After the last value 0x00790400 appends tag 09 and two metadata qwords, big-endian, through 0x00791910 when the writer flag at +0x20 is nonzero and the byte at +0x22 is zero, and 0x0F ends the stream. An item that finds both metadata slots already nonzero clears the flag, so a list of three or more items with nonzero metadata ends without a trailer. The metadata values are the first eight bytes of the item record and their server meaning is not established.",
+          "locators": [
+            "0x006E2FB0",
+            "0x00790ED0",
+            "0x0075AFA0",
+            "0x00790BA0",
+            "0x00790BE7..0x00790C11",
+            "0x00790C45..0x00790C78",
+            "0x00791870",
+            "0x00791A30",
+            "0x00791AA0",
+            "0x00790400",
+            "0x00790406..0x00790410",
+            "0x00791910"
           ]
         },
         {
@@ -3035,6 +3144,7 @@
     "The runtime value of the command type byte at 0x0134C3FF is not in the image. The retail command selector 0 agrees with its image value, but 0x0089E0D0 compares it at run time.",
     "The descriptor table of npcbaseclass_u binds _doServerOnTalk under a name without the _inl suffix. Whether the Lua call to that name reaches the native was not run.",
     "These are client marshalling and state contracts. They do not establish command names, condition names or server behavior.",
-    "The descriptor strings come from a local bytecode scan of the installed client scripts. Their sources are not redistributed and the tracked script metadata holds names and line numbers only."
+    "The descriptor strings come from a local bytecode scan of the installed client scripts. Their sources are not redistributed and the tracked script metadata holds names and line numbers only.",
+    "The run-time value of the dword at 0x0137B8E8 is not in the image, so whether a retail host converted Lua numbers through the cvttsd2si branch or the x87 branch of 0x009D6600 was not observed."
   ]
 }
