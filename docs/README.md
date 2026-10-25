@@ -124,6 +124,11 @@ canonical records, generated views and frozen investigations.
   sheet natives, the title request record, the world object timer vector
   and replay quest set, the hamlet score row count, the Chocobo bytes and
   the stored item lists.
+- [Player timer, Chocobo, stored item, hamlet and area ride natives and the _isAlive method](player-world-native-contract.md) -
+  the three timer scalars of the `0x0193` record, the Chocobo grade and Goobbue
+  bytes, the stored item list count and eligibility test, the consuming hamlet
+  defense score getters, the ordered hamlet supply ranking with its nine
+  results, the area ride byte and the two `_isAlive` surfaces.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
