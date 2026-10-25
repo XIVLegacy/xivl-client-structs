@@ -158,6 +158,15 @@ canonical records, generated views and frozen investigations.
   the open argument split, the `PlayingResumeChecker` and its completion, the
   serverbound `0x00CE` record, the scene element posts, the pending actor search,
   the replay NPC getters and the obligations of a fade-through host.
+- [Trophy, achievement list, turn, chat, enmity, group, trading item, map object scale and Chocobo cancel native contracts](trophy-group-native-contract.md) -
+  the inert trophy natives, the achievement point, sheet, category and rate list
+  natives, the local player turn, chat mode dispatch and enmity test, the current
+  and display name group lookups, the trading item and extended virtual item
+  builders, the group update record, the map object scale post and the Chocobo
+  transform cancel.
+- [Widget list and keyboard focus native contracts](widget-list-focus-native-contract.md) -
+  the list row editing and attribute read natives of the Sqwt data control, the
+  keyboard focus test and the focused control query.
 - [Debug console, seeded Math, position and sub stat native contracts](debug-console-native-contract.md) -
   the `Debug` class natives that scripts reach through the global `debug` object,
   the seeded `Math` generators, the `_setPos`, `_setDir`, `_setPosDirInn` and
