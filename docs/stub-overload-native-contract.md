@@ -246,16 +246,24 @@ three, 2 pass four and 6 forward varargs. None uses a result.
 The [target cursor record](target-cursor-native-contract.md#image-native) leaves the test of the cursor-one branch
 open. The callback is `0x006E5030`. After the image store it continues only for the zero-based index 0 with the byte at
 `DesktopWidget +0x7C` clear. It builds the widget identity with `0x00CC73B0` and calls `0x00CC7BE0` with the identity,
-the immediate `0x0007A124` and -1 at `0x006E511E`. The two `DesktopWidget` methods that store `+0x7C` make the same
-call at `0x006FEB1F` and `0x006FED56`.
+the immediate `0x0007A124` and -1 at `0x006E511E`. The widget identity feeds only this test. The two `DesktopWidget`
+methods `0x006FE960` and `0x006FEBB0` store `+0x7C` and make the same call at `0x006FEB1F` and `0x006FED56`.
 
 The immediate is the work key 500004. `widget/desktopwidget_connector` binds that key as the work member
 `mainTargetDecidedFlag` of the desktop widget, next to `tutorialMenuType`, `tutorialFlag` and `tutorialLockFlag`
 (`MEASURED`). `0x00CC7BE0` returns false without a control record that is ready, and otherwise asks the work operator
 of the manager for the member through `0x00CE53D0`. The routine finds the key entry with `0x00CE5040`, adds the index
 only for an array member and reads the member through `0x00D11C00`. That the returned byte is the boolean value of
-the member is `INFERRED`, so the branch tracks whether the main target is decided. The consumers of the `0xCD`
-message and the callers of the methods that write `+0x7C` are still open.
+the member is `INFERRED`, so the branch tracks whether the main target is decided.
+
+After the test the branch reads the identity of cursor 0. A true result with `+0x70` equal to the dword at `0x0130C778`
+posts the `0xCD` message with that identity as both values and stores it at `+0x70`. A false result with `+0x70`
+different from that dword posts the message with that identity and the dword, which holds `0xE0000000`, and stores the
+dword at `+0x70`. The message reaches the outbound packet body through `0x004D6D10`, `0x004E0240` and `0x00DAE010`. The
+two methods that store `+0x7C` are reached from `LuaActorImpl` vftable slots 25 and 26, fire `_onTargetChanged` and
+`_onTargetDecided`, and hold `+0x7C` at 1 while the script callback runs. The
+[target cursor record](target-cursor-native-contract.md#the-posted-message) holds the evidence. The virtual callers of
+the two slots are still open.
 
 ## Host obligations
 
@@ -266,7 +274,7 @@ message and the callers of the methods that write `+0x7C` are still open.
 - `_setListProperty` and `_updateList`: keep a named row and attribute model per widget that follows the property
   order above, grows rows on `Index`, stores attributes on `SetAttr` and recounts on `Update`.
 - `_setTargetCursorImage` cursor-one branch: read the work member `mainTargetDecidedFlag` as the test
-  (`INFERRED`).
+  (`INFERRED`). Cache and post the identity of cursor 0, not the widget identity.
 - `_callSuperClassFunction`: pass every trailing value, raise the argument diagnostic at the first value of another
   kind and push every result.
 
@@ -280,7 +288,7 @@ The manifest `hostContract` lists the obligations in full.
 - The values of the attribute type bytes at `0x013599D1` and `0x013599DC`.
 - The data maker names that the widget forms declare and the bindings that read `Count`, `FilteredCount` and
   `FilteredIndex`.
-- The consumers of the `0xCD` message of the cursor-one branch.
+- The virtual callers of `LuaActorImpl` vftable slots 25 and 26, which reach the methods that write `+0x7C`.
 - The numeric reading of the `Which` value and the delivery of the `Nil` placeholder to the super method.
 
 ## Reproduction

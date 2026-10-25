@@ -261,8 +261,10 @@ the widget `+0x6C`, checker `+0x04` and checker `+0x08`. Its only `rel32` caller
 `0x006FEAF2`, lies in the routine at `0x006FE960`. That routine passes a
 `Utf8String` built from the literal `_onTargetChanged` (`0x00FD47D8`) to
 `0x00CC7A90`, and its only `rel32` caller is `0x008A3EB3`. That the wait ends
-when the player targets the chara with that name number is `INFERRED`. The engine
-path behind `0x008A3EB3` was not traced.
+when the player targets the chara with that name number is `INFERRED`. The trampoline
+holding `0x008A3EB3` is reached from `LuaActorImpl` vftable slot 25 through `0x0075D750`
+(see the [target cursor record](target-cursor-native-contract.md#widget-fields-and-their-writers)).
+The callers of that slot were not traced.
 
 `_waitForCameraTutorial` (`0x006E1C50`) takes no argument and runs the prelude.
 It calls `0x0075B470` on the dword at `Y +0x08`, which takes `K` from `V +0x4C4`,

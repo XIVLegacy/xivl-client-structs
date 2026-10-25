@@ -463,14 +463,16 @@
       "facts": [
         {
           "tier": "STATIC",
-          "claim": "The callback 0x006E5030 reads two ints and calls 0x0075EFC0 with the first minus 1 and the second at 0x006E50E2. When that zero-based index is not 0, or the byte at DesktopWidget +0x7C is not 0, it returns. Otherwise it builds the widget identity with 0x00CC73B0 at 0x006E5106 and calls 0x00CC7BE0 with that identity, the immediate 0x0007A124 (500004) and -1 at 0x006E5118 through 0x006E511E. The same call with the same immediate appears at 0x006FEB1F and 0x006FED56, in the two DesktopWidget methods that store +0x7C.",
+          "claim": "The callback 0x006E5030 reads two ints and calls 0x0075EFC0 with the first minus 1 and the second at 0x006E50E2. When that zero-based index is not 0, or the byte at DesktopWidget +0x7C is not 0, it returns. Otherwise it builds the widget identity with 0x00CC73B0 at 0x006E5106 and calls 0x00CC7BE0 with that identity, the immediate 0x0007A124 (500004) and -1 at 0x006E5118 through 0x006E511E. The same call with the same immediate appears at 0x006FEB1F and 0x006FED56, in the DesktopWidget methods 0x006FE960 and 0x006FEBB0 that store +0x7C and fire the Lua callbacks _onTargetChanged and _onTargetDecided. The widget identity feeds only this test.",
           "locators": [
             "0x006E50E2",
             "0x006E50F3",
             "0x006E5106",
             "0x006E5118",
             "0x006E511E",
+            "0x006FE960",
             "0x006FEB17",
+            "0x006FEBB0",
             "0x006FED4E"
           ]
         },
@@ -494,15 +496,38 @@
         },
         {
           "tier": "INFERRED",
-          "claim": "The returned byte is the boolean value of the work member, so the branch tracks whether the main target is decided. A true value with no cached identity stores the widget identity at +0x70 and posts the 0xCD message with it. A false value with a cached identity posts the message with the no identity value 0xE0000000 at 0x0130C778 and clears +0x70. The read of the member value through 0x00CCB4D0 was not traced.",
+          "claim": "The returned byte is the boolean value of the work member, so the branch tracks whether the main target is decided. The read of the member value through 0x00CCB4D0 was not traced.",
           "locators": [
             "0x006E5136",
-            "0x006E513A",
+            "0x006E513A"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "After the test the branch reads the identity of cursor 0 through 0x0075F0E0. A true result with +0x70 equal to the dword at 0x0130C778 posts the 0xCD message with that identity as both values and stores it at +0x70. A false result with +0x70 different from that dword posts the message with that identity and the dword, which holds 0xE0000000, and stores the dword at +0x70. The 0xCD message is built by 0x0075EB30 and passed to 0x004D6D10, which jumps to 0x004E0240 and from there to 0x00DAE010. That routine copies the 8 bytes at record +0x18 into the outbound packet body, the framing recorded in docs/search-recruitment-wire-contract.md, and sends a 0xCD record only while its state dword at +0x8C is 3. 0x0075D460 copies three dwords of the callback receiver chain into a local record, and 0x0075EB30 uses the first dword to reach the sender object. The methods 0x006FE960 and 0x006FEBB0 are reached from LuaActorImpl vftable slots 25 and 26 through the trampolines 0x008A3EA0 and 0x008A3ED0, and they hold +0x7C at 1 for the duration of the script callback. For cursor index 0 they set +0x70 to the identity argument when the 0x0007A124 query is true and to 0xE0000000 otherwise. manifests/target_cursor_native_contract.json records the evidence.",
+          "locators": [
+            "0x006E514E",
             "0x006E515E",
             "0x006E517B",
+            "0x006E5189",
             "0x006E5195",
             "0x006E51A8",
-            "0x006E51FC"
+            "0x006E51B8",
+            "0x006E51F1",
+            "0x006E51FC",
+            "0x0075EB30",
+            "0x004D6D10",
+            "0x004E0240",
+            "0x00DAE010",
+            "0x0075D460",
+            "0x0075D750",
+            "0x0075D780",
+            "0x008A3EA0",
+            "0x008A3ED0",
+            "0x006FEA1E",
+            "0x006FEAE4",
+            "0x006FEC6C",
+            "0x006FED32"
           ]
         }
       ]
@@ -1807,7 +1832,8 @@
       "tier": "INFERRED",
       "obligations": [
         "Run the branch only for the first cursor with DesktopWidget +0x7C clear, after the image store of the target cursor record.",
-        "Read the desktop widget work member mainTargetDecidedFlag (key 500004) as the test. With it true and no cached identity, cache the widget identity and post the 0xCD message. With it false and a cached identity, post the message with the no identity value and clear the cache."
+        "Read the desktop widget work member mainTargetDecidedFlag (key 500004) as the test. With it true and no cached identity, cache the identity of cursor 0 and post the 0xCD message with that identity as both values. With it false and a cached identity, post the message with the identity of cursor 0 and the no identity value, and clear the cache to the no identity value.",
+        "Write +0x70 from the target changed and target decided events: for index 0 after the script callback, and for any index when the cursor count is below index plus 1. Hold +0x7C at 1 while their script callbacks run."
       ]
     },
     {
@@ -1885,9 +1911,9 @@
     {
       "id": "target-cursor-branch-consumers",
       "label": "CALIBRATION",
-      "question": "Which routines consume the 0xCD message that the cursor-one branch of _setTargetCursorImage posts, and what do 0x0075D460 and the DesktopWidget +0x7C writers do?",
-      "constraint": "The test reads the work member mainTargetDecidedFlag (key 500004). The message consumers, the effect of 0x0075D460 and the Lua natives that reach the two methods writing +0x7C are untraced, and whether the member holds a value before any script assigns it is open.",
-      "needs": "A trace of the handlers of message code 0xCD and of 0x0075D460, and the callers of the DesktopWidget methods at 0x006FE960 and 0x006FEBB0."
+      "question": "Which routines call LuaActorImpl vftable slots 25 and 26, which reach the DesktopWidget methods that write +0x7C, and what index and identity do they pass?",
+      "constraint": "The 0xCD message path, the effect of 0x0075D460 and the methods writing +0x7C are traced in manifests/target_cursor_native_contract.json. The virtual callers of the two slots are untraced, and so is whether the work member holds a value before any script assigns it.",
+      "needs": "A trace of the indirect calls through vftable offsets +0x64 and +0x68 of LuaActorImpl, and a live read of the member before any assignment."
     },
     {
       "id": "super-call-nil-placeholder",

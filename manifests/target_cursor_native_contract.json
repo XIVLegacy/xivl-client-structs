@@ -13,13 +13,18 @@
   "evidenceTier": "STATIC",
   "tierVocabulary": {
     "STATIC": "Read directly from instructions at the cited addresses.",
+    "MEASURED": "Counted from a pinned capture set by the method named in the fact.",
     "INFERRED": "A name or role assigned from the surrounding instructions. The bytes do not state it.",
     "unknown": "Not traced."
   },
   "sourceRefs": [
     "docs/target-cursor-native-contract.md",
     "docs/boot-native-call-contract.md",
-    "manifests/boot_native_call_contract.json"
+    "manifests/boot_native_call_contract.json",
+    "manifests/c2s_payload_decoding.json",
+    "manifests/c2s_payload_schemas.json",
+    "manifests/symbols.json",
+    "manifests/tutorial_control_native_call_contract.json"
   ],
   "stateObject": {
     "accessor": "0x004D7310 returns the dword at +0x4C0 of its receiver. Each cursor entry point resolves the state object through it before using the vector or +0xB4 and +0xB8. 0x0075F060, 0x0075B6C0, 0x0075B700 and the other 0x0075F... thunks apply it to the dword stored at the start of their receiver. 0x00777F50 is entered with the state object already in ecx. 0x00562D30 is a method on the state object reached after the resolution in 0x0075B6C0 and 0x0075B700. The Lua callbacks load the worker receiver by reading the dword at the address 0x00CC7510 returns, then the dword at +0x04 of that value, then the dword at +0x04 of that value.",
@@ -422,14 +427,22 @@
     },
     "cursorOneBranch": {
       "tier": "STATIC",
-      "claim": "After the store the callback continues only when the zero-based index is 0 and the byte at DesktopWidget +0x7C is 0. It builds an identity from the widget through 0x00CC73B0 and tests it with 0x00CC7BE0 using the immediate 0x0007A124 and -1. When the test passes and DesktopWidget +0x70 equals the dword at 0x0130C778, it reads the identity of cursor 0 through 0x0075F0E0, calls 0x0075D460, posts a message through 0x0075EB30 and stores a value derived from the widget identity through 0x00CC9320 at +0x70. When the test fails and +0x70 differs from the dword at 0x0130C778, it reads the identity of cursor 0, calls 0x0075D460, posts the message with the dword at 0x0130C778 as one payload value and stores that dword at +0x70. Otherwise it returns.",
+      "claim": "After the store the callback continues only when the zero-based index is 0 and the byte at DesktopWidget +0x7C is 0. It builds the widget identity into a stack slot through 0x00CC73B0 and tests it with 0x00CC7BE0 using the immediate 0x0007A124 and -1. Both outcomes then read the identity of cursor 0 through 0x0075F0E0 and fill a local record through 0x0075D460 from the object Y that identityRecord names. The widget identity feeds only the test: it is released through 0x00CC9330 at 0x006E5131 right after the test, and its slot is later overwritten with the cursor 0 identity on the passing branch and with the dword at 0x0130C778 on the failing branch. When the test passes and DesktopWidget +0x70 equals the dword at 0x0130C778, the callback posts a message through 0x0075EB30 with the cursor 0 identity as both values and stores that identity through 0x00CC9320 at +0x70. When the test fails and +0x70 differs from the dword at 0x0130C778, it posts the message with the cursor 0 identity as the first value and the dword at 0x0130C778 as the second value, and stores that dword at +0x70. Otherwise it returns.",
       "locators": [
         "0x006E50E7 index test",
         "0x006E50F3 flag test",
-        "0x006E5106 identity build",
+        "0x006E5106 widget identity build",
         "0x006E511E test call",
         "0x006E513D passing branch",
+        "0x006E514E cursor 0 identity read",
+        "0x006E5131 widget identity released",
+        "0x006E515A slot overwritten with the cursor 0 identity",
+        "0x006E517B passing branch post",
+        "0x006E5189 identity copy for the +0x70 store",
         "0x006E51A8 failing branch",
+        "0x006E51B8 cursor 0 identity read",
+        "0x006E51E0 slot set to the dword at 0x0130C778",
+        "0x006E51F1 failing branch post",
         "0x006E5195 and 0x006E51FC +0x70 stores"
       ]
     },
@@ -443,20 +456,60 @@
     },
     "message": {
       "tier": "STATIC",
-      "claim": "0x0075EB30 fills a 0x18-byte message with code 0xCD and sends it through 0x004D6D10 with the two identities it receives as its second and third arguments. The message consumer was not traced.",
+      "claim": "0x0075EB30 reads the dwords at its second and third pointer arguments and fills a stack record with the code 0xCD at +0x00, the size 0x18 at +0x04, the first dword at +0x18 and the second dword at +0x1C. It sends the record through 0x004D6D10 with two zero arguments. Its receiver is the 12 byte record that 0x0075D460 fills. The method reads the first dword of that record, loads the dword that this points at and uses it as the receiver of 0x004D6D10.",
       "locators": [
+        "0x0075EB4A",
+        "0x0075EB52",
         "0x0075EB62",
         "0x0075EB6A",
         "0x0075EB72",
+        "0x0075EB76",
         "0x0075EB79"
+      ]
+    },
+    "messageConsumer": {
+      "tier": "STATIC",
+      "claim": "0x004D6D10 returns false when the dword at +0x174EC of its receiver is null and otherwise jumps to 0x004E0240. 0x004E0240 loads the dword at +0x234 of that object and the dword at +0x70 of the result, returns false when either is null, and otherwise calls 0x00DAE010 with the record and a pointer to a local 8 byte copy of its two trailing stack arguments, which 0x0075EB30 passes as 0. 0x00DAE010 returns false while the state dword at its receiver +0x8C is 0 or below. A state of 1 or 2 admits only the code 2 and state 3 admits any code. It then copies size - 0x10 bytes from record +0x18 to offset +0x10 of the packet body it builds and submits that body through 0x00DB06A0. The 0xCD record is copied as an 8 byte application, the outbound framing recorded in docs/search-recruitment-wire-contract.md.",
+      "locators": [
+        "0x004D6D10",
+        "0x004E0240",
+        "0x00DAE038",
+        "0x00DAE046",
+        "0x00DAE052",
+        "0x00DAE0A9..0x00DAE0B8",
+        "0x00DAE0C9"
+      ]
+    },
+    "messageWire": {
+      "tier": "INFERRED",
+      "claim": "xivl-opcodes:opcodes.json names the serverbound opcode 0x00CD SetTargetPacket with the decompAnchor FUN_0075EB30, and manifests/c2s_payload_decoding.json records its application as two dwords at +0x00 and +0x04. Reading the record code 0xCD as that opcode is INFERRED. The payload names in that record are not carried over, because the bytes only show two identity values.",
+      "locators": []
+    },
+    "messageCapture": {
+      "tier": "MEASURED",
+      "claim": "manifests/c2s_payload_schemas.json (schemas, 0x00cd) holds 118 serverbound 0x00CD samples with an 8 byte application. The most common value of byte +7 is 0xE0 and of bytes +4 to +6 is 0, each at the fraction 0.805. The most common value of byte +3 is 0xC0 at the fraction 0.322. Reading these bytes as the dwords 0xE0000000 and 0xC0000000 is INFERRED, because the study records no dominant u32 value at offset 0 or offset 4 (u32MostCommon is null for both windows). Reading the second dword as the dword at 0x0130C778 and a first dword as the empty cursor identity is likewise INFERRED. The study does not separate which sender produced a sample, and the branch is not shown to be the source of any of them.",
+      "locators": []
+    },
+    "identityRecord": {
+      "tier": "STATIC",
+      "claim": "0x0075D460 copies the dwords at +0x00, +0x10 and +0x14 of its receiver to +0x00, +0x04 and +0x08 of the record that its argument points at and returns. The cursor-one branch applies it to the object Y that it reads as the dword at +0x04 of the dword at the address 0x00CC7510 returns, the object whose dword at +0x04 is the worker receiver. 0x0075EB30 reads only the first dword of the record, and the branch destroys the record through 0x0075AF70, which only returns. The routine has 30 direct callers, two of them in this callback at 0x006E515E and 0x006E51C8. The other callers were not traced.",
+      "locators": [
+        "0x0075D460",
+        "0x006E50D3",
+        "0x006E50DA",
+        "0x006E515E",
+        "0x006E51C8",
+        "0x0075AF70"
       ]
     },
     "widgetFields": {
       "tier": "STATIC",
-      "claim": "The DesktopWidget constructor 0x006E0650 sets +0x68 = 0, +0x6C = 0, +0x74 = 0.0f, +0x78 = 0, +0x79 = 1 and +0x7A, +0x7B, +0x7C = 0, and initializes the +0x70 identity through 0x00CC9310. The byte at +0x7C is stored 1 at 0x006FEA1E and 0x006FEC6C inside DesktopWidget methods that compare +0x68 with an index plus 1, and is stored from a register at 0x006FEAE4 and 0x006FED32. The method at 0x006FE960 has one direct caller at 0x008A3EB3. The Lua natives that reach these methods were not traced.",
+      "claim": "The DesktopWidget constructor 0x006E0650 sets +0x68 = 0, +0x6C = 0, +0x74 = 0.0f, +0x78 = 0, +0x79 = 1 and +0x7A, +0x7B, +0x7C = 0, and initializes the +0x70 identity through 0x00CC9310. 0x00CC9310 default-constructs an identity by copying the dword at 0x0130C778, so +0x70 starts as that value. The byte at +0x7C is stored 1 at 0x006FEA1E and 0x006FEC6C and stored 0 from a register at 0x006FEAE4 and 0x006FED32, inside the two DesktopWidget methods that compare +0x68 with an index plus 1.",
       "locators": [
+        "0x006E0684",
         "0x006E0687",
         "0x006E068D",
+        "0x006E0693",
         "0x006E06A1",
         "0x006E06B2",
         "0x006FE999",
@@ -466,19 +519,76 @@
         "0x006FED32"
       ]
     },
+    "targetEventMethods": {
+      "tier": "STATIC",
+      "claim": "LuaActorImpl vftable slots 25 and 26, at 0x00FDFB90 and 0x00FDFB94, hold 0x0075D750 and 0x0075D780. Each takes an index and an identity and calls the trampoline 0x008A3EA0 or 0x008A3ED0 (call sites 0x0075D773 and 0x0075D7A3) with the address LuaActorImpl +0x04, the dword at +0x08 and the two values. The trampolines call the DesktopWidget methods 0x006FE960 and 0x006FEBB0 at 0x008A3EB3 and 0x008A3EE3, which are the only direct callers of those methods. The strings at 0x00FD47D8 and 0x00FD47EC are _onTargetChanged and _onTargetDecided, and the methods build strings from them and pass those to 0x00CC7A90 at 0x006FEACC and 0x006FED1A, which manifests/symbols.json records as the Lua callback dispatcher. Both methods store 1 at +0x7C before they build the argument list and store 0 after the dispatcher returns. The index and identity producers that call the two slots virtually were not traced.",
+      "locators": [
+        "0x00FDFB2C vftable",
+        "0x00FDFB90",
+        "0x00FDFB94",
+        "0x0075D773",
+        "0x0075D7A3",
+        "0x008A3EB3",
+        "0x008A3EE3",
+        "0x006FEA1E",
+        "0x006FEACC",
+        "0x006FEAE4",
+        "0x006FEC6C",
+        "0x006FED1A",
+        "0x006FED32",
+        "0x00FD47D8",
+        "0x00FD47EC"
+      ]
+    },
+    "targetEventGuard": {
+      "tier": "STATIC",
+      "claim": "Within 0x006C0000 to 0x0071FFFF a linear decode finds no byte access at +0x7C through a non-stack base besides the constructor store at 0x006E06B2, the four stores above and the read at 0x006E50F3. Other ranges were not decoded. Reading the byte as a guard that keeps a synchronous script handler of the two events from re-entering the cursor-one branch is INFERRED.",
+      "locators": [
+        "0x006E06B2",
+        "0x006E50F3",
+        "0x006FEA1E",
+        "0x006FEAE4",
+        "0x006FEC6C",
+        "0x006FED32"
+      ]
+    },
+    "targetEventCache": {
+      "tier": "STATIC",
+      "claim": "Both methods also write +0x70: for index 0 after the dispatch, and for any index when +0x68 is below index plus 1. After the dispatcher returns they test the widget through 0x00CC7BE0 with 0x0007A124 at 0x006FEB1F and 0x006FED56 when the index is 0. A true result stores the identity argument through 0x00CC9320 at +0x70 and a false result stores the dword at 0x0130C778. Before the dispatch 0x006FE960 stores that dword at +0x70 and returns in two cases. The first is a cursor count at +0x68 below index plus 1. The second is an identity other than 0xC0000000 that resolves to no control, with the index 0. That second case with a nonzero index returns without a store. 0x006FEBB0 makes the same two checks in the reverse order. After the dispatch 0x006FE960 also calls 0x00718EF0 on the object at +0x6C with the control host and the resolved control when the control resolved and +0x6C is nonzero. 0x00718EF0 is recorded in the tutorial control contract.",
+      "locators": [
+        "0x006FE999",
+        "0x006FE9A7",
+        "0x006FE9C1",
+        "0x006FEA0C",
+        "0x006FEAE9..0x006FEAF2",
+        "0x006FEB1F",
+        "0x006FEB4B..0x006FEB5A",
+        "0x006FEB70",
+        "0x006FEC2D..0x006FEC3F",
+        "0x006FEC55",
+        "0x006FEC5E",
+        "0x006FED56",
+        "0x006FED82..0x006FED91",
+        "0x006FEDA7"
+      ]
+    },
     "sentinel": {
       "tier": "STATIC",
-      "claim": "The dword at 0x0130C778 holds 0xE0000000 in the image and is referenced at many call sites. The cursor-one branch compares +0x70 with it and stores it at +0x70 when the test fails. Its role as the no cached identity value is INFERRED.",
+      "claim": "The dword at 0x0130C778 holds 0xE0000000 in the image and is referenced at many call sites. 0x00CC9310 copies it into an identity, and the DesktopWidget constructor applies 0x00CC9310 to +0x70. The cursor-one branch and the two target event methods compare it with +0x70 or store it there, and the branch posts it as the second value of the 0xCD record when the test fails. Its role as the no cached identity value is INFERRED.",
       "locators": [
+        "0x00CC9310",
+        "0x006E0693",
         "0x006E513D",
         "0x006E51AB",
-        "0x006E51D5"
+        "0x006E51D5",
+        "0x006FE9A2",
+        "0x006FEB70"
       ]
     },
     "remaining": [
-      "The Lua natives that call the DesktopWidget methods writing +0x7C.",
       "Whether the 0x0007A124 query returns the value of the work member mainTargetDecidedFlag (key 500004), which manifests/stub_overload_native_call_contract.json identifies.",
-      "The consumer of message code 0xCD and of the 0x0075D460 call."
+      "The virtual callers of LuaActorImpl vftable slots 25 and 26 and the producers of the index and identity they pass.",
+      "The server handling of the 0x00CD record, which this contract does not establish."
     ]
   },
   "open": [
@@ -487,7 +597,7 @@
     "The meaning of the control byte at +0x5C.",
     "Whether the invalid-parameter handler cell at 0x01363F1C holds a handler at run time.",
     "The fields at cursor +0x14 and the roles of the child objects at +0x18 and +0x1C.",
-    "The Lua natives that write DesktopWidget +0x7C.",
+    "The virtual callers of LuaActorImpl vftable slots 25 and 26, which reach the DesktopWidget methods that write +0x7C.",
     "Whether the cursor drawing path consults the shared globals at 0x0133728C and 0x01337290.",
     "The effect of the 0x009DF94A call with argument 2 on the failure path."
   ],
