@@ -131,6 +131,12 @@ canonical records, generated views and frozen investigations.
   receiver validation, empty argument list and signed cached-clock return.
 - [Chocobo naming native checks](chocobo-naming-native-contract.md) -
   UTF-8 sequence counting and the first-character property used by the widget.
+- [Achievement, target, group, item package, reaction box, Chocobo and cut scene native contracts](achievement-target-native-contract.md) -
+  `_setTargetNearestCharacter` and `_getLastAttacker`, the group, status slot
+  and system flag readers, the `0x0131` item package request, the reaction box
+  arguments, the two `_transformIntoChocobo` registrations with the actor
+  visitor and resume checker, the `MyPlayer` achievement slots and the empty
+  `_loadCutScene`.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
   fields, cached rows and consuming score getters.
 - [Appearance record payload](appearance-record-wire-contract.md) -

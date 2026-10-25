@@ -485,6 +485,9 @@ remain after the selected rows and the left out records.
 
 The manifest rows under `nextTranche` carry the same order.
 
+The rows of `_transformIntoChocobo`, `_getSubStatStatus` and `_getSystemFlag` are
+in the [achievement, target, group, item package, reaction box, Chocobo and cut scene native contracts](achievement-target-native-contract.md).
+
 ## Reproduction
 
 Authenticate the program with
