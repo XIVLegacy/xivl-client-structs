@@ -5,6 +5,9 @@ serverbound `0x012d` through the same typed-argument serializer. The canonical
 [native contract](../manifests/player_command_wire_contract.json) records the
 binary digest, virtual addresses, field sources and unresolved boundaries.
 Its instructions were authenticated against the identified retail PE.
+The [command and talk contracts](command-talk-native-contract.md) record the
+registration, argument lists and yield behavior of both natives and the `NpcBase`
+requests that build the same record from an empty typed stream.
 
 ## Dispatch and construction
 
