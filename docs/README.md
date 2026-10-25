@@ -114,6 +114,11 @@ canonical records, generated views and frozen investigations.
   checker, the net stat and breakage bit readers, `_isAccessibleInServer`,
   `_getGear`, the NPC spreadsheet container preload and release, the word table
   calls, `_printDebugLog` and the `_randomFloat` generator.
+- [Grand Company rank, achievement, title, timer, replay quest, hamlet score, Chocobo grade and stored item native contracts](player-misc-native-contract.md) -
+  the Grand Company rank bytes, the achievement title set, category and
+  sheet natives, the title request record, the world object timer vector
+  and replay quest set, the hamlet score row count, the Chocobo bytes and
+  the stored item lists.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
