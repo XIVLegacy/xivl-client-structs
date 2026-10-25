@@ -63,6 +63,9 @@ canonical records, generated views and frozen investigations.
 - [SpreadSheet native contracts](spreadsheet-native-contract.md) - row cache
   reads, column type names, filename lookup, key ranges, yielding load requests,
   row release and asynchronous loads.
+- [_createActor native contract](create-actor-native-contract.md) - class kind
+  dispatch, creation sequence, resume checker, thread ownership, failure paths
+  and the sheet loader scripts.
 - [Chara scheduler, wait, item and log native contracts](scheduler-item-native-contract.md) -
   scheduler queue entry, resume checkers and thread yield, item package
   lookup, item record builders and the log module.
