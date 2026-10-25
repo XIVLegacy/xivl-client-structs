@@ -286,9 +286,9 @@ then returns no value is `INFERRED` from the empty return container. The
 `0x0071CA50` on receiver `+0xFC` and queries the object it finds through virtual
 slots 7 and 8. `0x006E8D90` reads a Utf8String from cell 0 and tests whether cell 1
 has tag 6. `0x0070A010` compares receiver `+0x128` and `+0x12C` with the dword at
-`0x0130C778` and otherwise reads the argument cells. The remaining bodies, the
-command objects and the packets they send were not traced, so these four rows are
-dispatch records and not full contracts.
+`0x0130C778` and otherwise reads the argument cells. The
+[command and talk contracts](command-talk-native-contract.md) trace the four
+routines, their gates and the entries they hand to the policy manager.
 
 ## Not traced
 
@@ -305,8 +305,8 @@ dispatch records and not full contracts.
   `CharaBase +0x60` and of the `NpcBase` vectors and the byte at `0x012C3F77`.
 - The object behind virtual slot 5 of `_getLocalizedDisplayNameForChat` and the
   meaning of the macro number 21.
-- The `MyPlayer` command routine bodies, the command objects behind receiver
-  `+0xFC` and the packets they send.
+- The command objects behind receiver `+0xFC` beyond the first calls recorded in
+  the [command and talk contracts](command-talk-native-contract.md).
 
 ## Next natives
 
