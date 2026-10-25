@@ -219,7 +219,8 @@ installs a `WaitLoadFormResumeChecker` built by `FUN_00717510`.
 `FUN_00713FE0`. Its slot `0x007140C0` polls the control's initialization and
 its slot `0x007493A0` pushes the control as the call result. The
 `_createActor` existing-control branch returns at once when that control is
-already initialized.
+already initialized. The [_createActor contract](create-actor-native-contract.md)
+records every branch and class kind.
 
 ### Widget creation payload
 
@@ -267,7 +268,8 @@ establish the callback's source-level binding or runtime success.
 
 `_isInstanceOf` and `_createActor` belong to `Global` and are called from
 Lua without a receiver. Their positions are `ExecuteParameters` positions.
-The binding that maps a global call onto those positions was not traced.
+The [Global contracts](global-native-contract.md) record the binding that maps
+a global call onto those positions.
 
 ## Reproduction
 

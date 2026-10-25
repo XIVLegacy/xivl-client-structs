@@ -411,7 +411,8 @@ lists sheet names with a resource id and a source of `game_schema`,
 `xivl-client-scripts:lua/scripts/gamedata/spreadsheet.calls.json` places the
 only `_setFilename` call at line 11 of `gamedata/spreadsheet`. The filename
 arrives from `AreaBaseClass.prepareSpreadSheet` through
-`_createActor(name, "SpreadSheet", name~=nil, sheetName)`, and the one literal
+`_createActor(name, "SpreadSheet", name~=nil, sheetName)` (see the
+[_createActor contract](create-actor-native-contract.md)), and the one literal
 that `xivl-client-scripts:docs/passivegl-craft-columns.md` records for it is
 `passiveGL_craft`. The other filename strings are not in the tracked metadata.
 
