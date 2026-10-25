@@ -56,6 +56,9 @@ canonical records, generated views and frozen investigations.
   `_onInit` call order and the contracts of the first natives it reaches.
 - [Desktop native call contracts](desktop-native-call-contract.md) - user
   config keys, list text, UI command conditions and `LuaControl*` returns.
+- [User config store contracts](user-config-store-contract.md) - the game, UI
+  and system config stores, every registered group, key, name, range and
+  default, and the per-character file format and override order.
 - [Target cursor native state](target-cursor-native-contract.md) - cursor
   creation, selection, range check, empty identity and image side effects.
 - [Talk widget native contracts](talk-native-contract.md) - parent and child
