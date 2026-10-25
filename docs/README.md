@@ -137,6 +137,11 @@ canonical records, generated views and frozen investigations.
   arguments, the two `_transformIntoChocobo` registrations with the actor
   visitor and resume checker, the `MyPlayer` achievement slots and the empty
   `_loadCutScene`.
+- [User macro, display name target, text command, countdown, item search and widget container native contracts](desktop-state-native-contract.md) -
+  the `DesktopWidget` macro bank getters, setters and save, the display name
+  matcher behind `_setTargetCharacterByDisplayName`, the 13 value
+  `_parseTextCommand` pushes, the `0x00CF` countdown record, the item search
+  widget wait and the widget container slot natives.
 - [Hamlet ranking and score payloads](hamlet-wire-contract.md) - receiver
   fields, cached rows and consuming score getters.
 - [Appearance record payload](appearance-record-wire-contract.md) -
