@@ -77,6 +77,11 @@ minus 1 to `0x0075CAB0`. The store is the object `0x004D73C0` returns at
 `0x00443EA0` addresses record `(group * 32 + (key & 0x1F)) * 0xBC`. The group
 is not range-checked and the key wraps every 32 values.
 
+The store is the `Application::Misc::GameConfig` object. The
+[user config store contracts](user-config-store-contract.md) record its
+7 groups, every registered key, name, range and default, and the
+per-character file that overrides them.
+
 The record type tag at `+0x00` selects the return. Type 1 returns the int at
 `+0x60`. Type 2 returns the string at `+0x68`. Any other type returns nil.
 `0x00443DA0` restores a type 1 record from its default at `+0x64`.
@@ -155,8 +160,6 @@ identity.
   traced.
 - The run-time value of the kind byte at `0x0134C3FE` and the meaning of the
   condition kinds were not traced.
-- The user config group count, its source file and the names of groups and
-  keys were not traced.
 - Deferred rows for `_setUserConfig`, `_saveUserConfig`, `_resetUserConfig`,
   `_setListProperty`, `_updateList`, `_addItem` and
   `_setKeyboardFocusedControl` carry registration and declared lists only.
@@ -165,7 +168,10 @@ identity.
   [fade, actor and group contracts](fade-actor-group-native-contract.md#widget-item)
   record the handler of `_addItem` and the
   [stub overload contracts](stub-overload-native-contract.md#lists) record the handlers of
-  `_setListProperty` and `_updateList`.
+  `_setListProperty` and `_updateList`. The
+  [user config store contracts](user-config-store-contract.md#game-store)
+  record the forwarding targets of `_setUserConfig`, `_saveUserConfig` and
+  `_resetUserConfig`.
 - Reach positions are static call-site order across every branch, not a
   runtime trace.
 
