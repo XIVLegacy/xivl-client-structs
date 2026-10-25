@@ -99,7 +99,8 @@ no control identity, calls no manager and starts no load. The `WidgetBase` overl
 `_play` (`0x006FB830`) is the consumer. It passes the address of `+0x6C` to `0x0076D610` on the cut scene manager, the
 dword at `Y +0x08`. The routine zeroes a `0x20` byte field, copies the lesser of the name length and `0x1F` bytes
 into it and posts a message with code `0xCE` and size `0x38` through `0x004D6D10`. `_replay` calls the sibling
-`0x0076D820` with no file name and does not read the field. The consumer of the message is open.
+`0x0076D820` with no file name and does not read the field. The message is the serverbound `0x00CE` record, and the
+[cut scene contracts](cutscene-native-contract.md#serverbound-record) give its fields.
 
 One script site calls the overload: `CutScene._onInit` in `gamedata/cutscene` line 35 passes its first parameter,
 the payload value that `_createActor` hands to `_onInit` (see [_createActor](create-actor-native-contract.md)).
@@ -274,7 +275,7 @@ The manifest `hostContract` lists the obligations in full.
 ## Open
 
 - The `_group` row values for the `CompanyGroup` and `RetainerGroup` kinds, and the reader of the word columns.
-- The consumer of message code `0xCE` and the cut scene path rule.
+- The server side resolution of the cut scene path that the serverbound `0x00CE` record carries.
 - The reader of the loop interval vector and the `_onLoop` firer.
 - The values of the attribute type bytes at `0x013599D1` and `0x013599DC`.
 - The data maker names that the widget forms declare and the bindings that read `Count`, `FilteredCount` and
