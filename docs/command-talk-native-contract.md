@@ -181,6 +181,31 @@ invalid-parameter route of the
 [target cursor record](target-cursor-native-contract.md#selection-and-the-failure-path).
 Whether the executor pads a call that omits a declared argument was not run.
 
+### Int arguments
+
+Registry entry 0 reads every declared `int` argument and installs the inner
+vftable `0x0110DF38` at `0x00CC9DC9`. Its `+4` cell `0x0110DF3C` holds
+`0x00CFAC40`, the only vftable cell that references that address. For a Lua nil
+the routine builds a `Nil` cell. Otherwise it reads the number through
+`0x00CF35C0`, which yields 0.0 for a value that is neither a number nor a
+numeric string, converts it through `0x009D6600` and builds a tag 0 cell from
+the 32-bit result. No range test sits between the conversion and the cell.
+
+`0x009D6600` tests the dword at `0x0137B8E8`. A nonzero dword takes the
+`cvttsd2si` with a 32-bit destination at `0x009D6615`, which yields
+`0x80000000` for a value outside the signed 32-bit range. A zero dword branches
+to `0x009D6636`, the x87 64-bit truncation, and `0x00CFAC40` keeps its low
+dword. The dword lies in zero-filled virtual memory and its only direct writer
+in `.text` is `0x009F6600`, which stores the result of a feature test that
+reads bit 26 of CPUID leaf 1 EDX at `0x009F65DF`. On the `cvttsd2si` branch an
+integral Lua number outside the signed 32-bit range, for example 4294967295,
+reaches the cell as `0x80000000`. The same entry feeds the integral numbers of a
+`Variable` list, so the typed stream of the server request natives carries
+`00 80 00 00 00` for such a value, as the
+[player command wire contract](player-command-wire-contract.md#values-and-references)
+records. The conversions and the cell are `STATIC`. The run-time value of the
+dword was not observed, so the branch a retail host took is unknown.
+
 ## Event state
 
 The callbacks read these fields. The offsets and calls are `STATIC`. The names
@@ -193,6 +218,7 @@ fields.
 | `MyPlayer` | `+0xF8` | The policy manager. It is the `ECX` of every dispatcher and canceller. |
 | `MyPlayer` | `+0xFC` | The command descriptor vector that `0x0071CA50` searches by name. |
 | `MyPlayer` | `+0x128`, `+0x12C` | Dwords compared with the dword at `0x0130C778`, whose image value is `0xE0000000`. This page calls that dword the sentinel. |
+| Reference | whole object | The default constructor `0x00CC9310` stores the sentinel into it. The destructor `0x00CC9330` is a bare `ret`. A reference local that no `0x00CC73B0` conversion replaces therefore reads as the sentinel. |
 | `MyPlayer` | `+0x164` | Byte read by `_isPushingOut`. |
 | Manager | `+0x08` | The current entry. |
 | Manager | `+0x0C` | A staged entry. |
@@ -251,7 +277,8 @@ the byte at player `+0x5C` is 0. They run no event slot test.
 `_canExecuteCommand` reads a name and looks the descriptor up at player
 `+0xFC`. The talk and emote forms read an `NpcBase` target, push false for a
 target byte `+0x5C` of 0 or a nonzero byte `+0x5D` and select a condition from
-the vector at `+0xE8` or `+0xF8`. A missing condition pushes false.
+the vector at `+0xE8` or `+0xF8`. The emote form reads the emote id only after
+the target byte tests pass. A missing condition pushes false.
 
 A condition or descriptor whose slot 7 returns 1 pushes the answer of
 `0x00893320` for the priority that slot 8 returns, and any other class pushes
@@ -300,7 +327,11 @@ and a zero byte `+0x5D`, and the native pushes false when it fails.
 
 `_executeTalk` and `_executeEmote` read the target and apply the target byte
 tests of the eligibility natives. `_executeEmote` reads the emote id from cell 1
-through `0x00581AE0` and passes it to `0x006EDB50`, which keeps the low word.
+through `0x00581AE0` after those tests and passes it to `0x006EDB50`, which
+keeps the low word. A target that fails a byte test pushes false before cell 1
+is read, so a one-cell call that omits the emote id reaches `0x009D22B4` only
+for a target that passes. An empty cell vector reaches it at the target read.
+`_canExecuteEmote` has the same order, with the player byte test first.
 
 No execute native requests a yield. Whether the dispatched entry yields is a
 property of the state machines.
@@ -323,10 +354,14 @@ A Nil cell 1 calls `0x00895060` on the manager at player `+0xF8`. That routine
 removes the staged entry at manager `+0x0C` when its name and type match and
 then calls `0x00894800` and `0x008949A0` with the player, the name and the type
 byte address. Any other cell 1 is read as an int and its low byte reaches
-`0x008950D0` as a priority ceiling. That routine removes the staged entry only
-when its priority does not exceed the byte, then calls `0x00894800` for the
-current entry under the same ceiling. It does not call `0x008949A0`. The effect
-on the entries, the Lua callbacks and the server flow was not traced here.
+`0x008950D0` as a priority ceiling. That routine reads the staged entry first
+and removes it only when its name equals the argument, its slot 6 accepts the
+type byte address and its priority does not exceed the byte. A staged entry that
+fails a test stays. The routine then reads the current entry at manager `+0x08`
+and returns without a call when that entry is null or its priority exceeds the
+ceiling. Otherwise it calls `0x00894800`, which tests the type and the name of
+the current entry again. It does not call `0x008949A0`. The effect on the
+entries, the Lua callbacks and the server flow was not traced here.
 
 ## Playing queries
 
@@ -340,8 +375,13 @@ routine to the list at manager `+0x10`, where the first node with the name and
 type returns true for the sentinel or an equal reference and false otherwise.
 
 `_countCommandPlaying` reads the same arguments, has no byte test and pushes the
-int that `0x00894370` returns. Its counting rule beyond the first tests was not
-traced.
+int that `0x00894370` returns. That routine applies the same current entry test
+as `0x00894200`. A matching current entry returns 1 for the sentinel or an equal
+reference and 0 for another reference, and the routine returns there without
+scanning the list or reading the byte at entry `+0x21`. Without a match it walks
+the list at manager `+0x10` and adds 1 for every node whose type and name match
+and whose reference is the sentinel or equal to the argument. The sum is the
+result, so queued entries count only when the current entry does not match.
 
 Both natives test the cell count. A vector with fewer than two cells reaches
 `0x009D22B4`.
@@ -370,6 +410,26 @@ builds the `0x012D` record that the
 request `0x00CD2860` on the Lua thread at `ExecuteParameters` `+0x08`.
 `_doServerOnCommand` returns after the send. No instruction tests the
 descriptor before `0x006E30BA` reads its vftable.
+
+The item arguments of both natives follow the serializer of the wire contract.
+An item is tag `07`, the binding reference dword, the slot word and the package
+byte, written by `0x00791870` on the big-endian branch that `0x0134B368`
+selects (see the endian note of the
+[wire contract](player-command-wire-contract.md)). When the next item has the
+same reference, `0x00790BA0` rewrites the preceding value through `0x00791A30`
+into the counted form. The tag becomes `08`, and `N` (2), the second slot and
+package and a length byte follow the first slot and package. The length byte is
+`3*N+7`. `N` and the length are `u8` with no cap, so the formula wraps modulo
+256 from `N=83`. Each further item with the same reference passes `0x00791AA0`,
+which increments `N` at entry offset 8 and appends its slot and package. Two
+items of reference `R` encode as `08 R S1 P1 02 S2 P2 0D`. After the last value
+`0x00790400` appends tag `09` and two metadata qwords, on the same byte order,
+through `0x00791910` when the writer flag at `+0x20` is nonzero and the byte at `+0x22`
+is zero. An item that finds both metadata slots already nonzero clears the
+flag, so a list of three or more items with nonzero metadata ends without the
+trailer. `0F` ends the stream. All of this is `STATIC`. The metadata values are
+the first eight bytes of the item record and their server meaning is not
+established.
 
 ### NPC event requests
 
@@ -460,11 +520,12 @@ the cited documents' reading of the decoded chunks.
   `+0x164`, the manager byte at `+0x1E` and the entry byte at `+0x21`, and the
   writers of the `NpcBase` bytes at `+0x5C` and `+0x5D`.
 - The state machines `0x00897310` and `0x00896510`, the entry classes and the
-  routines `0x00894800`, `0x008949A0`, `0x00894200` and `0x00894370` beyond the
-  tests recorded above.
+  routines `0x00894800` and `0x008949A0` beyond the tests recorded above.
 - The run-time result of the descriptor and condition lookups for an unknown
   name and of a null control argument.
 - The run-time value of the command type byte at `0x0134C3FF`.
+- The run-time value of the dword at `0x0137B8E8`, which selects the branch of
+  the Lua number conversion.
 - Whether the Lua call to `_doServerOnTalk` reaches the native.
 - Any retail observation of an NPC emote `0x012D` start.
 - The natives `_breakCommand`, `_isEventPlaying` and the `NpcBase` break
