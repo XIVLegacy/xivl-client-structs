@@ -154,6 +154,10 @@ canonical records, generated views and frozen investigations.
   `_play` consumer, the `_setLoopInterval` word store, `_setListProperty` and `_updateList` with the
   `SqwtXmlDataMaker` row and attribute model, the trailing values of `_callSuperClassFunction` and the work
   member test of the `_setTargetCursorImage` cursor-one branch.
+- [Cut scene play, replay, skip, pending actor and replay NPC native contracts](cutscene-native-contract.md) -
+  the open argument split, the `PlayingResumeChecker` and its completion, the
+  serverbound `0x00CE` record, the scene element posts, the pending actor search,
+  the replay NPC getters and the obligations of a fade-through host.
 - [Debug console, seeded Math, position and sub stat native contracts](debug-console-native-contract.md) -
   the `Debug` class natives that scripts reach through the global `debug` object,
   the seeded `Math` generators, the `_setPos`, `_setDir`, `_setPosDirInn` and

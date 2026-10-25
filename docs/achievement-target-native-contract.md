@@ -431,8 +431,9 @@ The related rows record three natives that rank below the selection. `_skip`
 sets the byte at receiver `+0xC1` and calls `0x0075B200` on the dword at `Y +0x08`.
 `_play` and `_replay` declare a bool and an int as results and one `Variable`
 argument. Each clears the byte at receiver `+0xC1`, stores a new object of 16 bytes
-at receiver `+0x64` and requests a yield. The resume checkers and the two results
-were not traced.
+at receiver `+0x64` and requests a yield. The
+[cut scene contracts](cutscene-native-contract.md) record the three natives in full,
+with the resume checker and the two results.
 
 ## Script call sites
 
@@ -523,7 +524,6 @@ The manifest rows under `nextTranche` carry the same order.
 - The writers of the achievement bitset and of the dword vector, the contents of
   the switches and maps and the category numbers of `0x0070DC60` other than 1000
   and 1500.
-- The resume checkers and the results of `_play` and `_replay`.
 
 ## Reproduction
 
