@@ -527,9 +527,7 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
         for entry in receiver_doc[bucket]:
             record = {
                 "name": entry["name"],
-                # Identity is (name, vftable), not name: UserDataReceiver has
-                # two rows for its 6-slot and 2-slot vftables sharing one
-                # slot1. Dropping the address would make them look duplicated.
+                # Identity is (name, vftable): UserDataReceiver has two interfaces.
                 "rttiAddress": entry["rttiRva"],
                 "namespace": entry["namespace"],
                 "classification": classification,
@@ -569,7 +567,10 @@ def build_relationships(sources: dict[str, dict], known_symbols: set[str]) -> di
                     record[key] = entry[key]
             casts = _casts(entry.get("castTarget"), f"receiver {entry['name']}")
             writes = field_writes.get(entry["name"])
-            if writes:
+            # One class can have multiple interfaces with different slot-1 methods.
+            if writes and entry.get("slot1Fn", "").lower() == (
+                f"fun_{int(writes['slot1Va'], 16):08x}"
+            ):
                 record["sources"].append("receiver-field-writes")
                 record["slot1Address"] = writes["slot1Va"]
                 record["dispatchKind"] = writes["kind"]

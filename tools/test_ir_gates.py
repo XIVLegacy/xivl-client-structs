@@ -78,6 +78,28 @@ def main() -> int:
     )
     baseline = build_ir.build(symbols_doc, structs_doc, overlay)
 
+    user_data = {
+        row["rttiAddress"]: row
+        for row in baseline["relationships"]["receivers"]
+        if row["name"] == "UserDataReceiver"
+    }
+    check(
+        "R1 secondary UserData interface retains its matching field-write evidence",
+        user_data["0xc57488"].get("slot1Address") == "0x008A2A20"
+        and user_data["0xc57488"].get("dispatchKind") == "trivial"
+        and "receiver-field-writes" in user_data["0xc57488"]["sources"],
+    )
+    check(
+        "R2 primary UserData interface does not inherit secondary method findings",
+        user_data["0xc574a4"]["sources"] == ["receiver-map"]
+        and not {
+            "slot1Address",
+            "dispatchKind",
+            "workerAddresses",
+            "casts",
+        }.intersection(user_data["0xc574a4"]),
+    )
+
     expect_build_error(
         "B1 an unrecognised size raises instead of degrading to 'unknown'",
         lambda: build_ir.parse_size("about half a cache line", "planted"),
