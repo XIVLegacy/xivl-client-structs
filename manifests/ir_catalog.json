@@ -41,7 +41,7 @@
     },
     {
       "path": "manifests/structs.json",
-      "sha256": "d851adfcfaa3d685171ba8c86373ce5eedf14aeb6616f500a57375601f2fb8ab"
+      "sha256": "18bb166869ad6ee1b0438b0f0dc3964bf5d1c5676a0a5f5d6a6c4365f0eccab8"
     },
     {
       "path": "manifests/symbols.json",
@@ -102,10 +102,10 @@
     }
   },
   "counts": {
-    "types": 507,
+    "types": 508,
     "symbols": 3097,
-    "citations": 1646,
-    "members": 3421,
+    "citations": 1647,
+    "members": 3424,
     "unknownSpans": 37,
     "opcodes": 189
   },
@@ -3977,7 +3977,7 @@
         "EV-0745",
         "EV-0749",
         "EV-1588",
-        "EV-1644",
+        "EV-1645",
         "EV-1638",
         "EV-0741",
         "EV-0967"
@@ -4061,7 +4061,7 @@
         "EV-0744",
         "EV-0748",
         "EV-1588",
-        "EV-1644",
+        "EV-1645",
         "EV-1638",
         "EV-0740"
       ],
@@ -4144,7 +4144,7 @@
         "EV-0743",
         "EV-0747",
         "EV-1588",
-        "EV-1644",
+        "EV-1645",
         "EV-1638",
         "EV-1639"
       ],
@@ -50793,7 +50793,7 @@
             "bytes": 1
           },
           "type": "uint8_t",
-          "notes": "Sub-stat mode or border value written into the actor sub-state record by the receiver path."
+          "notes": "Separate mode byte zero-extended into CharaElement+0xFC u16. It prepares _onChangeSubStatMode only when the new and previous mode bytes differ. Border is (W >> 20) & 15 from the packed word at application +0x00. The Scene producer later reloads the element word after Lua callbacks; application +0x05 is not its high byte."
         },
         {
           "kind": "field",
@@ -50809,7 +50809,7 @@
             "bytes": 1
           },
           "type": "unknown[0x01]",
-          "notes": "Byte not interpreted by the documented receiver path."
+          "notes": "Unresolved wire byte, excluded from the internal Scene payload mode word at +0x04."
         },
         {
           "kind": "field",
@@ -50825,7 +50825,7 @@
             "bytes": 2
           },
           "type": "uint16_t",
-          "notes": "Motion-pack value in the retained packet layout."
+          "notes": "Application u16 stored at CharaElement+0xFE and reloaded into internal Scene payload +0x06 after Lua callbacks. Intervening element writes may change the reloaded value."
         }
       ],
       "citations": [
@@ -50835,9 +50835,10 @@
         "EV-0301",
         "EV-0784",
         "EV-0914",
-        "EV-0904"
+        "EV-0904",
+        "EV-1644"
       ],
-      "notes": "Complete exact 0x08 application payload for s2c 0x0144 SetActorSubState, excluding the 0x10 game-message prefix. The retained wire layout establishes seven contiguous members, and the receiver path positively consumes the mode byte."
+      "notes": "Complete exact 0x08 application payload for s2c 0x0144 SetActorSubState, excluding the 0x10 game-message prefix. The byte labels at +0..+3 view packed u32 W, stored at CharaElement+0xF8; they do not define independent enum domains. Border is (W >> 20) & 15 and is separate from mode at +0x04. The eight-byte internal Scene selector 0x3B payload uses a distinct u16 mode field and is assembled from element fields reloaded after Lua callbacks, without an atomic wire-snapshot guarantee."
     },
     {
       "id": "BCS-S-0283",
@@ -79738,6 +79739,97 @@
         "EV-1600"
       ],
       "notes": "Partial Cibb receiver prefix identified by RTTI Application::Scene::Actor::Chara::Cib::Cibb and vftable VA 0x010409F4. The dword writes at 0x0085212E and 0x00852134 establish a minimum extent of 0x08, not exact sizeof or alignment. The path initializes caller-supplied storage without allocating it. The installed pointer's concrete type, ownership and serialized origin remain unresolved. The selected slot-0 span ends before any return and does not prove complete destruction or release of the pointer at +0x04."
+    },
+    {
+      "id": "BCS-S-0508",
+      "name": "UnknownSceneSelector3BPayload",
+      "namespace": {
+        "raw": "Application::Scene",
+        "convention": "cxx",
+        "segments": [
+          "Application",
+          "Scene"
+        ]
+      },
+      "confidence": "confirmed",
+      "size": {
+        "kind": "exact",
+        "raw": "0x08",
+        "bytes": 8
+      },
+      "alignment": {
+        "kind": "unknown",
+        "reason": "no catalog records alignment for this type; deriving it from offsets would be inference"
+      },
+      "bases": {
+        "status": "deferred",
+        "owner": "C1c"
+      },
+      "vtable": {
+        "status": "deferred",
+        "owner": "C1c"
+      },
+      "layout": {
+        "status": "modeled",
+        "declaredBytes": 8,
+        "coveredBytes": 8,
+        "unknownBytes": 0,
+        "overlapBytes": 0
+      },
+      "members": [
+        {
+          "kind": "field",
+          "name": "packed_actor_word",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x00",
+            "bytes": 0
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "type": "uint32_t",
+          "notes": "Reloaded from CharaElement+0xF8 after Lua publication calls. The receive path stores application +0x00 u32 W there. Admitted Scene case 0x006638A4 reads this word for the type-2 path."
+        },
+        {
+          "kind": "field",
+          "name": "mode",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x04",
+            "bytes": 4
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x02",
+            "bytes": 2
+          },
+          "type": "uint16_t",
+          "notes": "Reloaded from CharaElement+0xFC after Lua callbacks. The direct receive-path store zero-extends application +0x04 u8 into this element word; application +0x05 is excluded. Without intervening writes the value remains in the byte domain. Admitted Scene case 0x006638A4 reads the u16 for type 3; no universal state enum is established."
+        },
+        {
+          "kind": "field",
+          "name": "motion_pack",
+          "offset": {
+            "kind": "exact",
+            "raw": "0x06",
+            "bytes": 6
+          },
+          "size": {
+            "kind": "exact",
+            "raw": "0x02",
+            "bytes": 2
+          },
+          "type": "uint16_t",
+          "notes": "Reloaded from CharaElement+0xFE after Lua callbacks. The receive-path store takes application +0x06 u16; intervening element writes may change the reloaded value."
+        }
+      ],
+      "citations": [
+        "EV-1644"
+      ],
+      "notes": "Descriptive layout of the exact eight-byte internal Scene selector 0x3B payload, without a recovered nominal C++ type. FUN_00588C50 constructs it at 0x00588CAB-0x00588CD3 and passes it with length eight to FUN_004D7980, which submits internal command 0x50. Its values are reloaded from CharaElement fields after Lua callbacks, so an atomic wire snapshot or byte-domain mode value after intervening writes is not established. If key resolution and admission reach CharaActor case 0x006638A4, the packed word feeds type 2 and the mode word feeds type 3. Type-3 state queueing still requires a separate kick, model metadata and resource-root gates before scheduler playback."
     }
   ],
   "symbols": [
@@ -81599,7 +81691,7 @@
       "addressCorroboration": "not-applicable",
       "confidence": "confirmed",
       "citations": [
-        "EV-1644"
+        "EV-1645"
       ],
       "notes": "UI handler for SendAddictionLimitMessage (opcode 0x0192). 488-byte body. Signature: FUN_00704230(undefined4 myPlayer, byte kindByte). Switches on kindByte: 0/1 -> calls FUN_0076A810(0), 2/3 -> FUN_0076A810(1), 4 -> FUN_0076A810(2), default -> skips to event emit. Always fires the Lua event `_onReceiveLimitAddicted` with arg = (kindByte + 1) targeted at PlayerBaseClass. Caller: BCS-Y-0111 (AddictLoginTimeKindReceiver::Receive). The 5 kindByte values (0..4) correspond to continuous-play warning thresholds; the UI dispatch picks the message group + plays the appropriate alert. Address corrected from 0x00304230 to 0x00704230 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [comprehensive-lua-fire-site-inventory] **LUA FIRE SITE INVENTORY**: this function is one of 79 Lua fire sites that call FUN_00CC7A90 (LuaCallbackDispatcher BCS-Y-0399). Fires event(s): `_onReceiveLimitAddicted`, `PlayerBaseClass`. Body: 488b. Gate-checked via FUN_00CC7280 ([[BCS-Y-1580]]): False. Polymorphic-dispatch via FUN_00CD7A30 ([[BCS-Y-1581]]): False."
     },
@@ -81617,7 +81709,7 @@
       "addressCorroboration": "not-applicable",
       "confidence": "confirmed",
       "citations": [
-        "EV-1644"
+        "EV-1645"
       ],
       "notes": "Apply wrapper for AddictLoginTimeKindReceiver. Stored at LuaActorImpl vftable slot offset 0x30 from VA 0x00FDFC00 (per corrected BCS-Y-1055 entry, the bcs-y-1055-address-+-interpretation pass). The slot is within the LuaActorImpl C++ vftable (real base 0x00FDFB2C); the original \"ReceiverApplyWrapperTable RVA 0x007DFC00\" framing is disputed - see BCS-Y-1055 notes for details. 116-byte body. Signature: FUN_0075A0E0(int queueEntry, undefined1 *packetBody). Reads first byte of packetBody as kindByte, passes to receiver ctor BCS-Y-0110, then invokes the receiver's Receive method (BCS-Y-0111) with (queueEntry+4 as this, *(queueEntry+8) as actor_ref). Pattern matches the canonical receiver apply wrapper shape from the receiver-apply-survey pass (ctor / Receive / cleanup). Address corrected from 0x0035A0E0 to 0x0075A0E0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [duplicate-address resolution] Legitimate dual perspective: the receiver apply-wrapper identity and LuaActorImpl vtable-slot callback identity describe distinct roles of the same function; sibling entries [[BCS-Y-0109]], [[BCS-Y-0161]]."
     },
@@ -81635,7 +81727,7 @@
       "addressCorroboration": "not-applicable",
       "confidence": "confirmed",
       "citations": [
-        "EV-1644"
+        "EV-1645"
       ],
       "notes": "Constructor for Application::Lua::Script::Client::Command::Network::AddictLoginTimeKindReceiver. 92-byte body. Signature: FUN_0089C800(undefined4 *receiver, undefined1 kindByte). Sets vtable to base CommandInterface, then overrides with AddictLoginTimeKindReceiver vtable (standard derived-class double-write). Stores kindByte at *(receiver + 4). Two callers: BCS-Y-0109 (apply wrapper) and FUN_007625E0. Confirms the 0x0192 wire format: kindByte is the first byte of the packet payload, stored at receiver+4 by this ctor. Address corrected from 0x0049C800 to 0x0089C800 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA."
     },
@@ -81653,7 +81745,7 @@
       "addressCorroboration": "not-applicable",
       "confidence": "confirmed",
       "citations": [
-        "EV-1644"
+        "EV-1645"
       ],
       "notes": "Vtable slot 1 of AddictLoginTimeKindReceiver. 46-byte thin dispatcher. Signature: FUN_0089C8B0(undefined4 this, undefined4 actorRef). Calls __RTDynamicCast(actorRef, 0, ActorBase, MyPlayer, 0) then tail-jumps to BCS-Y-0108 with (MyPlayer*, kindByte_from_this+4). Sole caller: BCS-Y-0109 (apply wrapper). Sole callees: BCS-Y-0108 (UI handler) and FUN_009DA6CC (__RTDynamicCast). | [hygiene systematic-rva-not-va-address-shift] Address shifted from 0x0049C8B0 to 0x0089C8B0 (+0x00400000) per the matrix-s2c-wire-name-backfill pass audit. The catalog-validation-report pass's PASS_DATA classification let this entry escape the apply-log pass's bulk fix; the entry's own metadata self-described the VA. Evidence: unambiguous_shift; evidence=name_fun_token; count=1."
     },
@@ -84782,7 +84874,7 @@
       "addressCorroboration": "not-applicable",
       "confidence": "confirmed",
       "citations": [
-        "EV-1644",
+        "EV-1645",
         "EV-1643",
         "EV-1586",
         "EV-1587",
@@ -85904,7 +85996,7 @@
         "EV-0784",
         "EV-1041",
         "EV-1636",
-        "EV-1646"
+        "EV-1647"
       ],
       "notes": "The lua-name-to-opcode-bridge-open pass: cross-repo promotion of 6 confirmed indirect bindings. Promoted the data-dependency catalog's confirmedIndirectBindings (the 6 bindings surfaced through the lua-name-to-opcode-bridge-open pass..12g vtable resolution + hierarchy-aware cross-ref) into the two canonical bridge catalogs: (1) client-structs side: extended tools/build_lua_to_opcode.py to merge data_dependency_catalog.json into each Lua-name binding entry. Added new schema field `indirectBindings: [{mechanism, opcodeHex, receiverClass, sharedField{actorClass, offsets}, writerBcsy, luaApiBcsy, evidence}]` per binding. New counts: `luaNamesWithIndirectBinding` (6), `inboundOpcodesIndirectlyResolved` (4); new gap-array `inboundOpcodesIndirectlyResolved` (the gap opcodes that are no longer gaps via indirect mechanism). Result: lua_to_opcode.json now carries 11 direct + 6 indirect = 17 Lua-named opcode bindings (was 11 direct, 24 gap; now 11 direct, 20 gap, 4 indirectly resolved). (2) xivl-opcodes side: wrote tools/extractors/inject_indirect_lua_readers.py that reads the sibling repo's data_dependency_catalog.json and appends an `indirect_lua_readers: [{luaName, luaApiClass, luaApiImplVa, sharedField, writerBcsy, mechanism}]` field to each receiver record in data/client_receivers.json. Updated 6 receivers: HateStatusReceiver (2 readers: _isEnmity, _getLookAtCharacter), GrandCompanyReceiver (_getBelongGrandCompany), ChocoboReceiver (_getChocoboRidingGrade), GoobbueReceiver (same), VehicleGradeReceiver (_isEnabledGoobbue), JobChangeReceiver (_getJob). The xivl-opcodes catalog now records the full Lua-interaction surface per receiver: lua_actor_impl_slot for direct _onXxx callback firing + indirect_lua_readers for data-dependency reads. Bridge state: the lua-name-to-opcode-bridge-open pass model (direct: receiver slot -> _onXxx callback) and the lua-name-to-opcode-bridge-open pass model (indirect: receiver writes field X, Lua API reads X) are now both queryable from each side of the cross-repo bridge. Files changed: xivl-client-structs/tools/build_lua_to_opcode.py (extended); xivl-client-structs/manifests/lua_to_opcode.json (regenerated, +6 indirectBindings entries); xivl-opcodes/tools/extractors/inject_indirect_lua_readers.py (new); xivl-opcodes/data/client_receivers.json (+6 receivers with indirect_lua_readers fields + indirect_lua_readers_pass_date metadata)."
     },
@@ -85925,7 +86017,7 @@
         "EV-1087",
         "EV-1071",
         "EV-1638",
-        "EV-1644",
+        "EV-1645",
         "EV-1588"
       ],
       "notes": "The pcap-opcode-evidence pass: pcap-grounded likely_role refinement on the 0x01C3..0x01DF action cluster + outbound c2s opcode evidence. Mined the 54-scenario pcap corpus at xivl-captures/captures to correlate c2s opcodes with player actions and refine the generic 'Map action-system request (... specific role TBD via pcap correlation)' placeholder text that the lua-name-to-opcode-bridge-open pass attached to 25 cluster opcodes. Tooling: (1) tools/extractors/extract_pcap_opcodes.py parses 1.x BasePacket(0x10) -> SubPacket(0x10) -> GameMessage(0x10) framing. Corpus is unencrypted (GameMessage magic 0x0014 visible in plaintext); zlib decompression handles s2c-side compressed BasePackets. Direction classification: RFC 1918 private IP = client (capture was on residential network with public-IP server endpoint), fallback to byte-volume heuristic. Output: manifests/pcap_opcode_evidence.json (54 scenarios, 19 unique c2s opcodes, per-scenario opcode frequency tables). (2) tools/extractors/build_role_refinements.py synthesizes refined labels per cluster opcode (observed in pcap -> concrete role; unobserved -> 'UNOBSERVED in basic-gameplay corpus' label). Output: manifests/role_refinements.json. (3) xivl-opcodes/tools/extractors/apply_pcap_evidence.py applies refinements: 27 decomp_opcodes.json likely_role entries updated + 13 opcodes.json c2s entries get pcap observedIn / payloadLengths merged. Key empirical findings: (a) the actual combat-action c2s in this corpus is 0x012D (216-byte payload, 39/54 scenarios, heavy in party_battle_leve=55x, combat_skills=7x, combat_autoattack=2x) - NOT any of the 0x01C3..0x01DF opcodes, which the lua-name-to-opcode-bridge-open pass had clustered by static-scan size/routing similarity rather than runtime role. The cluster name was misleading. (b) 0x00CA is the position-broadcast tick (54/54 scenarios, 2402x in moving_around_gridania, 3388x in party_battle_leve) - confirms the lua-name-to-opcode-bridge-open pass BCS-Y-0328's already-specific label and updates the duplicate generic entry from the lua-name-to-opcode-bridge-open pass era. (c) 5 cluster opcodes observed: 0x01CB / 0x01CE / 0x01D3 fire ONLY at login (3-step zone-attach handshake); 0x01CF appears in friendlist_search + invite_join_party (social/party request, 40-byte subpacket); 0x01DD in friendlist_search only (296-byte search criteria payload). (d) 19 cluster opcodes UNOBSERVED across the 54-scenario corpus (movement, combat including party_battle_leve, emotes, leves, quests, gathering, crafting, gear changes, teleports, chat, inventory). These likely cover content outside the corpus: endgame raids, PvP (Wolves' Den, added late in 1.x lifecycle), companion commands, or sparse instance-specific abilities. (e) Other c2s opcodes catalogued via observedIn: 0x0001 (54/54, 56-byte tick), 0x012D (action use), 0x012E (120-byte inventory transaction, 71x in local_leve_complete, 43x in gather_wood, 13x in repair_items, 10x in sell_item), 0x012F (72-byte character config, appears in attributes/action_and_traits/change_bodyarmor/change_helm/change_to_botanist/gear_changeweapon/gear_changesoul - 4x each), 0x0133 (72-byte zone-transition request, heavy in gridania_to_coerthas=173x), 0x00CC + 0x00CD (40-byte NPC interaction / dialogue ack pairs), 0x0003 (576-byte chat message, chat_say + chat_shout), 0x00C9 (552-byte initial-state push in party_battle_leve + war_quest_update2). Refinements scope: replaced the 'TBD via pcap correlation' text on 27 catalog entries; 5 entries get observation-backed concrete roles, 19 get an 'UNOBSERVED' label that explicitly disambiguates the cluster naming (the lua-name-to-opcode-bridge-open pass static-scan grouping vs runtime grouping). Outbound bridge state: outbound c2s catalog gap of generic-labeled entries closed."
@@ -86038,7 +86130,7 @@
         "EV-0952",
         "EV-0889",
         "EV-1588",
-        "EV-1644",
+        "EV-1645",
         "EV-1638",
         "EV-1080",
         "EV-1101",
@@ -86170,7 +86262,7 @@
         "EV-0855",
         "EV-1066",
         "EV-1041",
-        "EV-1645",
+        "EV-1646",
         "EV-1636"
       ],
       "notes": "The event-condition-consumer-findings pass: event-condition consumer tracing. The receiver-apply-findings pass classified opcodes 0x012E/0x016B/0x016F/0x0131 as deferred-apply receivers that construct queued event-condition objects rather than mutating actor state directly. The event-condition-consumer-findings pass follows those constructed objects through their vftables to identify Lua-name firers in the consumer (queue-drain) chain.\n\nEvent-condition vftables identified (named by Ghidra symbol table via `*param_1 = Application::Lua::Script::Client::Event::<class>::vftable` constructor patterns):\n- NoticeBlock @ 0x01056E0C (ctor FUN_00892770)\n- NoticeNonBlock @ 0x01056E40 (ctor FUN_008927F0)\n- TalkBlock @ 0x01056F44 (ctor FUN_00892D00)\n- TalkNonBlock @ 0x01056F78 (ctor FUN_00892E30)\n- PushBlock @ 0x01056EDC (ctor FUN_00892980)\n- PushNonBlock @ 0x01056F10 (ctor FUN_00892B40)\n\nAll 6 share a 12-slot layout (0x00..0x2C, RTTI at 0x30). Shared base virtuals across all 6 classes:\n- Slot 0x04 (FUN_00897570): sets up Lua args, dispatches via `(**(code **)(*param_1 + 0x28))(...)` to per-class execute.\n- Slot 0x08 (FUN_00712B40): empty noop.\n- Slot 0x0C (FUN_00897660): FIRES `_onPreEvent` via FUN_00447260 + FUN_00CC7A90.\n- Slot 0x10 (FUN_008977B0): FIRES `_onPostEvent` via same.\n\nPer-family slot 0x14/0x18: kind getter + matcher returning ASCII char constants (Notice 0x012c3f7e, Talk 0x012c3f7a, Push 0x012c3f7b). Slot 0x1C: Block returns 1, NonBlock returns 0.\n\nPer-class slot 0x28 execute virtuals (dispatched by slot 0x04):\n- TalkBlock FUN_00892D70 fires `_onTalkEvent`\n- TalkNonBlock FUN_00892E90 fires `_onTalkRequest`\n- PushBlock FUN_00892A80 fires `_onPushEvent`\n- PushNonBlock FUN_00892C30 fires `_onPushRequest`\n- NoticeBlock FUN_008927E0: empty noop (no family-specific Lua fire; only base _onPreEvent/_onPostEvent for Notice).\n- NoticeNonBlock FUN_00892850: empty noop.\n\nBridge state delta (lua_to_opcode.json):\n- 10 NEW (luaName, opcode) bindings; 6 distinct Lua names bridged for the first time:\n - `_onPreEvent` <- 0x012E + 0x016B + 0x016F (via 6-class shared base slot 0x0C)\n - `_onPostEvent` <- 0x012E + 0x016B + 0x016F (via 6-class shared base slot 0x10)\n - `_onTalkEvent` <- 0x012E (via TalkBlock slot 0x28)\n - `_onTalkRequest` <- 0x012E (via TalkNonBlock slot 0x28)\n - `_onPushEvent` <- 0x016F (via PushBlock slot 0x28)\n - `_onPushRequest` <- 0x016F (via PushNonBlock slot 0x28)\n- luaNamesWithOpcode: 14 -> 20 (+6)\n- luaNamesWithApplyChainBinding: 5 -> 11 (+6)\n- NEW count: luaNamesWithDeferredApplyChainBinding = 6 (all 6 new firers tagged bindingFlavor='deferred_via_event_condition')\n- inboundOpcodesWithLuaName: 12 -> 15 (+3, the 3 event-condition opcodes were previously unbound)\n\nTooling:\n- New manifest: manifests/event_condition_consumer_findings.json (consumed by build_apply_chain_firers.py via FINDINGS_SOURCES list).\n- build_apply_chain_firers.py: added event_condition_consumer_findings.json source, propagates new `bindingFlavor` field per firer (default 'direct'; event_condition_consumer_findings.json entries use 'deferred_via_event_condition').\n- build_lua_to_opcode.py: propagates bindingFlavor into applyChainBindings[] and opcodes[] entries; adds luaNamesWithDeferredApplyChainBinding count.\n- xivl-opcodes/tools/extractors/inject_apply_chain_readers.py: also propagates bindingFlavor into client_receivers.json apply_chain_lua_readers entries.\n\n0x0131 EndClientOrderEvent (structurally different pattern - documented but yields no new bridge bindings):\n- 5-slot Receiver vtable at 0x01057348; slot1Fn FUN_0089D180 queues a NEW EndClientOrderEventReceiver instance (not a separate Block/NonBlock class) constructed by FUN_0089D070.\n- Consumer dispatch: slot 0x0C (FUN_0089E2D0) -> FUN_008A13A0 switch on byte at *param_1. Cases 0..5 load `*(param_2+0x18)` and sub-switch to FUN_006E1080/A0/C0/E0 thin wrappers which call FUN_008934A0/3520/35B0/3800. Cases 0x32..0x37 dispatch via FUN_008A10C0 sub-switch to FUN_006E1100/1120.\n- These deep handlers mutate state-flag bytes on a target object stored at *(receiver+8): writes to target+0x07, target+0x1c, target+0x1d, target+0x22; clears target ptr (*receiver+8) on completion.\n- NO Lua fires in this chain. NOT canonical CharaBase/PlayerBase/NpcBase actor-state writes; the target object class is unknown and has no N-API readers documented.\n- NO entries added to data_dependency_catalog.json or receiverWriteIndex; 0x0131 remains unbridged.\n\nStructural insight: The deferred-apply consumer trace for the 3 event-condition opcodes confirms the bridge has an additional binding tier weaker than direct apply-chain firers: the receiver constructs an event-condition object whose CONSUMER (queue drainer, presumably runs from the client tick loop or event queue) eventually fires the Lua callback. The bindingFlavor field distinguishes these from the direct apply-chain firers. The 3 newly-bridged opcodes (0x012E/0x016B/0x016F) had zero direct or indirect bindings before the event-condition-consumer-findings pass, so deferred firers are the only available evidence path. 0x0131 EndClientOrderEvent uses a self-class-queue pattern that touches only sub-object state flags and remains unbridged."
@@ -86702,7 +86794,7 @@
         "EV-0734",
         "EV-1045",
         "EV-0890",
-        "EV-1644"
+        "EV-1645"
       ],
       "notes": "The bridge-growth-and-ceiling pass: 0x0132 catalog-gap recovery. The reverse-bfs-send-helpers pass rejected ItemBase._updateWork only because opcode 0x0132 was absent from operation_opcode_map_outbound.json. Re-reading the reverse-bfs-send-helpers pass decomp shows FUN_0075eac0 writes opcode 0x0132 and size 0x18 into the stack packet record, then calls FUN_004d6d30. The known send path continues through FUN_004e0240 to FUN_00dae010.\n\nCatalog fix: added MapServerbound 0x0132 as ItemWorkUpdatePacket. The opcode literal and size are confirmed by decomp; the anchor name is tentative because the workspace search found only the clientbound opaque 0x0132 packet and no pre-existing serverbound implementation name.\n\nPromoted binding: ItemBase._updateWork -> 0x0132 size 0x18 via 0x0075EAC0 at reverse depth 1.\n\nTotals delta: outboundOpcodeBindings 10 -> 11, outboundDirectBindings 8 -> 9, outboundOpcodesWithDirectLuaEmit 4 -> 5.\n\nCatalog row: ItemWorkUpdatePacket / MapServerbound / confidence tentative."
     },
@@ -86923,7 +87015,7 @@
         "EV-0784",
         "EV-0904",
         "EV-1585",
-        "EV-1644",
+        "EV-1645",
         "EV-0266",
         "EV-0267"
       ],
@@ -86946,7 +87038,7 @@
         "EV-1006",
         "EV-0900",
         "EV-1585",
-        "EV-1644",
+        "EV-1645",
         "EV-0262",
         "EV-0268"
       ],
@@ -86971,7 +87063,7 @@
         "EV-1006",
         "EV-0900",
         "EV-1585",
-        "EV-1644",
+        "EV-1645",
         "EV-0269"
       ],
       "notes": "The unmapped-payload-decoding pass batch 2: observed-but-unmapped s2c payload decoding. Processed worklist candidates 11-20 and decoded all 10 payload structs (0x0132, 0x0148, 0x0149, 0x014b, 0x014e, 0x016d, 0x016e, 0x0177, 0x017a, 0x018b) with 27 top-level application-payload fields. This batch covers the inventory-list continuation group (0x0148/0x0149/0x014b/0x014e), InventoryBegin/EndChange (0x016d/0x016e), SetActorStatus (0x0177), SynchGroupWorkValues (0x017a), SetGroupLayoutID (0x018b), and the event-family 0x0132 packet. Decoded highlights: FUN_0076B760 establishes a reusable 0x70-byte InventoryItemRecord: uniqueId, quantity, itemId, slot/linkSlot, dealing bytes, three dealing attachments, tag/tagValue arrays, quality, a modifier-present byte, and a 0x40-byte modifier block. The x01/x08/x32 inventory list packets differ only in record count and the x08 count dword at payload+0x380. LinkedItemListX08 uses eight 6-byte linked-item rows plus a count dword at payload+0x30. SynchGroupWorkValues reads a u64 listId, a running-byte count, then a variable property stream. SetActorStatus uses the third router and stores a u16 status code by low-byte index. SetGroupLayoutID remains partially opaque in the first eight bytes, but the handler reads the group handle, localized name id, layout id, kind, and 34-byte layout-name string. UInt16 or UInt32. 0x0132 reaches an event vtable target"
@@ -86993,7 +87085,7 @@
         "EV-1006",
         "EV-0900",
         "EV-1585",
-        "EV-1644",
+        "EV-1645",
         "EV-0270"
       ],
       "notes": "The unmapped-payload-decoding pass batch 3: observed-but-unmapped s2c payload decoding. Processed worklist candidates 21-30 and decoded all 10 payload structs (0x013a, 0x013c, 0x014a, 0x017f, 0x0187, 0x0191, 0x0196, 0x0199, 0x019a, 0x019b) with 46 top-level application-payload fields. This batch covers battle result packets 0x013a/0x013c, InventoryListX16 0x014a, GroupMembersX08 0x017f, SetOccupancyGroup 0x0187, MassSetItemModifierEnd 0x0191, SetSpecialEventWork 0x0196, and the player achievement/chocobo vtable packets 0x0199/0x019a/0x019b.\n\nDecoded highlights: 0x013a reuses the CommandResult battle base and adds ten sparse action arrays: target ids, amounts, world-master-text ids, effect ids, params, and hit numbers. 0x013c is the zero-action sibling with only the source/animation/count/command/flag block. 0x014a is the 16-row sibling of the inventory-list family using the same 0x70-byte InventoryItemRecord proven in batch 2. 0x017f uses the decomp-backed GroupMembersX08 layout: u64 location/sequence header, eight 0x30-byte member entries, and a count dword at payload+0x190. 0x0196 exposes a packed flag byte plus eight u16 event-work slots.\n\nQuirks: 0x0187 remains partially opaque in the first 16 bytes but the decomp splits the occupancy work pair, localized name id, and 36-byte name string. 0x0199/0x019a/0x019b reach vtable calls after the third-router packet handoff, so field labels remain tentative rather than direct client loads inside the wrapper.",
@@ -87018,7 +87110,7 @@
         "EV-0900",
         "EV-0883",
         "EV-1585",
-        "EV-1644",
+        "EV-1645",
         "EV-0271"
       ],
       "notes": "The unmapped-payload-decoding pass batch 4: final observed-but-unmapped payload decoding. Processed worklist candidates 31-39 and decoded 9 payload structs (0x0143, 0x014d, 0x0152, 0x0189, 0x018a, 0x018f, 0x01a3, 0x01a7, 0x01cb) with 30 top-level application-payload fields. Eight entries are clientbound dispatcher payloads: DeleteGroup 0x0143, LinkedItemListX01 0x014D, InventoryRemoveX01 0x0152, CreateNamedGroupMultiple 0x0189, SetActiveLinkshell 0x018A, MassSetItemModifierBegin 0x018F, SetCutsceneBook 0x01A3, and SetPlayerDream 0x01A7. The ninth worklist row, 0x01CB, is decomp-backed as a serverbound Tier-D builder at FUN_004CA100 and is mirrored under c2s layouts. Decoded highlights: 0x0143 is the 32-byte delete-group tuple: control number, group id, zero id, and repeated group id. 0x014D and 0x0152 are compact inventory updates. 0x0189 uses eight 0x40-byte named-group rows plus a count byte at payload+0x200. 0x018A uses linkshell id and group-type arrays with a low-byte active-count/index at payload+0x60. 0x01A3 is the large SetCutsceneBook layout: companion SNPC control bytes, a packed cutscene bitset, and a 32-byte SNPC name at payload+0x109. 0x01A7 stores dreamId & 0x3f into the player dream bitfield after a vtable dispatch. Terminal status: The unmapped-payload-decoding pass has now processed all 39 observed-but-unmapped worklist rows across four batches. The final phase summary records 38 decoded payload structs and the single earlier unresolved 0x0147 entry, which still lacks a decomp-backed router case."
@@ -87159,7 +87251,7 @@
       "citations": [
         "EV-1005",
         "EV-0768",
-        "EV-1644"
+        "EV-1645"
       ],
       "notes": "The combat-damage-findings pass. Third-router switch on GameMessage opcode. The battle result cases route opcode 0x0139 to FUN_0058C880, opcode 0x013A to FUN_0058C930, opcode 0x013B to FUN_0058C990, and opcode 0x013C to FUN_0058C7D0 with the application payload at packet+0x10. This lifts the damage-feedback carrier from the earlier SetActorProperty hypothesis to the battle-result family for amount/effect popups; SetActorProperty remains the state-mutation carrier. Address corrected from 0x0018CCA0 to 0x0058CCA0 (+0x00400000) because the catalog stored an RVA without the PE image base; the corrected address matches the FUN_<hex> function entry Ghidra resolves at the corrected VA. | [hygiene act-on-c1-audit] Promoted probable -> confirmed. Same VA already confirmed by BCS-Y-0540 (the map-tick handler analysis CharaElement_Vftable9_Apply) and BCS-Y-0614 (the Pattern D subdispatcher analysis EventFamilyDispatcher_Parent)."
     },
@@ -163889,6 +163981,17 @@
     },
     {
       "id": "EV-1644",
+      "raw": "xivl-opcodes:docs/s2c-0144-state-route.md",
+      "category": "citation",
+      "resolution": "external-immutable",
+      "path": "xivl-opcodes:docs/s2c-0144-state-route.md",
+      "referencedBy": [
+        "BCS-S-0282",
+        "BCS-S-0508"
+      ]
+    },
+    {
+      "id": "EV-1645",
       "raw": "xivl-opcodes:opcodes.json",
       "category": "citation",
       "resolution": "external-immutable",
@@ -163914,7 +164017,7 @@
       ]
     },
     {
-      "id": "EV-1645",
+      "id": "EV-1646",
       "raw": "xivl-opcodes:tools/extractors/inject_apply_chain_readers.py",
       "category": "citation",
       "resolution": "external-immutable",
@@ -163924,7 +164027,7 @@
       ]
     },
     {
-      "id": "EV-1646",
+      "id": "EV-1647",
       "raw": "xivl-opcodes:tools/extractors/inject_indirect_lua_readers.py",
       "category": "citation",
       "resolution": "external-immutable",
