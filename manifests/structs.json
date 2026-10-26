@@ -1,7 +1,7 @@
 {
   "version": "2012.09.19.0001",
   "gameVersion": "1.23b",
-  "structCount": 503,
+  "structCount": 506,
   "structs": [
     {
       "id": "BCS-S-0001",
@@ -4499,7 +4499,8 @@
         "tools/ghidra/logs/c393_charaactor-owned-state-vtable-methods.txt",
         "tools/ghidra/logs/c394_charaactor-owned-state-container-lifecycle.txt",
         "BCS-S-0212",
-        "BCS-S-0214"
+        "BCS-S-0214",
+        "manifests/player_render_boundary.json"
       ],
       "fields": [
         {
@@ -4511,9 +4512,51 @@
         },
         {
           "offset": "0x4",
-          "size": "0x8C",
+          "size": "0x8",
           "name": "opaque_0004",
-          "type": "unknown[0x8C]",
+          "type": "unknown[0x8]",
+          "notes": "Bytes with no narrower member boundary established by the retained evidence."
+        },
+        {
+          "offset": "0xC",
+          "size": "0x4",
+          "name": "model_object",
+          "type": "SQEXCDevEngineFwSceneObjectModelObject *",
+          "notes": "SceneObject::Actor ModelObject pointer. Constructor 0x00A60B80 stores it; inherited CharaActor slot 34 at 0x00A5F8A0 reads it. The normal RaptureActor factory creates a 0x390-byte RaptureModelObject. The offset-zero Actor base is established by the pinned RTTI identity recorded in manifests/player_render_boundary.json method.actorBaseIdentity."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x8",
+          "name": "opaque_0010",
+          "type": "unknown[0x8]",
+          "notes": "Bytes with no narrower member boundary established by the retained evidence."
+        },
+        {
+          "offset": "0x18",
+          "size": "0x4",
+          "name": "character_controller",
+          "type": "SQEXCDevEngineFwSceneObjectControllersCharacterController *",
+          "notes": "Optional SceneObject::Actor controller pointer. Constructor 0x00A60B80 zeros it. CharaActor slot 68 at 0x007CD360 destroys the prior object, constructs a 0x14A0-byte RaptureCharacterController and stores it here. The transform fallback invokes controller slots 10 and 29."
+        },
+        {
+          "offset": "0x1C",
+          "size": "0x2C",
+          "name": "opaque_001c",
+          "type": "unknown[0x2C]",
+          "notes": "Bytes with no narrower member boundary established by the retained evidence."
+        },
+        {
+          "offset": "0x48",
+          "size": "0x4",
+          "name": "attached_transform_source_owner",
+          "type": "void *",
+          "notes": "Optional attached transform-source owner used by the slot-26 branch of 0x00A5FF60. Constructor 0x00A60B80 zeros it. Concrete type, member semantics and ownership lifetime remain unresolved."
+        },
+        {
+          "offset": "0x4C",
+          "size": "0x44",
+          "name": "opaque_004c",
+          "type": "unknown[0x44]",
           "notes": "Bytes with no narrower member boundary established by the retained evidence."
         },
         {
@@ -5462,7 +5505,7 @@
           "notes": "Bytes with no narrower member boundary established by the retained evidence."
         }
       ],
-      "notes": "Full byte-accounted CharaActor layout. Sole factory FUN_0079FAE0 allocates exactly 0x2BB0 before calling FUN_0065F180, closing the older 0x2BA4 minimum-only bound. Direct constructor/destructor evidence identifies the inline status-controller members, CharaActionController storage, heap CharaVisual pointer, action-state fields, and tail ownership fields. Opaque spans preserve unresolved inherited or helper-constructed storage without inventing member types.",
+      "notes": "Full byte-accounted CharaActor layout. Sole factory FUN_0079FAE0 allocates exactly 0x2BB0 before calling FUN_0065F180, closing the older 0x2BA4 minimum-only bound. Direct constructor/destructor evidence identifies the inline status-controller members, CharaActionController storage, heap CharaVisual pointer, action-state fields, and tail ownership fields. Opaque spans preserve unresolved inherited or helper-constructed storage without inventing member types. The SceneObject::Actor base has PMD (0,-1,0) in the pinned CharaActor RTTI, so inherited model/controller/source fields retain their Actor offsets. Their pointer-target base layouts remain partial; exact derived allocations do not establish base sizeof.",
       "id": "BCS-S-0060"
     },
     {
@@ -5949,7 +5992,11 @@
         "tools/ghidra/logs/c408_chara-status-slot-records.txt",
         "BCS-Y-0619",
         "tools/ghidra/logs/c417_chara-movement-state-records.txt",
-        "BCS-Y-1838"
+        "BCS-Y-1838",
+        "manifests/player_render_boundary.json",
+        "docs/bazaar-appearance-contract.md",
+        "xivl-decomp:docs/actor/player-nameplate-icons.md",
+        "xivl-decomp:docs/net/e3-state-index.md"
       ],
       "fields": [
         {
@@ -6458,20 +6505,20 @@
         },
         {
           "offset": "0xBA0",
-          "size": "0x004",
-          "name": "lua_interface_vftable",
-          "type": "void *",
-          "notes": "Vtable-bearing inline NamePlate subobject under the published construction contract in docs/bazaar-appearance-contract.md, Native NamePlate consumer. The default vtable is 0x00FCF98C; the complete tail layout remains opaque. xivl-decomp:docs/net/e3-state-index.md."
+          "size": "0x198",
+          "name": "name_plate_prefix",
+          "type": "ApplicationMainElementCharaNamePlate",
+          "notes": "Observed 0x198-byte prefix of the vtable-bearing inline NamePlate, not its complete sizeof. NamePlate constructor 0x006A3C00 and the bounded identity in manifests/player_render_boundary.json establish the receiver identity; its last modeled field is the pointer at prefix+0x194. Unknown gaps inside the prefix and all storage beyond it retain unresolved semantics."
         },
         {
-          "offset": "0xBA4",
-          "size": "0x34C",
-          "name": "opaque_ba4",
-          "type": "unknown[0x34C]",
-          "notes": "Helper-constructed tail region. The exact allocation closes at +0xEF0, but its internal class boundaries are not established on disk."
+          "offset": "0xD38",
+          "size": "0x1B8",
+          "name": "opaque_d38",
+          "type": "unknown[0x1B8]",
+          "notes": "Unresolved owner tail through exact allocation end +0xEF0. It may contain further NamePlate storage or other helper-owned state; the observed NamePlate prefix does not establish the class boundary here."
         }
       ],
-      "notes": "Full byte-accounted CharaElement layout. Sole factory FUN_00533540 allocates exactly 0xEF0 before calling FUN_0058B4E0 (BCS-Y-2054). Constructor loops establish the status-timer and event-record arrays; retained packet-handler evidence identifies the live position, movement, battle-effect queue, combat-status snapshot, rotation, and Lua-interface regions. Unresolved helper-owned spans remain opaque.",
+      "notes": "Full byte-accounted CharaElement layout. Sole factory FUN_00533540 allocates exactly 0xEF0 before calling FUN_0058B4E0 (BCS-Y-2054). Constructor loops establish the status-timer and event-record arrays; retained packet-handler evidence identifies the live position, movement, battle-effect queue, combat-status snapshot, and rotation regions. Constructor and presentation evidence identify the observed inline NamePlate prefix. Unresolved helper-owned spans remain opaque.",
       "id": "BCS-S-0066"
     },
     {
@@ -31931,6 +31978,239 @@
         }
       ],
       "id": "BCS-S-0503"
+    },
+    {
+      "name": "SQEXCDevEngineFwSceneObjectModelObject",
+      "namespace": "SQEX::CDev::Engine::Fw::SceneObject",
+      "size": "at least 0x29D",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "Partial base ModelObject layout. The observed byte at +0x29C establishes a minimum extent of 0x29D, not exact sizeof or alignment. RaptureModelObject is separately allocated as 0x390 bytes; its ModelObject base is at offset zero. Unknown internal runs and the unbounded trailing extent remain unresolved.",
+      "fields": [
+        {
+          "offset": "0x0",
+          "size": "0x4",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Base ModelObject vftable 0x0109CE2C; the normal RaptureModelObject installs 0x010653A4. These identify offset-zero ModelObject bases, not a single invariant dynamic class."
+        },
+        {
+          "offset": "0x30",
+          "size": "0x10",
+          "name": "position_record",
+          "type": "float[4]",
+          "notes": "Four-float [X,Y,Z,1] record returned by slot 17, sampled by CharaActor slot 34 and written by slots 13 and 16."
+        },
+        {
+          "offset": "0x50",
+          "size": "0x40",
+          "name": "cached_transform",
+          "type": "unknown[0x40]",
+          "notes": "Cached transform record written by slot 26 and returned or rebuilt by slot 25. Slot 13 can mirror the position record into its four lanes at absolute +0x80..+0x8F; those bytes belong to this member and are not a second overlapping field."
+        },
+        {
+          "offset": "0xD8",
+          "size": "0x4",
+          "name": "drawable",
+          "type": "void *",
+          "notes": "Attached drawable pointer used by slot 7. The pointed-to class layout and ownership lifetime remain unresolved."
+        },
+        {
+          "offset": "0x29C",
+          "size": "0x1",
+          "name": "dirty_flags",
+          "type": "uint8_t",
+          "notes": "Slot 26 sets bits 0x10, 0x01 and 0x02. Slot 7 tests bit 0x10 and clears bit 0x02 after conditional drawable publication."
+        }
+      ],
+      "id": "BCS-S-0504"
+    },
+    {
+      "name": "SQEXCDevEngineFwSceneObjectControllersCharacterController",
+      "namespace": "SQEX::CDev::Engine::Fw::SceneObject::Controllers",
+      "size": "at least 0x20",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json"
+      ],
+      "notes": "Partial base CharacterController layout. The +0x10 four-float value ends at +0x20; exact base sizeof and alignment remain unresolved. The normal CharaActor path allocates a separate 0x14A0-byte RaptureCharacterController whose CharacterController base is at offset zero. The observed base fields do not account for its full allocation.",
+      "fields": [
+        {
+          "offset": "0x0",
+          "size": "0x4",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Base constructor 0x00A68CB0 installs CharacterController vftable 0x0109D924. Derived constructor 0x007D49F0 replaces it with RaptureCharacterController vftable 0x00FEE17C."
+        },
+        {
+          "offset": "0x4",
+          "size": "0x4",
+          "name": "character_proxy",
+          "type": "void *",
+          "notes": "CharacterProxy pointer supplied to constructor 0x00A68CB0 and returned by slot 29 at 0x008D5570. The normal CharaActor path supplies a RaptureCharacterProxy."
+        },
+        {
+          "offset": "0x8",
+          "size": "0x4",
+          "name": "actor",
+          "type": "void *",
+          "notes": "SceneObject::Actor pointer supplied to constructor 0x00A68CB0. This is a backlink, not a claim that the controller heap-owns the actor or that every controller actor is a CharaActor."
+        },
+        {
+          "offset": "0xC",
+          "size": "0x4",
+          "name": "pending_position_operation",
+          "type": "uint32_t",
+          "notes": "Selector 0 means no queued operation; 1 absolute, 2 relative and 3 direct. Slot 10 at 0x00A68000 dispatches states 1..3 and clears this selector."
+        },
+        {
+          "offset": "0x10",
+          "size": "0x10",
+          "name": "pending_position_value",
+          "type": "float[4]",
+          "notes": "Four-float value supplied by queue slots 7, 8 and 9 and consumed according to the +0x0C selector."
+        }
+      ],
+      "id": "BCS-S-0505"
+    },
+    {
+      "name": "ApplicationMainElementCharaNamePlate",
+      "namespace": "Application::Main::Element::Chara",
+      "size": "minimum 0x198 observed extent",
+      "confidence": "confirmed",
+      "sourceRefs": [
+        "manifests/player_render_boundary.json",
+        "docs/bazaar-appearance-contract.md",
+        "docs/presentation-native-contract.md",
+        "xivl-decomp:docs/actor/player-nameplate-icons.md",
+        "xivl-decomp:config/ffxivgame.rtti.json",
+        "xivl-decomp:docs/net/e3-state-index.md"
+      ],
+      "fields": [
+        {
+          "offset": "0x000",
+          "size": "0x04",
+          "name": "vftable",
+          "type": "void *",
+          "notes": "Application::Main::Element::Chara::NamePlate vftable 0x00FCF98C, installed by constructor 0x006A3C00 at instruction 0x006A3C47."
+        },
+        {
+          "offset": "0x01C",
+          "size": "0x04",
+          "name": "icon_control_0",
+          "type": "void *",
+          "notes": "Constructor initializes this indexed pointer to null. This storage observation does not establish a supported Lua category zero."
+        },
+        {
+          "offset": "0x020",
+          "size": "0x04",
+          "name": "primary_left_icon_control",
+          "type": "void *",
+          "notes": "Constructor binds IconControl_PrimaryLeftIcon; corresponds to the observed category-1 control."
+        },
+        {
+          "offset": "0x024",
+          "size": "0x04",
+          "name": "primary_right_icon_control",
+          "type": "void *",
+          "notes": "Constructor binds IconControl_PrimaryRightIcon; corresponds to the observed category-2 control."
+        },
+        {
+          "offset": "0x028",
+          "size": "0x04",
+          "name": "secondary_left_icon_control",
+          "type": "void *",
+          "notes": "Constructor binds IconControl_SecondaryLeftIcon; corresponds to the observed category-3 control."
+        },
+        {
+          "offset": "0x02C",
+          "size": "0x04",
+          "name": "secondary_right_icon_control",
+          "type": "void *",
+          "notes": "Constructor binds IconControl_SecondaryRightIcon; corresponds to the observed category-4 control."
+        },
+        {
+          "offset": "0x030",
+          "size": "0x04",
+          "name": "cached_icon_id_0",
+          "type": "int32_t",
+          "notes": "Constructor 0x006A3C00 initializes this observed cached ID to -1. The setter addresses it through +0x30 + 4*category."
+        },
+        {
+          "offset": "0x034",
+          "size": "0x04",
+          "name": "cached_icon_id_1",
+          "type": "int32_t",
+          "notes": "Constructor 0x006A3C00 initializes this observed cached ID to -1. The setter addresses it through +0x30 + 4*category."
+        },
+        {
+          "offset": "0x038",
+          "size": "0x04",
+          "name": "cached_icon_id_2",
+          "type": "int32_t",
+          "notes": "Constructor 0x006A3C00 initializes this observed cached ID to -1. The setter addresses it through +0x30 + 4*category."
+        },
+        {
+          "offset": "0x03C",
+          "size": "0x04",
+          "name": "cached_icon_id_3",
+          "type": "int32_t",
+          "notes": "Constructor 0x006A3C00 initializes this observed cached ID to -1. The setter addresses it through +0x30 + 4*category."
+        },
+        {
+          "offset": "0x040",
+          "size": "0x04",
+          "name": "cached_icon_id_4",
+          "type": "int32_t",
+          "notes": "Constructor 0x006A3C00 initializes this observed cached ID to -1. The setter addresses it through +0x30 + 4*category."
+        },
+        {
+          "offset": "0x064",
+          "size": "0x04",
+          "name": "auto_attack_icon_control",
+          "type": "void *",
+          "notes": "Separate constructor control pointer associated with IconControl_AutoAttack; it is not a fifth _setNameplateIcon category."
+        },
+        {
+          "offset": "0x078",
+          "size": "0x10",
+          "name": "index_1_color",
+          "type": "float[4]",
+          "notes": "Four current color lanes written by slot 2 at 0x006A3AD0 for index 1 and read by slot 13 at 0x006A3560. The exact lane order is preserved; the alpha-first interpretation is inferred in docs/presentation-native-contract.md. The indexed formula alone does not establish a complete color-array bound."
+        },
+        {
+          "offset": "0x098",
+          "size": "0x10",
+          "name": "published_index_1_color",
+          "type": "float[4]",
+          "notes": "Slot 13 compares this four-float cache with +0x78..+0x87, publishes a changed color through 0x00938020, and copies the current values here. This is color comparison storage, with no position meaning."
+        },
+        {
+          "offset": "0x120",
+          "size": "0x04",
+          "name": "ui_pointer_120",
+          "type": "void *",
+          "notes": "Constructor 0x006A3C00 reads this pointer at 0x006A3E1A and copies it to +0x194 at 0x006A3E29. The bounded specimen identified both pointees as one Sqwt::Window; that observation does not establish the type or identity of every instance, ownership, or lifetime."
+        },
+        {
+          "offset": "0x190",
+          "size": "0x01",
+          "name": "state_flags",
+          "type": "uint8_t",
+          "notes": "Slot 19 at 0x006A2A60 updates bit 0x04, and slot 20 at 0x006A2A80 returns 1 when that bit is clear. This predicate alone does not prove +0x194 is nonnull or safe to dereference. No meaning is assigned to the other bits."
+        },
+        {
+          "offset": "0x194",
+          "size": "0x04",
+          "name": "ui_pointer_alias",
+          "type": "void *",
+          "notes": "Constructor clears this member and later copies +0x120 here. Slot 23 at 0x006A2E60 reads pointee+0x1AC as float32 and converts with CVTTSS2SI when slot 20 permits it, without a direct null check. The bounded specimen identified a Sqwt::Window and inherited ActualHeight; this is not a moving-anchor or universal ownership contract."
+        }
+      ],
+      "notes": "Partial layout of the inline NamePlate subobject at CharaElement+0xBA0. The observed prefix reaches +0x197 through the four-byte UI pointer at +0x194; 0x198 is a lower bound, not an exact sizeof. The exact 0xEF0 CharaElement allocation leaves 0x350 bytes from the subobject start, but does not close NamePlate or prove ownership of that full tail. Individual constructor-observed icon pointer/cache members and two four-float color records do not establish complete category or part-array bounds. The RTTI class is distinct from Application::Scene::Actor::Chara::CharaActor and from Sqwt::FrameworkElement. Pointer pointee classes, lifetimes and ownership remain narrower than the NamePlate receiver identity.",
+      "id": "BCS-S-0506"
     }
   ],
   "method": {
