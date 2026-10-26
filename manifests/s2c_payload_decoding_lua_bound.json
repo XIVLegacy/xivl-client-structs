@@ -126,7 +126,7 @@
           "type": "u8",
           "evidence": "%BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt:138-144",
           "name": "mode",
-          "note": "Apply chain writes the parsed u8 into CharaBase+0xdc+0x18 as the sub-stat mode/border value."
+          "note": "Application +0x04 is the separate u8 mode, zero-extended into CharaElement+0xFC. Its consumer through 0x00575290 -> 0x0075AA20 -> 0x008A3310 -> 0x007084E0 prepares _onChangeSubStatMode only when the new and previous mode bytes differ. CharaSubStatStorage+0x18 receives border (W >> 20) & 15 through the retained border variant, not this byte."
         },
         {
           "offset": 5,
@@ -148,13 +148,13 @@
           "evidence": "%BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1536-1552; %BCS_GHIDRA_PROJECTS%\\unverified_ctor_decomp.txt:1575-1582; %BCS_GHIDRA_PROJECTS%\\receive_slots_decomp.txt:138-144",
           "wrapperVa": "0x0075A9A0",
           "wrapperName": "FUN_0075a9a0",
-          "note": "The wrapper constructs a one-byte receiver value, and the apply method sends it to FUN_006EECB0, the CharaBase+0xdc+0x18 writer."
+          "note": "The wrapper receives the border byte derived as (W >> 20) & 15 from packed application +0x00 u32 W and constructs the one-byte receiver value. The apply method sends that value to FUN_006EECB0, the CharaBase+0xdc+0x18 writer. This retained variant is separate from the application +0x04 mode consumer."
         }
       ],
       "evidenceVa": "0x008A32C0",
       "evidenceSource": "receiver wrapper and apply decomp",
       "bcsyRef": "BCS-Y-0389",
-      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence."
+      "notes": "These receiver decompilations often parse packet bytes into short-lived CommandInterface receiver objects before the apply method mutates actor fields. fields[] records the wire application payload layout; receiverVariants preserve the constructor/apply evidence. For 0x0144, W stores to CharaElement+0xF8, mode u8 zero-extends into +0xFC u16, and motionPack u16 stores to +0xFE. After Lua callbacks the producer reloads these fields into the eight-byte Scene selector 0x3B u32/u16/u16 payload; intervening writes prevent an atomic wire snapshot. Application +0x05 is excluded from the internal mode word; its retained reserved label denotes an unresolved byte, not a required zero. The byte labels at +0..+3 view W and do not define independent enum domains or a status-row word. Source: xivl-opcodes:docs/s2c-0144-state-route.md."
     },
     "s2c_0x0145": {
       "direction": "s2c",

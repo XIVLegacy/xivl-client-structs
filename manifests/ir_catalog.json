@@ -41,7 +41,7 @@
     },
     {
       "path": "manifests/structs.json",
-      "sha256": "18bb166869ad6ee1b0438b0f0dc3964bf5d1c5676a0a5f5d6a6c4365f0eccab8"
+      "sha256": "939ae2b30c1b5a7f0a68bb1e4fbd55b24f7ab1c14481d4908d11f77652bd8363"
     },
     {
       "path": "manifests/symbols.json",
@@ -3426,7 +3426,7 @@
             "bytes": 1
           },
           "type": "uint8_t",
-          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "notes": "Structural byte view of packed little-endian u32 W at application +0x00, stored at CharaElement+0xF8. This label does not define an independent enum or effect.",
           "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
@@ -3443,7 +3443,7 @@
             "bytes": 1
           },
           "type": "uint8_t",
-          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "notes": "Structural byte view of packed little-endian u32 W at application +0x00, stored at CharaElement+0xF8. This label does not define an independent enum or effect.",
           "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
@@ -3460,7 +3460,7 @@
             "bytes": 1
           },
           "type": "uint8_t",
-          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "notes": "Structural byte view of packed little-endian u32 W at application +0x00, stored at CharaElement+0xF8. This label does not define an independent enum or effect.",
           "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
@@ -3477,7 +3477,7 @@
             "bytes": 1
           },
           "type": "uint8_t",
-          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "notes": "Structural byte view of packed little-endian u32 W at application +0x00, stored at CharaElement+0xF8. This label does not define an independent enum or effect.",
           "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
@@ -3494,7 +3494,7 @@
             "bytes": 1
           },
           "type": "uint8_t",
-          "notes": "Sub-stat mode or border value written into the actor sub-state record by the receiver path.",
+          "notes": "Separate u8 mode zero-extended into CharaElement+0xFC u16. The mode consumer prepares _onChangeSubStatMode only when the new and previous mode bytes differ. Border is (W >> 20) & 15 from packed application +0x00, not this byte.",
           "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
@@ -3511,7 +3511,7 @@
             "bytes": 1
           },
           "type": "unknown[0x01]",
-          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "notes": "Unresolved application byte, excluded from the internal Scene mode word at +0x04. Its retained structural span does not establish a required zero or effect.",
           "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         },
         {
@@ -3528,7 +3528,7 @@
             "bytes": 2
           },
           "type": "uint16_t",
-          "notes": "Retained structural label or unknown span; this receiver route proves consumption only of application byte 4. No enum or corresponding effect is established here.",
+          "notes": "Application u16 stored at CharaElement+0xFE and reloaded into internal Scene payload +0x06 after Lua callbacks. Intervening element writes may change the reloaded value; no enum or visible effect is established here.",
           "evidence": "manifests/s2c_payload_decoding_lua_bound.json#payloadStructs.s2c_0x0144"
         }
       ],
@@ -3539,9 +3539,10 @@
         "EV-1588",
         "EV-0963",
         "EV-0916",
-        "EV-1635"
+        "EV-1635",
+        "EV-1644"
       ],
-      "notes": "The eight-byte application retains seven contiguous structural members. The published receiver consumes only the mode byte at offset 4 on this route. Its zero-valued samples do not make it padding. Other retained labels, including chant_id at offset 1, do not establish enum values, effects, or a write to status-word bits 8..15. Offsets exclude the 16-byte game-message prefix. Selected-sample statistics remain in manifests/inbound_payload_schemas.json#schemas.0x0144; they do not establish semantic roles or required zeros."
+      "notes": "The eight-byte application retains seven contiguous structural members. The receive path stores application +0x00 u32 W, +0x04 mode u8 and +0x06 motionPack u16 at CharaElement+0xF8/+0xFC/+0xFE, widening mode to u16. A post-Lua reload builds the distinct Scene selector 0x3B u32/u16/u16 payload; application +0x05 is excluded, and intervening element writes prevent an atomic wire-snapshot guarantee. Border is (W >> 20) & 15, separate from the mode byte at offset 4. Its zero-valued samples do not make it padding. Other retained labels, including chant_id at offset 1, do not establish enum values, effects, or a write to status-word bits 8..15. Offsets exclude the 16-byte game-message prefix. Selected-sample statistics remain in manifests/inbound_payload_schemas.json#schemas.0x0144; they do not establish semantic roles or required zeros."
     },
     {
       "id": "BCS-S-0022",
@@ -163986,6 +163987,7 @@
       "resolution": "external-immutable",
       "path": "xivl-opcodes:docs/s2c-0144-state-route.md",
       "referencedBy": [
+        "BCS-S-0021",
         "BCS-S-0282",
         "BCS-S-0508"
       ]
