@@ -159,8 +159,12 @@ apply `0x0089E550`, and destructor `0x0089E6E0`
 
 `0x00775A30` and `0x00775180` consume a dynamic property stream. Each record
 has a one-byte type tag; the native thresholds distinguish record-update,
-property-set, end-marker and terminator records. The record-local four-byte
-property id is at `+0x12`, and the retained backward MurmurHash2 helper at
+property-set, end-marker and terminator records.
+
+On the property branch, the four-byte hash follows the one-byte width.
+The [incoming-work framing](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/script/job-action-acquisition.md#incoming-state-and-outgoing-work-requests)
+owns the application prefix and stream-relative field map. The retained
+backward MurmurHash2 helper at
 `0x00D31490` resolves observed ids from property paths
 (`manifests/symbols.json:667-676,2251-2261`). A fixed application offset for
 `bazaarRetail` or `bazaarRepair` is therefore not established: the property
