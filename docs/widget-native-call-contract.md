@@ -199,6 +199,9 @@ name, a second name and a property name. A Nil first argument selects
 `FUN_0073DF10` handles tags 0 through 4 with separate pickup builders. Any
 other tag, including Nil, performs no update.
 
+The [Sqwt Window input-property contract](sqwt-window-input-property.md)
+covers `SqwtIsEnableInput` registration, text parsing and conditional storage.
+
 `_setTextProperty` shares that name routing through `FUN_006E9AC0`. A Nil
 text identifier passes the static pickup at `0x0134BAA8`. Otherwise
 `FUN_006F4910` writes the literal `@` from `0x00FD4DC0` and the identifier.
