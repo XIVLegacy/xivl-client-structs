@@ -256,6 +256,93 @@ equal to the sentinel reaches `0x009D22B4`. Whether a null control reaches Lua
 as nil was not traced, because `0x00748B30` builds the cell through
 `0x0073DDD0`.
 
+## Widget delete override
+
+The nominal `WidgetBase` and `DesktopUtil` virtual `+0x70` target is
+`0x006E3A00`. If the actual callable is the registered ActorBase `_delete`,
+the holder cast is valid and virtual dispatch selects this entry, its three
+stack arguments are E (the engine handle), I (the identity address) and the
+context. Incoming this ECX is overwritten with E without being dereferenced;
+the context argument is unused.
+
+The override calls `0x00CC7510` with ECX=E, then reads X=[R] and Y=[X+4]
+from its returned address R. These are resolver-chain roles, not raw widget
+or SceneActor layout names. Under normal call/stack and pointer conditions,
+it makes these ordered requests:
+
+| Call site | Receiver and argument | Result use |
+|---|---|---|
+| `0x006E3A1B` | `0x007652D0`, ECX=[Y+0x114], I | Ignored; no success test before later requests |
+| `0x006E3A2E` | `0x0075B770`, ECX=[Y+4], pointer to a stack copy of dword[I] | Test only AL; predicate meaning is opaque |
+| `0x006E3A44`, AL nonzero | `0x0075BEC0`, ECX=[Y], pointer to a fresh stack copy of dword[I] | Ignored, then `RET 0x0C` |
+| `0x006E3A55`, AL zero | `0x0076A8E0`, ECX=[Y+0x100], unchanged I | Ignored, then `RET 0x0C` |
+
+The dword copies reuse a caller argument stack slot after E is no longer
+needed. They are not persistent object writes, and fresh reads need not
+observe the same identity word across opaque calls. The nonzero branch
+requests the already-published object lookup and virtual-slot-0 call with
+argument 1. Its scalar deleting-destructor role remains `INFERRED`; lookup
+success, exact object/part and completed destruction are not established.
+
+### Zero-AL key search and linking
+
+In `0x0076A8E0`, let S be entry ECX and I its single stack argument. It
+loads sentinel H=[S+4] and begins with N=[H]. Until N==H, it compares
+dword[N+8] with dword[I] and otherwise follows N=[N]. This searches one
+32-bit key, not a complete larger identity. Loop termination depends on
+readable links reaching a match or the sentinel; there is no iteration cap.
+
+A matching node skips insertion requests and direct list writes. A missing
+key refetches H=[S+4] and T=[H+4], then requests `0x00778580` with
+ECX=S and arguments `(H,T,I)`. It saves returned P, requests `0x00655700`
+with ECX=S and argument 1, then, after normal returns and preserved register
+state, writes [H+4]=P, loads Q=[P+4], and writes [Q]=P.
+
+Those pointer-link writes are direct observations. The builder's allocation,
+P contents, identity copy versus retention, ownership and `0x00655700`'s
+purpose remain opaque. The caller does not itself store the key into a node.
+It has no local null/success check of P before the writes and dereference.
+The complete body has redundant ordinary-entry owner comparisons and
+`0x009D22B4` error-call paths after earlier S/H dereferences; they do not
+provide a pre-dereference graph check. No local handler or rollback is shown.
+
+The helper returns with `RET 4` without constructing a defined success
+result. Neither selected body has an explicit Lua-stack or yield operation.
+Opaque calls, faults or nonreturn can prevent later requests, link writes or
+normal return. This is not proof of a queue purpose, immediate deletion,
+identity lifetime transfer or completed effects.
+
+### Binding and evidence limits
+
+The [registered-key contract](binding-map-native-contract.md#registered-key)
+records a `STATIC` registered-name-plus-`_cpp` construction sequence, while
+its equality to the installed table key and descriptor-resolver string is
+`INFERRED`. The published
+[WidgetBase registered-parent proof](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/script/widget-work-members.md)
+records nominal `WidgetBaseClass` to `ActorBaseClass` registration at
+`0x0075FD73..0x0075FE10`. The
+[descriptor bridge](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/script/lua-call-function-bridge.md)
+owns class-table, parent and alias lookup. These do not prove an actual p2,
+key, callable, alias, cast, override or native object/part reach. The original
+ActorBase registration, empty argument/result lists and no-yield declaration
+remain the contract above. These Control-class entries are not joined to a
+SceneActor slot with the same numeric offset.
+
+The first new opaque request is `0x007652D0`; predicate `0x0075B770` and
+missing-key requests `0x00778580`/`0x00655700` remain untraced. Reproduction
+uses the pinned retail PE in this page's binary section and these complete
+start-inclusive, end-exclusive intervals:
+
+| Source | VA interval | Bytes | SHA-256 |
+|---|---|---:|---|
+| WidgetBase/DesktopUtil override | `[0x006E3A00,0x006E3A5F)` | 95 | `534e06362718a803001b05656e3f02e7603e8af6a85b71a38a7a9a81a8950ee7` |
+| Zero-AL key helper | `[0x0076A8E0,0x0076A94F)` | 111 | `42a6b3e14a090f43128df280d16f0811a759225475ddcf846d83876b95a9c704` |
+
+Static PE mapping and Capstone `5.0.7` x86 decoding covered both complete
+bodies and their local branches/loops and `RET 0x0C`/`RET 4` exits. Engine
+root/container meanings, callee effects and actual binding/lifetime remain
+qualified; no runtime delivery was observed.
+
 ## Group natives
 
 Both group natives work on the group data pointer at the receiver `+0x68`.
