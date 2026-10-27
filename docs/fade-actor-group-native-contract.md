@@ -378,9 +378,9 @@ ECX=S and arguments `(H,T,I)`. It saves returned P, requests `0x00655700`
 with ECX=S and argument 1, then, after normal returns and preserved register
 state, writes [H+4]=P, loads Q=[P+4], and writes [Q]=P.
 
-Those pointer-link writes are direct observations. The builder's allocation,
-P contents, identity copy versus retention, ownership and `0x00655700`'s
-purpose remain opaque. The caller does not itself store the key into a node.
+Those pointer-link writes are direct observations. The builder and field
+update are qualified below. Allocation success, extent and ownership remain
+unproved. The caller does not itself store the key into a node.
 It has no local null/success check of P before the writes and dereference.
 The complete body has redundant ordinary-entry owner comparisons and
 `0x009D22B4` error-call paths after earlier S/H dereferences; they do not
@@ -391,6 +391,73 @@ result. Neither selected body has an explicit Lua-stack or yield operation.
 Opaque calls, faults or nonreturn can prevent later requests, link writes or
 normal return. This is not proof of a queue purpose, immediate deletion,
 identity lifetime transfer or completed effects.
+
+### Missing-key builder and key copy
+
+In `0x00778580`, let S be entry ECX and H, T, I its three stack arguments.
+It saves S and installs an FS:[0] frame. At `0x007785B6` it requests
+`0x0044D500` with stack arguments `(0x0C,0,0x23)`, with ECX still holding
+its entry value, then performs caller cleanup of 12 bytes. It saves returned
+EAX as B. Calling this allocation is an interpretation. The callee's behavior,
+success, returned storage extent, provenance and ownership remain opaque.
+
+At `0x007785CA..0x007785D1`, nonzero B permits a store of the then-current
+first argument to dword[B]. Independently, `0x007785D3..0x007785DD` tests
+the 32-bit expression B+4 and, when nonzero, stores the then-current second
+argument there. B==0 skips only the first store. B+4 then equals address 4,
+so this is not a safe null-result path. The B+4 and B+8 expressions can wrap.
+
+At `0x007785EA` it requests `0x00777800` with arguments `(B+8,I)`, loading
+the then-current third argument I and setting ECX=S+2. The helper does not
+use incoming ECX. It returns its first argument D in EAX and uses `RET 8`.
+For D==0 it skips the store. Otherwise it reads K=dword[I] and writes
+dword[D]=K, without a source-pointer check, further field copy or persistent
+store of I itself. In this composition it copies one current 32-bit key
+to B+8. This establishes neither a larger identity nor equality to an earlier
+key observation.
+
+The builder does not test the helper result. Its normal epilogue sets frame
+state to -1, restores FS:[0] and saved registers, and returns B with
+`RET 0x0C`. Under ordinary nonwrapping, nonaliasing, readable/writable and
+normal-call premises, its visible node words are `(H,T,K)` at offsets 0, 4,
+and 8, and P=B. Independent destination tests provide no whole-block or
+source-pointer validity guarantee. Faults or opaque-call nonreturn can
+prevent later stores or normal return.
+
+### Checked field update and insertion
+
+In `0x00655700`, let C be entry ECX, A=dword[C+8], and D its single 32-bit
+stack argument. It installs an FS:[0] frame and compares unsigned
+U=0xFFFFFFFF-A with D. If U>=D, the branch at `0x00655732` reaches
+`0x0065577E` without making a call. It adds D to A, stores the sum at C+8
+at `0x00655780`, and returns full EAX=A+D with `RET 4`. This guard excludes
+unsigned addition overflow. With C=S and D=1 from the missing-key caller,
+the direct path increments S+8 when A<=0xFFFFFFFE. The update has no atomic
+or locked instruction, saturation or Boolean normalization.
+
+If U<D, the function initializes stack storage and requests `0x00404120`
+at `0x00655754`, `0x00404390` at `0x0065576A`, and `0x009D1B9F` at
+`0x00655779`. Constants `0x00F639A0` and `0x011A9088` are passed, with
+their payloads uninspected. The callees remain opaque. If the final call
+returns to its following instruction, control falls through to the common
+add/store. This does not guarantee a store using the original C, A or D:
+the calls can change volatile ECX/EAX/EDX and stack state. Throw, fault and
+nonreturn remain possible, without proving that any of them occurs.
+
+Under the valid matching graph, nonaliasing and normal-call premises, the
+builder supplies P with words `(H,T,K)`, then the capacity-pass update
+increments S+8 before the caller writes [H+4]=P and [Q]=P. Here Q=[P+4]=T.
+The matching-key path still skips these requests and stores. A list-shaped
+insertion and the meaning of S+8 as a count are `INFERRED` from this sequence.
+The actual S/H/T/I/B graph, aliasing, concurrent changes, allocation behavior
+and binding reach remain conditional. It proves no queue purpose, deletion
+schedule, destruction or lifetime result.
+
+The builder and field update register FS:[0] frames, but the handler records
+and associated cleanup were not interpreted. Their selected bodies contain
+no explicit rollback of earlier stores. This says nothing about uninspected
+unwind behavior or fault recovery. No explicit Lua-stack or yield operation
+appears in these bodies.
 
 ### Binding and evidence limits
 
@@ -408,8 +475,8 @@ ActorBase registration, empty argument/result lists and no-yield declaration
 remain the contract above. These Control-class entries are not joined to a
 SceneActor slot with the same numeric offset.
 
-The missing-key requests `0x00778580`/`0x00655700`, their purposes and
-effects remain untraced. Reproduction uses the pinned retail PE in
+The `0x0044D500` request and the callees on the overflow branch remain
+opaque. Reproduction uses the pinned retail PE in
 this page's binary section and these complete
 start-inclusive, end-exclusive intervals:
 
@@ -436,6 +503,19 @@ their local branches, loop and tail transfer. The `0x00535690` meaning above
 uses the linked published query contract. The selected stores do not prove
 container purpose, ownership, identity generation, completed deletion or
 lifetime.
+
+The builder, field update and key-copy observations use these complete
+intervals:
+
+| Source | VA interval | Bytes | SHA-256 |
+|---|---|---:|---|
+| Missing-key builder | `[0x00778580,0x0077860C)` | 140 | `6562b409e73f028e6cc78bea8820b476283467a669c9d85c3e512ae53c508661` |
+| Checked field update | `[0x00655700,0x00655796)` | 150 | `6c24d9efef53d03a6f1eeaa247f070bc4a6e70540ac86711bc1a187d091897e9` |
+| One-word copy helper | `[0x00777800,0x00777813)` | 19 | `8de44ff1239c5800f279e2142606ecdbaea9d748bc08545bdc7362b505481d8c` |
+
+Static PE mapping and Capstone `5.0.7` x86 decoding covered these complete
+bodies and their branches, calls and normal exits. Allocation and overflow
+callees, referenced data and FS handler behavior remain uninspected.
 
 ## Group natives
 

@@ -878,16 +878,90 @@
           ]
         },
         {
+          "tier": "STATIC",
+          "claim": "The complete builder is [0x00778580,0x0077860C), 140 bytes, SHA-256 6562b409e73f028e6cc78bea8820b476283467a669c9d85c3e512ae53c508661. With S=entry ECX and stack arguments H,T,I, it saves S and installs an FS:[0] frame. At 0x007785B6 it requests 0x0044D500 with stack arguments (0x0C,0,0x23), with ECX not overwritten before the request, then performs caller cleanup of 12 bytes and saves returned EAX as B. The callee is opaque; the literal 0x0C does not establish an allocation extent, success, provenance or ownership.",
+          "locators": [
+            "0x00778580..0x0077860C",
+            "0x007785B6"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "At 0x007785CA..0x007785D1, nonzero B permits a store of the then-current first argument to dword[B]. Independently, 0x007785D3..0x007785DD tests the 32-bit expression B+4 and, when nonzero, stores the then-current second argument there. B==0 skips only the first store, leaving B+4==4 for the second destination if execution continues. B+4 and B+8 can wrap. These are independent destination tests, not a safe null-result path or whole-block validity check.",
+          "locators": [
+            "0x007785CA..0x007785DD",
+            "0x007785DF..0x007785EA"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "At 0x007785EA the builder requests 0x00777800 with arguments (B+8,I), loading the then-current third argument I and setting ECX=S+2. The complete helper is [0x00777800,0x00777813), 19 bytes, SHA-256 8de44ff1239c5800f279e2142606ecdbaea9d748bc08545bdc7362b505481d8c. Incoming ECX is unused. It returns its first argument D in EAX with RET 8. D==0 skips the store; otherwise it reads K=dword[I] and writes dword[D]=K, without a source-pointer check, call, further field copy or persistent store of I itself. In this composition it copies one current 32-bit key to B+8 rather than retaining I in that visible field; it proves neither a larger identity nor equality to an earlier key observation.",
+          "locators": [
+            "0x007785EA",
+            "0x00777800..0x00777813"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The builder does not test the copy-helper result. Its normal epilogue sets the local frame state to -1, returns B in EAX, restores FS:[0] and saved registers, and uses RET 0x0C. Under ordinary nonwrapping, nonaliasing, readable/writable and normal-call premises, the visible node words are (H,T,K) at offsets 0,4,8 and the caller receives P=B. Faults or opaque-call nonreturn can prevent later stores or normal return; no success Boolean or valid allocation is established.",
+          "locators": [
+            "0x007785EF..0x0077860C"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The complete field update is [0x00655700,0x00655796), 150 bytes, SHA-256 6c24d9efef53d03a6f1eeaa247f070bc4a6e70540ac86711bc1a187d091897e9. With C=entry ECX, A=dword[C+8] and D=the single 32-bit stack argument, it compares unsigned U=0xFFFFFFFF-A with D. U>=D branches at 0x00655732 to 0x0065577E without any call, adds D to A, stores dword[C+8]=A+D at 0x00655780, and returns full EAX=A+D with RET 4. This guard excludes unsigned addition overflow. With C=S and D=1 from the missing-key caller, the direct path increments S+8 when A<=0xFFFFFFFE. No atomic/locked instruction, saturation or Boolean normalization is present.",
+          "locators": [
+            "0x00655700..0x00655796",
+            "0x00655732",
+            "0x0065577E..0x00655793",
+            "0x0076A938"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "When U<D, 0x00655700 initializes stack storage and requests 0x00404120 at 0x00655754, 0x00404390 at 0x0065576A and 0x009D1B9F at 0x00655779. Constants 0x00F639A0 and 0x011A9088 are passed, with their payloads uninspected. These callees remain opaque. If the last call returns to its following instruction, execution falls through to the common add/store. That does not guarantee use of the original C/A/D because the calls can change volatile ECX/EAX/EDX and stack state. Throw, fault or nonreturn remains possible, without establishing any of them.",
+          "locators": [
+            "0x00655754",
+            "0x0065576A",
+            "0x00655779..0x00655780"
+          ]
+        },
+        {
+          "tier": "INFERRED",
+          "claim": "Under valid matching graph, nonaliasing, nonwrapping and normal-call premises, the missing-key builder supplies P with words (H,T,K), then the capacity-pass 0x00655700(S,1) update increments S+8 before the caller writes [H+4]=P, loads Q=[P+4]=T and writes [Q]=P. The matching-key path still skips these requests and stores. A list-shaped insertion with a copied 32-bit key and the meaning of S+8 as a count are interpretations of this sequence. Actual graph/alias/concurrency, opaque allocation behavior and caller/binding reach remain conditional; no queue purpose, deletion schedule, destruction or lifetime result is established.",
+          "locators": [
+            "0x0076A8E0..0x0076A94F",
+            "0x00778580..0x0077860C",
+            "0x00777800..0x00777813",
+            "0x00655732",
+            "0x0065577E..0x00655793"
+          ]
+        },
+        {
+          "tier": "STATIC",
+          "claim": "The builder and field update register FS:[0] frames and reference handler constants, but the associated records/handlers and cleanup behavior were not interpreted. Their selected bodies have no explicit rollback of earlier node or field stores and no explicit Lua-stack/yield operation. This does not establish uninspected unwind behavior, normal return, valid allocation or fault recovery.",
+          "locators": [
+            "0x00778580..0x0077860C",
+            "0x00655700..0x00655796"
+          ]
+        },
+        {
           "tier": "unknown",
-          "claim": "The payload/writers and semantic role of global 0x0130C778, preparation-container purpose, valid fixed span/alignment, stable input/non-aliasing, actual L/null/type/map/layout/query-frame and key/value-time correspondence, stored pointer readability/ownership/lifetime remain unproved. No invalid-ID sentinel is assigned to the global read. Builder 0x00778580, helper 0x00655700, P contents, allocation, identity copy versus retention, ownership and any queue purpose remain opaque. Slot updates, a nonzero stored pointer and pointer linking do not prove immediate deletion, completed destruction or lifetime transfer. Actual p2/key/callable/alias/cast/virtual-target/object reach and runtime delivery remain conditional.",
+          "claim": "The payload/writers and semantic role of global 0x0130C778, preparation-container purpose, valid fixed span/alignment, stable input/non-aliasing, actual L/null/type/map/layout/query-frame and key/value-time correspondence, stored pointer readability/ownership/lifetime remain unproved. No invalid-ID sentinel is assigned to the global read. The behavior, success, returned storage extent, provenance and ownership of the 0x0044D500 request, the overflow-path callees/data and FS handler/unwind effects remain opaque. List shape and the S+8 count role are inferred, not named container semantics. Slot updates, a nonzero stored pointer, key copying, a field increment and pointer linking do not prove queue purpose, deletion schedule, immediate deletion, completed destruction or lifetime transfer. Actual S/H/T/I/B graph, alias/concurrency, p2/key/callable/alias/cast/virtual-target/object reach and runtime delivery remain conditional.",
           "locators": [
             "0x0130C778",
             "0x007652D0",
             "0x0075B770",
             "0x00535CE0",
             "0x00535690",
+            "0x0044D500",
             "0x00778580",
-            "0x00655700"
+            "0x00777800",
+            "0x00655700",
+            "0x00404120",
+            "0x00404390",
+            "0x009D1B9F"
           ]
         }
       ],
