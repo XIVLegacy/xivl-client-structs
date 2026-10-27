@@ -273,7 +273,7 @@ it makes these ordered requests:
 | Call site | Receiver and argument | Result use |
 |---|---|---|
 | `0x006E3A1B` | `0x007652D0`, ECX=[Y+0x114], I | Ignored; no success test before later requests |
-| `0x006E3A2E` | `0x0075B770`, ECX=[Y+4], pointer to a stack copy of dword[I] | Test only AL; predicate meaning is opaque |
+| `0x006E3A2E` | `0x0075B770`, ECX=[Y+4], pointer to a stack copy of dword[I] | Test only AL; conversion and conditional pointer query below |
 | `0x006E3A44`, AL nonzero | `0x0075BEC0`, ECX=[Y], pointer to a fresh stack copy of dword[I] | Ignored, then `RET 0x0C` |
 | `0x006E3A55`, AL zero | `0x0076A8E0`, ECX=[Y+0x100], unchanged I | Ignored, then `RET 0x0C` |
 
@@ -283,6 +283,86 @@ observe the same identity word across opaque calls. The nonzero branch
 requests the already-published object lookup and virtual-slot-0 call with
 argument 1. Its scalar deleting-destructor role remains `INFERRED`; lookup
 success, exact object/part and completed destruction are not established.
+
+### Preparation scan
+
+In `0x007652D0`, let P be entry ECX and I its single stack argument.
+It loads cursor B=[P+0x0C], tests unsigned B<=[P+0x10], saves D=P+8,
+captures endpoint E=[D+8], and tests unsigned [D+4]<=E. Failed bounds
+tests call `0x009D22B4`. These reads precede any null or type validation.
+
+The loop stops at cursor==captured E. Before each record access, it tests
+unsigned cursor against the freshly read current endpoint [D+8], calling
+`0x009D22B4` unless cursor is strictly below it. It compares dword[cursor]
+with a fresh dword[I]. On equality it repeats that guard, loads the current
+dword at `0x0130C778` at `0x0076531C`, stores it to dword[cursor] at
+`0x00765322`, and clears byte[cursor+4] at `0x00765324`. It checks the
+current endpoint again before advancing the cursor by 8. Under valid fixed
+bounds, the loop visits the eight-byte slots up to captured E and continues
+after a match.
+
+The global payload was not inspected, so this store has no assigned
+invalid-ID or sentinel meaning. Both dword[I] and the global payload are
+fresh reads. If I aliases changed storage, a later comparison can use a
+different key. Describing all original matches therefore requires a stable
+input premise. The selected instructions directly write only the matching
+dword and byte+4, leaving bytes+5..+7 and the begin/end fields untouched.
+They do not erase a slot, shrink the container, free memory or request a
+destructor. The span, alignment and pointer graph remain conditional.
+
+The ordinary-entry owner comparison is tautological. The only direct calls
+are the conditional error calls, with no local handler or rollback. A fault
+or nonreturn can leave earlier stores in place. Normal exit uses `RET 4`
+without constructing a defined success result. After normal return, the
+override takes its later key snapshot and requests the predicate regardless
+of the preparation result. That snapshot need not equal the key seen before
+preparation.
+
+### AL conversion and indexed record query
+
+In `0x0075B770`, let Q be entry ECX and A the pointer to the caller's key
+copy. It loads K=dword[A] and R0=[Q], then requests `0x004D9910` with
+ECX=R0 and scalar argument K. It forwards the returned EAX=L without a null
+test. At `0x0075B77E` it overwrites its argument slot with 0, sets ECX=L,
+and tail-jumps to `0x00535CE0` at `0x0075B788`. Under the normal native
+frame convention, the original key-pointer slot supplies the literal 0 to
+the tail helper. The wrapper has no local pointer/type/key guard, `RET` or
+AL normalization.
+
+The helper requests `0x00535690(L,0)` at `0x00535CE5`, then tests the full
+returned EAX at `0x00535CEA`, sets AL with `SETNE` at `0x00535CEC`, and
+uses `RET 4` at `0x00535CEF`. For its actual full 32-bit result r:
+
+```text
+AL = 1 if r != 0, otherwise 0
+EAX = (r & 0xFFFFFF00) | (1 if r != 0 else 0)
+```
+
+The upper 24 bits remain those of r. Full EAX is not normalized to 0/1,
+and the override tests only AL. Opaque calls, faults or nonreturn can prevent
+the conversion or normal return. The wrapper/helper has no direct persistent
+store, explicit Lua-stack/yield operation, local handler or rollback.
+
+The pointer-query interpretation reuses these published observations:
+
+- The [visibility property path](native-input-ui-boundaries.md#visibility-property-path)
+  records `0x00535690` resolving an index through valid engine E+0xD4 and
+  returning the stored pointer at map-node+0x10 without a lifetime lease.
+- The [indexed context contract](widget-item-consumer-contract.md#indexed-context-and-property-receiver)
+  identifies that stored container pointer and the separate per-name map at
+  engine+0xEC.
+- The [form-wait contract](autotranslate-selection-contract.md#recovered-chat-boundary)
+  uses the same `0x00535690(E,0)` query for a nonzero indexed record for
+  identifier 0.
+
+If actual L matches that engine, map, layout and query frame, r is the stored
+index-0 record pointer, and AL tests whether its value is nonzero. This
+conditional composition is `INFERRED` from the selected conversion and the
+published static query contract. Actual L, null/type validity, key/value-time
+correspondence, map state, readability, ownership and lifetime remain
+unproved. It supplies no generic exists, loaded or ready predicate. The
+shared form-wait query does not identify this L as that wait's E or establish
+actual loading, resume, wait completion, callback completion or destruction.
 
 ### Zero-AL key search and linking
 
@@ -328,9 +408,9 @@ ActorBase registration, empty argument/result lists and no-yield declaration
 remain the contract above. These Control-class entries are not joined to a
 SceneActor slot with the same numeric offset.
 
-The first new opaque request is `0x007652D0`; predicate `0x0075B770` and
-missing-key requests `0x00778580`/`0x00655700` remain untraced. Reproduction
-uses the pinned retail PE in this page's binary section and these complete
+The missing-key requests `0x00778580`/`0x00655700`, their purposes and
+effects remain untraced. Reproduction uses the pinned retail PE in
+this page's binary section and these complete
 start-inclusive, end-exclusive intervals:
 
 | Source | VA interval | Bytes | SHA-256 |
@@ -342,6 +422,20 @@ Static PE mapping and Capstone `5.0.7` x86 decoding covered both complete
 bodies and their local branches/loops and `RET 0x0C`/`RET 4` exits. Engine
 root/container meanings, callee effects and actual binding/lifetime remain
 qualified; no runtime delivery was observed.
+
+The preparation and conversion observations use these complete intervals:
+
+| Source | VA interval | Bytes | SHA-256 |
+|---|---|---:|---|
+| Preparation scan | `[0x007652D0,0x0076533E)` | 110 | `46c5eda43159d4acd368959242366510ee2af426b9703bbd929f18533d844900` |
+| Predicate wrapper | `[0x0075B770,0x0075B78D)` | 29 | `fbb90c030a8632c61fee6decb0b39e5d657a5bab4e207e38e47ef50c95304b9d` |
+| AL conversion helper | `[0x00535CE0,0x00535CF2)` | 18 | `a979555513cf317c093694f6ac50daea1ddc250a215d71a78ad015dc12667176` |
+
+Static PE mapping and Capstone `5.0.7` x86 decoding covered these bodies and
+their local branches, loop and tail transfer. The `0x00535690` meaning above
+uses the linked published query contract. The selected stores do not prove
+container purpose, ownership, identity generation, completed deletion or
+lifetime.
 
 ## Group natives
 
