@@ -400,10 +400,10 @@ is an additional client-side predicate, not proof of server membership.
 On selector mismatch or zero `AL`, `0x006C3EC9` calls `0x0067B180` with the
 address of the local pair in `ECX`. After normal return the getter reloads
 both fields and branches back to its candidate checks (`0x006C3ECE`-
-`0x006C3ED6`). The callee's update effects were not traced, so this establishes
-a next-iteration branch, without establishing advancement, traversal order or
-termination. Candidate/container guards also call `0x009D22B4`, the existing
-invalid-parameter route. Their process effects were not established.
+`0x006C3ED6`). The [pair update helper](#pair-update-helper) directly changes
+the second field through conditional pointer walks. Candidate/container guards
+also call `0x009D22B4`, the existing invalid-parameter route. Their process
+effects were not established.
 
 The two result paths directly write these dword lanes of the first argument:
 
@@ -431,8 +431,61 @@ contiguously. The range SHA-256 is
 `097f2ce7d6a55ad675fa13564368c475b832b2479d253a78bbe130d94c3f9d76`.
 The executable identity and section-table method are the ones in
 [Binary and method](#binary-and-method). Transitive callee effects are limited
-to the cited contracts. The local-pair helper effects and runtime behavior
-remain unobserved.
+to the cited contracts and the direct helper observation below. Diagnostic
+effects and runtime behavior remain unobserved.
+
+#### Pair update helper
+
+For `0x0067B180`, let `I` be entry `ECX`, `C = [I]` and `N = [I+4]`.
+At the getter call, `I` addresses the local pair. The helper tests `C` against
+zero at `0x0067B183` and calls `0x009D22B4` at `0x0067B188` if it is zero.
+If that call returns with the expected stack and saved-register convention,
+execution continues without rechecking `C`. The helper does not directly
+dereference `C` to find a root or endpoint.
+
+It loads `N` at `0x0067B18D` and tests byte `[N+0x21]`. A nonzero byte
+restores `ESI` and tail-jumps to `0x009D22B4` at `0x0067B197`, without a
+direct pair store. That target's return behavior, result and indirect effects
+were not established. A zero byte selects these direct pointer walks:
+
+| Initial condition | Direct walk and pair update | VAs |
+| --- | --- | --- |
+| For `Q = [N+8]`, byte `[Q+0x21] == 0` | Form `L = [Q]`. While byte `[L+0x21] == 0`, set `Q = L` and reload `L = [Q]`. Store the last `Q` to `[I+4]`, leaving the first `L` whose flag byte is nonzero in `EAX`. | `0x0067B19C`-`0x0067B1BE` |
+| Byte `[Q+0x21] != 0` | Set `A = [N+4]`. While byte `[A+0x21] == 0` and current `[I+4] == [A+8]`, store `A` to `[I+4]` and reload `A = [A+4]`. Store the first `A` with a nonzero flag or an unequal link to `[I+4]`, also leaving it in `EAX`. | `0x0067B1BF`-`0x0067B1E2` |
+
+The only direct non-stack stores are dwords to `[I+4]` at `0x0067B1BA`,
+`0x0067B1D0` and `0x0067B1DE`. The second walk performs its intermediate
+stores before reading the next `+0x04` link. Neither direct path writes
+`[I]`, a separate root or a separate node. Aliasing can make a pair store
+affect another object; disjointness was not established. Both direct paths
+restore `ESI` and use a plain `ret`. The getter uses the reloaded pair field,
+not this helper's `EAX`, as its next candidate.
+
+Treating node `+0x00`, `+0x04` and `+0x08` as left, parent and right links,
+and byte `+0x21` as an endpoint flag, gives an `INFERRED` binary tree successor
+interpretation. The helper does not compare keys or prove that those links
+form a tree. Pointer validity, stable links/flags, finite acyclic paths,
+parent/child consistency and compatible endpoints are additional requirements.
+Its loops have no iteration cap or cycle check. Arbitrary link arrangements
+can loop or return the entry candidate, so strict advancement, key order and
+termination are not unconditional results.
+
+The getter ends its search when its candidate equals saved `H`. This helper
+neither recovers nor compares `H`, so identifying its flagged endpoints with
+that saved pointer remains unproved. Getter exhaustion also requires the walk
+sequence to reach `H` and intervening calls to return normally. The existing
+selector/predicate can end the search earlier with a selected result. Neither
+walk establishes the header/carrier/world pointer association.
+
+The helper observations came from Python 3.12.0 and Capstone 5.0.7 x86-32
+decoding of the authenticated original PE, VA `0x0067B180` through
+`0x0067B1E3` exclusive, RVA `0x0027B180`, file offset `2601344`. The catalog
+extent was 99 bytes, all decoded contiguously. The range SHA-256 is
+`aebc319b954f0474763d33eac95aedcf04118dcf7a6bf518b95c81531308764d`.
+The binary identity and section-table method are those in
+[Binary and method](#binary-and-method). Diagnostic target `0x009D22B4`
+effects remain outside this direct helper observation.
+
 
 The incoming header's child-record path passes outer carrier `P` to
 `0x006D1DC0` with `ECX = headerOwner +0x0C`, with inner pointer `M = [P]`.
