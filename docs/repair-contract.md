@@ -1,9 +1,13 @@
 # Retail repair contract
 
-The canonical machine-readable record is
+The canonical machine-readable record for NPC and self-repair is
 [`../manifests/repair_contract.json`](../manifests/repair_contract.json). It
 joins the pinned 1.23b client scripts and native event transport to the retained
 retail repair capture without treating emulator behavior as evidence.
+
+The [direct equipped-gear fulfillment contract](direct-gear-repair-fulfillment.md)
+owns command 24244's actual widget issuer, complete operands, equipment-slot
+and target domains, local refusals and unestablished completion reply.
 
 ## Evidence boundary
 
