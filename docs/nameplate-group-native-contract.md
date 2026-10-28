@@ -368,6 +368,82 @@ argument `0x012BFB65` is an unaligned `.data` address, not a hash or an id. The
 first 11 bytes there are `01 02 03 0C 5D 08 01 00 00 00 00`. Its role
 (`unknown`) and the group manager were not identified.
 
+### Registry getter root and result
+
+Let `O` be the object read from `Y +0xE4` and `R` its first dword. The thunk
+`0x006C4560` loads `R` into `ECX` at `0x006C4568` and calls `0x006C3E50` at
+`0x006C4572`, forwarding its three formal stack arguments unchanged. In the
+getter, those arguments have these direct uses:
+
+| Argument at getter entry | Direct use |
+| --- | --- |
+| Stack `+0x04` | Caller-supplied output address. |
+| Stack `+0x08` | Forwarded unchanged as the second stack argument of `0x006C3B30` at `0x006C3EBC`. |
+| Stack `+0x0C` | Pointer whose first dword is compared with the candidate payload dword at `+0x04` (`0x006C3E9B`-`0x006C3EA7`). |
+
+The existing caller contract supplies the identity and int interpretation.
+The getter's direct comparison establishes the int input as a dword selector
+of payload `+0x04`; it does not assign a group-kind meaning to that field.
+
+The getter saves `R`, reads `H = [R+0x18]`, forms `C = R+0x14` and reads the
+initial candidate `N = [H]` (`0x006C3E55`-`0x006C3E6D`). A local pair holds
+`C` and `N`. Equality of `N` with the saved `H` takes the zero-result path
+(`0x006C3E7E`-`0x006C3E82`). Otherwise the payload is `[N+0x18]`. A selector
+mismatch takes the helper path at `0x006C3EC5`. A match calls `0x006C3B30`
+with `ECX = payload`, first stack argument `R` and second stack argument equal
+to the getter's second argument. Only a nonzero `AL` reaches the selected
+result (`0x006C3EC1`-`0x006C3EC3`). The
+[existing client-member predicate](fade-actor-group-native-contract.md#group-natives)
+describes that callee's identity comparison and resolve/cast test. Its result
+is an additional client-side predicate, not proof of server membership.
+
+On selector mismatch or zero `AL`, `0x006C3EC9` calls `0x0067B180` with the
+address of the local pair in `ECX`. After normal return the getter reloads
+both fields and branches back to its candidate checks (`0x006C3ECE`-
+`0x006C3ED6`). The callee's update effects were not traced, so this establishes
+a next-iteration branch, without establishing advancement, traversal order or
+termination. Candidate/container guards also call `0x009D22B4`, the existing
+invalid-parameter route. Their process effects were not established.
+
+The two result paths directly write these dword lanes of the first argument:
+
+| Output offset | Selected candidate | `N == H` | Store VAs, selected / zero |
+| --- | --- | --- | --- |
+| `+0x00` | `[N+0x18]` | `0` | `0x006C3EF7` / `0x006C3F14` |
+| `+0x04` | No direct write | No direct write | None |
+| `+0x08` | `[N+0x10]` | `0` | `0x006C3EFE` / `0x006C3F16` |
+| `+0x0C` | `[N+0x14]` | `0` | `0x006C3F01` / `0x006C3F19` |
+
+Both paths return the output address in `EAX` and end with `ret 0x0C`
+(`0x006C3F08`, `0x006C3F20`). These argument/result interpretations assume
+normal callee return with the caller's stack and nonvolatile-register
+conventions preserved. In particular, `0x006C3B30` must remove the two pushed
+argument dwords; the getter performs no caller stack correction. The callee's
+epilogue was not inspected for this observation. The getter directly writes
+twelve bytes across the sixteen-byte handle region copied by the control
+builder. It does not directly initialize offset `+0x04`. Callee effects,
+aliasing, ownership and reference-count semantics remain unestablished.
+
+These observations came from Python 3.12.0 and Capstone 5.0.7 x86-32 decoding
+of the authenticated original PE, VA `0x006C3E50` through `0x006C3F23`
+exclusive, RVA `0x002C3E50`, file offset `2899536`. All 211 bytes decoded
+contiguously. The range SHA-256 is
+`097f2ce7d6a55ad675fa13564368c475b832b2479d253a78bbe130d94c3f9d76`.
+The executable identity and section-table method are the ones in
+[Binary and method](#binary-and-method). Transitive callee effects are limited
+to the cited contracts. The local-pair helper effects and runtime behavior
+remain unobserved.
+
+The incoming header's child-record path passes outer carrier `P` to
+`0x006D1DC0` with `ECX = headerOwner +0x0C`, with inner pointer `M = [P]`.
+That path is recorded in
+`xivl-decomp:docs/net/high-017c-object-builder.md#child-record-setup`.
+No established pointer binding equates `P` with `O`, or `M` with `R`.
+The getter's root offsets, selector test and output lanes do not close that
+association. Shared pointer shape or the header's type literal cannot supply
+object identity.
+
+
 ## Ledger rows
 
 These rows of the unimplemented ledger have a registration, argument list,
