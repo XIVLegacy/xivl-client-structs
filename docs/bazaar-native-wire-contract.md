@@ -104,6 +104,125 @@ encounter order subject to the zero-sentinel rule, rather than the two
 halves of the `0x40`-byte modifier block. Uniqueness or a catalog-ID meaning
 for the eight-byte field is not established by this copy chain.
 
+### Kind-20 and kind-40 application offsets
+
+These layouts derive from the ordered Lua operands and the promoted
+`serializer` contract in
+[`player_command_wire_contract.json`](../manifests/player_command_wire_contract.json).
+They apply only if the direct fallback executes with valid resolved
+controls. Application offsets exclude the 16-byte game-message header.
+All numeric operands below are integral and within signed32 range, hence
+`00 v:s32be` occupies five bytes. Reference bits are unsigned: `R:u32be`,
+`S:u16be` and `P:u8`. A non-item target is `06 R:u32be`.
+The big-endian branch assumes the documented writer selector is `<= 0`;
+its initial value is zero and the inspected writes set `-1`. No live
+selector or successfully transmitted request is established.
+
+An item tuple is `07 R:u32be S:u16be P:u8`. Two adjacent items with equal
+resolved owner reference coalesce to
+`08 R:u32be S1:u16be P1:u8 02 S2:u16be P2:u8 0D`, totaling `13` bytes.
+For a group beginning at `0x31`, its owner is at `0x32`, first slot at
+`0x36`, first package at `0x38`, count at `0x39`, second slot at `0x3A`,
+second package at `0x3C` and trailing length byte at `0x3D`. The two-item
+count and length bytes are unsigned. `FUN_00790BA0` compares resolved `R`
+at `0x00790C45..0x00790C6D`; `FUN_00791A30` rewrites a preceding tag `07`
+to `08`. This is tuple coalescing, without sorting or quantity aggregation.
+Unequal `R` values leave two eight-byte tag-`07` tuples. Lua package/slot
+indices are reduced by one before these native indices are serialized.
+Raw actor-ID equivalence for `R` is not established.
+
+In the following table, an offset identifies the tag byte. A five-byte
+numeric value begins one byte later. `I` is the selected item, `J` the
+reward item, `B` the Bazaar actor, `Q` the requested count, `R` the numeric
+reward and `RQ` the item-reward count. The kind-20 Lua issuer is bound to
+the wanted-item editor by the script contract's UI-row join.
+
+| Kind-20 shape | Initial operands | Kind `20` | Nil | `B` | `R` or `RQ` | `Q` | Final nils | Finalizer start |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Numeric reward | `1000001` at `0x31`; `I:07` at `0x36` | `0x3E` | `0x43` | `0x44` | `0x49` | `0x4E` | `0x53,0x54` | `0x55` |
+| Item reward, equal owner references | `(J,I):08` at `0x31` | `0x3E` | `0x43` | `0x44` | `0x49` | `0x4E` | `0x53,0x54` | `0x55` |
+| Item reward, unequal owner references | `J:07` at `0x31`; `I:07` at `0x39` | `0x41` | `0x46` | `0x47` | `0x4C` | `0x51` | `0x56,0x57` | `0x58` |
+
+The numeric-reward prefix and coalesced item-reward prefix happen to have
+the same length: `5+8 = 13`. They have different tags and operands. In the
+numeric case, catalog `1000001` is `00 00 0F 42 41`, with value at `0x32`.
+The item owner, slot and package are at `0x37`, `0x3B` and `0x3D`.
+In the unequal-owner case the second tuple's owner, slot and package are
+at `0x3A`, `0x3E` and `0x40`. Its mode and all later operands move by
+three bytes. There is no single unconditional reward/count offset.
+
+For kind `40`, the owner helper obtains equipment and materia from the
+same local player's Lua package `1`, native package `0`. The equal-owner
+row is the conditional normal encoding when both resolve to that owner.
+The unequal-owner row records the serializer alternative rather than a
+separate supported owner-helper UI path.
+
+| Kind-40 shape | Equipment and materia | Kind `40` | Nil | Player control | Four final nils | Finalizer start |
+| --- | --- | --- | --- | --- | --- | --- |
+| Equal owner references | Combined tag `08` at `0x31` | `0x3E` | `0x43` | `0x44` | `0x49..0x4C` | `0x4D` |
+| Unequal owner references | Tag `07` at `0x31` and `0x39` | `0x41` | `0x46` | `0x47` | `0x4C..0x4F` | `0x50` |
+
+The kind-40 request contains no explicit reward or quantity operands.
+Its mode bytes are `00 00 00 00 28`; kind `20` is `00 00 00 00 14`.
+The kind-40 Undeal helper preserves its two leading nils at `0x31/0x32`:
+mode is at `0x33`, another nil at `0x38`, player control at `0x39`, four
+nils at `0x3E..0x41`, and terminator at `0x42`. It has no item operand to
+collect metadata. Generic kind-20 Undeal has an item tuple at `0x31`, nil
+at `0x39`, mode at `0x3A`, nil at `0x3F`, Bazaar control at `0x40`, item
+stack at `0x45`, attached count at `0x4A`, nils at `0x4F/0x50`, and
+finalizer start `0x51`. These are withdrawal constructions, not observed
+withdrawal acknowledgements.
+
+At each item-bearing finalizer start, the writer conditionally emits
+`09 M1:u64be M2:u64be` before `0F`. With metadata enabled, the terminator
+is `17` bytes after the listed start; otherwise it is at the listed start.
+The metadata values collect incoming item-record identities under the
+zero-sentinel rule, not materia contents or a strict item count. Untouched
+bytes after the terminator remain zero in the 128-byte typed area. The
+envelope CRC covers all `128` bytes, including padding; its stored dword
+is little-endian. The enclosing application remains `184` bytes in every
+case. Numeric zero uses the integer encoding and never becomes nil.
+
+### Incoming dealing geometry and service boundaries
+
+The incoming `0x70`-byte item record uses fixed fields independently of
+the variable request stream above. These are record-relative offsets in
+the item-update family, with little-endian multibyte loads. The widths
+and signedness follow
+[`unmapped_payload_decoding.json`](../manifests/unmapped_payload_decoding.json),
+batch `2`, `payloadStructs.s2c_0x0148.recordLayouts.InventoryItemRecord`.
+
+| Offset | Bytes/type | Received field |
+| --- | --- | --- |
+| `0x12` | `1 / u8` | Dealing value byte |
+| `0x13` | `1 / u8` | Attachment representation mode |
+| `0x14` | `4 / s32le` | Attached1 |
+| `0x18` | `4 / s32le` | Attached2 |
+| `0x1C` | `4 / s32le` | Attached3, copied separately to item `+0x1C` |
+| `0x20` | `4 / u8[4]` | Tag IDs |
+| `0x24` | `4 / u8[4]` | Corresponding tag values |
+| `0x29` | `1 / u8` | Modifier-present flag |
+| `0x2A` | `64 / bytes` | Modifier block, copied when present |
+
+`_getDealingInfo` searches for tag `0xC9` and returns its corresponding
+value byte. The request kinds `20/40` must not be assigned to wire `+0x13`
+by numerical analogy. `_getDealingAttached` interprets that representation
+mode: `1` resolves an item from packed package/slot in attached1, whereas
+`2` returns `(attached1,valueByte,attached2)` as numbers. Its third return
+is not wire attached3. The authenticated copy/getter chain is
+`FUN_0076B760 -> FUN_00769760/FUN_007698E0` and
+`FUN_00701E90/FUN_00701F20 -> FUN_007633D0/FUN_00764EA0`.
+
+The seller package-8 row consumer and the kind-40 crafter package-6
+consumer are different dependencies. Generic receive handlers can select,
+materialize and publish these packages, but do not correlate their updates
+to request kind `20` or `40`. Neither the request operands nor the fixed
+incoming field geometry establishes a server response, escrow, consumption,
+gil transfer or successful meld. The script contract owns the exact
+missing historical request-to-update specimens and the frozen-corpus
+boundary. The nonblocking Deal/Undeal command return is independent of
+those later mutations.
+
 ### Purchase freshness and the amount echo
 
 There is no fresh purchase-attempt discriminator in the reconstructed
