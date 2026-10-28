@@ -196,7 +196,9 @@ instruction on that path stores the done result into the checker or reads the ch
 and not resumed. Every path then calls the base routine `0x006F6900` with the same two arguments and, when the byte at
 receiver `+0x5C` is 0, calls `0x0075BE80` on the dword at `Y +0x00`.
 
-The role of slot 5 and its raiser were not traced. Reading the `+0xC0` test as a deferred `_onFinalizeClip`, because a
+Generic slot-5 raisers are documented in `xivl-decomp:docs/event/airship-scene-sequence.md`, section
+`Generic CutScene removal`. The retail lifecycle condition that reaches them remains unbound.
+Reading the `+0xC0` test as a deferred `_onFinalizeClip`, because a
 false completion skips `0x006FB9C0` and this routine runs it later, and reading the slot as a teardown of a cut scene
 that still holds a pending call, are `INFERRED` from the writes above only.
 
@@ -229,7 +231,8 @@ untracked object only. The meaning of the statuses and the server reaction are n
 posts type `0x16` and `_skip` posts type `0x17`. The dword at `Z +0x98` takes the values 0, 1, 2 and 3. The writers of 1
 are `0x0055FFBA`, `0x0056003A`, `0x00560091` and `0x005655A4`, the writer of 3 is `0x00563CC6`, the writer of 2 is
 `0x00563DE9` and the writers of 0 are `0x00563DD3`, `0x00563E38`, `0x00565A4C` and `0x00565A76`. Idle, playing,
-finished and skipping are the `INFERRED` names of 0 through 3. The consumers of the three records were not traced.
+finished and skipping are the `INFERRED` names of 0 through 3. The conditional consumers and local result producers
+are documented in `xivl-decomp:docs/net/ferry-scene-notice-producer.md`, section `Native result producers and local transport`.
 
 ## _getPendingCutSceneActor
 
@@ -301,13 +304,14 @@ contracts. The callbacks only yield, and the completion resumes them with a bool
 
 ## Open
 
-- The bool and int that a retail finish, a skip and a failed start pass to the completion, and the raiser of the
-  completion through the `LuaActorImpl` slot at `0x00FDFBB8`.
+- The bool and int selected by a particular retail finish, skip or failed-start invocation. The actor-local
+  result producers and `LuaActorImpl` completion route are documented in
+  `xivl-decomp:docs/net/ferry-scene-notice-producer.md`; its controller-result domain and invocation binding remain open.
 - The server reaction to the statuses of the serverbound `0x00CE` record.
 - When the retail flow completes a cut scene with a false bool.
 - The initial content of `S` before the first `0x01A3` record.
-- The raiser of the slot 5 routine `0x006FCAA0`, the retail condition that makes it run and the role of `0x0075B1B0`.
-- The consumers of the three scene records, the writers of the `Z +0x98` states beyond those read here, the area byte
+- The retail condition that reaches slot 5 routine `0x006FCAA0` and the role of `0x0075B1B0`.
+- The writers of the `Z +0x98` states beyond those read here, the area byte
   branch of `0x00763DC0`, the object at `Y +0x0C` and its `+0x110` member, and the writer of the byte at receiver `+0xC2`.
 
 ## Reproduction

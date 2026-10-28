@@ -164,7 +164,10 @@ once. A nonzero byte allocates four bytes, builds the `s_MapLoadResumeChecker`
 repeats the byte test and stores the waiting result `0x0130CECC` while the byte
 is set and the done result `0x01377ECC` once it is clear. The checker pushes
 nothing. That the byte is a map load pending flag is `INFERRED` from the name.
-The class of the object and the writers of the byte were not traced.
+The ordinary MapLayoutElement construction and selected byte writers are
+documented in `xivl-decomp:docs/event/airship-scene-sequence.md`, section
+`Map loading state and writers`. Transfer-generation identity, terminal
+resource failures and connection-loss behavior remain unresolved there.
 
 `_isFading` (`0x007050F0`) pushes the byte at `F +0x244`, the flag that `_fadeIn`
 and `_fadeOut` set and `_waitForFading` polls. `_cancelFading` (`0x006E3230`)
