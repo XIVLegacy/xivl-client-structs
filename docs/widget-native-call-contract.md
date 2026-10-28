@@ -76,6 +76,46 @@ Otherwise the path reaches `FUN_00CF3360` and `FUN_00CF38A0` with the
 `GetArguments_` diagnostic. Declared list length alone does not determine
 that outcome when Variable is present.
 
+### Declared Utf8String and present Nil
+
+For a valid native frame and normal helper completion, a present raw-Lua Nil
+read by the declared Utf8String operator produces one internal tag-6 Nil
+cell and advances the shared formal cursor from p to p+1. It does not
+convert that Nil into a string. This differs from an omitted position and
+from Variable selecting its separate Nil reader.
+
+Python 3.12.0, pefile 2024.8.26 and Capstone 5.0.7 in x86-32 mode mapped
+and decoded these original PE ranges from the executable identified above.
+Ends are exclusive. No loaded analysis image or runtime was used.
+
+| VA range | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `[0x00CFAA10,0x00CFAABE)` | 174 | `e2f35699ea78de139471efcfcc0f7083dd755b9a2385cba04b9a48b3af073d59` |
+| `[0x00CFAFA0,0x00CFB03B)` | 155 | `48fa06cd9ea1c130fdf776df46f71cd422ce3d1571e075411f70771b42b2e9b3` |
+| `[0x00CFB154,0x00CFB157)` | 3 | `7f341f52fca62d129a1a86df8077365f4f713a5dd2be89130a6318b3eb30eab1` |
+| `[0x0110DFB4,0x0110DFB8)` | 4 | `d88be10dbbc69055ce9329581d63efcb68561c8be13636c6ccc1cf44297517a9` |
+
+The Utf8String vtable `0x0110DFB0` has read target `0x00CFAFA0` at its
+slot-`+4` cell `0x0110DFB4`. For a present position the dispatcher calls
+the declared slot at `0x00CFAABC`, passing the shared cursor address.
+The reader passes its current index to `0x00CF3760` at `0x00CFAFE0`.
+The existing original-byte finding in
+`xivl-decomp:docs/script/define-class-repeat-definition.md#inputs`
+identifies that helper as is-Nil, `type == 0`, with its instruction predicate
+in `xivl-decomp:tools/verify_define_class_paths.py`, `is_nil`.
+The reader tests AL at `0x00CFAFE5` and branches to the non-Nil block
+`0x00CFB03B` only when AL is zero.
+
+The Nil fall-through calls the existing tag-6 constructor `0x00583F70` at
+`0x00CFB009` and the internal-cell append helper `0x00584EE0` once at
+`0x00CFB021`. It calls cleanup `0x00584210` at `0x00CFB031`, then jumps
+from `0x00CFB036` to the increment at `0x00CFB154`. The cell interpretation
+reuses the manifest's omitted-position and selected-Nil constructor evidence
+and `successfulReaderContract.internalAppendBoundary`. These helper bodies
+were not reanalyzed. Allocation, append and cleanup must complete normally.
+The cursor increment is not a Lua-stack mutation or a value emitted to Lua,
+and the static branch does not establish an actual native invocation.
+
 ### Variable argument reader
 
 The manifest's `framework.variableArgumentReader` records the bounded
