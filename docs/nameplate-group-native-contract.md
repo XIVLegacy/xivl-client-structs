@@ -129,7 +129,7 @@ CoreWork aggregate. The explicit publication is recorded in
 `xivl-decomp:docs/event/player-profile-work-accessors.md`, setup owner join,
 and `xivl-decomp:docs/script/worldmaster-message-pool.md#quest-source-and-textmodule-join`.
 It is separate from the scheduler contract's `INFERRED` identification of
-`V = [[Y]]` as the container. That identification does not identify `Y`.
+`V = [W]` as the container. That identification does not identify `Y`.
 
 These natives read these fields of `Y`. The roles are `INFERRED` from the
 natives that use them and the classes of the objects were not identified.
