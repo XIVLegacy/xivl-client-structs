@@ -208,10 +208,11 @@ empty table and the nil branch for a first cell of tag 6 is not taken.
 The shipped scripts contain 10 call sites in 4 chunks (`MEASURED`). Three pass no
 argument, six pass one argument and one passes an argument list that ends in a
 call or vararg. Three of the one argument sites pass the constant 20002
-(`INFERRED`, local scan). That the int is a group kind and that `0x006C3B30` is a
-membership test of the identity are `INFERRED` from the native name and the
-comparison. The registry contents, the group record writers, the constant 20002
-and the element layout that `0x006D5F80` appends were not traced.
+(`INFERRED`, local scan). The
+[client group roles and membership guards](nameplate-group-native-contract.md#client-group-roles-and-membership-guards)
+qualify the numeric callers and local predicates. The registry contents,
+group-record writers, authoritative membership and the element layout that
+`0x006D5F80` appends remain unestablished.
 
 ## Virtual item creation
 
@@ -452,8 +453,9 @@ at `CharaBase +0xDC` and the dword at chara `+0xF8`, the sheet manager behind
 
 ## Not traced
 
-- The group registry contents, the writers of the group records, the test in
-  `0x006C3B30` and the constant 20002.
+- The group registry contents, group-record writers and authoritative membership.
+  The [client group roles](nameplate-group-native-contract.md#client-group-roles-and-membership-guards)
+  qualify the supported selectors and client predicates.
 - The mapping of the three `_createVirtualItem` ints into the item object, the
   poll that the yield request makes and what a resumed script receives.
 - The writers of the status record at `CharaBase +0xDC`, of the dword at chara

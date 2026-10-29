@@ -381,6 +381,84 @@ argument `0x012BFB65` is an unaligned `.data` address, not a hash or an id. The
 first 11 bytes there are `01 02 03 0C 5D 08 01 00 00 00 00`. Its role
 (`unknown`) and the group manager were not identified.
 
+### Client group roles and membership guards
+
+The selector compared with payload `+0x04` has source-qualified client uses.
+The separate [GroupBase binding](binding-map-native-contract.md#group-natives)
+reads group data `+0x04` through `_getKind`; its kind interpretation remains
+inferred from that API. The authored callers below establish selector and
+guard conventions, not an authoritative server enumeration. Lua paths are
+relative to `xivl-client-scripts:lua/scripts/`.
+
+| Numeric value / domain | Supported role or variant | Membership rule or closest client guard | Source / locator | Confidence / status | Remaining join |
+| --- | --- | --- | --- | --- | --- |
+| `10001`, Lua selector | `getPlayerParty`; first `getParty` candidate | Calls `_getExtendedTemporaryGroup(self,10001)` without a Lua class cast or membership test. | `chara/charabaseclass.lua:52-79`, `root/proto2` PC 2; `root/proto3` PCs 2-3; `xivl-client-scripts:docs/guildleve-party-continuity.md#party-leader-and-roster-presentation` | Observed caller; player-party convention supported by the authored name and roster consumer. | Exact `PlayerPartyGroup` registration, record writer and server roster. |
+| `10002`, Lua selector | `getParty` fallback | Used only when the `10001` result is nil; no additional cast or roster test. | `chara/charabaseclass.lua:63-79`, `root/proto3` PC 7 | Observed fallback; exact class **UNESTABLISHED**. | Numeric-to-class registration/application and authoritative membership. |
+| `20002`, community selector | `CompanyGroup.isCurrent`; linkshell command category | Current-group result must be nonnil and equal to `self`. Linkshell command membership/rank guards are separate. | `group/communitygroup/companygroup.lua:334-348`; `xivl-client-scripts:docs/linkshell-party-command-contracts.md#refusals-and-linkshell-operation-meaning` | Observed current-selection equality and published client command role. | Current-selection writer and server enrollment. |
+| `30001`, `30006`, `_getKind` results | Selected content init/finalize notifications | Explicit `_isMember(localPlayer)` plus either exact kind permits rows 50011/50012. | `xivl-client-data:docs/party-content-lock-message-rows.md#proven-notification-callers` | Observed local conjunction; individual content categories **UNESTABLISHED**. | Exact kind writer/application and participant policy. |
+| `50001`, relation selector | PartyInvite relation exclusion | The published predicate excludes a target already in that relation group; local relation-helper variants are qualified below. | `xivl-client-scripts:docs/linkshell-party-command-contracts.md#refusals-and-linkshell-operation-meaning`; `chara/charabaseclass.lua:185-230` | Observed caller exclusion; relation's human meaning **UNESTABLISHED**. | Relation producer and authoritative roster semantics. |
+| `10001` / `0x2711`, incoming `0x017C +0x30` | A separate inbound branch discriminator | `0x006CC620` compares that field with the literal before its conditional path. | `xivl-decomp:docs/net/wire-protocol.md#type-tagged-high-opcode-route` | Observed comparison; header-to-selector binding **UNESTABLISHED**. | Writer/application equating this header field with the selected group data. |
+
+`getContentGroup` and `getRelationGroup` forward a supplied selector to
+`_getExtendedTemporaryGroup` without adding a kind check, cast or membership
+test (`chara/charabaseclass.lua:96-105,173-182`).
+`getCommunityGroup` selects an ordinal from
+`_getAllExtendedTemporaryGroup(self,selector)` (`:1642-1652`), while
+`getCommunityGroupCurrent` forwards the supplied selector to the current-group
+getter (`chara/charabaseclass_cliprog.lua:357-366`). These methods do not define
+an accepted kind range. The published
+`xivl-client-scripts:docs/guildleve-party-continuity.md#content-group-and-party-are-separate-state`
+separately qualifies `charaWork.currentContentGroup`, with zero returning nil.
+
+The native `_isMember` contract above performs local identity lookup with an
+optional member-position comparison. The authored `hasRelationGroup` first
+asks `_getGroup` for its supplied selector. An omitted subject tests only
+group existence. An actor subject requires a nonnil group and invokes
+`_isMember(group,subject)`. Other subjects are compared with the roster's
+member display names (`chara/charabaseclass.lua:185-230`). Original
+`root/proto11` PC 20 at chunk `0xD47` makes the actor call; PC 21 jumps to
+PC 24 at `0xD57`, which returns its result. The decompiled expression omits
+that visible invocation.
+
+`PartyGroupBaseClass.isPartyLeader(number)` requires a nonnil owner and calls
+`_isMember(self,owner,index)`, returning that result. A nonnumeric subject is
+compared directly with the owner (`group/partygroup/partygroupbaseclass.lua:34-55`).
+Original `root/proto1` PC 12 at `0x245` makes the indexed call; PC 13 jumps
+to its result return at PC 16, `0x255`. `CharaBaseClass.isPartyLeader` passes
+itself to the player-party helper (`chara/charabaseclass.lua:82-93`). The
+separate `getPartyLeader` getter also requires `_isAlive` on its returned
+owner (`partygroupbaseclass.lua:14-31`); that is object validity, not leader
+election or a server enrollment rule.
+
+Recovered `CompanyGroup.getMemberIndex` rejects a nil or invalid actor and
+an empty roster. At each index, successful world/client existence predicates
+lead to `_isMember(self,actor,index)`. Otherwise it accepts a nonempty member
+display name equal to the actor's display name. It returns the first matching
+index, or zero (`group/communitygroup/companygroup.lua:389-461`). That local
+identity fallback does not establish the server's membership or collision policy.
+
+Authoritative party, linkshell, content and relation membership remains
+**UNESTABLISHED** here. A kind/member record writer or application must bind
+these client values and identities to authoritative enrollment. Vector size,
+client resolution, casts, owner equality and roster presentation do not supply
+that relation. Party request/outcome, refusal and recipient boundaries remain
+in `xivl-client-data:docs/party-membership-message-rows.md#request-and-delivery-boundary`
+and `xivl-client-data:docs/party-content-lock-message-rows.md`. Notification rows 50011/50012,
+Lua log type 32 and content property index 1 retain their separate domains.
+
+These caller observations use extraction `2012.09.19.0001`. The five decoded
+members are `chara/charabaseclass.lua`, `chara/charabaseclass_cliprog.lua`,
+`group/partygroup/partygroupbaseclass.lua`, `group/partygroup/playerpartygroup.lua`
+and `group/communitygroup/companygroup.lua`; their exact identities are owned by
+`xivl-client-scripts:manifests/scripts.json` and the archive declaration in
+`xivl-client-scripts:manifests/private_lua_corpus.json`. Python 3.12.0 source
+inspection established the recovered callers. For the original checks,
+`xivl-client-scripts:tools/retail_script.py` unwrapped the LPB resources;
+a separate Python 3.12.0 Lua 5.1 chunk reader checked the selected prototype
+operands and result paths. Original LPB and decoded-chunk identities for
+CharaBaseClass and PartyGroupBaseClass are recorded in
+`xivl-client-scripts:docs/guildleve-party-continuity.md#original-inputs-and-tools`.
+
 ### Registry getter root and result
 
 Let `O` be the object read from `Y +0xE4` and `R_registry` its first dword.
