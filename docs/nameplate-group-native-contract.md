@@ -631,13 +631,14 @@ At `0x0057A947`, `EDI` captures that returned receiver. It is not directly
 rewritten before the slot store at `0x0057A9A7`; preservation across the
 intervening call assumes the normal nonvolatile-register convention. With
 the pending cell preserved, the nonzero path therefore supplies `A6 = G`.
-`F` labels the value loaded for this call; incoming `ESI`'s provenance and
-the identity of its `+0x18` field remain unestablished. No pointer class or
-valid registry object is inferred from these stores.
+`F` labels the value loaded for this call. The
+[setup receiver trace](#setup-receiver-and-root-construction) identifies this
+as the setup receiver's `+0x18` field and qualifies its lazy construction.
+No pointer class or valid registry object is inferred from these stores.
 
-The wrapper's receiver is loaded from `[ESI]` at `0x0057A9B1`; incoming
-`ESI`'s identity is not established. The address formed at `0x0057A9B3`
-and pushed at `0x0057A9B7` is `Q+0x44`, distinct from the physical `A6`
+The wrapper's receiver is loaded from `[ESI]` at `0x0057A9B1`; the setup
+receiver's class and caller-specific identity remain unestablished. The address
+formed at `0x0057A9B3` and pushed at `0x0057A9B7` is `Q+0x44`, distinct from the physical `A6`
 cell. The wrapper captures dword `[entry ECX]` at `0x00CC9501` and the
 supplied address at `0x00CC9504`. Its call at `0x00CC9513` passes that
 address as `ECX` and the captured dword as a pushed input to `0x00CC77E0`.
@@ -695,6 +696,64 @@ contiguity or transitive callee effects are claimed.
 | `0x0057A885` | `0x0057A8CF` | `478a47003ee09e04795d13959749660702e5ae3acce2e0cd4d76237951161a50` |
 | `0x0057A8D2` | `0x0057A91C` | `b286f097067079f34ec4e53cc8db24c8052372532a994dfe06389458390979e9` |
 | `0x0057A91F` | `0x0057A9EE` | `f5553e39c726c539dc0733db1142b59e51fef7114f7154e3b5f893173e72429e` |
+
+#### Setup receiver and root construction
+
+Let `R_setup` be entry `ECX` of `0x0057A3C0`. At `0x0057A409`, `ESI`
+receives that value. The preceding prologue has no call, branch or local
+`ECX` definition. The selected continuation through `0x0057A938` exclusive
+contains no Capstone-modeled explicit or implicit `ESI` write. Thus the
+published load at `0x0057A93C` reads `F = [R_setup+0x18]`, assuming normal
+callee preservation of `ESI` and entry through the cited prologue. This is
+a receiver-address relationship, not a source-language class identity.
+
+The local producer has two paths:
+
+| Predicate | Direct field producer | VAs |
+| --- | --- | --- |
+| `[R_setup+0x18] != 0` | Bypass local creation. The existing field's producer is not identified. | Load `0x0057A70E`, branch `0x0057A713` to `0x0057A76E` |
+| `[R_setup+0x18] == 0` | Request `0x28` bytes. A nonzero allocation is entry `ECX` of `0x006CACD0`; capture its result in `EBX`. The allocation-failure arm clears `EBX`. Store the pending `EBX` to `[R_setup+0x18]`. | Allocation request `0x0057A715`/`0x0057A717`, constructor call `0x0057A73B`, capture `0x0057A740`, zero `0x0057A744`, store `0x0057A769` |
+
+Let `F_new` be entry `ECX` of initializer `0x006CACD0`. It captures this
+receiver in `ESI` at `0x006CACF4`, with no earlier call or local `ECX`
+definition. Its local normal-return path loads the saved receiver into `EAX`
+at `0x006CADBB` and ends with `ret 8` at `0x006CADCF`, with no subsequent
+local `EAX` definition. Under normal callee preservation, a successful
+return therefore supplies `F_new` to the setup field. The setup path has no
+local `EBX` rewrite between its merge and field store. Preservation across
+cleanup calls, intervening aliases and field changes remains a condition.
+
+This initializer also requests `0xFC` bytes at `0x006CAD6D`/`0x006CAD75`.
+On its allocation-success arm, it pushes `F_new` at `0x006CAD8A`, makes the
+allocation `ECX` at `0x006CAD8B`, and calls `0x006C5E80` at `0x006CAD8D`.
+It captures the result in `EDI` at `0x006CAD92`; allocation failure instead
+clears `EDI` at `0x006CAD96`. The store at `0x006CADB0` writes this pending
+child result to `F_new+8`, assuming cleanup callees preserve `EDI`.
+The exact input to call `0x00785250` at `0x006CAD56` is `F_new+0x14` in
+`ECX`; that target's semantics were not established by this observation.
+
+The incoming generic `0x017C` path separately uses initializer `0x006C5E80`
+after a `0xFC` allocation, as recorded in
+`xivl-decomp:docs/net/high-017c-object-builder.md#child-record-setup`.
+Sharing that initializer does not equate the allocated children or parents.
+With the earlier wrapper/CoreWork trace and preserved field, slot and
+lifetimes, the successful lazy-construction path can supply
+`R_registry = F = F_new`. The existing-field path remains separate. Neither
+path establishes incoming `P == O`, `M == F`, selector `80001`, member order,
+player encoding or an accepted roster update.
+
+These `STATIC` observations used Python 3.12.0 PE section-table parsing
+with `struct` and Capstone 5.0.7 x86-32 against the authenticated original in
+[Binary and method](#binary-and-method). Each listed span decoded contiguously
+through its exclusive end. File offsets came from the PE section table.
+The selected setup prefix stops at `0x0057A938` exclusive; no whole
+setup-function or transitive-callee interpretation is claimed.
+
+| Start VA | End VA | File offset | SHA-256 |
+| --- | --- | --- | --- |
+| `0x0057A3C0` | `0x0057A43D` | `1549248` | `d96724f25457638116bf19a2cad2fc0ad8665f2b0cfcd501783bc252751c863a` |
+| `0x0057A43D` | `0x0057A938` | `1549373` | `d8f3b63a6408c3f84f6d7654f7e93459d7b7caaecffb340a1b18ba723d291325` |
+| `0x006CACD0` | `0x006CADD2` | `2927824` | `11728a21a54750bd7d272e9816131b866fd4b47ab9ea1ff70f91cdfc7b162227` |
 
 The incoming header's child-record path passes outer carrier `P` to
 `0x006D1DC0` with `ECX = headerOwner +0x0C`, with inner pointer `M = [P]`.
