@@ -127,10 +127,14 @@ evidence. Existing base scripts also have `_getRegion`/`_getZoneName` uses;
 common-sheet preparation during AreaBaseClass initialization. Those calls do
 not prove custom sheet availability or additional hard selection prerequisites.
 
-The concrete missing dependency edge is the native or observed loader that
-maps the new numeric zone/region to its internal name and ZoneMaster class
-path, then executes that require chain. Existing class-path evidence does
-not close it. `xivl-client-data:manifests/zone_internal_names.json`,
+`xivl-decomp:docs/actor/actor-instantiation-and-self-player.md`, "Area setup
+name", joins the first string of ActorInstantiate's conditional setup
+bundle to `AreaBase+0x64`, which `_getZoneName` reads. The class name and
+script path are separate received fields. This establishes explicit inputs,
+not a native numeric zone-to-name or ZoneMaster selector. The producer that
+chooses those inputs from numeric zone/region, and the particular area's
+ordered require/definition sequence, remain UNESTABLISHED.
+`xivl-client-data:manifests/zone_internal_names.json`,
 `_provenance.limitations` and `zoneBindings`, is a bounded retail name/layout
 join; it is not a complete class-path allocation or native script selector.
 No minimal set of new sheet rows or script filenames can yet be declared

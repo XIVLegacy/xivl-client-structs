@@ -289,8 +289,11 @@ area object `+0xBB`. It reads no world state. That the byte marks an instance
 raid is `INFERRED` from the native name, and its readers were not traced.
 
 `_getZoneName` (`0x006F9700`) takes no argument and pushes the `Utf8String` at
-the area object `+0x64` through `0x007487C0`. The writer of that string was not
-traced.
+the area object `+0x64` through `0x007487C0`.
+`xivl-decomp:docs/actor/actor-instantiation-and-self-player.md`, "Area setup
+name", joins its writer to the first string of the conditional received
+area setup bundle through the pending area-list manager. This does not
+establish the numeric zone-to-name selection rule.
 
 ## Item reference natives
 
