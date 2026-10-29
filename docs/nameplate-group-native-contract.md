@@ -115,9 +115,22 @@ the invalid-parameter route of the
 ## World object
 
 The callbacks reach one client object through `0x00CC7510` on `ExecuteParameters`
-`+0x04`. With `R` the address that routine returns, `X` is the dword at `R` and
-`Y` the dword at `X +0x04`, the chain of the
+`+0x04`. With `R_world` the address that routine returns, `X = [R_world]`,
+`Y = [X+0x04]`, `W = [Y]` and `V = [W]`, the chain of the
 [scheduler contracts](scheduler-item-native-contract.md#world-object-and-identity-lookup).
+
+The setup call at `0x0057A9E9` constructs an aggregate through `0x00773270`
+and stores its result at route state `+0x04` at `0x0057AA1A`. Setup passes that
+pointer to `0x007634B0`, which wraps it in a typed `Holder<CoreWork*>` and
+retains the holder at the matching ScriptEnv `+0x220`. The selected
+`0x00CC7510`/`0x00CD7910` chain reaches that holder. With the matching
+initialized context, preserved holder/value and valid lifetime, `Y` is this
+CoreWork aggregate. The explicit publication is recorded in
+`xivl-decomp:docs/event/player-profile-work-accessors.md`, setup owner join,
+and `xivl-decomp:docs/script/worldmaster-message-pool.md#quest-source-and-textmodule-join`.
+It is separate from the scheduler contract's `INFERRED` identification of
+`V = [[Y]]` as the container. That identification does not identify `Y`.
+
 These natives read these fields of `Y`. The roles are `INFERRED` from the
 natives that use them and the classes of the objects were not identified.
 
@@ -370,10 +383,10 @@ first 11 bytes there are `01 02 03 0C 5D 08 01 00 00 00 00`. Its role
 
 ### Registry getter root and result
 
-Let `O` be the object read from `Y +0xE4` and `R` its first dword. The thunk
-`0x006C4560` loads `R` into `ECX` at `0x006C4568` and calls `0x006C3E50` at
-`0x006C4572`, forwarding its three formal stack arguments unchanged. In the
-getter, those arguments have these direct uses:
+Let `O` be the object read from `Y +0xE4` and `R_registry` its first dword.
+The thunk `0x006C4560` loads `R_registry` into `ECX` at `0x006C4568` and calls
+`0x006C3E50` at `0x006C4572`, forwarding its three formal stack arguments
+unchanged. In the getter, those arguments have these direct uses:
 
 | Argument at getter entry | Direct use |
 | --- | --- |
@@ -385,12 +398,12 @@ The existing caller contract supplies the identity and int interpretation.
 The getter's direct comparison establishes the int input as a dword selector
 of payload `+0x04`; it does not assign a group-kind meaning to that field.
 
-The getter saves `R`, reads `H = [R+0x18]`, forms `C = R+0x14` and reads the
-initial candidate `N = [H]` (`0x006C3E55`-`0x006C3E6D`). A local pair holds
+The getter saves `R_registry`, reads `H = [R_registry+0x18]`, forms
+`C = R_registry+0x14` and reads the initial candidate `N = [H]` (`0x006C3E55`-`0x006C3E6D`). A local pair holds
 `C` and `N`. Equality of `N` with the saved `H` takes the zero-result path
 (`0x006C3E7E`-`0x006C3E82`). Otherwise the payload is `[N+0x18]`. A selector
 mismatch takes the helper path at `0x006C3EC5`. A match calls `0x006C3B30`
-with `ECX = payload`, first stack argument `R` and second stack argument equal
+with `ECX = payload`, first stack argument `R_registry` and second stack argument equal
 to the getter's second argument. Only a nonzero `AL` reaches the selected
 result (`0x006C3EC1`-`0x006C3EC3`). The
 [existing client-member predicate](fade-actor-group-native-contract.md#group-natives)
@@ -486,12 +499,110 @@ The binary identity and section-table method are those in
 [Binary and method](#binary-and-method). Diagnostic target `0x009D22B4`
 effects remain outside this direct helper observation.
 
+#### CoreWork registry pointer publication
+
+For constructor `0x00773270`, let `S` be entry `ESP` and `A6` the physical
+dword at `[S+0x18]`. At `0x00773296`, `ESI` captures entry `ECX`. At `0x00773357`,
+`EAX` receives the dword at current `ESP+0x3C`; the constructor's saved frame
+places that at entry `ESP+0x18`, `A6`. At `0x0077336B`, it stores `EAX`
+to `[ESI+0xE4]`. The intervening `0x00773367` store clears the original
+input slot to zero after the capture; it does not change captured `EAX`.
+The field receives that physical input dword. `A6` is a stack-cell label,
+not a recovered source-language parameter ordinal. These stack and receiver
+interpretations assume normal returns with the caller's stack/register
+conventions preserved and no intervening alias-mediated input change.
+The captured dword is copied without a local nonzero test, so zero is copied
+by the same store.
+
+With the matching published CoreWork as `Y`, this store supplies
+`O = A6`. If that field, object and input value remain valid and
+preserved until the getter, its root is `R_registry = [O]`. The direct store
+does not identify the pointed-to object's class or prove either `P == O` or
+`M == R_registry`. Aliasing, intervening writes and untraced callee effects
+remain separate from the direct store observation.
+
+The bounded input trace at call `0x0057A9E9` fixes the physical caller cell.
+Let `Q` be `ESP` immediately after `0x0057A9B8` returns. Five
+four-byte pushes at `0x0057A9D3`, `0x0057A9D8`, `0x0057A9D9`,
+`0x0057A9DA` and `0x0057A9DB` precede the constructor call, with no other
+stack adjustment, call or branch in between. Constructor-entry `ESP` is
+therefore `Q-0x18`, making `A6 = [Q]`, subject to alias preservation.
+
+That earlier call targets `0x00CC9500`, whose local return at `0x00CC951C`
+removes four bytes. Let `B` be caller `ESP` immediately before the call,
+after the address push at `0x0057A9B7`. A normal ABI-conforming return gives
+`Q = B+4`, so the physical `A6` cell is at caller `ESP` immediately before
+that push. The push at `0x0057A99A` reserves this cell. At `0x0057A99D`,
+`EAX` captures its address; at `0x0057A9A7`, a four-byte store through `EAX`
+writes `EDI` into it. The reservation's original bits are overwritten.
+
+The `EAX` test at `0x0057A938` selects two producers for `EDI`. The zero
+arm at `0x0057A94B` clears it. The nonzero arm calls `0x006BFDA0` at
+`0x0057A942` and captures returned `EAX` into `EDI` at `0x0057A947`.
+The latter call receives the tested nonzero value as `ECX`, set at
+`0x0057A940`, and dword `[ESI+0x18]`, loaded at `0x0057A93C` and pushed
+at `0x0057A93F`. Receiver provenance, that field's identity and the returned
+value's meaning remain untraced. `EDI` is not directly rewritten before its
+slot store; its preservation across the intervening call assumes the normal
+nonvolatile-register convention. The exact next producer is
+`FUN_006bfda0`, RVA `0x002BFDA0`, catalog summed size 11 bytes. Its body
+and actual spans were not inspected.
+
+The wrapper's receiver is loaded from `[ESI]` at `0x0057A9B1`; incoming
+`ESI`'s identity is not established. The address formed at `0x0057A9B3`
+and pushed at `0x0057A9B7` is `Q+0x44`, distinct from the physical `A6`
+cell. The wrapper captures dword `[entry ECX]` at `0x00CC9501` and the
+supplied address at `0x00CC9504`. Its call at `0x00CC9513` passes that
+address as `ECX` and the captured dword as a pushed input to `0x00CC77E0`.
+The wrapper's only direct memory write at `0x00CC950B` clears its own
+stack local. Initialization through the supplied address and alias effects
+remain delegated to `FUN_00cc77e0`, RVA `0x008C77E0`, catalog summed size
+11 bytes; its body and actual spans were not inspected. The wrapper returns
+the supplied address in `EAX` at `0x00CC9518`. Reaching its local epilogue
+normally requires the inner call to balance its pushed dword.
+
+With the matching initialized `Y` and preserved slot, field and lifetimes,
+`O = A6` is therefore zero on the zero arm or the surviving producer value
+on the nonzero arm. A valid `R_registry = [A6]` is not asserted for zero.
+`P == O` still needs identity between that surviving value and the packet's
+outer carrier; `M == R_registry` still needs valid, preserved `[P] == [A6]`.
+Neither follows from the wrapper shape or pointer depth.
+
+These store observations came from Python 3.12.0 and Capstone 5.0.7 x86-32
+decoding of authenticated original PE span `0x00773270` through `0x00773654`
+exclusive, RVA `0x00373270`, file offset `3617392`. The retained listing's
+address/byte-width metadata and the catalog's summed size agreed on one
+contiguous 996-byte span, with no excluded gaps. Its SHA-256 is
+`e1214281ae864d83749b6b0d081598d0e03a7246209ab3105b8ccb38e197aa6e`.
+The executable identity and section-table method are those in
+[Binary and method](#binary-and-method).
+
+The wrapper used the same tools and original PE, after listing address/byte-
+width metadata authenticated its single span `0x00CC9500` through
+`0x00CC951F` exclusive, RVA `0x008C9500`, file offset `9213184`.
+All 31 bytes decoded as 12 owned instruction units, with no gaps. Its
+SHA-256 is
+`bc41ec9fec00d42348d1b9e776f0d93d6de6fa3aee42407c1af8bc2c5163187e`.
+
+The input trace used the same tool versions and only these caller spans.
+Ends are exclusive. The cap starts at `0x0057A869`, inside an instruction;
+that one-byte prefix is excluded. The three gaps between the rows are also
+excluded. All 379 selected bytes decoded as 119 owned instruction units after
+their address/byte-width metadata matched the original PE. No whole-caller
+contiguity or transitive callee effects are claimed.
+
+| Start VA | End VA | SHA-256 |
+| --- | --- | --- |
+| `0x0057A86A` | `0x0057A882` | `77b363e331025ee1d0da22244dda3ea6ba723874bda6aaa749d80d711e1e437b` |
+| `0x0057A885` | `0x0057A8CF` | `478a47003ee09e04795d13959749660702e5ae3acce2e0cd4d76237951161a50` |
+| `0x0057A8D2` | `0x0057A91C` | `b286f097067079f34ec4e53cc8db24c8052372532a994dfe06389458390979e9` |
+| `0x0057A91F` | `0x0057A9EE` | `f5553e39c726c539dc0733db1142b59e51fef7114f7154e3b5f893173e72429e` |
 
 The incoming header's child-record path passes outer carrier `P` to
 `0x006D1DC0` with `ECX = headerOwner +0x0C`, with inner pointer `M = [P]`.
 That path is recorded in
 `xivl-decomp:docs/net/high-017c-object-builder.md#child-record-setup`.
-No established pointer binding equates `P` with `O`, or `M` with `R`.
+No established pointer binding equates `P` with `O`, or `M` with `R_registry`.
 The getter's root offsets, selector test and output lanes do not close that
 association. Shared pointer shape or the header's type literal cannot supply
 object identity.
