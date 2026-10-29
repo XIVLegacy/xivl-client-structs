@@ -537,16 +537,22 @@ that push. The push at `0x0057A99A` reserves this cell. At `0x0057A99D`,
 writes `EDI` into it. The reservation's original bits are overwritten.
 
 The `EAX` test at `0x0057A938` selects two producers for `EDI`. The zero
-arm at `0x0057A94B` clears it. The nonzero arm calls `0x006BFDA0` at
-`0x0057A942` and captures returned `EAX` into `EDI` at `0x0057A947`.
-The latter call receives the tested nonzero value as `ECX`, set at
-`0x0057A940`, and dword `[ESI+0x18]`, loaded at `0x0057A93C` and pushed
-at `0x0057A93F`. Receiver provenance, that field's identity and the returned
-value's meaning remain untraced. `EDI` is not directly rewritten before its
-slot store; its preservation across the intervening call assumes the normal
-nonvolatile-register convention. The exact next producer is
-`FUN_006bfda0`, RVA `0x002BFDA0`, catalog summed size 11 bytes. Its body
-and actual spans were not inspected.
+arm at `0x0057A94B` clears it. On the nonzero arm, let `G` be that tested
+value and `F` the dword loaded from `[ESI+0x18]` at `0x0057A93C`.
+The call at `0x0057A942` passes `G` as `ECX`, set at `0x0057A940`, and
+pushes `F` at `0x0057A93F` to `0x006BFDA0`. That callee directly writes
+the incoming stack dword to receiver `+0` at `0x006BFDA6`, returns the
+original receiver in `EAX`, and removes its four-byte input at `0x006BFDA8`.
+It has no calls or branches. Thus its normal return has initialized
+`[G] = F` and returns `G`.
+
+At `0x0057A947`, `EDI` captures that returned receiver. It is not directly
+rewritten before the slot store at `0x0057A9A7`; preservation across the
+intervening call assumes the normal nonvolatile-register convention. With
+the pending cell preserved, the nonzero path therefore supplies `A6 = G`.
+`F` labels the value loaded for this call; incoming `ESI`'s provenance and
+the identity of its `+0x18` field remain unestablished. No pointer class or
+valid registry object is inferred from these stores.
 
 The wrapper's receiver is loaded from `[ESI]` at `0x0057A9B1`; incoming
 `ESI`'s identity is not established. The address formed at `0x0057A9B3`
@@ -555,18 +561,23 @@ cell. The wrapper captures dword `[entry ECX]` at `0x00CC9501` and the
 supplied address at `0x00CC9504`. Its call at `0x00CC9513` passes that
 address as `ECX` and the captured dword as a pushed input to `0x00CC77E0`.
 The wrapper's only direct memory write at `0x00CC950B` clears its own
-stack local. Initialization through the supplied address and alias effects
-remain delegated to `FUN_00cc77e0`, RVA `0x008C77E0`, catalog summed size
-11 bytes; its body and actual spans were not inspected. The wrapper returns
-the supplied address in `EAX` at `0x00CC9518`. Reaching its local epilogue
-normally requires the inner call to balance its pushed dword.
+stack local. The tracked observation in
+`xivl-decomp:docs/resource/sqwt-command-parameter-consumer.md#upstream-control-slot-4`
+records `0x00CC77E0` writing its supplied pointer to wrapper `+0`.
+Applied to this call, that direct initializer writes the captured source
+dword to the supplied address. Its other alias effects and cleanup remain
+unestablished. The wrapper returns the supplied address in `EAX` at
+`0x00CC9518`; reaching its local epilogue normally requires the inner call
+to balance its pushed dword.
 
 With the matching initialized `Y` and preserved slot, field and lifetimes,
-`O = A6` is therefore zero on the zero arm or the surviving producer value
-on the nonzero arm. A valid `R_registry = [A6]` is not asserted for zero.
-`P == O` still needs identity between that surviving value and the packet's
-outer carrier; `M == R_registry` still needs valid, preserved `[P] == [A6]`.
-Neither follows from the wrapper shape or pointer depth.
+the nonzero arm supplies `O = A6 = G`. If `G`'s initialized first dword
+also remains valid and preserved until the getter, `R_registry = [O] = F`.
+The zero arm supplies `O = 0`, with no valid registry dereference asserted.
+Neither `G != 0` nor the direct store proves that `F` is nonzero, live or
+a valid getter root. `P == O` on the nonzero arm still needs `P == G`;
+`M == R_registry` still needs `M == F` at the relevant uses. Those
+identities do not follow from pointer shape or these initializers.
 
 These store observations came from Python 3.12.0 and Capstone 5.0.7 x86-32
 decoding of authenticated original PE span `0x00773270` through `0x00773654`
@@ -577,8 +588,14 @@ contiguous 996-byte span, with no excluded gaps. Its SHA-256 is
 The executable identity and section-table method are those in
 [Binary and method](#binary-and-method).
 
-The wrapper used the same tools and original PE, after listing address/byte-
-width metadata authenticated its single span `0x00CC9500` through
+The producer used the same tools and original PE. Listing address and
+byte-width metadata authenticated one span `0x006BFDA0` through `0x006BFDAB`
+exclusive, RVA `0x002BFDA0`, file offset `2882976`, with no gaps.
+All 11 bytes decoded as four owned instruction units. Its SHA-256 is
+`0d9d4797ad8c81da5b9f78b6e3eba5066720c9a41fbd098a5dac1e8581c3c29c`.
+
+The wrapper used the same tools and original PE. Listing address and byte-width
+metadata authenticated its single span `0x00CC9500` through
 `0x00CC951F` exclusive, RVA `0x008C9500`, file offset `9213184`.
 All 31 bytes decoded as 12 owned instruction units, with no gaps. Its
 SHA-256 is
