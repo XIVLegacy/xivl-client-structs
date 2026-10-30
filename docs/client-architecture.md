@@ -557,8 +557,11 @@ retries with `.lpb`) -> `_luaGameEngineLoad` (`FUN_00D08180`, BCS-Y-1810) ->
 guarded `pcall`. Running the chunk executes its top-level `_defineClass`,
 reaching the promoter above. `FUN_00D08A10` has only a data cross-reference
 (registered as a Lua C function by the boot registrar `FUN_00CD8990`,
-BCS-Y-1813). Static references show Lua `require()` dispatch from bytecode
-but do not exclude unresolved indirect callers. An actor
+BCS-Y-1813). Deferred ActorInstantiate initialization supplies a native
+request through the engine's queued Lua `require` path, as
+`xivl-decomp:docs/actor/zone-initialization-inputs.md`, "Deferred path to script
+definition", records. A data-only xref to the Lua C function does not exclude
+that native submission. An actor
 created via `_createActor(className, ...)` (dispatched through vtable slot
 `0x6c`) requires its class to already be defined - creation binds a name, it
 does not load the class.
@@ -572,17 +575,14 @@ example `/Area/Zone/ZoneBaseClass`, `/Chara/Npc/NpcBaseClass`,
 (zone masters, populace variants, directors) is defined at runtime by Lua
 `_defineClass(child, parent)` from the LPB script corpus (2435
 `_defineClass` reference sites) - none of these leaf class names exist as
-string literals in the binary. The player's class is a core class
-`require`d by the login/world bootstrap, so it is always defined by the
-time its control is created. A content class (for example the opening
-sequence's `OpeningDirector`, extending `DirectorBaseClass`) is `require`d
-only when the content flow that uses it runs. Spawning the actor
-(`AddActor` + `ActorInstantiate`) creates the control and a tentative class
-reference but does not itself `require` the class. If nothing ever
-`require`s that class during a given client session, its `+0x7d` stays 0
-forever, the actor never becomes Lua-bound, and any Lua callback gated on
-`+0x5C` (including the `_onPreWarp`/`_onPostWarp` -> `_fadeOut` dismiss
-cascade) never fires.
+string literals in the binary. The bootstrap submits core player and world
+paths for preload. Deferred ActorInstantiate also retains its received path
+at descriptor `+0xAC` and submits it through
+`FUN_00CC76F0 -> FUN_00CD7DA0 -> FUN_00D0C440`. The queued loader supplies
+that path to `require`; class-dependent creation still needs the resulting
+named class to be defined. A missing or failed script load is separate from
+having received an actor record. The native submission does not establish
+an actual request's successful definition, completion callback or first binding.
 
 `FUN_0055d2b0` (BCS-Y-1820) observes numeric-column reads for
 `actorclass_graphic`, but no tracked artifact identifies the id-to-classPath

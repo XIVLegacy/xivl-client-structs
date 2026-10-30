@@ -1,6 +1,6 @@
 {
-  "title": "What LOADS+RUNS a content class's .lpb (defines it / +0x7d=1) and what triggers it for the OpeningDirector: the loader is Lua-require-driven only; the director class is never require()d during the server-driven opening",
-  "trigger": "docs/director-class-load-handoff.md (follow-up to client-architecture 'Zone-in actor bind and Lua-class-readiness pipeline': what loads+runs the OpeningDirector .prog?)",
+  "title": "Deferred ActorInstantiate path submits a Lua require request",
+  "trigger": "xivl-decomp:docs/actor/zone-initialization-inputs.md, Deferred path to script definition",
   "imageBase": "0x00400000",
   "noASLR": true,
   "questionsAnswered": {
@@ -8,18 +8,18 @@
       "verdict": "NO. Resolve uses FUN_00CD8870(name, create=0) - it does not load. Class definition is eager-via-Lua-require, not lazy-on-resolve."
     },
     "Q2_what_triggers_the_load": {
-      "verdict": "A Lua `require(name)` call from a running script. The loader chain FUN_00D08A10 (_luaGameEngineRequire) -> FUN_00D0CFB0 (file lookup) -> FUN_00D08180 (_luaGameEngineLoad) -> FUN_00CF4680 (luaL_loadbuffer) runs the .lpb, whose top-level _defineClass reaches FUN_00CD9360 -> FUN_00CE1DD0 -> +0x7d=1. FUN_00D08A10 has ONLY a DATA xref (registered as a Lua C fn by FUN_00CD8990) - so the loader is invoked solely via Lua require() dispatch; there is NO native/server 'load class X' trigger. The server influences it only by driving the Lua flow (opening/content script) that issues the require.",
-      "noNativeTrigger": true
+      "verdict": "Lua require reaches FUN_00D08A10 -> FUN_00D0CFB0 -> FUN_00D08180 -> FUN_00CF4680 and executes a supplied chunk. Deferred ActorInstantiate also supplies a native trigger: FUN_007663D0 retains the descriptor, adds +0xAC at VA 0x0076678A and calls FUN_00CC76F0 at VA 0x00766794. FUN_00CD7DA0 -> FUN_00D0C440 queues that path and listener. FUN_00D0C070 supplies require, path, listener and byte argument at VA 0x00D0C1FF..0x00D0C259. A data-only xref to the Lua C function does not exclude this queued native submission. Class definition and successful completion remain separate from submission.",
+      "noNativeTrigger": false
     },
     "Q3_player_vs_director": {
-      "verdict": "The player/chara/world classes are require()d by the core login/world bootstrap (always run). The director (OpeningDirector) is a CONTENT class, require()d only when the opening/content flow runs."
+      "verdict": "The core preload list includes Player and WorldMaster paths. Deferred network records can submit their received script paths through the same engine require queue. These static inputs do not establish any particular content class load outcome or explain a failed runtime binding."
     },
     "Q4_what_server_must_send": {
-      "verdict": "Drive the client's opening sequence / content-instance flow so its Lua require()s + _createActor()s the director - NOT just AddActor + ActorInstantiate. The director class load is a SIDE EFFECT of running the opening script. Ensure the parent DirectorBaseClass loads too.",
-      "differentiator": "ActorInstantiate is sent for the PLAYER too (player_spawn.cpp:188; test 'starter-city self spawn ActorInstantiate should bind the player script') AND the director (director_spawn.cpp:374). Player class is DEFINED (works); director class is not. So ActorInstantiate only BINDS actor->class-name (control + tentative ref); it does not load the class."
+      "verdict": "The deferred route consumes the received class and script path independently. The supplied module must define the selected class and preserve its base dependencies; class-dependent creation still requires a valid class. The client does not choose the module by numeric zone. Successful load, listener callback and first binding require their own evidence.",
+      "differentiator": "ActorInstantiate application +0x24 supplies the class; the first tagged string at application +0x44 supplies the path. The deferred descriptor keeps that path at +0xAC and actively submits it. No opening-session outcome is inferred from this static join."
     }
   },
-  "directorsArePureLua": "zero EXE functions named Director/Judge. A director is an Actor created via the global Lua binding _createActor(className,...) which dispatches vtable[0x6c] and REQUIRES the class already defined (finding_createActor_thunk_async_actor_factory.md). FUN_00758260 (decompiled) is the DirectorBaseClass NATIVE method-surface master (5 registrars), NOT the Lua class definition.",
+  "directorsArePureLua": "Content classes are defined by supplied Lua chunks. The native _createActor operation requires an already defined class; deferred ActorInstantiate additionally submits its received module path before its later binding callback. Neither route guarantees a particular content initialization succeeds.",
   "functionsExamined": [
     "FUN_00D08A10 (BCS-Y-1809 NEW) - _luaGameEngineRequire; DATA-xref-only (Lua-dispatched)",
     "FUN_00D08180 (BCS-Y-1810 NEW) - _luaGameEngineLoad -> ring pop -> luaL_loadbuffer",
@@ -27,7 +27,8 @@
     "FUN_00CF4680 (BCS-Y-1812 NEW) - luaL_loadbuffer (terminal load step)",
     "FUN_00CD8990 (BCS-Y-1813 NEW) - boot registrar; binds require/load; seeds 5 category tags d4f8..d508; loads boot chunk",
     "FUN_00758260 - DirectorBaseClass native master (5 registrars; method surface, NOT the Lua class def) - ruled out",
-    "FUN_00CD9360 (BCS-Y-1806, amended) - class-define registrar; runs when a .lpb is loaded by the chain"
+    "FUN_00CD9360 (BCS-Y-1806, amended) - class-define registrar; runs when a .lpb is loaded by the chain",
+    "FUN_007663D0 -> FUN_00CC76F0 -> FUN_00CD7DA0 -> FUN_00D0C440 -> FUN_00D0C070, deferred path submission and queued require arguments checked in the original pinned retail PE"
   ],
   "newSymbols": [
     "BCS-Y-1809",
@@ -39,7 +40,18 @@
   "amendedSymbols": [
     "BCS-Y-1806"
   ],
-  "evidenceFiles": ["tools/ghidra/logs/director_class_load_trigger.txt"],
+  "evidenceFiles": [
+    "xivl-decomp:docs/actor/zone-initialization-inputs.md, Binary and method; Deferred path to script definition"
+  ],
   "symbolCountBefore": 1795,
-  "symbolCountAfter": 1800
+  "symbolCountAfter": 1800,
+  "binary": {
+    "name": "ffxivgame.exe",
+    "bytes": 15996808,
+    "sha256": "9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9"
+  },
+  "limits": [
+    "Static submission is not observed load, definition, completion or binding success.",
+    "The selected area witnesses do not establish a sufficient sheet set or native numeric-zone bound."
+  ]
 }

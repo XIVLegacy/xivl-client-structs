@@ -127,21 +127,25 @@ evidence. Existing base scripts also have `_getRegion`/`_getZoneName` uses;
 common-sheet preparation during AreaBaseClass initialization. Those calls do
 not prove custom sheet availability or additional hard selection prerequisites.
 
-`xivl-decomp:docs/actor/actor-instantiation-and-self-player.md`, "Area setup
-name", joins the first string of ActorInstantiate's conditional setup
-bundle to `AreaBase+0x64`, which `_getZoneName` reads. The class name and
-script path are separate received fields. This establishes explicit inputs,
-not a native numeric zone-to-name or ZoneMaster selector. The producer that
-chooses those inputs from numeric zone/region, and the particular area's
-ordered require/definition sequence, remain UNESTABLISHED.
+`xivl-decomp:docs/actor/zone-initialization-inputs.md` owns the joined native
+input route and authenticated same-connection capture witnesses. SetMap
+supplies region and zone separately; ActorInstantiate supplies the class,
+path and conditional setup name copied to `AreaBase+0x64`. Deferred
+initialization actively submits its path to the engine's `require` queue.
+The selected ZoneMaster leaves require ZoneBaseClass before their class
+definitions. The sender's selection algorithm and a particular request's
+successful load/definition/completion remain separate questions.
 `xivl-client-data:manifests/zone_internal_names.json`,
 `_provenance.limitations` and `zoneBindings`, is a bounded retail name/layout
 join; it is not a complete class-path allocation or native script selector.
-No minimal set of new sheet rows or script filenames can yet be declared
-sufficient for a fully initialized custom zone. A separate owner-operated
-class-load observation must record the unchanged control and candidate's
-numeric inputs, resolved name/path, LPB lookup result, definition and first
-class-dependent creation. Keep that acceptance separate from DAT selection.
+The initialization finding's minimum-input table distinguishes settled
+received fields, reusable leaf scripts and unestablished numeric-zone sheet
+requirements. No sufficient new-row set or fully initialized authored-zone
+profile is admitted. Its actor-id projection is capture consistency evidence;
+the nine-bit range remains an integration limit. A separate owner-operated
+class-load observation must join numeric inputs, resolved name/path, LPB
+lookup, definition, completion and first class-dependent creation. Keep that
+acceptance separate from DAT selection.
 
 ## Bounded owner-operated selection probe
 
