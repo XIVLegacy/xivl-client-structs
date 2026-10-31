@@ -153,3 +153,21 @@ application extent remain unresolved.
 The native retail client therefore has an actual recruitment-list and
 acceptance-answer route on `0x01C7` and `0x01C6`. Server-side recruitment
 rules and a live successful acceptance are outside this static contract.
+
+## Result Region mask composition
+
+For player-search result rows, the primary Region byte at `row+0x02` is
+retained unchanged. For indices 0 through 3, the corresponding local mask bit
+is set when either the primary byte equals that index or the additional
+Region byte at `row+0x03` contains that bit. The inspected branch does not
+reject an unknown primary value. This composition does not establish a
+mapping from these indices to session-language codes or the whole function's
+unknown-value policy.
+
+The observation uses the retail 1.23b PE identity recorded in this page's
+source record: size 15996808, image base `0x00400000`, SHA-256
+`9341f2b4567440b310a4d494f5cc5599ca334ba51c8042247317ff466492f2e9`.
+Read-only `pefile` 2024.8.26 and Capstone 5.0.7 checked the x86 fragment
+`[0x0086FC60,0x0086FD04)`, SHA-256
+`12d0181757b12198cd04fbc0bc01be25b10736c3d16961e2de97f0eb92bfe90f`.
+The row offsets remain owned by the player-search result manifest cited above.
