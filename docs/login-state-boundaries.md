@@ -448,3 +448,21 @@ The remaining static questions are concrete:
 
 The launcher username remains an external account label until a native
 account-binding reader is resolved.
+
+## Import-list parser boundary
+
+The separate import-list parser at `0x00DA4C20` reads the record count at
+`body+0x09` and walks 40-byte source rows beginning at `body+0x10`. It
+compares source-row byte `+0x04` with existing destination-row byte `+0x04`.
+For a new row it copies ten dwords and calls `0x008915D0` with that copy.
+The inspected parser contains no single-part-name test or surname append;
+it does not identify a naming transformation outside this function.
+
+This observation uses the retail PE identity in Binary and method above.
+Read-only `pefile` 2024.8.26 mapped the file-backed range and Capstone 5.0.7
+decoded x86 instructions at `[0x00DA4C20,0x00DA4D78)`: 344 bytes,
+117 instructions, SHA-256
+`28e6fe0c56a0a120c50329315503a19335d382c10e0ea89a77a0be01b2ad9290`.
+The next eight bytes are INT3 padding, excluded from this function range.
+This is an instruction-backed parser observation, without a runtime import
+or a full-name identity claim.
