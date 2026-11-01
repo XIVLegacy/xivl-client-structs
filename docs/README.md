@@ -41,6 +41,8 @@ canonical records, generated views and frozen investigations.
   selection operations, and identity and readiness limits.
 - [Wire field meanings and constraints](wire-field-boundaries.md) - shared
   headers, Lua tags, group identities and lobby/world field boundaries.
+- [Runtime publication boundaries](runtime-publication-boundaries.md) - skill
+  levels, property indexing, Talk conditions, Dalamud and target vocabularies.
 - [Retail repair contract](repair-contract.md) - client, wire, metadata, and
   capture boundaries for NPC repair and CraftCommand 22013 self-repair.
 - [Command descriptor registration](command-descriptor-registration.md) -
