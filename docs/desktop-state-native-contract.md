@@ -274,6 +274,13 @@ afterwards, the convention of the
 [presentation contracts](presentation-native-contract.md). The writer that clears
 `M +0xC8` was not traced.
 
+The bounded opener finding in
+`xivl-decomp:docs/script/desktop-widget.md#item-search-manager-argument-retention`
+records a conditional store of M at the new widget's `+0x2C`, separately from
+the manager's `+0xC8` widget slot. It recovers local argument, flag and optional
+call behavior without identifying the clear/removal owner. Its tuple composition
+requires the supplied argument values at their later loads.
+
 ## Widget container natives
 
 The container manager `C` is the dword at `Y +0x114`. It holds a vector of 8 byte
@@ -365,7 +372,8 @@ manager behind `V +0x4DC` with the item search form.
   parser core and the stores that fill its output vector.
 - The unit of the 64-bit sum of the `0x00CF` record, the meaning of the byte
   argument, the role of the dword `0x40` and server behavior.
-- The writer that clears `M +0xC8` and the effect of `0x004FFCF0`.
+- The writer that clears `M +0xC8`, the opener's remaining delegated effects
+  and the widget's removal/destruction owner.
 - How a pending container record becomes a widget, where the byte at record
   `+0x68` comes from, and the effect of `0x00CC76F0` and `0x006DBE20`.
 
