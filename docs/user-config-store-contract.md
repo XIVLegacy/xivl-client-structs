@@ -369,6 +369,14 @@ runs one of two branches.
   eleven callers of `0x004D9980` push the sentinel. The other, at
   `0x004DCC41`, pushes a handler argument.
 
+The selected non-sentinel call uses the case-2 dispatcher key; the same-key
+call to `0x004D9980` is recorded in
+`xivl-decomp:docs/actor/actor-instantiation-and-self-player.md:302-307`.
+`xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md:1077-1092`
+owns that key's wrapped-source producer and conditional remapping. This joins
+the supplied key to the conditional overlay request above; it does not prove
+a particular session completed a store initialization or file read.
+
 The object at store `+0x18` is taken to be a `ResourceModule`, whose vftable
 `0x01108C3C` holds `0x00C99480` at offset `0x0C` and `0x00C98E40` at offset
 `0x14`. Both take the seven arguments that the callers push and call the
@@ -424,7 +432,8 @@ tab and line feed.
 - The run-time contents of the root strings `0x0132CC48` and `0x0132CCA0`
   were not traced, so the directory of the per-character files is not
   recorded.
-- The origin of the character id that `0x004DCC41` passes was not traced.
+- Completed store initialization and file reads for a particular session are
+  not established by the static source-key transport above.
 - The identity of the fourth constructor argument as the system store rests
   on its group 9 key 12 record.
 - The load path of the system store and whether `config.sys` is its file
