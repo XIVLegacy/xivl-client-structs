@@ -6,8 +6,7 @@ Covers:
     2. rle\\x0c XOR-0x73 wrapper: bytes 13-15 deobfuscated as the \\x1bLu
        Lua-signature prefix, bytes 16.. deobfuscated as the rest of the
        Lua bytecode.
-    3. Filename cipher involution + two known fixtures from the upstream
-       decode_lpb.py docstring:
+    3. Filename cipher involution + two known fixtures:
             ZoneMoveProgTest <-> kvw5xvo5usv3q5rq (16/16)
             Man0g0           <-> x9wj3j           (6/6)
 
@@ -50,8 +49,8 @@ class DecodeLpbWrapperTests(unittest.TestCase):
         self.assertIsNone(decode_lpb(b"junkjunkjunkjunk"))
 
     def test_rle_xor_matches_known_decoded_prefix_literal(self):
-        # The docstring states: encoded `ff 68 3f 06` at bytes 13..16 decodes
-        # to `8c 1b 4c 75`; bytes 14..16 of that = `\x1bLu` (Lua signature).
+        # Encoded `ff 68 3f 06` at bytes 13..16 decodes to `8c 1b 4c 75`;
+        # bytes 14..16 of that = `\x1bLu` (Lua signature).
         encoded_quad = bytes.fromhex("ff 68 3f 06".replace(" ", ""))
         decoded_quad = bytes(b ^ 0x73 for b in encoded_quad)
         self.assertEqual(decoded_quad, bytes.fromhex("8c 1b 4c 75".replace(" ", "")))

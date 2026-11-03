@@ -1,108 +1,77 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""
-Decode shipped FFXIV 1.x `.le.lpb` script files to standard Lua 5.1 bytecode.
+"""Decode FFXIV 1.x client script files (.le.lpb) to Lua 5.1 bytecode.
 
-Two wrapper formats observed across the ~2671 shipped script files in
-`<install>/client/script/`:
+The client ships compiled scripts as <cipher>.le.lpb under
+<install_root>/client/script/, where <cipher> is a character-substitution
+encoding of the script's source name. Each file starts with one of two
+wrappers, identified by its first four bytes:
 
-  rlu\\x0b  - uncompressed: 8-byte header + raw Lua 5.1 bytecode.
-              Only 1 file out of 2671 uses this variant.
+  72 6C 75 0B   plain: the bytecode is everything from offset 8 onward.
+  72 6C 65 0C   obfuscated: the bytecode is every byte from offset 13
+                onward, XORed with 0x73.
 
-  rle\\x0c  - XOR-obfuscated: 16-byte header + payload XOR'd with 0x73.
-              The first 3 bytes of the Lua 5.1 signature (`\\x1bLu`) are
-              stored at bytes 13-15 of the header (also XOR'd with 0x73 -
-              decoded literal `ff 68 3f 06` -> `8c 1b 4c 75`, and bytes 1..3
-              of the decoded prefix are the missing Lua header bytes).
-              The remaining bytecode starts at offset 16, also XOR'd
-              with 0x73. So the full Lua bytecode is:
-                  decoded[13:16] XOR 0x73   (= `\\x1bLu`)
-                  + decoded[16:] XOR 0x73   (= rest of bytecode starting
-                                              with `aQ\\x00\\x01...`)
-
-The "rle\\x0c" name historically suggests RLE compression but the cipher
-is actually just byte-wise XOR with 0x73 - there's no run-length stage.
-
-The shipped script tree filenames are also obfuscated via a substitution
-cipher (case-folded, then per-character: a-j <-> 9-0 by position; k-z
-pair-swapped around midpoint sum=37). See `decode_filename` below.
+The result begins with the Lua signature (1B 4C 75 61 51) and can be fed to a
+Lua 5.1 decompiler. Files with any other leading bytes are not decodable.
 
 Usage:
-    tools/decode_lpb.py <install_root>             # bulk-decode all .lpb
-    tools/decode_lpb.py <install_root> <subpath>   # decode one file
+  decode_lpb.py INSTALL_ROOT [SOURCE_NAME] [--out DIR] [--show-cipher]
 
-Output: each `<install>/client/script/.../foo.le.lpb` ->
-        `build/lpb/foo.luac` (raw Lua 5.1 bytecode for unluac).
+With SOURCE_NAME, only the matching script is decoded to DIR/SOURCE_NAME.luac.
+Without it, every .le.lpb file under the script directory is decoded into DIR,
+preserving the directory layout. --show-cipher prints the filename cipher table.
 """
 
-from __future__ import annotations
-
 import argparse
-import os
 import sys
 from pathlib import Path
 
+PLAIN_MAGIC = bytes.fromhex("726C750B")
+OBFUSCATED_MAGIC = bytes.fromhex("726C650C")
+LUA51_SIGNATURE = bytes.fromhex("1B4C756151")
+XOR_KEY = 0x73
+SUFFIX = ".le.lpb"
+
 
 def decode_lpb(data: bytes) -> bytes | None:
-    """Decode a shipped .le.lpb file's bytes to standard Lua 5.1 bytecode."""
-    if data[:4] == b"rlu\x0b":
-        # rlu\x0b carries an 8-byte header before the bytecode.
+    """Return the Lua bytecode inside an LPB file, or None if unrecognized."""
+    magic = data[:4]
+    if magic == PLAIN_MAGIC:
         return data[8:]
-    if data[:4] == b"rle\x0c":
-        # rle\x0c XORs the payload with 0x73 and stores `\x1bLu` at bytes 13-15.
-        prefix = bytes(b ^ 0x73 for b in data[13:16])
-        body = bytes(b ^ 0x73 for b in data[16:])
-        return prefix + body
+    if magic == OBFUSCATED_MAGIC:
+        return bytes(b ^ XOR_KEY for b in data[13:])
     return None
 
 
+def _build_cipher() -> dict[int, str]:
+    table: dict[int, str] = {}
+    for i in range(10):
+        table[ord("a") + i] = chr(ord("9") - i)
+        table[ord("0") + i] = chr(ord("j") - i)
+    for i in range(ord("z") - ord("k") + 1):
+        table[ord("k") + i] = chr(ord("z") - i)
+    return table
+
+
+_CIPHER = _build_cipher()
+
+
 def encode_filename(name: str) -> str:
-    """Apply the FFXIV 1.x script tree filename cipher.
-
-    Case-fold the input, then map each character:
-      - alpha at position 1..10 (a..j)  -> digit (10 - pos)  (a->9, j->0)
-      - alpha at position 11..26 (k..z) -> alpha (37 - pos)  (k<->z, l<->y,
-                                                              ..., r<->s)
-      - digit D                          -> alpha (10 - D)    (0<->j, 9<->a)
-      - non-alphanum: passthrough
-
-    The cipher is an involution (applying it twice yields the input).
-    Validated against `ZoneMoveProgTest` -> `kvw5xvo5usv3q5rq` (16/16) and
-    `Man0g0` -> `x9wj3j` (6/6).
-    """
-    out = []
-    for c in name.lower():
-        if c.isalpha():
-            pos = ord(c) - ord("a") + 1
-            if 1 <= pos <= 10:
-                out.append(str(10 - pos))
-            else:
-                out.append(chr(ord("a") + (37 - pos) - 1))
-        elif c.isdigit():
-            d = int(c)
-            out.append(chr(ord("a") + (10 - d) - 1))
-        else:
-            out.append(c)
-    return "".join(out)
+    """Apply the filename cipher; it is its own inverse."""
+    return name.lower().translate(_CIPHER)
 
 
 def decode_filename(s: str) -> str:
-    """Inverse of encode_filename - same algorithm (involution)."""
     return encode_filename(s)
 
 
 def find_lpb(install_root: Path, source_name: str) -> Path | None:
-    """Find a shipped .le.lpb file by its decoded source name.
-
-    Walks `<install>/client/script/` looking for a file whose basename
-    (minus `.le.lpb`) equals `encode_filename(source_name)`.
-    """
-    enc = encode_filename(source_name)
+    """Locate the shipped .lpb for a source name, or None if absent."""
+    target = encode_filename(source_name) + SUFFIX
     script_dir = install_root / "client" / "script"
-    for root, _, files in os.walk(script_dir):
-        for f in files:
-            if f == f"{enc}.le.lpb":
-                return Path(root) / f
+    for path in sorted(script_dir.rglob(target)):
+        if path.is_file():
+            return path
     return None
 
 
@@ -113,95 +82,103 @@ def decode_tree(
     *,
     standalone_report: bool = False,
 ) -> int:
-    """Decode one source or an entire client script tree into ``out_dir``."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    if source_name:
-        path = find_lpb(install_root, source_name)
-        if path is None:
-            enc = encode_filename(source_name)
-            print(
-                f"error: no shipped .lpb matches source '{source_name}' "
-                f"(ciphered: '{enc}.le.lpb')",
-                file=sys.stderr,
-            )
-            return 1
-        decoded = decode_lpb(path.read_bytes())
-        if decoded is None:
-            print(f"error: unrecognized .lpb wrapper magic in {path}", file=sys.stderr)
-            return 1
-        out = out_dir / f"{source_name}.luac"
-        out.write_bytes(decoded)
-        if standalone_report:
-            print(f"  {source_name}: {path}")
-            print(f"  -> {out} ({len(decoded)} B)")
-            if decoded[:5] == b"\x1bLuaQ":
-                print("  valid Lua 5.1 bytecode (run unluac to decompile)")
-        else:
-            print(f"decoded {source_name}: {path} -> {out} ({len(decoded)} B)")
-        return 0
+    """Decode one script, or all of them, into out_dir. Returns an exit code."""
+    if source_name is not None:
+        return _decode_one(
+            install_root, out_dir, source_name, standalone_report=standalone_report
+        )
 
     script_dir = install_root / "client" / "script"
     if not script_dir.is_dir():
         print(
-            f"error: {script_dir} missing - is this the install root?", file=sys.stderr
+            f"error: {script_dir} missing - is this the install root?",
+            file=sys.stderr,
         )
         return 1
 
-    n_decoded = n_failed = 0
-    for root, _, files in os.walk(script_dir):
-        for filename in files:
-            if not filename.endswith(".le.lpb"):
-                continue
-            path = Path(root) / filename
-            decoded = decode_lpb(path.read_bytes())
-            if decoded is None:
-                n_failed += 1
-                continue
-            rel = path.relative_to(script_dir)
-            stem = rel.stem
-            stem = stem[:-3] if stem.endswith(".le") else stem
-            out_path = out_dir / rel.parent / f"{stem}.luac"
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            out_path.write_bytes(decoded)
-            n_decoded += 1
+    out_dir.mkdir(parents=True, exist_ok=True)
+    decoded = 0
+    failed = 0
+    for path in sorted(script_dir.rglob("*" + SUFFIX)):
+        if not path.is_file():
+            continue
+        bytecode = decode_lpb(path.read_bytes())
+        if bytecode is None:
+            failed += 1
+            continue
+        rel_dir = path.relative_to(script_dir).parent
+        out_path = out_dir / rel_dir / (path.name[: -len(SUFFIX)] + ".luac")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_bytes(bytecode)
+        decoded += 1
+
     verb = "Decoded" if standalone_report else "decoded"
-    print(f"{verb} {n_decoded} .lpb files to {out_dir}/ ({n_failed} failed)")
+    print(f"{verb} {decoded} .lpb files to {out_dir}/ ({failed} failed)")
     return 0
 
 
+def _decode_one(
+    install_root: Path,
+    out_dir: Path,
+    source_name: str,
+    *,
+    standalone_report: bool,
+) -> int:
+    path = find_lpb(install_root, source_name)
+    if path is None:
+        cipher = encode_filename(source_name)
+        print(
+            f"error: no shipped .lpb matches source '{source_name}' "
+            f"(ciphered: '{cipher}{SUFFIX}')",
+            file=sys.stderr,
+        )
+        return 1
+
+    bytecode = decode_lpb(path.read_bytes())
+    if bytecode is None:
+        print(f"error: unrecognized .lpb wrapper magic in {path}", file=sys.stderr)
+        return 1
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / (source_name + ".luac")
+    out_path.write_bytes(bytecode)
+
+    if standalone_report:
+        print(f"  {source_name}: {path}")
+        print(f"  -> {out_path} ({len(bytecode)} B)")
+        if bytecode.startswith(LUA51_SIGNATURE):
+            print("  valid Lua 5.1 bytecode (run unluac to decompile)")
+    else:
+        print(f"decoded {source_name}: {path} -> {out_path} ({len(bytecode)} B)")
+    return 0
+
+
+def _show_cipher() -> None:
+    print("FFXIV 1.x script tree filename cipher:")
+    for c in "abcdefghijklmnopqrstuvwxyz0123456789":
+        print(f"  {c} <-> {encode_filename(c)}")
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument(
-        "install_root", type=Path, help="FFXIV install root (contains client/script/)"
+    parser.add_argument("install_root", type=Path, help="game install root")
+    parser.add_argument(
+        "source_name", nargs="?", help="decode only this script (uncoded name)"
     )
-    ap.add_argument(
-        "source_name",
-        nargs="?",
-        help="Original source-side name to decode (e.g. 'Man0g0' or "
-        "'OpeningDirector'). If omitted, bulk-decodes all .lpb.",
+    parser.add_argument(
+        "--out", type=Path, default=Path("build/lpb"), help="output directory"
     )
-    ap.add_argument(
-        "--out",
-        type=Path,
-        default=Path("build/lpb"),
-        help="Output directory for decoded .luac files",
+    parser.add_argument(
+        "--show-cipher", action="store_true", help="print the filename cipher table"
     )
-    ap.add_argument(
-        "--show-cipher",
-        action="store_true",
-        help="Print the cipher mapping table and exit",
-    )
-    args = ap.parse_args()
+    args = parser.parse_args()
 
     if args.show_cipher:
-        print("FFXIV 1.x script tree filename cipher:")
-        for c in "abcdefghijklmnopqrstuvwxyz0123456789":
-            print(f"  {c} <-> {encode_filename(c)}")
+        _show_cipher()
         return 0
-
     return decode_tree(
         args.install_root, args.out, args.source_name, standalone_report=True
     )
