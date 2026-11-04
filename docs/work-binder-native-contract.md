@@ -304,8 +304,9 @@ the dword that its second argument addresses and pushes nil through
 `0x00CF33A0` when it is zero (`0x00D28895`, `0x00D29B08`). `0x00D16D40` passes the
 pointer from the second closure upvalue as that argument. A declared member of an
 object with no installed storage therefore reads nil, and a write to it is
-dropped by the zero test of the write routine. The string, actor and timer
-readers were not compared.
+dropped by the zero test of the write routine. The timer reader `0x00D2D080`
+makes the same test on its second argument and pushes nil
+(`0x00D2D0A7..0x00D2D0BA`). The string and actor readers were not compared.
 
 ### Member widths
 
@@ -332,6 +333,83 @@ values. `0x00CE4550` forwards a read to `0x00CCB430`, which indexes a vector at
 object found there. `0x00CE48C0` forwards a write by pool kind to the virtual slot
 at `+0x28` (save), `+0x2C` (temp) or `+0x30` (sync) of the object at receiver
 `+0x08`. The work userdata holds no member values.
+
+### Timer members
+
+A `timer` member holds a deadline, not a duration. Its descriptor (vftable
+`0x0110FF84`) has the store `0x00D2CE00` at slot `0x6C` and the reader
+`0x00D2D080` at slot `0x1C`. Both move the five bytes of the member through the
+shared record. The read passes the span byte at `0x0110EB2B`, which holds 5, to
+`0x00D12980`, and the write goes through `0x00D12260` (`STATIC`).
+
+| Offset | Size | Field |
+| ---: | ---: | --- |
+| `+0x00` | 1 | hundredths of a second, 0 to 100 |
+| `+0x01` | 4 | whole seconds, unsigned |
+
+Five zero bytes mean a cleared member. The encoder `0x00CF5520` truncates the
+deadline toward zero for the whole seconds and stores the fraction times 100
+(`0x00F55AD0`) plus 0.5 (`0x00F59898`), truncated, as the hundredths. The decoder
+`0x00CF51E0` returns the whole seconds plus the hundredths divided by 100
+(`STATIC`).
+
+The store reads the Lua value on the stack top.
+
+| Value | Store |
+| --- | --- |
+| nil | Five zero bytes from `0x00CF5750` (`0x00D2CEE7..0x00D2CF06`). The nil test `0x00CF3760` answers true when the type reader `0x00DCDCE0` returns 0. |
+| Any other value | `0x00CF35C0` converts it with `lua_tonumber` and `0x00CF5770` adds the result to the clock in seconds (`0x00D2CF92..0x00D2CFD5`). |
+
+The clock in seconds is the unsigned 64 bit value at `+0x08` of the clock object
+divided by 1000000.0 (`0x00F909C8`). The store finds the clock object at `+0x184`
+of the engine object that `0x00CF3CE0` takes from the Lua registry
+(`0x00D2CEC5..0x00D2CED0`). The written number counts seconds. `false`, `true`
+and a table convert to 0 like any value that is not a number or a numeric string (see
+[value coercion](#value-coercion)), so they set the deadline to the clock itself
+and the next read clears the member. The store answers true (`0x00D2D05E`), so a
+save member runs the slot `0x04` notification of the Clear route (`STATIC`).
+
+The reader follows these steps (`STATIC`).
+
+1. Five zero bytes push nil. The clock is not read
+   (`0x00D2D14C..0x00D2D1B8`).
+2. `0x00CF5320` returns the decoded deadline minus the clock in seconds, raised
+   to 0 when it is negative (`0x00CF536B..0x00CF537E`).
+3. A result of at least 0.01 (`0x00FD1AC0`) is pushed as a number through
+   `0x00CF3300` (`0x00D2D1ED..0x00D2D1FC`, `0x00D2D238..0x00D2D23F`).
+4. A smaller result writes five zero bytes through `0x00D12260` and pushes nil
+   (`0x00D2D1FE..0x00D2D223`).
+
+A script therefore reads the seconds left, or nil once fewer than 0.01 remain,
+and the expiry clears the member. The reader writes the pool itself, so the
+clear does not pass through the write routine `0x00D272D0` or its slot `0x04`
+notification (`STATIC`).
+
+The clock object is the 0x40 byte object that `0x00CF58E0` builds and the engine
+stores at `+0x184` (`0x00CDC7E5..0x00CDC835`). `0x00CF63E0` sets its `+0x08`
+qword to `0x004CFA50` minus the base qword at `0x01377FB0`. Its only caller,
+`0x00CDA330`, calls it at `0x00CDA5D5`, so a timer reads a snapshot of the clock
+and not a live counter. `0x004CFA50` returns microseconds. When the
+frequency cache at `0x01378658` is nonzero and `QueryPerformanceCounter` (import
+`0x00F3E158`) succeeds, it divides the counter by that frequency and multiplies
+by 1000000.0, truncated by `0x009D6636`. Otherwise it returns `timeGetTime`
+(import `0x00F3E55C`) times 1000. `0x00D353F0` fills the cache from
+`QueryPerformanceFrequency` (import `0x00F3E15C`) at `0x00D35441`. `0x00F2D1B0`
+stores the base from `0x004CFA50`, and the table at `0x00F5330C` holds its
+address (`STATIC`). That `0x00F2D1B0` is a static initializer that runs at
+process start is `INFERRED`. How often `0x00CDA330` runs was not traced.
+
+The descriptor byte at `+0x10` is the timer operand. The factory `0x00D260D0`
+maps `timer` to `0x00D253F0`, which reads element 5 of the declaration entry
+with `lua_toboolean` and passes it to the constructor `0x00D2B560`, which
+stores it at `+0x10` (`0x00D253F0..0x00D25462`, `0x00D2B579..0x00D2B583`). The
+string handler `0x00D25350` reads its length from the same element. When the
+byte is nonzero the store also passes the old and new bytes to `0x00CF5D10` on
+the clock object (`0x00D2CF0F`, `0x00D2CFDE`). `commandBurstBlocker` declares the
+operand false, so its writes skip that call (see [playerWork](#playerwork)).
+`0x00D2CBD0` and `0x00D25530` also construct a timer descriptor, reading the
+flag from elements 3 and 6. Their factories `0x00D20190` and `0x00D26350` and the
+routine `0x00CF5D10` were not traced.
 
 ### Nested capacity
 
@@ -989,7 +1067,13 @@ the request service behind `_updateWork`, which this record does not supply.
 
 - The class of the pool objects behind the read and write accessors, their
   allocation and whether they are zero filled, so the initial value of a
-  declared member before its first write. The string, actor and timer readers.
+  declared member before its first write. The string and actor readers.
+- The [timer](#timer-members) change routine `0x00CF5D10` that a nonzero
+  operand reaches, the per-tick routine `0x00CF6080` that `0x00CF63E0` enters
+  when the list at clock object `+0x18` is not empty, how often `0x00CDA330`
+  runs, and the readers of the `_onTimer` literal (`0x0110E7DC`) that the engine
+  copies to `+0x128` at `0x00CDC544`. Whether an operand of true raises a script
+  callback on expiry is open.
 - The code that applies a numeric third operand of a boolean or numeric tag as
   an element count, and the origin of a nested list (the nesting member's own
   start is inferred). Until those are read, the starts in
@@ -1077,6 +1161,7 @@ members replaced by recorders. The function VAs for `$Addresses` are:
 | Callbacks | `0x006E6110,0x00705320,0x006E7670,0x006E8890,0x006E85E0,0x006E2AF0,0x006E3380,0x006E33A0,0x00706C70,0x006F9B20,0x00700110,0x00709C80,0x00700680,0x006E2240,0x006F96C0,0x006DC6F0,0x006E47D0,0x006E4700` |
 | Touch attributes | `0x00895EF0,0x00895790,0x0089A1C0,0x0089A780,0x0075C950,0x00589720,0x00894EE0,0x0075C970,0x00589750,0x00763030,0x004D72F0,0x005893F0,0x00574D50,0x00574D60,0x0058E0C0,0x00588200,0x00588300,0x00588330,0x007CE7B0` |
 | Layout and bind records | `0x00D1E0F0,0x00D1F4F0,0x00D28390,0x00D28BE0,0x00D23DA0,0x00D1C100,0x00D15F70,0x00D174B0,0x00D25900,0x00CE5BF0,0x00CE5290,0x00CE4550,0x00CE4450,0x00CE4250,0x00CCB3F0,0x00CCB430,0x00D27450` |
+| Timer members | `0x00D2CE00,0x00D2D080,0x00D12980,0x00D12260,0x00CF3760,0x00DCDCE0,0x00CF5750,0x00CF5770,0x00CF5520,0x00CF51E0,0x00CF5320,0x00CF3300,0x00CF3CE0,0x00CF58E0,0x00CF63E0,0x00CDA330,0x004CFA50,0x00D353F0,0x00F2D1B0,0x00D253F0,0x00D2B560,0x00D2CBD0,0x00D25530` |
 | Value coercion | `0x00D28810,0x00D28C10,0x00D290B0,0x00D295D0,0x00D29A00,0x00D29F40,0x00D2A410,0x00CF35C0,0x00CF35E0,0x00DCDED0,0x00DCDF50,0x00DDE8B0,0x009D6636` |
 | Orientation and queries | `0x009DAEBA,0x009ECA10,0x009EC97C,0x006F9B20,0x006ED740,0x006F0220,0x0075C7B0,0x0060DD90,0x006DD038,0x006BFCD0,0x0075B2C0,0x00705170` |
 | Work refresh | `0x0070AA10,0x00767FC0,0x00767C00,0x006C7A80,0x006C72E0,0x0075EAC0` |

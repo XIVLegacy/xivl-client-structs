@@ -452,6 +452,87 @@
       },
       {
         "tier": "STATIC",
+        "claim": "A timer member holds a deadline in five bytes: +0x00 the hundredths of a second (0 to 100) and +0x01 the unsigned whole seconds. Five zero bytes mean a cleared member. The descriptor (vftable 0x0110FF84) has the store 0x00D2CE00 at slot 0x6C and the reader 0x00D2D080 at slot 0x1C. Both read the bytes through 0x00D12980 with the span byte at 0x0110EB2B (5), and write through 0x00D12260. The encoder 0x00CF5520 truncates the deadline toward zero for the whole seconds and stores the fraction times 100 (0x00F55AD0) plus 0.5 (0x00F59898), truncated. The decoder 0x00CF51E0 returns the whole seconds plus the hundredths divided by 100.",
+        "locators": [
+          "0x0110FF84",
+          "0x00D2D104..0x00D2D128",
+          "0x0110EB2B",
+          "0x00CF5520..0x00CF5619",
+          "0x00CF51E0..0x00CF5239",
+          "0x00F55AD0",
+          "0x00F59898"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "The timer store writes five zero bytes from 0x00CF5750 when the Lua value on the stack top is nil (0x00CF3760, true when the type reader 0x00DCDCE0 returns 0). Any other value converts with lua_tonumber (0x00CF35C0), and 0x00CF5770 adds it to the clock in seconds, the unsigned 64 bit value at clock object +0x08 divided by 1000000.0 (0x00F909C8). The clock object is engine object +0x184, with the engine object taken from the Lua registry by 0x00CF3CE0. A value that converts to 0 sets the deadline to the clock itself. The store answers true.",
+        "locators": [
+          "0x00D2CE00..0x00D2D073",
+          "0x00D2CEC5..0x00D2CED0",
+          "0x00D2CED8..0x00D2CEE1",
+          "0x00D2CEE7..0x00D2CF06",
+          "0x00D2CF92..0x00D2CFD5",
+          "0x00D2D05E",
+          "0x00CF3760..0x00CF3777",
+          "0x00CF5750..0x00CF5769",
+          "0x00CF5770..0x00CF57CA",
+          "0x00F909C8"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "The timer reader pushes nil when its storage dword is zero and when the five bytes are zero, without reading the clock. Otherwise 0x00CF5320 returns the decoded deadline minus the clock in seconds, raised to 0 when negative. A result of at least 0.01 (0x00FD1AC0) is pushed as a number through 0x00CF3300. A smaller result writes five zero bytes through 0x00D12260 and pushes nil. The clear does not pass through the write routine 0x00D272D0 or the slot 0x04 notification.",
+        "locators": [
+          "0x00D2D0A7..0x00D2D0BA",
+          "0x00D2D14C..0x00D2D1B8",
+          "0x00D2D1D6..0x00D2D1E8",
+          "0x00CF5320..0x00CF5383",
+          "0x00D2D1ED..0x00D2D1FC",
+          "0x00FD1AC0",
+          "0x00D2D1FE..0x00D2D223",
+          "0x00D2D238..0x00D2D23F"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "The timer clock object is the 0x40 byte object that 0x00CF58E0 builds and the engine stores at +0x184. 0x00CF63E0 sets its +0x08 qword to 0x004CFA50 minus the base qword at 0x01377FB0, and its only caller 0x00CDA330 calls it at 0x00CDA5D5, so a timer reads a snapshot of the clock. 0x004CFA50 returns microseconds: QueryPerformanceCounter (import 0x00F3E158) divided by the frequency cached at 0x01378658 and multiplied by 1000000.0, truncated by 0x009D6636, or timeGetTime (import 0x00F3E55C) times 1000 when the cache is zero or the counter call fails. 0x00D353F0 fills the cache from QueryPerformanceFrequency (import 0x00F3E15C). 0x00F2D1B0 stores the base from 0x004CFA50 and the table at 0x00F5330C holds its address.",
+        "locators": [
+          "0x00CDC7E5..0x00CDC835",
+          "0x00CF58E0..0x00CF5924",
+          "0x00CF63E0..0x00CF6403",
+          "0x00CDA5CD..0x00CDA5D5",
+          "0x004CFA50..0x004CFAC5",
+          "0x00D35439..0x00D35447",
+          "0x00F2D1B0..0x00F2D1C0",
+          "0x00F5330C"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "The timer operand is the descriptor byte at +0x10. The factory 0x00D260D0 maps timer to 0x00D253F0, which reads element 5 of the declaration entry with lua_toboolean and passes it to the constructor 0x00D2B560, which stores it at +0x10. When the byte is nonzero the store also passes the old and new bytes to 0x00CF5D10 on the clock object. commandBurstBlocker declares the operand false. 0x00D2CBD0 and 0x00D25530 also construct a timer descriptor and read the flag from elements 3 and 6.",
+        "locators": [
+          "0x00D26298",
+          "0x00D253F0..0x00D25462",
+          "0x00D2B579..0x00D2B583",
+          "0x00D2CF0F",
+          "0x00D2CFDE",
+          "0x00D2CBFD..0x00D2CC51",
+          "0x00D2555C..0x00D25573"
+        ]
+      },
+      {
+        "tier": "unknown",
+        "claim": "The timer change routine 0x00CF5D10, the per-tick routine 0x00CF6080 that 0x00CF63E0 enters when the list at clock object +0x18 is not empty, how often 0x00CDA330 runs, the readers of the _onTimer literal (0x0110E7DC) that the engine copies to +0x128, and whether an operand of true raises a script callback on expiry. That 0x00F2D1B0 runs at process start is INFERRED from the initializer table.",
+        "locators": [
+          "0x00CF5D10",
+          "0x00CF6080",
+          "0x00CDA330",
+          "0x00CDC544..0x00CDC554",
+          "0x0110E7DC"
+        ]
+      },
+      {
+        "tier": "STATIC",
         "claim": "The factory 0x00D260D0 maps the type names to constructors. The boolean handler 0x00D1F2A0 and the integer8 handler 0x00D25640 allocate 0x10 bytes and construct the descriptor with 0x00D28390 and 0x00D28BE0. The string handler 0x00D25350 allocates 0x14 bytes, reads the length operand and constructs the descriptor with 0x00D2A3E0, which stores the length at descriptor +0x10.",
         "locators": [
           "0x00D260D0..0x00D26140",
