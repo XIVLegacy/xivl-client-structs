@@ -524,8 +524,8 @@
           ]
         },
         {
-          "tier": "unknown",
-          "claim": "Whether 0x00CCEE30 runs the _onInit body inside the call or starts a separate Lua thread was not traced, and so was not whether the resume checker waits for _onInit to finish. The checker reads the control byte at +0x5C or the byte at record +0x7D. Besides the clear in record constructor 0x00CE2BC0, the only known writer of +0x7D is 0x00CE1DD0 (store at 0x00CE1E0B), which the creation path does not call. Its callers are 0x00CC72D9 (through 0x00CC72C0, called from 0x006E1D41, 0x006E1E12, 0x0077418B, 0x0077591E and 0x0078FC31), 0x00CD988F (in the record routine 0x00CD9360) and 0x00CE26D4 (through 0x00CE26C0). 0x00CE26C0 is called from the thread teardown 0x00CCE1C0 at 0x00CCE23E for the owner record at thread +0x10 and from 0x00CCE9AC. 0x0078BBB0 also runs 0x00CC7AD0 at 0x0078BC17, which calls 0x00CF1060, a thread registry Lua routine, before the _onInit hand-off. The resume may therefore depend on the completion of an _onInit thread that the control owns.",
+          "tier": "INFERRED",
+          "claim": "The checker reads the control byte at +0x5C or the byte at record +0x7D. Besides the clear in record constructor 0x00CE2BC0, the only known writer of +0x7D is 0x00CE1DD0 (store at 0x00CE1E0B). Its callers are 0x00CC72D9 (through 0x00CC72C0, called from 0x006E1D41, 0x006E1E12, 0x0077418B, 0x0077591E and 0x0078FC31), 0x00CD988F (in the record routine 0x00CD9360) and 0x00CE26D4 (through 0x00CE26C0). 0x00CE26C0 is called from the thread completion 0x00CCE1C0 at 0x00CCE23E for the owner record at thread +0x10 when the thread kind is 0xFFFE, and from 0x00CCE9AC. 0x0078BBB0 runs 0x00CC7AD0 at 0x0078BC17 before the _onInit hand-off, which requests that thread through 0x00CF1060 with kind 0xFFFE, and does not wait for it. On the branch that reads +0x7D, the resume therefore waits for that completion unless another caller has already set the byte. That the completion means _onInit returned is the inferred step.",
           "locators": [
             "0x00CE1DD0",
             "0x00CE1E0B",
@@ -541,7 +541,8 @@
             "0x0078BC17",
             "0x00CC7AD0",
             "0x00CF1060",
-            "0x00CCEE30"
+            "xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md#initialization-completion-and-record-insertion",
+            "xivl-decomp:docs/actor/actor-instantiation-and-self-player.md#creation-order"
           ]
         },
         {
@@ -950,7 +951,7 @@
       "obligations": [
         "Allocate a SpreadSheet object. Its state is the one that manifests/spreadsheet_native_call_contract.json records.",
         "Call SpreadSheet._onInit with the payload so that _setFilename receives the sheet name.",
-        "Resolve the resume when the readiness test of the control passes: the byte at +0x5C of the control when the probe byte is set, otherwise the byte at +0x7D of the control record. The writer of +0x7D on the creation path was not traced (CALIBRATION), so whether the resume waits for SpreadSheet._onInit is open. The sheet rows load later through the yielding load natives.",
+        "Resolve the resume when the readiness test of the control passes: the byte at +0x5C of the control when the probe byte is set, otherwise the byte at +0x7D of the control record. The initialization thread completion sets +0x7D unless another caller of 0x00CE1DD0 set it first, and that the completion means SpreadSheet._onInit returned is INFERRED. The sheet rows load later through the yielding load natives.",
         "Publish the control under its name as a Lua global by a raw set into the globals table, which the explicit-name creation step 0x00CD7970 does. The loader scripts read tribeSheet, materiaSheet and compatibilitySheet with GETGLOBAL, and creation fails when that global is already non-nil."
       ]
     },
@@ -1082,14 +1083,14 @@
       "label": "CALIBRATION",
       "question": "What sets the byte at +0x5C of a widget or sheet control when the probe byte is set?",
       "constraint": "The probe byte is set when the control under 0xC0000024 exists with +0x5C nonzero. Then the checker reads +0x5C of the new control. The ActorBase constructor clears it and the store of 1 that was found belongs to the actor record apply 0x00766F00. No store for widget or sheet controls was found.",
-      "needs": "A trace of the writers of the byte at +0x5C of Lua controls and of the callers of 0x00CE1DD0 (0x00CC72D9, 0x00CD988F, 0x00CE26D4) with 0x00CE26C0 and the thread teardown 0x00CCE1C0 that calls it at 0x00CCE23E, or a live run that records the checker answers for a SpreadSheet created in the game."
+      "needs": "A trace of the writers of the byte at +0x5C of Lua controls, or a live run that records the checker answers for a SpreadSheet created in the game."
     },
     {
       "id": "on-init-scheduling",
       "label": "CALIBRATION",
-      "question": "Does 0x00CCEE30 run _onInit inline, on the creating thread or on a separate Lua thread?",
-      "constraint": "Whether the resume checker waits for _onInit is open. The readiness byte +0x7D has no writer on the traced creation path, and 0x0078BBB0 runs 0x00CC7AD0 and 0x00CF1060 (thread registry Lua work) before the _onInit hand-off, so the resume may depend on an _onInit thread that the control owns. A widget _onInit can yield, so a separate thread is likely, but the bytes of 0x00CCEE30 were not traced.",
-      "needs": "A trace of 0x00CCEE30 and its callees, of 0x00CC7AD0 and 0x00CF1060, and of 0x00CE26C0 with the thread teardown 0x00CCE1C0."
+      "question": "Does the thread status that reaches 0x00CCE1C0 mean _onInit returned, can 0x00CC72D9 or 0x00CD988F set +0x7D on a new control first, and does an _onInit that raises an error still reach the completion?",
+      "constraint": "The initialization thread completion sets +0x7D through 0x00CE26C0, so the resume on that branch waits for it unless another caller set the byte first. The link from the completion status to the return of _onInit is inferred.",
+      "needs": "A decode of the thread status value 2 at 0x00CF1D0C, a trace of the callers of 0x00CC72C0 and 0x00CD9360 for a new control, or a live run that records the order."
     },
     {
       "id": "null-creator-outcome",

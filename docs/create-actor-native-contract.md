@@ -143,9 +143,10 @@ The creation core `0x00CDCBA0` applies these rules:
 
 `0x00CD0910` resolves the control record and passes it to `0x00CCF9B0`. That routine does nothing when the byte at
 `+0x08` of the reporter object at M `+0x1CC` is nonzero or when the byte at record `+0x7F` is zero. Otherwise it
-asks `0x00CCCD80` whether the method exists and runs `0x00CCEE30` with the payload. Whether `0x00CCEE30` runs the
-`_onInit` body inside the call or on a separate Lua thread was not traced. `0x0078BBB0` also runs `0x00CC7AD0` at
-`0x0078BC17` before this hand-off, which calls the thread registry Lua routine `0x00CF1060`.
+asks `0x00CCCD80` whether the method exists and runs `0x00CCEE30` with the payload. `0x0078BBB0` also runs
+`0x00CC7AD0` at `0x0078BC17` before this hand-off. That requests the initialization thread through `0x00CF1060`, with
+kind word `0xFFFE`, and `0x0078BBB0` does not wait for it
+(`xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md#initialization-completion-and-record-insertion`).
 
 ### Global publication
 
@@ -178,11 +179,13 @@ control identity at `+0x08` and the probe byte at `+0x0C`. Slot 1 at `0x007140C0
 `0x0130CED0`, the value 2, when no control has that identity. With a control it reads the byte at control `+0x5C`
 when the probe byte is set and calls `0x00CC72A0` when it is clear. A true answer stores the done cell
 `0x01377ECC` and a false answer stores the waiting cell `0x0130CECC`. The checker reads the control byte or
-the ready byte at record `+0x7D`. Whether that waits for `_onInit` to finish is open. Besides the clear in record
-constructor `0x00CE2BC0`, the only known writer of `+0x7D` is `0x00CE1DD0`, which the traced creation path does not call. Its callers are `0x00CC72D9` through `0x00CC72C0`,
-`0x00CD988F` in the record routine `0x00CD9360`, and `0x00CE26D4` through `0x00CE26C0`. The thread teardown
-`0x00CCE1C0` calls `0x00CE26C0` at `0x00CCE23E` for the owner record at thread `+0x10`. The resume may therefore
-depend on an `_onInit` thread that the control owns.
+the ready byte at record `+0x7D`. Besides the clear in record
+constructor `0x00CE2BC0`, the only known writer of `+0x7D` is `0x00CE1DD0`. Its callers are `0x00CC72D9` through `0x00CC72C0`,
+`0x00CD988F` in the record routine `0x00CD9360`, and `0x00CE26D4` through `0x00CE26C0`. The thread completion
+`0x00CCE1C0` calls `0x00CE26C0` at `0x00CCE23E` for the owner record at thread `+0x10` when the thread kind is `0xFFFE`.
+On the branch that reads `+0x7D`, the resume therefore waits for that completion unless another caller has already
+set the byte. That the completion means `_onInit` returned is `INFERRED`
+(`xivl-decomp:docs/actor/actor-instantiation-and-self-player.md#creation-order`).
 
 The update loop `0x00CF1B50` compares the poll result with the waiting cell and leaves the thread parked on
 equality. It compares any other result with the cell `0x0130CED0` at `0x00CF1D0C`. That value goes to `0x00CCE1C0`
@@ -295,8 +298,9 @@ SpreadSheet:
    [SpreadSheet contracts](spreadsheet-native-contract.md) record.
 2. Call `SpreadSheet._onInit` with the payload so that `_setFilename` receives the sheet name.
 3. Resolve the resume when the readiness test passes: the byte at `+0x5C` of the control when the probe byte is
-   set, otherwise the byte at `+0x7D` of the control record. The writer of `+0x7D` on the creation path was not
-   traced (`CALIBRATION`), so whether the resume waits for `SpreadSheet._onInit` is open. The sheet rows load
+   set, otherwise the byte at `+0x7D` of the control record. The initialization thread completion sets `+0x7D` unless
+   another caller of `0x00CE1DD0` set it first, and that the completion means `SpreadSheet._onInit` returned is
+   `INFERRED`. The sheet rows load
    later through the yielding load natives.
 4. Publish the control under its name as a Lua global by a raw set into the globals table, as `0x00CD7970` does.
    The loader scripts read `tribeSheet`, `materiaSheet` and `compatibilitySheet` with `GETGLOBAL`. Creation fails
@@ -321,11 +325,10 @@ Other kinds:
 ## Open
 
 - What sets the byte at `+0x5C` of a widget or sheet control when the probe byte is set. The constructor of
-  `ActorBase` clears it and the store of 1 that was found belongs to the actor record apply `0x00766F00`. The ready
-  byte `+0x7D` has no writer on the creation path, and the callers of `0x00CE1DD0` (`0x00CC72D9`, `0x00CD988F`,
-  `0x00CE26D4`) with `0x00CE26C0` and the thread teardown `0x00CCE1C0` are untraced.
-- Whether `0x00CCEE30` runs `_onInit` inline or on a separate Lua thread, and whether the resume waits for it.
-  `0x00CC7AD0` and `0x00CF1060`, which `0x0078BBB0` runs before the hand-off, are untraced.
+  `ActorBase` clears it and the store of 1 that was found belongs to the actor record apply `0x00766F00`.
+- Whether `0x00CC72D9` or `0x00CD988F` can set `+0x7D` on a new control before its initialization thread completes.
+- Whether the thread status that reaches `0x00CCE1C0` means `_onInit` returned, and whether an `_onInit` that raises
+  an error still reaches it.
 - The outcome of the null creator result and of a refused creation in a running client.
 - Which object is registered under `0xC0000024` and whether it has a byte at `+0x5C`. The Rapture selector record
   shows that `0x00774AD0` creates the element only when it is absent and then obtains the Lua class table
