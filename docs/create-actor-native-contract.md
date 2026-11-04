@@ -178,8 +178,8 @@ control identity at `+0x08` and the probe byte at `+0x0C`. Slot 1 at `0x007140C0
 `0x0130CED0`, the value 2, when no control has that identity. With a control it reads the byte at control `+0x5C`
 when the probe byte is set and calls `0x00CC72A0` when it is clear. A true answer stores the done cell
 `0x01377ECC` and a false answer stores the waiting cell `0x0130CECC`. The checker reads the control byte or
-the ready byte at record `+0x7D`. Whether that waits for `_onInit` to finish is open. The only writer of `+0x7D` is
-`0x00CE1DD0`, which the traced creation path does not call. Its callers are `0x00CC72D9` through `0x00CC72C0`,
+the ready byte at record `+0x7D`. Whether that waits for `_onInit` to finish is open. Besides the clear in record
+constructor `0x00CE2BC0`, the only known writer of `+0x7D` is `0x00CE1DD0`, which the traced creation path does not call. Its callers are `0x00CC72D9` through `0x00CC72C0`,
 `0x00CD988F` in the record routine `0x00CD9360`, and `0x00CE26D4` through `0x00CE26C0`. The thread teardown
 `0x00CCE1C0` calls `0x00CE26C0` at `0x00CCE23E` for the owner record at thread `+0x10`. The resume may therefore
 depend on an `_onInit` thread that the control owns.

@@ -152,7 +152,8 @@ slot `0x00A72A20` pushes nothing, so the call returns no value.
 other value as an integer through `0x00CC70E0`. A control that already
 resolves is pushed at once. Otherwise the call may suspend with a
 `CreateStaticActorResumeChecker` built by `0x0078D800`, vftable `0x00FE0558`.
-Its poll slot `0x0078D880` waits for the control's `+0x7D` flag. Its push
+Its poll slot `0x0078D880` waits for the `+0x7D` flag of the control's
+class-binding entry. Its push
 slot `0x0078DD70` pushes the control.
 
 ### Storyboard commands

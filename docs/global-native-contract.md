@@ -267,10 +267,10 @@ shipped call passes an int.
 `_prepareAllCommandStaticActor` (`0x006E2000`) takes no argument. It reads the
 dword vector at `0x0134B77C..0x0134B780` and builds the identity of each static
 actor number with `0x00CC70E0`. A control that resolves through `0x00CC7A50` and
-carries the `+0x7D` flag needs nothing. For an identity with no control,
+whose class-binding entry carries the `+0x7D` flag needs nothing. For an identity with no control,
 `0x00CC7180` decides: true goes to the request, false calls `0x00CC7160` and
 `0x00CC78C0` and goes to the request when that gives no control or a control
-without the flag. The request is `0x00767100` on the object at `Y +0x0D8`, which
+whose entry lacks the flag. The request is `0x00767100` on the object at `Y +0x0D8`, which
 forwards the identity address to `0x00582BC0`. The native creates no control
 itself, returns nothing and never yields.
 
