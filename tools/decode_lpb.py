@@ -69,8 +69,9 @@ def find_lpb(install_root: Path, source_name: str) -> Path | None:
     """Locate the shipped .lpb for a source name, or None if absent."""
     target = encode_filename(source_name) + SUFFIX
     script_dir = install_root / "client" / "script"
-    for path in sorted(script_dir.rglob(target)):
-        if path.is_file():
+    # Compare literally: a source name is not a glob pattern or a relative path.
+    for path in sorted(script_dir.rglob("*" + SUFFIX)):
+        if path.name.lower() == target and path.is_file():
             return path
     return None
 

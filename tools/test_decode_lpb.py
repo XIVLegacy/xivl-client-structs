@@ -17,12 +17,13 @@ Run:
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from decode_lpb import decode_lpb, encode_filename, decode_filename  # noqa: E402
+from decode_lpb import decode_filename, decode_lpb, encode_filename, find_lpb  # noqa: E402
 
 
 class DecodeLpbWrapperTests(unittest.TestCase):
@@ -55,6 +56,31 @@ class DecodeLpbWrapperTests(unittest.TestCase):
         decoded_quad = bytes(b ^ 0x73 for b in encoded_quad)
         self.assertEqual(decoded_quad, bytes.fromhex("8c 1b 4c 75".replace(" ", "")))
         self.assertEqual(decoded_quad[1:4], b"\x1bLu")
+
+
+class FindLpbTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.script_dir = self.root / "client" / "script"
+        self.script_dir.mkdir(parents=True)
+
+    def test_finds_exact_name_in_subdirectory(self):
+        nested = self.script_dir / "sub"
+        nested.mkdir()
+        expected = nested / (encode_filename("Man0g0") + ".le.lpb")
+        expected.write_bytes(b"")
+        self.assertEqual(find_lpb(self.root, "Man0g0"), expected)
+
+    def test_parent_selector_in_name_does_not_match(self):
+        (self.root / "client" / (encode_filename("a") + ".le.lpb")).write_bytes(b"")
+        self.assertIsNone(find_lpb(self.root, "../a"))
+
+    def test_glob_metacharacters_are_literal(self):
+        (self.script_dir / (encode_filename("a") + ".le.lpb")).write_bytes(b"")
+        self.assertIsNone(find_lpb(self.root, "[a]"))
+        self.assertIsNone(find_lpb(self.root, "*"))
 
 
 class FilenameCipherTests(unittest.TestCase):
