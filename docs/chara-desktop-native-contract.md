@@ -312,8 +312,8 @@ routines, their gates and the entries they hand to the policy manager.
 
 The next natives by value are ranked by the number of distinct scripts that
 contain a call, with the call-site count as the tie break. The selection is by
-static script names and switchboard orders. It is not an execution trace and not
-the census blocker lists of `bahamut-client`, so a ranked native is not shown to
+static script names and switchboard orders. It is not an execution trace, so a
+ranked native is not shown to
 be reached by `DesktopWidget`, `ActionMenuWidget` or `MapNavigationWidget`
 (`_cancelAimCameraTutorial` is a `WorldMaster` native). Natives with a
 contract row in any manifest or a wire-level record in a contract page are left

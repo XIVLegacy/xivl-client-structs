@@ -57,12 +57,12 @@ redistributed and no tracked artifact carries those values, so they are
 ## Ranking
 
 The ranking covers every native that `xivl-client-scripts:lua/napi_index.json`
-lists and that the ledger of the client rewrite still marks unimplemented or a
+lists and that an external implementation ledger marks unimplemented or a
 stub. It orders them by the call sites outside the `commanddebugger` scripts,
 then by the total index call sites, then by the number of distinct scripts
 outside the debug console, then by the class order `CharaBase`, `NpcBase`,
 `WorldMaster`, `DesktopWidget`, `PlayerBase`, `CutScene` and last by the
-switchboard order. The ledger is read at the revision named in the manifest. The
+switchboard order. The
 selection takes the first fourteen natives that remain after the left out
 groups below.
 

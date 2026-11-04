@@ -43,8 +43,8 @@ those values, so they are `INFERRED`.
 
 ## Ranking
 
-The ranking covers the natives that `xivl-client-scripts:lua/napi_index.json` binds to a class and whose ledger row in
-`bahamut-client:bindings/ledger.toml` at revision `f6e50df28ebcfe7f542a05c23756dac08e26b20b` is unimplemented. It orders
+The ranking covers the natives that `xivl-client-scripts:lua/napi_index.json` binds to a class and whose row in
+an external implementation ledger is unimplemented. It orders
 them by the call sites outside the commanddebugger scripts, then by the total index call sites, then by the number of
 distinct scripts outside the debug console, then by the class order (`CharaBase`, `NpcBase`, `WorldMaster`, `PlayerBase`, `GroupBase`, `WidgetBase`, `DirectorBase`) and then by the switchboard order. The rank is the
 rank among the 28 natives of this record and of the

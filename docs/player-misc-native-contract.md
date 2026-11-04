@@ -41,8 +41,8 @@ move, zero-extend and indirect jump instructions, and the facts record the resul
 
 ## Ranking
 
-The ranking covers the natives that `xivl-client-scripts:lua/napi_index.json` binds to `PlayerBaseClass` and whose ledger row in
-`bahamut-client:bindings/ledger.toml` is unimplemented at bahamut-client revision `dff89145cff58d31664bede866c4de7cc4ac425c`. It orders
+The ranking covers the natives that `xivl-client-scripts:lua/napi_index.json` binds to `PlayerBaseClass` and whose row in
+an external implementation ledger is unimplemented. It orders
 them by the number of distinct scripts that contain a call, then by the call-site count and then by the switchboard order. A native
 with a contract row, a related record or a ledger candidate entry in any manifest is left out, and so are the natives of the command,
 talk, emote and push family and the natives whose body or arguments another record already describes.

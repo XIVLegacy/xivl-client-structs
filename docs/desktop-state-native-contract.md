@@ -53,8 +53,8 @@ values, so they are `INFERRED`.
 ## Selection
 
 The selection covers every `DesktopWidget` native that
-`xivl-client-scripts:lua/napi_index.json` lists and that the ledger of the client
-rewrite marks unimplemented. The ledger has 17 such rows, less
+`xivl-client-scripts:lua/napi_index.json` lists and that an external implementation ledger
+marks unimplemented. The ledger has 17 such rows, less
 `_getLastAttacker`, a row of the
 [achievement and target contracts](achievement-target-native-contract.md#target-natives).
 The 16 natives that remain are all registered by the `DesktopWidget` switchboard,

@@ -24,8 +24,7 @@ natives is the one of `_setKeyboardFocusedControl` in the [talk record](talk-nat
 
 ## Ranking
 
-The ranking uses the basis of the [trophy and group record](trophy-group-native-contract.md#ranking) at the ledger revision
-`f6e50df28ebcfe7f542a05c23756dac08e26b20b`. The rank is the rank among the 28 natives of the two records.
+The ranking uses the basis of the [trophy and group record](trophy-group-native-contract.md#ranking). The rank is the rank among the 28 natives of the two records.
 
 | Rank | Native | Class | Scripts | Call sites | Index sites | Order |
 | --- | --- | --- | --- | --- | --- | --- |
