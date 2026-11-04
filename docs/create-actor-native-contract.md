@@ -179,17 +179,35 @@ control identity at `+0x08` and the probe byte at `+0x0C`. Slot 1 at `0x007140C0
 `0x0130CED0`, the value 2, when no control has that identity. With a control it reads the byte at control `+0x5C`
 when the probe byte is set and calls `0x00CC72A0` when it is clear. A true answer stores the done cell
 `0x01377ECC` and a false answer stores the waiting cell `0x0130CECC`. The checker reads the control byte or
-the ready byte at record `+0x7D`. Besides the clear in record
-constructor `0x00CE2BC0`, the only known writer of `+0x7D` is `0x00CE1DD0`. Its callers are `0x00CC72D9` through `0x00CC72C0`,
-`0x00CD988F` in the record routine `0x00CD9360`, and `0x00CE26D4` through `0x00CE26C0`. The thread completion
-`0x00CCE1C0` calls `0x00CE26C0` at `0x00CCE23E` for the owner record at thread `+0x10` when the thread kind is `0xFFFE`.
-On the branch that reads `+0x7D`, the resume therefore waits for that completion unless another caller has already
-set the byte. That the completion means `_onInit` returned is `INFERRED`
-(`xivl-decomp:docs/actor/actor-instantiation-and-self-player.md#creation-order`).
+the ready byte at record `+0x7D`.
+
+New widget and SpreadSheet registration reaches the same pending list of
+`InitializeWaitingActorContainer`. With container state `+0x16C` equal to 10,
+`0x00766F00` resolves each pending identity, tests registry `+0x7D` and sets
+control `+0x5C` to 1 at `0x00767028`, then removes the completed entry.
+The complete-object and shared-container pointer chains are `STATIC` in
+`xivl-decomp:docs/actor/kick-gate-writer.md`.
+
+Activation `0x00CE1DD0` writes registry `+0x7D` at `0x00CE1E0B`.
+Initialization finalization reaches it through `0x00CE26C0` from both
+`0x00CCE1C0` and `0x00CCE8E0`, subject to their owner, kind and saved-call
+guards. A caught and reported Lua error can reach that activation, as can
+normal return. Registry readiness therefore does not prove successful
+`_onInit` return. The `STATIC` status and error paths are owned by
+`xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md#initialization-completion-and-record-insertion`.
+
+The other explicit activation calls do not establish early readiness of the
+same fresh control. `0x00CD988F` enables a class record, while the later
+instance clone clears its own `+0x7D`. Two callers of `0x00CC72C0` disable
+their controls, and the standard-library enable loop uses a separate record
+kind. DesktopWidget and descriptor re-enable still need a path from the same
+fresh instance with its initialization thread pending. The caller-by-caller
+proof is `xivl-decomp:docs/actor/run-event-gate-candidates.md#explicit-activation-and-fresh-records`.
 
 The update loop `0x00CF1B50` compares the poll result with the waiting cell and leaves the thread parked on
 equality. It compares any other result with the cell `0x0130CED0` at `0x00CF1D0C`. That value goes to `0x00CCE1C0`
-at `0x00CF1D16` and every other value, the done result, goes to `0x00CCF290` at `0x00CF1D1D`, as the
+at `0x00CF1D16` without resuming Lua. This is the checker's termination result,
+not a Lua return status. Every other value, the done result, goes to `0x00CCF290` at `0x00CF1D1D`, as the
 [scheduler contracts](scheduler-item-native-contract.md) record.
 
 Slot 2 at `0x007493A0` runs only on the done result, because `0x00CCF290` is the one routine that calls
@@ -199,8 +217,9 @@ Slot 2 at `0x007493A0` runs only on the done result, because `0x00CCF290` is the
 
 A control that is gone at the poll makes the poll answer 2, so the thread takes `0x00CCE1C0`. That routine deletes
 the checker through slot 0 with 1 (`0x00CCE1E8` to `0x00CCE1F8`), runs the thread cleanup `0x00CCDED0` and
-`0x00CCD910` and, for an owner record, `0x00CE26C0`. Slot 2 does not run and no value is pushed. The rest of
-`0x00CCE1C0` is open in the scheduler record.
+`0x00CCD910` and, for a qualifying owner record, `0x00CE26C0`. Slot 2 does
+not run and no value is pushed. Normal return and reported Lua errors use the
+separate `0x00CCE8E0` finalization path described by the initialization record.
 
 The thread end handler `0x006ED840` is slot 2 of the Global subobject vftable `0x00FD6090`. It erases the entry of
 the ending thread, resolves the stored identity and, when a control is still registered, calls `0x0075BEC0`. That
@@ -298,10 +317,12 @@ SpreadSheet:
    [SpreadSheet contracts](spreadsheet-native-contract.md) record.
 2. Call `SpreadSheet._onInit` with the payload so that `_setFilename` receives the sheet name.
 3. Resolve the resume when the readiness test passes: the byte at `+0x5C` of the control when the probe byte is
-   set, otherwise the byte at `+0x7D` of the control record. The initialization thread completion sets `+0x7D` unless
-   another caller of `0x00CE1DD0` set it first, and that the completion means `SpreadSheet._onInit` returned is
-   `INFERRED`. The sheet rows load
-   later through the yielding load natives.
+   set, otherwise the byte at `+0x7D` of the control record. Initialization
+   finalization can set `+0x7D` after normal return, a caught and reported
+   Lua error, or checker termination under the recorded guards. The probe-set
+   path also waits for the pending-container promotion to `+0x5C`. Early
+   explicit activation of the same fresh instance remains unproved.
+   The sheet rows load later through the yielding load natives.
 4. Publish the control under its name as a Lua global by a raw set into the globals table, as `0x00CD7970` does.
    The loader scripts read `tribeSheet`, `materiaSheet` and `compatibilitySheet` with `GETGLOBAL`. Creation fails
    when that global is already non-nil.
@@ -324,16 +345,14 @@ Other kinds:
 
 ## Open
 
-- What sets the byte at `+0x5C` of a widget or sheet control when the probe byte is set. The constructor of
-  `ActorBase` clears it and the store of 1 that was found belongs to the actor record apply `0x00766F00`.
-- Whether `0x00CC72D9` or `0x00CD988F` can set `+0x7D` on a new control before its initialization thread completes.
-- Whether the thread status that reaches `0x00CCE1C0` means `_onInit` returned, and whether an `_onInit` that raises
-  an error still reaches it.
+- Whether DesktopWidget or descriptor re-enable through `0x00CC72D9` can
+  target the same fresh control while its initialization thread is pending.
 - The outcome of the null creator result and of a refused creation in a running client.
-- Which object is registered under `0xC0000024` and whether it has a byte at `+0x5C`. The Rapture selector record
+- The full association between the Lua control under `0xC0000024` and the
+  control named `desktopWidget`. Its `+0x5C` is the Lua-control field above. The Rapture selector record
   shows that `0x00774AD0` creates the element only when it is absent and then obtains the Lua class table
   `DesktopWidget`, and `AreaBaseClass._onInit` tests `_isExistActor("desktopWidget")`, so the object is likely the
-  `desktopWidget` control. That was not traced.
+  `desktopWidget` control. The full descriptor-to-instance lifecycle was not traced.
 - Which native caller reaches `AreaBaseClass.create` and with which class name.
 
 ## Reproduction

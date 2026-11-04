@@ -251,10 +251,13 @@ The resume side is the update loop `0x00CF1B50`, called from `0x00CC98B5`. For
 each thread it reaches it calls `0x00CCD4A0` at `0x00CF1CD7`. That routine
 stores the dword at `0x0130CED0` in the result cell when the thread has no
 checker and otherwise calls checker slot 1. A result equal to the dword at
-`0x0130CECC` leaves the thread parked. Any other result resumes it through
-`0x00CCF290`, which the client architecture page names
-`LuaThreadImpl::Resume`, or through `0x00CCE1C0` when the result equals the
-dword at `0x0130CED0`. The loop also stops on a `timeGetTime` budget held in
+`0x0130CECC` leaves the thread parked. A result equal to the dword at
+`0x0130CED0` terminates it through `0x00CCE1C0` without resuming Lua.
+Every other result resumes it through `0x00CCF290`, which the client
+architecture page names `LuaThreadImpl::Resume`. The
+`xivl-decomp:docs/resource/attribute-resource-and-scene-binding.md#initialization-completion-and-record-insertion`
+finding distinguishes this checker result from normal return and error
+finalization. The loop also stops on a `timeGetTime` budget held in
 the word at its receiver `+0x3C`.
 
 | Cell | Value | Stored by |
@@ -433,8 +436,8 @@ behind the log output, which this record does not supply.
 - The consumers of the queue at chara `+0xA80`, how an entry runs, whether the
   ring at `+0x878` is fed from it, and the run-time behavior of a null chara
   after the identity lookup.
-- The Lua yield exit behind the branch at `0x00D19DE4`, the body of `0x00CCE1C0`
-  and the relation between the update loop and the timer scheduler `0x00CEF510`.
+- The Lua yield exit behind the branch at `0x00D19DE4` and the relation
+  between the update loop and the timer scheduler `0x00CEF510`.
 - The control creation in `0x006E2770`, the variant byte at `ItemBase` `+0x70`,
   the tree at manager `+0x14`, the package numbering, the install of a built
   item into its package slot and the `_getExtendedTemporary*` siblings.
