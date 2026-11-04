@@ -148,8 +148,11 @@ receiver table test of the Lua forwarding wrapper `0x00D07F20 -> 0x00D04BF0`,
 which `xivl-decomp:docs/script/lua-bootstrap-chunks.md` lists as open. This
 step is `INFERRED`. A script defined global function is called with the
 `global` object as its first parameter too. This is `INFERRED` from the same
-forwarder. No shipped script calls `_getTutorialJudge`, and `global_u` declares
-it with one unused parameter, so the parameter count is not evidence of it.
+forwarder. Three shipped functions read `_getTutorialJudge` with `GETGLOBAL` and
+call it with no argument (`MEASURED`): `judge/judgemaster` at source lines
+259-313, and `quest/scenario/man/man0u0` at lines 737-744 and 1074-1079.
+`global_u` declares it with one unused parameter, so that count fits the
+forwarder's receiver but does not prove it.
 
 ### Corpus
 
