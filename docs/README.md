@@ -29,6 +29,9 @@ canonical records, generated views and frozen investigations.
   byte signatures, and the virtual-address convention.
 - [Lua Game Engine (LGE) class system](lua-class-system.md) - description of the
   LGE class system (5 Lua metatables, registration pipeline, write chokepoint).
+- [Lua base-library arity and the LGE type override](lua-base-library-arity.md) -
+  exhausted select tails, missing versus nil arguments and selected override
+  installation and diagnostic boundaries.
 - [Auto-translate selection](autotranslate-selection-contract.md) -
   selected client lookup paths and their evidence limits.
 - [Command-slot actor and category context](actor/command-slot-context.md) -

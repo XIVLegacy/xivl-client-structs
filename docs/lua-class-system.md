@@ -223,6 +223,9 @@ the LGE root namespace (BCS-Y-0501). `_pcall` preserves the original `pcall`:
 
 Any script-behavior analysis that assumes stock Lua 5.1 stdlib semantics for `assert`/`error`/`pcall`/`type` is incorrect.
 
+The [type/select arity contract](lua-base-library-arity.md) owns the selected
+missing-argument, nil-result, installation and diagnostic-path observations.
+
 ## Special string-dispatch table
 
 The `__index` / `__newindex` dispatchers compare against these reserved field names at `.rdata 0x0110f034..0x0110f278`:
