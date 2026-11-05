@@ -280,9 +280,31 @@ reconstruction uses thin-helper and negative-index-resolver pseudocode as
 well as the observed replace-and-pop instructions. The manifest retains
 the exact locators and the limited original-PE instruction comparison.
 
-The Variable argument record supplies conditional input cardinality.
-Per-operator output counts, runtime Nil emission, host/global binding,
-class defaults and live scheduling remain unresolved.
+The existing decomp
+[operator-vector finding](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/event/event-base-callback-arguments.md#operator-vector)
+identifies the descriptors built by `0x00791110` for cell tags 0, 1, 2, 3,
+4 and 6. The
+[supplied-frame finding](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/script/delegate-command-producer.md#function-binding-value-and-supplied-frame)
+establishes one emitted Lua value per selected descriptor, including an
+explicit Nil position. These are descriptor slot-`+8` converters reached
+through `0x00CF9630`; internal `ExecuteParameters` builders alone do not
+establish runtime emission.
+
+Consequently, if the copied suffix contains N cells solely of those tags,
+any tag-4 cells hold nonnull controls satisfying the published binding and
+registry conversion conditions, and conversion, lookup and invocation
+preparation complete normally through the published path, it emits N values
+in source order. Under the receiver
+layout inference above, the prepared call supplies N + 1 arguments: the
+lookup-derived receiver followed by one value per copied cell. This is the
+supplied frame before the target's formal-parameter adjustment. Tag 5, null
+controls and other uninspected types remain outside this formula. Numeric
+conversion fidelity remains unresolved.
+
+This conditional composition does not identify an actual tutorial command
+dispatch or incoming typed frame, equate a tutorial alias with its selected
+form name, or establish host/global binding, class defaults, live scheduling
+or a retail invocation.
 
 ### Loop interval
 
