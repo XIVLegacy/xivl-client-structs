@@ -4,7 +4,7 @@
 records the static Lua call contracts of thirteen native registrations and of the `_isAlive` method. Nine natives belong to
 `PlayerBase`. Three read the timer scalars that the clientbound `0x0193` record writes (`_getNormalBehestTime`,
 `_getCompanyBehestTime`, `_getWarpRecastTime`). Two read a Chocobo or Goobbue byte (`_getChocoboGrade`, `_isEnabledGoobbue`).
-Two read the stored item lists (`_canStoreItem`, `_countStoredItem`). Two read and consume the hamlet defense score
+Two query item storage eligibility or the stored item count (`_canStoreItem`, `_countStoredItem`). Two read and consume the hamlet defense score
 (`_getHamletDefenseScore`, `_getHamletDefenseScoreAll`). Four natives belong to `AreaBase`. Two read the hamlet supply ranking
 (`_countHamletSupplyRanking`, `_getHamletSupplyRanking`). Two compare an area byte (`_canRideChocobo`, `_isWarpRideChocobo`).
 `_isAlive` is not a native. It is a script method with two engine surfaces. Each full row gives the registration site, the receiver

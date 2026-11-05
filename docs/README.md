@@ -148,6 +148,8 @@ canonical records, generated views and frozen investigations.
   bytes, the stored item list count and eligibility test, the consuming hamlet
   defense score getters, the ordered hamlet supply ranking with its nine
   results, the area ride byte and the two `_isAlive` surfaces.
+- [Soul of the Warrior armoire eligibility](armoire-eligibility-case.md) -
+  the selected catalog's static negative membership and category result.
 - [Generic _progFunc native contract](progfunc-native-call-contract.md) -
   captured dispatch, the Lua type handling of each argument position including
   numeric strings, the installed callback with operations 0, 1 and 3, the
