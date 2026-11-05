@@ -132,13 +132,18 @@ on the `global` object (`MEASURED`).
 
 ### Native frame
 
-A receiverless call therefore has the same shape as a method call on the
-`global` object. Native-frame position 1 is the `global` object and the Lua
-arguments are positions 2 and up. The argument contracts of the Global rows
-count the Lua arguments only. `_getStaticActor(24301)` reads 24301 at position 2.
-This closes the position 1 gap of the
-[widget contracts](widget-native-call-contract.md#argument-marshalling) and the
-receiverless call convention of the earlier records.
+When a call actually selects `0x00D084A0` and its lookup resolves the intended
+registered native with the expected `global` receiver binding, the forwarder
+supplies `global[name](global, a1 .. an)`: the copied entry frame has `global`
+at position 1 and Lua arguments at positions 2 and up. The Global rows count
+only those Lua arguments. For `_getStaticActor(24301)`, 24301 occupies copied
+entry position 2, which is the declared argument reader's starting position.
+Applying that value to the actual reader frame additionally requires context
+preparation to preserve the expected receiver and argument layout. The
+published [`0x00D04FE0` preparation boundary](widget-native-call-contract.md#native-callback-registration)
+leaves transitive helper effects and overall Lua-frame changes unknown, so
+entry forwarding alone does not establish the post-preparation frame or the
+value actually read.
 
 The same forwarder carries every plain global call that `global_u` aliases. The
 ten descriptors for `print`, `tonumber`, `tostring`, `type`, `assert`, `error`,
