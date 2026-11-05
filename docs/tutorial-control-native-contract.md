@@ -264,7 +264,10 @@ the widget `+0x6C`, checker `+0x04` and checker `+0x08`. Its only `rel32` caller
 when the player targets the chara with that name number is `INFERRED`. The trampoline
 holding `0x008A3EB3` is reached from `LuaActorImpl` vftable slot 25 through `0x0075D750`
 (see the [target cursor record](target-cursor-native-contract.md#widget-fields-and-their-writers)).
-The callers of that slot were not traced.
+The frozen manifest's original survey did not trace callers of that slot. The
+[selected producer composition](#target-wait-and-unchanged-selection) below
+adopts the separately published select path without extending that survey's
+scope or caller-scan provenance.
 
 `_waitForCameraTutorial` (`0x006E1C50`) takes no argument and runs the prelude.
 It calls `0x0075B470` on the dword at `Y +0x08`, which takes `K` from `V +0x4C4`,
@@ -276,6 +279,51 @@ bytes for an `s_CameraTutorialResumeChecker` (vftable `0x00FD538C`) built by
 bit 0 of the byte at `K +0x17C` is set. A set bit stores the done result and a
 clear bit the waiting result. The writers of the bit and the class of `K` were not
 traced.
+
+### Target wait and unchanged selection
+
+A newly installed nonzero target checker cannot be cleared through the selected
+`_onTargetChanged` path by repeating `0x00562D30` with the object already stored
+at that cursor's `+0x0C`. This is a bounded `INFERRED` composition of the wait
+contract above, the
+[widget dispatch contract](target-cursor-native-contract.md#widget-fields-and-their-writers)
+and `xivl-decomp:docs/net/target-lock-decide-senders.md`, sections
+"Select `0x00562D30`", "The decided-target bridge" and "Decide `0x00562C60`".
+The cited native publications pin the same executable size and SHA-256 given
+in [Binary and method](#binary-and-method).
+
+The select publication establishes two branches (`STATIC` there):
+
+- For a valid cursor index whose cursor `+0x0C` equals the supplied object,
+  `0x00562D30` returns at `0x00562D9E` before the event kind 0 post, cursor
+  setter and bridge call. This call cannot reach the selected checker clear.
+- A changed selection posts event kind 0, sets the cursor through
+  `0x0055E7A0` and calls bridge slot `+0x64` through `0x00574D90`, passing the
+  index and cursor `+0x04` identity. The bridge is the object at
+  `[[state +0x80]]`.
+
+The published vtable `0x00FDFB2C` has `0x0075D750` at `+0x64`, slot 25.
+That entry reaches `0x006FE960` through `0x008A3EA0`, as the widget dispatch
+contract records. Identifying the installed bridge as this `LuaActorImpl`
+remains `INFERRED` from the slot match. Under that condition, a valid widget
+cursor count and a resolved target control allow `0x006FE960` to dispatch
+`_onTargetChanged`. Only after the Lua dispatcher returns does it call
+`0x00718EF0`, and only with a resolved control and a nonzero widget `+0x6C`.
+The clear still requires equality between the checker int and the first dword
+of the record at chara `+0x60`, with -1 mapped to 0. A changed selection alone
+therefore does not establish completion.
+
+The nonzero case starts with a pending checker because its poll tests
+checker `+0x08` for zero. An argument of 0 is separate: the checker already
+reports done, although the native still requests yield. `0x00562C60` decides
+through bridge slot `+0x68`, reaching `_onTargetDecided` under the same bridge
+inference. It is not the selected `0x006FE960` checker-clear path.
+
+This composition proves no observed tutorial stall or historical selection
+sequence. It neither excludes other checker writers nor establishes the
+semantic domain of chara `+0x60`, actual callback delivery, or engine ordering
+between selection, wait installation, clear and poll. The interpretation as a
+name number remains `INFERRED`. It supplies no general retargeting rule.
 
 ## Ledger rows
 
@@ -289,8 +337,8 @@ return list, receiver check and callback contract:
 `_waitForCameraTutorial`. A client that implements them still needs the target
 cursor and look-at workers behind `0x00561BB0`, `0x00563510` and `0x00587EF0`,
 the consumers of the camera records, the writers of the camera tutorial bit at
-`K +0x17C` and the engine path that reports the targeted chara to the
-`DesktopWidget`.
+`K +0x17C` and the actual installed bridge and scheduling behind the
+[selected target-wait path](#target-wait-and-unchanged-selection).
 
 ## Open
 
@@ -299,7 +347,9 @@ the consumers of the camera records, the writers of the camera tutorial bit at
 - The consumers of the scene records `9`, `0x10`, `0x12` and `0x2D`, and the
   class of `K` and `E`.
 - The writers of the bit at `K +0x17C` and of the byte at `K +0x17D`.
-- The engine path behind `0x008A3EB3` and any other writer of checker `+0x08`.
+- The installed bridge identity and actual delivery and scheduling of the
+  selected target-wait path, the semantic domain of chara `+0x60`, and any
+  other writer of checker `+0x08`.
 - The scheduler table behind `0x00589F60` and the group number that
   `0x00585800` returns.
 - Whether the yield request `0x00CD2860` polls the checker once before it

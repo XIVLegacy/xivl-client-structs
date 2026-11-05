@@ -270,8 +270,16 @@ are `0x008A3EB3` and `0x008A3EE3`. The strings at `0x00FD47D8` and
 `0x00FD47EC` are `_onTargetChanged` and `_onTargetDecided`, and the methods pass
 strings built from them to `0x00CC7A90`, which
 [`manifests/symbols.json`](../manifests/symbols.json) records as the Lua
-callback dispatcher. The index and identity producers that call the two slots
-were not traced.
+callback dispatcher. The frozen manifest's original survey did not trace the
+index and identity producers of these slots. Separately,
+`xivl-decomp:docs/net/target-lock-decide-senders.md`, sections
+"Select `0x00562D30`", "The decided-target bridge" and "Decide `0x00562C60`",
+records a changed select calling bridge slot `+0x64` through `0x00574D90`
+with the index and cursor `+0x04`, and a decide calling `+0x68` through
+`0x00574DA0`. The vtable `0x00FDFB2C` slot match makes the installed bridge's
+identity as `LuaActorImpl` `INFERRED`. This adoption supplements the producer
+description without extending the frozen manifest's original scan scope or
+provenance.
 
 Both methods store 1 at `+0x7C` before they build the argument list and store 0
 after the dispatcher returns, at `0x006FEA1E` and `0x006FEAE4` in
@@ -296,7 +304,9 @@ After the dispatch `0x006FE960` also calls `0x00718EF0` on the object at `+0x6C`
 with the control host and the resolved control when the control resolved and
 `+0x6C` is nonzero. The
 [tutorial control record](tutorial-control-native-contract.md) holds
-`0x00718EF0`.
+`0x00718EF0` and the
+[conditional target-wait consequence](tutorial-control-native-contract.md#target-wait-and-unchanged-selection)
+of the select routine's early return for an unchanged target.
 
 ## Callers
 
@@ -316,8 +326,9 @@ entry through `0x00565D30` with a null object. Its only direct caller is
   run time.
 - The field at cursor `+0x14` and the roles of the children at `+0x18` and
   `+0x1C`.
-- The virtual callers of `LuaActorImpl` vftable slots 25 and 26, which reach the
-  `DesktopWidget` methods writing `+0x7C`, and the index and identity they pass.
+- The installed bridge identity for the selected producers of `LuaActorImpl`
+  vftable slots 25 and 26, their actual callback delivery and scheduling, and
+  any other producers of the slots.
 - Whether the `0x0007A124` query returns the value of the work member `mainTargetDecidedFlag` (key 500004), which the
   [stub overload record](stub-overload-native-contract.md#desktopwidget-_settargetcursorimage-cursor-one-branch)
   identifies.
