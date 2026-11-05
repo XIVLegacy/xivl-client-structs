@@ -1071,8 +1071,10 @@ The other caller, `FUN_00683E80`, ECX=raw supplied Y and one stack record E,
 in E+0x10. When that byte is zero and [E+0x1C]=`0x01340A98`, it writes
 E+0x19=1 and passes [Y+0x31C]
 as V (`0x00683EB2-0x00683EE4`). The outer export records its raw code pointer
-at `0x00FC3DA8`, not a direct caller. Y/E types, descriptor meaning, readable
-nested E storage, and the selected +0x31C owner remain unqualified.
+at `0x00FC3DA8`, not a direct caller. The [Save command contract](keyconfig-save-command-contract.md)
+qualifies the constructed KeyConfigControl override and command identity for
+this cell. Actual Y/E instances, descriptor meaning, readable nested E storage
+and the selected +0x31C owner value remain unqualified.
 
 These ordinary call/tail paths qualify synchronous instruction ordering.
 They do not bind the selected invocation to an OS thread, prove a shared TLS
@@ -1689,7 +1691,7 @@ Executed descriptor `0x01358738` has routing byte 0 and type 0x2A
 `FUN_0091D210` (`0x0091E32C`) sends routing byte 0 through its backward
 loop, calling recipient slot +0x34 at `0x0091D2A2-0x0091D2A6`. For the base
 InputElement table `0x01069A6C`, delivery continues through slot +0x104
-(`0x0091D6BE`), handler-collection slot +4 (`0x0091D912`) and handler
+(`0x0091D6BE` load, `0x0091D6C7` call), handler-collection slot +4 (`0x0091D912`) and handler
 slot +8 (`0x00571605`), with collection table `0x00FA6788` and callback
 table `0x00FA106C`. `FUN_0088AB00` then tail-jumps at `0x0088AB0B` to
 callback+0x28 with ECX = callback+0x20 + callback+0x2C.

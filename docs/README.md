@@ -38,6 +38,9 @@ canonical records, generated views and frozen investigations.
   joins observed property-stream slot values to static command identities.
 - [Native pad routing and UI visibility](native-input-ui-boundaries.md) -
   exact-client receiver, dispatch, three-state conversion, and ownership limits.
+- [KeyConfig.Save native command boundary](keyconfig-save-command-contract.md) -
+  constructed command/handler identity, stored-owner call and the remaining
+  Lua/named-control binding.
 - [Action movement wait](action-movement-wait.md) - native timer producers,
   consumers, and action eligibility limits.
 - [Login state boundaries](login-state-boundaries.md) - roster projection,
