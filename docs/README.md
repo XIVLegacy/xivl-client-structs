@@ -114,6 +114,9 @@ canonical records, generated views and frozen investigations.
 - [Tutorial, camera and player control native contracts](tutorial-control-native-contract.md) -
   the four `RaptureUserControl` counters and their natives, forced camera mode,
   aim and look-at cancellation, the Chocobo camera and the three tutorial waits.
+- [Camera tutorial completion state](tutorial-camera-input-contract.md) -
+  the CameraElement completion phases, selected float input and remaining
+  payload-delivery boundary.
 - [Nameplate, map marker, look-at, turn, visibility, floating offset and scheduler target native contracts](presentation-native-contract.md) -
   the NamePlate color and icon setters, the map marker thunk and its `NpcBase`
   override, the look-at record banks at chara `+0x290`, the turn bit and its wait

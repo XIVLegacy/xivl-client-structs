@@ -277,8 +277,9 @@ bytes for an `s_CameraTutorialResumeChecker` (vftable `0x00FD538C`) built by
 `0x00713E70` and requests the yield. The poll slot `0x00713F30` calls
 `0x00758D50`, which calls `0x0055CEE0` on `K` with 0. That routine returns whether
 bit 0 of the byte at `K +0x17C` is set. A set bit stores the done result and a
-clear bit the waiting result. The writers of the bit and the class of `K` were not
-traced.
+clear bit the waiting result. The [camera completion contract](tutorial-camera-input-contract.md)
+identifies `K` as class-compatible with CameraElement and owns the selected
+constructor, phase sequence, completion writer and float-input boundary.
 
 ### Target wait and unchanged selection
 
@@ -336,8 +337,9 @@ return list, receiver check and callback contract:
 `_cancelAimCameraChocobo`, `_waitForTargetTutorial` and
 `_waitForCameraTutorial`. A client that implements them still needs the target
 cursor and look-at workers behind `0x00561BB0`, `0x00563510` and `0x00587EF0`,
-the consumers of the camera records, the writers of the camera tutorial bit at
-`K +0x17C` and the actual installed bridge and scheduling behind the
+the consumers of the camera records, the actual payload delivery and scheduling
+behind [camera completion](tutorial-camera-input-contract.md) and the actual
+installed bridge and scheduling behind the
 [selected target-wait path](#target-wait-and-unchanged-selection).
 
 ## Open
@@ -345,8 +347,9 @@ the consumers of the camera records, the writers of the camera tutorial bit at
 - The bodies of `0x00561BB0`, `0x00563510`, `0x00587EF0` and the effects of the
   three camera command objects.
 - The consumers of the scene records `9`, `0x10`, `0x12` and `0x2D`, and the
-  class of `K` and `E`.
-- The writers of the bit at `K +0x17C` and of the byte at `K +0x17D`.
+  class of `E`.
+- The actual camera payload producer/delivery, instance and scheduling, and
+  writers beyond the [selected tutorial-byte paths](tutorial-camera-input-contract.md).
 - The installed bridge identity and actual delivery and scheduling of the
   selected target-wait path, the semantic domain of chara `+0x60`, and any
   other writer of checker `+0x08`.
