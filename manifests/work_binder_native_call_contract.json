@@ -9,7 +9,7 @@
     "architecture": "PE32 i386"
   },
   "method": "Instruction listings decoded directly from the PE bytes of the identified executable through its section table, with the executable size and SHA-256 verified first. Every cited instruction address, operand, name literal, holder vftable cell, type descriptor name, RTTI name and call target was compared with those listings. Callers were enumerated by scanning the .text section for rel32 call and jmp instructions, so virtual and indirect callers are not covered. Addresses are absolute virtual addresses. The MEASURED facts come from the Lua 5.1 bytecode of the installed client scripts, parsed by a bytecode reader and evaluated by a stub interpreter where the declaration facts say so, and from scans of the executable named in each fact. No decompiled body is a tracked evidence dependency.",
-  "scope": "How the retail client binds actor work tables to Lua and which natives a MyPlayer initialization reaches: the _bindWork helper path and the _bind flag of the work userdata, the work member type widths, the declared work layout of the MyPlayer chain (charaWork and playerWork) with its bind ids, and static Lua call contracts of fifteen native registrations of twelve Lua names (the shadowed _turnDir registration at order 60 is recorded under relatedNatives): _setTouchAttribute, _isTouching, _updateWork (CharaBase, GroupBase, DirectorBase and ItemBase), _lockLockonControl, _unlockLockonControl, _getGMRank, _getOrientation, _getMemberLocalizedDisplayName, _getOccupancyGroup, _getRegion, _getInstanceName and _turnDir. Each row gives the registration site, receiver type check, declared argument and return lists, reads, client state effects, failure behavior and yield behavior. Client-side contracts do not establish work member values, server packets or server behavior.",
+  "scope": "How the retail client binds actor work tables to Lua and which natives a MyPlayer initialization reaches: the _bindWork helper path and the _bind flag of the work userdata, the work member type widths, the declared work layout of the MyPlayer chain (charaWork and playerWork) with its bind ids, and static Lua call contracts of fifteen native registrations of twelve Lua names (the shadowed _turnDir registration at order 60 is recorded under relatedNatives): _setTouchAttribute, _isTouching, _updateWork (CharaBase, GroupBase, DirectorBase and ItemBase), _lockLockonControl, _unlockLockonControl, _getGMRank, _getOrientation, _getMemberLocalizedDisplayName, _getOccupancyGroup, _getRegion, _getInstanceName and _turnDir. Each row gives the registration site, receiver type check, declared argument and return lists, reads, client state effects, failure behavior and yield behavior. Client-side contracts do not establish live work member values, server packets or server behavior.",
   "evidenceTier": "MIXED, see tierVocabulary and the tier of each fact",
   "tierVocabulary": {
     "STATIC": "Read directly from instructions or data at the cited addresses.",
@@ -558,7 +558,7 @@
       },
       {
         "tier": "STATIC",
-        "claim": "The nesting operand is a capacity in bytes. The width slot 0x0C of the nesting and reserve descriptors (vftable 0x0110F8F4, derived 0x0110F974) is 0x00D25960, the string slot, which returns eight times the dword at descriptor +0x10. The constructors 0x00D23D10 and 0x00D23DA0 store the operand there, so the nested member occupies operand times 8 bits of its list. The eventSave and eventTemp operands equal the byte rounded laid out sizes (24 and 67 bits). An array member counts count times the element width in the laid out sizes, which is INFERRED because the code that applies a numeric third operand was not found.",
+        "claim": "The nesting operand is a capacity in bytes. The width slot 0x0C of the nesting and reserve descriptors (vftable 0x0110F8F4, derived 0x0110F974) is 0x00D25960, the string slot, which returns eight times the dword at descriptor +0x10. The constructors 0x00D23D10 and 0x00D23DA0 store the operand there, so the nested member occupies operand times 8 bits of its list. The eventSave and eventTemp operands equal the byte rounded laid out sizes (24 and 67 bits).",
         "locators": [
           "0x0110F8F4",
           "0x00D25960..0x00D2596F",
@@ -595,11 +595,14 @@
         ]
       },
       {
-        "tier": "INFERRED",
-        "claim": "The array count rule. A numeric third operand of a boolean or numeric tag does not reach the scalar creators (0x00D25640 and siblings read one argument, the start) and 0x00D1E0F0 adds one width per entry. The rule that an array occupies count times its element width is inferred from the nesting capacities: eventTemp holds integer16 x 4 and three booleans, 67 bits, in an operand of 9 bytes.",
+        "tier": "STATIC",
+        "claim": "The explicit array tag uses operand 3 as count and operand 4 as the child type. The descriptor stores count and child at +0x10 and +0x14. Its width slot returns count times child width, and construction retains the count at array object +0x58.",
         "locators": [
-          "0x00D25640",
-          "0x00D1E5CB..0x00D1E5D6"
+          "0x00D243E0",
+          "0x00D21D40",
+          "0x0110F810",
+          "0x00D259E0",
+          "0x00D2E299"
         ]
       },
       {
@@ -641,14 +644,62 @@
         ]
       },
       {
-        "tier": "unknown",
-        "claim": "The initial value of a declared member before its first write. The readers return the pool bytes at the member start with no default, so the value is whatever the pool object of the kind holds. The class of the pool objects (vector at container +0x0C indexed by kind; slot 1 resize, slot 2 byte read, slot 3 byte write, slot 4 bit read, slot 5 bit write), their allocation and whether a resize zero fills were not found. The array index base of the member readers, which pass the index through 0x00D25900 without a visible subtraction. The meaning of _tag entries beyond the names and intervals that the scripts declare.",
+        "tier": "STATIC",
+        "claim": "The normal actor work builder installs the same-key shared record with two SingleThreadContainers and one SyncContainer in save, temp, sync order. The concrete pools start with SimpleAccess and a null provider. The sync writer occupies a separate field. The Lua no-cached-handle lookup can resolve that installed record from the same table and receiver key.",
         "locators": [
-          "0x00CE4450",
-          "0x00CE4550",
-          "0x00CE45D0",
-          "0x00CCB3F0..0x00CCB5F0",
-          "0x00D25900"
+          "0x0076DD79",
+          "0x0076DE48",
+          "0x00CC8760",
+          "0x00CCC200",
+          "0x00CCBFA0",
+          "0x00CE1CCE",
+          "0x00CE2488",
+          "0x00CC87E0",
+          "0x00CEB805",
+          "0x00D1CE88",
+          "0x00D1CE9A",
+          "0x00CEB4F2",
+          "0x00CFE2B0",
+          "0x00CFCD35"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "On default local actor pool growth, SimpleAccess with a null provider passes an explicit zero fill byte to the insertion path. The added bytes are zero and growth retains the existing prefix.",
+        "locators": [
+          "0x00CE5BF0",
+          "0x00CCB3F0",
+          "0x00CFD2C0",
+          "0x00CFD4C0",
+          "0x00CFE622..0x00CFE632",
+          "0x00CFF830",
+          "0x00CFF630",
+          "0x006D1939"
+        ]
+      },
+      {
+        "tier": "STATIC",
+        "claim": "The admitted Boolean array reader subtracts one from the converted index in 1 through count, combines the zero-based index with the one-bit width, reads the stored bit through the selected pool and pushes its Boolean value. With the same installed record and default pool, an element in a newly grown byte reads false while its bit retains its initial zero. The out-of-range branch pushes nil.",
+        "locators": [
+          "0x00D2F26C",
+          "0x00D2E0DD..0x00D2E0E4",
+          "0x00D1A620",
+          "0x00D2E12B",
+          "0x00D25900",
+          "0x00D28890",
+          "0x00CCB4D0",
+          "0x00CFDFC0",
+          "0x00CF3329",
+          "0x00D2E14E"
+        ]
+      },
+      {
+        "tier": "unknown",
+        "claim": "First observed values depend on the active storage, preexisting bytes, hydration and any writes before the read. Other storage variants and the meaning of _tag entries beyond the declared names and intervals remain open.",
+        "locators": [
+          "0x00CFD1E0",
+          "0x00CFE640",
+          "0x00D28895"
         ]
       }
     ],
@@ -3677,7 +3728,7 @@
       "_bindWork",
       "_bindWorkNestingArray"
     ],
-    "note": "These are the Lua names of the unimplemented ledger rows that this record gives a registration or a script surface, an argument list, a return list and a callback contract. _bindWork and _bindWorkNestingArray are script helpers over the work userdata _bind flag, not functor natives. _updateWork is four registrations with one Lua name. A client that implements the rows still needs the pool objects behind the work accessors, the callers of the by-id accessors, the readers of the touch attribute masks and the lock-on counter, and the request service behind _updateWork, which this record does not supply."
+    "note": "These are the Lua names of the unimplemented ledger rows that this record gives a registration or a script surface, an argument list, a return list and a callback contract. _bindWork and _bindWorkNestingArray are script helpers over the work userdata _bind flag, not functor natives. _updateWork is four registrations with one Lua name. A client that implements the rows still needs the remaining provider paths behind the work accessors, the callers of the by-id accessors, the readers of the touch attribute masks and the lock-on counter, and the request service behind _updateWork, which this record does not supply."
   },
   "nextTranche": {
     "basis": "Distinct scripts that contain a call, taken from xivl-client-scripts:lua/napi_index.json, with the call-site count as the tie break. Natives with a contract in any manifest or a wire-level record in a contract page are excluded, and so are script callbacks that begin with _on, the work keys, the descriptor suffix identifiers and the Lua level _callFunction. A name with no class binding in the index that is an alias descriptor of the binding map takes the class of its descriptor. The nine Global natives (_canCreateActorByName, _getActorByName, _getQuestActorForCutSceneReplay, _isExistStaticActor, _prepareAllCommandStaticActor, _getUTF8StringLength, _getUTF8StringByteLength, _normalizeDisplayName and _replaceMacroCodeString) are covered by manifests/global_native_call_contract.json and ranked below the twentieth row.",
@@ -3851,9 +3902,9 @@
     "Script call-site counts are static presence in the shipped scripts. They do not establish which natives a given script reaches at run time.",
     "The Lua bytecode facts come from the installed client scripts. Their sources are not redistributed, and the tracked script metadata holds names and line numbers only. The declared member names, types and counts are recorded here as metadata of those scripts.",
     "The declaration lists come from a stub interpreter over the bytecode. The interpreter implements the instructions that the declaration functions use and replaces the native work members, so it checks the lists the scripts build and not the client behavior around them.",
-    "The work binder facts describe the Lua layer, the layout rule and the bind records. The pool objects behind the read and write accessors, the initial member values, the array count rule, the origin of nested lists, the array index base of the readers and the callers of the by-id accessors were not traced.",
+    "The work binder facts include the default actor pool growth and Boolean array reader. Other storage providers, first-observed member values, any scalar-tag use of an additional count operand, the origin of nested lists and the callers of the by-id accessors remain open.",
     "The callbacks that dereference a resolved identity or a lookup result without a test were not run with an absent identity, so their run-time effect is unknown.",
     "The invalid-parameter route ends in a process terminate on the evidence of the target cursor contract. The calls that reach it with an out-of-range member position or a missing cell were not run.",
-    "These are client marshalling and state contracts. They do not establish work member values, group membership, touch states, region ids or server behavior."
+    "These are client marshalling and state contracts. They do not establish live work member values, group membership, touch states, region ids or server behavior."
   ]
 }

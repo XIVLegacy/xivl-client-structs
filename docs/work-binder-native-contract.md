@@ -13,7 +13,8 @@ The twelve names are `_setTouchAttribute`, `_isTouching`, `_updateWork` in four 
 gives the registration site, the receiver type check, the declared argument and
 return lists, the reads, the effects on client state, the failure behavior and
 whether the call yields. The contracts describe client marshalling and state,
-not work member values, touch states, region ids or server behavior.
+including the bounded default-pool result below. Live work values, touch states,
+region ids and server behavior remain separate.
 
 Each fact carries a tier. `STATIC` is read directly from instructions or data
 at the cited addresses. `MEASURED` is counted or parsed by the method named in
@@ -249,13 +250,15 @@ replaces it with eight times the sizes that `0x00D125F0` returns when the work
 object already has a declaration in that pool (`0x00D166A9..0x00D166DE`, not
 traced further).
 
-The array count rule is not settled. A numeric third operand does not reach the
-scalar creators (`0x00D25640` and siblings read one argument, the start), and
-`0x00D1E0F0` adds one width per entry. The count rule is `INFERRED` from the
-capacities: `eventTemp` holds `linkshellIcon` as integer16 x 4 and three
-booleans, which is 67 bits and an operand of 9 bytes, and `eventSave` holds a
-boolean and two integer8 members, which is 24 bits with byte alignment and an
-operand of 3 bytes.
+For the explicit `array` tag, `0x00D243E0` converts operand 3 to its
+count and selects the element descriptor from operand 4. Constructor
+`0x00D21D40` stores them at descriptor `+0x10` and `+0x14`.
+ArrayInformation width cell `0x0110F810` selects `0x00D259E0`, which
+returns count times child width. Array object construction through
+`0x00D2E230` retains the count at `+0x58` (`0x00D2E299`). STATIC.
+The separate scalar creators such as `0x00D25640` receive the start.
+A scalar tag with an additional numeric operand is outside the explicit
+array constructor trace.
 
 ### Value coercion
 
@@ -275,26 +278,62 @@ low bit masks follow the width of the store routines `0x00D11C30`, `0x00D11CB0`,
 
 ### Initial values
 
-The Lua layer holds no member values. A reader of the integer, float and boolean
-descriptors (`0x00D28890`, `0x00D28D10`, `0x00D291B0`, `0x00D29660`,
-`0x00D29B00`, `0x00D29FD0`) returns the pool bytes at the member start through
-the shared record and the pool object of the member's kind. Nothing in the
-reader substitutes a default: a member of an object with storage reads whatever
-the pool holds, and nil appears only for an object without storage (see below).
-A boolean answers the pushed bool of the bit, an integer width answers the sign
-extended value of its bytes (`0x00CE5290..0x00CE539B`), so a pool that is zero
-filled reads 0 and false. The pool objects are reached through a vector at
-container `+0x0C` indexed by kind (`0x00CCB3F0` resizes with pool slot 1,
-`0x00CCB430` reads with slot 2, `0x00CCB480` and `0x00CCB510` write through slots
-3 and 5, `0x00CCB4D0` reads a bit through slot 4). Their class, their
-allocation and whether a resize zero fills were not found: a scan of the image
-vftables for the slot return signatures (slot 1 `ret 4`, slot 2 `ret 0xC`,
-slot 3 `ret 0x10`) found no class whose slot 1 calls the allocator `0x009D1B35`
-or holds a `rep stos`. So the
-value of a member before the first write is open. The sizes that the pools are
-resized to are known: a top level list registers its laid out bytes
-(`0x00D16706..0x00D1672B`) and the shared record sums the levels (see
-[bind records](#bind-records)).
+The Lua layer reads stored pool bytes. A Boolean reads its bit through
+`0x00D28890`, and an integer descriptor reads the value through its
+width-specific routine. An admitted Boolean array element in a newly grown
+byte of the default local actor pool reads Lua `false` while its bit retains
+the initial zero. The following chain is STATIC.
+
+CharaBase, PlayerBase and NpcBase slot `+0x90` selects `0x006E1940`. Its
+call chain reaches the actor work builder `0x00CC8760` at `0x0076DD79`
+when the key masked by `0xC0000000` differs from `0xC0000000`. MyPlayer
+uses `0x006E3500` at that slot and reaches the same builder at
+`0x0076DE48`. On the packet-binding clone path the incoming SID is
+stored at instance `+0x70` (`0x00CE1CCE`) and its address is forwarded
+at `0x00CE2488` toward slot `+0x90`. The builder attaches its Operator
+at shared record `+0x04` and inserts that record by SID through
+`0x00CEB720` at `0x00CEB805` on table subobject `+0x04`.
+It obtains the table from engine `+0x214` at `0x00CC87E0`.
+If the Lua instance has no cached handle, `0x00D1CE10` takes the
+same key from instance `+0x70` and the table from engine `+0x214`
+(`0x00D1CE88`). A hit through `0x00CEB490` at `0x00D1CE9A`
+returns the installed record at `0x00CEB4F2` for the handle constructor
+`0x00D12230`.
+
+The builder calls `0x00CCC200` at `0x00CC878D` to create two
+SingleThreadContainers and one SyncContainer. The Operator constructor
+`0x00CCBFA0` appends them to its vector at `+0x0C` in save, temp, sync
+order. Pool construction installs SimpleAccess and clears its provider at
+pool `+0x0C` in `0x00CFE2B0`. Sync writer installation uses pool
+`+0x30` at `0x00CFCD35`.
+
+Top-level list declaration reports its byte-rounded layout size through
+`0x00D11BB0`, for example at `0x00D1672B` for temp. The shared record
+sums the level sizes in `0x00CE5BF0` and calls `0x00CCB3F0`, which
+selects the pool by kind. SingleThreadContainer and SyncContainer resize
+slots `0x00CFD2C0` and `0x00CFD4C0` pass the byte vector, provider and
+requested size to SimpleAccess `0x00CFE5F0`. Its null-provider branch at
+`0x00CFE622..0x00CFE632` passes a zero fill byte to `0x00CFF830`.
+Growth appends the added bytes through `0x00CFF630`, whose two insertion
+paths call `0x006D1920`. The fill store at `0x006D1939` writes that
+zero to every added byte. Growth retains the existing prefix.
+
+Array `__index` reaches `0x00D2E0A0` at `0x00D2F26C`. The converted
+index is admitted from 1 through the declared count, then
+`0x00D1A620` subtracts one before the element reader call at
+`0x00D2E12B`. BooleanInformation dispatches to `0x00D28890`.
+`0x00D25900` combines the zero-based index and one-bit width with the
+descriptor start. The bit read through `0x00CE45D0` and
+`0x00CCB4D0` selects the pool by kind. SimpleAccess
+`0x00CFDFC0` extracts the bit from the addressed stored byte, and
+`0x00CF3320` calls the Lua Boolean push at `0x00CF3329`. The
+out-of-range array branch at `0x00D2E14E` pushes nil.
+
+This result requires the same installed actor record, the default access and
+null provider, and successful growth covering the element. Existing values,
+hydration, alternate providers and writes that touch the bit can change the
+value. The order of those operations relative to a specific first read or
+widget callback is open.
 
 ### An object without storage
 
@@ -444,8 +483,8 @@ out to 4648 bits (581 bytes).
 ### Derived bind starts
 
 The starts below apply the [member offsets](#member-offsets) rule and the
-nested origin rule to the declared lists, with the tier `INFERRED` because the
-array count rule and the nested origin are. A nested member's start includes the
+nested origin rule to the declared lists. They are `INFERRED` where they
+depend on the nested origin. A nested member's start includes the
 start of its nesting member. Another player binds only the ids 1010 to 1012,
 3006, 4001, 4002 and 2002, so the other columns stay empty. The ids after a
 nested member move for another player because the nested operands are smaller.
@@ -745,7 +784,8 @@ not run to its `_nesting` assignment. That assignment needs the first argument o
 declared. The second is a
 receiver without installed storage, where every declared member reads nil
 ([an object without storage](#an-object-without-storage)). The array is indexed
-from 1 by the scripts. The index base inside the readers was not traced.
+from 1 by the scripts. The [array proxy](#initial-values) subtracts one before
+dispatching to its element reader.
 
 ## Registration and dispatch
 
@@ -1059,28 +1099,24 @@ an argument list, a return list and a callback contract: `_setTouchAttribute`,
 `_getOccupancyGroup`, `_getRegion`, `_getInstanceName` and `_turnDir`. The names
 `_bindWork` and `_bindWorkNestingArray` are script helpers over the `_bind` flag
 of the work userdata and not functor natives. A client that implements the rows
-still needs the pool objects behind the work accessors, the callers of the by-id
-accessors, the readers of the touch attribute masks and the lock-on counter, and
+still needs the remaining provider paths behind the work accessors, the callers
+of the by-id accessors, the readers of the touch attribute masks and the lock-on counter, and
 the request service behind `_updateWork`, which this record does not supply.
 
 ## Open
 
-- The class of the pool objects behind the read and write accessors, their
-  allocation and whether they are zero filled, so the initial value of a
-  declared member before its first write. The string and actor readers.
+- Initial contents for alternate providers and hydrated work, and the order of
+  writes before a particular first read. The string and actor readers.
 - The [timer](#timer-members) change routine `0x00CF5D10` that a nonzero
   operand reaches, the per-tick routine `0x00CF6080` that `0x00CF63E0` enters
   when the list at clock object `+0x18` is not empty, how often `0x00CDA330`
   runs, and the readers of the `_onTimer` literal (`0x0110E7DC`) that the engine
   copies to `+0x128` at `0x00CDC544`. Whether an operand of true raises a script
   callback on expiry is open.
-- The code that applies a numeric third operand of a boolean or numeric tag as
-  an element count, and the origin of a nested list (the nesting member's own
-  start is inferred). Until those are read, the starts in
-  [derived bind starts](#derived-bind-starts) are `INFERRED`.
-- The index base of the member readers, which pass the index through `0x00D25900`
-  without a visible subtraction, and the proxy that turns `a[i]` into an index
-  cell.
+- Whether any scalar-tag path uses an additional numeric operand as a count.
+  The origin of a nested list remains inferred as the nesting member's start.
+  [Derived bind starts](#derived-bind-starts) that depend on that origin keep
+  the `INFERRED` tier.
 - The role of the second int of a bind, the callers of the by-id accessors and
   the packets that carry bind ids.
 - The origin of the class level byte (key record `+0x14`) beyond its use as a
