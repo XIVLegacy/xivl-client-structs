@@ -300,8 +300,8 @@ The select publication establishes two branches (`STATIC` there):
   setter and bridge call. This call cannot reach the selected checker clear.
 - A changed selection posts event kind 0, sets the cursor through
   `0x0055E7A0` and calls bridge slot `+0x64` through `0x00574D90`, passing the
-  index and cursor `+0x04` identity. The bridge is the object at
-  `[[state +0x80]]`.
+  index and cursor `+0x04` identity. The pointer at `state +0x80` addresses
+  a dword that holds the bridge.
 
 The published vtable `0x00FDFB2C` has `0x0075D750` at `+0x64`, slot 25.
 That entry reaches `0x006FE960` through `0x008A3EA0`, as the widget dispatch

@@ -229,8 +229,11 @@ stores it at descriptor `+0x08`. The calls precede the vftable stores at
 `0x00D28BF9`, `0x00D29099`, `0x00D295B9`, `0x00D299E9`, `0x00D29F29`,
 `0x00D2A3FD`, `0x00D2AD59`, `0x00D2B57D`, `0x00D2B6A9`, `0x00D23D52` and
 `0x00D23DE6` (integer8 to uinteger64, string, actor, timer and the
-`nesting` and `reserve` constructors). The boolean constructor `0x00D28390`
-stores it unrounded. After the descriptor exists the
+`nesting` and `reserve` constructors). The timer store `0x00D2B57D` is in
+`0x00D2B560`, the constructor of the `array` and `2Darray` element handlers.
+The top-level timer handler `0x00D2CBD0` builds its descriptor inline, with the
+call at `0x00D2CC3E` before its vftable store at `0x00D2CC4B`. The boolean
+constructor `0x00D28390` stores it unrounded. After the descriptor exists the
 routine adds the width of slot `0x0C` to the running offset and, when that width
 is a multiple of 8, rounds the running offset up to a byte first
 (`0x00D1E59F..0x00D1E5CD`). So booleans pack to one bit each in declaration
@@ -351,7 +354,15 @@ makes the same test on its second argument and pushes nil
 
 Descriptor slot `0x0C` stores the width of a member in bits. The string width is
 the dword at descriptor `+0x10` added to itself three times, so eight times that
-dword. The factory `0x00D260D0` maps the type names to the constructors.
+dword. Two type maps send the type names to the constructors. `0x00D20190`
+fills the top-level map at `0x01378118`, and `0x00D260D0` fills the `array`
+element map. Both maps send `boolean`, `integer8` to `integer32`, `float` and
+`actor` to the same handlers (`0x00D201F0..0x00D2032B`,
+`0x00D26130..0x00D2626B`). They send `string`, `timer`, `nesting` and `reserve`
+to different handlers. The top-level `string` handler `0x00D1F310` reads its
+length from element 3 (`0x00D1F33B`) and the `array` one, `0x00D25350`, from
+element 5 (`0x00D2537B`). Both construct with `0x00D2A3E0`. The
+[timer operand](#timer-members) table gives the `timer` handlers.
 
 | Tag | Descriptor vftable | Width slot target | Bits |
 | --- | --- | --- | --- |
@@ -438,17 +449,22 @@ stores the base from `0x004CFA50`, and the table at `0x00F5330C` holds its
 address (`STATIC`). That `0x00F2D1B0` is a static initializer that runs at
 process start is `INFERRED`. How often `0x00CDA330` runs was not traced.
 
-The descriptor byte at `+0x10` is the timer operand. The factory `0x00D260D0`
-maps `timer` to `0x00D253F0`, which reads element 5 of the declaration entry
-with `lua_toboolean` and passes it to the constructor `0x00D2B560`, which
-stores it at `+0x10` (`0x00D253F0..0x00D25462`, `0x00D2B579..0x00D2B583`). The
-string handler `0x00D25350` reads its length from the same element. When the
-byte is nonzero the store also passes the old and new bytes to `0x00CF5D10` on
-the clock object (`0x00D2CF0F`, `0x00D2CFDE`). `commandBurstBlocker` declares the
-operand false, so its writes skip that call (see [playerWork](#playerwork)).
-`0x00D2CBD0` and `0x00D25530` also construct a timer descriptor, reading the
-flag from elements 3 and 6. Their factories `0x00D20190` and `0x00D26350` and the
-routine `0x00CF5D10` were not traced.
+The descriptor byte at `+0x10` is the timer operand. Which declaration entry
+element supplies it depends on the path that builds the descriptor (`STATIC`).
+
+| Path | Type map | Timer constructor | Operand element |
+| --- | --- | --- | --- |
+| Top-level entry | `0x01378118`, filled by `0x00D1F170` from `0x00D20190`, read by the walker `0x00D1E0F0` at `0x00D1E4B6..0x00D1E4BD` | `0x00D2CBD0` (`0x00D2033F..0x00D20358`) | 3 (`0x00D2CBFD..0x00D2CC14`), stored at `0x00D2CC4B..0x00D2CC51` |
+| `array` element | `0x00D260D0`, whose only caller is the `array` handler `0x00D243E0` (`0x00D24488`) | `0x00D253F0` (`0x00D2627F..0x00D26298`) | 5 (`0x00D2541C..0x00D2542A`), stored by `0x00D2B560` at `0x00D2B579..0x00D2B583` |
+| `2Darray` element | `0x00D26350`, whose only caller is the `2Darray` handler `0x00D24670` (`0x00D24718`) | `0x00D25530` (`0x00D264FF..0x00D26518`) | 6 (`0x00D2555C..0x00D2556A`), stored by `0x00D2B560` (`0x00D255A2`) |
+
+Each constructor converts the element with `lua_toboolean` through
+`0x00CF35E0`. When the byte is nonzero the store also calls
+`0x00CF5D10` on the clock object (`0x00D2CF0F`, `0x00D2CFDE`).
+`commandBurstBlocker` is a top-level entry that declares the operand false, so
+its writes skip that call (see [playerWork](#playerwork)). The scheduling that
+`0x00CF5D10` starts and the expiry that follows are recorded in
+[Common timer expiry and `_onTimer`](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/script/timed-inform-widgets.md#common-timer-expiry-and-_ontimer).
 
 ### Nested capacity
 
@@ -1107,12 +1123,11 @@ the request service behind `_updateWork`, which this record does not supply.
 
 - Initial contents for alternate providers and hydrated work, and the order of
   writes before a particular first read. The string and actor readers.
-- The [timer](#timer-members) change routine `0x00CF5D10` that a nonzero
-  operand reaches, the per-tick routine `0x00CF6080` that `0x00CF63E0` enters
-  when the list at clock object `+0x18` is not empty, how often `0x00CDA330`
-  runs, and the readers of the `_onTimer` literal (`0x0110E7DC`) that the engine
-  copies to `+0x128` at `0x00CDC544`. Whether an operand of true raises a script
-  callback on expiry is open.
+- How often `0x00CDA330` runs, which bounds how late a
+  [timer](#timer-members) deadline is seen. The `_onTimer` call on expiry of a
+  member declared with a true operand, the joins it still infers and its open
+  gates are recorded in
+  [Common timer expiry and `_onTimer`](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/script/timed-inform-widgets.md#common-timer-expiry-and-_ontimer).
 - Whether any scalar-tag path uses an additional numeric operand as a count.
   The origin of a nested list remains inferred as the nesting member's start.
   [Derived bind starts](#derived-bind-starts) that depend on that origin keep
@@ -1191,13 +1206,13 @@ members replaced by recorders. The function VAs for `$Addresses` are:
 
 | Observation | Function VAs for `$Addresses` |
 | --- | --- |
-| Work binder | `0x00D2F000,0x00D175B0,0x00D16CD0,0x00D16D40,0x00D272D0,0x00D12200,0x00D12210,0x00D20490,0x00D27480,0x00D25C50,0x00D25900,0x00D12220,0x00CE67F0,0x00CE6E30,0x00CE5040,0x00CE48C0,0x00D260D0` |
+| Work binder | `0x00D2F000,0x00D175B0,0x00D16CD0,0x00D16D40,0x00D272D0,0x00D12200,0x00D12210,0x00D20490,0x00D27480,0x00D25C50,0x00D25900,0x00D12220,0x00CE67F0,0x00CE6E30,0x00CE5040,0x00CE48C0,0x00D260D0,0x00D1F310` |
 | Descriptor slots | `0x00D2DDE0,0x00D2DE10,0x00D2DE20,0x00D2DE30,0x00D2DE40,0x00D25960,0x00D2DE90,0x00D2DEA0,0x00D28890,0x00D28D10,0x00D291B0,0x00D29660,0x00D29B00,0x00D29FD0,0x00D2B810` |
 | Registrars | `0x007338A0,0x007290E0,0x0073EB40,0x0073EF30,0x0073FC50,0x00730810,0x00732A30,0x00732B80,0x0074F230,0x0074A760,0x0074D400,0x00756B70,0x00749A40,0x007367E0,0x0072FEE0,0x0072FD90` |
 | Callbacks | `0x006E6110,0x00705320,0x006E7670,0x006E8890,0x006E85E0,0x006E2AF0,0x006E3380,0x006E33A0,0x00706C70,0x006F9B20,0x00700110,0x00709C80,0x00700680,0x006E2240,0x006F96C0,0x006DC6F0,0x006E47D0,0x006E4700` |
 | Touch attributes | `0x00895EF0,0x00895790,0x0089A1C0,0x0089A780,0x0075C950,0x00589720,0x00894EE0,0x0075C970,0x00589750,0x00763030,0x004D72F0,0x005893F0,0x00574D50,0x00574D60,0x0058E0C0,0x00588200,0x00588300,0x00588330,0x007CE7B0` |
 | Layout and bind records | `0x00D1E0F0,0x00D1F4F0,0x00D28390,0x00D28BE0,0x00D23DA0,0x00D1C100,0x00D15F70,0x00D174B0,0x00D25900,0x00CE5BF0,0x00CE5290,0x00CE4550,0x00CE4450,0x00CE4250,0x00CCB3F0,0x00CCB430,0x00D27450` |
-| Timer members | `0x00D2CE00,0x00D2D080,0x00D12980,0x00D12260,0x00CF3760,0x00DCDCE0,0x00CF5750,0x00CF5770,0x00CF5520,0x00CF51E0,0x00CF5320,0x00CF3300,0x00CF3CE0,0x00CF58E0,0x00CF63E0,0x00CDA330,0x004CFA50,0x00D353F0,0x00F2D1B0,0x00D253F0,0x00D2B560,0x00D2CBD0,0x00D25530` |
+| Timer members | `0x00D2CE00,0x00D2D080,0x00D12980,0x00D12260,0x00CF3760,0x00DCDCE0,0x00CF5750,0x00CF5770,0x00CF5520,0x00CF51E0,0x00CF5320,0x00CF3300,0x00CF3CE0,0x00CF58E0,0x00CF63E0,0x00CDA330,0x004CFA50,0x00D353F0,0x00F2D1B0,0x00D253F0,0x00D2B560,0x00D2CBD0,0x00D25530,0x00D1F170,0x00D20190,0x00D28680,0x00D243E0,0x00D24670,0x00D26350,0x00D25350` |
 | Value coercion | `0x00D28810,0x00D28C10,0x00D290B0,0x00D295D0,0x00D29A00,0x00D29F40,0x00D2A410,0x00CF35C0,0x00CF35E0,0x00DCDED0,0x00DCDF50,0x00DDE8B0,0x009D6636` |
 | Orientation and queries | `0x009DAEBA,0x009ECA10,0x009EC97C,0x006F9B20,0x006ED740,0x006F0220,0x0075C7B0,0x0060DD90,0x006DD038,0x006BFCD0,0x0075B2C0,0x00705170` |
 | Work refresh | `0x0070AA10,0x00767FC0,0x00767C00,0x006C7A80,0x006C72E0,0x0075EAC0` |
