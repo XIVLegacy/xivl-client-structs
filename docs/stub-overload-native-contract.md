@@ -175,6 +175,44 @@ and `Index` in step. The other five properties only store.
 The filtered view is the full list while `FilteredSortKey` is empty. With a sort key it keeps the rows whose `visibility`
 attribute is empty or not `False`, orders them by the key and sets `FilteredIndex` and `FilteredCount`.
 
+Writing `FilteredIndex` moves `Index` (`STATIC`). The arm `0x00943AA5` passes the value at `+0x114` to the mapper
+`0x00943210` and writes the result to `Index` through the typed setter `0x00942B10`. A negative result is written with a
+final argument of 0 and a result of 0 or more with a final argument of 1. The `SortedIndex` arm `0x00943AD7` maps
+`+0xC4` through `0x00943500` and makes the same two writes. Every typed write of the `Index` arm passes 0.
+
+The typed setters `0x00942AE0`, `0x00942B10` and `0x00942BA0` store `SortedIndex`, `Index` and `FilteredIndex`
+through the shared int writer `0x00926E80` with the descriptors `0x01359AB4`, `0x01359AD8` and `0x01359C1C` and the
+callback `0x00943A00`. Each call here passes 0 as the middle flag, and with that flag the writer refuses the write while
+bit `0x02` of the property state byte is set. The setter of that bit was not traced. A value equal to the stored one
+changes nothing. Otherwise the writer stores the value and sets bit `0x04`. Only a final argument of 1 then calls
+`0x00953BA0`, which runs the registered callback at `0x00953C36` (`STATIC`). A final argument of 0 stores without
+running the callback.
+
+The mapper returns the place unchanged when the document at `+0x204` is null or `FilteredSortKey` at `+0x104` is empty.
+Otherwise it casts the document from `Component::Xml::DOM_Node` to `Sqwt::Xml::XmlElemenBase`, the RTTI spelling at
+`0x012E11EC`, through `0x009DA6CC` and reads the child list from virtual slot 1 and the filtered list from virtual
+slot 2. These are the lists that the view builder `0x00943580` walks and fills. A failed cast, a null filtered list, a
+negative place or a place at or past the filtered count `0x0067AF30` returns -1. Otherwise the mapper takes the filtered
+entry at the place with `0x0067B3F0` and returns its position in the child list from `0x00945A70`, a pointer search that
+returns -1 when the entry is absent (`STATIC`). That the position is the document row of the filtered place is
+`INFERRED`, because the builder stores each kept row as its `Sqwt::Xml::XmlElement` cast plus 8 and the match relies on
+that address being the child list entry.
+
+| Write of `FilteredIndex` | Effect on `Index` |
+| --- | --- |
+| no document or empty sort key, place 0 or more | `Index` takes the place and the `Index` arm runs |
+| no document or empty sort key, negative place | `Index` takes the place and the `Index` arm does not run |
+| document and sort key, filtered entry found in the child list | `Index` takes the found position and the `Index` arm runs |
+| document and sort key, any other place | `Index` takes -1 and the `Index` arm does not run |
+| result equal to the current `Index` | nothing changes |
+
+When the `Index` arm resolves a row it rewrites `FilteredIndex` with a final argument of 0 through `0x009432C0`. That
+function has the guards of the mapper and runs the other way. Under a sort key it takes the child list entry at the row
+and returns its position in the filtered list from `0x00945A70`, or -1 (`STATIC`). With no document or an empty sort key
+it returns its argument, so a write of `FilteredIndex` with no sort key keeps the written place. Under a sort key the
+rewrite gives the first filtered position that holds the found entry, which is the written place while the filtered
+entries are distinct (`INFERRED`). The order that `0x00945C40` gives the filtered view under a key was not traced.
+
 ### _setListProperty
 
 The registrar `0x00744460` is the 17th registrar call of the `WidgetBase` switchboard `0x00754A60`. The callback
@@ -273,6 +311,8 @@ the two slots are still open.
 - `_setLoopInterval`: append the converted words, `0x7FFF` for a leading Nil, and do not clear the list in this native.
 - `_setListProperty` and `_updateList`: keep a named row and attribute model per widget that follows the property
   order above, grows rows on `Index`, stores attributes on `SetAttr` and recounts on `Update`.
+- `FilteredIndex` writes: map the place through the filtered view, or keep it with no sort key, and write the result
+  to `Index`. A result of 0 or more runs the `Index` side effects. A negative result is stored without them.
 - `_setTargetCursorImage` cursor-one branch: read the work member `mainTargetDecidedFlag` as the test
   (`INFERRED`). Cache and post the identity of cursor 0, not the widget identity.
 - `_callSuperClassFunction`: pass every trailing value, raise the argument diagnostic at the first value of another
@@ -288,6 +328,8 @@ The manifest `hostContract` lists the obligations in full.
 - The values of the attribute type bytes at `0x013599D1` and `0x013599DC`.
 - The data maker names that the widget forms declare and the bindings that read `Count`, `FilteredCount` and
   `FilteredIndex`.
+- The order that `0x00945C40` gives the filtered view under a sort key, and the setter of state bit `0x02` that makes
+  the shared int writer `0x00926E80` refuse a write.
 - The virtual callers of `LuaActorImpl` vftable slots 25 and 26, which reach the methods that write `+0x7C`.
 - The numeric reading of the `Which` value and the delivery of the `Nil` placeholder to the super method.
 
@@ -312,6 +354,7 @@ tools/ghidra/run-headless.ps1 -Script DumpVAs.java -ReadOnly `
 | Loop interval | `0x0078C020,0x00CC7400,0x00CD7A30,0x00CE2E40,0x00D083B0` |
 | List natives | `0x006F3E70,0x0072B210,0x006EA360,0x006EA6D0,0x006EAA20,0x006EB450,0x0075BB60,0x0075BB80,0x005355A0,0x005354D0` |
 | Data maker | `0x009442B0,0x00943A00,0x00943980,0x00943580,0x00944850,0x00942FC0,0x009425B0,0x00944DA0,0x00944ED0` |
+| Filtered index write | `0x00943210,0x009432C0,0x00942AE0,0x00942B10,0x00942BA0,0x00926E80,0x00953BA0,0x00945A70,0x0067AF30,0x0067B3F0` |
 | Super call | `0x006DBC40,0x0078D520,0x00753B90,0x00791030,0x007941D0` |
 
 The callbacks `0x006E7A60` and `0x006EBE60` are not function entries in the analyzed program. Read them as
