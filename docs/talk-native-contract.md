@@ -133,8 +133,8 @@ empty identity `0xC0000000`. The empty identity pushes Nil through
 control, which pushes Nil. `0x00CD8160` also returns null for an identity equal
 to the dword at `0x0130C778`, which holds `0xE0000000` in the image.
 
-Reading `+0xD8` as the parent widget is `INFERRED` from the name and the Nil
-branch. No store to the field was traced. A receiver whose identity is absent
+The parent role of `+0xD8` is supported by the accessor and the
+[form deletion unlink](#child-unlink-during-form-deletion) below. A receiver whose identity is absent
 from the `0x004D9910` tree makes `0x00533ED0` read address `0x000000D8`.
 Whether the process survives that fault is `unknown`.
 
@@ -157,6 +157,47 @@ Unlike `_getParentWidget`, `_getChildWidget` does not compare the identity with
 resolves to a null control and pushes Nil is `INFERRED`. `0x00CD8160` and
 `0x00CD81D0` return null directly only for the identity `0xE0000000` and
 otherwise search the containers.
+
+### Child unlink during form deletion
+
+The [WidgetBase delete override](fade-actor-group-native-contract.md#widget-delete-override)
+checks index 0 for the same identity before requesting a deleting slot or
+inserting a deferred key. On the nonnull record path, `0x0075BEC0`
+resolves the identity through `0x004D9910` and tail-dispatches slot 0
+with flag 1 at `0x0075BEE0`. If it resolves the constructor-qualified
+[FormElement](native-input-ui-boundaries.md#visibility-property-path),
+table `0x00FA1200` supplies `0x005455B0`, which calls destructor
+`0x0053AC10` at `0x005455B3`.
+
+Destructor call `0x0053ACA1` enters `0x00535240` before the
+index-0 root lookup at `0x0053ACB0`. For nonnull child `+0xD8`, the
+callee scans the parent vector bounded by `+0xE0/+0xE4` for the exact
+child pointer (`0x00535286..0x0053529D`). On a match, it shifts
+remaining entries when present and reduces the end pointer by four
+(`0x005352D0..0x005352FE`). It then clears the child's parent
+pointer at `0x00535304`, including on a normal miss. A null parent
+skips the scan. The vector is the one read by the two child natives
+above. The unlink does not depend on the window's visibility or a
+closing animation.
+
+If index 0 has a root at record `+0x2C`, the destructor can then
+create the [CloseWindowListener](native-input-ui-boundaries.md#visibility-property-path)
+at `0x0053ACDE`. Its constructor registers the listener on the root
+and calls `0x00921B00` at `0x0053A1AE`. That routine supplies
+Closing descriptor `0x013573A4` at `0x00921B36`. When the cancel
+byte is not 1 and the ordinary Window table is retained, its call
+at `0x00921BBC` uses primary slot `+0x128 -> 0x00921D10`.
+That slot submits Closed descriptor `0x01357398` at `0x00921D82`.
+The listener callback `0x00533F30` requests its deleting slot with
+flag 1 on event id `0x45` (Closed). These window and listener calls
+follow the native parent unlink. The deferred-key consumer and live
+frame timing remain unknown.
+
+The binary and VAs above were checked with LLVM objdump 21.0.0 and
+PE-backed table reads. The complete unlink interval
+`[0x00535240,0x00535314)` has SHA-256
+`a28ab9256b0cccf2ea3945436ff0a835037852d96a47ca172b59c2336c00efb3`. Closed and Closing names are initialized at `0x00F20E10`
+and `0x00F20E40` respectively.
 
 ## Keyboard focus
 
