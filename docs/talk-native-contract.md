@@ -199,6 +199,50 @@ PE-backed table reads. The complete unlink interval
 `a28ab9256b0cccf2ea3945436ff0a835037852d96a47ca172b59c2336c00efb3`. Closed and Closing names are initialized at `0x00F20E10`
 and `0x00F20E40` respectively.
 
+### Script finalization during loaded form deletion
+
+STATIC. On the nonnull index-0 FormElement path above, the destructor calls
+`0x004DB6A0` at `0x0053AF47`. If element `+0x80` holds a nonnull holder,
+`0x004DB70C` calls `0x00574900` before retiring the element registry entry at
+`0x004DB731`. That helper calls the current held object's slot `+0x14` at
+`0x0057493B` when its pointer is nonnull. LuaActorImpl table `0x00FDFB2C`
+selects `0x00763480`. It reads the control at implementation `+0x08` again
+at `0x007634A0` and calls control slot `+0x74` through `0x006DBE10`.
+WidgetBase table `0x00FD5A74` selects `0x006DBEA0`, which calls `0x00CC7370`
+at `0x006DBEA5` to resolve the script entry and request `0x00CDAEB0`.
+
+`0x00CDAEB0` returns before its slot-5 request when `0x00CE16F0` is true
+and `0x00CE1710` is false (`0x00CDAEDE..0x00CDAEF2`, return at `0x00CDB0DA`). On the admitted
+branch it calls `0x00CE24C0` at `0x00CDAF72`. Let S be entry `+0x08` and
+A, B and C be the respective dwords at `0x0130D4FC`, `0x0130D500` and
+`0x0130D504`. The slot request at `0x00CE252F` follows `S == C` or
+`S == A && S != B` (`0x00CE24E3..0x00CE250C`). The guard values are read
+from their live cells. `0x00CCC9E0` forwards through control slot `+0x14`.
+WidgetBase cell `0x00FD5A88` holds `0x006F6900`.
+
+`0x006F6900` tests the selected script entry's byte `+0x80` through
+`0x00CC7280` at `0x006F6939`. On nonzero it requests `_onFinalize`
+(`0x00FD44D0`) through `0x00CC7A90` at `0x006F69D8`. The ordinary
+request at `0x00CCF7D0` requires the error handler's `+0x08` byte to be
+zero, the script entry's `+0x7F` byte to be nonzero and callable
+preparation to succeed (`0x00CCF7F9..0x00CCF858`). Its admitted call
+`0x00CCF862 -> 0x00CCECB0 -> 0x00CCFFE0` enters the protected Lua call or
+resume wrapper on the current native stack. The protected call is at
+`0x00CF409D` and the alternate resume call is at `0x00CF42B3`. Callback
+completion depends on the resolved method and its execution.
+
+A completed WidgetBase finalizer invokes `processWidgetDeleted` for an
+initialized non-Desktop widget. That handler clears the slot at the stored
+index if it still holds this widget. If a loaded `AskWidget`
+occupies category 4 and reaches the admitted call above, its slot can be
+cleared within `_delete`, before the close wrapper returns. This
+composition is conditional on the matching holder, entry and Lua method.
+The zero-index deferred-key path and a refused finalizer have no proved
+same-call release. No closing-animation completion is required by the
+loaded path's direct call chain.
+
+[xivl-client-scripts:docs/desktop-widget-root-slots.md, Abort sweep and deletion](https://github.com/XIVLegacy/xivl-client-scripts/blob/853cb52599a720ca86e2c176a408eefe191d8a8d/docs/desktop-widget-root-slots.md#abort-sweep-and-deletion)
+
 ## Keyboard focus
 
 `_setKeyboardFocusedControl` takes a container name and a control name. The
@@ -371,6 +415,7 @@ tools/ghidra/run-headless.ps1 -Script DumpFunctionListing.java -ReadOnly `
 | List builders and wrappers | `0x0072C260,0x0072B440,0x00728C20,0x00728B70,0x0072BEC0,0x00743A30,0x007422C0,0x00740C30,0x00726A90,0x00726B40,0x00726BF0,0x00726CA0` |
 | Holders | `0x00724C10,0x00724CE0,0x00724DB0,0x00724E80,0x0071AD50,0x0071B4D0,0x0071AE70` |
 | Widget accessors | `0x0075BA50,0x0075BA90,0x0075BAB0,0x00533ED0,0x00533FF0,0x00537C10,0x0052F7F0,0x005CF390,0x004D9910,0x00CC7A50,0x00CD8160` |
+| Loaded form finalization | `0x0053AC10,0x004DB6A0,0x00574900,0x00763480,0x006DBE10,0x006DBEA0,0x00CC7370,0x00CDAEB0,0x00CE24C0,0x00CCC9E0,0x006F6900,0x00CC7280,0x00CC7A90,0x00CCF7D0,0x00CCECB0,0x00CCFFE0,0x00CF4010,0x00CF4230` |
 | Focus request | `0x00707870,0x006DCAF0,0x0075B9C0,0x0075B9E0,0x00538740,0x005386D0,0x005353E0,0x00537950` |
 | Tutorial test | `0x0075D120,0x0075CE30,0x004D7230,0x004D7250,0x004D7260` |
 | Pools | `0x006E8360,0x007139C0,0x00713A20,0x00718E10,0x006DCA80,0x007721B0,0x0071BB80` |
