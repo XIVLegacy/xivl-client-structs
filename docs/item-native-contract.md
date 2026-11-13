@@ -285,14 +285,60 @@ result with no branch on it, calls `0x006F51A0` again and then calls `0x006EE3E0
 with the key address and slot. It never calls `0x006EE480`, whatever the flag. A result of 0 pushes nil. Otherwise it passes the
 record and the flag to `0x006E2770` and pushes the control it returns.
 
-The flag only selects among three thin wrappers of `0x00CD9360`. The value 0 calls
-`0x00CC80A0` and a nonzero value calls `0x00CC81E0` or `0x00CC8140` as
-`0x00758EC0` decides. The fields stored in the control do not depend on the flag.
-What differs for a script between the two natives is therefore not visible in the
-Lua pushes and was not traced. A package number of 0 becomes the key
+The flag selects among three thin wrappers of `0x00CD9360`. The immediate 0
+at `0x007087F0` takes `0x006E2815` to the call at `0x006E28CA`, whose
+wrapper `0x00CC80A0` supplies factory mode 0. The immediate 1 at
+`0x00708890` reaches `0x00758EC0` at `0x006E2827` and selects
+`0x00CC81E0` for a true result or `0x00CC8140` otherwise. Those wrappers
+supply modes 3 and 1 at `0x00CC8208` and `0x00CC8168`. All three paths
+write the same four ItemBase fields at `0x006E2912..0x006E291B`. A package
+number of 0 becomes the key
 `0xFFFFFFFF`, which goes to the tree find and gives nil unless such a package
 exists. A slot number of 0 becomes the index `0xFFFFFFFF`, which reaches the
 invalid vector subscript throw when the package exists.
+
+### Held NormalItem table identity
+
+STATIC. The held loader's family-0 branch at `0x006F18FA..0x006F196E`
+reaches the constructor that writes the native NormalItem vtable
+`0x00FD5C84` at `0x006EFEBF`. On those records, the virtual call at
+`0x006E27C9` selects `0x006DE430` through vtable cell `0x00FD5C94`.
+It formats `_item%llX` from the full 64-bit value at item
+`+0x10/+0x14`. This includes `_item0` if both dwords are zero.
+The Lua class name is supplied separately from item `+0x28`. The
+formatter therefore applies to the native family-0 records regardless of
+the selected Lua leaf class.
+
+The factory first resolves and admits that class at
+`0x00CD93A7..0x00CD9404`. It interns the nonempty instance name at
+`0x00CD9426..0x00CD9435` and scans the engine's Lua registry pool
+`0x00010009` at `0x00CD9460..0x00CD951F`. The first reuse branch
+requires a light-userdata iteration key, a record obtained from the
+candidate table by `0x00CD77D0`, a false result from `0x00D03680`,
+and a kind match through `0x00D03360` against byte `0x02` at
+`0x012BFB66`. At `0x00CD94F7..0x00CD94FE` it compares the
+second dword of the candidate's interned name reference at `+0x50`
+with the corresponding dword of the incoming name. This comparison
+uses the engine's instance name. Owner, package, slot and catalog ID
+do not supply any part of that name comparison.
+
+The hit returns the same candidate at `0x00CD96FE` in all three factory
+modes. At `0x00CD96A8`, modes 0 and 1 take the request path via
+`0x00CCCD40` with different flags, while mode 3 skips that dispatch.
+The [LuaControl return](desktop-native-call-contract.md#luacontrol-returns)
+from `0x007024F6` passes the control through `0x00748B30`.
+`0x00CF9E33..0x00CF9E3C` then resolves the control record and looks up
+its Lua value by registry pool and key through `0x00CD7A50`. A table
+at the primary entry is returned directly. Repeated lookups that take
+the same admitted hit and keep that entry give the identical Lua table.
+The engine instance metatable installs `__eq` at
+`0x00CD8B5E..0x00CD8B7B`. When that callback runs it pushes false at
+`0x00D08926`.
+
+This establishes conditional reuse for held NormalItem lookups. The
+admission of zero-ID records, registry lifetime across removal or
+movement, and live deliveries of duplicate IDs across owners are open.
+The mode-specific effects on the later factory paths are open.
 
 ## Script call sites
 
@@ -373,6 +419,7 @@ tracked artifact carries them. The function VAs for `$Addresses` are:
 | Switchboards and holders | `0x00753DD0,0x007574A0,0x00726670,0x00726510,0x0071A910` |
 | Callbacks | `0x00701870,0x007018C0,0x00701970,0x00701AD0,0x00701C40,0x00701CB0,0x00701DD0,0x00701E30,0x00701E90,0x00701F20,0x00702120,0x00702280,0x00702330,0x00708840` |
 | Lookup and control | `0x006F51A0,0x006E5BA0,0x006EE3E0,0x006EE480,0x00702400,0x006E2770,0x00CD9360,0x00CC80A0,0x00CC8140,0x00CC81E0,0x00758EC0` |
+| Held NormalItem table identity | `0x007087A0,0x006F18C0,0x006F1830,0x006EFE70,0x006DE430,0x00CEDE40,0x00CD77D0,0x00D03680,0x00D03360,0x00CD7850,0x00CF9D60,0x00CD7A30,0x00CD7A50,0x00CD8990,0x00D08890` |
 | Attribute object | `0x00763360,0x007633D0,0x00763460,0x00764DC0,0x00764E30,0x00764EA0,0x00769760,0x0076B760,0x007698E0,0x006DF580,0x006DD700,0x006DD7B0` |
 | Owner | `0x00CC7510,0x00714270,0x00CC7A50,0x009DA6CC` |
 | Lists and pushers | `0x00728C20,0x00728B70,0x0072B440,0x0072C260,0x00583CE0,0x0072BCA0,0x00727E60,0x00742AE0,0x0073E0B0,0x0072C680,0x007270B0,0x00584F70,0x00748870,0x00748920,0x00748B30,0x0078BC90,0x0078BCD0,0x0078BCE0` |
