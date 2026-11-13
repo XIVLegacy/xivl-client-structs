@@ -338,6 +338,41 @@ hydration, alternate providers and writes that touch the bit can change the
 value. The order of those operations relative to a specific first read or
 widget callback is open.
 
+#### Default widget temporary Boolean values
+
+The ordinary WidgetBase table `0x00FD5A74` has slot 3 at `0x00FD5A80`,
+which selects the no-op `0x00712B40`. The creation call through
+`0x00CDCEB0 -> 0x00CE2440 -> 0x00CE2488` uses that slot. When instance
+record `+0x14` is still zero, work lookup `0x00D1CE10` asks the engine's
+`+0x214` table for that instance's SID at `0x00D1CE9A`. Lookup
+`0x00CEB490` returns the existing record at `0x00CEB4F2` on a hit. On a
+miss, it constructs a default Operator through `0x00CCC480` at
+`0x00CEB536`, passes the cast result to `0x00CE65B0` at `0x00CEB547`, and
+inserts the new record under the SID at `0x00CEB5A3`. The work lookup
+builds the instance handle from that result at `0x00D1CED5`.
+
+The default Operator constructs two SingleThreadContainers through
+`0x00CFE310` at `0x00CCC4C1` and `0x00CCC4F3`. `0x00CCC53C` calls
+`0x00CCBED0`, which appends the two containers at `0x00CCBF4E` and
+`0x00CCBF66` in save and temp order. The constructor clears provider
+`+0x0C` at `0x00CFE2E2`. An admitted top-level `_temp` layout reports its
+byte size at `0x00D1672B` and grows the kind-1 pool through
+`0x00D11BB0 -> 0x00CE5BF0 -> 0x00CCB3F0`. The selected resize slot
+`0x0110EE70` reaches `0x00CFD2C0` and the zero-fill path above while the
+provider is null.
+
+A declared scalar Boolean uses `0x0110FBE0 -> 0x00D28890` for its
+reader. It resolves the bit start through `0x00D25900` and reads through
+`0x00D11C00` at `0x00D288F5`, `0x00CE45D0`, `0x00CCB4D0`, and
+SimpleAccess bit extraction `0x00CFDFC0`. It pushes the result as a Lua
+Boolean at `0x00D28907`. The bit reads false when successful growth added
+its byte with zero fill and no write has since changed it. Existing pool
+prefix, record reuse and alternate providers keep their own values. A
+zero backing pointer takes the separate nil branch below even when the
+work object's declaration exists. This result covers top-level `_temp`
+scalar Booleans on the default widget route. Save and sync values,
+nested members and arrays are outside this result.
+
 ### An object without storage
 
 The reader at slot `0x1C` of the boolean, integer8, integer16, integer24,
