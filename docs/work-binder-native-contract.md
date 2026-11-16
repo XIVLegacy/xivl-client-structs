@@ -1003,7 +1003,22 @@ from each, keeps 16 bits of each and adds the range through `0x0070AAA0` and
 `+0x29` is zero it calls `0x00767C00` directly. Otherwise it appends the request
 to a deque at `this +0x24` through `0x007838C0` when the deque is empty and then
 calls `0x00767C00`, or takes the path at `0x00768024` when the deque holds
-entries. Whether `0x00767C00` emits a client packet was not traced.
+entries.
+
+`0x00767C00` returns without a request when the work name at request `+0x00`
+matches the global string `0x0134C4B0` and the member name at `+0x54` matches
+`0x0134C504`, both through `0x00445D20` (`0x00767C33..0x00767C52`). With the
+range flag `+0xAC` set it serializes the range through `0x006D60C0` and
+`0x00CCAAF0` (`0x00767C97..0x00767CBC`). With the flag clear it builds the
+text through `0x006CEA20`, which joins the work name, the separator `/` at
+`0x00F69508` and the member name at `+0x54` (`0x006CEA5A..0x006CEA98`), and
+copies its bytes into the byte vector (`0x00767D58..0x00767DEA`). Both paths
+reach the call of `0x0075E770` at `0x00767E34`, which stores message `0x012F`
+with declared length `0x38` and sends it through `0x004D6D30`
+(`0x0075E822..0x0075E83F`). The range form and the payload layout are in
+`xivl-decomp:docs/script/job-action-acquisition.md`, "Outgoing range request"
+(`STATIC`). For a call without a range, such as `('charaWork', 'exp')`, the
+payload text is `charaWork/exp` (`INFERRED` from the join).
 
 The `ItemBase` record is the serverbound map opcode `0x0132`, which
 `xivl-opcodes:opcodes.json` lists as `ItemWorkUpdatePacket` with the decomp anchor
@@ -1177,7 +1192,8 @@ the request service behind `_updateWork`, which this record does not supply.
   `+0xBA` and the list at `Y +0x1C`, and the readers of the two touch attribute
   sets. The callers of the touch edge routine `0x005893F0` pass through the
   thunks `0x0058ABA0` and `0x0058ABB0` and two direct calls.
-- Whether `0x00767C00` and `0x006C72E0` send a packet for `_updateWork`, and which.
+- Whether `0x006C72E0` sends a packet for `_updateWork`, the contents of the
+  two globals `0x00767C00` compares with, and the deque path at `0x00768024`.
 - The construction of the `RaptureUserControl` object (initial value of the
   lock-on dword) and the name of the native behind `MyPlayer` slot `0x124`.
 - The packet field that fills the sub stat status record byte at `+0xB6`, the
@@ -1250,7 +1266,7 @@ members replaced by recorders. The function VAs for `$Addresses` are:
 | Timer members | `0x00D2CE00,0x00D2D080,0x00D12980,0x00D12260,0x00CF3760,0x00DCDCE0,0x00CF5750,0x00CF5770,0x00CF5520,0x00CF51E0,0x00CF5320,0x00CF3300,0x00CF3CE0,0x00CF58E0,0x00CF63E0,0x00CDA330,0x004CFA50,0x00D353F0,0x00F2D1B0,0x00D253F0,0x00D2B560,0x00D2CBD0,0x00D25530,0x00D1F170,0x00D20190,0x00D28680,0x00D243E0,0x00D24670,0x00D26350,0x00D25350` |
 | Value coercion | `0x00D28810,0x00D28C10,0x00D290B0,0x00D295D0,0x00D29A00,0x00D29F40,0x00D2A410,0x00CF35C0,0x00CF35E0,0x00DCDED0,0x00DCDF50,0x00DDE8B0,0x009D6636` |
 | Orientation and queries | `0x009DAEBA,0x009ECA10,0x009EC97C,0x006F9B20,0x006ED740,0x006F0220,0x0075C7B0,0x0060DD90,0x006DD038,0x006BFCD0,0x0075B2C0,0x00705170` |
-| Work refresh | `0x0070AA10,0x00767FC0,0x00767C00,0x006C7A80,0x006C72E0,0x0075EAC0` |
+| Work refresh | `0x0070AA10,0x00767FC0,0x00767C00,0x006C7A80,0x006C72E0,0x0075EAC0,0x006CEA20,0x0075E770,0x00445D20` |
 | Queries | `0x0075C7B0,0x004D7390,0x0075C300,0x00587D40,0x00CC7520,0x0078C550,0x0075B2A0,0x0075B2B0,0x0054B650,0x0054B660,0x0054B670` |
 | Holders | `0x00726720,0x0071E760,0x0071E7D0,0x00726930,0x0071AAE0,0x0071AB50,0x0072CD40,0x0072C9A0,0x0072CAF0,0x00726D50,0x0071E290,0x0071E300` |
 
