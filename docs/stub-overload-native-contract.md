@@ -211,7 +211,20 @@ function has the guards of the mapper and runs the other way. Under a sort key i
 and returns its position in the filtered list from `0x00945A70`, or -1 (`STATIC`). With no document or an empty sort key
 it returns its argument, so a write of `FilteredIndex` with no sort key keeps the written place. Under a sort key the
 rewrite gives the first filtered position that holds the found entry, which is the written place while the filtered
-entries are distinct (`INFERRED`). The order that `0x00945C40` gives the filtered view under a key was not traced.
+entries are distinct (`INFERRED`).
+
+The view builder orders the kept rows when the key string at `+0x104` is not null and not empty
+(`0x0094383B..0x0094384F`). It then passes the filtered list bounds and the key to `0x00945C40`
+(`0x00943885..0x0094388E`), the only caller of that function, which calls `0x00945B50` (`STATIC`). `0x00945B50`
+partitions through `0x009456E0` and recurses while more than 32 entries remain (`CMP EAX,0x20` at `0x00945B66` and
+`0x00945BE2`), takes the heap routines `0x00945670` and `0x00945B00` when its depth budget runs out
+(`0x00945B70..0x00945B72`, `0x00945C03`), and finishes a run of 2 to 32 entries with `0x00945960` (`0x00945BE7..0x00945BF3`)
+(`STATIC`). `0x00945960` and `0x009456E0` call the less test `0x00446EF0` directly, and the heap routines reach it through
+`0x00945500` (`STATIC`). `0x00446EF0` passes both strings and the smaller of their lengths at `+0x08` to `0x00445B70`
+and answers whether the result is negative (`0x00446EF0..0x00446F1A`). `0x00445B70` compares signed bytes for up to
+that length and answers 0 at the first NUL or at the end (`0x00445B70..0x00445BA3`), so a key that is a prefix of
+another ties with it (`STATIC`). Reading the routine set as the MSVC introsort, with `0x00945960` as its insertion sort,
+and the compared strings as the rows' key attribute values is `INFERRED`.
 
 ### _setListProperty
 
@@ -328,8 +341,8 @@ The manifest `hostContract` lists the obligations in full.
 - The values of the attribute type bytes at `0x013599D1` and `0x013599DC`.
 - The data maker names that the widget forms declare and the bindings that read `Count`, `FilteredCount` and
   `FilteredIndex`.
-- The order that `0x00945C40` gives the filtered view under a sort key, and the setter of state bit `0x02` that makes
-  the shared int writer `0x00926E80` refuse a write.
+- The order of tied keys past the insertion sort threshold, and the setter of state bit `0x02` that makes the shared
+  int writer `0x00926E80` refuse a write.
 - The virtual callers of `LuaActorImpl` vftable slots 25 and 26, which reach the methods that write `+0x7C`.
 - The numeric reading of the `Which` value and the delivery of the `Nil` placeholder to the super method.
 
@@ -356,6 +369,7 @@ tools/ghidra/run-headless.ps1 -Script DumpVAs.java -ReadOnly `
 | Data maker | `0x009442B0,0x00943A00,0x00943980,0x00943580,0x00944850,0x00942FC0,0x009425B0,0x00944DA0,0x00944ED0` |
 | Filtered index write | `0x00943210,0x009432C0,0x00942AE0,0x00942B10,0x00942BA0,0x00926E80,0x00953BA0,0x00945A70,0x0067AF30,0x0067B3F0` |
 | Super call | `0x006DBC40,0x0078D520,0x00753B90,0x00791030,0x007941D0` |
+| Filtered view order | `0x00945C40,0x00945B50,0x009456E0,0x00945960,0x00945670,0x00945B00,0x00945500,0x00446EF0,0x00445B70` |
 
 The callbacks `0x006E7A60` and `0x006EBE60` are not function entries in the analyzed program. Read them as
 instruction listings from those addresses. The property changed callback `0x00943A00` is analyzed only for its first
