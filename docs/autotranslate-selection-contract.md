@@ -1237,11 +1237,13 @@ category code and B+0x1A60 as an output. The ready provider resolves the
 same category object, writes the packed-record pointer from virtual
 +0x0C into that output, and obtains the display-vector object from
 virtual +0x08 at `0x00C9C8AC..0x00C9C8C5`. It stores the display object
-at P+0xD8. The editor increments depth at `0x0066AD42`, saves the
-display object and previous absolute index at B+0x1A5C and B+0x1A68,
-and emits mode 0 with index 0 at `0x0066AD65`. In this route depth 1
-becomes depth 2. The candidate display strings and packed records remain
-separate throughout.
+at P+0xD8. The editor increments depth at `0x0066AD42` and stores the
+child display object at B+0x1A5C. It saves the chosen root absolute index
+at B+0x1A68 at `0x0066AD56`. That is the selection argument loaded into
+EBX at `0x0066AB7E`. Return supplies the current highlight, while a row
+key can supply a different index on the page. The editor emits mode 0
+with child index 0 at `0x0066AD65`, advancing depth 1 to depth 2. Its
+display strings and packed records remain separate.
 
 The first `@` header constructs fresh CategoryData through `0x00CB3FD0`
 with category code 0 and descriptor index 0. It initializes the display,
@@ -1282,7 +1284,9 @@ mode 2 and decrements depth to 1. The nonzero-depth branch of
 `0x0066A730` uses the then-current filter at B+0x19F4 to query virtual
 +0x10. With the filter still empty, that query returns the initial
 display vector and its separate record pointer. The mode-0 call takes
-the saved index B+0x1A68, restoring the previous selection. Category
+the saved index B+0x1A68, restoring the chosen root row. Pressing `1` on
+the first page while row 2 is highlighted selects root index 0, so Escape
+from the child highlights row 1 on return. Category
 population or filtering after this trace, other categories, selecting a
 leaf, and text insertion remain separate contracts.
 
