@@ -1067,6 +1067,83 @@ are required. Width/height, caret font metrics and all live coordinate inputs
 come from the current admitted layout. Nonempty composition, OS coordinate
 conversion and original runtime placement remain outside this bounded route.
 
+### Active-list navigation and row selection
+
+STATIC. The current editor must have nonzero completion depth at B+0x1A64.
+Its KeyDown handler at `0x0066BC8F..0x0066BCB3` passes the low byte of
+key code at event+0x2C and bit 2 of the dword at K+8 to `0x0066AE70`,
+where K is the keyboard device at event+0x34. A null L from `0x004D71E0`
+refuses that helper. An admitted return sets event+0x19 to 1. This is the
+handled byte used by binding admission, distinct from route-stop byte
++0x17. See xivl-decomp:docs/input/keyboard-movement-bindings.md, Routed
+key-down and key-up.
+
+The file-backed switch map `0x0066AFA0` uses key code minus 8 as its
+index. Its table `0x0066AF70` selects these branches for the active list.
+
+| Key code | Active-list effect | Branch |
+| --- | --- | --- |
+| `0x09` Tab | Reinvoke the helper as space with the same modifier input | `0x0066AED1` |
+| `0x20` Space | Move by +1 when the modifier bit is clear or -1 when set | `0x0066AF0A` |
+| `0x21` Page Up or `0x25` Left | Move by -9 | `0x0066AEF8` |
+| `0x22` Page Down or `0x27` Right | Move by +9 | `0x0066AEE6` |
+| `0x26` Up | Move by -1 | `0x0066AF3A` |
+| `0x28` Down | Move by +1 | `0x0066AF28` |
+| `0x0D` Return | Pass the current absolute index to `0x0066AB10` | `0x0066AF4C` |
+| `0x31..0x39` or `0x61..0x69` | Pass zero-based row to `0x0066AE20` | `0x0066AEAA` or `0x0066AEB3` |
+
+Keyboard producer `0x00552DF0` at `0x0055300A..0x00553024` copies the
+low bit from keyboard-state offset +0x44 into bit 2 at K+8. The state
+array begins at +4, so that offset is entry 0x10. The Windows key callback
+maps VK_SHIFT to 0x10 through `0x0130E1C8` and sets bit 0 of that entry's
+source dword on admitted key down at `0x00D31869..0x00D3188F`. These
+inputs select reverse movement for Shift with Tab or Space. The movement
+helper does not test modifier bits 0 and 1 for these keys.
+
+Movement calls `0x0066A4B0` with wrap byte 1. For a nonempty display
+vector, it reads the selected index L+0xA8 through `0x00547110`, adds
+its signed delta and uses the last valid display index as the upper bound.
+An overshoot from an index away from the crossed endpoint first clamps to
+that endpoint. An overshoot while already there selects the opposite endpoint.
+The helper emits mode 1 at `0x0066A52C` with the existing display vector,
+updated index and original packed-record pointer. L receives Show and the
+same page calculation as mode 0, then updates L+0xA0/+0xA4/+0xA8/+0xAC
+with page, row, absolute index and display count. A complete 41-entry
+initial list therefore maps a +9 move from index 36 to index 40, still on
+page 5, and a further +9 to index 0 on page 1.
+
+The selected row call `0x0054A2A8 -> 0x0092F3A0` passes `(4,0,1)` on
+the selected template Button. The setter uses descriptor `0x013589A0`,
+registered as `SqwtSkinStatus` by `0x00F22050` through `0x0106A9C4`.
+The ordinary Frame path forwards this integer as the condition slot through
+`0x0092DAB0` case 0x12. Slot 4 reads `SkinHover` through
+`0x00934101..0x0093412C`. Each other in-range Button receives virtual
++0xA0 with argument 0 at `0x0054A2BD`. The selected-row write changes the
+skin condition as part of keyboard selection. The retained Buttons are
+non-hit-testable and nonfocusable. See
+xivl-decomp:docs/resource/sqwt-number-input-button-frames.md, Explicit Label
+Frame condition, and xivl-decomp:docs/resource/sqwt-tab-scroll-text-parts.md,
+Style part resolution.
+
+MEASURED. The installed `system/common/default.style` carrier has 36125
+bytes, SHA256
+`a81675ab482b8db70619745f796d7dadc21099b9347c6660f2593bc90b42545b`.
+Its verified decoded 36117-byte payload has SHA256
+`d4da6f66c10ac56b280aee36d51d83def52a5db39885b99ab670f264c18745f0`.
+Decode and compare re-encryption using the same basename method as
+`CandidateList.tpl`. The retained Buttons' `BTN_basis_listboxSelect` Frame
+has `SkinNormal` with a null skin and `SkinHover` with
+`BTN_basis_listboxSelect_H` and no `ContentOffset`. The active offset
+belongs to its separate `SkinActive` row.
+
+STATIC. Row selection computes `page * 9 + row` at
+`0x0066AE41..0x0066AE4E`. `0x00547140` supplies the retained display
+count L+0xAC. The branch calls `0x0066AB10` only when the computed index
+is below that count. Return uses the absolute selected index directly.
+These joins locate the input to selection. Packed category lookup, a
+category with no entries, filtered and nested list updates, and retained
+text insertion have separate admission and source contracts.
+
 ## Adjacent control parser
 
 FUN_00C99E40 calls FUN_00C99B80, whose static control grammar is bounded as
