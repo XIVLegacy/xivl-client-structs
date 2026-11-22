@@ -1286,6 +1286,52 @@ the saved index B+0x1A68, restoring the previous selection. Category
 population or filtering after this trace, other categories, selecting a
 leaf, and text insertion remain separate contracts.
 
+### Selected phrase display markers
+
+STATIC. The container constructor `0x004DBF40` uses TextModule C+0x554
+through EDI, loaded at `0x004DC05F`. Its primary table `0x01108F70`
+selects `0x00C9EEC0` for virtual +0x14. Calls at `0x004DC308` and
+`0x004DC336` format the file-backed `<icon2(450,50)>` and
+`<icon2(451,50)>` literals at `0x00F90D50` and `0x00F90D60`.
+The following copies at `0x004DC312` and `0x004DC344` retain the returned
+string values at C+0x17860 and C+0x178B4. Application update
+`0x004DA680` supplies these values as the second and third explicit
+arguments to `0x00C9D550` at `0x004DA793`. Successful ready publication
+copies them to CompletionModule P+0xEC and P+0x140 at
+`0x00C9D900` and `0x00C9D910`.
+
+`0x00CB68A0` registers `icon2`, literal at `0x0110C8DC`, through the
+branch at `0x00CB6EF2..0x00CB6F33`. The branch supplies selector 0x1E and
+the two `n` descriptors at `0x0110C8D8`. For successful literal numeric
+formatting, the same length and numeric encoder from AT-COMP-007 forms
+these internal sequences.
+
+| Input | Internal bytes |
+| --- | --- |
+| `<icon2(450,50)>` | `02 1E 05 F2 01 C2 33 03` |
+| `<icon2(451,50)>` | `02 1E 05 F2 01 C3 33 03` |
+| `<fixed(0,101)>` | `02 2E 03 01 66 03` |
+
+For an admitted ordinary selection, `0x00C9BC40` formats the literal
+`<fixed(%d,%d)>` from the packed record into the first output at
+`0x00C9BD25..0x00C9BD35`. It then bounds the selected index against the
+current display vector held in P+0xD8. Concatenation helper `0x00447490`
+first combines P+0xEC with the selected raw display string at
+`0x00C9BD88`, then appends P+0x140 at `0x00C9BDA7`. The result becomes
+the separate second output at `0x00C9BDB7` and the method returns -1.
+For the conditional first English category result at native key 101,
+this gives the exact fixed-control sequence above and separate display
+bytes consisting of the prefix marker, the installed primary label and
+the suffix marker. No display wrapper is taken from the wire control.
+
+AT-COMP-006 and AT-COMP-008 describe the retained document insertion and
+its later replacement of each marked display range with its control bytes.
+These joins require successful formatting, a current admitted document and
+uninterrupted ownership. They establish the selected output strings before
+editor insertion. The icon renderer's resource selection, measured glyph
+advance, appearance in a running original client and later submission
+remain separate boundaries.
+
 ## Native cache loading
 
 AT-COMP-012 joins ExcelSubSheet construction to conditional row completion and
