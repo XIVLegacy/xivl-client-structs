@@ -798,6 +798,120 @@ document through FUN_0098DAA0; FUN_0066BD00 uses CompletionModule slots 7 and
 8 while synchronizing text and candidate ranges. Complete ownership,
 retention, release, and callback registration remain unresolved.
 
+## Routed Tab opening and Escape dismissal
+
+STATIC. Ghidra 12.1.4 analysis and LLVM disassembly of the same authenticated
+executable join the native chat editor to its installed candidate-list form.
+Let B be the complete current RaptureTextBox, C its retained container at
+B+0x1990, P its CompletionModule at B+0x1994, and L the candidate list
+retained at C+0x50C. AT-ENTER-019/027/029 establish the textual LogWidget
+`TextBox_ChatInput` construction and these input owners. This contract starts
+with a routed event delivered to that current editor. OS delivery, global
+focus selection and a loaded runtime document remain prerequisites.
+
+| Stage | Native locator | Exact boundary |
+| --- | --- | --- |
+| Key-down entry | RaptureTextBox input table `0x00FC146C`, cell `0x00FC1504` -> `0x0066BB40` | Input virtual slot 38 is KeyDown. The handler receiver is B+0xB4. |
+| First opening key | `0x0066BB69..0x0066BB85` | With B+0x1A64 zero, only key code 9 at event+0x2C enters this opening branch. The native gesture is Tab. |
+| Candidate preparation | `0x0066BB8B..0x0066BBF5` | Store 9 at B+0x1A6C, call P virtual +0x04, then `0x0066B800`. Query P virtual +0x10 with B+0x19F4 and output B+0x1A60. If the returned object is null, reset through `0x0066A6C0` and query virtual +0x0C with -1. A still-null object skips opening. |
+| Opening publication | `0x0066BBFB..0x0066BC11` | Store the returned display-vector object at B+0x1A5C. Emit candidate mode 0 with that object, selected index 0 and the separate packed-record pointer B+0x1A60. Object presence gates this branch. |
+| Active state | `0x0066BC54..0x0066BC86`, `0x0066BCB3` | After the candidate event, construct the caret event, invoke B primary virtual +0x15C, then increment B+0x1A64 and set event+0x19 to 1. |
+| Escape key-down | `0x0066BC8F..0x0066BCB3`, `0x0066AE70` | With nonzero depth and a present L, key 0x1B returns success from the active-key helper and marks the event handled. Dismissal uses the key-release route. |
+| Escape key-up | Input cell `0x00FC14FC` -> `0x0066A7F0`, `0x0066A7F0..0x0066A818` | Slot 36 is KeyUp. With depth nonzero, key 0x1B or 8 tail-calls `0x0066A730` with argument 0. |
+
+The slot identities use the routed-key dispatcher already recorded in
+xivl-decomp:docs/input/keyboard-movement-bindings.md, Routed key-down and
+key-up. The RaptureTextBox input table's complete-object locator is
+`0x011582D0`, with type descriptor `0x012BA728` naming
+`.?AVRaptureTextBox@CustomControl@SqwtInterface@Main@Application@@`.
+The first query's `0x00C9D1C0` checks P+0x14. Its empty-filter branch returns
+P+0x28 and separately supplies the packed-vector element-zero pointer.
+The filtered branch and candidate/table population remain the Selected
+candidate production contract. A nonnull returned object need not contain
+any display entries.
+
+### Native retained candidate list
+
+STATIC. Container setup `0x004D7A60` allocates the list and calls
+`0x00552880` at `0x004D7BE8`, storing its result at C+0x50C at
+`0x004D7BF5`. Its raw RTTI type descriptor `0x0126E990` names
+`.?AVRaptureCandidateList@SqwtInterface@Main@Application@@`.
+The primary table is `0x00FA2C9C`, with complete-object locator
+`0x01146488`. The constructor loads `system/ime/CandidateList.form`,
+retains its root at L+0x0C, and resolves `ListBox_Ime`,
+`ListBoxItem_Ime_1` through `_9`, `Label_ImeCandidatePageNum` and
+`Label_ImeCandidatePageSize`. It resolves the instantiated
+`TemplateButton_ImeCandidate` and `TemplateLabel_ImeCandidateString`
+within each selected row template.
+
+`0x0066A330` constructs CandidateEventArgs through `0x00546210`:
+mode byte +0x1C, display-vector object +0x20, selected index +0x24 and
+packed-record pointer +0x28. It dispatches descriptor `0x01356E4C` through
+C+0xB4 virtual +0x34. Descriptor id 0x58 reaches `0x0091AC80`, then
+C primary virtual +0x140 -> `0x00919E20`. That routine refuses while
+byte `0x01356E14` equals 1. Otherwise C virtual +0x13C ->
+`0x004D71D0` returns L. A nonnull L receives virtual +0x04 followed by
+virtual +0x14 with C+0x478, the current retained caret rectangle. That slot
+selects `0x0054A400`, which stores the four supplied floats at L+0x8C
+through L+0x98. Caret production, scale and live placement remain separate
+guards.
+
+L's dispatcher `0x00547080` accepts id 0x58. Modes 0 and 1 invoke
+virtual +0x08 -> `0x0054A0F0`, then +0x0C -> `0x0054A180`.
+The first requests Show on L's retained root through `0x00925BB0(1,0)`
+at `0x0054A104`, resets page cache L+0xA0 to -1 and records whether
+event+0x28 is nonnull. The second updates only when that presence matches
+its retained flag. It reads display-vector begin/end at +4/+8, derives
+selected page and row by division and remainder by 9, and processes the
+nine retained buttons. In-range buttons receive Visibility 2 (Visible)
+at `0x0054A252`. Their labels receive the corresponding display string
+through `0x00547160` and Content setter `0x009350A0` at `0x0054A295`.
+The selected button requests state 4 at `0x0054A2A8`. Out-of-range buttons
+receive Visibility 0 (Collapsed) at `0x0054A2CA`. The page labels receive
+unsigned decimal current page +1 and total pages at
+`0x0054A330` and `0x0054A3AA`. Display-string transformations under
+`0x00547160` are distinct from the packed selection and wire records.
+
+### Dismissal and installed carrier
+
+STATIC. `0x0066A730` first emits candidate mode 2 at `0x0066A752`,
+then decrements depth when its argument is zero. Initial depth 1 therefore
+becomes zero on the admitted Escape key-up. L mode 2 selects
+`0x005470D0`, which calls Hide on its retained root at `0x005470D6`
+and clears L+0xB0. The zero-depth editor branch resets its temporary
+completion state, clears B+0x1A60, calls retained text-service virtuals
++0x10 and +0x30(1), and requests `0x0097AD60(-1)`.
+A greater initial depth can reopen the prior candidate level through the
+same provider query after that mode-2 publication. Text insertion and
+candidate acceptance remain
+AT-COMP-002/006, outside this opening and dismissal contract.
+
+MEASURED. The installed `system/ime/CandidateList.form` has 3498 bytes,
+SHA256 `ea9eca457c7e11b833997df064f5495295ab6d535e0fc7dbc55c98141b4838bd`.
+Its Blowfish-decoded payload has 3490 bytes, SHA256
+`27a5476d65754a69a8d50b02ff8a7bc6a91c753b35ae276011e0dd977c0c8130`.
+The imported `CandidateList.tpl` has 1111 bytes, SHA256
+`c5c7708cf9df87769c6b6693f947d095eb5ec925fdb11146ce467af78592ebd8`.
+Its decoded payload has 1103 bytes, SHA256
+`65c77a4963befad304948f71aa51a9cfd1c5e512e4cbcd3983210885137286e1`.
+Decode with xivl-tools:tools/blowfish.py using each basename as the key,
+excluding the first 8 bytes, and verify re-encryption against the carrier.
+
+The form declares `Window_CandidateList` initially Hidden and
+Focusable false, with `system/common/default.style` and `WIN_ime`.
+`ListBox_Ime` has IsHitTestVisible false and IsTabStop false.
+Its nine fixed items select `TemplateControl_ImeListBoxItem` from the
+imported template. Each `TemplateButton_ImeCandidate` is nonfocusable,
+has IsHitTestVisible false and uses `BTN_basis_listboxSelect`.
+Its number and string labels use `LAB_null`. The number label declares
+a direct child Binding with Path Content, Mode OneWay and RelativeSource
+TemplatedParent. Native row publication writes the sibling string label.
+These declarations support the routed keyboard opening and dismissal. A
+physical candidate-row click still requires admission evidence. Allocation,
+resource loading, current editor and focus ownership, attached routing and
+candidate availability remain prerequisites. This trace used static analysis
+and authenticated installed data.
+
 ## Adjacent control parser
 
 FUN_00C99E40 calls FUN_00C99B80, whose static control grammar is bounded as
@@ -839,9 +953,12 @@ FUN_00CB4500. Those bodies use the same upper argument as their row/cache
 key. This is an internal native key argument; its external table meaning
 requires a separate population join.
 
-FUN_00C9D1C0 returns P+0x38's element-zero pointer for an empty filter. For
-a nonempty filter it copies matching P+0x58 node+0x14 packed dwords into
-P+0x74, then returns that vector's element-zero pointer. FUN_0066A730
+FUN_00C9D1C0 returns the display-vector object at P+0x28 for the admitted
+empty-filter case. The caller's separate output argument receives the packed
+element-zero pointer from P+0x38. For a matching nonempty filter it copies
+P+0x58 node+0x14 packed dwords into P+0x74, returns the display object
+P+0x64 and supplies the packed element-zero pointer from P+0x74 through
+the output argument. FUN_0066A730
 writes the selected pointer through B+0x1A60. FUN_0066AB10 passes it and the
 selected index to FUN_00C9BC40. The byte map at P+0x4C is distinct from this
 dword vector.
