@@ -1332,6 +1332,61 @@ editor insertion. The icon renderer's resource selection, measured glyph
 advance, appearance in a running original client and later submission
 remain separate boundaries.
 
+### Bitmap font rendering of the phrase markers
+
+STATIC. The FontCodeModule constructor `0x00CC14B0` installs its table
+`0x0110C014` at `0x00CC14E9`. It registers thunk `0x00B24240` at
+selector 0x1E in the processor callback vector at `0x00CC16D6`.
+The thunk dispatches virtual +0x1C. Cell `0x0110C030` supplies
+`0x00CC11B0`, which decodes the two numeric operands through `0x00CB2D50`
+at `0x00CC11C9` and `0x00CC11EB`. If either decoder consumes zero bytes,
+the handler returns zero. The first value is the resource resolver input.
+The second sets width.
+This drawing-stage table differs from the TextModule table used to
+format the same token.
+
+For both accepted marker literals, the local width calculation takes
+processor height operand +0x6C and the numeric operand 50. It converts
+both integers to binary32, widens them to binary64, multiplies them and
+then multiplies by the binary64 value `0.009999999776482582` at
+`0x00FBF9D0`. It adds the binary64 0.5 at `0x00F59898` and narrows the
+result to binary32. Processor modes 0 and 1 truncate this result before
+adding it to horizontal cursor +0x70 at `0x00CC1387..0x00CC13B6` and
+`0x00CC1319..0x00CC1382`. Mode 1 applies its existing line limit before
+adding the advance.
+
+Mode 2 requires a nonnull manager from `0x0137788C` at `0x00CC121E`.
+`0x00CC1231` calls resolver `0x00CA2170` with that manager and the first
+operand. A null resource takes the `-11` return. For a ready resource,
+`0x00CC1273..0x00CC1299` computes the same width. The draw call at
+`0x00CC12EB` supplies a local rectangle with x/y from cursor +0x70/+0x74,
+that binary32 width and height operand +0x6C. The color input takes alpha
+from +0x84. The cursor advances by the truncated binary32 width after
+this draw at `0x00CC12FC..0x00CC1302`.
+
+The font setter `0x00CBFE50` writes the manager pointer. With a
+RaptureTextureManager instance supplied, the established `0x00CA2170`
+resolver calls its +4 slot `0x004B6670`. Its numeric mapping selects
+resource `0x1C5901C2` for 450 and `0x1C5901C3` for 451. See
+xivl-decomp:docs/resource/sqwt-icon-control-textures.md, Numeric input and
+resource resolution, and xivl-decomp:docs/actor/player-nameplate-icons.md,
+Form and resource evidence.
+
+MEASURED. The installed resources are GTEX format index 4 with one mip,
+16x32 dimensions, depth 1 and one 2048-byte surface at offset 32.
+The first draws a green left marker and the second a red right marker.
+Both nonzero-alpha bounding boxes are x `[3,13)` and y `[0,32)`.
+
+| Resource | Bytes | SHA256 |
+| --- | ---: | --- |
+| `0x1C5901C2` | 2080 | `a74de503e31ebc8e6ec31d5076ee9739ab6ce9b4d26dd6d85827bf7933ef40a6` |
+| `0x1C5901C3` | 2080 | `c09e518d3733dbf16201e9f37c5e4ad8d238e33183e3da7442a89682d7440f79` |
+
+The selected run's font height, current manager assignment, resource
+readiness, coordinate transforms and final composition remain runtime
+conditions. This static path defines local marker geometry and a resolved
+installed resource pair under the stated manager condition.
+
 ## Native cache loading
 
 AT-COMP-012 joins ExcelSubSheet construction to conditional row completion and
