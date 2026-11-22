@@ -912,6 +912,86 @@ resource loading, current editor and focus ownership, attached routing and
 candidate availability remain prerequisites. This trace used static analysis
 and authenticated installed data.
 
+### Initial localized category display vector
+
+STATIC. The initial Tab display-vector object P+0x28 is populated separately
+from P+0x38's packed selection records. In `0x00C9D0D0`, the primary label
+argument is appended to P+0x28 at `0x00C9D139..0x00C9D140`. The same call
+appends `(categoryCode << 7) | 0x7E` to P+0x38 at
+`0x00C9D149..0x00C9D157`. The alternate string participates in P+0x58's
+search tree.
+C9D1C0's ready empty-filter branch returns P+0x28 at
+`0x00C9D1D9..0x00C9D200`, independently supplying the packed-vector pointer.
+
+`0x00C9D550` gets two field selectors from ExcelSheet virtual +0x20 at
+`0x00C9D5EA..0x00C9D604`. The installed target `0x00CAF310` reads
+selector 0 or 1 from the byte array at sheet+0x0C. This array comes from
+CAFA80's `TABLE` parameter query at `0x00CAFE53..0x00CAFEA5`, semicolon
+split, decimal conversion with radix 10 and low-byte stores at
+`0x00CAFEF5..0x00CAFF38`. The source key is the literal at `0x0110C560`.
+This `TABLE` array is distinct from the `SHEET DEF` default field at +0x0B.
+
+D550 reads metadata fields 1 and 0 at `0x00C9D6D4..0x00C9D6EC`, then
+reads the two selected label fields at `0x00C9D6EE..0x00C9D708`.
+An empty alternate label falls back to the primary at
+`0x00C9D70A..0x00C9D713`. That fallback affects the alternate search input.
+The primary field still supplies D0D0's display-vector append. Nonempty
+metadata field 1 selects the existing `@`, `#` or parsed descriptor category
+branches. Empty metadata produces ordinary entries through C9C550.
+
+MEASURED. The authenticated definition `0x0B4508E6` uses
+`[SHEET|DEF;4][TABLE|4;5]` for English, with indexes `[0,1,4,5]`
+and physical types `u32,str,str,str`. Thus the two label fields are logical
+indexes 4 and 5, or physical row slots 2 and 3. The initial visible category
+label is slot 2. Japanese, German, French and chs use TABLE pairs
+`2;3`, `6;7`, `8;9` and `10;10`, respectively.
+Definition identity, locale block identities, offset/enable agreement and
+backing-to-CSV field equality have their canonical home in
+xivl-client-data:manifests/fixed_phrase_backing_rows.json and
+xivl-client-data:docs/autotranslate-name-crosswalk.md, Backing-row identities.
+For English the data/enable/offset resources are
+`0x0B4508EA`/`0x0B4508EB`/`0x0B4508EC`. Their ordinary row framing and
+index map use the authenticated definition. The merged CSV carries
+locale-annotated metadata.
+
+Under the Conditional initial registry's complete ready traversal, D550
+visits native row keys in ascending order and appends categories in that
+order. The pinned ja/en/de/fr
+metadata admits 41 category rows. The first page's source keys are
+100, 200, 300, 400, 500, 600, 700, 800 and 900. Its first packed category
+codes are 0 through 8, distinct from those source keys. The last page uses
+2121, 2122, 2200, 3000 and 3025. The non-contiguous codes and descriptor
+indices remain the separate initial-registry coordinates recorded below.
+All 41 English primary labels are nonempty, contain no C0 controls and
+retain their original non-ASCII bracket characters.
+
+STATIC. The presentation wrapper `0x00547160` either returns its input or
+copies it and calls `0x00445220(1,0,L+0xB2,null,0)` at
+`0x0054719D..0x005471A8`. With those arguments, the case helper examines
+only byte zero. Its write cases admit ASCII lowercase, leading byte 0xC3
+or leading byte 0xC5 at `0x0044526B..0x004452D4` and
+`0x0044539D..0x004453AC`. Each pinned English category label begins
+with UTF-8 byte 0xE3. The helper exits after inspecting that byte, so
+these exact labels pass through either wrapper branch.
+
+STATIC. Constructor C9CFA0 clears readiness P+0x14 and the vectors. D550
+refuses an already-ready module, a true provider virtual +0x24 result or a
+missing root sheet at `0x00C9D5A2..0x00C9D5E4`. Its successful tail
+requires a nonempty category-object vector P+0x18, binds the TextModule
+interface and sets P+0x14 to 1 at `0x00C9D8DA..0x00C9D929`.
+The ready path skips missing row objects. Descriptor preparation can
+abort and clear state.
+The 41-row display contract therefore retains successful complete load,
+allocation, locale, descriptor parsing and target-preparation assumptions.
+
+For a complete 41-entry display vector and selected index 0, the existing
+nine-row list update shows entries 0 through 8 and page 1 of 5. At selected
+index 36 it shows entries 36 through 40 and collapses the four remaining
+buttons, with page 5 of 5. The total-page branch formats
+`signed_trunc((count - 1) / 9) + 1` at `0x0054A348..0x0054A371`.
+These are expectations from the installed data and static list path. Phrase expansion, candidate acceptance, filtering, locale
+changes and wire serialization remain outside this initial-category case.
+
 ## Adjacent control parser
 
 FUN_00C99E40 calls FUN_00C99B80, whose static control grammar is bounded as
@@ -970,17 +1050,17 @@ container to CompletionModule P+0xC. AT-ID-054 authenticates its table at
 node+0x60. The inspected population path constructs an ExcelSheet through
 FUN_00CB04B0, whose table 0x0110C6D4 is authenticated by AT-ID-055.
 
-The xtx/_fixedPhrase path reaches this lookup. D550 initializes its upper
-argument through ExcelSheet slot +0x20, FUN_00CAF310, reading byte zero at
-sheet+0xC. Its row call at +0x30, FUN_00CAF2A0, forwards the iteration index
-and upper-argument output address to sheet+0x40 backend slot +0x1C. On the
-ready path, FUN_00CB0140 constructs CacheAll<ExcelEntry*> through
-FUN_00CB16D0; AT-ID-056 authenticates its table at 0x0110C670. Slot +0x1C,
-FUN_00CB1AF0, writes FUN_00CB1870(index) through that output address. The
-mapper returns the original index for an empty range vector, otherwise the
-containing range's base plus the remaining index. Thus an admitted row replaces
-the initial byte with the mapped native key used by C9C550. The row supplies
-field 0 minus one for the separate category byte.
+The xtx/_fixedPhrase path reaches this lookup. D550 reads the two label
+field selectors through ExcelSheet slot +0x20, FUN_00CAF310, from the
+byte array at sheet+0xC. Its row call at +0x30, FUN_00CAF2A0, forwards the
+iteration index and an independent native-row-key output address to
+sheet+0x40 backend slot +0x1C. On the ready path, FUN_00CB0140 constructs
+CacheAll<ExcelEntry*> through FUN_00CB16D0. AT-ID-056 authenticates its table
+at 0x0110C670. Slot +0x1C, FUN_00CB1AF0, writes FUN_00CB1870(index) through
+that output address. The mapper returns the original index for an empty
+range vector and the containing range's base plus the remaining index
+otherwise. D550 reads the separate mapped key before calling C9C550.
+The row supplies field 0 minus one for the category byte.
 
 This recovers native key production. AT-COMP-012 owns the cache construction
 and population joins below. AT-COMP-016 establishes conditional fixedPhrase
