@@ -992,6 +992,81 @@ buttons, with page 5 of 5. The total-page branch formats
 These are expectations from the installed data and static list path. Phrase expansion, candidate acceptance, filtering, locale
 changes and wire serialization remain outside this initial-category case.
 
+### Current caret and candidate-window placement
+
+STATIC. The retained-list placement call is L virtual +0x14, cell
+`0x00FA2CB0` -> `0x0054A400`. Its input is a Rect with floats x, y,
+width and height at +4/+8/+0x0C/+0x10. It copies them to L+0x8C through
++0x98 at `0x0054A408..0x0054A429`. The candidate event dispatcher
+`0x00919E20` calls L virtual +0x04 first and then +0x14 with C+0x478.
+Thus mode-0 Show and row update precede that placement using the previously
+retained Desktop caret rectangle. The calls establish dispatch order.
+Frame presentation timing remains separate.
+
+The Tab branch then constructs its text-service event at `0x0066BC54` and
+calls B primary virtual +0x15C at `0x0066BC70`. The RaptureTextBox primary
+table is `0x00FC1594`, installed at `0x0066C246`. Its cell
+`0x00FC16F0` selects `0x0095B970`. That function admits caret publication
+only when B+0x15D bit 5 is set, the established IsKeyboardFocusWithin flag.
+For the empty composition vector at event+0x5C, the branch at
+`0x0095BD78..0x0095BDD3` requests a caret rectangle for the supplied cursor
+index through `0x009571E0`. It adds X/Y offsets along the visual-parent
+chain beginning at B+0x1010 through `0x0053CA40` at `0x0095BDB2`,
+then calls Desktop `0x0091A3E0` at `0x0095BDD3`.
+
+`0x0091A3E0` copies the resulting rectangle into C+0x47C/+0x480/+0x484/
++0x488, within Rect C+0x478. It obtains L through C virtual +0x13C and
+immediately calls L virtual +0x14 when nonnull. Consequently the admitted
+empty-composition Tab route refreshes the current caret placement after Show,
+before its active-depth increment. Font metrics and the incoming OS focus
+transition remain separate.
+
+At Show, `0x0054A0F0` starts at zero and adds the visual X offsets from
+L+0x5C and its +0xA4 ancestors. It subtracts the offset of L's root and
+each of its ancestors from that running result. Each add and subtraction
+rounds to binary32 (`0x0054A109..0x0054A162`). The result goes to L+0x9C.
+The constructor's L+0x5C is the first instantiated
+`TemplateLabel_ImeCandidateString`. These current arranged offsets align
+the first row's text origin with the caret.
+
+For finite rectangle and current arranged dimensions, the placement branch
+has these operations in order:
+
+1. Set x to `max(0, caret.x - L+0x9C)` and y to
+   `max(0, caret.y + caret.height)` at `0x0054A42F..0x0054A487`.
+2. If x plus the candidate root's ActualWidth exceeds Desktop ActualWidth,
+   replace x with Desktop ActualWidth minus candidate ActualWidth at
+   `0x0054A490..0x0054A4F2`.
+3. If y plus candidate ActualHeight exceeds Desktop ActualHeight,
+   replace y with caret.y minus candidate ActualHeight at
+   `0x0054A4F8..0x0054A548`, placing the list above the caret. Each
+   fit correction is final before scaling.
+4. Request SqwtDrawOrder 1.5 from the binary32 at `0x00FA2CB4` through
+   `0x00940500` at `0x0054A55F`. Request Left and Top through
+   `0x00923F70` and `0x00923FE0` at `0x0054A585` and `0x0054A5AB`,
+   dividing each corrected coordinate by the current binary32 scale at
+   `0x012E0360` before its binary32 property write.
+
+The coordinates round to binary32 between operations. The fit predicates
+use binary64 additions and comparisons. The final divisions use binary64
+before the binary32 property writes.
+
+ActualWidth and ActualHeight are fields +0x1B4/+0x1AC of the current root.
+`0x0091A1B0` supplies the Desktop through global `0x01356E10`.
+The dimension and Left/Top identities are recorded in
+xivl-decomp:docs/resource/log-widget-window-placement.md. The scale writers
+are recorded in xivl-decomp:docs/resource/sqwt-number-input-row-measure.md,
+Scale in row measure. Application setup supplies scale 1.0. The placement
+reads the current value and dimensions when it runs.
+
+The installed CandidateList root declares startup Left/Top alignment.
+For a bounded first-level placement, current editor focus, an empty
+composition vector, a current caret rectangle, arranged candidate dimensions
+and first-label offset, Desktop dimensions and a finite positive current scale
+are required. Width/height, caret font metrics and all live coordinate inputs
+come from the current admitted layout. Nonempty composition, OS coordinate
+conversion and original runtime placement remain outside this bounded route.
+
 ## Adjacent control parser
 
 FUN_00C99E40 calls FUN_00C99B80, whose static control grammar is bounded as
