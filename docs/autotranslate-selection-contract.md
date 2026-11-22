@@ -1286,6 +1286,60 @@ the saved index B+0x1A68, restoring the previous selection. Category
 population or filtering after this trace, other categories, selecting a
 leaf, and text insertion remain separate contracts.
 
+### English categories backed by the root sheet
+
+MEASURED. The authenticated English root sheet has 17 `@` category
+headers. Their code and row coordinates are listed below. These use the
+fresh CategoryData path of the first English category and its empty
+initial range and exclusion fields. The root sheet contributes 715
+ordinary rows to those categories. The primary guards in `0x00C9C550`
+reject 20 and admit 695 under the complete ready traversal. The admitted
+primary strings are valid UTF-8 with zero C0 and DEL bytes. The census
+uses the definition, logical field 4 and backing identities under
+Initial localized category display vector.
+
+| Category code | Header key | Ordinary rows | Admitted |
+| ---: | ---: | ---: | ---: |
+| 0 | 100 | 20 | 20 |
+| 1 | 200 | 22 | 22 |
+| 2 | 300 | 30 | 29 |
+| 3 | 400 | 24 | 23 |
+| 4 | 500 | 20 | 19 |
+| 5 | 600 | 17 | 17 |
+| 6 | 700 | 25 | 24 |
+| 7 | 800 | 45 | 43 |
+| 8 | 900 | 175 | 165 |
+| 9 | 1200 | 127 | 123 |
+| 10 | 1500 | 21 | 21 |
+| 11 | 1600 | 52 | 52 |
+| 12 | 1700 | 22 | 22 |
+| 13 | 1800 | 3 | 3 |
+| 14 | 1900 | 20 | 20 |
+| 15 | 2000 | 63 | 63 |
+| 39 | 2200 | 29 | 29 |
+
+STATIC. Container setup gets the startup language from C+0x4F4 through
+`0x004B68A0` at `0x004D7BD8` and passes its value by address to the
+candidate constructor at `0x004D7BE8`. For startup language 1, English,
+that constructor sets L+0xB3 and L+0xB1 to 1 and L+0xB2 to 0 at
+`0x00552DAC..0x00552DBA`. The language dword and getter are covered in
+xivl-decomp:docs/resource/sqwt-form-locale-resolution.md, The language token.
+
+The English presentation branch `0x00547160` returns the input string
+unchanged when `0x00445200(1)` returns a period. Otherwise it copies the
+input and invokes `0x00445220(1,0,0,null,0)`. For an initial ASCII
+lowercase byte, `0x0044526B..0x00445271` admits it and
+`0x004452C5..0x004452CA` subtracts 0x20. Among the 695 admitted English
+strings, 54 in category 15 take this uppercase step. Category 11 has two
+ASCII lowercase initial strings at keys 1609 and 1610 that take the
+period bypass. The other 639 measured strings pass through unchanged.
+
+This wrapper changes only the visible candidate label. Ordinary selection
+still reads the retained unwrapped primary string at P+0xD8. The 17
+categories use the bounded fresh `@` source. Other category metadata,
+key filtering, later cache population and dynamic labels retain separate
+contracts.
+
 ### Selected phrase display markers
 
 STATIC. The container constructor `0x004DBF40` uses TextModule C+0x554
