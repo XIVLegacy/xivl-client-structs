@@ -1219,6 +1219,73 @@ and population joins below. AT-COMP-016 establishes conditional fixedPhrase
 native-key/CSV-row-key equality under named-source and cache-state conditions.
 An actual selected backing-file row, external family and locale remain qualified.
 
+### First English category expansion
+
+STATIC. Select index 0 from a ready unfiltered initial display vector.
+Its packed entry is `0x7E`, from category code 0. On this entry
+`0x00C9BC40` returns 0 as a category code. Its slot is P virtual +0x14,
+cell `0x01108E54`. The editor's `0x0066AB10` takes the category branch
+and tests the selected packed entry through P virtual +0x18 at
+`0x0066AD06..0x0066AD0E`. Cell `0x01108E58` selects `0x00C9BE10`,
+which resolves the upper 25 bits through P+0x4C and P+0x1C, calls the
+category object's virtual +0x08, and returns the count of that display
+vector. The editor stops the expansion when the count is nonpositive.
+
+With a positive count, the editor emits mode 2 at `0x0066AD2C` before
+calling P virtual +0x0C, cell `0x01108E4C` -> `0x00C9C840`, with the
+category code and B+0x1A60 as an output. The ready provider resolves the
+same category object, writes the packed-record pointer from virtual
++0x0C into that output, and obtains the display-vector object from
+virtual +0x08 at `0x00C9C8AC..0x00C9C8C5`. It stores the display object
+at P+0xD8. The editor increments depth at `0x0066AD42`, saves the
+display object and previous absolute index at B+0x1A5C and B+0x1A68,
+and emits mode 0 with index 0 at `0x0066AD65`. In this route depth 1
+becomes depth 2. The candidate display strings and packed records remain
+separate throughout.
+
+The first `@` header constructs fresh CategoryData through `0x00CB3FD0`
+with category code 0 and descriptor index 0. It initializes the display,
+record and range vectors empty, and calls `0x00445CF0` on its empty
+last-byte exclusion string at category+0x34. That header branch does not
+apply the parsed descriptor's range and exclusion setters. Table
+`0x0110C7F8` supplies virtual +0x08 -> `0x00CB3C90`, returning the
+display-vector object at category+4, and +0x0C -> `0x00CB3D00`,
+returning a packed-entry pointer into the separate array at category+0x18.
+
+For metadata-empty ordinary rows, `0x00C9D550` passes the code, mapped
+native row key, primary display text and alternate text to `0x00C9C550`
+at `0x00C9DA3B`. The ordinary producer first rejects empty primary text,
+a leading period or the exact `****` literal at `0x01108DA0`. After the
+category map lookup, the selected CategoryData virtual +0x10 ->
+`0x00CB4060` tests the row key against its ranges and excludes a primary
+last byte present in the retained exclusion string. An empty range vector
+admits any key and the fresh empty exclusion string admits the measured
+nonempty strings. The call at `0x00CB40AE` appends the primary display
+text to the category vector. The call at `0x00CB40CE` appends
+`(nativeKey << 7) | (categoryCode & 0x7F)` to the separate record vector.
+These appends are distinct from the later alternate-text tree insertions.
+
+MEASURED. The authenticated English `xtx/_fixedPhrase` blocks use row
+100 as the category-0 `@` header. Their ordinary category-0 rows are the
+20 keys 101 through 120, in ascending order. Each has field 0 equal to 1,
+empty field 1 and nonempty primary text in logical field 4. Each primary
+string is plain UTF-8, starts with an ASCII uppercase letter, and passes
+the ordinary prefix and exact-literal checks. The candidate presentation
+wrapper at `0x00547160` leaves these measured strings unchanged because
+its conditional case helper cannot replace their initial uppercase bytes.
+Use the definition and source hashes under Initial localized category
+display vector to reproduce these counts without retaining the labels.
+
+For this complete ready category with no later population, the same
+nine-row layout displays three pages. Escape on release at depth 2 emits
+mode 2 and decrements depth to 1. The nonzero-depth branch of
+`0x0066A730` uses the then-current filter at B+0x19F4 to query virtual
++0x10. With the filter still empty, that query returns the initial
+display vector and its separate record pointer. The mode-0 call takes
+the saved index B+0x1A68, restoring the previous selection. Category
+population or filtering after this trace, other categories, selecting a
+leaf, and text insertion remain separate contracts.
+
 ## Native cache loading
 
 AT-COMP-012 joins ExcelSubSheet construction to conditional row completion and
