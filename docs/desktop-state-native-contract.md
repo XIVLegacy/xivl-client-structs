@@ -314,6 +314,51 @@ state byte 0 in the entry. That the element fields are the slot number and a byt
 the pending records is `INFERRED` from the offsets. What `0x006DBE20` does and how a
 pending record becomes a widget were not traced.
 
+## Widget container creation lifecycle
+
+STATIC for every address, read from ghidra-cli disassembly of the verified
+program. Offsets with the prefix "node" are offsets of an element of the
+pending map at `C +0x18`. The record offsets of the paragraphs above are the
+node offsets minus `0x60`.
+
+`0x00775DD0` inserts the record and requests the resource with `0x00CC76F0`,
+which is keyed to the record. Two adjacent code pointers in the image data
+name the handlers: `0x00773760` at `0x00FE048C` and `0x00772FE0` at
+`0x00FE0490`. INFERRED from the roles below: completion and failure. How
+`0x00CC76F0` receives them was not traced.
+
+- Failure `0x00772FE0` finds the record through `0x0077C7E0`, stores the state
+  byte 0 in the entry of the node's slot (node `+0xC4`, `0x00773046`) and
+  erases the record.
+- Completion `0x00773760` tests the cancelled byte at node `+0xC8`
+  (`0x007737C1`). When it is nonzero the record is erased, the entry gets the
+  empty identity `0x0130C778` and the state byte 0 (`0x007737FA..0x00773805`).
+  Otherwise it copies the cell vector from node `+0xB4` (`0x00791110`), obtains
+  an object through `0x00CC7A20` on the list object at `C +0x18`, and calls
+  that object's vtable slot `+0x6C` through the forwarder `0x006DBE00` with the
+  path from node `+0x60` and the cells. `0x00CC73B0` resolves the result, which
+  becomes the entry identity (`0x007738FE`). The record is then erased and the
+  dirty byte at `C +0x24` becomes 1 (`0x00773926`).
+- The per-frame update `0x00764FD0`, whose sole caller is `0x00578A6C`, returns
+  unless `C +0x24` is nonzero and clears it. It then visits every entry whose
+  state byte is nonzero and whose identity is not the empty identity. It
+  resolves the identity through `0x00CC7A50`. A null result stores the empty
+  identity and state byte 0 (`0x00765072..0x0076507A`). A resolved object whose
+  byte at `+0x5C` is zero sets the dirty byte again and waits for a later frame
+  (`0x0076512E`). Otherwise the state byte becomes 0, the object is cast to
+  `DesktopWidget` through `0x009DA6CC` with the identity `0xC0000024`, and a
+  successful cast calls `0x006FF040` with the desktop object, the entry
+  identity and the entry index.
+- `0x006FF040` casts the identity to `WidgetBase` (`0x012C1964`), builds an
+  argument list of the widget and the index plus 1, and raises the Lua callback
+  `_onCreatedWidgetInWidgetContainer` (`0x00FD4818`) on the desktop object. A
+  script therefore receives a one-based slot.
+- `0x007652D0` stores the empty identity and state byte 0 in every entry whose
+  identity equals its argument, the cleanup for a widget that dies.
+
+The object behind `0x00CC7A20`, the effect of `0x006DBE20` and the meaning of
+the byte at `+0x5C` are not traced.
+
 ## Script call sites
 
 | Native | Index sites | Scripts | Direct calls | Debug console |
@@ -374,8 +419,8 @@ manager behind `V +0x4DC` with the item search form.
   argument, the role of the dword `0x40` and server behavior.
 - The writer that clears `M +0xC8`, the opener's remaining delegated effects
   and the widget's removal/destruction owner.
-- How a pending container record becomes a widget, where the byte at record
-  `+0x68` comes from, and the effect of `0x00CC76F0` and `0x006DBE20`.
+- Where the byte at record `+0x68` comes from, the factory body behind
+  `C +0x04`, and the effect of `0x00CC76F0` and `0x006DBE20`.
 
 ## Reproduction
 
