@@ -361,6 +361,50 @@ the first int to the second inclusive, `0x006DFFC0` tests the key against the
 key vector, and a passing key is requested through `0x006F0D80` and appended
 to the node vector. The node is appended to the list.
 
+## Asynchronous completion
+
+The two requests are completed by a later pass over the same object.
+`0x0076DAB0` calls `0x0075CEA0` for the single key request and then
+`0x0076A490` for the multi key nodes, each with its one argument. These facts
+are `STATIC`. `0x00578970` calls `0x0076DAB0` once at `0x00578A3C`. That the
+pass runs once per frame is `INFERRED`.
+
+`0x006EB5A0` classifies one key of a sheet. It returns 0 when the row map at
+`+0xC4` holds the key. Otherwise it returns 1 when the requested set at `+0xB8`
+holds it and 2 when neither does.
+
+`0x0076A490` walks the node list from the head. For each node it resolves the
+receiver identity at node `+0x08` and casts it to `SpreadSheet`. From the index
+at node `+0x28` it classifies the keys of the vector at node `+0x1C..+0x20` and
+advances the index while the result is 0 (`0x0076A532..0x0076A57F`). A node
+completes when the index equals the key count and no earlier node completed in
+this walk, so at most one node completes per call.
+
+For the completing node, `0x0076A5BB` resolves the control identity at node
+`+0x0C`. A nonnull object is cast to `WidgetBase`, the byte at node `+0x2C` is
+set to 1 (`0x0076A5EB`) and `0x0070A580` runs with ECX holding the cast control.
+Its stack arguments are the engine value, the sheet, the low key at node
+`+0x10` and the high key at node `+0x14`. With or without that call, every key
+of the vector is then released through `0x006F63A0` and the node is unlinked
+and freed. The byte at `+0x2C` is the one that makes `0x0076E620` keep a node
+instead of replacing it, so a request with the same pair made from inside the
+callback does not erase the completing node.
+
+`0x0070A580` pushes the sheet as a control (`0x00748F20`) and the two keys as
+ints (`0x00585020`), builds the literal `_onLoadMultiKeyAsync` at `0x00FD4DF8`
+and dispatches it on the control through `0x00CC7A90`. The script call is
+therefore `control:_onLoadMultiKeyAsync(sheet, low, high)`.
+
+`0x0075CEA0` acts only while the pending flag is set. It resolves the stored
+identity and casts it to `SpreadSheet`. A null result clears the pending
+request. When the stored key classifies as 0, the routine clears the key and
+the flag and resets the identity. It then calls `0x00707300` with ECX holding
+the sheet and releases the key through `0x006F63A0`. `0x00707300` pushes the key as one int and
+dispatches `_onLoadKeyAsync` (literal `0x00FD4DD8`) on the sheet.
+
+Whether `0x00CC7A90` returns before a callback that yields has finished was not
+traced.
+
 ## Filename lookup
 
 `_setFilename` passes the filename to slot 1 of the manager. The manager is an
@@ -441,8 +485,8 @@ does not supply.
 - Whether the engine runs `LoadDataFunctionEndCallback` slot 1 at the end of
   the registering function, and the thread values behind `0x00CD2660` and
   `0x00CD2680`.
-- The body of `0x00CC73E0` and the path from an asynchronous request to a
-  cached row.
+- The body of `0x00CC73E0`, how a queued key becomes a cached row, and whether
+  the callback dispatch at `0x00CC7A90` waits for a callback that yields.
 - Whether the Lua wrapper in `gamedata/spreadsheet_u` adjusts the key or
   column arguments before the native call.
 - The process behavior of the invalid-parameter route for an absent key.
@@ -475,6 +519,7 @@ tools/ghidra/run-headless.ps1 -Script DumpFunctionListing.java -ReadOnly `
 | Load request | `0x00725A50,0x00747FB0,0x00725B20,0x00725C60,0x00747ED0,0x006EE9B0,0x0075F5A0,0x004D74C0` |
 | Function end callback | `0x00716EC0,0x00716F70,0x0071DB70,0x007462F0,0x006F6160,0x0071E960,0x00CD2630,0x00CD2660,0x00CD2680,0x00CD28C0,0x00CD2860` |
 | Asynchronous loads | `0x0075CF30,0x006F0D80,0x006F63A0,0x006DFFC0,0x0076E620` |
+| Asynchronous completion | `0x00578970,0x0076DAB0,0x0075CEA0,0x0076A490,0x006EB5A0,0x0070A580,0x00707300` |
 
 A callback address may not be a function entry in the analyzed program. Read
 such a callback as an instruction listing from its address. Compare every
