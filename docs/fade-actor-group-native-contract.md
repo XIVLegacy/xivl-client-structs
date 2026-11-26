@@ -200,8 +200,8 @@ routine sends a 0x14 byte record through `0x004D7980` with record number 0.
 `0x004D7980` adds `0x15` to the record number, so the `ScenePacket` carries the
 type word `0x15`. The routine then stores the fourth float at `F +0x23C` and a
 byte that is set when the signed frame count is above 0 at `F +0x244`. The
-record drives the `PlaneFade` filter of the `GameManagerActor`, as
-`xivl-decomp:docs/resource/plane-fade-scene-record.md` records. Reading the floats as a target colour
+record is `INFERRED` to drive the `PlaneFade` filter of the `GameManagerActor`,
+as `xivl-decomp:docs/resource/plane-fade-scene-record.md` records. Reading the floats as a target colour
 and alpha is `INFERRED`.
 
 `_waitForFading` (`0x006E3160`) reads the byte at `F +0x244` through
@@ -597,8 +597,9 @@ return list, receiver check and callback contract: `_addItem`, `_fadeIn`,
 `_fadeOut`, `_waitForFading`, `_fadeInNowLoadingForNoticeEventJustInArea`,
 `_delete`, `_getCurrentAreaMaster`, `_getMember`, `_isExistInClientMember`,
 `_getBelongGrandCompany`, `_runBgScheduler` and `_runBgSchedulerFromMidstream`.
-A client that implements them still needs the fade consumer behind scene
-packet type `0x15`, the remaining [widget consumer limits](widget-item-consumer-contract.md#claim-boundary), the group data
+A client that implements them still needs the fade presentation of
+`xivl-decomp:docs/resource/plane-fade-scene-record.md`, whose draw order is
+untraced, the remaining [widget consumer limits](widget-item-consumer-contract.md#claim-boundary), the group data
 class, the grand company writers and the background scheduler runner behind
 `0x00794690`, which this record does not supply.
 

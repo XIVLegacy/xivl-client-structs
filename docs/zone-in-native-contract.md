@@ -307,8 +307,9 @@ return list, receiver check and callback contract: `_waitForMapLoaded`,
 `_fadeInAfterWarp`, `_resetFade`, `_isFading`, `_cancelFading`, `_setWeather`,
 `_setMusic`, `_isEventPlaying`, `_cancelNotice`, `_readyInnBed`,
 `_getHydaelynTime`, `_getHydaelynMoon`, `_getHydaelynHour` and `_getAreaType`. A
-client that implements them still needs the fade consumer behind scene packet
-type `0x15`, the consumers of the weather scene packet types `0x21` and `0x87`,
+client that implements them still needs the fade presentation of
+`xivl-decomp:docs/resource/plane-fade-scene-record.md`, whose draw order is
+untraced, the consumers of the weather scene packet types `0x21` and `0x87`,
 the object behind `V +0x4E0`, the notice queue behind `MyPlayer +0xF8` and the
 writers of the `MyPlayer` fields at `+0x161`, `+0x165` and `+0x166`.
 
