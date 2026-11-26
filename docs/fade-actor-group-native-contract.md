@@ -200,7 +200,8 @@ routine sends a 0x14 byte record through `0x004D7980` with record number 0.
 `0x004D7980` adds `0x15` to the record number, so the `ScenePacket` carries the
 type word `0x15`. The routine then stores the fourth float at `F +0x23C` and a
 byte that is set when the signed frame count is above 0 at `F +0x244`. The
-scene packet consumer was not traced. Reading the floats as a target colour
+record drives the `PlaneFade` filter of the `GameManagerActor`, as
+`xivl-decomp:docs/resource/plane-fade-scene-record.md` records. Reading the floats as a target colour
 and alpha is `INFERRED`.
 
 `_waitForFading` (`0x006E3160`) reads the byte at `F +0x244` through
@@ -603,8 +604,8 @@ class, the grand company writers and the background scheduler runner behind
 
 ## Open
 
-- The consumer of scene packet type `0x15`, the sender of the message `0x19`,
-  the class of `F` and the writers of `MyPlayer +0x128`, `+0x12C` and
+- The route of the message `0x19` to `F`, where the fade draws in the frame,
+  the class of `F` beyond an inference and the writers of `MyPlayer +0x128`, `+0x12C` and
   `+0x165`.
 - The widget class behind the `V +0x17804` tree, complete bodies of
   `0x00535C80`, `0x00539010` and `0x0053A970`, and the remaining

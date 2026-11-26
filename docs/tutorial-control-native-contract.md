@@ -203,8 +203,10 @@ reads the found identity. `Z` is the target cursor receiver, the dword at `Y +0x
 found identity. That routine resolves the identity through `0x004D9970` without a
 null test and calls `0x00589240`, which calls `0x00587EF0` with 0.
 `_lookAtPlayerTutorial` reaches `0x00587F80` through `0x00589260`. That the cancel
-natives undo the set natives is `INFERRED` from the pairing. The bodies of
-`0x00561BB0`, `0x00563510` and `0x00587EF0` were not traced.
+natives undo the set natives is `INFERRED` from the pairing.
+`0x00561BB0` is the lock builder, and its camera effect is on
+`xivl-decomp:docs/actor/camera-held-keys-and-lock-aim.md`. The bodies of
+`0x00563510` and `0x00587EF0` were not traced.
 
 ## Chocobo camera
 
@@ -337,6 +339,8 @@ return list, receiver check and callback contract:
 `_cancelAimCameraChocobo`, `_waitForTargetTutorial` and
 `_waitForCameraTutorial`. A client that implements them still needs the target
 cursor and look-at workers behind `0x00561BB0`, `0x00563510` and `0x00587EF0`,
+of which `xivl-decomp:docs/actor/camera-held-keys-and-lock-aim.md` records the
+lock record of the first,
 the consumers of the camera records, the actual payload delivery and scheduling
 behind [camera completion](tutorial-camera-input-contract.md) and the actual
 installed bridge and scheduling behind the
@@ -344,7 +348,7 @@ installed bridge and scheduling behind the
 
 ## Open
 
-- The bodies of `0x00561BB0`, `0x00563510`, `0x00587EF0` and the effects of the
+- The bodies of `0x00563510` and `0x00587EF0` and the effects of the
   three camera command objects.
 - The consumers of the scene records `9`, `0x10`, `0x12` and `0x2D`, and the
   class of `E`.
