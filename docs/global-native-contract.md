@@ -381,7 +381,9 @@ After the walk the callback runs three steps:
    state with 1, then sets the target of that cursor back to the saved dword.
 3. `0x0075F070` on `Z` with the flag 1, the worker of `_setAllTargetCursorMask`.
 
-The effect of `0x00561BB0` and the role of the saved dword were not traced. The
+`0x00561BB0` is the lock builder. The lock record it posts and the camera keys
+that follow are on `xivl-decomp:docs/actor/camera-held-keys-and-lock-aim.md`.
+The saved dword restores the previous cursor target. The
 natives `_cancelAimCameraTutorial` and `_cancelLookAtPlayerTutorial` run the same
 prelude and walk. They are listed in the manifest under `relatedNatives`.
 
@@ -418,7 +420,7 @@ needs the chara scheduler and look-at request services behind `0x0058C690` and
   replacement on text with several spans and of the tutorial natives for a name
   number that no chara carries.
 - The chara scheduler request behind `0x0058C690`, the look-at request behind
-  `0x00587F80`, the camera step `0x00561BB0` and the writers and readers of the
+  `0x00587F80` and the writers and readers of the
   dword at `V +0x500`.
 
 The next natives by value are ranked by the number of distinct scripts that
