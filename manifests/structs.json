@@ -1334,7 +1334,7 @@
           "size": "0x04",
           "name": "enabled",
           "type": "uint32_t",
-          "notes": "Four-byte enabled state; retained evidence rules out a byte-sized representation.",
+          "notes": "Four-byte span at the head of the payload. Both client decoders (0x00759D20, 0x00761A80) read byte 0 as the status written to condition +0x58 and do not read bytes 1 to 3, which are zero in the tracked samples, so the client does not establish a four-byte value. Source: xivl-decomp:docs/event/npc-emote-condition-wire.md.",
           "evidence": "manifests/s2c_payload_decoding_mapped.json#batches.0.payloadStructs.s2c_0x0136"
         },
         {
@@ -20347,39 +20347,40 @@
         "BCS-Y-0390",
         "manifests/data_dependency_catalog.json",
         "manifests/s2c_payload_decoding_mapped.json",
-        "manifests/receiver_opcode_map_inbound.json"
+        "manifests/receiver_opcode_map_inbound.json",
+        "xivl-decomp:docs/event/npc-emote-condition-wire.md"
       ],
       "fields": [
         {
           "offset": "0x00",
           "size": "0x01",
-          "name": "selector_00",
+          "name": "block_priority",
           "type": "uint8_t",
-          "notes": "Byte-sized selector forwarded by the emote-condition receiver; its higher-level meaning remains unresolved."
+          "notes": "Priority stored only by the Block leaf. The client replaces 0 with the byte at 0x01355296."
         },
         {
           "offset": "0x01",
+          "size": "0x01",
+          "name": "leaf_selector",
+          "type": "uint8_t",
+          "notes": "Compared with the byte at 0x0134C3FE to pick the Block or NonBlock leaf. That 0 selects Block is INFERRED from the zero load value of that byte."
+        },
+        {
+          "offset": "0x02",
           "size": "0x02",
           "name": "emote_id",
           "type": "uint16_t",
-          "notes": "Misaligned emote identifier consumed at payload+0x01; retained observations include 0x82, 0x76, and 0x6E."
+          "notes": "Little-endian id matched on perform. 0x0FFF is a wildcard."
         },
         {
-          "offset": "0x03",
+          "offset": "0x04",
           "size": "0x24",
           "name": "condition_name",
           "type": "char[36]",
-          "notes": "Fixed condition-name buffer consumed by the receiver."
-        },
-        {
-          "offset": "0x27",
-          "size": "0x01",
-          "name": "unknown_27",
-          "type": "unknown[0x01]",
-          "notes": "Closing payload byte not interpreted by the documented receiver path."
+          "notes": "NUL-terminated string. The 36-byte extent is the remainder of the INFERRED 0x28 payload, not a bound the client applies."
         }
       ],
-      "notes": "Complete exact 0x28 application payload for s2c 0x016C SetEmoteEventCondition, excluding the 0x10 game-message prefix. The retained receiver forwards the selector, misaligned emote id, and condition-name buffer, while the fixed packet extent closes the final byte.",
+      "notes": "Client decoder 0x00761E10 reads u8 priority at payload+0x00, u8 leaf selector at +0x01, u16 little-endian emote id at +0x02 and a NUL-terminated name at +0x04, with no length bound and no payload-length read. The 0x28 payload size is INFERRED from sibling packets. No tracked retail sample of 0x016C exists. Source: xivl-decomp:docs/event/npc-emote-condition-wire.md.",
       "id": "BCS-S-0270"
     },
     {

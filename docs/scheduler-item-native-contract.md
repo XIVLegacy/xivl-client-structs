@@ -175,8 +175,10 @@ a dword at `+0x10` equal to the int. A result of 1 stores the dword at
 `0x0130CECC` in the result cell and any other result stores the dword at
 `0x01377ECC`. The wait ends when the identifier has left its category ring.
 That the ring holds the running entries and that the dword at `+0x10` is the
-identifier is `INFERRED`. Whether the ring is fed from the queue at `+0xA80`
-was not traced.
+identifier is `INFERRED`. The element drain feeds the ring from the queue at `+0xA80`
+([combat result element](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/net/combat-result-element.md#drain)),
+and record release, queue replacement and scheduler end are in
+[chara scheduler release](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/actor/chara-scheduler-release.md).
 
 `_setGroundOn` (`0x006E4260`) reads a bool through `0x0071BA00` and keeps its low
 byte. It calls `0x0075C3E0`, which resolves the identity and calls `0x00586750`.
