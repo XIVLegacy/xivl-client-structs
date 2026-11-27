@@ -227,7 +227,7 @@ fields.
 | `NpcBase` | `+0x5C`, `+0x5D` | Bytes. The talk and emote routines require `+0x5C` nonzero and `+0x5D` zero. |
 | `NpcBase` | `+0xE8`, `+0xF8`, `+0x108` | The talk, emote and push condition vectors. |
 | Condition | `+0x04` | `Utf8String` name. |
-| Condition | `+0x58` | Byte compared with the byte at `0x012C3F77`, image value 1. |
+| Condition | `+0x58` | Status byte compared with the byte at `0x012C3F77`, image value 1. s2c `0x0136` writes it ([emote condition wire](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/event/npc-emote-condition-wire.md#s2c-0x0136-status)). |
 | Condition | `+0x5C` | Word. In emote conditions `0x0FFF` is a wildcard and any other value is an emote id. |
 
 The condition vftable slots are 5 (`+0x14`), which returns the type byte

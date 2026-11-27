@@ -5,7 +5,9 @@ packed cell at object `+0x3E0`. The selected text parser can turn a reached
 `False` value into native setter arguments `(V,P,N)=(0,0,1)`. An admitted
 changed-value update clears cell bit 5 and sets bit 2. Lookup, preprocessing,
 property flags and the actual receiver remain conditions; this does not
-establish input-event suppression for a particular widget.
+establish input-event suppression for a particular widget. The window
+handlers that consume the stored bit are in the
+[pointer route](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/input/sqwt-pointer-route.md#window-input-gate).
 
 The selected indexed read samples that stored bit as one byte and uses an
 existing string object to choose text output. Native completion flags do not

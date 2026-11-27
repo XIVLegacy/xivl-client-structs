@@ -5685,7 +5685,8 @@
           "offset": 0,
           "size": 4,
           "type": "u32",
-          "name": "enabled"
+          "name": "enabled",
+          "note": "Client decoders read byte 0 as the status and do not read bytes 1 to 3. See xivl-decomp:docs/event/npc-emote-condition-wire.md."
         },
         {
           "offset": 4,
@@ -5715,7 +5716,7 @@
         }
       ],
       "evidenceVa": "0x0089D860",
-      "evidenceSource": "receiver apply decomp plus server packet class",
+      "evidenceSource": "receiver apply decomp and client packet decoders",
       "bcsyRef": "BCS-Y-0390",
       "notes": "The s2c-payload-decoding pass batch 1 covers the first ten mapped-but-unbound receiver rows after excluding the s2c-payload-decoding pass Lua-bound set. Ghidra evidence identifies the client receiver/helper chain and PCAP mirror metadata calibrate the application-payload byte layout."
     },
@@ -5836,28 +5837,31 @@
           "offset": 0,
           "size": 1,
           "type": "u8",
-          "name": "unknown1"
+          "name": "blockPriority",
+          "evidence": "xivl-decomp:docs/event/npc-emote-condition-wire.md"
         },
         {
           "offset": 1,
+          "size": 1,
+          "type": "u8",
+          "name": "leafSelector",
+          "evidence": "xivl-decomp:docs/event/npc-emote-condition-wire.md"
+        },
+        {
+          "offset": 2,
           "size": 2,
           "type": "u16",
-          "evidence": "%BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:51-55",
+          "evidence": "xivl-decomp:docs/event/npc-emote-condition-wire.md",
           "name": "emoteId",
-          "note": "Misaligned u16 at payload+1; observed values include 0x82, 0x76, and 0x6e."
+          "note": "Little-endian. 0x0FFF is a wildcard."
         },
         {
-          "offset": 3,
+          "offset": 4,
           "size": 36,
           "type": "char[36]",
-          "evidence": "%BCS_GHIDRA_PROJECTS%\\26_receiver_slot1.txt:51-55",
-          "name": "conditionName"
-        },
-        {
-          "offset": 39,
-          "size": 1,
-          "type": "bytes",
-          "name": "reserved"
+          "evidence": "xivl-decomp:docs/event/npc-emote-condition-wire.md",
+          "name": "conditionName",
+          "note": "NUL-terminated. The client applies no length bound; the extent is the remainder of the INFERRED 40-byte payload."
         }
       ],
       "receiverVariants": [
@@ -5871,9 +5875,9 @@
         }
       ],
       "evidenceVa": "0x0089D750",
-      "evidenceSource": "receiver apply decomp plus server packet class",
+      "evidenceSource": "client packet decoder 0x00761E10 and receiver apply 0x0089D750",
       "bcsyRef": "BCS-Y-0390",
-      "notes": "The s2c-payload-decoding pass batch 1 covers the first ten mapped-but-unbound receiver rows after excluding the s2c-payload-decoding pass Lua-bound set. Ghidra evidence identifies the client receiver/helper chain and PCAP mirror metadata calibrate the application-payload byte layout."
+      "notes": "Client decoder 0x00761E10 reads u8 priority at payload+0x00, u8 leaf selector at +0x01, u16 little-endian emote id at +0x02 and a NUL-terminated name at +0x04, with no length bound and no payload-length read. The 0x28 payload size is INFERRED from sibling packets. No tracked retail sample of 0x016C exists. Source: xivl-decomp:docs/event/npc-emote-condition-wire.md."
     },
     "s2c_0x016f": {
       "direction": "s2c",
