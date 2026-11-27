@@ -431,13 +431,15 @@ return list, receiver check and callback contract: `_runCharaScheduler`,
 `_printLog`, `_getEquippingItem`, `_getItemPackageCapacity`, `_setGroundOn` and
 `_getNameIndex`. A client that implements them still needs the scheduler queue
 consumers, the item package data from decoded static client data and the sink
-behind the log output, which this record does not supply.
+behind the log output, which this record does not supply. For the scheduler
+queue, see
+[combat result element](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/net/combat-result-element.md#drain)
+and
+[chara scheduler release](https://github.com/XIVLegacy/xivl-decomp/blob/main/docs/actor/chara-scheduler-release.md).
 
 ## Open
 
-- The consumers of the queue at chara `+0xA80`, how an entry runs, whether the
-  ring at `+0x878` is fed from it, and the run-time behavior of a null chara
-  after the identity lookup.
+- The run-time behavior of a null chara after the identity lookup.
 - The Lua yield exit behind the branch at `0x00D19DE4` and the relation
   between the update loop and the timer scheduler `0x00CEF510`.
 - The control creation in `0x006E2770`, the variant byte at `ItemBase` `+0x70`,
